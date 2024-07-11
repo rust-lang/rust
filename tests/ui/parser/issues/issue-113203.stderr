@@ -6,8 +6,9 @@ LL |     await {}()
    |
 help: `await` is a postfix operation
    |
-LL |     {}.await()
-   |     ~~~~~~~~
+LL -     await {}()
+LL +     {}.await()
+   |
 
 error: aborting due to 1 previous error
 

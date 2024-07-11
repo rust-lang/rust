@@ -103,19 +103,26 @@ pub(crate) struct IncorrectUseOfAwait {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_incorrect_use_of_await_postfix_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct AwaitSuggestion {
+    #[suggestion_part(code = "")]
+    pub removal: Span,
+    #[suggestion_part(code = ".await{question_mark}")]
+    pub dot_await: Span,
+    pub question_mark: &'static str,
+}
+
 #[derive(Diagnostic)]
 #[diag(parse_incorrect_use_of_await)]
 pub(crate) struct IncorrectAwait {
     #[primary_span]
     pub span: Span,
-    #[suggestion(
-        parse_postfix_suggestion,
-        style = "verbose",
-        code = "{expr}.await{question_mark}"
-    )]
-    pub sugg_span: (Span, Applicability),
-    pub expr: String,
-    pub question_mark: &'static str,
+    #[subdiagnostic]
+    pub suggestion: AwaitSuggestion,
 }
 
 #[derive(Diagnostic)]

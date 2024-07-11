@@ -6,8 +6,9 @@ LL |     let _ = await bar();
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar().await;
-   |             ~~~~~~~~~~~
+LL -     let _ = await bar();
+LL +     let _ = bar().await;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:12:13
@@ -17,8 +18,9 @@ LL |     let _ = await? bar();
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar().await?;
-   |             ~~~~~~~~~~~~
+LL -     let _ = await? bar();
+LL +     let _ = bar().await?;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:16:13
@@ -28,8 +30,9 @@ LL |     let _ = await bar()?;
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar()?.await;
-   |             ~~~~~~~~~~~~
+LL -     let _ = await bar()?;
+LL +     let _ = bar()?.await;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:20:13
@@ -39,8 +42,9 @@ LL |     let _ = await { bar() };
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = { bar() }.await;
-   |             ~~~~~~~~~~~~~~~
+LL -     let _ = await { bar() };
+LL +     let _ = { bar() }.await;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:24:13
@@ -50,8 +54,9 @@ LL |     let _ = await(bar());
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = (bar()).await;
-   |             ~~~~~~~~~~~~~
+LL -     let _ = await(bar());
+LL +     let _ = (bar()).await;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:28:13
@@ -61,8 +66,9 @@ LL |     let _ = await { bar() }?;
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = { bar() }.await?;
-   |             ~~~~~~~~~~~~~~~
+LL -     let _ = await { bar() }?;
+LL +     let _ = { bar() }.await?;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:32:14
@@ -72,8 +78,9 @@ LL |     let _ = (await bar())?;
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = (bar().await)?;
-   |              ~~~~~~~~~~~
+LL -     let _ = (await bar())?;
+LL +     let _ = (bar().await)?;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:36:24
@@ -107,8 +114,9 @@ LL |     let _ = await bar();
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar().await;
-   |             ~~~~~~~~~~~
+LL -     let _ = await bar();
+LL +     let _ = bar().await;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:56:13
@@ -118,8 +126,9 @@ LL |     let _ = await? bar();
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar().await?;
-   |             ~~~~~~~~~~~~
+LL -     let _ = await? bar();
+LL +     let _ = bar().await?;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:60:13
@@ -129,8 +138,9 @@ LL |     let _ = await bar()?;
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar()?.await;
-   |             ~~~~~~~~~~~~
+LL -     let _ = await bar()?;
+LL +     let _ = bar()?.await;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:64:14
@@ -140,8 +150,9 @@ LL |     let _ = (await bar())?;
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = (bar().await)?;
-   |              ~~~~~~~~~~~
+LL -     let _ = (await bar())?;
+LL +     let _ = (bar().await)?;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:68:24
@@ -175,8 +186,9 @@ LL |     let _ = await!(bar());
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar().await;
-   |             ~~~~~~~~~~~
+LL -     let _ = await!(bar());
+LL +     let _ = bar().await);
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:105:13
@@ -186,8 +198,9 @@ LL |     let _ = await!(bar())?;
    |
 help: `await` is a postfix operation
    |
-LL |     let _ = bar().await?;
-   |             ~~~~~~~~~~~
+LL -     let _ = await!(bar())?;
+LL +     let _ = bar().await)?;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:110:17
@@ -197,8 +210,9 @@ LL |         let _ = await!(bar())?;
    |
 help: `await` is a postfix operation
    |
-LL |         let _ = bar().await?;
-   |                 ~~~~~~~~~~~
+LL -         let _ = await!(bar())?;
+LL +         let _ = bar().await)?;
+   |
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:117:17
@@ -208,8 +222,9 @@ LL |         let _ = await!(bar())?;
    |
 help: `await` is a postfix operation
    |
-LL |         let _ = bar().await?;
-   |                 ~~~~~~~~~~~
+LL -         let _ = await!(bar())?;
+LL +         let _ = bar().await)?;
+   |
 
 error: expected expression, found `=>`
   --> $DIR/incorrect-syntax-suggestions.rs:124:25
@@ -227,8 +242,9 @@ LL |     match await { await => () }
    |
 help: `await` is a postfix operation
    |
-LL |     match { await => () }.await
-   |           ~~~~~~~~~~~~~~~~~~~~~
+LL -     match await { await => () }
+LL +     match { await => () }.await
+   |
 
 error: expected one of `.`, `?`, `{`, or an operator, found `}`
   --> $DIR/incorrect-syntax-suggestions.rs:127:1

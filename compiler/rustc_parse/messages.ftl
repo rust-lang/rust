@@ -323,10 +323,10 @@ parse_incorrect_semicolon =
     .suggestion = remove this semicolon
     .help = {$name} declarations are not followed by a semicolon
 
-parse_incorrect_use_of_await =
-    incorrect use of `await`
+parse_incorrect_use_of_await = incorrect use of `await`
     .parentheses_suggestion = `await` is not a method call, remove the parentheses
-    .postfix_suggestion = `await` is a postfix operation
+
+parse_incorrect_use_of_await_postfix_suggestion = `await` is a postfix operation
 
 parse_incorrect_visibility_restriction = incorrect visibility restriction
     .help = some possible visibility restrictions are:

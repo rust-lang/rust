@@ -3,8 +3,8 @@ use super::{
     BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep, TokenType,
 };
 use crate::errors::{
-    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, BadQPathStage2,
-    BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, AwaitSuggestion,
+    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
     ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
     ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
@@ -1959,18 +1959,14 @@ impl<'a> Parser<'a> {
         is_question: bool,
     ) -> (Span, ErrorGuaranteed) {
         let span = lo.to(hi);
-        let applicability = match expr.kind {
-            ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
-            _ => Applicability::MachineApplicable,
-        };
-
         let guar = self.dcx().emit_err(IncorrectAwait {
             span,
-            sugg_span: (span, applicability),
-            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(expr)),
-            question_mark: if is_question { "?" } else { "" },
+            suggestion: AwaitSuggestion {
+                removal: lo.until(expr.span),
+                dot_await: expr.span.shrink_to_hi(),
+                question_mark: if is_question { "?" } else { "" },
+            },
         });
-
         (span, guar)
     }
 
