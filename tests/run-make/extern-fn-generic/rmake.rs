@@ -2,6 +2,7 @@
 // test simply runs a Rust program containing generics that is also reliant on
 // a C library, and checks that compilation and execution are successful.
 // See https://github.com/rust-lang/rust/pull/15831
+
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
