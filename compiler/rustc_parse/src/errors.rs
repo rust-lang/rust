@@ -1215,14 +1215,14 @@ pub(crate) enum ExpectedSemiSugg {
         parse_sugg_change_this_to_semi,
         code = ";",
         applicability = "machine-applicable",
-        style = "verbose"
+        style = "short"
     )]
     ChangeToSemi(#[primary_span] Span),
     #[suggestion(
         parse_sugg_add_semi,
-        style = "verbose",
         code = ";",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "short"
     )]
     AddSemi(#[primary_span] Span),
 }
