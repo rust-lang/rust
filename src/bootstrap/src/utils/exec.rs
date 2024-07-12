@@ -153,7 +153,7 @@ impl BootstrapCommand {
     }
 
     /// Provides access to the stdlib Command inside.
-    /// All usages of this function should be eventually removed from bootstrap.
+    /// FIXME: This function should be eventually removed from bootstrap.
     pub fn as_command_mut(&mut self) -> &mut Command {
         // We don't know what will happen with the returned command, so we need to mark this
         // command as executed proactively.
