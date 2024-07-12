@@ -42,6 +42,8 @@ use crate::{
 ///
 /// [`HashMap`]: super::HashMap
 /// [`HashSet`]: super::HashSet
+/// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+/// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
 pub struct HashTable<T, A = Global>
 where
     A: Allocator,
