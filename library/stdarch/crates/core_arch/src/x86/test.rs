@@ -97,34 +97,22 @@ pub unsafe fn get_m512i(a: __m512i, idx: usize) -> i64 {
 #[cfg(target_arch = "x86")]
 mod x86_polyfill {
     use crate::core_arch::x86::*;
+    use crate::intrinsics::simd::*;
 
     #[rustc_legacy_const_generics(2)]
     pub unsafe fn _mm_insert_epi64<const INDEX: i32>(a: __m128i, val: i64) -> __m128i {
         static_assert_uimm_bits!(INDEX, 1);
-        #[repr(C)]
-        union A {
-            a: __m128i,
-            b: [i64; 2],
-        }
-        let mut a = A { a };
-        a.b[INDEX as usize] = val;
-        a.a
+        transmute(simd_insert!(a.as_i64x2(), INDEX as u32, val))
     }
 
     #[target_feature(enable = "avx2")]
     #[rustc_legacy_const_generics(2)]
     pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, val: i64) -> __m256i {
         static_assert_uimm_bits!(INDEX, 2);
-        #[repr(C)]
-        union A {
-            a: __m256i,
-            b: [i64; 4],
-        }
-        let mut a = A { a };
-        a.b[INDEX as usize] = val;
-        a.a
+        transmute(simd_insert!(a.as_i64x4(), INDEX as u32, val))
     }
 }
+
 #[cfg(target_arch = "x86_64")]
 mod x86_polyfill {
     pub use crate::core_arch::x86_64::{_mm256_insert_epi64, _mm_insert_epi64};

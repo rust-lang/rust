@@ -6751,7 +6751,7 @@ pub unsafe fn _mm512_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask16, a: __m
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_fpclass_sd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasssd", __mmask8, xmm_reg, a)
+    _mm_mask_fpclass_sd_mask::<IMM8>(0xff, a)
 }
 
 /// Test the lower double-precision (64-bit) floating-point element in a for special categories specified
@@ -6776,7 +6776,7 @@ pub unsafe fn _mm_fpclass_sd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_fpclass_sd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasssd", __mmask8, k1, xmm_reg, a)
+    vfpclasssd(a.as_f64x2(), IMM8, k1)
 }
 
 /// Test the lower single-precision (32-bit) floating-point element in a for special categories specified
@@ -6800,7 +6800,7 @@ pub unsafe fn _mm_mask_fpclass_sd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_fpclass_ss_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassss", __mmask8, xmm_reg, a)
+    _mm_mask_fpclass_ss_mask::<IMM8>(0xff, a)
 }
 
 /// Test the lower single-precision (32-bit) floating-point element in a for special categories specified
@@ -6825,7 +6825,7 @@ pub unsafe fn _mm_fpclass_ss_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_fpclass_ss_mask<const IMM8: i32>(k1: __mmask8, a: __m128) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassss", __mmask8, k1, xmm_reg, a)
+    vfpclassss(a.as_f32x4(), IMM8, k1)
 }
 
 #[allow(improper_ctypes)]
@@ -6952,6 +6952,11 @@ extern "C" {
     fn vreducesd(a: f64x2, b: f64x2, src: f64x2, k: __mmask8, imm8: i32, sae: i32) -> f64x2;
     #[link_name = "llvm.x86.avx512.mask.reduce.ss"]
     fn vreducess(a: f32x4, b: f32x4, src: f32x4, k: __mmask8, imm8: i32, sae: i32) -> f32x4;
+
+    #[link_name = "llvm.x86.avx512.mask.fpclass.sd"]
+    fn vfpclasssd(a: f64x2, imm8: i32, k: __mmask8) -> __mmask8;
+    #[link_name = "llvm.x86.avx512.mask.fpclass.ss"]
+    fn vfpclassss(a: f32x4, imm8: i32, k: __mmask8) -> __mmask8;
 }
 
 #[cfg(test)]
