@@ -1,7 +1,6 @@
 //@ run-rustfix
 
-#![feature(precise_capturing)]
-#![allow(unused, incomplete_features)]
+#![allow(unused)]
 #![deny(impl_trait_overcaptures)]
 
 fn named<'a>(x: &'a i32) -> impl Sized + use<> { *x }

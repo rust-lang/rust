@@ -1,5 +1,5 @@
 error: `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
-  --> $DIR/self-capture.rs:4:34
+  --> $DIR/self-capture.rs:2:34
    |
 LL |     fn bar<'a>() -> impl Sized + use<Self>;
    |                                  ^^^^^^^^^
