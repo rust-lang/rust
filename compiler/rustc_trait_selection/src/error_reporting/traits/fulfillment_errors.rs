@@ -18,10 +18,12 @@ use core::ops::ControlFlow;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, StringPart};
-use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
+use rustc_errors::{
+    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey,
+    StringPart,
+};
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_hir::{self as hir, LangItem};
