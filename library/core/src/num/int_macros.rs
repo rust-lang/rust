@@ -2172,35 +2172,43 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn wrapping_pow(self, mut exp: u32) -> Self {
             let mut base = self;
 
-            // Unroll multiplications for small exponent values.
-            // This gives the optimizer a way to efficiently inline call sites
-            // for the most common use cases with constant exponents.
-            // Currently, LLVM is unable to unroll the loop below.
-            match exp {
-                0 => return 1,
-                1 => return base,
-                2 => return base.wrapping_mul(base),
-                3 => {
-                    let squared = base.wrapping_mul(base);
-                    return squared.wrapping_mul(base);
+            if intrinsics::is_val_statically_known(exp) {
+                // Unroll multiplications for small exponent values.
+                // This gives the optimizer a way to efficiently inline call sites
+                // for the most common use cases with constant exponents.
+                // Currently, LLVM is unable to unroll the loop below.
+                match exp {
+                    0 => return 1,
+                    1 => return base,
+                    2 => return base.wrapping_mul(base),
+                    3 => {
+                        let squared = base.wrapping_mul(base);
+                        return squared.wrapping_mul(base);
+                    }
+                    4 => {
+                        let squared = base.wrapping_mul(base);
+                        return squared.wrapping_mul(squared);
+                    }
+                    5 => {
+                        let squared = base.wrapping_mul(base);
+                        return squared.wrapping_mul(squared).wrapping_mul(base);
+                    }
+                    6 => {
+                        let cubed = base.wrapping_mul(base).wrapping_mul(base);
+                        return cubed.wrapping_mul(cubed);
+                    }
+                    _ => {}
                 }
-                4 => {
-                    let squared = base.wrapping_mul(base);
-                    return squared.wrapping_mul(squared);
+            } else {
+                if exp == 0 {
+                    return 1;
                 }
-                5 => {
-                    let squared = base.wrapping_mul(base);
-                    return squared.wrapping_mul(squared).wrapping_mul(base);
-                }
-                6 => {
-                    let cubed = base.wrapping_mul(base).wrapping_mul(base);
-                    return cubed.wrapping_mul(cubed);
-                }
-                _ => {}
             }
+            debug_assert!(exp != 0);
 
             let mut acc: Self = 1;
 
@@ -2743,35 +2751,43 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
             let mut base = self;
 
-            // Unroll multiplications for small exponent values.
-            // This gives the optimizer a way to efficiently inline call sites
-            // for the most common use cases with constant exponents.
-            // Currently, LLVM is unable to unroll the loop below.
-            match exp {
-                0 => return 1,
-                1 => return base,
-                2 => return base * base,
-                3 => {
-                    let squared = base * base;
-                    return squared * base;
+            if intrinsics::is_val_statically_known(exp) {
+                // Unroll multiplications for small exponent values.
+                // This gives the optimizer a way to efficiently inline call sites
+                // for the most common use cases with constant exponents.
+                // Currently, LLVM is unable to unroll the loop below.
+                match exp {
+                    0 => return 1,
+                    1 => return base,
+                    2 => return base * base,
+                    3 => {
+                        let squared = base * base;
+                        return squared * base;
+                    }
+                    4 => {
+                        let squared = base * base;
+                        return squared * squared;
+                    }
+                    5 => {
+                        let squared = base * base;
+                        return squared * squared * base;
+                    }
+                    6 => {
+                        let cubed = base * base * base;
+                        return cubed * cubed;
+                    }
+                    _ => {}
                 }
-                4 => {
-                    let squared = base * base;
-                    return squared * squared;
+            } else {
+                if exp == 0 {
+                    return 1;
                 }
-                5 => {
-                    let squared = base * base;
-                    return squared * squared * base;
-                }
-                6 => {
-                    let cubed = base * base * base;
-                    return cubed * cubed;
-                }
-                _ => {}
             }
+            debug_assert!(exp != 0);
 
             let mut acc = 1;
 
