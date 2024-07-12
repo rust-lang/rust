@@ -658,11 +658,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// let _: (0.0_f32 / 0.0) as u64;
+    /// let _ = (0.0_f32 / 0.0) as u64;
     /// ```
     /// Use instead:
     /// ```rust,ignore
-    /// let _: = 0_u64;
+    /// let _ = 0_u64;
     /// ```
     #[clippy::version = "1.66.0"]
     pub CAST_NAN_TO_INT,
