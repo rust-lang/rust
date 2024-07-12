@@ -684,6 +684,9 @@ pub use core::{
     module_path, option_env, stringify, trace_macros,
 };
 
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+pub use crate::sys::anonymous_pipe as pipe;
+
 #[unstable(
     feature = "concat_bytes",
     issue = "87555",
