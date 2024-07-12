@@ -740,6 +740,7 @@ impl AsRef<CStr> for CStr {
 /// The pointer must point to a valid buffer that contains a NUL terminator. The NUL must be
 /// located within `isize::MAX` from `ptr`.
 #[inline]
+#[unstable(feature = "cstr_internals", issue = "none")]
 #[rustc_const_stable(feature = "const_cstr_from_ptr", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const unsafe fn const_strlen(ptr: *const c_char) -> usize {
