@@ -6,6 +6,8 @@
 // See https://github.com/rust-lang/rust/pull/10749
 
 //@ ignore-cross-compile
+//@ ignore-windows-gnu
+// Reason: The space is parsed as an empty linker argument on windows-gnu.
 
 use run_make_support::rustc;
 

@@ -29,6 +29,12 @@ pub fn llvm_objdump() -> LlvmObjdump {
     LlvmObjdump::new()
 }
 
+/// Construct a new `llvm-ar` invocation. This assumes that `llvm-ar` is available
+/// at `$LLVM_BIN_DIR/llvm-ar`.
+pub fn llvm_ar() -> LlvmAr {
+    LlvmAr::new()
+}
+
 /// A `llvm-readobj` invocation builder.
 #[derive(Debug)]
 #[must_use]
@@ -57,10 +63,18 @@ pub struct LlvmObjdump {
     cmd: Command,
 }
 
+/// A `llvm-ar` invocation builder.
+#[derive(Debug)]
+#[must_use]
+pub struct LlvmAr {
+    cmd: Command,
+}
+
 crate::impl_common_helpers!(LlvmReadobj);
 crate::impl_common_helpers!(LlvmProfdata);
 crate::impl_common_helpers!(LlvmFilecheck);
 crate::impl_common_helpers!(LlvmObjdump);
+crate::impl_common_helpers!(LlvmAr);
 
 /// Generate the path to the bin directory of LLVM.
 #[must_use]
@@ -201,6 +215,29 @@ impl LlvmObjdump {
     /// Provide an input file.
     pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg(path.as_ref());
+        self
+    }
+}
+
+impl LlvmAr {
+    /// Construct a new `llvm-ar` invocation. This assumes that `llvm-ar` is available
+    /// at `$LLVM_BIN_DIR/llvm-ar`.
+    pub fn new() -> Self {
+        let llvm_ar = llvm_bin_dir().join("llvm-ar");
+        let cmd = Command::new(llvm_ar);
+        Self { cmd }
+    }
+
+    pub fn obj_to_ar(&mut self) -> &mut Self {
+        self.cmd.arg("rcus");
+        self
+    }
+
+    /// Provide an output, then an input file. Bundled in one function, as llvm-ar has
+    /// no "--output"-style flag.
+    pub fn output_input(&mut self, out: impl AsRef<Path>, input: impl AsRef<Path>) -> &mut Self {
+        self.cmd.arg(out.as_ref());
+        self.cmd.arg(input.as_ref());
         self
     }
 }

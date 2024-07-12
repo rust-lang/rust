@@ -30,8 +30,8 @@ pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use diff::{diff, Diff};
 pub use llvm::{
-    llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmFilecheck, LlvmObjdump,
-    LlvmProfdata, LlvmReadobj,
+    llvm_ar, llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmFilecheck,
+    LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
 pub use run::{cmd, run, run_fail, run_with_args};
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
@@ -59,19 +59,6 @@ pub fn env_var_os(name: &str) -> OsString {
 #[must_use]
 pub fn target() -> String {
     env_var("TARGET")
-}
-
-/// `AR`
-#[track_caller]
-pub fn ar(inputs: &[impl AsRef<Path>], output_path: impl AsRef<Path>) {
-    let output = fs::File::create(&output_path).expect(&format!(
-        "the file in path \"{}\" could not be created",
-        output_path.as_ref().display()
-    ));
-    let mut builder = ar::Builder::new(output);
-    for input in inputs {
-        builder.append_path(input).unwrap();
-    }
 }
 
 /// Check if target is windows-like.
@@ -305,12 +292,12 @@ pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
     } else {
         cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
     };
-    let mut obj_file = PathBuf::from(format!("{lib_name}.o"));
-    if is_msvc() {
-        obj_file.set_extension("");
-        obj_file.set_extension("obj");
-    }
-    ar(&[obj_file], &lib_path);
+    let obj_file = if is_msvc() {
+        PathBuf::from(format!("{lib_name}.obj"))
+    } else {
+        PathBuf::from(format!("{lib_name}.o"))
+    };
+    llvm_ar().obj_to_ar().output_input(&lib_path, &obj_file).run();
     path(lib_path)
 }
 
