@@ -1,5 +1,5 @@
 //@ test-mir-pass: SingleUseConsts
-//@ compile-flags: -C overflow-checks=no -Zmir-enable-passes=+GVN
+//@ compile-flags: -C overflow-checks=no -Zmir-enable-passes=+GVN -Zdump-mir-exclude-alloc-bytes
 
 #![allow(unused)]
 
