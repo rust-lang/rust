@@ -146,6 +146,12 @@ mod transition {
     /// non-protected interior mutable `Reserved` which stay the same.
     fn foreign_write(state: PermissionPriv, protected: bool) -> Option<PermissionPriv> {
         Some(match state {
+            // FIXME: since the fix related to reservedim_spurious_write, it is now possible
+            // to express these transitions of the state machine without an explicit dependency
+            // on `protected`: because `ty_is_freeze: false` implies `!protected` then
+            // the line handling `Reserved { .. } if protected` could be deleted.
+            // This will however require optimizations to the exhaustive tests because
+            // fewer initial conditions are valid.
             Reserved { .. } if protected => Disabled,
             res @ Reserved { ty_is_freeze: false, .. } => res,
             _ => Disabled,
