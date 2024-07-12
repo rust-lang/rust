@@ -353,6 +353,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-hash",
     "rustc-rayon",
     "rustc-rayon-core",
+    "rustc-stable-hash",
     "rustc_apfloat",
     "rustc_version",
     "rustix",

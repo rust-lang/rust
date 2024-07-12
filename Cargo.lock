@@ -3515,6 +3515,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5be1bdc7edf596692617627bbfeaba522131b18e06ca4df2b6b689e3c5d5ce84"
 
 [[package]]
+name = "rustc-stable-hash"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5c9f15eec8235d7cb775ee6f81891db79b98fd54ba1ad8fae565b88ef1ae4e2"
+
+[[package]]
 name = "rustc-std-workspace-alloc"
 version = "1.99.0"
 dependencies = [
@@ -3852,6 +3858,7 @@ dependencies = [
  "portable-atomic",
  "rustc-hash",
  "rustc-rayon",
+ "rustc-stable-hash",
  "rustc_arena",
  "rustc_graphviz",
  "rustc_index",
