@@ -1056,31 +1056,126 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .unwrap_or_else(|_| {
                         span_bug!(self.span, "{:?} was applicable but now isn't?", step.self_ty)
                     });
-                self.pick_by_value_method(step, self_ty, unstable_candidates.as_deref_mut())
-                    .or_else(|| {
-                        self.pick_autorefd_method(
-                            step,
-                            self_ty,
-                            hir::Mutability::Not,
-                            unstable_candidates.as_deref_mut(),
-                        )
-                        .or_else(|| {
-                            self.pick_autorefd_method(
+
+                let by_value_pick =
+                    self.pick_by_value_method(step, self_ty, unstable_candidates.as_deref_mut());
+
+                // Check for shadowing of a by-reference method by a by-value method (see comments on check_for_shadowing)
+                if let Some(by_value_pick) = by_value_pick {
+                    if let Ok(by_value_pick) = by_value_pick.as_ref() {
+                        if by_value_pick.kind == PickKind::InherentImplPick {
+                            let autoref_pick = self.pick_autorefd_method(
+                                step,
+                                self_ty,
+                                hir::Mutability::Not,
+                                unstable_candidates.as_deref_mut(),
+                            );
+                            if let Err(e) = self.check_for_shadowing(by_value_pick, autoref_pick) {
+                                return Some(Err(e));
+                            }
+
+                            let autoref_mut_pick = self.pick_autorefd_method(
                                 step,
                                 self_ty,
                                 hir::Mutability::Mut,
                                 unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                        .or_else(|| {
-                            self.pick_const_ptr_method(
+                            );
+                            if let Err(e) =
+                                self.check_for_shadowing(by_value_pick, autoref_mut_pick)
+                            {
+                                return Some(Err(e));
+                            }
+                        }
+                    }
+                    return Some(by_value_pick);
+                }
+
+                let autoref_pick = self.pick_autorefd_method(
+                    step,
+                    self_ty,
+                    hir::Mutability::Not,
+                    unstable_candidates.as_deref_mut(),
+                );
+                // Check for shadowing of a by-mut-ref method by a by-reference method (see comments on check_for_shadowing)
+                if let Some(autoref_pick) = autoref_pick {
+                    if let Ok(autoref_pick) = autoref_pick.as_ref() {
+                        // Check we're not shadowing others
+                        if autoref_pick.kind == PickKind::InherentImplPick {
+                            let autoref_mut_pick = self.pick_autorefd_method(
                                 step,
                                 self_ty,
+                                hir::Mutability::Mut,
                                 unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                    })
+                            );
+                            if let Err(e) = self.check_for_shadowing(autoref_pick, autoref_mut_pick)
+                            {
+                                return Some(Err(e));
+                            }
+                        }
+                    }
+                    return Some(autoref_pick);
+                }
+
+                // Note that no shadowing errors are produced from here on,
+                // as we consider const ptr methods.
+                // We allow new methods that take *mut T to shadow
+                // methods which took *const T, so there is no entry in
+                // this list for the results of `pick_const_ptr_method`.
+                // The reason is that the standard pointer cast method
+                // (on a mutable pointer) always already shadows the
+                // cast method (on a const pointer). So, if we added
+                // `pick_const_ptr_method` to this method, the anti-
+                // shadowing algorithm would always complain about
+                // the conflict between *const::cast and *mut::cast.
+                // In practice therefore this does constrain us:
+                // we cannot add new
+                //   self: *mut Self
+                // methods to types such as NonNull or anything else
+                // which implements Receiver, because this might in future
+                // shadow existing methods taking
+                //   self: *const NonNull<Self>
+                // in the pointee. In practice, methods taking raw pointers
+                // are rare, and it seems that it should be easily possible
+                // to avoid such compatibility breaks.
+                self.pick_autorefd_method(
+                    step,
+                    self_ty,
+                    hir::Mutability::Mut,
+                    unstable_candidates.as_deref_mut(),
+                )
+                .or_else(|| {
+                    self.pick_const_ptr_method(step, self_ty, unstable_candidates.as_deref_mut())
+                })
             })
+    }
+
+    /// Check for cases where arbitrary self types allows shadowing
+    /// of methods that might be a compatibility break. Specifically,
+    /// we have something like:
+    /// ```ignore (does not compile until arbitrary self types is fully implemented)
+    /// struct NonNull<T>(T);
+    /// struct A;
+    /// impl A {
+    ///   fn foo(self: &NonNull<A>) {}
+    ///      // note this is by reference
+    /// }
+    /// ```
+    /// then we've come along and added this method to `NonNull`:
+    /// ```
+    /// # struct NonNull<T>(T);
+    /// impl<T> NonNull<T> {
+    ///   fn foo(self) {}  // note this is by value
+    /// }
+    /// ```
+    /// Report an error in this case.
+    fn check_for_shadowing(
+        &self,
+        _possible_shadower: &Pick<'tcx>,
+        _possible_shadowed: Option<Result<Pick<'tcx>, MethodError<'tcx>>>,
+    ) -> Result<(), MethodError<'tcx>> {
+        // At the moment, this function does nothing. A future
+        // commit will fill out the body here.
+        Ok(())
     }
 
     /// For each type `T` in the step list, this attempts to find a method where
