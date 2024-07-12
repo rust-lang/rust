@@ -1610,7 +1610,7 @@ impl<'a> Parser<'a> {
         }
 
         self.bump(); // `+`
-        let bounds = self.parse_generic_bounds()?;
+        let _bounds = self.parse_generic_bounds()?;
         let sum_span = ty.span.to(self.prev_token.span);
 
         let sub = match &ty.kind {
