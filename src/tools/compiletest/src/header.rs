@@ -991,13 +991,19 @@ impl Config {
     }
 
     fn parse_custom_normalization(&self, line: &str, prefix: &str) -> Option<(String, String)> {
-        if parse_cfg_name_directive(self, line, prefix).outcome == MatchOutcome::Match {
-            let (regex, replacement) = parse_normalize_rule(line)
-                .unwrap_or_else(|| panic!("couldn't parse custom normalization rule: `{line}`"));
-            Some((regex, replacement))
-        } else {
-            None
+        let parsed = parse_cfg_name_directive(self, line, prefix);
+        if parsed.outcome != MatchOutcome::Match {
+            return None;
         }
+        let name = parsed.name.expect("successful match always has a name");
+
+        let Some((regex, replacement)) = parse_normalize_rule(line) else {
+            panic!(
+                "couldn't parse custom normalization rule: `{line}`\n\
+                help: expected syntax is: `{prefix}-{name}: \"REGEX\" -> \"REPLACEMENT\"`"
+            );
+        };
+        Some((regex, replacement))
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
