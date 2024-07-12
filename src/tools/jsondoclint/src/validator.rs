@@ -298,6 +298,7 @@ impl<'a> Validator<'a> {
                 generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
             }
             GenericBound::Outlives(_) => {}
+            GenericBound::Use(_) => {}
         }
     }
 

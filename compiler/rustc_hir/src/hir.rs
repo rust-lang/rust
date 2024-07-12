@@ -2708,6 +2708,13 @@ impl PreciseCapturingArg<'_> {
             PreciseCapturingArg::Param(param) => param.hir_id,
         }
     }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            PreciseCapturingArg::Lifetime(lt) => lt.ident.name,
+            PreciseCapturingArg::Param(param) => param.ident.name,
+        }
+    }
 }
 
 /// We need to have a [`Node`] for the [`HirId`] that we attach the type/const param
