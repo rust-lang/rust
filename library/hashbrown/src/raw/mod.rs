@@ -1932,7 +1932,7 @@ impl RawTableInner {
     /// function with only `FULL` buckets' indices and return the `index` of the found
     /// element (as `Ok(index)`). If the element is not found and there is at least 1
     /// empty or deleted [`Bucket`] in the table, the function is guaranteed to return
-    /// [InsertSlot] with an index in the range `0..self.buckets()`, but in any case,
+    /// [`InsertSlot`] with an index in the range `0..self.buckets()`, but in any case,
     /// if this function returns [`InsertSlot`], it will contain an index in the range
     /// `0..=self.buckets()`.
     ///
@@ -1944,7 +1944,7 @@ impl RawTableInner {
     /// Attempt to write data at the [`InsertSlot`] returned by this function when the table is
     /// less than the group width and if there was not at least one empty or deleted bucket in
     /// the table will cause immediate [`undefined behavior`]. This is because in this case the
-    /// function will return `self.bucket_mask + 1` as an index due to the trailing [`EMPTY]
+    /// function will return `self.bucket_mask + 1` as an index due to the trailing [`EMPTY`]
     /// control bytes outside the table range.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
