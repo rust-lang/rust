@@ -18,6 +18,7 @@ dashmap.workspace = true
 hashbrown.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
+sptr = "0.3.2"
 
 [lints]
 workspace = true
