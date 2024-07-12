@@ -313,15 +313,13 @@ impl<'a> Parser<'a> {
             *target_tokens = Some(tokens.clone());
         }
 
-        let final_attrs = ret.attrs();
-
         // If `capture_cfg` is set and we're inside a recursive call to
         // `collect_tokens_trailing_token`, then we need to register a replace range
         // if we have `#[cfg]` or `#[cfg_attr]`. This allows us to run eager cfg-expansion
         // on the captured token stream.
         if self.capture_cfg
             && matches!(self.capture_state.capturing, Capturing::Yes)
-            && has_cfg_or_cfg_attr(final_attrs)
+            && has_cfg_or_cfg_attr(ret.attrs())
         {
             assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
 
@@ -329,7 +327,7 @@ impl<'a> Parser<'a> {
             // `target`. If this AST node is inside an item that has `#[derive]`, then this will
             // allow us to cfg-expand this AST node.
             let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
-            let target = AttrsTarget { attrs: final_attrs.iter().cloned().collect(), tokens };
+            let target = AttrsTarget { attrs: ret.attrs().iter().cloned().collect(), tokens };
             self.capture_state.replace_ranges.push((start_pos..end_pos, Some(target)));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
         } else if matches!(self.capture_state.capturing, Capturing::No) {
