@@ -10,6 +10,7 @@ use crate::{
     symbol::{SymbolProxy, TaggedArcPtr},
     Symbol,
 };
+
 macro_rules! define_symbols {
     (@WITH_NAME: $($alias:ident = $value:literal),* $(,)? @PLAIN: $($name:ident),* $(,)?) => {
         $(
