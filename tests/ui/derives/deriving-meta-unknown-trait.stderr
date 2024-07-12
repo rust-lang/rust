@@ -1,17 +1,23 @@
-error: cannot find derive macro `Eqr` in this scope
+error: cannot find derive macro `Eqr` in the crate root
   --> $DIR/deriving-meta-unknown-trait.rs:1:10
    |
 LL | #[derive(Eqr)]
-   |          ^^^ help: a derive macro with a similar name exists: `Eq`
+   |          ^^^
+   |          |
+   |          not found in the crate root
+   |          help: a derive macro with a similar name exists: `Eq`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named derive macro `Eq` defined here
 
-error: cannot find derive macro `Eqr` in this scope
+error: cannot find derive macro `Eqr` in the crate root
   --> $DIR/deriving-meta-unknown-trait.rs:1:10
    |
 LL | #[derive(Eqr)]
-   |          ^^^ help: a derive macro with a similar name exists: `Eq`
+   |          ^^^
+   |          |
+   |          not found in the crate root
+   |          help: a derive macro with a similar name exists: `Eq`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named derive macro `Eq` defined here

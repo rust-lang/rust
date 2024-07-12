@@ -9,7 +9,7 @@ mod local {
 }
 
 pub fn test(_: Foo) {}
-//~^ ERROR cannot find type `Foo` in this scope
+//~^ ERROR cannot find type `Foo`
 
 pub fn test2(_: Bar) {}
-//~^ ERROR cannot find type `Bar` in this scope
+//~^ ERROR cannot find type `Bar`

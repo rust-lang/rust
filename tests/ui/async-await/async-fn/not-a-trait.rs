@@ -8,6 +8,6 @@ fn test(x: impl async S) {}
 //~^ ERROR expected trait, found struct `S`
 
 fn missing(x: impl async Missing) {}
-//~^ ERROR cannot find trait `Missing` in this scope
+//~^ ERROR cannot find trait `Missing`
 
 fn main() {}

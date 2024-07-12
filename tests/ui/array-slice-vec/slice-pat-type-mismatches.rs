@@ -24,8 +24,8 @@ fn main() {
     };
 
     match does_not_exist {
-        //~^ ERROR cannot find value `does_not_exist` in this scope
-        [] => {} // ERROR cannot find value `does_not_exist` in this scope
+        //~^ ERROR cannot find value `does_not_exist`
+        [] => {} // ERROR cannot find value `does_not_exist`
     };
 }
 

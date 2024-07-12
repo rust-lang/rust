@@ -2,7 +2,7 @@ error: cannot find macro `print` in this scope
   --> $DIR/no_implicit_prelude-2018.rs:7:9
    |
 LL |         print!();
-   |         ^^^^^
+   |         ^^^^^ not found in this scope
    |
 help: consider importing this macro
    |

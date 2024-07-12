@@ -131,5 +131,5 @@ makro!(bar);
 
 fn main() {
     bar();
-    //~^ ERROR cannot find function `bar` in this scope [E0425]
+    //~^ ERROR cannot find function `bar`
 }

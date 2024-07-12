@@ -1,5 +1,5 @@
 use rustc_ast::{self as ast, NodeId};
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::bug;
 use rustc_middle::ty;
@@ -1483,9 +1483,28 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             continue;
                         }
                     }
-                    return PathResult::failed(ident, false, finalize.is_some(), module, || {
-                        ("there are too many leading `super` keywords".to_string(), None)
-                    });
+                    let mut item_type = "module";
+                    let mut suggestion = None;
+                    let label = if path.len() == 1
+                        && let Some(ribs) = ribs
+                        && let RibKind::Normal = ribs[ValueNS][ribs[ValueNS].len() - 1].kind
+                    {
+                        item_type = "item";
+                        suggestion = Some((vec![(ident.span.shrink_to_lo(), "r#".to_string())], "if you still want to call your identifier `super`, use the raw identifier format".to_string(), Applicability::MachineApplicable));
+                        "can't use `super` as an identifier"
+                    } else if segment_idx == 0 {
+                        "can't use `super` on the crate root, there are no further modules to go \"up\" to"
+                    } else {
+                        "there are too many leading `super` keywords"
+                    };
+                    return PathResult::failed(
+                        ident,
+                        false,
+                        finalize.is_some(),
+                        module,
+                        || (label.to_string(), suggestion),
+                        item_type,
+                    );
                 }
                 if segment_idx == 0 {
                     if name == kw::SelfLower {
@@ -1517,19 +1536,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && segment_idx != 0 {
-                return PathResult::failed(ident, false, finalize.is_some(), module, || {
-                    let name_str = if name == kw::PathRoot {
-                        "crate root".to_string()
-                    } else {
-                        format!("`{name}`")
-                    };
-                    let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
-                        format!("global paths cannot start with {name_str}")
-                    } else {
-                        format!("{name_str} in paths can only be used in start position")
-                    };
-                    (label, None)
-                });
+                return PathResult::failed(
+                    ident,
+                    false,
+                    finalize.is_some(),
+                    module,
+                    || {
+                        let name_str = if name == kw::PathRoot {
+                            "crate root".to_string()
+                        } else {
+                            format!("`{name}`")
+                        };
+                        let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
+                            format!("global paths cannot start with {name_str}")
+                        } else {
+                            format!("{name_str} in paths can only be used in start position")
+                        };
+                        (label, None)
+                    },
+                    "module",
+                );
             }
 
             let binding = if let Some(module) = module {
@@ -1625,6 +1651,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 );
                                 (label, None)
                             },
+                            "module",
                         );
                     }
                 }
@@ -1639,18 +1666,29 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     }
 
-                    return PathResult::failed(ident, is_last, finalize.is_some(), module, || {
-                        self.report_path_resolution_error(
-                            path,
-                            opt_ns,
-                            parent_scope,
-                            ribs,
-                            ignore_binding,
-                            module,
-                            segment_idx,
-                            ident,
-                        )
-                    });
+                    return PathResult::failed(
+                        ident,
+                        is_last,
+                        finalize.is_some(),
+                        module,
+                        || {
+                            self.report_path_resolution_error(
+                                path,
+                                opt_ns,
+                                parent_scope,
+                                ribs,
+                                ignore_binding,
+                                module,
+                                segment_idx,
+                                ident,
+                            )
+                        },
+                        match opt_ns {
+                            Some(ValueNS) if path.len() == 1 => "item or value",
+                            Some(ns) if path.len() - 1 == segment_idx => ns.descr(),
+                            Some(_) | None => "item",
+                        },
+                    );
                 }
             }
         }

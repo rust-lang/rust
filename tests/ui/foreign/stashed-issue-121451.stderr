@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `libc`
+error[E0433]: cannot find item `libc` in this scope
   --> $DIR/stashed-issue-121451.rs:1:23
    |
 LL | extern "C" fn _f() -> libc::uintptr_t {}

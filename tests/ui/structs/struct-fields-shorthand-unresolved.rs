@@ -7,6 +7,6 @@ fn main() {
     let x = 0;
     let foo = Foo {
         x,
-        y //~ ERROR cannot find value `y` in this scope
+        y //~ ERROR cannot find value `y`
     };
 }

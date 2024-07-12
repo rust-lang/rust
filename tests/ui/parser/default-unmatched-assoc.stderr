@@ -38,17 +38,17 @@ LL |     default do
 LL | }
    | - item list ends here
 
-error: cannot find macro `default` in this scope
+error: cannot find macro `default` in trait `Foo`
   --> $DIR/default-unmatched-assoc.rs:4:5
    |
 LL |     default!();
-   |     ^^^^^^^
+   |     ^^^^^^^ not found in trait `Foo`
 
-error: cannot find macro `default` in this scope
+error: cannot find macro `default` in the crate root
   --> $DIR/default-unmatched-assoc.rs:12:5
    |
 LL |     default!();
-   |     ^^^^^^^
+   |     ^^^^^^^ not found in the crate root
 
 error: aborting due to 6 previous errors
 

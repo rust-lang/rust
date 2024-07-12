@@ -3,10 +3,10 @@
 
 fn main() {
     let x = True;
-    //~^ ERROR cannot find value `True` in this scope
+    //~^ ERROR cannot find value `True`
     //~| HELP you may want to use a bool value instead
 
     let y = False;
-    //~^ ERROR cannot find value `False` in this scope
+    //~^ ERROR cannot find value `False`
     //~| HELP you may want to use a bool value instead
 }

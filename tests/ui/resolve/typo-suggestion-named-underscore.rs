@@ -2,7 +2,7 @@ const _: () = ();
 
 fn main() {
     a // Shouldn't suggest underscore
-    //~^ ERROR: cannot find value `a` in this scope
+    //~^ ERROR: cannot find value `a`
 }
 
 trait Unknown {}
@@ -11,4 +11,4 @@ trait Unknown {}
 use Unknown as _;
 
 fn foo<T: A>(x: T) {} // Shouldn't suggest underscore
-//~^ ERROR: cannot find trait `A` in this scope
+//~^ ERROR: cannot find trait `A`

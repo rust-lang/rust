@@ -25,7 +25,7 @@ LL |     fn bget(&self, index: [usize; Self::DIM]) -> bool {
    |
    = note: associated functions are those in `impl` or `trait` definitions
 
-error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+error[E0433]: cannot find item `Self` in this scope
   --> $DIR/issue-97194.rs:2:35
    |
 LL |     fn bget(&self, index: [usize; Self::DIM]) -> bool {

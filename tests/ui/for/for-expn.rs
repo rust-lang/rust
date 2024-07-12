@@ -3,7 +3,7 @@
 fn main() {
     // Odd formatting to make sure we get the right span.
     for t in &
-      foo //~ ERROR cannot find value `foo` in this scope
+      foo //~ ERROR cannot find value `foo`
     {
     }
 }

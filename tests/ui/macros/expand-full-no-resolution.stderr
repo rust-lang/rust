@@ -5,7 +5,7 @@ LL |         macro_rules! _a {
    |         --------------- similarly named macro `_a` defined here
 ...
 LL |     format_args!(a!());
-   |                  ^
+   |                  ^ not found in this scope
    |
 help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
    |
@@ -19,7 +19,7 @@ LL |         macro_rules! _a {
    |         --------------- similarly named macro `_a` defined here
 ...
 LL |     env!(a!());
-   |          ^
+   |          ^ not found in this scope
    |
 help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
    |

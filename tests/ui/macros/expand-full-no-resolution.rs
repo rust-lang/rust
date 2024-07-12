@@ -15,6 +15,6 @@ macro_rules! wrap {
 wrap!();
 
 fn main() {
-    format_args!(a!()); //~ ERROR: cannot find macro `a` in this scope
-    env!(a!()); //~ ERROR: cannot find macro `a` in this scope
+    format_args!(a!()); //~ ERROR: cannot find macro `a`
+    env!(a!()); //~ ERROR: cannot find macro `a`
 }

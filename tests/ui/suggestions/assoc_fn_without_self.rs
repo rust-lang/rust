@@ -11,18 +11,18 @@ impl S {
 
     fn b() {
         fn c() {
-            foo(); //~ ERROR cannot find function `foo` in this scope
+            foo(); //~ ERROR cannot find function `foo`
         }
-        foo(); //~ ERROR cannot find function `foo` in this scope
-        bar(); //~ ERROR cannot find function `bar` in this scope
-        baz(2, 3); //~ ERROR cannot find function `baz` in this scope
+        foo(); //~ ERROR cannot find function `foo`
+        bar(); //~ ERROR cannot find function `bar`
+        baz(2, 3); //~ ERROR cannot find function `baz`
     }
     fn d(&self) {
         fn c() {
-            foo(); //~ ERROR cannot find function `foo` in this scope
+            foo(); //~ ERROR cannot find function `foo`
         }
-        foo(); //~ ERROR cannot find function `foo` in this scope
-        bar(); //~ ERROR cannot find function `bar` in this scope
-        baz(2, 3); //~ ERROR cannot find function `baz` in this scope
+        foo(); //~ ERROR cannot find function `foo`
+        bar(); //~ ERROR cannot find function `bar`
+        baz(2, 3); //~ ERROR cannot find function `baz`
     }
 }

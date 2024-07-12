@@ -80,8 +80,8 @@ resolve_cannot_determine_macro_resolution =
 resolve_cannot_find_builtin_macro_with_name =
     cannot find a built-in macro with name `{$ident}`
 
-resolve_cannot_find_ident_in_this_scope =
-    cannot find {$expected} `{$ident}` in this scope
+resolve_cannot_find_ident_in_this_scope = cannot find {$expected} `{$ident}` in {$scope}
+    .label = not found in {$scope}
 
 resolve_cannot_glob_import_possible_crates =
     cannot glob-import all possible crates

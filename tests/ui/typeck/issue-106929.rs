@@ -7,7 +7,7 @@ impl Client {
 fn f() {
     let c = Client;
     post(c, ());
-    //~^ ERROR cannot find function `post` in this scope
+    //~^ ERROR cannot find function `post`
 }
 
 fn main() {}

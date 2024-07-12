@@ -10,7 +10,7 @@ impl<Fut: Send> SendFuture for Fut {
 
 async fn broken_fut() {
     ident_error;
-    //~^ ERROR cannot find value `ident_error` in this scope
+    //~^ ERROR cannot find value `ident_error`
 }
 
 // triggers normalization of `<Fut as SendFuture>::Output`,

@@ -1,4 +1,4 @@
 extern "C" fn _f() -> libc::uintptr_t {}
-//~^ ERROR failed to resolve: use of undeclared crate or module `libc`
+//~^ ERROR cannot find item `libc`
 
 fn main() {}

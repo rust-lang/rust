@@ -2,7 +2,7 @@ error[E0425]: cannot find function `bar` in module `a`
   --> $DIR/macro-outer-attributes.rs:18:8
    |
 LL |     a::bar();
-   |        ^^^ not found in `a`
+   |        ^^^ not found in module `a`
    |
 note: found an item that was configured out
   --> $DIR/macro-outer-attributes.rs:9:14

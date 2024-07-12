@@ -8,7 +8,7 @@ mod b {
 }
 
 fn main() {
-    let x: Foo = 100; //~ ERROR: cannot find type `Foo` in this scope
-    let y: Bar = 100; //~ ERROR: cannot find type `Bar` in this scope
+    let x: Foo = 100; //~ ERROR: cannot find type `Foo`
+    let y: Bar = 100; //~ ERROR: cannot find type `Bar`
     println!("x: {}, y: {}", x, y);
 }

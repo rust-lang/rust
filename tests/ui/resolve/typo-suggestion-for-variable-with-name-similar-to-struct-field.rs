@@ -4,15 +4,15 @@ struct A {
 
 impl A {
     fn new(cofig: String) -> Self {
-        Self { config } //~ Error cannot find value `config` in this scope
+        Self { config } //~ Error cannot find value `config`
     }
 
     fn do_something(cofig: String) {
-        println!("{config}"); //~ Error cannot find value `config` in this scope
+        println!("{config}"); //~ Error cannot find value `config`
     }
 
     fn self_is_available(self, cofig: String) {
-        println!("{config}"); //~ Error cannot find value `config` in this scope
+        println!("{config}"); //~ Error cannot find value `config`
     }
 }
 
@@ -33,9 +33,9 @@ impl B for Box<isize> {
         bah;
         //~^ ERROR cannot find value `bah`
         BAR;
-        //~^ ERROR cannot find value `BAR` in this scope
+        //~^ ERROR cannot find value `BAR`
         let foo: Baz = "".to_string();
-        //~^ ERROR cannot find type `Baz` in this scope
+        //~^ ERROR cannot find type `Baz`
     }
 }
 

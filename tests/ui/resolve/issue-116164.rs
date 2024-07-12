@@ -15,5 +15,5 @@ use crate::reexports::*;
 
 fn main() {
     ExOne;
-    //~^ ERROR: cannot find value `ExOne` in this scope
+    //~^ ERROR: cannot find value `ExOne`
 }

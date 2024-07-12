@@ -6,7 +6,7 @@ use std::cell::Cell;
 
 struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
 //~^ ERROR use of undeclared lifetime name `'unpinned`
-//~| ERROR cannot find type `Pin` in this scope
+//~| ERROR cannot find type `Pin`
 
 fn main() {
     let mut unpinned = MyType(Cell::new(None));

@@ -900,16 +900,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 label,
                 suggestion,
                 module,
+                item_type,
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment_name),
+                            segment: segment_name,
                             label,
                             suggestion,
                             module,
+                            item_type,
                         },
                     );
                 }

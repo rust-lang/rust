@@ -2,13 +2,13 @@ error[E0425]: cannot find function `foo` in module `m`
   --> $DIR/namespaced-enum-glob-import-no-impls.rs:22:8
    |
 LL |     m::foo();
-   |        ^^^ not found in `m`
+   |        ^^^ not found in module `m`
 
 error[E0425]: cannot find function `bar` in module `m`
   --> $DIR/namespaced-enum-glob-import-no-impls.rs:24:8
    |
 LL |     m::bar();
-   |        ^^^ not found in `m`
+   |        ^^^ not found in module `m`
 
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/namespaced-enum-glob-import-no-impls.rs:21:5

@@ -8,13 +8,13 @@ error: cannot find macro `bar` in this scope
   --> $DIR/issue-80074.rs:16:5
    |
 LL |     bar!();
-   |     ^^^
+   |     ^^^ not found in this scope
 
 error: cannot find macro `m` in this scope
   --> $DIR/issue-80074.rs:18:5
    |
 LL |     m!();
-   |     ^
+   |     ^ not found in this scope
 
 warning: macro `foo` is private
   --> $DIR/issue-80074.rs:13:5

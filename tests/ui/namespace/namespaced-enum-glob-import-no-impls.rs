@@ -18,8 +18,8 @@ mod m {
 pub fn main() {
     use m2::Foo::*;
 
-    foo(); //~ ERROR cannot find function `foo` in this scope
-    m::foo(); //~ ERROR cannot find function `foo` in module `m`
-    bar(); //~ ERROR cannot find function `bar` in this scope
-    m::bar(); //~ ERROR cannot find function `bar` in module `m`
+    foo(); //~ ERROR cannot find function `foo`
+    m::foo(); //~ ERROR cannot find function `foo`
+    bar(); //~ ERROR cannot find function `bar`
+    m::bar(); //~ ERROR cannot find function `bar`
 }

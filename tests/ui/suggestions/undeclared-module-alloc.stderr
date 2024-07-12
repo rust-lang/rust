@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `alloc`
+error[E0433]: cannot find item `alloc` in this scope
   --> $DIR/undeclared-module-alloc.rs:3:5
    |
 LL | use alloc::rc::Rc;

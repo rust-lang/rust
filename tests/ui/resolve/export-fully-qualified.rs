@@ -5,7 +5,7 @@
 // want to change eventually.
 
 mod foo {
-    pub fn bar() { foo::baz(); } //~ ERROR failed to resolve: use of undeclared crate or module `foo`
+    pub fn bar() { foo::baz(); } //~ ERROR cannot find item `foo`
 
     fn baz() { }
 }

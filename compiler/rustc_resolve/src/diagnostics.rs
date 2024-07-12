@@ -794,9 +794,32 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
                 self.dcx().create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span })
             }
-            ResolutionError::FailedToResolve { segment, label, suggestion, module } => {
-                let mut err =
-                    struct_span_code_err!(self.dcx(), span, E0433, "failed to resolve: {}", &label);
+            ResolutionError::FailedToResolve { segment, label, suggestion, module, item_type } => {
+                let mut err = struct_span_code_err!(
+                    self.dcx(),
+                    span,
+                    E0433,
+                    "cannot find {item_type} `{segment}` in {}",
+                    match module {
+                        Some(ModuleOrUniformRoot::CurrentScope) | None => "this scope".to_string(),
+                        Some(ModuleOrUniformRoot::Module(module)) => {
+                            match module.kind {
+                                ModuleKind::Def(_, _, name) if name == kw::Empty => {
+                                    "the crate root".to_string()
+                                }
+                                ModuleKind::Def(kind, def_id, name) => {
+                                    format!("{} `{name}`", kind.descr(def_id))
+                                }
+                                ModuleKind::Block => "this scope".to_string(),
+                            }
+                        }
+                        Some(ModuleOrUniformRoot::CrateRootAndExternPrelude) => {
+                            "the crate root or the list of imported crates".to_string()
+                        }
+                        Some(ModuleOrUniformRoot::ExternPrelude) =>
+                            "the list of imported crates".to_string(),
+                    },
+                );
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
@@ -809,7 +832,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 if let Some(ModuleOrUniformRoot::Module(module)) = module
                     && let Some(module) = module.opt_def_id()
-                    && let Some(segment) = segment
                 {
                     self.find_cfg_stripped(&mut err, &segment, module);
                 }
@@ -996,10 +1018,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
-                span,
-                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
-            ),
+            VisResolutionError::FailedToResolve(span, segment, label, suggestion, item_type) => {
+                self.into_struct_error(
+                    span,
+                    ResolutionError::FailedToResolve {
+                        segment,
+                        label,
+                        suggestion,
+                        module: None,
+                        item_type,
+                    },
+                )
+            }
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }
@@ -2008,18 +2038,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
+            } else if ident.is_special() {
+                (format!("`{ident}` is not a valid item name"), None)
             } else if ident.name == sym::core {
                 (
-                    format!("maybe a missing crate `{ident}`?"),
+                    format!("you might be missing a crate named `{ident}`"),
                     Some((
                         vec![(ident.span, "std".to_string())],
                         "try using `std` instead of `core`".to_string(),
                         Applicability::MaybeIncorrect,
                     )),
                 )
+            } else if ident.is_raw_guess() {
+                // We're unlikely to have a crate called `r#super`, don't suggest anything.
+                ("unresolved import".to_string(), None)
             } else if self.tcx.sess.is_rust_2015() {
                 (
-                    format!("maybe a missing crate `{ident}`?"),
+                    format!("you might be missing a crate named `{ident}`"),
                     Some((
                         vec![],
                         format!(

@@ -1,5 +1,5 @@
-#[derive(::Absolute)] //~ ERROR failed to resolve
-                      //~| ERROR failed to resolve
+#[derive(::Absolute)] //~ ERROR cannot find macro `Absolute`
+                      //~| ERROR cannot find macro `Absolute`
 struct S;
 
 fn main() {}

@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared type `IntoIter`
+error[E0433]: cannot find item `IntoIter` in this scope
   --> $DIR/issue-82956.rs:25:24
    |
 LL |         let mut iter = IntoIter::new(self);

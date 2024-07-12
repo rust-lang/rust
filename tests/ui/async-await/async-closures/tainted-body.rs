@@ -7,7 +7,7 @@
 fn main() {
     let _ = async || {
         used_fn();
-        //~^ ERROR cannot find function `used_fn` in this scope
+        //~^ ERROR cannot find function `used_fn`
         0
     };
 }

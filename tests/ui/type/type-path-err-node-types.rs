@@ -4,7 +4,7 @@
 trait Tr<T> {}
 
 fn local_type() {
-    let _: Nonexistent<u8, Assoc = u16>; //~ ERROR cannot find type `Nonexistent` in this scope
+    let _: Nonexistent<u8, Assoc = u16>; //~ ERROR cannot find type `Nonexistent`
 }
 
 fn ufcs_trait() {
@@ -12,7 +12,7 @@ fn ufcs_trait() {
 }
 
 fn ufcs_item() {
-    NonExistent::Assoc::<u8>; //~ ERROR undeclared type `NonExistent`
+    NonExistent::Assoc::<u8>; //~ ERROR cannot find item `NonExistent`
 }
 
 fn method() {

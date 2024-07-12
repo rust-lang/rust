@@ -1,4 +1,4 @@
 impl Undefined {}
-//~^ ERROR cannot find type `Undefined` in this scope
+//~^ ERROR cannot find type `Undefined`
 
 fn main() {}

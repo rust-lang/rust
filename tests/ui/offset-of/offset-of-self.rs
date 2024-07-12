@@ -31,7 +31,7 @@ impl S {
 mod m {
     use std::mem::offset_of;
     fn off() {
-        offset_of!(self::S, v); //~ ERROR cannot find type `S` in module
+        offset_of!(self::S, v); //~ ERROR cannot find type `S`
         offset_of!(super::S, v);
         offset_of!(crate::S, v);
     }
@@ -48,7 +48,7 @@ mod n {
 
 fn main() {
     offset_of!(self::S, v);
-    offset_of!(Self, v); //~ ERROR cannot find type `Self` in this scope
+    offset_of!(Self, v); //~ ERROR cannot find type `Self`
 
     offset_of!(S, self); //~ no field `self` on type `S`
     offset_of!(S, v.self); //~ no field `self` on type `u8`

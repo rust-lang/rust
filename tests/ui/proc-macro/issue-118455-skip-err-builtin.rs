@@ -1,5 +1,5 @@
 #![some_nonexistent_attribute]
-//~^ ERROR cannot find attribute `some_nonexistent_attribute` in this scope
+//~^ ERROR cannot find attribute `some_nonexistent_attribute`
 #[derive(Debug)]
 pub struct SomeUserCode;
 

@@ -14,6 +14,6 @@ macro_rules! p {
 
 m!(generic<p!()>);
 //~^ ERROR: unexpected generic arguments in path
-//~| ERROR: cannot find attribute `generic` in this scope
+//~| ERROR: cannot find attribute `generic`
 
 fn main() {}

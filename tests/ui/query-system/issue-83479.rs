@@ -2,12 +2,12 @@
 
 type PairCoupledTypes: Trait<
     //~^ ERROR: bounds on `type`s in this context have no effect
-    //~| ERROR: cannot find trait `Trait` in this scope
+    //~| ERROR: cannot find trait `Trait`
     [u32; {
         static FOO: usize; //~ ERROR: free static item without body
     }],
 > = impl Trait<
-    //~^ ERROR: cannot find trait `Trait` in this scope
+    //~^ ERROR: cannot find trait `Trait`
     [u32; {
         static FOO: usize; //~ ERROR: free static item without body
     }],

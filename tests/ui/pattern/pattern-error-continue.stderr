@@ -50,7 +50,7 @@ note: function defined here
 LL | fn f(_c: char) {}
    |    ^ --------
 
-error[E0433]: failed to resolve: use of undeclared type `E`
+error[E0433]: cannot find item `E` in this scope
   --> $DIR/pattern-error-continue.rs:33:9
    |
 LL |         E::V => {}

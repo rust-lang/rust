@@ -24,7 +24,7 @@ mod helper {
         F:,
     {
         async fn cb() {
-            let a = Foo; //~ ERROR cannot find value `Foo` in this scope
+            let a = Foo; //~ ERROR cannot find value `Foo`
         }
 
         Task::spawn(&POOL, || cb());

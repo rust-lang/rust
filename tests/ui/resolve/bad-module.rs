@@ -1,7 +1,7 @@
 fn main() {
     let foo = thing::len(Vec::new());
-    //~^ ERROR failed to resolve: use of undeclared crate or module `thing`
+    //~^ ERROR cannot find item `thing`
 
     let foo = foo::bar::baz();
-    //~^ ERROR failed to resolve: use of undeclared crate or module `foo`
+    //~^ ERROR cannot find item `foo`
 }

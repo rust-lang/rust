@@ -7,7 +7,7 @@ struct Foo {
 impl Foo {
     fn bar() {
         f(cx);
-        //~^ ERROR cannot find value `cx` in this scope
+        //~^ ERROR cannot find value `cx`
     }
 }
 

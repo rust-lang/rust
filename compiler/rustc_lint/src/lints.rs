@@ -2917,5 +2917,8 @@ pub struct UnsafeAttrOutsideUnsafeSuggestion {
 #[diag(lint_out_of_scope_macro_calls)]
 #[help]
 pub struct OutOfScopeMacroCalls {
+    #[label]
+    pub span: Span,
     pub path: String,
+    pub scope: String,
 }

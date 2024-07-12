@@ -18,6 +18,6 @@ impl<T> Overlap<T> for T {}
 
 impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
 //~^ ERROR conflicting implementations of trait `Overlap<fn(_)>` for type `fn(_)`
-//~| ERROR cannot find type `Missing` in this scope
+//~| ERROR cannot find type `Missing`
 
 fn main() {}

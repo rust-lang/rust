@@ -1,8 +1,8 @@
-error: cannot find attribute `default` in this scope
+error: cannot find attribute `default` in enum `Test`
   --> $DIR/suggest-default-attribute.rs:2:7
    |
 LL |     #[default]
-   |       ^^^^^^^
+   |       ^^^^^^^ not found in enum `Test`
    |
 help: consider adding a derive
    |

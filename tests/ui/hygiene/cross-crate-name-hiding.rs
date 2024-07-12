@@ -9,5 +9,5 @@ use pub_hygiene::*;
 
 fn main() {
     let x = MyStruct {};
-    //~^ ERROR cannot find struct, variant or union type `MyStruct` in this scope
+    //~^ ERROR cannot find struct, variant or union type `MyStruct`
 }

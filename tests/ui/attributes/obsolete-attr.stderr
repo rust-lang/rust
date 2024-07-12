@@ -1,14 +1,14 @@
-error: cannot find attribute `fixed_stack_segment` in this scope
+error: cannot find attribute `fixed_stack_segment` in the crate root
   --> $DIR/obsolete-attr.rs:6:3
    |
 LL | #[fixed_stack_segment] fn f() {}
-   |   ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `ab_isize` in this scope
+error: cannot find attribute `ab_isize` in the crate root
   --> $DIR/obsolete-attr.rs:3:3
    |
 LL | #[ab_isize = "stdcall"] extern "C" {}
-   |   ^^^^^^^^
+   |   ^^^^^^^^ not found in the crate root
 
 error: aborting due to 2 previous errors
 

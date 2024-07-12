@@ -862,44 +862,54 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module) =
-                        if let PathResult::Failed { span, label, module, .. } = path_res {
-                            // try to suggest if it's not a macro, maybe a function
-                            if let PathResult::NonModule(partial_res) =
-                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
-                                && partial_res.unresolved_segments() == 0
-                            {
-                                let sm = self.tcx.sess.source_map();
-                                let exclamation_span = sm.next_point(span);
-                                suggestion = Some((
-                                    vec![(exclamation_span, "".to_string())],
-                                    format!(
-                                        "{} is not a macro, but a {}, try to remove `!`",
-                                        Segment::names_to_string(&path),
-                                        partial_res.base_res().descr()
-                                    ),
-                                    Applicability::MaybeIncorrect,
-                                ));
-                            }
-                            (span, label, module)
-                        } else {
-                            (
-                                path_span,
+                    let (span, label, module, segment, item_type) = if let PathResult::Failed {
+                        span,
+                        label,
+                        module,
+                        segment_name,
+                        item_type,
+                        ..
+                    } = path_res
+                    {
+                        // try to suggest if it's not a macro, maybe a function
+                        if let PathResult::NonModule(partial_res) =
+                            self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
+                            && partial_res.unresolved_segments() == 0
+                        {
+                            let sm = self.tcx.sess.source_map();
+                            let exclamation_span = sm.next_point(span);
+                            suggestion = Some((
+                                vec![(exclamation_span, "".to_string())],
                                 format!(
-                                    "partially resolved path in {} {}",
-                                    kind.article(),
-                                    kind.descr()
+                                    "{} is not a macro, but a {}, try to remove `!`",
+                                    Segment::names_to_string(&path),
+                                    partial_res.base_res().descr()
                                 ),
-                                None,
-                            )
-                        };
+                                Applicability::MaybeIncorrect,
+                            ));
+                        }
+                        (span, label, module, segment_name, item_type)
+                    } else {
+                        (
+                            path_span,
+                            format!(
+                                "partially resolved path in {} {}",
+                                kind.article(),
+                                kind.descr()
+                            ),
+                            None,
+                            path.last().map(|segment| segment.ident.name).unwrap(),
+                            "item",
+                        )
+                    };
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: path.last().map(|segment| segment.ident.name),
+                            segment,
                             label,
                             suggestion,
                             module,
+                            item_type,
                         },
                     );
                 }
@@ -940,10 +950,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 Err(..) => {
                     let expected = kind.descr_expected();
-
+                    let scope = match parent_scope.module.kind {
+                        ModuleKind::Def(_, _, name) if name == kw::Empty => "the crate root",
+                        ModuleKind::Def(kind, def_id, name) => {
+                            &format!("{} `{name}`", kind.descr(def_id))
+                        }
+                        ModuleKind::Block => "this scope",
+                    };
                     let mut err = self.dcx().create_err(CannotFindIdentInThisScope {
                         span: ident.span,
                         expected,
+                        scope,
                         ident,
                     });
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident, krate);
@@ -1067,11 +1084,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None,
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
+                let scope = match parent_scope.module.kind {
+                    ModuleKind::Def(_, _, name) if name == kw::Empty => {
+                        "the crate root".to_string()
+                    }
+                    ModuleKind::Def(kind, def_id, name) => {
+                        format!("{} `{name}`", kind.descr(def_id))
+                    }
+                    ModuleKind::Block => "this scope".to_string(),
+                };
                 self.tcx.sess.psess.buffer_lint(
                     OUT_OF_SCOPE_MACRO_CALLS,
                     path.span,
                     node_id,
-                    BuiltinLintDiag::OutOfScopeMacroCalls { path: pprust::path_to_string(path) },
+                    BuiltinLintDiag::OutOfScopeMacroCalls {
+                        span: path.span,
+                        path: pprust::path_to_string(path),
+                        scope,
+                    },
                 );
             }
         }

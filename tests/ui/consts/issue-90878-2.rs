@@ -1,5 +1,5 @@
  #![l=|x|[b;x ]] //~ ERROR attribute value must be a literal
-//~^ ERROR cannot find attribute `l` in this scope
+//~^ ERROR cannot find attribute `l`
 
 // notice the space at the start,
 // we can't attach any attributes to this file because it needs to be at the start

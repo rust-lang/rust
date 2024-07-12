@@ -14,8 +14,8 @@ mod b {
     use crate::a::*;
     //~^ WARNING: unused import
     type Bar = Foo;
-    //~^ ERROR: cannot find type `Foo` in this scope [E0412]
-    //~| NOTE: not found in this scope
+    //~^ ERROR: cannot find type `Foo`
+    //~| NOTE: not found
 }
 
 mod c {
@@ -31,8 +31,8 @@ mod c {
 
 mod e {
     type Baz = Eee;
-    //~^ ERROR: cannot find type `Eee` in this scope [E0412]
-    //~| NOTE: not found in this scope
+    //~^ ERROR: cannot find type `Eee`
+    //~| NOTE: not found
 }
 
 fn main() {}

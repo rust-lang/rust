@@ -2,7 +2,7 @@
 
 pub union Foo {
     x: *const Missing,
-    //~^ ERROR cannot find type `Missing` in this scope
+    //~^ ERROR cannot find type `Missing`
 }
 
 fn main() {}

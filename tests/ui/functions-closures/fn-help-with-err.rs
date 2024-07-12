@@ -11,7 +11,7 @@ impl Bar for Foo {}
 
 fn main() {
     let arc = std::sync::Arc::new(oops);
-    //~^ ERROR cannot find value `oops` in this scope
+    //~^ ERROR cannot find value `oops`
     //~| NOTE not found
     arc.bar();
 

@@ -15,6 +15,6 @@ test!(b,
 // test1!(#[bar])
 #[rustc_dummy]
 fn main() {
-    a::bar(); //~ ERROR cannot find function `bar` in module `a`
+    a::bar(); //~ ERROR cannot find function `bar`
     b::bar();
 }

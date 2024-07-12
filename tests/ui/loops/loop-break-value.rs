@@ -97,7 +97,7 @@ fn main() {
 
     'LOOP: for _ in 0 .. 9 {
         break LOOP;
-        //~^ ERROR cannot find value `LOOP` in this scope
+        //~^ ERROR cannot find value `LOOP`
     }
 
     let _ = 'a: loop {

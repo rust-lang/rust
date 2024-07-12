@@ -11,13 +11,13 @@ struct ItemUse;
 
 gen_macro_rules!();
 //~^ ERROR use of undeclared label `'label_use`
-//~| ERROR cannot find value `local_use` in this scope
+//~| ERROR cannot find value `local_use`
 
 fn main() {
     'label_use: loop {
         let local_use = 1;
         generated!();
         ItemDef; // OK
-        local_def; //~ ERROR cannot find value `local_def` in this scope
+        local_def; //~ ERROR cannot find value `local_def`
     }
 }

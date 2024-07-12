@@ -55,17 +55,17 @@ fn main() {
     let _: E = E::Unit();
     //~^ ERROR expected function, found enum variant `E::Unit`
     let _: Z = m::n::Z;
-    //~^ ERROR cannot find type `Z` in this scope
+    //~^ ERROR cannot find type `Z`
     //~| ERROR expected value, found enum `m::n::Z`
     //~| ERROR enum `Z` is private
     let _: Z = m::n::Z::Fn;
-    //~^ ERROR cannot find type `Z` in this scope
+    //~^ ERROR cannot find type `Z`
     //~| ERROR enum `Z` is private
     let _: Z = m::n::Z::Struct;
-    //~^ ERROR cannot find type `Z` in this scope
+    //~^ ERROR cannot find type `Z`
     //~| ERROR expected value, found struct variant `m::n::Z::Struct`
     //~| ERROR enum `Z` is private
     let _: Z = m::n::Z::Unit {};
-    //~^ ERROR cannot find type `Z` in this scope
+    //~^ ERROR cannot find type `Z`
     //~| ERROR enum `Z` is private
 }

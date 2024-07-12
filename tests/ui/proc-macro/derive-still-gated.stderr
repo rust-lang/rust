@@ -1,8 +1,8 @@
-error: cannot find attribute `derive_Empty` in this scope
+error: cannot find attribute `derive_Empty` in the crate root
   --> $DIR/derive-still-gated.rs:6:3
    |
 LL | #[derive_Empty]
-   |   ^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^ not found in the crate root
 
 error: aborting due to 1 previous error
 

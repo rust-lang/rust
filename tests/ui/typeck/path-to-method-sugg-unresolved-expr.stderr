@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `page_size`
+error[E0433]: cannot find item `page_size` in this scope
   --> $DIR/path-to-method-sugg-unresolved-expr.rs:2:21
    |
 LL |     let page_size = page_size::get();

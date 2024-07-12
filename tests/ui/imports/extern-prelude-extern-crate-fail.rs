@@ -7,7 +7,7 @@ mod n {
 
 mod m {
     fn check() {
-        two_macros::m!(); //~ ERROR failed to resolve: use of undeclared crate or module `two_macros`
+        two_macros::m!(); //~ ERROR cannot find item `two_macros`
     }
 }
 

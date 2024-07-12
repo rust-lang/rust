@@ -14,7 +14,7 @@ fn main() {
     //~^ WARN: macro `foo` is private
     //~| WARN: it will become a hard error in a future release!
     bar!();
-    //~^ ERROR: cannot find macro `bar` in this scope
+    //~^ ERROR: cannot find macro `bar`
     m!();
-    //~^ ERROR: cannot find macro `m` in this scope
+    //~^ ERROR: cannot find macro `m`
 }

@@ -1,4 +1,4 @@
 mod rustfmt {}
 
-#[rustfmt::skip] //~ ERROR failed to resolve: could not find `skip` in `rustfmt`
+#[rustfmt::skip] //~ ERROR cannot find macro `skip`
 fn main() {}

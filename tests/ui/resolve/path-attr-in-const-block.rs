@@ -4,6 +4,6 @@
 fn main() {
     const {
         #![path = foo!()]
-        //~^ ERROR: cannot find macro `foo` in this scope
+        //~^ ERROR: cannot find macro `foo`
     }
 }

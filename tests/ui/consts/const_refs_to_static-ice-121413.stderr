@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared type `AtomicUsize`
+error[E0433]: cannot find item `AtomicUsize` in this scope
   --> $DIR/const_refs_to_static-ice-121413.rs:9:24
    |
 LL |     static FOO: Sync = AtomicUsize::new(0);

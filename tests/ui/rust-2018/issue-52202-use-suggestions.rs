@@ -9,5 +9,5 @@ mod plumbing {
 
 fn main() {
     let _d = Drain {};
-    //~^ ERROR cannot find struct, variant or union type `Drain` in this scope
+    //~^ ERROR cannot find struct, variant or union type `Drain`
 }
