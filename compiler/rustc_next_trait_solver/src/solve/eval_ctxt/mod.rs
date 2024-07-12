@@ -16,9 +16,9 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
-    search_graph, CanonicalInput, CanonicalResponse, Certainty, Goal, GoalEvaluationKind,
-    GoalSource, MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData,
-    QueryResult, SolverMode, FIXPOINT_STEP_LIMIT,
+    CanonicalInput, CanonicalResponse, Certainty, Goal, GoalEvaluationKind, GoalSource, MaybeCause,
+    NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult, SolverMode,
+    FIXPOINT_STEP_LIMIT,
 };
 
 pub(super) mod canonical;
@@ -72,7 +72,7 @@ where
     /// new placeholders to the caller.
     pub(super) max_input_universe: ty::UniverseIndex,
 
-    pub(super) search_graph: &'a mut SearchGraph<I>,
+    pub(super) search_graph: &'a mut SearchGraph<D>,
 
     nested_goals: NestedGoals<I>,
 
@@ -200,7 +200,7 @@ where
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {
-        let mut search_graph = search_graph::SearchGraph::new(delegate.solver_mode());
+        let mut search_graph = SearchGraph::new(delegate.solver_mode());
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -241,7 +241,7 @@ where
     /// and registering opaques from the canonicalized input.
     fn enter_canonical<R>(
         cx: I,
-        search_graph: &'a mut search_graph::SearchGraph<I>,
+        search_graph: &'a mut SearchGraph<D>,
         canonical_input: CanonicalInput<I>,
         canonical_goal_evaluation: &mut ProofTreeBuilder<D>,
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
@@ -296,7 +296,7 @@ where
     #[instrument(level = "debug", skip(cx, search_graph, goal_evaluation), ret)]
     fn evaluate_canonical_goal(
         cx: I,
-        search_graph: &'a mut search_graph::SearchGraph<I>,
+        search_graph: &'a mut SearchGraph<D>,
         canonical_input: CanonicalInput<I>,
         goal_evaluation: &mut ProofTreeBuilder<D>,
     ) -> QueryResult<I> {

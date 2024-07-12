@@ -449,15 +449,80 @@ impl Command {
         use crate::mem::MaybeUninit;
         use crate::sys::weak::weak;
         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
+        #[cfg(target_os = "linux")]
+        use core::sync::atomic::{AtomicU8, Ordering};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
             || (self.env_saw_path() && !self.program_is_path())
             || !self.get_closures().is_empty()
             || self.get_groups().is_some()
-            || self.get_create_pidfd()
         {
             return Ok(None);
+        }
+
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "linux")] {
+                weak! {
+                    fn pidfd_spawnp(
+                        *mut libc::c_int,
+                        *const libc::c_char,
+                        *const libc::posix_spawn_file_actions_t,
+                        *const libc::posix_spawnattr_t,
+                        *const *mut libc::c_char,
+                        *const *mut libc::c_char
+                    ) -> libc::c_int
+                }
+
+                weak! { fn pidfd_getpid(libc::c_int) -> libc::c_int }
+
+                static PIDFD_SUPPORTED: AtomicU8 = AtomicU8::new(0);
+                const UNKNOWN: u8 = 0;
+                const SPAWN: u8 = 1;
+                // Obtaining a pidfd via the fork+exec path might work
+                const FORK_EXEC: u8 = 2;
+                // Neither pidfd_spawn nor fork/exec will get us a pidfd.
+                // Instead we'll just posix_spawn if the other preconditions are met.
+                const NO: u8 = 3;
+
+                if self.get_create_pidfd() {
+                    let mut support = PIDFD_SUPPORTED.load(Ordering::Relaxed);
+                    if support == FORK_EXEC {
+                        return Ok(None);
+                    }
+                    if support == UNKNOWN {
+                        support = NO;
+                        let our_pid = crate::process::id();
+                        let pidfd = cvt(unsafe { libc::syscall(libc::SYS_pidfd_open, our_pid, 0) } as c_int);
+                        match pidfd {
+                            Ok(pidfd) => {
+                                support = FORK_EXEC;
+                                if let Some(Ok(pid)) = pidfd_getpid.get().map(|f| cvt(unsafe { f(pidfd) } as i32)) {
+                                    if pidfd_spawnp.get().is_some() && pid as u32 == our_pid {
+                                        support = SPAWN
+                                    }
+                                }
+                                unsafe { libc::close(pidfd) };
+                            }
+                            Err(e) if e.raw_os_error() == Some(libc::EMFILE) => {
+                                // We're temporarily(?) out of file descriptors.  In this case obtaining a pidfd would also fail
+                                // Don't update the support flag so we can probe again later.
+                                return Err(e)
+                            }
+                            _ => {}
+                        }
+                        PIDFD_SUPPORTED.store(support, Ordering::Relaxed);
+                        if support == FORK_EXEC {
+                            return Ok(None);
+                        }
+                    }
+                    core::assert_matches::debug_assert_matches!(support, SPAWN | NO);
+                }
+            } else {
+                if self.get_create_pidfd() {
+                    unreachable!("only implemented on linux")
+                }
+            }
         }
 
         // Only glibc 2.24+ posix_spawn() supports returning ENOENT directly.
@@ -542,9 +607,6 @@ impl Command {
         };
 
         let pgroup = self.get_pgroup();
-
-        // Safety: -1 indicates we don't have a pidfd.
-        let mut p = unsafe { Process::new(0, -1) };
 
         struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
 
@@ -639,6 +701,47 @@ impl Command {
             let spawn_fn = libc::posix_spawnp;
             #[cfg(target_os = "nto")]
             let spawn_fn = retrying_libc_posix_spawnp;
+
+            #[cfg(target_os = "linux")]
+            if self.get_create_pidfd() && PIDFD_SUPPORTED.load(Ordering::Relaxed) == SPAWN {
+                let mut pidfd: libc::c_int = -1;
+                let spawn_res = pidfd_spawnp.get().unwrap()(
+                    &mut pidfd,
+                    self.get_program_cstr().as_ptr(),
+                    file_actions.0.as_ptr(),
+                    attrs.0.as_ptr(),
+                    self.get_argv().as_ptr() as *const _,
+                    envp as *const _,
+                );
+
+                let spawn_res = cvt_nz(spawn_res);
+                if let Err(ref e) = spawn_res
+                    && e.raw_os_error() == Some(libc::ENOSYS)
+                {
+                    PIDFD_SUPPORTED.store(FORK_EXEC, Ordering::Relaxed);
+                    return Ok(None);
+                }
+                spawn_res?;
+
+                let pid = match cvt(pidfd_getpid.get().unwrap()(pidfd)) {
+                    Ok(pid) => pid,
+                    Err(e) => {
+                        // The child has been spawned and we are holding its pidfd.
+                        // But we cannot obtain its pid even though pidfd_getpid support was verified earlier.
+                        // This might happen if libc can't open procfs because the file descriptor limit has been reached.
+                        libc::close(pidfd);
+                        return Err(Error::new(
+                            e.kind(),
+                            "pidfd_spawnp succeeded but the child's PID could not be obtained",
+                        ));
+                    }
+                };
+
+                return Ok(Some(Process::new(pid, pidfd)));
+            }
+
+            // Safety: -1 indicates we don't have a pidfd.
+            let mut p = Process::new(0, -1);
 
             let spawn_res = spawn_fn(
                 &mut p.pid,
@@ -786,6 +889,12 @@ pub struct Process {
 
 impl Process {
     #[cfg(target_os = "linux")]
+    /// # Safety
+    ///
+    /// `pidfd` must either be -1 (representing no file descriptor) or a valid, exclusively owned file
+    /// descriptor (See [I/O Safety]).
+    ///
+    /// [I/O Safety]: crate::io#io-safety
     unsafe fn new(pid: pid_t, pidfd: pid_t) -> Self {
         use crate::os::unix::io::FromRawFd;
         use crate::sys_common::FromInner;

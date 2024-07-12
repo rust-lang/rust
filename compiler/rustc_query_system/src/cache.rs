@@ -40,7 +40,7 @@ impl<Key: Eq + Hash, Value: Clone> Cache<Key, Value> {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WithDepNode<T> {
     dep_node: DepNodeIndex,
     cached_value: T,
