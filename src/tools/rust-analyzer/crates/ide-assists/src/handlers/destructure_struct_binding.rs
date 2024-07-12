@@ -169,8 +169,8 @@ fn get_names_in_scope(
 
     let mut names = FxHashSet::default();
     scope.process_all_names(&mut |name, scope| {
-        if let (Some(name), hir::ScopeDef::Local(_)) = (name.as_text(), scope) {
-            names.insert(name);
+        if let hir::ScopeDef::Local(_) = scope {
+            names.insert(name.as_str().into());
         }
     });
     Some(names)

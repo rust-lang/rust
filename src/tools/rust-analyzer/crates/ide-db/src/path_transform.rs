@@ -472,7 +472,7 @@ fn find_trait_for_assoc_item(
         });
 
         for name in names {
-            if assoc_item_name.as_str() == name.as_text()?.as_str() {
+            if assoc_item_name.as_str() == name.as_str() {
                 // It is fine to return the first match because in case of
                 // multiple possibilities, the exact trait must be disambiguated
                 // in the definition of trait being implemented, so this search

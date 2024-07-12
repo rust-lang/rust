@@ -24,7 +24,7 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{known, HasAttrs, ImportPathConfig, ScopeDef, Variant};
+use hir::{sym, HasAttrs, ImportPathConfig, Name, ScopeDef, Variant};
 use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SymbolKind};
 use syntax::{ast, SmolStr};
 
@@ -618,7 +618,7 @@ fn enum_variants_with_paths(
     let mut process_variant = |variant: Variant| {
         let self_path = hir::ModPath::from_segments(
             hir::PathKind::Plain,
-            iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
+            iter::once(Name::new_symbol_root(sym::Self_)).chain(iter::once(variant.name(ctx.db))),
         );
 
         cb(acc, ctx, variant, self_path);

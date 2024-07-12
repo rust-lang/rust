@@ -389,16 +389,16 @@ fn import_for_item(
     let mut import_path_candidate_segments = import_path_candidate.segments().iter().rev();
     let predicate = |it: EitherOrBoth<&SmolStr, &Name>| match it {
         // segments match, check next one
-        EitherOrBoth::Both(a, b) if b.as_str() == Some(&**a) => None,
+        EitherOrBoth::Both(a, b) if b.as_str() == &**a => None,
         // segments mismatch / qualifier is longer than the path, bail out
         EitherOrBoth::Both(..) | EitherOrBoth::Left(_) => Some(false),
         // all segments match and we have exhausted the qualifier, proceed
         EitherOrBoth::Right(_) => Some(true),
     };
     if item_as_assoc.is_none() {
-        let item_name = item_name(db, original_item)?.as_text()?;
+        let item_name = item_name(db, original_item)?;
         let last_segment = import_path_candidate_segments.next()?;
-        if last_segment.as_str() != Some(&*item_name) {
+        if *last_segment != item_name {
             return None;
         }
     }

@@ -8,12 +8,14 @@ use hir_def::{
     builtin_type::{BuiltinInt, BuiltinUint},
     resolver::HasResolver,
 };
+use hir_expand::name::Name;
+use intern::sym;
 
 use crate::{
     error_lifetime,
     mir::eval::{
-        name, pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule,
-        HirDisplay, Interned, InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned,
+        pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
+        Interned, InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned,
         ItemContainerId, LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability,
         Result, Substitution, Ty, TyBuilder, TyExt,
     },
@@ -64,7 +66,7 @@ impl Evaluator<'_> {
         };
         if is_intrinsic {
             self.exec_intrinsic(
-                function_data.name.as_text().unwrap_or_default().as_str(),
+                function_data.name.as_str(),
                 args,
                 generic_args,
                 destination,
@@ -86,7 +88,7 @@ impl Evaluator<'_> {
         };
         if is_platform_intrinsic {
             self.exec_platform_intrinsic(
-                function_data.name.as_text().unwrap_or_default().as_str(),
+                function_data.name.as_str(),
                 args,
                 generic_args,
                 destination,
@@ -104,7 +106,7 @@ impl Evaluator<'_> {
         };
         if is_extern_c {
             self.exec_extern_c(
-                function_data.name.as_text().unwrap_or_default().as_str(),
+                function_data.name.as_str(),
                 args,
                 generic_args,
                 destination,
@@ -117,7 +119,7 @@ impl Evaluator<'_> {
             .attrs
             .iter()
             .filter_map(|it| it.path().as_ident())
-            .filter_map(|it| it.as_str())
+            .map(|it| it.as_str())
             .find(|it| {
                 [
                     "rustc_allocator",
@@ -1274,10 +1276,11 @@ impl Evaluator<'_> {
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
                 if let Some(target) = self.db.lang_item(self.crate_id, LangItem::FnOnce) {
-                    if let Some(def) = target
-                        .as_trait()
-                        .and_then(|it| self.db.trait_data(it).method_by_name(&name![call_once]))
-                    {
+                    if let Some(def) = target.as_trait().and_then(|it| {
+                        self.db
+                            .trait_data(it)
+                            .method_by_name(&Name::new_symbol_root(sym::call_once))
+                    }) {
                         self.exec_fn_trait(
                             def,
                             &args,

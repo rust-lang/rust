@@ -21,7 +21,7 @@ type Guard<T> = dashmap::RwLockWriteGuard<
 >;
 
 mod symbol;
-pub use self::symbol::{symbols, Symbol};
+pub use self::symbol::{symbols as sym, Symbol};
 
 pub struct Interned<T: Internable + ?Sized> {
     arc: Arc<T>,

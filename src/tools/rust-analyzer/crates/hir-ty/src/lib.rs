@@ -61,7 +61,8 @@ use chalk_ir::{
 };
 use either::Either;
 use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
-use hir_expand::name;
+use hir_expand::name::Name;
+use intern::sym;
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -894,7 +895,9 @@ pub fn callable_sig_from_fn_trait(
 ) -> Option<(FnTrait, CallableSig)> {
     let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
-    let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+    let output_assoc_type = db
+        .trait_data(fn_once_trait)
+        .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
 
     let mut table = InferenceTable::new(db, trait_env.clone());
     let b = TyBuilder::trait_ref(db, fn_once_trait);

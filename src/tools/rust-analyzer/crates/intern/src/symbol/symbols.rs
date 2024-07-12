@@ -11,9 +11,12 @@ use crate::{
     Symbol,
 };
 macro_rules! define_symbols {
-    ($($name:ident),* $(,)?) => {
+    (@WITH_NAME: $($alias:ident = $value:literal),* $(,)? @PLAIN: $($name:ident),* $(,)?) => {
         $(
             pub const $name: Symbol = Symbol { repr: TaggedArcPtr::non_arc(&stringify!($name)) };
+        )*
+        $(
+            pub const $alias: Symbol = Symbol { repr: TaggedArcPtr::non_arc(&$value) };
         )*
 
 
@@ -33,12 +36,45 @@ macro_rules! define_symbols {
                     let shard_idx_ = dashmap_.determine_shard(hash_ as usize);
                     dashmap_.shards_mut()[shard_idx_].get_mut().raw_entry_mut().from_hash(hash_, |k| k == &proxy_).insert(proxy_, SharedValue::new(()));
                 )*
+                $(
+
+                    let proxy_ = SymbolProxy($alias.repr);
+                    let hash_ = hash_thing_(dashmap_.hasher(), &proxy_);
+                    let shard_idx_ = dashmap_.determine_shard(hash_ as usize);
+                    dashmap_.shards_mut()[shard_idx_].get_mut().raw_entry_mut().from_hash(hash_, |k| k == &proxy_).insert(proxy_, SharedValue::new(()));
+                )*
             }
             dashmap_
         }
     };
 }
 define_symbols! {
+    @WITH_NAME:
+
+    self_ = "self",
+    Self_ = "Self",
+    tick_static = "'static",
+    dollar_crate = "$crate",
+    MISSING_NAME = "[missing name]",
+    INTEGER_0 = "0",
+    INTEGER_1 = "1",
+    INTEGER_2 = "2",
+    INTEGER_3 = "3",
+    INTEGER_4 = "4",
+    INTEGER_5 = "5",
+    INTEGER_6 = "6",
+    INTEGER_7 = "7",
+    INTEGER_8 = "8",
+    INTEGER_9 = "9",
+    INTEGER_10 = "10",
+    INTEGER_11 = "11",
+    INTEGER_12 = "12",
+    INTEGER_13 = "13",
+    INTEGER_14 = "14",
+    INTEGER_15 = "15",
+    fn_ = "fn",
+
+    @PLAIN:
     add_assign,
     add,
     alloc,
@@ -52,10 +88,88 @@ define_symbols! {
     bitor,
     bitxor_assign,
     bitxor,
+    transmute_opts,
+    transmute_trait,
+    coerce_unsized,
+    dispatch_from_dyn,destruct,
     bool,
+    panic,
+    begin_panic,
+    panic_nounwind,
+    panic_fmt,
+    panic_misaligned_pointer_dereference,
+    panic_display,
+    const_panic_fmt,
+    panic_bounds_check,
+    panic_info,
+    panic_location,
+    panic_impl,
+    panic_cannot_unwind,
+    sized,
+    unsize,
+    format_alignment,
+    start,
+    format_argument,
+    format_arguments,
+    format_count,
+    format_placeholder,
+    format_unsafe_arg,
+    exchange_malloc,
+    box_free,
+    drop_in_place,
+    alloc_layout,
+    eh_personality,
+    eh_catch_typeinfo,
+    phantom_data,
+    manually_drop,
+    maybe_uninit,
+    align_offset,
+    termination,
+    tuple_trait,
+    slice_len_fn,
+    from_residual,
+    from_output,
+    from_yeet,
+    pointer_like,
+    const_param_ty,
+    Poll,
+    Ready,
+    Pending,
+    ResumeTy,
+    get_context,
+    Context,
+    Some,
+    Err,
+    Continue,
+    Break,
+    into_iter,
+    new_unchecked,
+    range_inclusive_new,
+    CStr,
+    fn_ptr_trait,
+    freeze,
+    coroutine_state,
+    c_void,
+    coroutine,
+    unpin,
+    pin,
+    fn_ptr_addr,
+    structural_teq,
+    fn_once_output,
+    copy,
+    clone,
+    sync,
+    discriminant_kind,
     Box,
+    structural_peq,
     boxed,
     branch,
+    discriminant_type,
+    pointee_trait,
+    metadata_type,
+    dyn_metadata,
+    deref_target,
+    receiver,
     call_mut,
     call_once,
     call,
@@ -168,6 +282,7 @@ define_symbols! {
     not,
     Not,
     Ok,
+    opaque,
     ops,
     option_env,
     option,
@@ -204,6 +319,9 @@ define_symbols! {
     rust_2018,
     rust_2021,
     rust_2024,
+    rustc_coherence_is_core,
+    rustc_macro_transparency,
+    semitransparent,
     shl_assign,
     shl,
     shr_assign,
@@ -220,6 +338,7 @@ define_symbols! {
     test_case,
     test,
     trace_macros,
+    transparent,
     Try,
     u128,
     u16,

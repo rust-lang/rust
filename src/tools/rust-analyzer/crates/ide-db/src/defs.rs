@@ -144,7 +144,7 @@ impl Definition {
             Definition::Local(it) => it.name(db),
             Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
-            Definition::BuiltinLifetime(StaticLifetime) => hir::known::STATIC_LIFETIME,
+            Definition::BuiltinLifetime(it) => it.name(),
             Definition::BuiltinAttr(_) => return None, // FIXME
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),

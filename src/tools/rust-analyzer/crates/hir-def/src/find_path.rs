@@ -3,9 +3,10 @@
 use std::{cell::Cell, cmp::Ordering, iter};
 
 use hir_expand::{
-    name::{known, AsName, Name},
+    name::{AsName, Name},
     Lookup,
 };
+use intern::{sym, Symbol};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -414,13 +415,13 @@ fn select_best_path(
         (Unstable, Stable) => return new_path,
         _ => {}
     }
-    const STD_CRATES: [Name; 3] = [known::std, known::core, known::alloc];
+    const STD_CRATES: [Symbol; 3] = [sym::std, sym::core, sym::alloc];
 
     let choose = |new: (ModPath, _), old: (ModPath, _)| {
         let (new_path, _) = &new;
         let (old_path, _) = &old;
-        let new_has_prelude = new_path.segments().iter().any(|seg| seg == &known::prelude);
-        let old_has_prelude = old_path.segments().iter().any(|seg| seg == &known::prelude);
+        let new_has_prelude = new_path.segments().iter().any(|seg| *seg == sym::prelude);
+        let old_has_prelude = old_path.segments().iter().any(|seg| *seg == sym::prelude);
         match (new_has_prelude, old_has_prelude, cfg.prefer_prelude) {
             (true, false, true) | (false, true, false) => new,
             (true, false, false) | (false, true, true) => old,
@@ -441,18 +442,20 @@ fn select_best_path(
     };
 
     match (old_path.0.segments().first(), new_path.0.segments().first()) {
-        (Some(old), Some(new)) if STD_CRATES.contains(old) && STD_CRATES.contains(new) => {
+        (Some(old), Some(new))
+            if STD_CRATES.contains(old.symbol()) && STD_CRATES.contains(new.symbol()) =>
+        {
             let rank = match cfg.prefer_no_std {
                 false => |name: &Name| match name {
-                    name if name == &known::core => 0,
-                    name if name == &known::alloc => 1,
-                    name if name == &known::std => 2,
+                    name if *name == sym::core => 0,
+                    name if *name == sym::alloc => 1,
+                    name if *name == sym::std => 2,
                     _ => unreachable!(),
                 },
                 true => |name: &Name| match name {
-                    name if name == &known::core => 2,
-                    name if name == &known::alloc => 1,
-                    name if name == &known::std => 0,
+                    name if *name == sym::core => 2,
+                    name if *name == sym::alloc => 1,
+                    name if *name == sym::std => 0,
                     _ => unreachable!(),
                 },
             };

@@ -5,10 +5,10 @@ use std::mem;
 
 use base_db::CrateId;
 use hir_expand::{
-    name::{name, AsName, Name},
+    name::{AsName, Name},
     ExpandError, InFile,
 };
-use intern::Interned;
+use intern::{sym, Interned};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::AstIdMap;
@@ -187,8 +187,10 @@ impl ExprCollector<'_> {
             {
                 let is_mutable =
                     self_param.mut_token().is_some() && self_param.amp_token().is_none();
-                let binding_id: la_arena::Idx<Binding> =
-                    self.alloc_binding(name![self], BindingAnnotation::new(is_mutable, false));
+                let binding_id: la_arena::Idx<Binding> = self.alloc_binding(
+                    Name::new_symbol_root(sym::self_),
+                    BindingAnnotation::new(is_mutable, false),
+                );
                 self.body.self_param = Some(binding_id);
                 self.source_map.self_param = Some(self.expander.in_file(AstPtr::new(&self_param)));
             }
@@ -1588,18 +1590,22 @@ impl ExprCollector<'_> {
         });
         let mut mappings = vec![];
         let fmt = match template.and_then(|it| self.expand_macros_to_string(it)) {
-            Some((s, is_direct_literal)) => format_args::parse(
-                &s,
-                fmt_snippet,
-                args,
-                is_direct_literal,
-                |name| self.alloc_expr_desugared(Expr::Path(Path::from(name))),
-                |name, span| {
-                    if let Some(span) = span {
-                        mappings.push((span, name))
-                    }
-                },
-            ),
+            Some((s, is_direct_literal)) => {
+                let call_ctx = self.expander.syntax_context();
+                format_args::parse(
+                    &s,
+                    fmt_snippet,
+                    args,
+                    is_direct_literal,
+                    |name| self.alloc_expr_desugared(Expr::Path(Path::from(name))),
+                    |name, span| {
+                        if let Some(span) = span {
+                            mappings.push((span, name))
+                        }
+                    },
+                    call_ctx,
+                )
+            }
             None => FormatArgs {
                 template: Default::default(),
                 arguments: args.finish(),
@@ -1723,14 +1729,18 @@ impl ExprCollector<'_> {
         //         unsafe { ::core::fmt::UnsafeArg::new() }
         //     )
 
-        let Some(new_v1_formatted) =
-            LangItem::FormatArguments.ty_rel_path(self.db, self.krate, name![new_v1_formatted])
-        else {
+        let Some(new_v1_formatted) = LangItem::FormatArguments.ty_rel_path(
+            self.db,
+            self.krate,
+            Name::new_symbol_root(sym::new_v1_formatted),
+        ) else {
             return self.missing_expr();
         };
-        let Some(unsafe_arg_new) =
-            LangItem::FormatUnsafeArg.ty_rel_path(self.db, self.krate, name![new])
-        else {
+        let Some(unsafe_arg_new) = LangItem::FormatUnsafeArg.ty_rel_path(
+            self.db,
+            self.krate,
+            Name::new_symbol_root(sym::new),
+        ) else {
             return self.missing_expr();
         };
         let new_v1_formatted = self.alloc_expr_desugared(Expr::Path(new_v1_formatted));
@@ -1812,10 +1822,10 @@ impl ExprCollector<'_> {
                 self.db,
                 self.krate,
                 match alignment {
-                    Some(FormatAlignment::Left) => name![Left],
-                    Some(FormatAlignment::Right) => name![Right],
-                    Some(FormatAlignment::Center) => name![Center],
-                    None => name![Unknown],
+                    Some(FormatAlignment::Left) => Name::new_symbol_root(sym::Left),
+                    Some(FormatAlignment::Right) => Name::new_symbol_root(sym::Right),
+                    Some(FormatAlignment::Center) => Name::new_symbol_root(sym::Center),
+                    None => Name::new_symbol_root(sym::Unknown),
                 },
             );
             match align {
@@ -1838,8 +1848,11 @@ impl ExprCollector<'_> {
         let width = self.make_count(width, argmap);
 
         let format_placeholder_new = {
-            let format_placeholder_new =
-                LangItem::FormatPlaceholder.ty_rel_path(self.db, self.krate, name![new]);
+            let format_placeholder_new = LangItem::FormatPlaceholder.ty_rel_path(
+                self.db,
+                self.krate,
+                Name::new_symbol_root(sym::new),
+            );
             match format_placeholder_new {
                 Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
                 None => self.missing_expr(),
@@ -1883,11 +1896,14 @@ impl ExprCollector<'_> {
                     *n as u128,
                     Some(BuiltinUint::Usize),
                 )));
-                let count_is =
-                    match LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Is]) {
-                        Some(count_is) => self.alloc_expr_desugared(Expr::Path(count_is)),
-                        None => self.missing_expr(),
-                    };
+                let count_is = match LangItem::FormatCount.ty_rel_path(
+                    self.db,
+                    self.krate,
+                    Name::new_symbol_root(sym::Is),
+                ) {
+                    Some(count_is) => self.alloc_expr_desugared(Expr::Path(count_is)),
+                    None => self.missing_expr(),
+                };
                 self.alloc_expr_desugared(Expr::Call {
                     callee: count_is,
                     args: Box::new([args]),
@@ -1905,7 +1921,7 @@ impl ExprCollector<'_> {
                     let count_param = match LangItem::FormatCount.ty_rel_path(
                         self.db,
                         self.krate,
-                        name![Param],
+                        Name::new_symbol_root(sym::Param),
                     ) {
                         Some(count_param) => self.alloc_expr_desugared(Expr::Path(count_param)),
                         None => self.missing_expr(),
@@ -1921,7 +1937,11 @@ impl ExprCollector<'_> {
                     self.missing_expr()
                 }
             }
-            None => match LangItem::FormatCount.ty_rel_path(self.db, self.krate, name![Implied]) {
+            None => match LangItem::FormatCount.ty_rel_path(
+                self.db,
+                self.krate,
+                Name::new_symbol_root(sym::Implied),
+            ) {
                 Some(count_param) => self.alloc_expr_desugared(Expr::Path(count_param)),
                 None => self.missing_expr(),
             },
@@ -1942,18 +1962,18 @@ impl ExprCollector<'_> {
         let new_fn = match LangItem::FormatArgument.ty_rel_path(
             self.db,
             self.krate,
-            match ty {
-                Format(Display) => name![new_display],
-                Format(Debug) => name![new_debug],
-                Format(LowerExp) => name![new_lower_exp],
-                Format(UpperExp) => name![new_upper_exp],
-                Format(Octal) => name![new_octal],
-                Format(Pointer) => name![new_pointer],
-                Format(Binary) => name![new_binary],
-                Format(LowerHex) => name![new_lower_hex],
-                Format(UpperHex) => name![new_upper_hex],
-                Usize => name![from_usize],
-            },
+            Name::new_symbol_root(match ty {
+                Format(Display) => sym::new_display,
+                Format(Debug) => sym::new_debug,
+                Format(LowerExp) => sym::new_lower_exp,
+                Format(UpperExp) => sym::new_upper_exp,
+                Format(Octal) => sym::new_octal,
+                Format(Pointer) => sym::new_pointer,
+                Format(Binary) => sym::new_binary,
+                Format(LowerHex) => sym::new_lower_hex,
+                Format(UpperHex) => sym::new_upper_hex,
+                Usize => sym::from_usize,
+            }),
         ) {
             Some(new_fn) => self.alloc_expr_desugared(Expr::Path(new_fn)),
             None => self.missing_expr(),

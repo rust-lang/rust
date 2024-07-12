@@ -133,6 +133,15 @@ pub trait ExpandDatabase: SourceDatabase {
         &self,
         macro_call: MacroCallId,
     ) -> Option<Arc<ExpandResult<Arc<[SyntaxError]>>>>;
+    #[salsa::transparent]
+    fn syntax_context(&self, file: HirFileId) -> SyntaxContextId;
+}
+
+fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId) -> SyntaxContextId {
+    match file.repr() {
+        HirFileIdRepr::FileId(_) => SyntaxContextId::ROOT,
+        HirFileIdRepr::MacroFile(m) => db.macro_arg(m.macro_call_id).2.ctx,
+    }
 }
 
 /// This expands the given macro call, but with different arguments. This is

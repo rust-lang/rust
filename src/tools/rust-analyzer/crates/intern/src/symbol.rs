@@ -1,5 +1,5 @@
 //! Attempt at flexible symbol interning, allowing to intern and free strings at runtime while also
-//! supporting
+//! supporting compile time declaration of symbols that will never be freed.
 
 use std::{
     borrow::Borrow,

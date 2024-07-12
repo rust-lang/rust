@@ -13,11 +13,11 @@ use hir_expand::{
     builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
-    name::{name, AsName, Name},
+    name::{AsName, Name},
     proc_macro::CustomProcMacroExpander,
     ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
-use intern::Interned;
+use intern::{sym, Interned};
 use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
@@ -76,25 +76,28 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
 
     let proc_macros = if krate.is_proc_macro {
         match db.proc_macros().get(&def_map.krate) {
-            Some(Ok(proc_macros)) => Ok(proc_macros
-                .iter()
-                .enumerate()
-                .map(|(idx, it)| {
-                    let name = Name::new_text_dont_use(it.name.clone());
-                    (
-                        name,
-                        if !db.expand_proc_attr_macros() {
-                            CustomProcMacroExpander::dummy()
-                        } else if it.disabled {
-                            CustomProcMacroExpander::disabled()
-                        } else {
-                            CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId::new(
-                                idx as u32,
-                            ))
-                        },
-                    )
-                })
-                .collect()),
+            Some(Ok(proc_macros)) => Ok({
+                let ctx = db.syntax_context(tree_id.file_id());
+                proc_macros
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, it)| {
+                        let name = Name::new(&it.name, ctx);
+                        (
+                            name,
+                            if !db.expand_proc_attr_macros() {
+                                CustomProcMacroExpander::dummy()
+                            } else if it.disabled {
+                                CustomProcMacroExpander::disabled()
+                            } else {
+                                CustomProcMacroExpander::new(
+                                    hir_expand::proc_macro::ProcMacroId::new(idx as u32),
+                                )
+                            },
+                        )
+                    })
+                    .collect()
+            }),
             Some(Err(e)) => Err(e.clone().into_boxed_str()),
             None => Err("No proc-macros present for crate".to_owned().into_boxed_str()),
         }
@@ -291,24 +294,24 @@ impl DefCollector<'_> {
             let Some(attr_name) = attr.path.as_ident() else { continue };
 
             match () {
-                () if *attr_name == hir_expand::name![recursion_limit] => {
+                () if *attr_name == sym::recursion_limit => {
                     if let Some(limit) = attr.string_value() {
                         if let Ok(limit) = limit.parse() {
                             crate_data.recursion_limit = Some(limit);
                         }
                     }
                 }
-                () if *attr_name == hir_expand::name![crate_type] => {
+                () if *attr_name == sym::crate_type => {
                     if let Some("proc-macro") = attr.string_value() {
                         self.is_proc_macro = true;
                     }
                 }
-                () if *attr_name == hir_expand::name![no_core] => crate_data.no_core = true,
-                () if *attr_name == hir_expand::name![no_std] => crate_data.no_std = true,
-                () if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") => {
+                () if *attr_name == sym::no_core => crate_data.no_core = true,
+                () if *attr_name == sym::no_std => crate_data.no_std = true,
+                () if *attr_name == sym::rustc_coherence_is_core => {
                     crate_data.rustc_coherence_is_core = true;
                 }
-                () if *attr_name == hir_expand::name![feature] => {
+                () if *attr_name == sym::feature => {
                     let features = attr
                         .parse_path_comma_token_tree(self.db.upcast())
                         .into_iter()
@@ -319,13 +322,13 @@ impl DefCollector<'_> {
                         });
                     crate_data.unstable_features.extend(features);
                 }
-                () if *attr_name == hir_expand::name![register_attr] => {
+                () if *attr_name == sym::register_attr => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_attrs.push(ident.text.clone());
                         cov_mark::hit!(register_attr);
                     }
                 }
-                () if *attr_name == hir_expand::name![register_tool] => {
+                () if *attr_name == sym::register_tool => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_tools.push(ident.text.clone());
                         cov_mark::hit!(register_tool);
@@ -535,27 +538,30 @@ impl DefCollector<'_> {
         }
 
         let krate = if self.def_map.data.no_std {
-            name![core]
-        } else if self.def_map.extern_prelude().any(|(name, _)| *name == name![std]) {
-            name![std]
+            Name::new_symbol_root(sym::core)
+        } else if self.def_map.extern_prelude().any(|(name, _)| *name == sym::std) {
+            Name::new_symbol_root(sym::std)
         } else {
             // If `std` does not exist for some reason, fall back to core. This mostly helps
             // keep r-a's own tests minimal.
-            name![core]
+            Name::new_symbol_root(sym::core)
         };
 
         let edition = match self.def_map.data.edition {
-            Edition::Edition2015 => name![rust_2015],
-            Edition::Edition2018 => name![rust_2018],
-            Edition::Edition2021 => name![rust_2021],
-            Edition::Edition2024 => name![rust_2024],
+            Edition::Edition2015 => Name::new_symbol_root(sym::rust_2015),
+            Edition::Edition2018 => Name::new_symbol_root(sym::rust_2018),
+            Edition::Edition2021 => Name::new_symbol_root(sym::rust_2021),
+            Edition::Edition2024 => Name::new_symbol_root(sym::rust_2024),
         };
 
         let path_kind = match self.def_map.data.edition {
             Edition::Edition2015 => PathKind::Plain,
             _ => PathKind::Abs,
         };
-        let path = ModPath::from_segments(path_kind, [krate, name![prelude], edition]);
+        let path = ModPath::from_segments(
+            path_kind,
+            [krate, Name::new_symbol_root(sym::prelude), edition],
+        );
 
         let (per_ns, _) =
             self.def_map.resolve_path(self.db, DefMap::ROOT, &path, BuiltinShadowMode::Other, None);
@@ -838,7 +844,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_extern_crate(&self, name: &Name) -> Option<CrateRootModuleId> {
-        if *name == name![self] {
+        if *name == sym::self_ {
             cov_mark::hit!(extern_crate_self_as);
             Some(self.def_map.crate_root())
         } else {
@@ -2136,9 +2142,9 @@ impl ModCollector<'_, '_> {
         let expander = if attrs.by_key("rustc_builtin_macro").exists() {
             // `#[rustc_builtin_macro = "builtin_name"]` overrides the `macro_rules!` name.
             let name;
-            let name = match attrs.by_key("rustc_builtin_macro").string_value() {
-                Some(it) => {
-                    name = Name::new_text_dont_use(it.into());
+            let name = match attrs.by_key("rustc_builtin_macro").string_value_with_span() {
+                Some((it, span)) => {
+                    name = Name::new(it, span.ctx);
                     &name
                 }
                 None => {

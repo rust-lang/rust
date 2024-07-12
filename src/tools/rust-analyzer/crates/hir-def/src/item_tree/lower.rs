@@ -2,7 +2,8 @@
 
 use std::collections::hash_map::Entry;
 
-use hir_expand::{mod_path::path, name, name::AsName, span_map::SpanMapRef, HirFileId};
+use hir_expand::{mod_path::path, name::AsName, span_map::SpanMapRef, HirFileId};
+use intern::sym;
 use la_arena::Arena;
 use rustc_hash::FxHashMap;
 use span::{AstIdMap, SyntaxContextId};
@@ -323,7 +324,7 @@ impl<'a> Ctx<'a> {
                 let self_type = match self_param.ty() {
                     Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
                     None => {
-                        let self_type = TypeRef::Path(name![Self].into());
+                        let self_type = TypeRef::Path(Name::new_symbol_root(sym::Self_).into());
                         match self_param.kind() {
                             ast::SelfParamKind::Owned => self_type,
                             ast::SelfParamKind::Ref => TypeRef::Reference(
@@ -669,7 +670,7 @@ impl<'a> Ctx<'a> {
             // Traits and trait aliases get the Self type as an implicit first type parameter.
             generics.type_or_consts.alloc(
                 TypeParamData {
-                    name: Some(name![Self]),
+                    name: Some(Name::new_symbol_root(sym::Self_)),
                     default: None,
                     provenance: TypeParamProvenance::TraitSelf,
                 }
@@ -680,7 +681,7 @@ impl<'a> Ctx<'a> {
             generics.fill_bounds(
                 &self.body_ctx,
                 bounds,
-                Either::Left(TypeRef::Path(name![Self].into())),
+                Either::Left(TypeRef::Path(Name::new_symbol_root(sym::Self_).into())),
             );
         }
 
@@ -745,7 +746,7 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     let mut generic_args: Vec<_> =
         std::iter::repeat(None).take(path.segments().len() - 1).collect();
     let binding = AssociatedTypeBinding {
-        name: name![Output],
+        name: Name::new_symbol_root(sym::Output),
         args: None,
         type_ref: Some(orig),
         bounds: Box::default(),

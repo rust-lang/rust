@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use ast::make;
 use either::Either;
-use hir::{db::HirDatabase, PathResolution, Semantics, TypeInfo};
+use hir::{db::HirDatabase, sym, PathResolution, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
@@ -430,10 +430,7 @@ fn inline(
 
             let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
 
-            let is_self = param
-                .name(sema.db)
-                .and_then(|name| name.as_text())
-                .is_some_and(|name| name == "self");
+            let is_self = param.name(sema.db).is_some_and(|name| name == sym::self_);
 
             if is_self {
                 let mut this_pat = make::ident_pat(false, false, make::name("this"));

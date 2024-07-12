@@ -4,7 +4,7 @@ use std::{borrow::Cow, fmt, ops};
 use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
-use intern::Interned;
+use intern::{sym, Interned};
 use mbe::{syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
@@ -12,6 +12,7 @@ use syntax::unescape;
 use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::ThinArc;
 
+use crate::name::Name;
 use crate::{
     db::ExpandDatabase,
     mod_path::ModPath,
@@ -58,7 +59,7 @@ impl RawAttrs {
                             text: SmolStr::new(format_smolstr!("\"{}\"", Self::escape_chars(doc))),
                             span,
                         }))),
-                        path: Interned::new(ModPath::from(crate::name!(doc))),
+                        path: Interned::new(ModPath::from(Name::new_symbol(sym::doc, span.ctx))),
                         ctxt: span.ctx,
                     }
                 }),
@@ -115,47 +116,47 @@ impl RawAttrs {
     pub fn filter(self, db: &dyn ExpandDatabase, krate: CrateId) -> RawAttrs {
         let has_cfg_attrs = self
             .iter()
-            .any(|attr| attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]));
+            .any(|attr| attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr));
         if !has_cfg_attrs {
             return self;
         }
 
         let crate_graph = db.crate_graph();
-        let new_attrs =
-            self.iter()
-                .flat_map(|attr| -> SmallVec<[_; 1]> {
-                    let is_cfg_attr =
-                        attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
-                    if !is_cfg_attr {
-                        return smallvec![attr.clone()];
-                    }
+        let new_attrs = self
+            .iter()
+            .flat_map(|attr| -> SmallVec<[_; 1]> {
+                let is_cfg_attr = attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr);
+                if !is_cfg_attr {
+                    return smallvec![attr.clone()];
+                }
 
-                    let subtree = match attr.token_tree_value() {
-                        Some(it) => it,
-                        _ => return smallvec![attr.clone()],
-                    };
+                let subtree = match attr.token_tree_value() {
+                    Some(it) => it,
+                    _ => return smallvec![attr.clone()],
+                };
 
-                    let (cfg, parts) = match parse_cfg_attr_input(subtree) {
-                        Some(it) => it,
-                        None => return smallvec![attr.clone()],
-                    };
-                    let index = attr.id;
-                    let attrs = parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(
-                        |(idx, attr)| Attr::from_tt(db, attr, index.with_cfg_attr(idx)),
-                    );
+                let (cfg, parts) = match parse_cfg_attr_input(subtree) {
+                    Some(it) => it,
+                    None => return smallvec![attr.clone()],
+                };
+                let index = attr.id;
+                let attrs = parts
+                    .enumerate()
+                    .take(1 << AttrId::CFG_ATTR_BITS)
+                    .filter_map(|(idx, attr)| Attr::from_tt(db, attr, index.with_cfg_attr(idx)));
 
-                    let cfg_options = &crate_graph[krate].cfg_options;
-                    let cfg = Subtree { delimiter: subtree.delimiter, token_trees: Box::from(cfg) };
-                    let cfg = CfgExpr::parse(&cfg);
-                    if cfg_options.check(&cfg) == Some(false) {
-                        smallvec![]
-                    } else {
-                        cov_mark::hit!(cfg_attr_active);
+                let cfg_options = &crate_graph[krate].cfg_options;
+                let cfg = Subtree { delimiter: subtree.delimiter, token_trees: Box::from(cfg) };
+                let cfg = CfgExpr::parse(&cfg);
+                if cfg_options.check(&cfg) == Some(false) {
+                    smallvec![]
+                } else {
+                    cov_mark::hit!(cfg_attr_active);
 
-                        attrs.collect()
-                    }
-                })
-                .collect::<Vec<_>>();
+                    attrs.collect()
+                }
+            })
+            .collect::<Vec<_>>();
         let entries = if new_attrs.is_empty() {
             None
         } else {
@@ -316,6 +317,20 @@ impl Attr {
         }
     }
 
+    /// #[path = "string"]
+    pub fn string_value_with_span(&self) -> Option<(&str, span::Span)> {
+        match self.input.as_deref()? {
+            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
+                Some(it) => it.trim_matches('#'),
+                None => it.text.as_str(),
+            }
+            .strip_prefix('"')?
+            .strip_suffix('"')
+            .zip(Some(it.span)),
+            _ => None,
+        }
+    }
+
     pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
         match self.input.as_deref()? {
             AttrInput::Literal(it) => match it.text.strip_prefix('r') {
@@ -369,7 +384,7 @@ impl Attr {
     }
 
     pub fn cfg(&self) -> Option<CfgExpr> {
-        if *self.path.as_ident()? == crate::name![cfg] {
+        if *self.path.as_ident()? == sym::cfg {
             self.token_tree_value().map(CfgExpr::parse)
         } else {
             None

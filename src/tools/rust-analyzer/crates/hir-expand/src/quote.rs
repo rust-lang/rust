@@ -1,6 +1,7 @@
 //! A simplified version of quote-crate like quasi quote macro
 #![allow(clippy::crate_in_macro_def)]
 
+use intern::Symbol;
 use span::Span;
 use syntax::format_smolstr;
 
@@ -219,6 +220,7 @@ impl_to_to_tokentrees! {
     span: &str => self { crate::tt::Literal{text: format_smolstr!("\"{}\"", self.escape_default()), span}};
     span: String => self { crate::tt::Literal{text: format_smolstr!("\"{}\"", self.escape_default()), span}};
     span: Name => self { crate::tt::Ident{text: self.to_smol_str(), span}};
+    span: Symbol => self { crate::tt::Ident{text: self.as_str().into(), span}};
 }
 
 #[cfg(test)]
