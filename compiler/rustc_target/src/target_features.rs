@@ -246,6 +246,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("tbm", Unstable(sym::tbm_target_feature)),
     ("vaes", Unstable(sym::avx512_target_feature)),
     ("vpclmulqdq", Unstable(sym::avx512_target_feature)),
+    ("xop", Unstable(sym::xop_target_feature)),
     ("xsave", Stable),
     ("xsavec", Stable),
     ("xsaveopt", Stable),
