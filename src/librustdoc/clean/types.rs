@@ -1244,6 +1244,8 @@ impl Eq for Attributes {}
 pub(crate) enum GenericBound {
     TraitBound(PolyTrait, hir::TraitBoundModifier),
     Outlives(Lifetime),
+    /// `use<'a, T>` precise-capturing bound syntax
+    Use(Vec<Symbol>),
 }
 
 impl GenericBound {
