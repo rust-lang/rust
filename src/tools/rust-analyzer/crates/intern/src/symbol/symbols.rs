@@ -1,3 +1,4 @@
+//! Module defining all known symbols required by the rest of rust-analyzer.
 #![allow(non_upper_case_globals)]
 
 use std::hash::{BuildHasherDefault, Hash as _, Hasher as _};

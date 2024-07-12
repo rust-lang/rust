@@ -39,7 +39,7 @@ unsafe impl Sync for TaggedArcPtr {}
 impl TaggedArcPtr {
     const BOOL_BITS: usize = true as usize;
 
-    const fn non_arc(r: &&str) -> Self {
+    const fn non_arc(r: &'static &'static str) -> Self {
         Self {
             // SAFETY: The pointer is non-null as it is derived from a reference
             // Ideally we would call out to `pack_arc` but for a `false` tag, unfortunately the
