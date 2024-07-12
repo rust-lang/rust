@@ -1992,12 +1992,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Some(candidate) = candidates.get(0) {
                 let path = {
                     // remove the possible common prefix of the path
-                    let start_index = (0..failed_segment_idx)
-                        .find(|&i| path[i].ident != candidate.path.segments[i].ident)
+                    let len = candidate.path.segments.len();
+                    let start_index = (0..=failed_segment_idx.min(len - 1))
+                        .find(|&i| path[i].ident.name != candidate.path.segments[i].ident.name)
                         .unwrap_or_default();
-                    let segments = (start_index..=failed_segment_idx)
-                        .map(|s| candidate.path.segments[s].clone())
-                        .collect();
+                    let segments =
+                        (start_index..len).map(|s| candidate.path.segments[s].clone()).collect();
                     Path { segments, span: Span::default(), tokens: None }
                 };
                 (
