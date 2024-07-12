@@ -2466,14 +2466,6 @@ impl Config {
             }
         };
 
-        // Handle running from a directory other than the top level
-        let top_level = output(
-            &mut helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]).command,
-        );
-        let top_level = top_level.trim_end();
-        let compiler = format!("{top_level}/compiler/");
-        let library = format!("{top_level}/library/");
-
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
@@ -2494,7 +2486,9 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", commit, "--", &compiler, &library])
+            .args(["diff-index", "--quiet", commit])
+            .arg("--")
+            .args([self.src.join("compiler"), self.src.join("library")])
             .command
             .status())
         .success();
@@ -2566,12 +2560,6 @@ impl Config {
         option_name: &str,
         if_unchanged: bool,
     ) -> Option<String> {
-        // Handle running from a directory other than the top level
-        let top_level = output(
-            &mut helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]).command,
-        );
-        let top_level = top_level.trim_end();
-
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
@@ -2594,8 +2582,11 @@ impl Config {
         let mut git = helpers::git(Some(&self.src));
         git.args(["diff-index", "--quiet", commit, "--"]);
 
+        // Handle running from a directory other than the top level
+        let top_level = &self.src;
+
         for path in modified_paths {
-            git.arg(format!("{top_level}/{path}"));
+            git.arg(top_level.join(path));
         }
 
         let has_changes = !t!(git.command.status()).success();
