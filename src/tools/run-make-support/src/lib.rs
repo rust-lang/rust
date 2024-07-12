@@ -303,6 +303,11 @@ pub fn filename_not_in_denylist<P: AsRef<Path>, V: AsRef<[String]>>(path: P, exp
         .is_some_and(|name| !expected.contains(&name.to_str().unwrap().to_owned()))
 }
 
+/// Returns true if the filename at `path` ends with `suffix`.
+pub fn has_suffix<P: AsRef<Path>>(path: P, suffix: &str) -> bool {
+    path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().ends_with(suffix))
+}
+
 /// Gathers all files in the current working directory that have the extension `ext`, and counts
 /// the number of lines within that contain a match with the regex pattern `re`.
 pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str) -> usize {
