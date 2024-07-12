@@ -8,10 +8,6 @@ use crate::ty::{
     self, FallibleTypeFolder, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
 };
 
-mod cache;
-
-pub use cache::EvaluationCache;
-
 pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;
 pub type QueryInput<'tcx, P> = ir::solve::QueryInput<TyCtxt<'tcx>, P>;
 pub type QueryResult<'tcx> = ir::solve::QueryResult<TyCtxt<'tcx>>;

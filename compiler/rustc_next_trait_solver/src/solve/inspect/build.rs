@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use std::mem;
 
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, search_graph, Interner};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::eval_ctxt::canonical;
@@ -38,7 +38,7 @@ use crate::solve::{
 /// trees. At the end of trait solving `ProofTreeBuilder::finalize`
 /// is called to recursively convert the whole structure to a
 /// finished proof tree.
-pub(in crate::solve) struct ProofTreeBuilder<D, I = <D as SolverDelegate>::Interner>
+pub(crate) struct ProofTreeBuilder<D, I = <D as SolverDelegate>::Interner>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -321,23 +321,6 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         })
     }
 
-    pub fn finalize_canonical_goal_evaluation(
-        &mut self,
-        cx: I,
-    ) -> Option<I::CanonicalGoalEvaluationStepRef> {
-        self.as_mut().map(|this| match this {
-            DebugSolver::CanonicalGoalEvaluation(evaluation) => {
-                let final_revision = mem::take(&mut evaluation.final_revision).unwrap();
-                let final_revision =
-                    cx.intern_canonical_goal_evaluation_step(final_revision.finalize());
-                let kind = WipCanonicalGoalEvaluationKind::Interned { final_revision };
-                assert_eq!(evaluation.kind.replace(kind), None);
-                final_revision
-            }
-            _ => unreachable!(),
-        })
-    }
-
     pub fn canonical_goal_evaluation(&mut self, canonical_goal_evaluation: ProofTreeBuilder<D>) {
         if let Some(this) = self.as_mut() {
             match (this, *canonical_goal_evaluation.state.unwrap()) {
@@ -569,5 +552,53 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
                 _ => unreachable!(),
             }
         }
+    }
+}
+
+impl<D, I> search_graph::ProofTreeBuilder<I> for ProofTreeBuilder<D>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    fn try_apply_proof_tree(
+        &mut self,
+        proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
+    ) -> bool {
+        if !self.is_noop() {
+            if let Some(final_revision) = proof_tree {
+                let kind = WipCanonicalGoalEvaluationKind::Interned { final_revision };
+                self.canonical_goal_evaluation_kind(kind);
+                true
+            } else {
+                false
+            }
+        } else {
+            true
+        }
+    }
+
+    fn on_provisional_cache_hit(&mut self) {
+        self.canonical_goal_evaluation_kind(WipCanonicalGoalEvaluationKind::ProvisionalCacheHit);
+    }
+
+    fn on_cycle_in_stack(&mut self) {
+        self.canonical_goal_evaluation_kind(WipCanonicalGoalEvaluationKind::CycleInStack);
+    }
+
+    fn finalize_canonical_goal_evaluation(
+        &mut self,
+        tcx: I,
+    ) -> Option<I::CanonicalGoalEvaluationStepRef> {
+        self.as_mut().map(|this| match this {
+            DebugSolver::CanonicalGoalEvaluation(evaluation) => {
+                let final_revision = mem::take(&mut evaluation.final_revision).unwrap();
+                let final_revision =
+                    tcx.intern_canonical_goal_evaluation_step(final_revision.finalize());
+                let kind = WipCanonicalGoalEvaluationKind::Interned { final_revision };
+                assert_eq!(evaluation.kind.replace(kind), None);
+                final_revision
+            }
+            _ => unreachable!(),
+        })
     }
 }
