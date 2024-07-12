@@ -4,6 +4,7 @@
 use std::mem;
 
 use base_db::CrateId;
+use either::Either;
 use hir_expand::{
     name::{name, AsName, Name},
     ExpandError, InFile,
@@ -1432,14 +1433,12 @@ impl ExprCollector<'_> {
         has_leading_comma: bool,
         binding_list: &mut BindingList,
     ) -> (Box<[PatId]>, Option<usize>) {
+        let args: Vec<_> = args.map(|p| self.collect_pat_possibly_rest(p, binding_list)).collect();
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possibility of there being multiple `..` here.
-        let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
+        let ellipsis = args.iter().position(|p| p.is_right());
         // We want to skip the `..` pattern here, since we account for it above.
-        let mut args: Vec<_> = args
-            .filter(|p| !matches!(p, ast::Pat::RestPat(_)))
-            .map(|p| self.collect_pat(p, binding_list))
-            .collect();
+        let mut args: Vec<_> = args.into_iter().filter_map(Either::left).collect();
         // if there is a leading comma, the user is most likely to type out a leading pattern
         // so we insert a missing pattern at the beginning for IDE features
         if has_leading_comma {
@@ -1447,6 +1446,41 @@ impl ExprCollector<'_> {
         }
 
         (args.into_boxed_slice(), ellipsis)
+    }
+
+    // `collect_pat` rejects `ast::Pat::RestPat`, but it should be handled in some cases that
+    // it is the macro expansion result of an arg sub-pattern in a slice or tuple pattern.
+    fn collect_pat_possibly_rest(
+        &mut self,
+        pat: ast::Pat,
+        binding_list: &mut BindingList,
+    ) -> Either<PatId, ()> {
+        match &pat {
+            ast::Pat::RestPat(_) => Either::Right(()),
+            ast::Pat::MacroPat(mac) => match mac.macro_call() {
+                Some(call) => {
+                    let macro_ptr = AstPtr::new(&call);
+                    let src = self.expander.in_file(AstPtr::new(&pat));
+                    let pat =
+                        self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
+                            if let Some(expanded_pat) = expanded_pat {
+                                this.collect_pat_possibly_rest(expanded_pat, binding_list)
+                            } else {
+                                Either::Left(this.missing_pat())
+                            }
+                        });
+                    if let Some(pat) = pat.left() {
+                        self.source_map.pat_map.insert(src, pat);
+                    }
+                    pat
+                }
+                None => {
+                    let ptr = AstPtr::new(&pat);
+                    Either::Left(self.alloc_pat(Pat::Missing, ptr))
+                }
+            },
+            _ => Either::Left(self.collect_pat(pat, binding_list)),
+        }
     }
 
     // endregion: patterns

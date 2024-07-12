@@ -257,6 +257,75 @@ impl Foo {
     }
 
     #[test]
+    fn rest_pat_in_macro_expansion() {
+        check_diagnostics(
+            r#"
+// issue #17292
+#![allow(dead_code)]
+
+macro_rules! replace_with_2_dots {
+    ( $( $input:tt )* ) => {
+        ..
+    };
+}
+
+macro_rules! enum_str {
+    (
+        $(
+            $variant:ident (
+                $( $tfield:ty ),*
+            )
+        )
+        ,
+        *
+    ) => {
+        enum Foo {
+            $(
+                $variant ( $( $tfield ),* ),
+            )*
+        }
+
+        impl Foo {
+            fn variant_name_as_str(&self) -> &str {
+                match self {
+                    $(
+                        Self::$variant ( replace_with_2_dots!( $( $tfield ),* ) )
+                          => "",
+                    )*
+                }
+            }
+        }
+    };
+}
+
+enum_str! {
+    TupleVariant1(i32),
+    TupleVariant2(),
+    TupleVariant3(i8,u8,i128)
+}
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+#![allow(dead_code)]
+macro_rules! two_dots1 {
+    () => { .. };
+}
+
+macro_rules! two_dots2 {
+    () => { two_dots1!() };
+}
+
+fn test() {
+    let (_, _, two_dots1!()) = ((), 42);
+    let (_, two_dots2!(), _) = (1, true, 2, false, (), (), 3);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn varargs() {
         check_diagnostics(
             r#"
