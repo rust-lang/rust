@@ -5,8 +5,7 @@ use rustc_middle::ty::print::{PrintTraitPredicateExt as _, TraitPredPrintModifie
 use rustc_middle::ty::{self, fold::BottomUpFolder, Ty, TypeFoldable};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{symbol::kw, Span};
-use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 use crate::{LateContext, LateLintPass, LintContext};
 
@@ -130,24 +129,26 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     .iter_instantiated_copied(cx.tcx, proj.projection_term.args)
                 {
                     let assoc_pred = assoc_pred.fold_with(proj_replacer);
-                    let Ok(assoc_pred) = traits::fully_normalize(
-                        infcx,
-                        traits::ObligationCause::dummy(),
-                        cx.param_env,
-                        assoc_pred,
-                    ) else {
-                        continue;
-                    };
 
-                    // If that predicate doesn't hold modulo regions (but passed during type-check),
-                    // then we must've taken advantage of the hack in `project_and_unify_types` where
-                    // we replace opaques with inference vars. Emit a warning!
-                    if !infcx.predicate_must_hold_modulo_regions(&traits::Obligation::new(
+                    let ocx = ObligationCtxt::new(infcx);
+                    let assoc_pred =
+                        ocx.normalize(&traits::ObligationCause::dummy(), cx.param_env, assoc_pred);
+                    if !ocx.select_all_or_error().is_empty() {
+                        // Can't normalize for some reason...?
+                        continue;
+                    }
+
+                    ocx.register_obligation(traits::Obligation::new(
                         cx.tcx,
                         traits::ObligationCause::dummy(),
                         cx.param_env,
                         assoc_pred,
-                    )) {
+                    ));
+
+                    // If that predicate doesn't hold modulo regions (but passed during type-check),
+                    // then we must've taken advantage of the hack in `project_and_unify_types` where
+                    // we replace opaques with inference vars. Emit a warning!
+                    if !ocx.select_all_or_error().is_empty() {
                         // If it's a trait bound and an opaque that doesn't satisfy it,
                         // then we can emit a suggestion to add the bound.
                         let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
