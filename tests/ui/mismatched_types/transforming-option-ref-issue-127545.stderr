@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/transforming-option-ref-issue-127545.rs:5:5
+   |
+LL | pub fn foo(arg: Option<&Vec<i32>>) -> Option<&[i32]> {
+   |                                       -------------- expected `Option<&[i32]>` because of return type
+LL |     arg
+   |     ^^^ expected `Option<&[i32]>`, found `Option<&Vec<i32>>`
+   |
+   = note: expected enum `Option<&[i32]>`
+              found enum `Option<&Vec<i32>>`
+help: try using `.map(|v| &**v)` to convert `Option<&Vec<i32>>` to `Option<&[i32]>`
+   |
+LL |     arg.map(|v| &**v)
+   |        ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
