@@ -3356,7 +3356,7 @@ pub trait Iterator {
         Rev::new(self)
     }
 
-    /// Converts an iterator of pairs into a pair of containsers.
+    /// Converts an iterator of pairs into a pair of containers.
     ///
     /// `unzip()` consumes an entire iterator of pairs, producing two
     /// collections: one from the left elements of the pairs, and one
