@@ -2,7 +2,8 @@
 //@ aux-build:multiple-dep-versions-1.rs
 //@ edition:2021
 //@ compile-flags: --error-format=human --color=always --crate-type bin --extern dependency={{build-base}}/crate-loading/multiple-dep-versions/auxiliary/libdependency-1.so --extern dep_2_reexport={{build-base}}/crate-loading/multiple-dep-versions/auxiliary/libdep_2_reexport.so
-//@ ignore-windows
+//@ only-linux
+//@ ignore-wasm32
 
 extern crate dependency;
 extern crate dep_2_reexport;

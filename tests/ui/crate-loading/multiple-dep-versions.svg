@@ -24,7 +24,7 @@
   <text xml:space="preserve" class="container fg">
     <tspan x="10px" y="28px"><tspan class="fg-ansi256-009 bold">error[E0277]</tspan><tspan class="bold">: the trait bound `Type: dependency::Trait` is not satisfied</tspan>
 </tspan>
-    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiple-dep-versions.rs:13:18</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiple-dep-versions.rs:14:18</tspan>
 </tspan>
     <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
@@ -40,7 +40,7 @@
 </tspan>
     <tspan x="10px" y="172px"><tspan class="fg-ansi256-014 bold">help</tspan><tspan>: you have </tspan><tspan class="fg-magenta bold">multiple different versions</tspan><tspan> of crate `</tspan><tspan class="fg-magenta bold">dependency</tspan><tspan>` in your dependency graph</tspan>
 </tspan>
-    <tspan x="10px" y="190px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiple-dep-versions.rs:7:1</tspan>
+    <tspan x="10px" y="190px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/multiple-dep-versions.rs:8:1</tspan>
 </tspan>
     <tspan x="10px" y="208px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
