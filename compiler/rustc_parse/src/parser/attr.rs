@@ -303,7 +303,6 @@ impl<'a> Parser<'a> {
                 None
             };
             if let Some(attr) = attr {
-                let end_pos = self.num_bump_calls;
                 // If we are currently capturing tokens, mark the location of this inner attribute.
                 // If capturing ends up creating a `LazyAttrTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final
@@ -311,9 +310,10 @@ impl<'a> Parser<'a> {
                 // During macro expansion, they are selectively inserted back into the
                 // token stream (the first inner attribute is removed each time we invoke the
                 // corresponding macro).
-                let range = start_pos..end_pos;
                 if let Capturing::Yes = self.capture_state.capturing {
-                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, None));
+                    let end_pos = self.num_bump_calls;
+                    let range = start_pos..end_pos;
+                    self.capture_state.inner_attr_ranges.insert(attr.id, range);
                 }
                 attrs.push(attr);
             } else {
