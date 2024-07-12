@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
@@ -60,9 +61,10 @@ pub struct DerivableImpls {
 }
 
 impl DerivableImpls {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        DerivableImpls { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        DerivableImpls {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 

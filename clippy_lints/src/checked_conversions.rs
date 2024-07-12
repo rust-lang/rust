@@ -1,6 +1,7 @@
 //! lint on manually implemented checked conversions that could be transformed into `try_from`
 
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{in_constant, is_integer_literal, SpanlessEq};
@@ -40,9 +41,10 @@ pub struct CheckedConversions {
 }
 
 impl CheckedConversions {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::path_def_id;
@@ -54,9 +55,10 @@ pub struct FromOverInto {
 }
 
 impl FromOverInto {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        FromOverInto { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        FromOverInto {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 

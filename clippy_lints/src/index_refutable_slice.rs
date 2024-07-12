@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
@@ -58,10 +59,10 @@ pub struct IndexRefutableSlice {
 }
 
 impl IndexRefutableSlice {
-    pub fn new(max_suggested_slice_pattern_length: u64, msrv: Msrv) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            max_suggested_slice: max_suggested_slice_pattern_length,
-            msrv,
+            max_suggested_slice: conf.max_suggested_slice_pattern_length,
+            msrv: conf.msrv.clone(),
         }
     }
 }

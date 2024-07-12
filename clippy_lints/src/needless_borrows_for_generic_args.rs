@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::PossibleBorrowerMap;
 use clippy_utils::source::snippet_with_context;
@@ -67,11 +68,10 @@ pub struct NeedlessBorrowsForGenericArgs<'tcx> {
 impl_lint_pass!(NeedlessBorrowsForGenericArgs<'_> => [NEEDLESS_BORROWS_FOR_GENERIC_ARGS]);
 
 impl NeedlessBorrowsForGenericArgs<'_> {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
             possible_borrowers: Vec::new(),
-            msrv,
+            msrv: conf.msrv.clone(),
         }
     }
 }

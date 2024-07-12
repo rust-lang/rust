@@ -1,5 +1,6 @@
 //! lint on indexing and slicing operations
 
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
@@ -87,15 +88,14 @@ declare_clippy_lint! {
 
 impl_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
-#[derive(Copy, Clone)]
 pub struct IndexingSlicing {
     suppress_restriction_lint_in_const: bool,
 }
 
 impl IndexingSlicing {
-    pub fn new(suppress_restriction_lint_in_const: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            suppress_restriction_lint_in_const,
+            suppress_restriction_lint_in_const: conf.suppress_restriction_lint_in_const,
         }
     }
 }

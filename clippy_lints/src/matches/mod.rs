@@ -25,6 +25,7 @@ mod try_err;
 mod wild_in_or_pats;
 
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, span_contains_cfg};
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
@@ -980,10 +981,9 @@ pub struct Matches {
 }
 
 impl Matches {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv,
+            msrv: conf.msrv.clone(),
             infallible_destructuring_match_linted: false,
         }
     }

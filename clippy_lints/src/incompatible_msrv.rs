@@ -1,4 +1,5 @@
 use clippy_config::msrvs::Msrv;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_in_test;
 use rustc_attr::{StabilityLevel, StableSince};
@@ -47,9 +48,9 @@ pub struct IncompatibleMsrv {
 impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
 
 impl IncompatibleMsrv {
-    pub fn new(msrv: Msrv) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv,
+            msrv: conf.msrv.clone(),
             is_above_msrv: FxHashMap::default(),
         }
     }
