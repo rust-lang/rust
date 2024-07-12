@@ -13,7 +13,7 @@ use crate::expr::{
     ExprType, RhsTactics,
 };
 use crate::lists::{itemize_list, write_list, ListFormatting};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -55,6 +55,10 @@ impl<'a> Spanned for ArmWrapper<'a> {
 
 impl<'a> Rewrite for ArmWrapper<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         rewrite_match_arm(
             context,
             self.arm,
@@ -73,7 +77,7 @@ pub(crate) fn rewrite_match(
     span: Span,
     attrs: &[ast::Attribute],
     match_kind: MatchKind,
-) -> Option<String> {
+) -> RewriteResult {
     // Do not take the rhs overhead from the upper expressions into account
     // when rewriting match condition.
     let cond_shape = Shape {
@@ -82,10 +86,14 @@ pub(crate) fn rewrite_match(
     };
     // 6 = `match `
     let cond_shape = match context.config.indent_style() {
-        IndentStyle::Visual => cond_shape.shrink_left(6)?,
-        IndentStyle::Block => cond_shape.offset_left(6)?,
+        IndentStyle::Visual => cond_shape
+            .shrink_left(6)
+            .max_width_error(shape.width, span)?,
+        IndentStyle::Block => cond_shape
+            .offset_left(6)
+            .max_width_error(shape.width, span)?,
     };
-    let cond_str = cond.rewrite(context, cond_shape)?;
+    let cond_str = cond.rewrite_result(context, cond_shape)?;
     let alt_block_sep = &shape.indent.to_string_with_newline(context.config);
     let block_sep = match context.config.control_brace_style() {
         ControlBraceStyle::AlwaysNextLine => alt_block_sep,
@@ -109,7 +117,7 @@ pub(crate) fn rewrite_match(
             _ => shape.block_indent(context.config.tab_spaces()),
         };
         inner_attrs
-            .rewrite(context, shape)
+            .rewrite_result(context, shape)
             .map(|s| format!("{}{}\n", nested_indent_str, s))?
     };
 
@@ -129,16 +137,16 @@ pub(crate) fn rewrite_match(
     if arms.is_empty() {
         let snippet = context.snippet(mk_sp(open_brace_pos, span.hi() - BytePos(1)));
         if snippet.trim().is_empty() {
-            Some(format!("match {cond_str} {{}}"))
+            Ok(format!("match {cond_str} {{}}"))
         } else {
             // Empty match with comments or inner attributes? We are not going to bother, sorry ;)
-            Some(context.snippet(span).to_owned())
+            Ok(context.snippet(span).to_owned())
         }
     } else {
         let span_after_cond = mk_sp(cond.span.hi(), span.hi());
 
         match match_kind {
-            MatchKind::Prefix => Some(format!(
+            MatchKind::Prefix => Ok(format!(
                 "match {}{}{{\n{}{}{}\n{}}}",
                 cond_str,
                 block_sep,
@@ -147,7 +155,7 @@ pub(crate) fn rewrite_match(
                 rewrite_match_arms(context, arms, shape, span_after_cond, open_brace_pos)?,
                 shape.indent.to_string(context.config),
             )),
-            MatchKind::Postfix => Some(format!(
+            MatchKind::Postfix => Ok(format!(
                 "{}.match{}{{\n{}{}{}\n{}}}",
                 cond_str,
                 block_sep,
@@ -197,7 +205,7 @@ fn rewrite_match_arms(
     shape: Shape,
     span: Span,
     open_brace_pos: BytePos,
-) -> Option<String> {
+) -> RewriteResult {
     let arm_shape = shape
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);
@@ -228,7 +236,7 @@ fn rewrite_match_arms(
         .separator("")
         .preserve_newline(true);
 
-    write_list(&arms_vec, &fmt)
+    write_list(&arms_vec, &fmt).unknown_error()
 }
 
 fn rewrite_match_arm(
@@ -237,19 +245,19 @@ fn rewrite_match_arm(
     shape: Shape,
     is_last: bool,
     has_leading_pipe: bool,
-) -> Option<String> {
+) -> RewriteResult {
     let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
-            let (_, body) = flatten_arm_body(context, arm.body.as_deref()?, None);
+            let (_, body) = flatten_arm_body(context, arm.body.as_deref().unknown_error()?, None);
             // `arm.span()` does not include trailing comma, add it manually.
-            return Some(format!(
+            return Ok(format!(
                 "{}{}",
                 context.snippet(arm.span()),
                 arm_comma(context.config, body, is_last),
             ));
         }
         let missing_span = mk_sp(arm.attrs[arm.attrs.len() - 1].span.hi(), arm.pat.span.lo());
-        (missing_span, arm.attrs.rewrite(context, shape)?)
+        (missing_span, arm.attrs.rewrite_result(context, shape)?)
     } else {
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
@@ -263,19 +271,25 @@ fn rewrite_match_arm(
     };
 
     // Patterns
-    let pat_shape = match &arm.body.as_ref()?.kind {
+    let pat_shape = match &arm.body.as_ref().unknown_error()?.kind {
         ast::ExprKind::Block(_, Some(label)) => {
             // Some block with a label ` => 'label: {`
             // 7 = ` => : {`
             let label_len = label.ident.as_str().len();
-            shape.sub_width(7 + label_len)?.offset_left(pipe_offset)?
+            shape
+                .sub_width(7 + label_len)
+                .and_then(|s| s.offset_left(pipe_offset))
+                .max_width_error(shape.width, arm.span)?
         }
         _ => {
             // 5 = ` => {`
-            shape.sub_width(5)?.offset_left(pipe_offset)?
+            shape
+                .sub_width(5)
+                .and_then(|s| s.offset_left(pipe_offset))
+                .max_width_error(shape.width, arm.span)?
         }
     };
-    let pats_str = arm.pat.rewrite(context, pat_shape)?;
+    let pats_str = arm.pat.rewrite_result(context, pat_shape)?;
 
     // Guard
     let block_like_pat = trimmed_last_line_width(&pats_str) <= context.config.tab_spaces();
@@ -295,12 +309,16 @@ fn rewrite_match_arm(
         missing_span,
         shape,
         false,
-    )?;
+    )
+    .unknown_error()?;
 
-    let arrow_span = mk_sp(arm.pat.span.hi(), arm.body.as_ref()?.span().lo());
+    let arrow_span = mk_sp(
+        arm.pat.span.hi(),
+        arm.body.as_ref().unknown_error()?.span().lo(),
+    );
     rewrite_match_body(
         context,
-        arm.body.as_ref()?,
+        arm.body.as_ref().unknown_error()?,
         &lhs_str,
         shape,
         guard_str.contains('\n'),
@@ -381,7 +399,7 @@ fn rewrite_match_body(
     has_guard: bool,
     arrow_span: Span,
     is_last: bool,
-) -> Option<String> {
+) -> RewriteResult {
     let (extend, body) = flatten_arm_body(
         context,
         body,
@@ -402,7 +420,7 @@ fn rewrite_match_body(
             _ => " ",
         };
 
-        Some(format!("{} =>{}{}{}", pats_str, block_sep, body_str, comma))
+        Ok(format!("{} =>{}{}{}", pats_str, block_sep, body_str, comma))
     };
 
     let next_line_indent = if !is_block || is_empty_block {
@@ -429,7 +447,7 @@ fn rewrite_match_body(
         if comment_str.is_empty() {
             String::new()
         } else {
-            rewrite_comment(comment_str, false, shape, context.config)?
+            rewrite_comment(comment_str, false, shape, context.config).unknown_error()?
         }
     };
 
@@ -446,7 +464,7 @@ fn rewrite_match_body(
             result.push_str(&nested_indent_str);
             result.push_str(body_str);
             result.push_str(comma);
-            return Some(result);
+            return Ok(result);
         }
 
         let indent_str = shape.indent.to_string_with_newline(context.config);
@@ -489,7 +507,7 @@ fn rewrite_match_body(
         result.push_str(&block_sep);
         result.push_str(body_str);
         result.push_str(&body_suffix);
-        Some(result)
+        Ok(result)
     };
 
     // Let's try and get the arm body on the same line as the condition.
@@ -539,7 +557,7 @@ fn rewrite_match_body(
             combine_next_line_body(next_line_str)
         }
         (None, Some(ref next_line_str)) => combine_next_line_body(next_line_str),
-        (None, None) => None,
+        (None, None) => Err(RewriteError::Unknown),
         (Some(ref orig_str), _) => combine_orig_body(orig_str),
     }
 }
@@ -553,7 +571,7 @@ fn rewrite_guard(
     // the arm (excludes offset).
     pattern_width: usize,
     multiline_pattern: bool,
-) -> Option<String> {
+) -> RewriteResult {
     if let Some(ref guard) = *guard {
         // First try to fit the guard string on the same line as the pattern.
         // 4 = ` if `, 5 = ` => {`
@@ -562,9 +580,9 @@ fn rewrite_guard(
             .and_then(|s| s.sub_width(5));
         if !multiline_pattern {
             if let Some(cond_shape) = cond_shape {
-                if let Some(cond_str) = guard.rewrite(context, cond_shape) {
+                if let Ok(cond_str) = guard.rewrite_result(context, cond_shape) {
                     if !cond_str.contains('\n') || pattern_width <= context.config.tab_spaces() {
-                        return Some(format!(" if {cond_str}"));
+                        return Ok(format!(" if {cond_str}"));
                     }
                 }
             }
@@ -574,20 +592,16 @@ fn rewrite_guard(
         // 3 = `if `, 5 = ` => {`
         let cond_shape = Shape::indented(shape.indent.block_indent(context.config), context.config)
             .offset_left(3)
-            .and_then(|s| s.sub_width(5));
-        if let Some(cond_shape) = cond_shape {
-            if let Some(cond_str) = guard.rewrite(context, cond_shape) {
-                return Some(format!(
-                    "{}if {}",
-                    cond_shape.indent.to_string_with_newline(context.config),
-                    cond_str
-                ));
-            }
-        }
-
-        None
+            .and_then(|s| s.sub_width(5))
+            .max_width_error(shape.width, guard.span)?;
+        let cond_str = guard.rewrite_result(context, cond_shape)?;
+        Ok(format!(
+            "{}if {}",
+            cond_shape.indent.to_string_with_newline(context.config),
+            cond_str
+        ))
     } else {
-        Some(String::new())
+        Ok(String::new())
     }
 }
 

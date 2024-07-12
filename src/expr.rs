@@ -183,7 +183,7 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Match(ref cond, ref arms, kind) => {
-            rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs, kind)
+            rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs, kind).ok()
         }
         ast::ExprKind::Path(ref qself, ref path) => {
             rewrite_path(context, PathContext::Expr, qself, path, shape).ok()
