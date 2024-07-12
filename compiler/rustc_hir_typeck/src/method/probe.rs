@@ -1144,6 +1144,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         pick_diag_hints: &mut PickDiagHints<'b, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
+        let track_unstable_candidates = pick_diag_hints.unstable_candidates.is_some();
         self.steps
             .iter()
             // At this point we're considering the types to which the receiver can be converted,
@@ -1167,20 +1168,123 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .unwrap_or_else(|_| {
                         span_bug!(self.span, "{:?} was applicable but now isn't?", step.self_ty)
                     });
-                self.pick_by_value_method(step, self_ty, pick_diag_hints).or_else(|| {
-                    self.pick_autorefd_method(step, self_ty, hir::Mutability::Not, pick_diag_hints)
-                        .or_else(|| {
-                            self.pick_autorefd_method(
+
+                let by_value_pick = self.pick_by_value_method(step, self_ty, pick_diag_hints);
+
+                // Check for shadowing of a by-reference method by a by-value method (see comments on check_for_shadowing)
+                if let Some(by_value_pick) = by_value_pick {
+                    if let Ok(by_value_pick) = by_value_pick.as_ref() {
+                        if by_value_pick.kind == PickKind::InherentImplPick {
+                            if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                by_value_pick,
+                                step,
+                                self_ty,
+                                hir::Mutability::Not,
+                                track_unstable_candidates,
+                            ) {
+                                return Some(Err(e));
+                            }
+                            if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                by_value_pick,
                                 step,
                                 self_ty,
                                 hir::Mutability::Mut,
-                                pick_diag_hints,
-                            )
-                        })
-                        .or_else(|| self.pick_const_ptr_method(step, self_ty, pick_diag_hints))
-                        .or_else(|| self.pick_reborrow_pin_method(step, self_ty, pick_diag_hints))
-                })
+                                track_unstable_candidates,
+                            ) {
+                                return Some(Err(e));
+                            }
+                        }
+                    }
+                    return Some(by_value_pick);
+                }
+
+                let autoref_pick =
+                    self.pick_autorefd_method(step, self_ty, hir::Mutability::Not, pick_diag_hints);
+                // Check for shadowing of a by-mut-ref method by a by-reference method (see comments on check_for_shadowing)
+                if let Some(autoref_pick) = autoref_pick {
+                    if let Ok(autoref_pick) = autoref_pick.as_ref() {
+                        // Check we're not shadowing others
+                        if autoref_pick.kind == PickKind::InherentImplPick {
+                            if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                autoref_pick,
+                                step,
+                                self_ty,
+                                hir::Mutability::Mut,
+                                track_unstable_candidates,
+                            ) {
+                                return Some(Err(e));
+                            }
+                        }
+                    }
+                    return Some(autoref_pick);
+                }
+
+                // Note that no shadowing errors are produced from here on,
+                // as we consider const ptr methods.
+                // We allow new methods that take *mut T to shadow
+                // methods which took *const T, so there is no entry in
+                // this list for the results of `pick_const_ptr_method`.
+                // The reason is that the standard pointer cast method
+                // (on a mutable pointer) always already shadows the
+                // cast method (on a const pointer). So, if we added
+                // `pick_const_ptr_method` to this method, the anti-
+                // shadowing algorithm would always complain about
+                // the conflict between *const::cast and *mut::cast.
+                // In practice therefore this does constrain us:
+                // we cannot add new
+                //   self: *mut Self
+                // methods to types such as NonNull or anything else
+                // which implements Receiver, because this might in future
+                // shadow existing methods taking
+                //   self: *const NonNull<Self>
+                // in the pointee. In practice, methods taking raw pointers
+                // are rare, and it seems that it should be easily possible
+                // to avoid such compatibility breaks.
+                // We also don't check for reborrowed pin methods which
+                // may be shadowed; these also seem unlikely to occur.
+                self.pick_autorefd_method(step, self_ty, hir::Mutability::Mut, pick_diag_hints)
+                    .or_else(|| self.pick_const_ptr_method(step, self_ty, pick_diag_hints))
+                    .or_else(|| self.pick_reborrow_pin_method(step, self_ty, pick_diag_hints))
             })
+    }
+
+    /// Check for cases where arbitrary self types allows shadowing
+    /// of methods that might be a compatibility break. Specifically,
+    /// we have something like:
+    /// ```ignore (illustrative)
+    /// struct A;
+    /// impl A {
+    ///   fn foo(self: &NonNull<A>) {}
+    ///      // note this is by reference
+    /// }
+    /// ```
+    /// then we've come along and added this method to `NonNull`:
+    /// ```ignore (illustrative)
+    ///   fn foo(self)  // note this is by value
+    /// ```
+    /// Report an error in this case.
+    fn check_for_shadowed_autorefd_method(
+        &self,
+        _possible_shadower: &Pick<'tcx>,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+        mutbl: hir::Mutability,
+        track_unstable_candidates: bool,
+    ) -> Result<(), MethodError<'tcx>> {
+        // We don't want to remember any of the diagnostic hints from this
+        // shadow search, but we do need to provide Some/None for the
+        // unstable_candidates in order to reflect the behavior of the
+        // main search.
+        let mut pick_diag_hints = PickDiagHints {
+            unstable_candidates: if track_unstable_candidates { Some(Vec::new()) } else { None },
+            unsatisfied_predicates: &mut Vec::new(),
+        };
+        let _potentially_shadowed_pick =
+            self.pick_autorefd_method(step, self_ty, mutbl, &mut pick_diag_hints);
+
+        // At the moment, this function does no checks. A future
+        // commit will fill out the body here.
+        Ok(())
     }
 
     /// For each type `T` in the step list, this attempts to find a method where
