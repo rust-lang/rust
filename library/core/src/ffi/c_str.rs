@@ -282,7 +282,7 @@ impl CStr {
     pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
         // string with a NUL terminator less than `isize::MAX` from `ptr`.
-        let len = unsafe { const_strlen(ptr) };
+        let len = unsafe { strlen(ptr) };
 
         // SAFETY: The caller has provided a valid pointer with length less than
         // `isize::MAX`, so `from_raw_parts` is safe. The content remains valid
@@ -743,7 +743,7 @@ impl AsRef<CStr> for CStr {
 #[unstable(feature = "cstr_internals", issue = "none")]
 #[rustc_const_stable(feature = "const_cstr_from_ptr", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
-const unsafe fn const_strlen(ptr: *const c_char) -> usize {
+const unsafe fn strlen(ptr: *const c_char) -> usize {
     const fn strlen_ct(s: *const c_char) -> usize {
         let mut len = 0;
 
