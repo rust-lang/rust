@@ -677,16 +677,6 @@ impl<T> Arc<T> {
 }
 
 impl<T, A: Allocator> Arc<T, A> {
-    /// Returns a reference to the underlying allocator.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Arc::allocator(&a)` instead of `a.allocator()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn allocator(this: &Self) -> &A {
-        &this.alloc
-    }
     /// Constructs a new `Arc<T>` in the provided allocator.
     ///
     /// # Examples
@@ -1470,6 +1460,17 @@ impl<T: ?Sized> Arc<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Arc<T, A> {
+    /// Returns a reference to the underlying allocator.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Arc::allocator(&a)` instead of `a.allocator()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(this: &Self) -> &A {
+        &this.alloc
+    }
+
     /// Consumes the `Arc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Arc` using
@@ -2715,6 +2716,13 @@ impl<T: ?Sized> Weak<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Weak<T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        &self.alloc
+    }
+
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
