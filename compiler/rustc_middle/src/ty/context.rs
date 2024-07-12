@@ -59,6 +59,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
@@ -75,7 +76,7 @@ use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::SolverMode;
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
+use rustc_type_ir::{search_graph, CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
 use tracing::{debug, instrument};
 
 use std::assert_matches::assert_matches;
@@ -164,12 +165,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Clause = Clause<'tcx>;
     type Clauses = ty::Clauses<'tcx>;
 
-    type EvaluationCache = &'tcx solve::EvaluationCache<'tcx>;
+    type Tracked<T: fmt::Debug + Clone> = WithDepNode<T>;
+    fn mk_tracked<T: fmt::Debug + Clone>(
+        self,
+        data: T,
+        dep_node: DepNodeIndex,
+    ) -> Self::Tracked<T> {
+        WithDepNode::new(dep_node, data)
+    }
+    fn get_tracked<T: fmt::Debug + Clone>(self, tracked: &Self::Tracked<T>) -> T {
+        tracked.get(self)
+    }
 
-    fn evaluation_cache(self, mode: SolverMode) -> &'tcx solve::EvaluationCache<'tcx> {
+    fn with_global_cache<R>(
+        self,
+        mode: SolverMode,
+        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
+    ) -> R {
         match mode {
-            SolverMode::Normal => &self.new_solver_evaluation_cache,
-            SolverMode::Coherence => &self.new_solver_coherence_evaluation_cache,
+            SolverMode::Normal => f(&mut *self.new_solver_evaluation_cache.lock()),
+            SolverMode::Coherence => f(&mut *self.new_solver_coherence_evaluation_cache.lock()),
         }
     }
 
@@ -1283,8 +1298,8 @@ pub struct GlobalCtxt<'tcx> {
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
     /// Caches the results of goal evaluation in the new solver.
-    pub new_solver_evaluation_cache: solve::EvaluationCache<'tcx>,
-    pub new_solver_coherence_evaluation_cache: solve::EvaluationCache<'tcx>,
+    pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
+    pub new_solver_coherence_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
