@@ -225,7 +225,7 @@ enum Capturing {
 struct CaptureState {
     capturing: Capturing,
     replace_ranges: Vec<ReplaceRange>,
-    inner_attr_ranges: FxHashMap<AttrId, ReplaceRange>,
+    inner_attr_ranges: FxHashMap<AttrId, Range<u32>>,
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that

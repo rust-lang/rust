@@ -260,7 +260,7 @@ impl<'a> Parser<'a> {
         // Take the captured ranges for any inner attributes that we parsed.
         for inner_attr in ret.attrs().iter().filter(|a| a.style == ast::AttrStyle::Inner) {
             if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&inner_attr.id) {
-                inner_attr_replace_ranges.push(attr_range);
+                inner_attr_replace_ranges.push((attr_range, None));
             } else {
                 self.dcx().span_delayed_bug(inner_attr.span, "Missing token range for attribute");
             }
