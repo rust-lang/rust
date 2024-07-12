@@ -851,7 +851,6 @@ impl<'a> Parser<'a> {
             // lifetimes and ident params (including SelfUpper). These are validated later
             // for order, duplication, and whether they actually reference params.
             let use_span = self.prev_token.span;
-            self.psess.gated_spans.gate(sym::precise_capturing, use_span);
             let (args, args_span) = self.parse_precise_capturing_args()?;
             GenericBound::Use(args, use_span.to(args_span))
         } else {

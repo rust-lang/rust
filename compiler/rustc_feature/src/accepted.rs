@@ -309,6 +309,8 @@ declare_features! (
     (accepted, param_attrs, "1.39.0", Some(60406)),
     /// Allows parentheses in patterns.
     (accepted, pattern_parentheses, "1.31.0", Some(51087)),
+    /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
+    (accepted, precise_capturing, "CURRENT_RUSTC_VERSION", Some(123432)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
     /// Allows multi-segment paths in attributes and derives.
