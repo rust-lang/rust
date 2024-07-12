@@ -1424,12 +1424,15 @@ fn look_ahead() {
         look!(p, 1, token::Colon);
         look!(p, 2, token::Ident(sym::u32, raw_no));
         look!(p, 3, token::CloseDelim(Delimiter::Parenthesis));
-        // FIXME(nnethercote) If we lookahead any distance past a close delim
-        // we currently return that close delim.
-        look!(p, 4, token::CloseDelim(Delimiter::Parenthesis));
-        look!(p, 5, token::CloseDelim(Delimiter::Parenthesis));
-        look!(p, 6, token::CloseDelim(Delimiter::Parenthesis));
-        look!(p, 100, token::CloseDelim(Delimiter::Parenthesis));
+        look!(p, 4, token::OpenDelim(Delimiter::Brace));
+        look!(p, 5, token::Ident(sym_x, raw_no));
+        look!(p, 6, token::CloseDelim(Delimiter::Brace));
+        look!(p, 7, token::Ident(kw::Struct, raw_no));
+        look!(p, 8, token::Ident(sym_S, raw_no));
+        look!(p, 9, token::Semi);
+        look!(p, 10, token::Eof);
+        look!(p, 11, token::Eof);
+        look!(p, 100, token::Eof);
 
         // Move forward to the `;`.
         for _ in 0..9 {
@@ -1454,12 +1457,13 @@ fn look_ahead() {
     });
 }
 
-/// FIXME(nnethercote) Currently there is some buggy behaviour when using
-/// `look_ahead` not within the outermost token stream, as this test shows.
+/// There used to be some buggy behaviour when using `look_ahead` not within
+/// the outermost token stream, which this test covers.
 #[test]
 fn look_ahead_non_outermost_stream() {
     create_default_session_globals_then(|| {
         let sym_f = Symbol::intern("f");
+        let sym_x = Symbol::intern("x");
         #[allow(non_snake_case)]
         let sym_S = Symbol::intern("S");
         let raw_no = IdentIsRaw::No;
@@ -1475,20 +1479,21 @@ fn look_ahead_non_outermost_stream() {
         look!(p, 0, token::Ident(kw::Fn, raw_no));
         look!(p, 1, token::Ident(sym_f, raw_no));
         look!(p, 2, token::OpenDelim(Delimiter::Parenthesis));
-        // FIXME(nnethercote) The current code incorrectly skips the `x: u32)`
-        // to the next token tree.
-        look!(p, 3, token::OpenDelim(Delimiter::Brace));
-        // FIXME(nnethercote) The current code incorrectly skips the `x }`
-        // to the next token tree.
-        look!(p, 4, token::Ident(kw::Struct, raw_no));
-        look!(p, 5, token::Ident(sym_S, raw_no));
-        look!(p, 6, token::Semi);
-        // FIXME(nnethercote) If we lookahead any distance past a close delim
-        // we currently return that close delim.
-        look!(p, 7, token::CloseDelim(Delimiter::Brace));
-        look!(p, 8, token::CloseDelim(Delimiter::Brace));
+        look!(p, 3, token::Ident(sym_x, raw_no));
+        look!(p, 4, token::Colon);
+        look!(p, 5, token::Ident(sym::u32, raw_no));
+        look!(p, 6, token::CloseDelim(Delimiter::Parenthesis));
+        look!(p, 7, token::OpenDelim(Delimiter::Brace));
+        look!(p, 8, token::Ident(sym_x, raw_no));
         look!(p, 9, token::CloseDelim(Delimiter::Brace));
-        look!(p, 100, token::CloseDelim(Delimiter::Brace));
+        look!(p, 10, token::Ident(kw::Struct, raw_no));
+        look!(p, 11, token::Ident(sym_S, raw_no));
+        look!(p, 12, token::Semi);
+        look!(p, 13, token::CloseDelim(Delimiter::Brace));
+        // Any lookahead past the end of the token stream returns `Eof`.
+        look!(p, 14, token::Eof);
+        look!(p, 15, token::Eof);
+        look!(p, 100, token::Eof);
     });
 }
 
