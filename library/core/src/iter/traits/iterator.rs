@@ -4073,7 +4073,7 @@ pub trait Iterator {
     /// Example:
     /// ```
     /// #![feature(iter_contains)]
-    /// assert!([1, 2, 3].iter().contains(&1));
+    /// assert!([1, 2, 3].iter().map(|&x| x * 3).contains(&6));
     /// assert!(![1, 2, 3].iter().contains(&4));
     /// // You can check if a String is in a string slice iterator.
     /// assert!(["a", "b", "c"].iter().contains(&"b".to_owned()));
