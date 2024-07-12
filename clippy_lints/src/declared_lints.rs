@@ -600,6 +600,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::pathbuf_init_then_push::PATHBUF_INIT_THEN_PUSH_INFO,
     crate::pattern_type_mismatch::PATTERN_TYPE_MISMATCH_INFO,
     crate::permissions_set_readonly_false::PERMISSIONS_SET_READONLY_FALSE_INFO,
+    crate::pointers_in_nomem_asm_block::POINTERS_IN_NOMEM_ASM_BLOCK_INFO,
     crate::precedence::PRECEDENCE_INFO,
     crate::ptr::CMP_NULL_INFO,
     crate::ptr::INVALID_NULL_PTR_USAGE_INFO,

@@ -287,6 +287,7 @@ mod pass_by_ref_or_value;
 mod pathbuf_init_then_push;
 mod pattern_type_mismatch;
 mod permissions_set_readonly_false;
+mod pointers_in_nomem_asm_block;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
@@ -935,5 +936,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(byte_char_slices::ByteCharSlice));
     store.register_early_pass(|| Box::new(cfg_not_test::CfgNotTest));
     store.register_late_pass(|_| Box::new(zombie_processes::ZombieProcesses));
+    store.register_late_pass(|_| Box::new(pointers_in_nomem_asm_block::PointersInNomemAsmBlock));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
