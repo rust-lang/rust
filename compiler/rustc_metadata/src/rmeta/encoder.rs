@@ -1496,6 +1496,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables
                     .is_type_alias_impl_trait
                     .set(def_id.index, self.tcx.is_type_alias_impl_trait(def_id));
+                self.encode_precise_capturing_args(def_id);
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
@@ -1635,11 +1636,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.tables.assumed_wf_types_for_rpitit[def_id]
                         <- self.tcx.assumed_wf_types_for_rpitit(def_id)
                 );
+                self.encode_precise_capturing_args(def_id);
             }
         }
         if item.is_effects_desugaring {
             self.tables.is_effects_desugaring.set(def_id.index, true);
         }
+    }
+
+    fn encode_precise_capturing_args(&mut self, def_id: DefId) {
+        let Some(precise_capturing_args) = self.tcx.rendered_precise_capturing_args(def_id) else {
+            return;
+        };
+
+        record_array!(self.tables.rendered_precise_capturing_args[def_id] <- precise_capturing_args);
     }
 
     fn encode_mir(&mut self) {
