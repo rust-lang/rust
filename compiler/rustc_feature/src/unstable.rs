@@ -640,6 +640,8 @@ declare_features! (
     (unstable, unsized_tuple_coercion, "1.20.0", Some(42877)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
+    /// Allows use of x86 `AMX` target-feature attributes and intrinsics
+    (unstable, x86_amx_intrinsics, "CURRENT_RUSTC_VERSION", Some(126622)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
