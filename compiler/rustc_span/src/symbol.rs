@@ -2076,6 +2076,7 @@ symbols! {
         x87_reg,
         xer,
         xmm_reg,
+        xop_target_feature,
         yeet_desugar_details,
         yeet_expr,
         yes,
