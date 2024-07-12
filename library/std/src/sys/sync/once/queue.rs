@@ -153,7 +153,7 @@ impl Once {
                     panic!("Once instance has previously been poisoned");
                 }
                 _ => {
-                    current = wait(&self.state_and_queue, current);
+                    current = wait(&self.state_and_queue, current, !ignore_poisoning);
                 }
             }
         }
@@ -216,14 +216,18 @@ impl Once {
                     // All other values must be RUNNING with possibly a
                     // pointer to the waiter queue in the more significant bits.
                     assert!(state == RUNNING);
-                    current = wait(&self.state_and_queue, current);
+                    current = wait(&self.state_and_queue, current, true);
                 }
             }
         }
     }
 }
 
-fn wait(state_and_queue: &AtomicPtr<()>, mut current: StateAndQueue) -> StateAndQueue {
+fn wait(
+    state_and_queue: &AtomicPtr<()>,
+    mut current: StateAndQueue,
+    return_on_poisoned: bool,
+) -> StateAndQueue {
     let node = &Waiter {
         thread: Cell::new(Some(thread::current())),
         signaled: AtomicBool::new(false),
@@ -235,7 +239,7 @@ fn wait(state_and_queue: &AtomicPtr<()>, mut current: StateAndQueue) -> StateAnd
         let queue = to_queue(current);
 
         // If initialization has finished, return.
-        if matches!(state, POISONED | COMPLETE) {
+        if state == COMPLETE || (return_on_poisoned && state == POISONED) {
             return current;
         }
 
