@@ -2057,7 +2057,7 @@ extern "C" {
         AddrOpsCount: c_uint,
         DL: &'a DILocation,
         InsertAtEnd: &'a BasicBlock,
-    ) -> &'a Value;
+    );
 
     pub fn LLVMRustDIBuilderCreateEnumerator<'a>(
         Builder: &DIBuilder<'a>,
