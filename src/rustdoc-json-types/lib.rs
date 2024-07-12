@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 31;
+pub const FORMAT_VERSION: u32 = 32;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -538,6 +538,8 @@ pub enum GenericBound {
         modifier: TraitBoundModifier,
     },
     Outlives(String),
+    /// `use<'a, T>` precise-capturing bound syntax
+    Use(Vec<String>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
