@@ -41,8 +41,9 @@ macro_rules! synchronized {
 }
 
 fn main() {
-    // The conflict occurs one one single location but the example involves
-    // lazily initialized permissions.
+    // The conflict occurs on one single location but the example involves
+    // lazily initialized permissions. We will use `&mut Cell<()>` references
+    // to `data` to achieve this.
     let mut data = 0u8;
     let ptr = SendPtr(std::ptr::addr_of_mut!(data));
     let barrier = Arc::new(Barrier::new(2));
