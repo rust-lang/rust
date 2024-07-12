@@ -593,7 +593,7 @@ pub unsafe fn _mm256_broadcastsd_pd(a: __m128d) -> __m256d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastsi128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm_broadcastsi128_si256(a: __m128i) -> __m256i {
     let zero = _mm_setzero_si128();
     let ret = simd_shuffle!(a.as_i64x2(), zero.as_i64x2(), [0, 1, 0, 1]);
@@ -3145,7 +3145,7 @@ pub unsafe fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx,avx2")]
 #[cfg_attr(test, assert_instr(vmovntdqa))]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm256_stream_load_si256(mem_addr: *const __m256i) -> __m256i {
     let dst: __m256i;
     crate::arch::asm!(

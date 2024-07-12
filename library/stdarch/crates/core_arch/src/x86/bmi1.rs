@@ -93,7 +93,7 @@ pub unsafe fn _blsr_u32(x: u32) -> u32 {
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _tzcnt_u16(x: u16) -> u16 {
     x.trailing_zeros() as u16
 }

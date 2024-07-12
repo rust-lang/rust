@@ -1150,7 +1150,7 @@ pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse,sse4.1")]
 #[cfg_attr(test, assert_instr(movntdqa))]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm_stream_load_si128(mem_addr: *const __m128i) -> __m128i {
     let dst: __m128i;
     crate::arch::asm!(

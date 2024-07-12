@@ -2595,7 +2595,7 @@ pub unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: __m128d) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storeu_si16)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm_storeu_si16(mem_addr: *mut u8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut i16, simd_extract(a.as_i16x8(), 0))
 }
@@ -2607,7 +2607,7 @@ pub unsafe fn _mm_storeu_si16(mem_addr: *mut u8, a: __m128i) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storeu_si32)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm_storeu_si32(mem_addr: *mut u8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut i32, simd_extract(a.as_i32x4(), 0))
 }
@@ -2619,7 +2619,7 @@ pub unsafe fn _mm_storeu_si32(mem_addr: *mut u8, a: __m128i) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storeu_si64)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm_storeu_si64(mem_addr: *mut u8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut i64, simd_extract(a.as_i64x2(), 0))
 }
@@ -2756,7 +2756,7 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si16)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm_loadu_si16(mem_addr: *const u8) -> __m128i {
     transmute(i16x8::new(
         ptr::read_unaligned(mem_addr as *const i16),
@@ -2777,7 +2777,7 @@ pub unsafe fn _mm_loadu_si16(mem_addr: *const u8) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si32)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm_loadu_si32(mem_addr: *const u8) -> __m128i {
     transmute(i32x4::new(
         ptr::read_unaligned(mem_addr as *const i32),

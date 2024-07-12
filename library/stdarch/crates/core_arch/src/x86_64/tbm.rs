@@ -29,7 +29,7 @@ extern "C" {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(bextr, CONTROL = 0x0404))]
 #[rustc_legacy_const_generics(1)]
-#[unstable(feature = "simd_x86_updates", issue = "126936")]
+#[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _bextri_u64<const CONTROL: u64>(a: u64) -> u64 {
     static_assert_uimm_bits!(CONTROL, 16);
     unsafe { bextri_u64(a, CONTROL) }
