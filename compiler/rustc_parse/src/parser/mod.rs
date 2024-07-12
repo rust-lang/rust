@@ -1118,41 +1118,37 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        if let Some(&(_, span, _, delim)) = self.token_cursor.stack.last()
-            && delim != Delimiter::Invisible
-        {
-            // We are not in the outermost token stream, and the token stream
-            // we are in has non-skipped delimiters. Look for skipped
-            // delimiters in the lookahead range.
-            let tree_cursor = &self.token_cursor.tree_cursor;
-            let all_normal = (0..dist).all(|i| {
-                let token = tree_cursor.look_ahead(i);
-                !matches!(token, Some(TokenTree::Delimited(.., Delimiter::Invisible, _)))
-            });
-            if all_normal {
-                // There were no skipped delimiters. Do lookahead by plain indexing.
-                return match tree_cursor.look_ahead(dist - 1) {
-                    Some(tree) => {
-                        // Indexing stayed within the current token stream.
-                        match tree {
-                            TokenTree::Token(token, _) => looker(token),
-                            TokenTree::Delimited(dspan, _, delim, _) => {
-                                looker(&Token::new(token::OpenDelim(*delim), dspan.open))
-                            }
+        // Typically around 98% of the `dist > 0` cases have `dist == 1`, so we
+        // have a fast special case for that.
+        if dist == 1 {
+            // The index is zero because the tree cursor's index always points
+            // to the next token to be gotten.
+            match self.token_cursor.tree_cursor.look_ahead(0) {
+                Some(tree) => {
+                    // Indexing stayed within the current token tree.
+                    return match tree {
+                        TokenTree::Token(token, _) => looker(token),
+                        TokenTree::Delimited(dspan, _, delim, _) => {
+                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
                         }
+                    };
+                }
+                None => {
+                    // The tree cursor lookahead went (one) past the end of the
+                    // current token tree. Try to return a close delimiter.
+                    if let Some(&(_, span, _, delim)) = self.token_cursor.stack.last()
+                        && delim != Delimiter::Invisible
+                    {
+                        // We are not in the outermost token stream, so we have
+                        // delimiters. Also, those delimiters are not skipped.
+                        return looker(&Token::new(token::CloseDelim(delim), span.close));
                     }
-                    None => {
-                        // Indexing went past the end of the current token
-                        // stream. Use the close delimiter, no matter how far
-                        // ahead `dist` went.
-                        looker(&Token::new(token::CloseDelim(delim), span.close))
-                    }
-                };
+                }
             }
         }
 
-        // We are in a more complex case. Just clone the token cursor and use
-        // `next`, skipping delimiters as necessary. Slow but simple.
+        // Just clone the token cursor and use `next`, skipping delimiters as
+        // necessary. Slow but simple.
         let mut cursor = self.token_cursor.clone();
         let mut i = 0;
         let mut token = Token::dummy();
