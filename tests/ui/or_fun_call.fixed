@@ -318,4 +318,16 @@ fn host_effect() {
     Add::<i32>::add(1, 1).add(i32::MIN);
 }
 
+mod issue_10228 {
+    struct Entry;
+
+    impl Entry {
+        fn or_insert(self, _default: i32) {}
+        fn or_default(self) {
+            // Don't lint, suggested code is an infinite recursion
+            self.or_insert(Default::default())
+        }
+    }
+}
+
 fn main() {}

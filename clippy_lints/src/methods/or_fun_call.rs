@@ -70,18 +70,31 @@ pub(super) fn check<'tcx>(
         };
 
         let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
-        let has_suggested_method = receiver_ty.ty_adt_def().is_some_and(|adt_def| {
+        let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {
             cx.tcx
                 .inherent_impls(adt_def.did())
                 .into_iter()
                 .flatten()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
-                .any(|assoc| {
-                    assoc.fn_has_self_parameter
+                .find_map(|assoc| {
+                    if assoc.fn_has_self_parameter
                         && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
+                    {
+                        Some(assoc.def_id)
+                    } else {
+                        None
+                    }
                 })
-        });
-        if !has_suggested_method {
+        }) else {
+            return false;
+        };
+        let in_sugg_method_implementation = {
+            matches!(
+                suggested_method_def_id.as_local(),
+                Some(local_def_id) if local_def_id == cx.tcx.hir().get_parent_item(receiver.hir_id).def_id
+            )
+        };
+        if in_sugg_method_implementation {
             return false;
         }
 
