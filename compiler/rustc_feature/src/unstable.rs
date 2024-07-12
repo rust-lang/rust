@@ -642,6 +642,8 @@ declare_features! (
     (unstable, used_with_arg, "1.60.0", Some(93798)),
     /// Allows use of x86 `AMX` target-feature attributes and intrinsics
     (unstable, x86_amx_intrinsics, "CURRENT_RUSTC_VERSION", Some(126622)),
+    /// Allows use of the `xop` target-feature
+    (unstable, xop_target_feature, "CURRENT_RUSTC_VERSION", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

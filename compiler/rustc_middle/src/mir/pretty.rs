@@ -1545,6 +1545,9 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> std::fmt::Display
             // We are done.
             return write!(w, " {{}}");
         }
+        if tcx.sess.opts.unstable_opts.dump_mir_exclude_alloc_bytes {
+            return write!(w, " {{ .. }}");
+        }
         // Write allocation bytes.
         writeln!(w, " {{")?;
         write_allocation_bytes(tcx, alloc, w, "    ")?;

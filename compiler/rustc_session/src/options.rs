@@ -1687,6 +1687,8 @@ options! {
         (default: no)"),
     dump_mir_dir: String = ("mir_dump".to_string(), parse_string, [UNTRACKED],
         "the directory the MIR is dumped into (default: `mir_dump`)"),
+    dump_mir_exclude_alloc_bytes: bool = (false, parse_bool, [UNTRACKED],
+        "exclude the raw bytes of allocations when dumping MIR (used in tests) (default: no)"),
     dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
         "exclude the pass number when dumping MIR (used in tests) (default: no)"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],

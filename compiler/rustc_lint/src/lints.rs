@@ -81,6 +81,8 @@ pub enum BuiltinUnsafe {
     AllowInternalUnsafe,
     #[diag(lint_builtin_unsafe_block)]
     UnsafeBlock,
+    #[diag(lint_builtin_unsafe_extern_block)]
+    UnsafeExternBlock,
     #[diag(lint_builtin_unsafe_trait)]
     UnsafeTrait,
     #[diag(lint_builtin_unsafe_impl)]
@@ -2047,10 +2049,32 @@ pub struct UnitBindingsDiag {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_builtin_asm_labels)]
-#[help]
-#[note]
-pub struct BuiltinNamedAsmLabel;
+pub enum InvalidAsmLabel {
+    #[diag(lint_invalid_asm_label_named)]
+    #[help]
+    #[note]
+    Named {
+        #[note(lint_invalid_asm_label_no_span)]
+        missing_precise_span: bool,
+    },
+    #[diag(lint_invalid_asm_label_format_arg)]
+    #[help]
+    #[note(lint_note1)]
+    #[note(lint_note2)]
+    FormatArg {
+        #[note(lint_invalid_asm_label_no_span)]
+        missing_precise_span: bool,
+    },
+    #[diag(lint_invalid_asm_label_binary)]
+    #[note]
+    Binary {
+        #[note(lint_invalid_asm_label_no_span)]
+        missing_precise_span: bool,
+        // hack to get a label on the whole span, must match the emitted span
+        #[label]
+        span: Span,
+    },
+}
 
 #[derive(Subdiagnostic)]
 pub enum UnexpectedCfgCargoHelp {

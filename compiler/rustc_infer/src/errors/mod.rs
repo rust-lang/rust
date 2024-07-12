@@ -1581,3 +1581,32 @@ pub enum ObligationCauseFailureCode {
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
 }
+
+#[derive(Subdiagnostic)]
+pub enum AddPreciseCapturing {
+    #[suggestion(
+        infer_precise_capturing_new,
+        style = "verbose",
+        code = " + use<{concatenated_bounds}>",
+        applicability = "machine-applicable"
+    )]
+    New {
+        #[primary_span]
+        span: Span,
+        new_lifetime: Symbol,
+        concatenated_bounds: String,
+    },
+    #[suggestion(
+        infer_precise_capturing_existing,
+        style = "verbose",
+        code = "{pre}{new_lifetime}{post}",
+        applicability = "machine-applicable"
+    )]
+    Existing {
+        #[primary_span]
+        span: Span,
+        new_lifetime: Symbol,
+        pre: &'static str,
+        post: &'static str,
+    },
+}

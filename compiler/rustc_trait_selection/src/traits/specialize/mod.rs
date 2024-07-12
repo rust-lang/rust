@@ -18,9 +18,7 @@ use crate::error_reporting::traits::to_pretty_impl_header;
 use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{
-    self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
-};
+use crate::traits::{coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -219,19 +217,17 @@ fn fulfill_implication<'tcx>(
         param_env, source_trait_ref, target_impl
     );
 
-    let source_trait_ref =
-        match traits::fully_normalize(infcx, ObligationCause::dummy(), param_env, source_trait_ref)
-        {
-            Ok(source_trait_ref) => source_trait_ref,
-            Err(_errors) => {
-                infcx.dcx().span_delayed_bug(
-                    infcx.tcx.def_span(source_impl),
-                    format!("failed to fully normalize {source_trait_ref}"),
-                );
-                source_trait_ref
-            }
-        };
+    let ocx = ObligationCtxt::new(infcx);
+    let source_trait_ref = ocx.normalize(&ObligationCause::dummy(), param_env, source_trait_ref);
 
+    if !ocx.select_all_or_error().is_empty() {
+        infcx.dcx().span_delayed_bug(
+            infcx.tcx.def_span(source_impl),
+            format!("failed to fully normalize {source_trait_ref}"),
+        );
+    }
+
+    let source_trait_ref = infcx.resolve_vars_if_possible(source_trait_ref);
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
     let selcx = SelectionContext::new(infcx);
@@ -253,9 +249,6 @@ fn fulfill_implication<'tcx>(
         return Err(());
     };
 
-    // Needs to be `in_snapshot` because this function is used to rebase
-    // generic parameters, which may happen inside of a select within a probe.
-    let ocx = ObligationCtxt::new(infcx);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
     ocx.register_obligations(obligations.chain(more_obligations));

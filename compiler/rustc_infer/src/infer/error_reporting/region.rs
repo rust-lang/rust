@@ -1,5 +1,6 @@
 use std::iter;
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
     struct_span_code_err, Applicability, Diag, Subdiagnostic, E0309, E0310, E0311, E0495,
 };
@@ -12,7 +13,7 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_span::symbol::kw;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
 use rustc_type_ir::Upcast as _;
 
 use super::nice_region_error::find_anon_type;
@@ -1201,17 +1202,21 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
                 "",
             );
             if let Some(reg_info) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
-                let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
-                nice_region_error::suggest_new_region_bound(
-                    tcx,
-                    &mut err,
-                    fn_returns,
-                    hidden_region.to_string(),
-                    None,
-                    format!("captures `{hidden_region}`"),
-                    None,
-                    Some(reg_info.def_id),
-                )
+                if infcx.tcx.features().precise_capturing {
+                    suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
+                } else {
+                    let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
+                    nice_region_error::suggest_new_region_bound(
+                        tcx,
+                        &mut err,
+                        fn_returns,
+                        hidden_region.to_string(),
+                        None,
+                        format!("captures `{hidden_region}`"),
+                        None,
+                        Some(reg_info.def_id),
+                    )
+                }
             }
         }
         ty::RePlaceholder(_) => {
@@ -1256,4 +1261,96 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
     }
 
     err
+}
+
+fn suggest_precise_capturing<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    opaque_def_id: LocalDefId,
+    captured_lifetime: ty::Region<'tcx>,
+    diag: &mut Diag<'_>,
+) {
+    let hir::OpaqueTy { bounds, .. } =
+        tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
+
+    let new_lifetime = Symbol::intern(&captured_lifetime.to_string());
+
+    if let Some((args, span)) = bounds.iter().find_map(|bound| match bound {
+        hir::GenericBound::Use(args, span) => Some((args, span)),
+        _ => None,
+    }) {
+        let last_lifetime_span = args.iter().rev().find_map(|arg| match arg {
+            hir::PreciseCapturingArg::Lifetime(lt) => Some(lt.ident.span),
+            _ => None,
+        });
+
+        let first_param_span = args.iter().find_map(|arg| match arg {
+            hir::PreciseCapturingArg::Param(p) => Some(p.ident.span),
+            _ => None,
+        });
+
+        let (span, pre, post) = if let Some(last_lifetime_span) = last_lifetime_span {
+            (last_lifetime_span.shrink_to_hi(), ", ", "")
+        } else if let Some(first_param_span) = first_param_span {
+            (first_param_span.shrink_to_lo(), "", ", ")
+        } else {
+            // If we have no args, then have `use<>` and need to fall back to using
+            // span math. This sucks, but should be reliable due to the construction
+            // of the `use<>` span.
+            (span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(), "", "")
+        };
+
+        diag.subdiagnostic(errors::AddPreciseCapturing::Existing { span, new_lifetime, pre, post });
+    } else {
+        let mut captured_lifetimes = FxIndexSet::default();
+        let mut captured_non_lifetimes = FxIndexSet::default();
+
+        let variances = tcx.variances_of(opaque_def_id);
+        let mut generics = tcx.generics_of(opaque_def_id);
+        loop {
+            for param in &generics.own_params {
+                if variances[param.index as usize] == ty::Bivariant {
+                    continue;
+                }
+
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => {
+                        captured_lifetimes.insert(param.name);
+                    }
+                    ty::GenericParamDefKind::Type { synthetic: true, .. } => {
+                        // FIXME: We can't provide a good suggestion for
+                        // `use<...>` if we have an APIT. Bail for now.
+                        return;
+                    }
+                    ty::GenericParamDefKind::Type { .. }
+                    | ty::GenericParamDefKind::Const { .. } => {
+                        captured_non_lifetimes.insert(param.name);
+                    }
+                }
+            }
+
+            if let Some(parent) = generics.parent {
+                generics = tcx.generics_of(parent);
+            } else {
+                break;
+            }
+        }
+
+        if !captured_lifetimes.insert(new_lifetime) {
+            // Uh, strange. This lifetime appears to already be captured...
+            return;
+        }
+
+        let concatenated_bounds = captured_lifetimes
+            .into_iter()
+            .chain(captured_non_lifetimes)
+            .map(|sym| sym.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        diag.subdiagnostic(errors::AddPreciseCapturing::New {
+            span: tcx.def_span(opaque_def_id).shrink_to_hi(),
+            new_lifetime,
+            concatenated_bounds,
+        });
+    }
 }
