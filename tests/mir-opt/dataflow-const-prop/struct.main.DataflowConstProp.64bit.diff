@@ -112,7 +112,7 @@
           _9 = (_10.2: &[f32]);
           StorageDead(_10);
           StorageLive(_14);
-          _14 = const {ALLOC4: &&SmallStruct};
+          _14 = const {ALLOC0: &&SmallStruct};
           _31 = deref_copy (*_14);
           StorageLive(_11);
           _32 = deref_copy (*_14);
@@ -149,7 +149,7 @@
           _21 = (_22.2: &[f32]);
           StorageDead(_22);
           StorageLive(_26);
-          _26 = const {ALLOC5: &&BigStruct};
+          _26 = const {ALLOC1: &&BigStruct};
           _35 = deref_copy (*_26);
           StorageLive(_23);
           _36 = deref_copy (*_26);
@@ -197,51 +197,31 @@
           StorageDead(_1);
           return;
       }
-+ }
+  }
+  
++ ALLOC2 (size: 8, align: 4) { .. }
 + 
-+ ALLOC6 (size: 8, align: 4) {
-+     01 00 00 00 23 00 00 00                         │ ....#...
-+ }
++ ALLOC3 (size: 8, align: 4) { .. }
 + 
-+ ALLOC7 (size: 8, align: 4) {
-+     01 00 00 00 23 00 00 00                         │ ....#...
-+ }
++ ALLOC4 (size: 8, align: 4) { .. }
 + 
-+ ALLOC8 (size: 8, align: 4) {
-+     01 00 00 00 23 00 00 00                         │ ....#...
-+ }
++ ALLOC5 (size: 8, align: 4) { .. }
 + 
-+ ALLOC9 (size: 8, align: 4) {
-+     01 00 00 00 01 00 00 00                         │ ........
-+ }
++ ALLOC6 (size: 4, align: 4) { .. }
 + 
-+ ALLOC10 (size: 4, align: 4) {
-+     01 00 00 00                                     │ ....
-  }
+  ALLOC1 (static: BIG_STAT, size: 8, align: 8) { .. }
   
-  ALLOC5 (static: BIG_STAT, size: 8, align: 8) {
-      ╾ALLOC0<imm>╼                         │ ╾──────╼
-  }
+- ALLOC2 (size: 32, align: 8) { .. }
++ ALLOC7 (size: 32, align: 8) { .. }
   
-  ALLOC0 (size: 32, align: 8) {
-      0x00 │ 01 00 00 00 23 00 00 00 ╾ALLOC1<imm>╼ │ ....#...╾──────╼
-      0x10 │ 02 00 00 00 00 00 00 00 00 00 a4 42 __ __ __ __ │ ...........B░░░░
-  }
+- ALLOC3 (size: 8, align: 4) { .. }
++ ALLOC8 (size: 8, align: 4) { .. }
   
-  ALLOC1 (size: 8, align: 4) {
-      00 00 34 42 00 00 90 42                         │ ..4B...B
-  }
+  ALLOC0 (static: SMALL_STAT, size: 8, align: 8) { .. }
   
-  ALLOC4 (static: SMALL_STAT, size: 8, align: 8) {
-      ╾ALLOC2<imm>╼                         │ ╾──────╼
-  }
+- ALLOC4 (size: 32, align: 8) { .. }
++ ALLOC9 (size: 32, align: 8) { .. }
   
-  ALLOC2 (size: 32, align: 8) {
-      0x00 │ 00 00 00 00 __ __ __ __ ╾ALLOC3<imm>╼ │ ....░░░░╾──────╼
-      0x10 │ 01 00 00 00 00 00 00 00 00 00 10 41 __ __ __ __ │ ...........A░░░░
-  }
-  
-  ALLOC3 (size: 4, align: 4) {
-      00 00 50 41                                     │ ..PA
-  }
+- ALLOC5 (size: 4, align: 4) { .. }
++ ALLOC10 (size: 4, align: 4) { .. }
   
