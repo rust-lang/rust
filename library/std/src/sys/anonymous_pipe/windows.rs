@@ -4,6 +4,7 @@ use crate::{
     os::windows::io::{
         AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
     },
+    process::Stdio,
     sys::{
         handle::Handle,
         pipe::{anon_pipe, AnonPipe, Pipes},

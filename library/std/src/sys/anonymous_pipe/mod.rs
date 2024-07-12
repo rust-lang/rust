@@ -8,7 +8,7 @@
 //! # }
 //! ```
 
-use crate::{io, process::Stdio, sys::pipe::AnonPipe};
+use crate::{io, sys::pipe::AnonPipe};
 
 /// Create annoymous pipe that is close-on-exec and blocking.
 #[unstable(feature = "anonymous_pipe", issue = "127154")]

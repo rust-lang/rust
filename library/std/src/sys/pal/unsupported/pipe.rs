@@ -1,7 +1,15 @@
-use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::{
+    fmt,
+    io::{self, BorrowedCursor, IoSlice, IoSliceMut},
+};
 
-#[derive(Debug)]
 pub struct AnonPipe(!);
+
+impl fmt::Debug for AnonPipe {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0
+    }
+}
 
 impl AnonPipe {
     pub fn try_clone(&self) -> io::Result<Self> {
