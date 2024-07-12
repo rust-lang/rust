@@ -466,21 +466,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     borrow_removal_span,
                 });
                 return true;
-            } else if let Some((deref_ty, _)) =
-                self.autoderef(expr.span, found_ty_inner).silence_errors().nth(1)
-                && self.can_eq(self.param_env, deref_ty, peeled)
-                && error_tys_equate_as_ref
-            {
-                let sugg = prefix_wrap(".as_deref()");
-                err.subdiagnostic(errors::SuggestConvertViaMethod {
-                    span: expr.span.shrink_to_hi(),
-                    sugg,
-                    expected,
-                    found,
-                    borrow_removal_span,
-                });
-                return true;
-            } else if let ty::Adt(adt, _) = found_ty_inner.peel_refs().kind()
+            } else if let ty::Ref(_, peeled_found_ty, _) = found_ty_inner.kind()
+                && let ty::Adt(adt, _) = peeled_found_ty.peel_refs().kind()
                 && self.tcx.is_lang_item(adt.did(), LangItem::String)
                 && peeled.is_str()
                 // `Result::map`, conversely, does not take ref of the error type.
@@ -496,12 +483,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
                 return true;
+            } else {
+                if !error_tys_equate_as_ref {
+                    return false;
+                }
+                let mut steps = self.autoderef(expr.span, found_ty_inner).silence_errors();
+                if let Some((deref_ty, _)) = steps.nth(1)
+                    && self.can_eq(self.param_env, deref_ty, peeled)
+                {
+                    let sugg = prefix_wrap(".as_deref()");
+                    err.subdiagnostic(errors::SuggestConvertViaMethod {
+                        span: expr.span.shrink_to_hi(),
+                        sugg,
+                        expected,
+                        found,
+                        borrow_removal_span,
+                    });
+                    return true;
+                }
+                for (deref_ty, n_step) in steps {
+                    if self.can_eq(self.param_env, deref_ty, peeled) {
+                        let explicit_deref = "*".repeat(n_step);
+                        let sugg = prefix_wrap(&format!(".map(|v| &{explicit_deref}v)"));
+                        err.subdiagnostic(errors::SuggestConvertViaMethod {
+                            span: expr.span.shrink_to_hi(),
+                            sugg,
+                            expected,
+                            found,
+                            borrow_removal_span,
+                        });
+                        return true;
+                    }
+                }
             }
         }
 
         false
     }
 
+    /// If `ty` is `Option<T>`, returns `T, T, None`.
+    /// If `ty` is `Result<T, E>`, returns `T, T, Some(E, E)`.
+    /// Otherwise, returns `None`.
     fn deconstruct_option_or_result(
         &self,
         found_ty: Ty<'tcx>,
