@@ -7,6 +7,11 @@ use crate::build::matches::{FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// Builds and returns [`MatchPair`] trees, one for each pattern in
+    /// `subpatterns`, representing the fields of a [`PatKind::Variant`] or
+    /// [`PatKind::Leaf`].
+    ///
+    /// Used internally by [`MatchPair::new`].
     fn field_match_pairs<'pat>(
         &mut self,
         place: PlaceBuilder<'tcx>,
@@ -22,6 +27,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .collect()
     }
 
+    /// Builds [`MatchPair`] trees for the prefix/middle/suffix parts of an
+    /// array pattern or slice pattern, and adds those trees to `match_pairs`.
+    ///
+    /// Used internally by [`MatchPair::new`].
     fn prefix_slice_suffix<'pat>(
         &mut self,
         match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
