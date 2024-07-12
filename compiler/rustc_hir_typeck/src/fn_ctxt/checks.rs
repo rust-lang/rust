@@ -948,6 +948,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut err,
             );
 
+            self.suggest_deref_unwrap_or(
+                &mut err,
+                error_span,
+                callee_ty,
+                call_ident,
+                expected_ty,
+                provided_ty,
+                provided_args[*provided_idx],
+                is_method,
+            );
+
             // Call out where the function is defined
             self.label_fn_like(
                 &mut err,
