@@ -8,10 +8,10 @@ LL | fn step2<'a, 'b: 'a>() -> impl Sized + 'a {
 LL |     step1::<'a, 'b>()
    |     ^^^^^^^^^^^^^^^^^
    |
-help: to declare that `impl Sized + 'a` captures `'b`, you can add an explicit `'b` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'b`
    |
-LL | fn step2<'a, 'b: 'a>() -> impl Sized + 'a + 'b {
-   |                                           ++++
+LL | fn step2<'a, 'b: 'a>() -> impl Sized + 'a + use<'a, 'b> {
+   |                                           +++++++++++++
 
 error: aborting due to 1 previous error
 

@@ -10,10 +10,10 @@ LL | |
 LL | |         .filter_map(|_| foo(src))
    | |_________________________________^
    |
-help: to declare that `impl Iterator<Item = i32>` captures `'_`, you can introduce a named lifetime parameter `'a`
+help: add a `use<...>` bound to explicitly capture `'_`
    |
-LL | fn bar<'a>(src: &'a crate::Foo<'a>) -> impl Iterator<Item = i32> + 'a  {
-   |       ++++       ++           ++++                               ++++
+LL | fn bar(src: &crate::Foo) -> impl Iterator<Item = i32> + use<'_> {
+   |                                                       +++++++++
 
 error: aborting due to 1 previous error
 

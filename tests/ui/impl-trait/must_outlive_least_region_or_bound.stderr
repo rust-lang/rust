@@ -7,10 +7,10 @@ LL | fn elided(x: &i32) -> impl Copy { x }
    |              |        opaque type defined here
    |              hidden type `&i32` captures the anonymous lifetime defined here
    |
-help: to declare that `impl Copy` captures `'_`, you can add an explicit `'_` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'_`
    |
-LL | fn elided(x: &i32) -> impl Copy + '_ { x }
-   |                                 ++++
+LL | fn elided(x: &i32) -> impl Copy + use<'_> { x }
+   |                                 +++++++++
 
 error[E0700]: hidden type for `impl Copy` captures lifetime that does not appear in bounds
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44
@@ -21,10 +21,10 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             |                  opaque type defined here
    |             hidden type `&'a i32` captures the lifetime `'a` as defined here
    |
-help: to declare that `impl Copy` captures `'a`, you can add an explicit `'a` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'a`
    |
-LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
-   |                                          ++++
+LL | fn explicit<'a>(x: &'a i32) -> impl Copy + use<'a> { x }
+   |                                          +++++++++
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:9:46
@@ -108,10 +108,10 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
 LL |     move |_| println!("{}", y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: to declare that `impl Fn(&'a u32)` captures `'b`, you can add an explicit `'b` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'b`
    |
-LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) + 'b {
-   |                                                                              ++++
+LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) + use<'a, 'b> {
+   |                                                                              +++++++++++++
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:47:5
