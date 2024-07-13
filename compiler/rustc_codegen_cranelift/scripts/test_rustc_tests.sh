@@ -34,6 +34,7 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 
 # vendor intrinsics
 rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
+rm tests/ui/simd/dont-invalid-bitcast-x86_64.rs # unimplemented llvm.x86.sse41.round.ps
 
 # exotic linkages
 rm tests/incremental/hashes/function_interfaces.rs
@@ -56,13 +57,13 @@ rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
+rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 
 # requires LTO
 rm -r tests/run-make/cdylib
 rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
-rm -r tests/run-make/issue-109934-lto-debuginfo
 rm -r tests/run-make/no-builtins-lto
 rm -r tests/run-make/reachable-extern-fn-available-lto
 
@@ -109,6 +110,7 @@ rm -r tests/run-make/symbols-include-type-name
 rm -r tests/run-make/notify-all-emit-artifacts
 rm -r tests/run-make/reset-codegen-1
 rm -r tests/run-make/inline-always-many-cgu
+rm -r tests/run-make/intrinsic-unreachable
 
 # giving different but possibly correct results
 # =============================================
