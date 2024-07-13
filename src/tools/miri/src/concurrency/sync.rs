@@ -269,7 +269,7 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         if this.mutex_is_locked(mutex) {
             assert_ne!(this.mutex_get_owner(mutex), this.active_thread());
-            this.mutex_enqueue_and_block(mutex, retval, dest);
+            this.mutex_enqueue_and_block(mutex, Some((retval, dest)));
         } else {
             // We can have it right now!
             this.mutex_lock(mutex);
@@ -390,9 +390,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Put the thread into the queue waiting for the mutex.
-    /// Once the Mutex becomes available, `retval` will be written to `dest`.
+    ///
+    /// Once the Mutex becomes available and if it exists, `retval_dest.0` will
+    /// be written to `retval_dest.1`.
     #[inline]
-    fn mutex_enqueue_and_block(&mut self, id: MutexId, retval: Scalar, dest: MPlaceTy<'tcx>) {
+    fn mutex_enqueue_and_block(
+        &mut self,
+        id: MutexId,
+        retval_dest: Option<(Scalar, MPlaceTy<'tcx>)>,
+    ) {
         let this = self.eval_context_mut();
         assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
         let thread = this.active_thread();
@@ -403,13 +409,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     id: MutexId,
-                    retval: Scalar,
-                    dest: MPlaceTy<'tcx>,
+                    retval_dest: Option<(Scalar, MPlaceTy<'tcx>)>,
                 }
                 @unblock = |this| {
                     assert!(!this.mutex_is_locked(id));
                     this.mutex_lock(id);
-                    this.write_scalar(retval, &dest)?;
+
+                    if let Some((retval, dest)) = retval_dest {
+                        this.write_scalar(retval, &dest)?;
+                    }
+
                     Ok(())
                 }
             ),
