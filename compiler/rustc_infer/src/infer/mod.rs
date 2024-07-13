@@ -1427,17 +1427,17 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         match self.const_eval_resolve(param_env, unevaluated, span) {
-            Ok(Some(val)) => Ok(ty::Const::new_value(
+            Ok(Ok(val)) => Ok(ty::Const::new_value(
                 self.tcx,
                 val,
                 self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args),
             )),
-            Ok(None) => {
+            Ok(Err(bad_ty)) => {
                 let tcx = self.tcx;
                 let def_id = unevaluated.def;
                 span_bug!(
                     tcx.def_span(def_id),
-                    "unable to construct a constant value for the unevaluated constant {:?}",
+                    "unable to construct a valtree for the unevaluated constant {:?}: type {bad_ty} is not valtree-compatible",
                     unevaluated
                 );
             }

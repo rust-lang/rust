@@ -87,12 +87,12 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> Option<ty::Const<'tcx>> {
         use rustc_middle::mir::interpret::ErrorHandled;
         match self.const_eval_resolve(param_env, unevaluated, DUMMY_SP) {
-            Ok(Some(val)) => Some(ty::Const::new_value(
+            Ok(Ok(val)) => Some(ty::Const::new_value(
                 self.tcx,
                 val,
                 self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args),
             )),
-            Ok(None) | Err(ErrorHandled::TooGeneric(_)) => None,
+            Ok(Err(_)) | Err(ErrorHandled::TooGeneric(_)) => None,
             Err(ErrorHandled::Reported(e, _)) => Some(ty::Const::new_error(self.tcx, e.into())),
         }
     }

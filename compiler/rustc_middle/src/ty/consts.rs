@@ -328,8 +328,7 @@ impl<'tcx> Const<'tcx> {
                 let (param_env, unevaluated) = unevaluated.prepare_for_eval(tcx, param_env);
                 // try to resolve e.g. associated constants to their definition on an impl, and then
                 // evaluate the const.
-                let Some(c) = tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)?
-                else {
+                let Ok(c) = tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)? else {
                     // This can happen when we run on ill-typed code.
                     let e = tcx.dcx().span_delayed_bug(
                         span,

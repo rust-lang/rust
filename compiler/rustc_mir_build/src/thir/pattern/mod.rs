@@ -581,8 +581,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .tcx
             .const_eval_global_id_for_typeck(param_env_reveal_all, cid, span)
             .map(|val| match val {
-                Some(valtree) => mir::Const::Ty(ty, ty::Const::new_value(self.tcx, valtree, ty)),
-                None => mir::Const::Val(
+                Ok(valtree) => mir::Const::Ty(ty, ty::Const::new_value(self.tcx, valtree, ty)),
+                Err(_) => mir::Const::Val(
                     self.tcx
                         .const_eval_global_id(param_env_reveal_all, cid, span)
                         .expect("const_eval_global_id_for_typeck should have already failed"),
@@ -682,8 +682,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // First try using a valtree in order to destructure the constant into a pattern.
         // FIXME: replace "try to do a thing, then fall back to another thing"
         // but something more principled, like a trait query checking whether this can be turned into a valtree.
-        if let Ok(Some(valtree)) = self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, span)
-        {
+        if let Ok(Ok(valtree)) = self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, span) {
             let subpattern = self.const_to_pat(
                 Const::Ty(ty, ty::Const::new_value(self.tcx, valtree, ty)),
                 id,

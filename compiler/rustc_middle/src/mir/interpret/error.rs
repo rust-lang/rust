@@ -90,9 +90,11 @@ TrivialTypeTraversalImpls! { ErrorHandled }
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
-/// `Ok(None)` indicates the constant was fine, but the valtree couldn't be constructed.
-/// This is needed in `thir::pattern::lower_inline_const`.
-pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
+/// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
+/// because the value containts something of type `ty` that is not valtree-compatible.
+/// The caller can then show an appropriate error; the query does not have the
+/// necssary context to give good user-facing errors for this case.
+pub type EvalToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
 
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(InterpErrorInfo<'_>, 8);

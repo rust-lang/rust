@@ -120,13 +120,13 @@ fn const_to_valtree_inner<'tcx>(
             // We could allow wide raw pointers where both sides are integers in the future,
             // but for now we reject them.
             if matches!(val.layout.abi, Abi::ScalarPair(..)) {
-                return Err(ValTreeCreationError::NonSupportedType);
+                return Err(ValTreeCreationError::NonSupportedType(ty));
             }
             let val = val.to_scalar();
             // We are in the CTFE machine, so ptr-to-int casts will fail.
             // This can only be `Ok` if `val` already is an integer.
             let Ok(val) = val.try_to_scalar_int() else {
-                return Err(ValTreeCreationError::NonSupportedType);
+                return Err(ValTreeCreationError::NonSupportedType(ty));
             };
             // It's just a ScalarInt!
             Ok(ty::ValTree::Leaf(val))
@@ -134,7 +134,7 @@ fn const_to_valtree_inner<'tcx>(
 
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
         // agree with runtime equality tests.
-        ty::FnPtr(_) => Err(ValTreeCreationError::NonSupportedType),
+        ty::FnPtr(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
         ty::Ref(_, _, _)  => {
             let derefd_place = ecx.deref_pointer(place)?;
@@ -148,7 +148,7 @@ fn const_to_valtree_inner<'tcx>(
         // resolving their backing type, even if we can do that at const eval time. We may
         // hypothetically be able to allow `dyn StructuralPartialEq` trait objects in the future,
         // but it is unclear if this is useful.
-        ty::Dynamic(..) => Err(ValTreeCreationError::NonSupportedType),
+        ty::Dynamic(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
         ty::Tuple(elem_tys) => {
             branches(ecx, place, elem_tys.len(), None, num_nodes)
@@ -156,7 +156,7 @@ fn const_to_valtree_inner<'tcx>(
 
         ty::Adt(def, _) => {
             if def.is_union() {
-                return Err(ValTreeCreationError::NonSupportedType);
+                return Err(ValTreeCreationError::NonSupportedType(ty));
             } else if def.variants().is_empty() {
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
@@ -180,7 +180,7 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..) => Err(ValTreeCreationError::NonSupportedType),
+        | ty::CoroutineWitness(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
     }
 }
 
@@ -251,7 +251,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
     let valtree_result = const_to_valtree_inner(&ecx, &place, &mut num_nodes);
 
     match valtree_result {
-        Ok(valtree) => Ok(Some(valtree)),
+        Ok(valtree) => Ok(Ok(valtree)),
         Err(err) => {
             let did = cid.instance.def_id();
             let global_const_id = cid.display(tcx);
@@ -262,7 +262,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                         tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
                     Err(handled.into())
                 }
-                ValTreeCreationError::NonSupportedType => Ok(None),
+                ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
             }
         }
     }
