@@ -2209,6 +2209,9 @@ impl<F: FnPtr> fmt::Debug for F {
 
 /// Creates a `const` raw pointer to a place, without creating an intermediate reference.
 ///
+/// `addr_of!(expr)` is equivalent to `&raw const expr`. The macro is *soft-deprecated*;
+/// use `&raw const` instead.
+///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
 /// raw pointers should be used instead. However, `&expr as *const _` creates a reference
@@ -2282,6 +2285,9 @@ pub macro addr_of($place:expr) {
 }
 
 /// Creates a `mut` raw pointer to a place, without creating an intermediate reference.
+///
+/// `addr_of_mut!(expr)` is equivalent to `&raw mut expr`. The macro is *soft-deprecated*;
+/// use `&raw mut` instead.
 ///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
