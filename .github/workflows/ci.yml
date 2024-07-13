@@ -181,12 +181,22 @@ jobs:
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
 
+      - name: Download Handle
+        run: |
+          curl -O https://download.sysinternals.com/files/Handle.zip
+          unzip -d handle Handle.zip
+          echo "$PWD/handle" >> $GITHUB_PATH
+
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
         run: src/ci/scripts/run-build-from-ci.sh 2>&1
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+
+      - name: Windows debug
+        if: failure()
+        run: handle -accepteula
 
       # - name: create github artifacts
       #   run: src/ci/scripts/create-doc-artifacts.sh
