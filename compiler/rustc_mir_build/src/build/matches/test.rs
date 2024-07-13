@@ -144,7 +144,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     && tcx.is_lang_item(def.did(), LangItem::String)
                 {
                     if !tcx.features().string_deref_patterns {
-                        bug!(
+                        span_bug!(
+                            test.span,
                             "matching on `String` went through without enabling string_deref_patterns"
                         );
                     }
@@ -432,40 +433,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        match *ty.kind() {
-            ty::Ref(_, deref_ty, _) => ty = deref_ty,
-            _ => {
-                // non_scalar_compare called on non-reference type
-                let temp = self.temp(ty, source_info.span);
-                self.cfg.push_assign(block, source_info, temp, Rvalue::Use(expect));
-                let ref_ty = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, ty);
-                let ref_temp = self.temp(ref_ty, source_info.span);
-
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    ref_temp,
-                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, temp),
-                );
-                expect = Operand::Move(ref_temp);
-
-                let ref_temp = self.temp(ref_ty, source_info.span);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    ref_temp,
-                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, val),
-                );
-                val = ref_temp;
+        // Figure out the type on which we are calling `PartialEq`. This involves an extra wrapping
+        // reference: we can only compare two `&T`, and then compare_ty will be `T`.
+        // Make sure that we do *not* call any user-defined code here.
+        // The only types that can end up here are string and byte literals,
+        // which have their comparison defined in `core`.
+        // (Interestingly this means that exhaustiveness analysis relies, for soundness,
+        // on the `PartialEq` impls for `str` and `[u8]` to b correct!)
+        let compare_ty = match *ty.kind() {
+            ty::Ref(_, deref_ty, _)
+                if deref_ty == self.tcx.types.str_ || deref_ty != self.tcx.types.u8 =>
+            {
+                deref_ty
             }
-        }
+            _ => span_bug!(source_info.span, "invalid type for non-scalar compare: {}", ty),
+        };
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
         let method = trait_method(
             self.tcx,
             eq_def_id,
             sym::eq,
-            self.tcx.with_opt_host_effect_param(self.def_id, eq_def_id, [ty, ty]),
+            self.tcx.with_opt_host_effect_param(self.def_id, eq_def_id, [compare_ty, compare_ty]),
         );
 
         let bool_ty = self.tcx.types.bool;
