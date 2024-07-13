@@ -19,6 +19,7 @@ use crate::sys_common::{FromInner, IntoInner};
 // Anonymous pipes
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct AnonPipe {
     inner: Handle,
 }
@@ -182,7 +183,7 @@ pub fn spawn_pipe_relay(
     their_handle_inheritable: bool,
 ) -> io::Result<AnonPipe> {
     // We need this handle to live for the lifetime of the thread spawned below.
-    let source = source.duplicate()?;
+    let source = source.try_clone()?;
 
     // create a new pair of anon pipes.
     let Pipes { theirs, ours } = anon_pipe(ours_readable, their_handle_inheritable)?;
@@ -238,7 +239,8 @@ impl AnonPipe {
     pub fn into_handle(self) -> Handle {
         self.inner
     }
-    fn duplicate(&self) -> io::Result<Self> {
+
+    pub fn try_clone(&self) -> io::Result<Self> {
         self.inner.duplicate(0, false, c::DUPLICATE_SAME_ACCESS).map(|inner| AnonPipe { inner })
     }
 
