@@ -1198,18 +1198,21 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     sugg.push(s);
                 }
 
-                err.multipart_suggestion_verbose(
-                    format!(
-                        "consider changing this to be a mutable {pointer_desc}{}",
-                        if is_trait_sig {
-                            " in the `impl` method and the `trait` definition"
-                        } else {
-                            ""
-                        }
-                    ),
-                    sugg,
-                    Applicability::MachineApplicable,
-                );
+                if sugg.iter().all(|(span, _)| !self.infcx.tcx.sess.source_map().is_imported(*span))
+                {
+                    err.multipart_suggestion_verbose(
+                        format!(
+                            "consider changing this to be a mutable {pointer_desc}{}",
+                            if is_trait_sig {
+                                " in the `impl` method and the `trait` definition"
+                            } else {
+                                ""
+                            }
+                        ),
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             Some((false, err_label_span, message, _)) => {
                 let def_id = self.body.source.def_id();
