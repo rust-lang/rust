@@ -7,6 +7,7 @@ use rustc_lexer::unescape::{
 };
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use std::borrow::Cow;
 use std::{ascii, fmt, str};
 use tracing::debug;
 
@@ -253,15 +254,15 @@ impl MetaItemLit {
     }
 }
 
-fn strip_underscores(symbol: Symbol) -> Symbol {
+fn strip_underscores(symbol: &Symbol) -> (Symbol, Cow<'_, str>) {
     // Do not allocate a new string unless necessary.
     let s = symbol.as_str();
     if s.contains('_') {
         let mut s = s.to_string();
         s.retain(|c| c != '_');
-        return Symbol::intern(&s);
+        return (Symbol::intern(&s), Cow::Owned(s));
     }
-    symbol
+    (*symbol, Cow::Borrowed(s))
 }
 
 fn filtered_float_lit(
@@ -290,13 +291,12 @@ fn filtered_float_lit(
 
 fn float_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
     debug!("float_lit: {:?}, {:?}", symbol, suffix);
-    filtered_float_lit(strip_underscores(symbol), suffix, 10)
+    filtered_float_lit(strip_underscores(&symbol).0, suffix, 10)
 }
 
 fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
     debug!("integer_lit: {:?}, {:?}", symbol, suffix);
-    let symbol = strip_underscores(symbol);
-    let s = symbol.as_str();
+    let (symbol, s) = strip_underscores(&symbol);
 
     let base = match s.as_bytes() {
         [b'0', b'x', ..] => 16,
