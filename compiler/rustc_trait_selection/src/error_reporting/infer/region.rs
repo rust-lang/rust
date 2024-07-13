@@ -17,8 +17,8 @@ use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
 use rustc_type_ir::Upcast as _;
 
 use super::nice_region_error::find_anon_type;
-use super::{nice_region_error, ObligationCauseAsDiagArg};
-use crate::error_reporting::infer::ObligationCauseExt as _;
+use super::ObligationCauseAsDiagArg;
+use crate::error_reporting::infer::ObligationCauseExt;
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     self, note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
@@ -1212,22 +1212,8 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
                 hidden_region,
                 "",
             );
-            if let Some(reg_info) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
-                if infcx.tcx.features().precise_capturing {
-                    suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
-                } else {
-                    let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
-                    nice_region_error::suggest_new_region_bound(
-                        tcx,
-                        &mut err,
-                        fn_returns,
-                        hidden_region.to_string(),
-                        None,
-                        format!("captures `{hidden_region}`"),
-                        None,
-                        Some(reg_info.def_id),
-                    )
-                }
+            if let Some(_) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
+                suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
             }
         }
         ty::RePlaceholder(_) => {

@@ -8,14 +8,10 @@ LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized
 LL |     async move { let _s = s; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: to declare that `impl Future<Output = impl Sized>` captures `'s`, you can add an explicit `'s` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'s`
    |
-LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized> + 's {
-   |                                                                              ++++
-help: to declare that `impl Sized` captures `'s`, you can add an explicit `'s` lifetime bound
-   |
-LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized + 's> {
-   |                                                                             ++++
+LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized> + use<'s> {
+   |                                                                              +++++++++
 
 error: aborting due to 1 previous error
 
