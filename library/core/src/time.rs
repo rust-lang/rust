@@ -101,6 +101,66 @@ pub struct Duration {
 }
 
 impl Duration {
+    /// The duration of one week.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::WEEK, Duration::from_weeks(1));
+    /// assert_eq!(5 * Duration::WEEK, Duration::from_weeks(5));
+    /// assert_eq!(Duration::WEEK, Duration::from_secs(7 * 24 * 60 * 60));
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    pub const WEEK: Duration = Duration::from_weeks(1);
+
+    /// The duration of one day.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::DAY, Duration::from_days(1));
+    /// assert_eq!(5 * Duration::DAY, Duration::from_days(5));
+    /// assert_eq!(Duration::DAY, Duration::from_secs(24 * 60 * 60));
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    pub const DAY: Duration = Duration::from_days(1);
+
+    /// The duration of one hour.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::HOUR, Duration::from_hours(1));
+    /// assert_eq!(5 * Duration::HOUR, Duration::from_hours(5));
+    /// assert_eq!(Duration::HOUR, Duration::from_secs(60 * 60));
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    pub const HOUR: Duration = Duration::from_hours(1);
+
+    /// The duration of one minute.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MINUTE, Duration::from_mins(1));
+    /// assert_eq!(5 * Duration::MINUTE, Duration::from_mins(5));
+    /// assert_eq!(Duration::MINUTE, Duration::from_secs(60));
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    pub const MINUTE: Duration = Duration::from_mins(1);
+
     /// The duration of one second.
     ///
     /// # Examples
@@ -348,7 +408,7 @@ impl Duration {
     #[inline]
     pub const fn from_weeks(weeks: u64) -> Duration {
         if weeks > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK) {
-            panic!("overflow in Duration::from_weeks");
+            panic!("overflow in Duration::from_days");
         }
 
         Duration::from_secs(weeks * MINS_PER_HOUR * SECS_PER_MINUTE * HOURS_PER_DAY * DAYS_PER_WEEK)
