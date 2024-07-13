@@ -1,3 +1,4 @@
+//@ check-pass
 // https://github.com/rust-lang/rust/issues/102154
 
 trait A<Y, N> {
