@@ -16,7 +16,7 @@
 //! never get replaced.
 
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::time::Instant;
 
@@ -75,17 +75,12 @@ fn main() {
             args.drain(..2);
             rustc_real
         } else {
+            // The first param is the clippy-driver we should call.
             args.remove(0)
         }
     } else {
-        // Cargo doesn't respect RUSTC_WRAPPER for version information >:(
-        // don't remove the first arg if we're being run as RUSTC instead of RUSTC_WRAPPER.
-        // Cargo also sometimes doesn't pass the `.exe` suffix on Windows - add it manually.
-        let current_exe = env::current_exe().expect("couldn't get path to rustc shim");
-        let arg0 = exe(args[0].to_str().expect("only utf8 paths are supported"), &host);
-        if Path::new(&arg0) == current_exe {
-            args.remove(0);
-        }
+        // We are RUSTC_WRAPPER; remove the dummy rustc invocation we wrap.
+        args.remove(0);
         rustc_real
     };
 
