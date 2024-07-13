@@ -1213,8 +1213,8 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_use_libcxx {
         cargo.env("LLVM_USE_LIBCXX", "1");
     }
-    if builder.config.llvm_optimize && !builder.config.llvm_release_debuginfo {
-        cargo.env("LLVM_NDEBUG", "1");
+    if builder.config.llvm_assertions {
+        cargo.env("LLVM_ASSERTIONS", "1");
     }
 }
 
