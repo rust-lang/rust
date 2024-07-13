@@ -3,7 +3,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ only-64bit
 
-#![feature(raw_ref_op)]
 #![feature(rustc_attrs)]
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]

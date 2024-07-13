@@ -2,7 +2,6 @@
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_swap)]
-#![feature(raw_ref_op)]
 
 // Mutable borrow of a field with drop impl.
 pub const fn f() {

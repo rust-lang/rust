@@ -2,7 +2,6 @@
 // check raw fat pointer ops in mir
 // FIXME: please improve this when we get monomorphization support
 
-#![feature(raw_ref_op)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 
 use std::mem;

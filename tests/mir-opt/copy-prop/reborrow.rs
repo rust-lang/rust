@@ -3,8 +3,6 @@
 // Check that CopyProp considers reborrows as not mutating the pointer.
 //@ test-mir-pass: CopyProp
 
-#![feature(raw_ref_op)]
-
 #[inline(never)]
 fn opaque(_: impl Sized) {}
 

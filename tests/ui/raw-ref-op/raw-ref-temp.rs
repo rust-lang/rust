@@ -1,5 +1,5 @@
 // Ensure that we don't allow taking the address of temporary values
-#![feature(raw_ref_op, type_ascription)]
+#![feature(type_ascription)]
 
 const FOUR: u64 = 4;
 

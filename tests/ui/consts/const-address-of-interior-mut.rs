@@ -1,5 +1,3 @@
-#![feature(raw_ref_op)]
-
 use std::cell::Cell;
 
 const A: () = { let x = Cell::new(2); &raw const x; };      //~ ERROR interior mutability

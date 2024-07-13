@@ -14,7 +14,6 @@
 #![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
-#![feature(raw_ref_op)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(type_ascription)]

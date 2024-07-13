@@ -2,7 +2,6 @@
 //@ test-mir-pass: ReferencePropagation
 //@ needs-unwind
 
-#![feature(raw_ref_op)]
 #![feature(core_intrinsics, custom_mir)]
 
 #[inline(never)]

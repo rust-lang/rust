@@ -1,5 +1,4 @@
 #![feature(const_mut_refs)]
-#![feature(raw_ref_op)]
 
 const NULL: *mut i32 = std::ptr::null_mut();
 const A: *const i32 = &4;

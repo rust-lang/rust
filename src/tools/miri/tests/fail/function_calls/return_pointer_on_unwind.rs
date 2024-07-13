@@ -1,6 +1,5 @@
 // Doesn't need an aliasing model.
 //@compile-flags: -Zmiri-disable-stacked-borrows
-#![feature(raw_ref_op)]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
 

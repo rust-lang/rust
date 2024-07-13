@@ -1,5 +1,3 @@
-#![feature(raw_ref_op)]
-
 fn mutable_address_of() {
     let x = 0;
     let y = &raw mut x;                 //~ ERROR cannot borrow

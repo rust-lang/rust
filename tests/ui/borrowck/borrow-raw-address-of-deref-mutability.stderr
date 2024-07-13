@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrow-raw-address-of-deref-mutability.rs:8:13
+  --> $DIR/borrow-raw-address-of-deref-mutability.rs:6:13
    |
 LL |     let q = &raw mut *x;
    |             ^^^^^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
@@ -10,7 +10,7 @@ LL |     let x = &mut 0;
    |              +++
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `*const` pointer
-  --> $DIR/borrow-raw-address-of-deref-mutability.rs:14:13
+  --> $DIR/borrow-raw-address-of-deref-mutability.rs:12:13
    |
 LL |     let q = &raw mut *x;
    |             ^^^^^^^^^^^ `x` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable

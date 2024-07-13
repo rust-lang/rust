@@ -1,5 +1,3 @@
-#![feature(raw_ref_op)]
-
 fn address_of_shared() {
     let mut x = 0;
     let y = &x;
