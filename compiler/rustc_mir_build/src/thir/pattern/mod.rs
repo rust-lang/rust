@@ -14,8 +14,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, ByRef, Mutability, RangeEnd};
 use rustc_index::Idx;
 use rustc_lint as lint;
-use rustc_middle::mir::interpret::{ErrorHandled, GlobalId, LitToConstError, LitToConstInput};
-use rustc_middle::mir::{self, Const};
+use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
@@ -575,63 +574,39 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
         };
 
-        let cid = GlobalId { instance, promoted: None };
-        // Prefer valtrees over opaque constants.
-        let const_value = self
-            .tcx
-            .const_eval_global_id_for_typeck(param_env_reveal_all, cid, span)
-            .map(|val| match val {
-                Ok(valtree) => mir::Const::Ty(ty, ty::Const::new_value(self.tcx, valtree, ty)),
-                Err(_) => mir::Const::Val(
-                    self.tcx
-                        .const_eval_global_id(param_env_reveal_all, cid, span)
-                        .expect("const_eval_global_id_for_typeck should have already failed"),
-                    ty,
-                ),
-            });
+        let c = ty::Const::new_unevaluated(
+            self.tcx,
+            ty::UnevaluatedConst { def: instance.def_id(), args: instance.args },
+        );
 
-        match const_value {
-            Ok(const_) => {
-                let pattern = self.const_to_pat(const_, id, span);
+        let pattern = self.const_to_pat(c, ty, id, span);
 
-                if !is_associated_const {
-                    return pattern;
-                }
+        if !is_associated_const {
+            return pattern;
+        }
 
-                let user_provided_types = self.typeck_results().user_provided_types();
-                if let Some(&user_ty) = user_provided_types.get(id) {
-                    let annotation = CanonicalUserTypeAnnotation {
-                        user_ty: Box::new(user_ty),
-                        span,
-                        inferred_ty: self.typeck_results().node_type(id),
-                    };
-                    Box::new(Pat {
-                        span,
-                        kind: PatKind::AscribeUserType {
-                            subpattern: pattern,
-                            ascription: Ascription {
-                                annotation,
-                                // Note that use `Contravariant` here. See the
-                                // `variance` field documentation for details.
-                                variance: ty::Contravariant,
-                            },
-                        },
-                        ty: const_.ty(),
-                    })
-                } else {
-                    pattern
-                }
-            }
-            Err(ErrorHandled::TooGeneric(_)) => {
-                // While `Reported | Linted` cases will have diagnostics emitted already
-                // it is not true for TooGeneric case, so we need to give user more information.
-                let e = self.tcx.dcx().emit_err(ConstPatternDependsOnGenericParameter { span });
-                pat_from_kind(PatKind::Error(e))
-            }
-            Err(_) => {
-                let e = self.tcx.dcx().emit_err(CouldNotEvalConstPattern { span });
-                pat_from_kind(PatKind::Error(e))
-            }
+        let user_provided_types = self.typeck_results().user_provided_types();
+        if let Some(&user_ty) = user_provided_types.get(id) {
+            let annotation = CanonicalUserTypeAnnotation {
+                user_ty: Box::new(user_ty),
+                span,
+                inferred_ty: self.typeck_results().node_type(id),
+            };
+            Box::new(Pat {
+                span,
+                kind: PatKind::AscribeUserType {
+                    subpattern: pattern,
+                    ascription: Ascription {
+                        annotation,
+                        // Note that use `Contravariant` here. See the
+                        // `variance` field documentation for details.
+                        variance: ty::Contravariant,
+                    },
+                },
+                ty,
+            })
+        } else {
+            pattern
         }
     }
 
@@ -662,7 +637,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
         if let Some(lit_input) = lit_input {
             match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return self.const_to_pat(Const::Ty(ty, c), id, span).kind,
+                Ok(c) => return self.const_to_pat(c, ty, id, span).kind,
                 // If an error occurred, ignore that it's a literal
                 // and leave reporting the error up to const eval of
                 // the unevaluated constant below.
@@ -675,32 +650,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             tcx.erase_regions(ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id));
         let args = ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty }).args;
 
-        let uneval = mir::UnevaluatedConst { def: def_id.to_def_id(), args, promoted: None };
         debug_assert!(!args.has_free_regions());
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
-        // First try using a valtree in order to destructure the constant into a pattern.
-        // FIXME: replace "try to do a thing, then fall back to another thing"
-        // but something more principled, like a trait query checking whether this can be turned into a valtree.
-        if let Ok(Ok(valtree)) = self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, span) {
-            let subpattern = self.const_to_pat(
-                Const::Ty(ty, ty::Const::new_value(self.tcx, valtree, ty)),
-                id,
-                span,
-            );
-            PatKind::InlineConstant { subpattern, def: def_id }
-        } else {
-            // If that fails, convert it to an opaque constant pattern.
-            match tcx.const_eval_resolve(self.param_env, uneval, span) {
-                Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span).kind,
-                Err(ErrorHandled::TooGeneric(_)) => {
-                    // If we land here it means the const can't be evaluated because it's `TooGeneric`.
-                    let e = self.tcx.dcx().emit_err(ConstPatternDependsOnGenericParameter { span });
-                    PatKind::Error(e)
-                }
-                Err(ErrorHandled::Reported(err, ..)) => PatKind::Error(err.into()),
-            }
-        }
+        let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
+        PatKind::InlineConstant { subpattern, def: def_id }
     }
 
     /// Converts literals, paths and negation of literals to patterns.
@@ -728,9 +682,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ct_ty = self.typeck_results.expr_ty(expr);
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(constant) => {
-                self.const_to_pat(Const::Ty(ct_ty, constant), expr.hir_id, lit.span).kind
-            }
+            Ok(constant) => self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind,
             Err(LitToConstError::Reported(e)) => PatKind::Error(e),
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }

@@ -4411,6 +4411,7 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
+ "either",
  "itertools",
  "rustc_apfloat",
  "rustc_arena",
