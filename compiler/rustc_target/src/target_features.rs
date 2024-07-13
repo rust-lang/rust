@@ -522,6 +522,13 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .map(|(f, s, _)| (f, s))
 }
 
+// These arrays represent the least-constraining feature that is required for vector types up to a
+// certain size to have their "proper" ABI on each architecture.
+// Note that they must be kept sorted by vector size.
+const X86_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "sse"), (256, "avx"), (512, "avx512f")];
+const AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
+
 impl super::spec::Target {
     pub fn supported_target_features(
         &self,
@@ -540,6 +547,16 @@ impl super::spec::Target {
             "loongarch64" => LOONGARCH_ALLOWED_FEATURES,
             "s390x" => IBMZ_ALLOWED_FEATURES,
             _ => &[],
+        }
+    }
+
+    // Returns None if we do not support ABI checks on the given target yet.
+    pub fn features_for_correct_vector_abi(&self) -> Option<&'static [(u64, &'static str)]> {
+        match &*self.arch {
+            "x86" | "x86_64" => Some(X86_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            "aarch64" => Some(AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            // FIXME: add support for non-tier1 architectures
+            _ => None,
         }
     }
 
