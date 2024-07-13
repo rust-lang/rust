@@ -1,4 +1,5 @@
 // Regression test to ensure that both `AtomicU8` items are displayed but not the re-export.
+// https://github.com/rust-lang/rust/issues/105735
 
 #![crate_name = "foo"]
 #![no_std]

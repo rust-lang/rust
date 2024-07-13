@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/105952
 #![crate_name = "foo"]
 
 #![feature(associated_const_equality)]

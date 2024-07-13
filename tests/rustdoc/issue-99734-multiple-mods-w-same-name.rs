@@ -2,6 +2,7 @@
 //@ build-aux-docs
 //@ ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/99734
 #![crate_name = "foo"]
 
 #[macro_use]
