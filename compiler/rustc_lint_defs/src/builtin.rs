@@ -16,6 +16,7 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
+        ABI_ERROR_DISABLED_VECTOR_TYPE,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
@@ -5077,4 +5078,77 @@ declare_lint! {
         reference: "issue #123735 <https://github.com/rust-lang/rust/issues/123735>",
     };
     crate_level_only
+}
+
+declare_lint! {
+    /// The `abi_error_disabled_vector_type` lint detects function definitions and calls
+    /// whose ABI depends on enabling certain target features that do not enable those features.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (fails on non-x86_64)
+    /// #![allow(improper_ctypes_definitions)] // false positive
+    ///
+    /// pub extern "C" fn foo(_: std::arch::x86_64::__m256) {
+    ///   todo!()
+    /// }
+    ///
+    /// #[target_feature(enable = "avx")]
+    /// pub unsafe extern "C" fn favx(_: std::arch::x86_64::__m256) {
+    ///   todo!()
+    /// }
+    ///
+    /// # #[target_feature(enable = "avx")]
+    /// # unsafe fn helper() {
+    /// #   foo(unsafe { std::mem::zeroed() });
+    /// # }
+    /// # fn main() {
+    /// #   let v = unsafe { std::mem::zeroed() };
+    /// #   unsafe { favx(v); }
+    /// #   unsafe { helper(); }
+    /// # }
+    /// ```
+    ///
+    /// ```text
+    /// warning: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+    ///  --> lint_example.rs:18:12
+    ///   |
+    ///   |   unsafe { favx(v); }
+    ///   |            ^^^^^^^ function called here
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
+    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    ///   = note: `#[warn(abi_error_disabled_vector_type)]` on by default
+    ///
+    ///
+    /// warning: ABI error: this function definition uses a avx vector type, which is not enabled
+    ///  --> lint_example.rs:3:1
+    ///   |
+    ///   | pub extern "C" fn foo(_: std::arch::x86_64::__m256) {
+    ///   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
+    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    /// ```
+    ///
+    ///
+    ///
+    /// ### Explanation
+    ///
+    /// The ABI of `foo` is somewhat surprising: since AVX may not be enabled when compiling it,
+    /// the parameter may be passed by stack and not by register. This then easily leads to
+    /// undefined behaviour if calling the function from a function for which AVX is enabled.
+    /// A similar (but complementary) problem is triggered by a caller that does *not* enable
+    /// the AVX feature calling `favx`.
+    ///
+    /// Note that this lint is very similar to the `-Wpsabi` warning in `gcc`/`clang`.
+    pub ABI_ERROR_DISABLED_VECTOR_TYPE,
+    Warn,
+    "this function call or definition uses a vector type which is not enabled",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
+    };
 }
