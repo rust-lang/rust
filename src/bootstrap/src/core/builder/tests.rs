@@ -266,7 +266,7 @@ mod defaults {
         // rustdoc/rustcc/std here (the user only requested a host=B build, so
         // there's not really a need for us to build for target A in this case
         // (since we're producing stage 1 libraries/binaries).  But currently
-        // rustbuild is just a bit buggy here; this should be fixed though.
+        // bootstrap is just a bit buggy here; this should be fixed though.
         assert_eq!(
             first(cache.all::<compile::Std>()),
             &[

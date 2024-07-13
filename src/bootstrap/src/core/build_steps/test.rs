@@ -3043,7 +3043,7 @@ impl Step for Bootstrap {
             // https://github.com/rust-lang/rust/issues/49215
             cmd.env("RUSTFLAGS", flags);
         }
-        // rustbuild tests are racy on directory creation so just run them one at a time.
+        // bootstrap tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
         run_cargo_test(cmd, &["--test-threads=1"], &[], "bootstrap", None, compiler, host, builder);
     }

@@ -1627,11 +1627,11 @@ impl<'a> Builder<'a> {
         }
 
         // This tells Cargo (and in turn, rustc) to output more complete
-        // dependency information.  Most importantly for rustbuild, this
+        // dependency information.  Most importantly for bootstrap, this
         // includes sysroot artifacts, like libstd, which means that we don't
-        // need to track those in rustbuild (an error prone process!). This
+        // need to track those in bootstrap (an error prone process!). This
         // feature is currently unstable as there may be some bugs and such, but
-        // it represents a big improvement in rustbuild's reliability on
+        // it represents a big improvement in bootstrap's reliability on
         // rebuilds, so we're using it here.
         //
         // For some additional context, see #63470 (the PR originally adding
@@ -1643,7 +1643,7 @@ impl<'a> Builder<'a> {
                 // Restrict the allowed features so we don't depend on nightly
                 // accidentally.
                 //
-                // binary-dep-depinfo is used by rustbuild itself for all
+                // binary-dep-depinfo is used by bootstrap itself for all
                 // compilations.
                 //
                 // Lots of tools depend on proc_macro2 and proc-macro-error.

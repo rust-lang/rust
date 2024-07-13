@@ -1,7 +1,7 @@
 //! Implementation of compiling various phases of the compiler and standard
 //! library.
 //!
-//! This module contains some of the real meat in the rustbuild build system
+//! This module contains some of the real meat in the bootstrap build system
 //! which is where Cargo is used to compile the standard library, libtest, and
 //! the compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
@@ -818,8 +818,8 @@ pub struct Rustc {
     pub compiler: Compiler,
     /// Whether to build a subset of crates, rather than the whole compiler.
     ///
-    /// This should only be requested by the user, not used within rustbuild itself.
-    /// Using it within rustbuild can lead to confusing situation where lints are replayed
+    /// This should only be requested by the user, not used within bootstrap itself.
+    /// Using it within bootstrap can lead to confusing situation where lints are replayed
     /// in two different steps.
     crates: Vec<String>,
 }
