@@ -1541,11 +1541,36 @@ fn debug_lookahead() {
             ctxt: #0,
         },
     },
-    tokens: [],
+    tokens: [
+        Ident(
+            \"fn\",
+            No,
+        ),
+        Ident(
+            \"f\",
+            No,
+        ),
+        OpenDelim(
+            Parenthesis,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        Colon,
+        Ident(
+            \"u32\",
+            No,
+        ),
+        CloseDelim(
+            Parenthesis,
+        ),
+    ],
     approx_token_stream_pos: 1,
     ..
 }"
         );
+        // There are 13 tokens. We request 15, get 14; the last one is `Eof`.
         assert_eq!(
             &format!("{:#?}", p.debug_lookahead(15)),
             "Parser {
@@ -1561,7 +1586,51 @@ fn debug_lookahead() {
             ctxt: #0,
         },
     },
-    tokens: [],
+    tokens: [
+        Ident(
+            \"fn\",
+            No,
+        ),
+        Ident(
+            \"f\",
+            No,
+        ),
+        OpenDelim(
+            Parenthesis,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        Colon,
+        Ident(
+            \"u32\",
+            No,
+        ),
+        CloseDelim(
+            Parenthesis,
+        ),
+        OpenDelim(
+            Brace,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        CloseDelim(
+            Brace,
+        ),
+        Ident(
+            \"struct\",
+            No,
+        ),
+        Ident(
+            \"S\",
+            No,
+        ),
+        Semi,
+        Eof,
+    ],
     approx_token_stream_pos: 1,
     ..
 }"
@@ -1588,7 +1657,12 @@ fn debug_lookahead() {
             ctxt: #0,
         },
     },
-    tokens: [],
+    tokens: [
+        Ident(
+            \"x\",
+            No,
+        ),
+    ],
     approx_token_stream_pos: 9,
     ..
 }"
@@ -1610,7 +1684,23 @@ fn debug_lookahead() {
             ctxt: #0,
         },
     },
-    tokens: [],
+    tokens: [
+        Ident(
+            \"x\",
+            No,
+        ),
+        CloseDelim(
+            Brace,
+        ),
+        Ident(
+            \"struct\",
+            No,
+        ),
+        Ident(
+            \"S\",
+            No,
+        ),
+    ],
     approx_token_stream_pos: 9,
     ..
 }"
@@ -1636,8 +1726,6 @@ fn debug_lookahead() {
         },
     },
     tokens: [
-        Eof,
-        Eof,
         Eof,
     ],
     approx_token_stream_pos: 15,

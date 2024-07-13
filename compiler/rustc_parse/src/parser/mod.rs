@@ -1537,14 +1537,16 @@ impl<'a> Parser<'a> {
 
                 // we don't need N spans, but we want at least one, so print all of prev_token
                 dbg_fmt.field("prev_token", &parser.prev_token);
-                // make it easier to peek farther ahead by taking TokenKinds only until EOF
-                let tokens = (0..*lookahead)
-                    .map(|i| parser.look_ahead(i, |tok| tok.kind.clone()))
-                    .scan(parser.prev_token == TokenKind::Eof, |eof, tok| {
-                        let current = eof.then_some(tok.clone()); // include a trailing EOF token
-                        *eof |= &tok == &TokenKind::Eof;
-                        current
-                    });
+                let mut tokens = vec![];
+                for i in 0..*lookahead {
+                    let tok = parser.look_ahead(i, |tok| tok.kind.clone());
+                    let is_eof = tok == TokenKind::Eof;
+                    tokens.push(tok);
+                    if is_eof {
+                        // Don't look ahead past EOF.
+                        break;
+                    }
+                }
                 dbg_fmt.field_with("tokens", |field| field.debug_list().entries(tokens).finish());
                 dbg_fmt.field("approx_token_stream_pos", &parser.num_bump_calls);
 
