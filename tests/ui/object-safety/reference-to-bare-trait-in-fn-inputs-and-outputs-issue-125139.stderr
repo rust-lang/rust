@@ -298,8 +298,8 @@ LL |     fn cat() -> &Trait;
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL |     fn cat<'a>() -> &'a impl Trait;
-   |           ++++       +++++++
+LL |     fn cat() -> &impl Trait;
+   |                  ++++
 help: alternatively, you can return an owned trait object
    |
 LL |     fn cat() -> Box<dyn Trait>;
@@ -313,8 +313,8 @@ LL |     fn dog<'a>() -> &Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL |     fn dog<'b, 'a>() -> &'b impl Trait {
-   |            +++           +++++++
+LL |     fn dog<'a>() -> &impl Trait {
+   |                      ++++
 help: alternatively, you can return an owned trait object
    |
 LL |     fn dog<'a>() -> Box<dyn Trait> {
@@ -350,7 +350,7 @@ help: alternatively, you can return an owned trait object
 LL |     fn puppy<'a>() -> Box<dyn Trait> {
    |                       ~~~~~~~~~~~~~~
 
-error[E0782]: cannot return a mutable reference to a bare trait
+error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:87:25
    |
 LL |     fn parrot() -> &mut Trait {
@@ -358,8 +358,8 @@ LL |     fn parrot() -> &mut Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL |     fn parrot() -> impl Trait {
-   |                    ~~~~~~~~~~
+LL |     fn parrot() -> &mut impl Trait {
+   |                         ++++
 help: alternatively, you can return an owned trait object
    |
 LL |     fn parrot() -> Box<dyn Trait> {
@@ -449,8 +449,8 @@ LL | fn cat() -> &Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL | fn cat<'a>() -> &'a impl Trait {
-   |       ++++       +++++++
+LL | fn cat() -> &impl Trait {
+   |              ++++
 help: alternatively, you can return an owned trait object
    |
 LL | fn cat() -> Box<dyn Trait> {
@@ -464,8 +464,8 @@ LL | fn dog<'a>() -> &Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL | fn dog<'b, 'a>() -> &'b impl Trait {
-   |        +++           +++++++
+LL | fn dog<'a>() -> &impl Trait {
+   |                  ++++
 help: alternatively, you can return an owned trait object
    |
 LL | fn dog<'a>() -> Box<dyn Trait> {
@@ -501,7 +501,7 @@ help: alternatively, you can return an owned trait object
 LL | fn puppy<'a>() -> Box<dyn Trait> {
    |                   ~~~~~~~~~~~~~~
 
-error[E0782]: cannot return a mutable reference to a bare trait
+error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:135:21
    |
 LL | fn parrot() -> &mut Trait {
@@ -509,8 +509,8 @@ LL | fn parrot() -> &mut Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL | fn parrot() -> impl Trait {
-   |                ~~~~~~~~~~
+LL | fn parrot() -> &mut impl Trait {
+   |                     ++++
 help: alternatively, you can return an owned trait object
    |
 LL | fn parrot() -> Box<dyn Trait> {
@@ -600,8 +600,8 @@ LL |     fn cat() -> &Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL |     fn cat<'a>() -> &'a impl Trait {
-   |           ++++       +++++++
+LL |     fn cat() -> &impl Trait {
+   |                  ++++
 help: alternatively, you can return an owned trait object
    |
 LL |     fn cat() -> Box<dyn Trait> {
@@ -615,8 +615,8 @@ LL |     fn dog<'a>() -> &Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL |     fn dog<'b, 'a>() -> &'b impl Trait {
-   |            +++           +++++++
+LL |     fn dog<'a>() -> &impl Trait {
+   |                      ++++
 help: alternatively, you can return an owned trait object
    |
 LL |     fn dog<'a>() -> Box<dyn Trait> {
@@ -652,7 +652,7 @@ help: alternatively, you can return an owned trait object
 LL |     fn puppy<'a>() -> Box<dyn Trait> {
    |                       ~~~~~~~~~~~~~~
 
-error[E0782]: cannot return a mutable reference to a bare trait
+error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:44:25
    |
 LL |     fn parrot() -> &mut Trait {
@@ -660,8 +660,8 @@ LL |     fn parrot() -> &mut Trait {
    |
 help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
    |
-LL |     fn parrot() -> impl Trait {
-   |                    ~~~~~~~~~~
+LL |     fn parrot() -> &mut impl Trait {
+   |                         ++++
 help: alternatively, you can return an owned trait object
    |
 LL |     fn parrot() -> Box<dyn Trait> {

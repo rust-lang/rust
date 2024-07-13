@@ -43,7 +43,7 @@ impl IceCream {
 
     fn parrot() -> &mut Trait {
         //~^ ERROR: missing lifetime specifier
-        //~| ERROR: cannot return a mutable reference to a bare trait
+        //~| ERROR: trait objects must include the `dyn` keyword
         &mut Type
         //~^ ERROR: cannot return reference to temporary value
     }
@@ -86,12 +86,12 @@ trait Sing {
 
     fn parrot() -> &mut Trait {
         //~^ ERROR: missing lifetime specifier
-        //~| ERROR: cannot return a mutable reference to a bare trait
+        //~| ERROR: trait objects must include the `dyn` keyword
         &mut Type
         //~^ ERROR: cannot return reference to temporary value
     }
 }
-    
+
 fn foo(_: &Trait) {}
 //~^ ERROR: trait objects must include the `dyn` keyword
 
@@ -134,7 +134,7 @@ fn puppy<'a>() -> &'a Trait {
 
 fn parrot() -> &mut Trait {
     //~^ ERROR: missing lifetime specifier
-    //~| ERROR: cannot return a mutable reference to a bare trait
+    //~| ERROR: trait objects must include the `dyn` keyword
     &mut Type
     //~^ ERROR: cannot return reference to temporary value
 }
