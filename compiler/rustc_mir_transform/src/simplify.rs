@@ -547,7 +547,10 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
     }
 
     fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
-        if !self.preserve_debug && debug_info_is_for_simple_local(var_debug_info).is_some() {
+        // We don't want to have to track *conditional* uses (such as
+        // "`_4` is used iff `_5` is used" from `debug x => Foo(_4, _5)`),
+        // so if this mentions multiple locals we just treat them all as used.
+        if !self.preserve_debug && debug_info_is_for_single_local(var_debug_info).is_some() {
             return;
         }
 
@@ -568,10 +571,9 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
 
         if !used_locals.preserve_debug {
             body.var_debug_info.retain(|info| {
-                let keep = if let Some(local) = debug_info_is_for_simple_local(info) {
+                let keep = if let Some(local) = debug_info_is_for_single_local(info) {
                     used_locals.is_used(local)
                 } else {
-                    // Keep non-simple debuginfo no matter what
                     true
                 };
 
@@ -640,8 +642,23 @@ fn preserve_debug_even_if_never_generated(opts: &Options) -> bool {
     }
 }
 
-// For now we only remove basic debuginfo, like `foo => _3`, and don't attempt
-// to clean up more complicated things like `foo => Foo { .0 => _2, .1 => _4 }`
-fn debug_info_is_for_simple_local(info: &VarDebugInfo<'_>) -> Option<Local> {
-    if let VarDebugInfoContents::Place(place) = info.value { place.as_local() } else { None }
+/// Returns the only [`Local`] mentioned in `info`, if there's exactly one.
+/// Otherwise return `None` if this mentions no `Local`s (probably because
+/// it's [`VarDebugInfoContents::Const`]) or multiple `Local`s.
+fn debug_info_is_for_single_local(info: &VarDebugInfo<'_>) -> Option<Local> {
+    struct SingleLocalFinder(Result<Option<Local>, ()>);
+    impl Visitor<'_> for SingleLocalFinder {
+        fn visit_local(&mut self, local: Local, _ctx: PlaceContext, _location: Location) {
+            match &mut self.0 {
+                Err(()) => {}
+                Ok(opt @ None) => *opt = Some(local),
+                Ok(Some(current)) if *current == local => {}
+                res @ Ok(Some(_)) => *res = Err(()),
+            }
+        }
+    }
+
+    let mut finder = SingleLocalFinder(Ok(None));
+    finder.visit_var_debug_info(info);
+    if let Ok(Some(local)) = finder.0 { Some(local) } else { None }
 }
