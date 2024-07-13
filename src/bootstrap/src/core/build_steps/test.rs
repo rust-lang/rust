@@ -1325,13 +1325,12 @@ impl Step for CrateRunMakeSupport {
     /// Runs `cargo test` for run-make-support.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let compiler = builder.compiler(builder.top_stage, host);
+        let compiler = builder.compiler(0, host);
 
-        builder.ensure(compile::Std::new(compiler, host));
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolStd,
+            Mode::ToolBootstrap,
             host,
             "test",
             "src/tools/run-make-support",
