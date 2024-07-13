@@ -395,7 +395,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
                 &fx.tcx.symbol_name(instance).name,
-                fn_args,
                 args,
                 ret_place,
                 target,
