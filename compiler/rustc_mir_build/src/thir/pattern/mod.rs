@@ -548,37 +548,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => return pat_from_kind(self.lower_variant_or_leaf(res, id, span, ty, vec![])),
         };
 
-        // Use `Reveal::All` here because patterns are always monomorphic even if their function
-        // isn't.
-        let param_env_reveal_all = self.param_env.with_reveal_all_normalized(self.tcx);
-        // N.B. There is no guarantee that args collected in typeck results are fully normalized,
-        // so they need to be normalized in order to pass to `Instance::resolve`, which will ICE
-        // if given unnormalized types.
-        let args = self
-            .tcx
-            .normalize_erasing_regions(param_env_reveal_all, self.typeck_results.node_args(id));
-        let instance = match ty::Instance::try_resolve(self.tcx, param_env_reveal_all, def_id, args)
-        {
-            Ok(Some(i)) => i,
-            Ok(None) => {
-                // It should be assoc consts if there's no error but we cannot resolve it.
-                debug_assert!(is_associated_const);
-
-                let e = self.tcx.dcx().emit_err(AssocConstInPattern { span });
-                return pat_from_kind(PatKind::Error(e));
-            }
-
-            Err(_) => {
-                let e = self.tcx.dcx().emit_err(CouldNotEvalConstPattern { span });
-                return pat_from_kind(PatKind::Error(e));
-            }
-        };
-
-        let c = ty::Const::new_unevaluated(
-            self.tcx,
-            ty::UnevaluatedConst { def: instance.def_id(), args: instance.args },
-        );
-
+        let args = self.typeck_results.node_args(id);
+        let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
         let pattern = self.const_to_pat(c, ty, id, span);
 
         if !is_associated_const {
