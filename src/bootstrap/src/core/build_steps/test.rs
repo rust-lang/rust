@@ -686,6 +686,8 @@ impl Step for CompiletestTest {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
+            // compiletest uses libtest internals; make it use the in-tree std to make sure it never breaks
+            // when std sources change.
             Mode::ToolStd,
             host,
             "test",
