@@ -471,16 +471,12 @@ impl Miri {
         // We re-use the `cargo` from above.
         cargo.arg("--print-sysroot");
 
-        if builder.config.dry_run() {
-            String::new()
-        } else {
-            builder.verbose(|| println!("running: {cargo:?}"));
-            let stdout = cargo.capture_stdout().run(builder).stdout();
-            // Output is "<sysroot>\n".
-            let sysroot = stdout.trim_end();
-            builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
-            sysroot.to_owned()
-        }
+        builder.verbose(|| println!("running: {cargo:?}"));
+        let stdout = cargo.capture_stdout().run(builder).stdout();
+        // Output is "<sysroot>\n".
+        let sysroot = stdout.trim_end();
+        builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
+        sysroot.to_owned()
     }
 }
 
