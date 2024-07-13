@@ -7269,6 +7269,1177 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_ph<const ROUNDING: i32>(
     )
 }
 
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_rcp_ph(a: __m128h) -> __m128h {
+    _mm_mask_rcp_ph(_mm_undefined_ph(), 0xff, a)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`
+/// using writemask `k` (elements are copied from `src` when the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_rcp_ph(src: __m128h, k: __mmask8, a: __m128h) -> __m128h {
+    vrcpph_128(a, src, k)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`
+/// using zeromask `k` (elements are zeroed out when the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_rcp_ph(k: __mmask8, a: __m128h) -> __m128h {
+    _mm_mask_rcp_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_rcp_ph(a: __m256h) -> __m256h {
+    _mm256_mask_rcp_ph(_mm256_undefined_ph(), 0xffff, a)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`
+/// using writemask `k` (elements are copied from `src` when the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_rcp_ph(src: __m256h, k: __mmask16, a: __m256h) -> __m256h {
+    vrcpph_256(a, src, k)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`
+/// using zeromask `k` (elements are zeroed out when the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_rcp_ph(k: __mmask16, a: __m256h) -> __m256h {
+    _mm256_mask_rcp_ph(_mm256_setzero_ph(), k, a)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_rcp_ph(a: __m512h) -> __m512h {
+    _mm512_mask_rcp_ph(_mm512_undefined_ph(), 0xffffffff, a)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`
+/// using writemask `k` (elements are copied from `src` when the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_rcp_ph(src: __m512h, k: __mmask32, a: __m512h) -> __m512h {
+    vrcpph_512(a, src, k)
+}
+
+/// Compute the approximate reciprocal of packed 16-bit floating-point elements in `a` and stores the results in `dst`
+/// using zeromask `k` (elements are zeroed out when the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_rcp_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrcpph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_rcp_ph(k: __mmask32, a: __m512h) -> __m512h {
+    _mm512_mask_rcp_ph(_mm512_setzero_ph(), k, a)
+}
+
+/// Compute the approximate reciprocal of the lower half-precision (16-bit) floating-point element in b,
+/// store the result in the lower element of dst, and copy the upper 7 packed elements from a to the
+/// upper elements of dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rcp_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrcpsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_rcp_sh(a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_rcp_sh(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compute the approximate reciprocal of the lower half-precision (16-bit) floating-point element in b,
+/// store the result in the lower element of dst using writemask k (the element is copied from src when
+/// mask bit 0 is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_rcp_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrcpsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_rcp_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    vrcpsh(a, b, src, k)
+}
+
+/// Compute the approximate reciprocal of the lower half-precision (16-bit) floating-point element in b,
+/// store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0
+/// is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_rcp_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrcpsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_rcp_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_rcp_sh(_mm_setzero_ph(), k, a, b)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_rsqrt_ph(a: __m128h) -> __m128h {
+    _mm_mask_rsqrt_ph(_mm_undefined_ph(), 0xff, a)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst using writemask k (elements are copied from src when
+/// the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_rsqrt_ph(src: __m128h, k: __mmask8, a: __m128h) -> __m128h {
+    vrsqrtph_128(a, src, k)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_rsqrt_ph(k: __mmask8, a: __m128h) -> __m128h {
+    _mm_mask_rsqrt_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_rsqrt_ph(a: __m256h) -> __m256h {
+    _mm256_mask_rsqrt_ph(_mm256_undefined_ph(), 0xffff, a)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst using writemask k (elements are copied from src when
+/// the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_rsqrt_ph(src: __m256h, k: __mmask16, a: __m256h) -> __m256h {
+    vrsqrtph_256(a, src, k)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_rsqrt_ph(k: __mmask16, a: __m256h) -> __m256h {
+    _mm256_mask_rsqrt_ph(_mm256_setzero_ph(), k, a)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_rsqrt_ph(a: __m512h) -> __m512h {
+    _mm512_mask_rsqrt_ph(_mm512_undefined_ph(), 0xffffffff, a)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst using writemask k (elements are copied from src when
+/// the corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_rsqrt_ph(src: __m512h, k: __mmask32, a: __m512h) -> __m512h {
+    vrsqrtph_512(a, src, k)
+}
+
+/// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
+/// elements in a, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_rsqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_rsqrt_ph(k: __mmask32, a: __m512h) -> __m512h {
+    _mm512_mask_rsqrt_ph(_mm512_setzero_ph(), k, a)
+}
+
+/// Compute the approximate reciprocal square root of the lower half-precision (16-bit) floating-point
+/// element in b, store the result in the lower element of dst, and copy the upper 7 packed elements from a
+/// to the upper elements of dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rsqrt_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrsqrtsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_rsqrt_sh(a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_rsqrt_sh(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compute the approximate reciprocal square root of the lower half-precision (16-bit) floating-point
+/// element in b, store the result in the lower element of dst using writemask k (the element is copied from src
+/// when mask bit 0 is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_rsqrt_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrsqrtsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_rsqrt_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    vrsqrtsh(a, b, src, k)
+}
+
+/// Compute the approximate reciprocal square root of the lower half-precision (16-bit) floating-point
+/// element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when
+/// mask bit 0 is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+/// The maximum relative error for this approximation is less than `1.5*2^-12`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_rsqrt_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vrsqrtsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_rsqrt_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_rsqrt_sh(_mm_setzero_ph(), k, a, b)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_sqrt_ph(a: __m128h) -> __m128h {
+    simd_fsqrt(a)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_sqrt_ph(src: __m128h, k: __mmask8, a: __m128h) -> __m128h {
+    simd_select_bitmask(k, _mm_sqrt_ph(a), src)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_sqrt_ph(k: __mmask8, a: __m128h) -> __m128h {
+    simd_select_bitmask(k, _mm_sqrt_ph(a), _mm_setzero_ph())
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_sqrt_ph(a: __m256h) -> __m256h {
+    simd_fsqrt(a)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_sqrt_ph(src: __m256h, k: __mmask16, a: __m256h) -> __m256h {
+    simd_select_bitmask(k, _mm256_sqrt_ph(a), src)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_sqrt_ph(k: __mmask16, a: __m256h) -> __m256h {
+    simd_select_bitmask(k, _mm256_sqrt_ph(a), _mm256_setzero_ph())
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_sqrt_ph(a: __m512h) -> __m512h {
+    simd_fsqrt(a)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_sqrt_ph(src: __m512h, k: __mmask32, a: __m512h) -> __m512h {
+    simd_select_bitmask(k, _mm512_sqrt_ph(a), src)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_sqrt_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_sqrt_ph(k: __mmask32, a: __m512h) -> __m512h {
+    simd_select_bitmask(k, _mm512_sqrt_ph(a), _mm512_setzero_ph())
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION                       // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_sqrt_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_sqrt_round_ph<const ROUNDING: i32>(a: __m512h) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    vsqrtph_512(a, ROUNDING)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION                       // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_sqrt_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_sqrt_round_ph<const ROUNDING: i32>(
+    src: __m512h,
+    k: __mmask32,
+    a: __m512h,
+) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_sqrt_round_ph::<ROUNDING>(a), src)
+}
+
+/// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
+/// results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION                       // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_sqrt_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_sqrt_round_ph<const ROUNDING: i32>(k: __mmask32, a: __m512h) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_sqrt_round_ph::<ROUNDING>(a), _mm512_setzero_ph())
+}
+
+/// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
+/// the result in the lower element of dst, and copy the upper 7 packed elements from a to the upper
+/// elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sqrt_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_sqrt_sh(a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_sqrt_sh(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
+/// the result in the lower element of dst using writemask k (the element is copied from src when mask
+/// bit 0 is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_sqrt_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_sqrt_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_sqrt_round_sh::<_MM_FROUND_CUR_DIRECTION>(src, k, a, b)
+}
+
+/// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
+/// the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0
+/// is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_sqrt_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_sqrt_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_sqrt_sh(_mm_setzero_ph(), k, a, b)
+}
+
+/// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
+/// the result in the lower element of dst, and copy the upper 7 packed elements from a to the upper
+/// elements of dst.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION                       // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sqrt_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtsh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_sqrt_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm_mask_sqrt_round_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
+/// the result in the lower element of dst using writemask k (the element is copied from src when mask
+/// bit 0 is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION                       // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_sqrt_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtsh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_sqrt_round_sh<const ROUNDING: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m128h,
+    b: __m128h,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vsqrtsh(a, b, src, k, ROUNDING)
+}
+
+/// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
+/// the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0
+/// is not set), and copy the upper 7 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION                       // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_sqrt_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vsqrtsh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_sqrt_round_sh<const ROUNDING: i32>(
+    k: __mmask8,
+    a: __m128h,
+    b: __m128h,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm_mask_sqrt_round_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum
+/// value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_max_ph(a: __m128h, b: __m128h) -> __m128h {
+    vmaxph_128(a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_max_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    simd_select_bitmask(k, _mm_max_ph(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_max_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    simd_select_bitmask(k, _mm_max_ph(a, b), _mm_setzero_ph())
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum
+/// value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_max_ph(a: __m256h, b: __m256h) -> __m256h {
+    vmaxph_256(a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_max_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
+    simd_select_bitmask(k, _mm256_max_ph(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_max_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
+    simd_select_bitmask(k, _mm256_max_ph(a, b), _mm256_setzero_ph())
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum
+/// value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_max_ph(a: __m512h, b: __m512h) -> __m512h {
+    _mm512_max_round_ph::<_MM_FROUND_CUR_DIRECTION>(a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_max_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
+    simd_select_bitmask(k, _mm512_max_ph(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vmaxph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_max_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
+    simd_select_bitmask(k, _mm512_max_ph(a, b), _mm512_setzero_ph())
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst. Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_max_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vmaxph, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_max_round_ph<const SAE: i32>(a: __m512h, b: __m512h) -> __m512h {
+    static_assert_sae!(SAE);
+    vmaxph_512(a, b, SAE)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the
+/// IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_max_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vmaxph, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_max_round_ph<const SAE: i32>(
+    src: __m512h,
+    k: __mmask32,
+    a: __m512h,
+    b: __m512h,
+) -> __m512h {
+    static_assert_sae!(SAE);
+    simd_select_bitmask(k, _mm512_max_round_ph::<SAE>(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the
+/// IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_max_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vmaxph, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_max_round_ph<const SAE: i32>(
+    k: __mmask32,
+    a: __m512h,
+    b: __m512h,
+) -> __m512h {
+    static_assert_sae!(SAE);
+    simd_select_bitmask(k, _mm512_max_round_ph::<SAE>(a, b), _mm512_setzero_ph())
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the maximum
+/// value in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements
+/// of dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value
+/// when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_max_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_max_sh(a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_max_sh(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the maximum
+/// value in the lower element of dst using writemask k (the element is copied from src when mask bit 0
+/// is not set), and copy the upper 7 packed elements from a to the upper elements of dst. Does not follow
+/// the IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_max_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_max_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_max_round_sh::<_MM_FROUND_CUR_DIRECTION>(src, k, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the maximum value
+/// in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and
+/// copy the upper 7 packed elements from a to the upper elements of dst. Does not follow the IEEE Standard
+/// for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_max_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_max_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_max_sh(_mm_setzero_ph(), k, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the maximum value
+/// in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the
+/// IEEE Standard for Floating-Point Arithmetic (IEEE 754) maximum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_max_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxsh, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_max_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
+    static_assert_sae!(SAE);
+    _mm_mask_max_round_sh::<SAE>(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the maximum value
+/// in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set),
+/// and copy the upper 7 packed elements from a to the upper elements of dst. Exceptions can be suppressed by
+/// passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the IEEE Standard for Floating-Point Arithmetic
+/// (IEEE 754) maximum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_max_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxsh, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_max_round_sh<const SAE: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m128h,
+    b: __m128h,
+) -> __m128h {
+    static_assert_sae!(SAE);
+    vmaxsh(a, b, src, k, SAE)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the maximum value
+/// in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and
+/// copy the upper 7 packed elements from a to the upper elements of dst. Exceptions can be suppressed by
+/// passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the IEEE Standard for Floating-Point Arithmetic
+/// (IEEE 754) maximum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_max_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vmaxsh, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_max_round_sh<const SAE: i32>(
+    k: __mmask8,
+    a: __m128h,
+    b: __m128h,
+) -> __m128h {
+    static_assert_sae!(SAE);
+    _mm_mask_max_round_sh::<SAE>(_mm_setzero_ph(), k, a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value
+/// when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_min_ph(a: __m128h, b: __m128h) -> __m128h {
+    vminph_128(a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_min_ph(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    simd_select_bitmask(k, _mm_min_ph(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_min_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    simd_select_bitmask(k, _mm_min_ph(a, b), _mm_setzero_ph())
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value
+/// when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_min_ph(a: __m256h, b: __m256h) -> __m256h {
+    vminph_256(a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_min_ph(src: __m256h, k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
+    simd_select_bitmask(k, _mm256_min_ph(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_min_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
+    simd_select_bitmask(k, _mm256_min_ph(a, b), _mm256_setzero_ph())
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value
+/// when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_min_ph(a: __m512h, b: __m512h) -> __m512h {
+    _mm512_min_round_ph::<_MM_FROUND_CUR_DIRECTION>(a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_min_ph(src: __m512h, k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
+    simd_select_bitmask(k, _mm512_min_ph(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are
+/// NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vminph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_min_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
+    simd_select_bitmask(k, _mm512_min_ph(a, b), _mm512_setzero_ph())
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst. Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter. Does not
+/// follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_min_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vminph, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_min_round_ph<const SAE: i32>(a: __m512h, b: __m512h) -> __m512h {
+    static_assert_sae!(SAE);
+    vminph_512(a, b, SAE)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the
+/// IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_min_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vminph, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_min_round_ph<const SAE: i32>(
+    src: __m512h,
+    k: __mmask32,
+    a: __m512h,
+    b: __m512h,
+) -> __m512h {
+    static_assert_sae!(SAE);
+    simd_select_bitmask(k, _mm512_min_round_ph::<SAE>(a, b), src)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
+/// values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the
+/// IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_min_round_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vminph, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_min_round_ph<const SAE: i32>(
+    k: __mmask32,
+    a: __m512h,
+    b: __m512h,
+) -> __m512h {
+    static_assert_sae!(SAE);
+    simd_select_bitmask(k, _mm512_min_round_ph::<SAE>(a, b), _mm512_setzero_ph())
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the minimum
+/// value in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements
+/// of dst. Does not follow the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when
+/// inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_min_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_min_sh(a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_min_sh(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the minimum
+/// value in the lower element of dst using writemask k (the element is copied from src when mask bit 0
+/// is not set), and copy the upper 7 packed elements from a to the upper elements of dst. Does not follow
+/// the IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_min_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_min_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_min_round_sh::<_MM_FROUND_CUR_DIRECTION>(src, k, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the minimum value
+/// in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and
+/// copy the upper 7 packed elements from a to the upper elements of dst. Does not follow the IEEE Standard
+/// for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_min_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminsh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_min_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    _mm_mask_min_sh(_mm_setzero_ph(), k, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the minimum value
+/// in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the
+/// IEEE Standard for Floating-Point Arithmetic (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_min_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminsh, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_min_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
+    static_assert_sae!(SAE);
+    _mm_mask_min_round_sh::<SAE>(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the minimum value
+/// in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set),
+/// and copy the upper 7 packed elements from a to the upper elements of dst. Exceptions can be suppressed by
+/// passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the IEEE Standard for Floating-Point Arithmetic
+/// (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_min_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminsh, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_min_round_sh<const SAE: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m128h,
+    b: __m128h,
+) -> __m128h {
+    static_assert_sae!(SAE);
+    vminsh(a, b, src, k, SAE)
+}
+
+/// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the minimum value
+/// in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and
+/// copy the upper 7 packed elements from a to the upper elements of dst. Exceptions can be suppressed by
+/// passing _MM_FROUND_NO_EXC in the sae parameter. Does not follow the IEEE Standard for Floating-Point Arithmetic
+/// (IEEE 754) minimum value when inputs are NaN or signed-zero values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_min_round_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vminsh, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_min_round_sh<const SAE: i32>(
+    k: __mmask8,
+    a: __m128h,
+    b: __m128h,
+) -> __m128h {
+    static_assert_sae!(SAE);
+    _mm_mask_min_round_sh::<SAE>(_mm_setzero_ph(), k, a, b)
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.sh"]
@@ -7361,6 +8532,47 @@ extern "C" {
     fn vfmaddsubph_256(a: __m256h, b: __m256h, c: __m256h) -> __m256h;
     #[link_name = "llvm.x86.avx512fp16.vfmaddsub.ph.512"]
     fn vfmaddsubph_512(a: __m512h, b: __m512h, c: __m512h, rounding: i32) -> __m512h;
+
+    #[link_name = "llvm.x86.avx512fp16.mask.rcp.ph.128"]
+    fn vrcpph_128(a: __m128h, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.rcp.ph.256"]
+    fn vrcpph_256(a: __m256h, src: __m256h, k: __mmask16) -> __m256h;
+    #[link_name = "llvm.x86.avx512fp16.mask.rcp.ph.512"]
+    fn vrcpph_512(a: __m512h, src: __m512h, k: __mmask32) -> __m512h;
+    #[link_name = "llvm.x86.avx512fp16.mask.rcp.sh"]
+    fn vrcpsh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8) -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.mask.rsqrt.ph.128"]
+    fn vrsqrtph_128(a: __m128h, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.rsqrt.ph.256"]
+    fn vrsqrtph_256(a: __m256h, src: __m256h, k: __mmask16) -> __m256h;
+    #[link_name = "llvm.x86.avx512fp16.mask.rsqrt.ph.512"]
+    fn vrsqrtph_512(a: __m512h, src: __m512h, k: __mmask32) -> __m512h;
+    #[link_name = "llvm.x86.avx512fp16.mask.rsqrt.sh"]
+    fn vrsqrtsh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8) -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.sqrt.ph.512"]
+    fn vsqrtph_512(a: __m512h, rounding: i32) -> __m512h;
+    #[link_name = "llvm.x86.avx512fp16.mask.sqrt.sh"]
+    fn vsqrtsh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8, rounding: i32) -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.max.ph.128"]
+    fn vmaxph_128(a: __m128h, b: __m128h) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.max.ph.256"]
+    fn vmaxph_256(a: __m256h, b: __m256h) -> __m256h;
+    #[link_name = "llvm.x86.avx512fp16.max.ph.512"]
+    fn vmaxph_512(a: __m512h, b: __m512h, sae: i32) -> __m512h;
+    #[link_name = "llvm.x86.avx512fp16.mask.max.sh.round"]
+    fn vmaxsh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8, sae: i32) -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.min.ph.128"]
+    fn vminph_128(a: __m128h, b: __m128h) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.min.ph.256"]
+    fn vminph_256(a: __m256h, b: __m256h) -> __m256h;
+    #[link_name = "llvm.x86.avx512fp16.min.ph.512"]
+    fn vminph_512(a: __m512h, b: __m512h, sae: i32) -> __m512h;
+    #[link_name = "llvm.x86.avx512fp16.mask.min.sh.round"]
+    fn vminsh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8, sae: i32) -> __m128h;
 
 }
 
@@ -12399,5 +13611,862 @@ mod tests {
             0.0, 0.0, -1.0, 5.0, 0.0, 0.0, -1.0, 5.0, 0.0, 0.0, -1.0, 5.0, 0.0, 0.0, -1.0, 5.0,
         );
         assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_rcp_ph() {
+        let a = _mm_set1_ph(2.0);
+        let r = _mm_rcp_ph(a);
+        let e = _mm_set1_ph(0.5);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_rcp_ph() {
+        let a = _mm_set1_ph(2.0);
+        let src = _mm_set1_ph(1.0);
+        let r = _mm_mask_rcp_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_rcp_ph() {
+        let a = _mm_set1_ph(2.0);
+        let r = _mm_maskz_rcp_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_rcp_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let r = _mm256_rcp_ph(a);
+        let e = _mm256_set1_ph(0.5);
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_rcp_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let src = _mm256_set1_ph(1.0);
+        let r = _mm256_mask_rcp_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_rcp_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let r = _mm256_maskz_rcp_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_rcp_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let r = _mm512_rcp_ph(a);
+        let e = _mm512_set1_ph(0.5);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_rcp_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let src = _mm512_set1_ph(1.0);
+        let r = _mm512_mask_rcp_ph(src, 0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0,
+            0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_rcp_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let r = _mm512_maskz_rcp_ph(0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0,
+            0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_rcp_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_rcp_sh(a, b);
+        let e = _mm_setr_ph(0.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_rcp_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_rcp_sh(src, 0, a, b);
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_rcp_sh(src, 1, a, b);
+        let e = _mm_setr_ph(0.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_rcp_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_maskz_rcp_sh(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_maskz_rcp_sh(1, a, b);
+        let e = _mm_setr_ph(0.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_rsqrt_ph() {
+        let a = _mm_set1_ph(4.0);
+        let r = _mm_rsqrt_ph(a);
+        let e = _mm_set1_ph(0.5);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_rsqrt_ph() {
+        let a = _mm_set1_ph(4.0);
+        let src = _mm_set1_ph(1.0);
+        let r = _mm_mask_rsqrt_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_rsqrt_ph() {
+        let a = _mm_set1_ph(4.0);
+        let r = _mm_maskz_rsqrt_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_rsqrt_ph() {
+        let a = _mm256_set1_ph(4.0);
+        let r = _mm256_rsqrt_ph(a);
+        let e = _mm256_set1_ph(0.5);
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_rsqrt_ph() {
+        let a = _mm256_set1_ph(4.0);
+        let src = _mm256_set1_ph(1.0);
+        let r = _mm256_mask_rsqrt_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_rsqrt_ph() {
+        let a = _mm256_set1_ph(4.0);
+        let r = _mm256_maskz_rsqrt_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_rsqrt_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let r = _mm512_rsqrt_ph(a);
+        let e = _mm512_set1_ph(0.5);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_rsqrt_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let src = _mm512_set1_ph(1.0);
+        let r = _mm512_mask_rsqrt_ph(src, 0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0,
+            0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_rsqrt_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let r = _mm512_maskz_rsqrt_ph(0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0,
+            0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_rsqrt_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let r = _mm_rsqrt_sh(a, b);
+        let e = _mm_setr_ph(0.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_rsqrt_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_rsqrt_sh(src, 0, a, b);
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_rsqrt_sh(src, 1, a, b);
+        let e = _mm_setr_ph(0.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_rsqrt_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let r = _mm_maskz_rsqrt_sh(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_maskz_rsqrt_sh(1, a, b);
+        let e = _mm_setr_ph(0.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_sqrt_ph() {
+        let a = _mm_set1_ph(4.0);
+        let r = _mm_sqrt_ph(a);
+        let e = _mm_set1_ph(2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_sqrt_ph() {
+        let a = _mm_set1_ph(4.0);
+        let src = _mm_set1_ph(1.0);
+        let r = _mm_mask_sqrt_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_sqrt_ph() {
+        let a = _mm_set1_ph(4.0);
+        let r = _mm_maskz_sqrt_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_sqrt_ph() {
+        let a = _mm256_set1_ph(4.0);
+        let r = _mm256_sqrt_ph(a);
+        let e = _mm256_set1_ph(2.0);
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_sqrt_ph() {
+        let a = _mm256_set1_ph(4.0);
+        let src = _mm256_set1_ph(1.0);
+        let r = _mm256_mask_sqrt_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_sqrt_ph() {
+        let a = _mm256_set1_ph(4.0);
+        let r = _mm256_maskz_sqrt_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_sqrt_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let r = _mm512_sqrt_ph(a);
+        let e = _mm512_set1_ph(2.0);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_sqrt_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let src = _mm512_set1_ph(1.0);
+        let r = _mm512_mask_sqrt_ph(src, 0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0,
+            2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_sqrt_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let r = _mm512_maskz_sqrt_ph(0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0,
+            2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_sqrt_round_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let r = _mm512_sqrt_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm512_set1_ph(2.0);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_sqrt_round_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let src = _mm512_set1_ph(1.0);
+        let r = _mm512_mask_sqrt_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b01010101010101010101010101010101,
+            a,
+        );
+        let e = _mm512_set_ph(
+            1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0,
+            2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_sqrt_round_ph() {
+        let a = _mm512_set1_ph(4.0);
+        let r = _mm512_maskz_sqrt_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101010101010101010101010101,
+            a,
+        );
+        let e = _mm512_set_ph(
+            0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0,
+            2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_sqrt_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let r = _mm_sqrt_sh(a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_sqrt_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_sqrt_sh(src, 0, a, b);
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_sqrt_sh(src, 1, a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_sqrt_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let r = _mm_maskz_sqrt_sh(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_maskz_sqrt_sh(1, a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_sqrt_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let r = _mm_sqrt_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_sqrt_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_sqrt_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0, a, b,
+        );
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_sqrt_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 1, a, b,
+        );
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_sqrt_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(4.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0);
+        let r =
+            _mm_maskz_sqrt_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r =
+            _mm_maskz_sqrt_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(1, a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_max_ph() {
+        let a = _mm_set1_ph(2.0);
+        let b = _mm_set1_ph(1.0);
+        let r = _mm_max_ph(a, b);
+        let e = _mm_set1_ph(2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_max_ph() {
+        let a = _mm_set1_ph(2.0);
+        let b = _mm_set1_ph(1.0);
+        let src = _mm_set1_ph(3.0);
+        let r = _mm_mask_max_ph(src, 0b01010101, a, b);
+        let e = _mm_set_ph(3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_max_ph() {
+        let a = _mm_set1_ph(2.0);
+        let b = _mm_set1_ph(1.0);
+        let r = _mm_maskz_max_ph(0b01010101, a, b);
+        let e = _mm_set_ph(0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_max_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let b = _mm256_set1_ph(1.0);
+        let r = _mm256_max_ph(a, b);
+        let e = _mm256_set1_ph(2.0);
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_max_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let b = _mm256_set1_ph(1.0);
+        let src = _mm256_set1_ph(3.0);
+        let r = _mm256_mask_max_ph(src, 0b0101010101010101, a, b);
+        let e = _mm256_set_ph(
+            3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_max_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let b = _mm256_set1_ph(1.0);
+        let r = _mm256_maskz_max_ph(0b0101010101010101, a, b);
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_max_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_max_ph(a, b);
+        let e = _mm512_set1_ph(2.0);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_max_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let src = _mm512_set1_ph(3.0);
+        let r = _mm512_mask_max_ph(src, 0b01010101010101010101010101010101, a, b);
+        let e = _mm512_set_ph(
+            3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0,
+            2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_max_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_maskz_max_ph(0b01010101010101010101010101010101, a, b);
+        let e = _mm512_set_ph(
+            0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0,
+            2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_max_round_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_max_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
+        let e = _mm512_set1_ph(2.0);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_max_round_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let src = _mm512_set1_ph(3.0);
+        let r = _mm512_mask_max_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b01010101010101010101010101010101,
+            a,
+            b,
+        );
+        let e = _mm512_set_ph(
+            3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0,
+            2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_max_round_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_maskz_max_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101010101010101010101010101,
+            a,
+            b,
+        );
+        let e = _mm512_set_ph(
+            0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0,
+            2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_max_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_max_sh(a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_max_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_max_sh(src, 0, a, b);
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_max_sh(src, 1, a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_max_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_maskz_max_sh(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_maskz_max_sh(1, a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_max_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_max_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_max_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_max_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0, a, b,
+        );
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_max_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 1, a, b,
+        );
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_max_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r =
+            _mm_maskz_max_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r =
+            _mm_maskz_max_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(1, a, b);
+        let e = _mm_setr_ph(2.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_min_ph() {
+        let a = _mm_set1_ph(2.0);
+        let b = _mm_set1_ph(1.0);
+        let r = _mm_min_ph(a, b);
+        let e = _mm_set1_ph(1.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_min_ph() {
+        let a = _mm_set1_ph(2.0);
+        let b = _mm_set1_ph(1.0);
+        let src = _mm_set1_ph(3.0);
+        let r = _mm_mask_min_ph(src, 0b01010101, a, b);
+        let e = _mm_set_ph(3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_min_ph() {
+        let a = _mm_set1_ph(2.0);
+        let b = _mm_set1_ph(1.0);
+        let r = _mm_maskz_min_ph(0b01010101, a, b);
+        let e = _mm_set_ph(0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_min_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let b = _mm256_set1_ph(1.0);
+        let r = _mm256_min_ph(a, b);
+        let e = _mm256_set1_ph(1.0);
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_min_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let b = _mm256_set1_ph(1.0);
+        let src = _mm256_set1_ph(3.0);
+        let r = _mm256_mask_min_ph(src, 0b0101010101010101, a, b);
+        let e = _mm256_set_ph(
+            3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_min_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let b = _mm256_set1_ph(1.0);
+        let r = _mm256_maskz_min_ph(0b0101010101010101, a, b);
+        let e = _mm256_set_ph(
+            0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_min_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_min_ph(a, b);
+        let e = _mm512_set1_ph(1.0);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_min_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let src = _mm512_set1_ph(3.0);
+        let r = _mm512_mask_min_ph(src, 0b01010101010101010101010101010101, a, b);
+        let e = _mm512_set_ph(
+            3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0,
+            1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_min_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_maskz_min_ph(0b01010101010101010101010101010101, a, b);
+        let e = _mm512_set_ph(
+            0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
+            1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_min_round_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_min_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
+        let e = _mm512_set1_ph(1.0);
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_min_round_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let src = _mm512_set1_ph(3.0);
+        let r = _mm512_mask_min_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b01010101010101010101010101010101,
+            a,
+            b,
+        );
+        let e = _mm512_set_ph(
+            3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0,
+            1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0, 3.0, 1.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_min_round_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let b = _mm512_set1_ph(1.0);
+        let r = _mm512_maskz_min_round_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101010101010101010101010101,
+            a,
+            b,
+        );
+        let e = _mm512_set_ph(
+            0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
+            1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_min_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_min_sh(a, b);
+        let e = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_min_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_min_sh(src, 0, a, b);
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_min_sh(src, 1, a, b);
+        let e = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_min_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_maskz_min_sh(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_maskz_min_sh(1, a, b);
+        let e = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_min_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r = _mm_min_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
+        let e = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_min_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let src = _mm_setr_ph(3.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0);
+        let r = _mm_mask_min_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0, a, b,
+        );
+        let e = _mm_setr_ph(3.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_min_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 1, a, b,
+        );
+        let e = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_min_round_sh() {
+        let a = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let b = _mm_setr_ph(2.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0);
+        let r =
+            _mm_maskz_min_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
+        let e = _mm_setr_ph(0.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
+        let r =
+            _mm_maskz_min_round_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(1, a, b);
+        let e = _mm_setr_ph(1.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        assert_eq_m128h(r, e);
     }
 }
