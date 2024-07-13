@@ -1603,7 +1603,7 @@ pub(crate) fn make_unclosed_delims_error(
 enum FlatToken {
     /// A token - this holds both delimiter (e.g. '{' and '}')
     /// and non-delimiter tokens
-    Token(Token),
+    Token((Token, Spacing)),
     /// Holds the `AttrsTarget` for an AST node. The `AttrsTarget` is inserted
     /// directly into the constructed `AttrTokenStream` as an
     /// `AttrTokenTree::AttrsTarget`.
