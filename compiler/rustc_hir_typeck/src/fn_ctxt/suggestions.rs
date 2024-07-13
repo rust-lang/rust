@@ -1451,9 +1451,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::Adt(callee_adt, _) = callee_ty.peel_refs().kind() else {
             return;
         };
-        if !self.tcx.is_diagnostic_item(sym::Option, callee_adt.did()) {
+        let adt_name = if self.tcx.is_diagnostic_item(sym::Option, callee_adt.did()) {
+            "Option"
+        } else if self.tcx.is_diagnostic_item(sym::Result, callee_adt.did()) {
+            "Result"
+        } else {
             return;
-        }
+        };
 
         if call_ident.map_or(true, |ident| ident.name != sym::unwrap_or) {
             return;
@@ -1484,14 +1488,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(snip) => (snip, Applicability::MachineApplicable),
                 Err(_) => ("/* _ */".to_owned(), Applicability::MaybeIncorrect),
             };
-        let sugg = &format!("map_or({provided_snip}, |v| v)");
-        err.span_suggestion_verbose(
-            error_span,
-            "use `Option::map_or` to deref inner value of `Option`",
-            sugg,
-            applicability,
-        );
-        return;
+        let sugg = format!("map_or({provided_snip}, |v| v)");
+        let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
+        err.span_suggestion_verbose(error_span, msg, sugg, applicability);
     }
 
     /// Suggest wrapping the block in square brackets instead of curly braces

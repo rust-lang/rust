@@ -80,6 +80,10 @@ LL |     arg.unwrap_or(&[])
    |                   this argument influences the return type of `unwrap_or`
 note: method defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
+help: use `Result::map_or` to deref inner value of `Result`
+   |
+LL |     arg.map_or(&[], |v| v)
+   |         ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 
