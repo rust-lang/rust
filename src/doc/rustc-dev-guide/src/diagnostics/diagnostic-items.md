@@ -104,7 +104,7 @@ use rustc_span::symbol::sym;
 /// `TyCtxt::is_diagnostic_item()`
 fn example_1(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::HashMap, adt.did),
+        ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::HashMap, adt.did()),
         _ => false,
     }
 }
