@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrow-raw-address-of-borrowed.rs:7:13
+  --> $DIR/borrow-raw-address-of-borrowed.rs:5:13
    |
 LL |     let y = &x;
    |             -- immutable borrow occurs here
@@ -11,7 +11,7 @@ LL |     drop(y);
    |          - immutable borrow later used here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrow-raw-address-of-borrowed.rs:16:13
+  --> $DIR/borrow-raw-address-of-borrowed.rs:14:13
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
@@ -23,7 +23,7 @@ LL |     drop(y);
    |          - mutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrow-raw-address-of-borrowed.rs:17:13
+  --> $DIR/borrow-raw-address-of-borrowed.rs:15:13
    |
 LL |     let y = &mut x;
    |             ------ first mutable borrow occurs here

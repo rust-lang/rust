@@ -1,6 +1,5 @@
 //@ test-mir-pass: GVN
 // Check that we do not propagate past an indirect mutation.
-#![feature(raw_ref_op)]
 
 // EMIT_MIR indirect_mutation.foo.GVN.diff
 fn foo() {
