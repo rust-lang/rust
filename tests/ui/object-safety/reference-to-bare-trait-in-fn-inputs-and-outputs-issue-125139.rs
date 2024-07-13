@@ -91,7 +91,7 @@ trait Sing {
         //~^ ERROR: cannot return reference to temporary value
     }
 }
-    
+
 fn foo(_: &Trait) {}
 //~^ ERROR: trait objects must include the `dyn` keyword
 
