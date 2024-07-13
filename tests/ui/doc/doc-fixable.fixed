@@ -54,21 +54,24 @@ fn test_units() {
 
 /// This tests allowed identifiers.
 /// KiB MiB GiB TiB PiB EiB
-/// DirectX
+/// AccessKit
+/// CoreFoundation CoreGraphics CoreText
+/// Direct2D Direct3D DirectWrite DirectX
 /// ECMAScript
 /// GPLv2 GPLv3
 /// GitHub GitLab
 /// IPv4 IPv6
-/// ClojureScript CoffeeScript JavaScript PureScript TypeScript
+/// ClojureScript CoffeeScript JavaScript PostScript PureScript TypeScript
 /// WebAssembly
 /// NaN NaNs
 /// OAuth GraphQL
 /// OCaml
-/// OpenDNS OpenGL OpenMP OpenSSH OpenSSL OpenStreetMap OpenTelemetry
-/// WebGL WebGL2 WebGPU
+/// OpenAL OpenDNS OpenGL OpenMP OpenSSH OpenSSL OpenStreetMap OpenTelemetry
+/// OpenType
+/// WebGL WebGL2 WebGPU WebRTC WebSocket WebTransport
 /// TensorFlow
 /// TrueType
-/// iOS macOS FreeBSD
+/// iOS macOS FreeBSD NetBSD OpenBSD
 /// TeX LaTeX BibTeX BibLaTeX
 /// MinGW
 /// CamelCase (see also #2395)
