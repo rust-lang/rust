@@ -48,7 +48,6 @@ dependencies = [
  "clap_complete",
  "cmake",
  "fd-lock",
- "filetime",
  "home",
  "ignore",
  "junction",
