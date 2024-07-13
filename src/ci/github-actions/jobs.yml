@@ -82,16 +82,16 @@ envs:
 pr:
   - image: x86_64-msvc-ext1
     env:
-      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
       HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=C:/a/rust/rust/cargo.exe
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
   - image: x86_64-msvc-ext2
     env:
-      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
       HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=C:/a/rust/rust/cargo.exe
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
 
@@ -101,16 +101,16 @@ pr:
 try:
   - image: x86_64-msvc-ext1
     env:
-      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
       HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=C:/a/rust/rust/cargo.exe
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
   - image: x86_64-msvc-ext2
     env:
-      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
       HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=C:/a/rust/rust/cargo.exe
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
 
