@@ -1259,7 +1259,7 @@ impl Config {
         cmd.arg("rev-parse").arg("--show-cdup");
         // Discard stderr because we expect this to fail when building from a tarball.
         let output = cmd
-            .command
+            .as_command_mut()
             .stderr(std::process::Stdio::null())
             .output()
             .ok()
@@ -2163,7 +2163,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        output(&mut git.command)
+        output(git.as_command_mut())
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -2469,11 +2469,11 @@ impl Config {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
-            &mut helpers::git(Some(&self.src))
+            helpers::git(Some(&self.src))
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
                 .args(["-n1", "--first-parent", "HEAD"])
-                .command,
+                .as_command_mut(),
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2489,7 +2489,7 @@ impl Config {
             .args(["diff-index", "--quiet", commit])
             .arg("--")
             .args([self.src.join("compiler"), self.src.join("library")])
-            .command
+            .as_command_mut()
             .status())
         .success();
         if has_changes {
@@ -2563,11 +2563,11 @@ impl Config {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
-            &mut helpers::git(Some(&self.src))
+            helpers::git(Some(&self.src))
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
                 .args(["-n1", "--first-parent", "HEAD"])
-                .command,
+                .as_command_mut(),
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2589,7 +2589,7 @@ impl Config {
             git.arg(top_level.join(path));
         }
 
-        let has_changes = !t!(git.command.status()).success();
+        let has_changes = !t!(git.as_command_mut().status()).success();
         if has_changes {
             if if_unchanged {
                 if self.verbose > 0 {

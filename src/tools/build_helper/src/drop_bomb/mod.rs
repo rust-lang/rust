@@ -12,27 +12,31 @@ use std::panic;
 mod tests;
 
 #[derive(Debug)]
-pub(crate) struct DropBomb {
+pub struct DropBomb {
     command: OsString,
     defused: bool,
-    armed_line: u32,
+    armed_location: panic::Location<'static>,
 }
 
 impl DropBomb {
     /// Arm a [`DropBomb`]. If the value is dropped without being [`defused`][Self::defused], then
     /// it will panic. It is expected that the command wrapper uses `#[track_caller]` to help
-    /// propagate the caller info from rmake.rs.
+    /// propagate the caller location.
     #[track_caller]
-    pub(crate) fn arm<S: AsRef<OsStr>>(command: S) -> DropBomb {
+    pub fn arm<S: AsRef<OsStr>>(command: S) -> DropBomb {
         DropBomb {
             command: command.as_ref().into(),
             defused: false,
-            armed_line: panic::Location::caller().line(),
+            armed_location: *panic::Location::caller(),
         }
     }
 
+    pub fn get_created_location(&self) -> panic::Location<'static> {
+        self.armed_location
+    }
+
     /// Defuse the [`DropBomb`]. This will prevent the drop bomb from panicking when dropped.
-    pub(crate) fn defuse(&mut self) {
+    pub fn defuse(&mut self) {
         self.defused = true;
     }
 }
@@ -41,8 +45,8 @@ impl Drop for DropBomb {
     fn drop(&mut self) {
         if !self.defused && !std::thread::panicking() {
             panic!(
-                "command constructed but not executed at line {}: `{}`",
-                self.armed_line,
+                "command constructed at `{}` was dropped without being executed: `{}`",
+                self.armed_location,
                 self.command.to_string_lossy()
             )
         }

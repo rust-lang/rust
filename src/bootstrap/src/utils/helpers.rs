@@ -244,7 +244,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 
 // FIXME: get rid of this function
 pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.command.status() {
+    let status = match cmd.as_command_mut().status() {
         Ok(status) => status,
         Err(e) => {
             println!("failed to execute command: {cmd:?}\nERROR: {e}");
@@ -501,6 +501,7 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
 /// bootstrap-specific needs/hacks from a single source, rather than applying them on next to every
 /// git command creation, which is painful to ensure that the required change is applied
 /// on each one of them correctly.
+#[track_caller]
 pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     let mut git = command("git");
 

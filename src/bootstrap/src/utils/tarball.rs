@@ -370,11 +370,11 @@ impl<'a> Tarball<'a> {
         if self.builder.rust_info().is_managed_git_subrepository() {
             // %ct means committer date
             let timestamp = helpers::output(
-                &mut helpers::git(Some(&self.builder.src))
+                helpers::git(Some(&self.builder.src))
                     .arg("log")
                     .arg("-1")
                     .arg("--format=%ct")
-                    .command,
+                    .as_command_mut(),
             );
             cmd.args(["--override-file-mtime", timestamp.trim()]);
         }

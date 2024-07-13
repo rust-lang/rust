@@ -7,7 +7,6 @@ pub mod cc;
 pub mod clang;
 mod command;
 pub mod diff;
-mod drop_bomb;
 pub mod fs_wrapper;
 pub mod llvm;
 pub mod run;

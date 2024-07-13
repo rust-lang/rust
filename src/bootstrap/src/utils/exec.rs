@@ -1,5 +1,7 @@
 use crate::Build;
+use build_helper::drop_bomb::DropBomb;
 use std::ffi::OsStr;
+use std::fmt::{Debug, Formatter};
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
 
@@ -53,17 +55,20 @@ impl OutputMode {
 ///
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
-#[derive(Debug)]
 pub struct BootstrapCommand {
-    pub command: Command,
+    command: Command,
     pub failure_behavior: BehaviorOnFailure,
     pub stdout: OutputMode,
     pub stderr: OutputMode,
     // Run the command even during dry run
     pub run_always: bool,
+    // This field makes sure that each command is executed (or disarmed) before it is dropped,
+    // to avoid forgetting to execute a command.
+    drop_bomb: DropBomb,
 }
 
 impl BootstrapCommand {
+    #[track_caller]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
         Command::new(program).into()
     }
@@ -142,19 +147,55 @@ impl BootstrapCommand {
     }
 
     /// Run the command, returning its output.
+    #[track_caller]
     pub fn run(&mut self, builder: &Build) -> CommandOutput {
         builder.run(self)
+    }
+
+    /// Provides access to the stdlib Command inside.
+    /// FIXME: This function should be eventually removed from bootstrap.
+    pub fn as_command_mut(&mut self) -> &mut Command {
+        // We don't know what will happen with the returned command, so we need to mark this
+        // command as executed proactively.
+        self.mark_as_executed();
+        &mut self.command
+    }
+
+    /// Mark the command as being executed, disarming the drop bomb.
+    /// If this method is not called before the command is dropped, its drop will panic.
+    pub fn mark_as_executed(&mut self) {
+        self.drop_bomb.defuse();
+    }
+
+    /// Returns the source code location where this command was created.
+    pub fn get_created_location(&self) -> std::panic::Location<'static> {
+        self.drop_bomb.get_created_location()
+    }
+}
+
+impl Debug for BootstrapCommand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.command)?;
+        write!(
+            f,
+            " (failure_mode={:?}, stdout_mode={:?}, stderr_mode={:?})",
+            self.failure_behavior, self.stdout, self.stderr
+        )
     }
 }
 
 impl From<Command> for BootstrapCommand {
+    #[track_caller]
     fn from(command: Command) -> Self {
+        let program = command.get_program().to_owned();
+
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             stdout: OutputMode::Print,
             stderr: OutputMode::Print,
             run_always: false,
+            drop_bomb: DropBomb::arm(program),
         }
     }
 }
@@ -169,6 +210,7 @@ enum CommandStatus {
 
 /// Create a new BootstrapCommand. This is a helper function to make command creation
 /// shorter than `BootstrapCommand::new`.
+#[track_caller]
 #[must_use]
 pub fn command<S: AsRef<OsStr>>(program: S) -> BootstrapCommand {
     BootstrapCommand::new(program)
