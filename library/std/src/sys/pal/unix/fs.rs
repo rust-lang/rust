@@ -2010,56 +2010,10 @@ mod remove_dir_impl {
     use crate::sys::common::small_c_string::run_path_with_cstr;
     use crate::sys::{cvt, cvt_r};
 
-    #[cfg(not(any(
-        all(target_os = "linux", target_env = "gnu"),
-        all(target_os = "macos", not(target_arch = "aarch64"))
-    )))]
+    #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
     use libc::{fdopendir, openat, unlinkat};
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{fdopendir, openat64 as openat, unlinkat};
-    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
-    use macos_weak::{fdopendir, openat, unlinkat};
-
-    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
-    mod macos_weak {
-        use crate::sys::weak::weak;
-        use libc::{c_char, c_int, DIR};
-
-        fn get_openat_fn() -> Option<unsafe extern "C" fn(c_int, *const c_char, c_int) -> c_int> {
-            weak!(fn openat(c_int, *const c_char, c_int) -> c_int);
-            openat.get()
-        }
-
-        pub fn has_openat() -> bool {
-            get_openat_fn().is_some()
-        }
-
-        pub unsafe fn openat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
-            get_openat_fn().map(|openat| openat(dirfd, pathname, flags)).unwrap_or_else(|| {
-                crate::sys::pal::unix::os::set_errno(libc::ENOSYS);
-                -1
-            })
-        }
-
-        pub unsafe fn fdopendir(fd: c_int) -> *mut DIR {
-            #[cfg(all(target_os = "macos", target_arch = "x86"))]
-            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64$UNIX2003");
-            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64");
-            fdopendir.get().map(|fdopendir| fdopendir(fd)).unwrap_or_else(|| {
-                crate::sys::pal::unix::os::set_errno(libc::ENOSYS);
-                crate::ptr::null_mut()
-            })
-        }
-
-        pub unsafe fn unlinkat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
-            weak!(fn unlinkat(c_int, *const c_char, c_int) -> c_int);
-            unlinkat.get().map(|unlinkat| unlinkat(dirfd, pathname, flags)).unwrap_or_else(|| {
-                crate::sys::pal::unix::os::set_errno(libc::ENOSYS);
-                -1
-            })
-        }
-    }
 
     pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
         let fd = cvt_r(|| unsafe {
@@ -2172,19 +2126,7 @@ mod remove_dir_impl {
         }
     }
 
-    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64"))))]
     pub fn remove_dir_all(p: &Path) -> io::Result<()> {
         remove_dir_all_modern(p)
-    }
-
-    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
-    pub fn remove_dir_all(p: &Path) -> io::Result<()> {
-        if macos_weak::has_openat() {
-            // openat() is available with macOS 10.10+, just like unlinkat() and fdopendir()
-            remove_dir_all_modern(p)
-        } else {
-            // fall back to classic implementation
-            crate::sys_common::fs::remove_dir_all(p)
-        }
     }
 }
