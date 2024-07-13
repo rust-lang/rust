@@ -1459,7 +1459,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
 
-        if call_ident.map_or(true, |ident| ident.name != sym::unwrap_or) {
+        let Some(call_ident) = call_ident else {
+            return;
+        };
+        if call_ident.name != sym::unwrap_or {
             return;
         }
 
@@ -1483,14 +1486,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !self.can_coerce(expected_ty, dummy_ty) {
             return;
         }
-        let (provided_snip, applicability) =
-            match self.tcx.sess.source_map().span_to_snippet(provided_expr.span) {
-                Ok(snip) => (snip, Applicability::MachineApplicable),
-                Err(_) => ("/* _ */".to_owned(), Applicability::MaybeIncorrect),
-            };
-        let sugg = format!("map_or({provided_snip}, |v| v)");
         let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
-        err.span_suggestion_verbose(error_span, msg, sugg, applicability);
+        err.multipart_suggestion_verbose(
+            msg,
+            vec![
+                (call_ident.span, "map_or".to_owned()),
+                (provided_expr.span.shrink_to_hi(), ", |v| v".to_owned()),
+            ],
+            Applicability::MachineApplicable,
+        );
     }
 
     /// Suggest wrapping the block in square brackets instead of curly braces
