@@ -1498,6 +1498,155 @@ fn look_ahead_non_outermost_stream() {
     });
 }
 
+// FIXME(nnethercote) All the output is currently wrong.
+#[test]
+fn debug_lookahead() {
+    create_default_session_globals_then(|| {
+        let psess = psess();
+        let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
+
+        // Current position is the `fn`.
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(0)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [],
+    approx_token_stream_pos: 1,
+    ..
+}"
+        );
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(7)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [],
+    approx_token_stream_pos: 1,
+    ..
+}"
+        );
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(15)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [],
+    approx_token_stream_pos: 1,
+    ..
+}"
+        );
+
+        // Move forward to the second `x`.
+        for _ in 0..8 {
+            p.bump();
+        }
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(1)),
+            "Parser {
+    prev_token: Token {
+        kind: OpenDelim(
+            Brace,
+        ),
+        span: Span {
+            lo: BytePos(
+                13,
+            ),
+            hi: BytePos(
+                14,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [],
+    approx_token_stream_pos: 9,
+    ..
+}"
+        );
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(4)),
+            "Parser {
+    prev_token: Token {
+        kind: OpenDelim(
+            Brace,
+        ),
+        span: Span {
+            lo: BytePos(
+                13,
+            ),
+            hi: BytePos(
+                14,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [],
+    approx_token_stream_pos: 9,
+    ..
+}"
+        );
+
+        // Move two past the final token (the `;`).
+        for _ in 0..6 {
+            p.bump();
+        }
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(3)),
+            "Parser {
+    prev_token: Token {
+        kind: Eof,
+        span: Span {
+            lo: BytePos(
+                27,
+            ),
+            hi: BytePos(
+                28,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Eof,
+        Eof,
+        Eof,
+    ],
+    approx_token_stream_pos: 15,
+    ..
+}"
+        );
+    });
+}
+
 // This tests that when parsing a string (rather than a file) we don't try
 // and read in a file for a module declaration and just parse a stub.
 // See `recurse_into_file_modules` in the parser.
