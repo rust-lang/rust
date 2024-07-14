@@ -19,7 +19,6 @@ pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
 pub type WCHAR = u16;
-pub type SIZE_T = usize;
 pub type ULONG = c_ulong;
 
 pub type LPCVOID = *const c_void;

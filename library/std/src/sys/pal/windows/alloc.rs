@@ -114,7 +114,7 @@ fn init_or_get_process_heap() -> c::HANDLE {
 extern "C" fn process_heap_init_and_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`
     flags: c::DWORD,
-    dwBytes: c::SIZE_T,
+    dwBytes: usize,
 ) -> c::LPVOID {
     let heap = init_or_get_process_heap();
     if core::intrinsics::unlikely(heap.is_null()) {
@@ -128,7 +128,7 @@ extern "C" fn process_heap_init_and_alloc(
 fn process_heap_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`,
     flags: c::DWORD,
-    dwBytes: c::SIZE_T,
+    dwBytes: usize,
 ) -> c::LPVOID {
     let heap = HEAP.load(Ordering::Relaxed);
     if core::intrinsics::likely(!heap.is_null()) {
