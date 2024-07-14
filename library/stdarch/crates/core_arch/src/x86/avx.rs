@@ -737,7 +737,7 @@ pub const _CMP_TRUE_US: i32 = 0x1f;
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmp_pd)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqpd, IMM5 = 0))] // TODO Validate vcmppd
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -767,7 +767,7 @@ pub unsafe fn _mm256_cmp_pd<const IMM5: i32>(a: __m256d, b: __m256d) -> __m256d 
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmp_ps)
 #[inline]
-#[target_feature(enable = "avx,sse")]
+#[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqps, IMM5 = 0))] // TODO Validate vcmpps
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -799,7 +799,7 @@ pub unsafe fn _mm256_cmp_ps<const IMM5: i32>(a: __m256, b: __m256) -> __m256 {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmp_sd)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqsd, IMM5 = 0))] // TODO Validate vcmpsd
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -816,7 +816,7 @@ pub unsafe fn _mm_cmp_sd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmp_ss)
 #[inline]
-#[target_feature(enable = "avx,sse")]
+#[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqss, IMM5 = 0))] // TODO Validate vcmpss
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1093,7 +1093,7 @@ pub unsafe fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_permute_ps)
 #[inline]
-#[target_feature(enable = "avx,sse")]
+#[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vshufps, IMM8 = 9))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1163,7 +1163,7 @@ pub unsafe fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_permute_pd)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vshufpd, IMM2 = 0x1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -2733,7 +2733,7 @@ pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_zextps128_ps256)
 #[inline]
-#[target_feature(enable = "avx,sse")]
+#[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -2747,7 +2747,7 @@ pub unsafe fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_zextsi128_si256)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -2764,7 +2764,7 @@ pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_zextpd128_pd256)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -2888,7 +2888,7 @@ pub unsafe fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_loadu2_m128)
 #[inline]
-#[target_feature(enable = "avx,sse")]
+#[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_loadu2_m128(hiaddr: *const f32, loaddr: *const f32) -> __m256 {
@@ -2903,7 +2903,7 @@ pub unsafe fn _mm256_loadu2_m128(hiaddr: *const f32, loaddr: *const f32) -> __m2
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_loadu2_m128d)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> __m256d {
@@ -2917,7 +2917,7 @@ pub unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> __m
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_loadu2_m128i)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i) -> __m256i {
@@ -2932,7 +2932,7 @@ pub unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_storeu2_m128)
 #[inline]
-#[target_feature(enable = "avx,sse")]
+#[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: __m256) {
@@ -2949,7 +2949,7 @@ pub unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: __m256)
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_storeu2_m128d)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: __m256d) {
@@ -2965,7 +2965,7 @@ pub unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: __m256
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_storeu2_m128i)
 #[inline]
-#[target_feature(enable = "avx,sse2")]
+#[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_storeu2_m128i(hiaddr: *mut __m128i, loaddr: *mut __m128i, a: __m256i) {

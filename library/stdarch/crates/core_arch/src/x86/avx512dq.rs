@@ -6409,33 +6409,6 @@ pub unsafe fn _mm_maskz_reduce_ss<const IMM8: i32>(k: __mmask8, a: __m128, b: __
 
 // FP-Class
 
-// FIXME: Use LLVM intrinsics instead of inline assembly
-macro_rules! fpclass_asm {
-    ($instr:literal, $mask_type: ty, $reg: ident, $a: expr) => {{
-        let dst: $mask_type;
-        $crate::arch::asm!(
-            concat!($instr, " {k}, {src}, {imm8}"),
-            k = lateout(kreg) dst,
-            src = in($reg) $a,
-            imm8 = const IMM8,
-            options(pure, nomem, nostack)
-        );
-        dst
-    }};
-    ($instr:literal, $mask_type: ty, $mask: expr, $reg: ident, $a: expr) => {{
-        let dst: $mask_type;
-        $crate::arch::asm!(
-            concat!($instr, " {k} {{ {mask} }}, {src}, {imm8}"),
-            k = lateout(kreg) dst,
-            mask = in(kreg) $mask,
-            src = in($reg) $a,
-            imm8 = const IMM8,
-            options(pure, nomem, nostack)
-        );
-        dst
-    }};
-}
-
 /// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
 /// by imm8, and store the results in mask vector k.
 /// imm can be a combination of:
@@ -6451,13 +6424,13 @@ macro_rules! fpclass_asm {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_pd_mask&ig_expand=3493)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_fpclass_pd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasspd", __mmask8, xmm_reg, a)
+    _mm_mask_fpclass_pd_mask::<IMM8>(0xff, a)
 }
 
 /// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
@@ -6476,13 +6449,13 @@ pub unsafe fn _mm_fpclass_pd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_pd_mask&ig_expand=3494)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasspd", __mmask8, k1, xmm_reg, a)
+    transmute(vfpclasspd_128(a.as_f64x2(), IMM8, k1))
 }
 
 /// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
@@ -6500,13 +6473,13 @@ pub unsafe fn _mm_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fpclass_pd_mask&ig_expand=3495)
 #[inline]
-#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_fpclass_pd_mask<const IMM8: i32>(a: __m256d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasspd", __mmask8, ymm_reg, a)
+    _mm256_mask_fpclass_pd_mask::<IMM8>(0xff, a)
 }
 
 /// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
@@ -6525,13 +6498,13 @@ pub unsafe fn _mm256_fpclass_pd_mask<const IMM8: i32>(a: __m256d) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_fpclass_pd_mask&ig_expand=3496)
 #[inline]
-#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m256d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasspd", __mmask8, k1, ymm_reg, a)
+    transmute(vfpclasspd_256(a.as_f64x4(), IMM8, k1))
 }
 
 /// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
@@ -6549,13 +6522,13 @@ pub unsafe fn _mm256_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m2
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_fpclass_pd_mask&ig_expand=3497)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_fpclass_pd_mask<const IMM8: i32>(a: __m512d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasspd", __mmask8, zmm_reg, a)
+    _mm512_mask_fpclass_pd_mask::<IMM8>(0xff, a)
 }
 
 /// Test packed double-precision (64-bit) floating-point elements in a for special categories specified
@@ -6574,13 +6547,13 @@ pub unsafe fn _mm512_fpclass_pd_mask<const IMM8: i32>(a: __m512d) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_fpclass_pd_mask&ig_expand=3498)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclasspd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m512d) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclasspd", __mmask8, k1, zmm_reg, a)
+    transmute(vfpclasspd_512(a.as_f64x8(), IMM8, k1))
 }
 
 /// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
@@ -6598,13 +6571,13 @@ pub unsafe fn _mm512_mask_fpclass_pd_mask<const IMM8: i32>(k1: __mmask8, a: __m5
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_ps_mask&ig_expand=3505)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_fpclass_ps_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassps", __mmask8, xmm_reg, a)
+    _mm_mask_fpclass_ps_mask::<IMM8>(0xff, a)
 }
 
 /// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
@@ -6623,13 +6596,13 @@ pub unsafe fn _mm_fpclass_ps_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_ps_mask&ig_expand=3506)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask8, a: __m128) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassps", __mmask8, k1, xmm_reg, a)
+    transmute(vfpclassps_128(a.as_f32x4(), IMM8, k1))
 }
 
 /// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
@@ -6647,13 +6620,13 @@ pub unsafe fn _mm_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask8, a: __m128)
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fpclass_ps_mask&ig_expand=3507)
 #[inline]
-#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_fpclass_ps_mask<const IMM8: i32>(a: __m256) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassps", __mmask8, ymm_reg, a)
+    _mm256_mask_fpclass_ps_mask::<IMM8>(0xff, a)
 }
 
 /// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
@@ -6672,13 +6645,13 @@ pub unsafe fn _mm256_fpclass_ps_mask<const IMM8: i32>(a: __m256) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_fpclass_ps_mask&ig_expand=3508)
 #[inline]
-#[target_feature(enable = "avx,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq,avx512vl")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask8, a: __m256) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassps", __mmask8, k1, ymm_reg, a)
+    transmute(vfpclassps_256(a.as_f32x8(), IMM8, k1))
 }
 
 /// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
@@ -6696,13 +6669,13 @@ pub unsafe fn _mm256_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask8, a: __m2
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_fpclass_ps_mask&ig_expand=3509)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_fpclass_ps_mask<const IMM8: i32>(a: __m512) -> __mmask16 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassps", __mmask16, zmm_reg, a)
+    _mm512_mask_fpclass_ps_mask::<IMM8>(0xffff, a)
 }
 
 /// Test packed single-precision (32-bit) floating-point elements in a for special categories specified
@@ -6721,13 +6694,13 @@ pub unsafe fn _mm512_fpclass_ps_mask<const IMM8: i32>(a: __m512) -> __mmask16 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_fpclass_ps_mask&ig_expand=3510)
 #[inline]
-#[target_feature(enable = "avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclassps, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask16, a: __m512) -> __mmask16 {
     static_assert_uimm_bits!(IMM8, 8);
-    fpclass_asm!("vfpclassps", __mmask16, k1, zmm_reg, a)
+    transmute(vfpclassps_512(a.as_f32x16(), IMM8, k1))
 }
 
 /// Test the lower double-precision (64-bit) floating-point element in a for special categories specified
@@ -6745,7 +6718,7 @@ pub unsafe fn _mm512_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask16, a: __m
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_sd_mask&ig_expand=3511)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6770,7 +6743,7 @@ pub unsafe fn _mm_fpclass_sd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_sd_mask&ig_expand=3512)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6794,7 +6767,7 @@ pub unsafe fn _mm_mask_fpclass_sd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_ss_mask&ig_expand=3515)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6819,7 +6792,7 @@ pub unsafe fn _mm_fpclass_ss_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_ss_mask&ig_expand=3516)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6952,6 +6925,20 @@ extern "C" {
     fn vreducesd(a: f64x2, b: f64x2, src: f64x2, k: __mmask8, imm8: i32, sae: i32) -> f64x2;
     #[link_name = "llvm.x86.avx512.mask.reduce.ss"]
     fn vreducess(a: f32x4, b: f32x4, src: f32x4, k: __mmask8, imm8: i32, sae: i32) -> f32x4;
+
+    #[link_name = "llvm.x86.avx512.mask.fpclass.pd.128"]
+    fn vfpclasspd_128(a: f64x2, imm8: i32, k: __mmask8) -> __mmask8;
+    #[link_name = "llvm.x86.avx512.mask.fpclass.pd.256"]
+    fn vfpclasspd_256(a: f64x4, imm8: i32, k: __mmask8) -> __mmask8;
+    #[link_name = "llvm.x86.avx512.mask.fpclass.pd.512"]
+    fn vfpclasspd_512(a: f64x8, imm8: i32, k: __mmask8) -> __mmask8;
+
+    #[link_name = "llvm.x86.avx512.mask.fpclass.ps.128"]
+    fn vfpclassps_128(a: f32x4, imm8: i32, k: __mmask8) -> __mmask8;
+    #[link_name = "llvm.x86.avx512.mask.fpclass.ps.256"]
+    fn vfpclassps_256(a: f32x8, imm8: i32, k: __mmask8) -> __mmask8;
+    #[link_name = "llvm.x86.avx512.mask.fpclass.ps.512"]
+    fn vfpclassps_512(a: f32x16, imm8: i32, k: __mmask16) -> __mmask16;
 
     #[link_name = "llvm.x86.avx512.mask.fpclass.sd"]
     fn vfpclasssd(a: f64x2, imm8: i32, k: __mmask8) -> __mmask8;

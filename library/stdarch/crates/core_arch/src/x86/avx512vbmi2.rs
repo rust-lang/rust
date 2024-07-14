@@ -1,5 +1,4 @@
 use crate::{
-    arch::asm,
     core_arch::{simd::*, x86::*},
     intrinsics::simd::*,
 };
@@ -11,7 +10,7 @@ use stdarch_test::assert_instr;
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_expandloadu_epi16)
 #[inline]
-#[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
+#[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_expandloadu_epi16(
@@ -19,41 +18,25 @@ pub unsafe fn _mm512_mask_expandloadu_epi16(
     k: __mmask32,
     mem_addr: *const i16,
 ) -> __m512i {
-    let mut dst: __m512i = src;
-    asm!(
-        vpl!("vpexpandw {dst}{{{k}}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = inout(zmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    transmute(expandloadw_512(mem_addr, src.as_i16x32(), k))
 }
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_expandloadu_epi16)
 #[inline]
-#[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
+#[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_expandloadu_epi16(k: __mmask32, mem_addr: *const i16) -> __m512i {
-    let mut dst: __m512i;
-    asm!(
-        vpl!("vpexpandw {dst}{{{k}}} {{z}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = out(zmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    _mm512_mask_expandloadu_epi16(_mm512_setzero_si512(), k, mem_addr)
 }
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_expandloadu_epi16)
 #[inline]
-#[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_expandloadu_epi16(
@@ -61,41 +44,25 @@ pub unsafe fn _mm256_mask_expandloadu_epi16(
     k: __mmask16,
     mem_addr: *const i16,
 ) -> __m256i {
-    let mut dst: __m256i = src;
-    asm!(
-        vpl!("vpexpandw {dst}{{{k}}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = inout(ymm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    transmute(expandloadw_256(mem_addr, src.as_i16x16(), k))
 }
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_expandloadu_epi16)
 #[inline]
-#[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_expandloadu_epi16(k: __mmask16, mem_addr: *const i16) -> __m256i {
-    let mut dst: __m256i;
-    asm!(
-        vpl!("vpexpandw {dst}{{{k}}} {{z}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = out(ymm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    _mm256_mask_expandloadu_epi16(_mm256_setzero_si256(), k, mem_addr)
 }
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_expandloadu_epi16)
 #[inline]
-#[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_expandloadu_epi16(
@@ -103,41 +70,25 @@ pub unsafe fn _mm_mask_expandloadu_epi16(
     k: __mmask8,
     mem_addr: *const i16,
 ) -> __m128i {
-    let mut dst: __m128i = src;
-    asm!(
-        vpl!("vpexpandw {dst}{{{k}}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = inout(xmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    transmute(expandloadw_128(mem_addr, src.as_i16x8(), k))
 }
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_expandloadu_epi16)
 #[inline]
-#[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_expandloadu_epi16(k: __mmask8, mem_addr: *const i16) -> __m128i {
-    let mut dst: __m128i;
-    asm!(
-        vpl!("vpexpandw {dst}{{{k}}} {{z}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = out(xmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    _mm_mask_expandloadu_epi16(_mm_setzero_si128(), k, mem_addr)
 }
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_expandloadu_epi8)
 #[inline]
-#[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
+#[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_expandloadu_epi8(
@@ -145,41 +96,25 @@ pub unsafe fn _mm512_mask_expandloadu_epi8(
     k: __mmask64,
     mem_addr: *const i8,
 ) -> __m512i {
-    let mut dst: __m512i = src;
-    asm!(
-        vpl!("vpexpandb {dst}{{{k}}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = inout(zmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    transmute(expandloadb_512(mem_addr, src.as_i8x64(), k))
 }
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_expandloadu_epi8)
 #[inline]
-#[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
+#[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_expandloadu_epi8(k: __mmask64, mem_addr: *const i8) -> __m512i {
-    let mut dst: __m512i;
-    asm!(
-        vpl!("vpexpandb {dst}{{{k}}} {{z}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = out(zmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    _mm512_mask_expandloadu_epi8(_mm512_setzero_si512(), k, mem_addr)
 }
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_expandloadu_epi8)
 #[inline]
-#[target_feature(enable = "avx512f,avx512bw,avx512vbmi2,avx512vl,avx")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_expandloadu_epi8(
@@ -187,41 +122,25 @@ pub unsafe fn _mm256_mask_expandloadu_epi8(
     k: __mmask32,
     mem_addr: *const i8,
 ) -> __m256i {
-    let mut dst: __m256i = src;
-    asm!(
-        vpl!("vpexpandb {dst}{{{k}}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = inout(ymm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    transmute(expandloadb_256(mem_addr, src.as_i8x32(), k))
 }
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_expandloadu_epi8)
 #[inline]
-#[target_feature(enable = "avx512f,avx512bw,avx512vbmi2,avx512vl,avx")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_expandloadu_epi8(k: __mmask32, mem_addr: *const i8) -> __m256i {
-    let mut dst: __m256i;
-    asm!(
-        vpl!("vpexpandb {dst}{{{k}}} {{z}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = out(ymm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    _mm256_mask_expandloadu_epi8(_mm256_setzero_si256(), k, mem_addr)
 }
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_expandloadu_epi8)
 #[inline]
-#[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_expandloadu_epi8(
@@ -229,34 +148,18 @@ pub unsafe fn _mm_mask_expandloadu_epi8(
     k: __mmask16,
     mem_addr: *const i8,
 ) -> __m128i {
-    let mut dst: __m128i = src;
-    asm!(
-        vpl!("vpexpandb {dst}{{{k}}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = inout(xmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    transmute(expandloadb_128(mem_addr, src.as_i8x16(), k))
 }
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_expandloadu_epi8)
 #[inline]
-#[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
+#[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_expandloadu_epi8(k: __mmask16, mem_addr: *const i8) -> __m128i {
-    let mut dst: __m128i;
-    asm!(
-        vpl!("vpexpandb {dst}{{{k}}} {{z}}"),
-        p = in(reg) mem_addr,
-        k = in(kreg) k,
-        dst = out(xmm_reg) dst,
-        options(pure, readonly, nostack, preserves_flags)
-    );
-    dst
+    _mm_mask_expandloadu_epi8(_mm_setzero_si128(), k, mem_addr)
 }
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -2523,6 +2426,19 @@ extern "C" {
     fn vpshrdvw256(a: i16x16, b: i16x16, c: i16x16) -> i16x16;
     #[link_name = "llvm.fshr.v8i16"]
     fn vpshrdvw128(a: i16x8, b: i16x8, c: i16x8) -> i16x8;
+
+    #[link_name = "llvm.x86.avx512.mask.expand.load.b.128"]
+    fn expandloadb_128(mem_addr: *const i8, a: i8x16, mask: u16) -> i8x16;
+    #[link_name = "llvm.x86.avx512.mask.expand.load.w.128"]
+    fn expandloadw_128(mem_addr: *const i16, a: i16x8, mask: u8) -> i16x8;
+    #[link_name = "llvm.x86.avx512.mask.expand.load.b.256"]
+    fn expandloadb_256(mem_addr: *const i8, a: i8x32, mask: u32) -> i8x32;
+    #[link_name = "llvm.x86.avx512.mask.expand.load.w.256"]
+    fn expandloadw_256(mem_addr: *const i16, a: i16x16, mask: u16) -> i16x16;
+    #[link_name = "llvm.x86.avx512.mask.expand.load.b.512"]
+    fn expandloadb_512(mem_addr: *const i8, a: i8x64, mask: u64) -> i8x64;
+    #[link_name = "llvm.x86.avx512.mask.expand.load.w.512"]
+    fn expandloadw_512(mem_addr: *const i16, a: i16x32, mask: u32) -> i16x32;
 }
 
 #[cfg(test)]
