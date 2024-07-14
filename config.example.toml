@@ -1,6 +1,6 @@
 # Sample TOML configuration file for building Rust.
 #
-# To configure rustbuild, run `./configure` or `./x.py setup`.
+# To configure bootstrap, run `./configure` or `./x.py setup`.
 # See https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#create-a-configtoml for more information.
 #
 # All options are commented out by default in this file, and they're commented
@@ -109,7 +109,7 @@
 # increases the size of binaries and consequently the memory required by
 # each linker process.
 # If set to 0, linker invocations are treated like any other job and
-# controlled by rustbuild's -j parameter.
+# controlled by bootstrap's -j parameter.
 #link-jobs = 0
 
 # Whether to build LLVM as a dynamically linked library (as opposed to statically linked).
@@ -371,11 +371,11 @@
 # Useful for modifying only the stage2 compiler without having to pass `--keep-stage 0` each time.
 #local-rebuild = false
 
-# Print out how long each rustbuild step took (mostly intended for CI and
+# Print out how long each bootstrap step took (mostly intended for CI and
 # tracking over time)
 #print-step-timings = false
 
-# Print out resource usage data for each rustbuild step, as defined by the Unix
+# Print out resource usage data for each bootstrap step, as defined by the Unix
 # struct rusage. (Note that this setting is completely unstable: the data it
 # captures, what platforms it supports, the format of its associated output, and
 # this setting's very existence, are all subject to change.)

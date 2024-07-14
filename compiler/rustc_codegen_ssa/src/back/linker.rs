@@ -398,7 +398,7 @@ impl<'a> GccLinker<'a> {
             self.link_arg("-dylib");
 
             // Note that the `osx_rpath_install_name` option here is a hack
-            // purely to support rustbuild right now, we should get a more
+            // purely to support bootstrap right now, we should get a more
             // principled solution at some point to force the compiler to pass
             // the right `-Wl,-install_name` with an `@rpath` in it.
             if self.sess.opts.cg.rpath || self.sess.opts.unstable_opts.osx_rpath_install_name {
