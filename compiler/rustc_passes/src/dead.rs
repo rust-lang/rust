@@ -17,7 +17,7 @@ use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, AssocItemContainer, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
@@ -465,7 +465,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
-                hir::ItemKind::Trait(_, _, _, _, trait_item_refs) => {
+                hir::ItemKind::Trait(..) => {
                     for impl_def_id in self.tcx.all_impls(item.owner_id.to_def_id()) {
                         if let Some(local_def_id) = impl_def_id.as_local()
                             && let ItemKind::Impl(impl_ref) =
@@ -478,12 +478,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             intravisit::walk_path(self, impl_ref.of_trait.unwrap().path);
                         }
                     }
-                    // mark assoc ty live if the trait is live
-                    for trait_item in trait_item_refs {
-                        if let hir::AssocItemKind::Type = trait_item.kind {
-                            self.check_def_id(trait_item.id.owner_id.to_def_id());
-                        }
-                    }
+                    intravisit::walk_item(self, item)
+                }
+                hir::ItemKind::Fn(..) => {
+                    // check `T::Ty` in the types of inputs and output
+                    // the result of type_of maybe different from the fn sig,
+                    // so we also check the fn sig
+                    self.visit_middle_fn_sig(item.owner_id.def_id);
                     intravisit::walk_item(self, item)
                 }
                 _ => intravisit::walk_item(self, item),
@@ -519,6 +520,21 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                         }
                     }
                 }
+
+                match trait_item.kind {
+                    hir::TraitItemKind::Fn(..) => {
+                        // check `T::Ty` in the types of inputs and output
+                        // the result of type_of maybe different from the fn sig,
+                        // so we also check the fn sig
+                        self.visit_middle_fn_sig(trait_item.owner_id.def_id)
+                    }
+                    hir::TraitItemKind::Type(.., Some(_)) | hir::TraitItemKind::Const(..) => {
+                        // check `type X = T::Ty;` or `const X: T::Ty;`
+                        self.visit_middle_ty_by_def_id(trait_item.owner_id.def_id)
+                    }
+                    _ => (),
+                }
+
                 intravisit::walk_trait_item(self, trait_item);
             }
             Node::ImplItem(impl_item) => {
@@ -540,6 +556,20 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                         _ => {}
                     }
                 }
+
+                match impl_item.kind {
+                    hir::ImplItemKind::Fn(..) => {
+                        // check `T::Ty` in the types of inputs and output
+                        // the result of type_of maybe different from the fn sig,
+                        // so we also check the fn sig
+                        self.visit_middle_fn_sig(impl_item.owner_id.def_id)
+                    }
+                    hir::ImplItemKind::Type(..) | hir::ImplItemKind::Const(..) => {
+                        // check `type X = T::Ty;` or `const X: T::Ty;`
+                        self.visit_middle_ty_by_def_id(impl_item.owner_id.def_id)
+                    }
+                }
+
                 intravisit::walk_impl_item(self, impl_item);
             }
             Node::ForeignItem(foreign_item) => {
@@ -600,6 +630,22 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             false
         }
     }
+
+    fn visit_middle_ty(&mut self, ty: Ty<'tcx>) {
+        <Self as TypeVisitor<TyCtxt<'tcx>>>::visit_ty(self, ty);
+    }
+
+    fn visit_middle_ty_by_def_id(&mut self, def_id: LocalDefId) {
+        self.visit_middle_ty(self.tcx.type_of(def_id).instantiate_identity());
+    }
+
+    fn visit_middle_fn_sig(&mut self, def_id: LocalDefId) {
+        let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+        for ty in fn_sig.inputs().skip_binder() {
+            self.visit_middle_ty(ty.clone());
+        }
+        self.visit_middle_ty(fn_sig.output().skip_binder().clone());
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
@@ -629,6 +675,19 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         self.live_symbols.extend(live_fields);
 
         intravisit::walk_struct_def(self, def);
+    }
+
+    fn visit_field_def(&mut self, s: &'tcx rustc_hir::FieldDef<'tcx>) {
+        // check `field: T::Ty`
+        // marks assoc types live whether the field is not used or not
+        // there are three situations:
+        // 1. the field is used, it's good
+        // 2. the field is not used but marked like `#[allow(dead_code)]`,
+        //    it's annoying to mark the assoc type `#[allow(dead_code)]` again
+        // 3. the field is not used, and will be linted
+        //    the assoc type will be linted after removing the unused field
+        self.visit_middle_ty_by_def_id(s.def_id);
+        intravisit::walk_field_def(self, s);
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
@@ -662,6 +721,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             _ => (),
         }
+
+        // check the expr_ty if its type is `T::Ty`
+        self.visit_middle_ty(self.typeck_results().expr_ty(expr));
 
         intravisit::walk_expr(self, expr);
     }
@@ -703,6 +765,24 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
         self.handle_res(path.res);
+
+        if let Res::Def(def_kind, def_id) = path.res
+            && matches!(
+                def_kind,
+                DefKind::Fn
+                    | DefKind::AssocFn
+                    | DefKind::AssocTy
+                    | DefKind::Struct
+                    | DefKind::Union
+                    | DefKind::Enum
+            )
+        {
+            let preds = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx);
+            for pred in preds.iter() {
+                <Self as TypeVisitor<TyCtxt<'tcx>>>::visit_predicate(self, pred.0.as_predicate());
+            }
+        }
+
         intravisit::walk_path(self, path);
     }
 
@@ -734,6 +814,41 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         intravisit::walk_inline_const(self, c);
 
         self.in_pat = in_pat;
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef<'tcx>) {
+        // mark the assoc type/const appears in poly-trait-ref live
+        if let Some(pathsegment) = t.trait_ref.path.segments.last()
+            && let Some(args) = pathsegment.args
+        {
+            for constraint in args.constraints {
+                if let Some(item) = self
+                    .tcx
+                    .associated_items(pathsegment.res.def_id())
+                    .filter_by_name_unhygienic(constraint.ident.name)
+                    .find(|i| {
+                        matches!(i.kind, ty::AssocKind::Const | ty::AssocKind::Type)
+                            && i.ident(self.tcx).normalize_to_macros_2_0() == constraint.ident
+                    })
+                    && let Some(local_def_id) = item.def_id.as_local()
+                {
+                    self.worklist.push((local_def_id, ComesFromAllowExpect::No));
+                }
+            }
+        }
+        intravisit::walk_poly_trait_ref(self, t);
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkSymbolVisitor<'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        match ty.kind() {
+            ty::Alias(_, alias) => {
+                self.check_def_id(alias.def_id);
+            }
+            _ => (),
+        }
+        ty.super_visit_with(self);
     }
 }
 

@@ -213,6 +213,7 @@ const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
 
 /// This provides a shorthand for the source type since local type aliases aren't a thing.
 #[rustc_specialization_trait]
+#[allow(dead_code)]
 trait InPlaceCollect: SourceIter<Source: AsVecIntoIter> + InPlaceIterable {
     type Src;
 }

@@ -147,6 +147,7 @@ mod internal_implementation_detail {
         // of the closure's self-capture, and these upvar types will be instantiated with
         // the `'closure_env` region provided to the associated type.
         #[lang = "async_fn_kind_upvars"]
+        #[allow(dead_code)]
         type Upvars<'closure_env, Inputs, Upvars, BorrowedUpvarsAsFnPtr>;
     }
 }
