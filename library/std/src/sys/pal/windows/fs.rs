@@ -1425,7 +1425,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         _dwCallbackReason: c::DWORD,
         _hSourceFile: c::HANDLE,
         _hDestinationFile: c::HANDLE,
-        lpData: c::LPCVOID,
+        lpData: *const c_void,
     ) -> c::DWORD {
         if dwStreamNumber == 1 {
             *(lpData as *mut i64) = StreamBytesTransferred;
