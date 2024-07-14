@@ -402,7 +402,7 @@ where
 /// building up a `GenKillSet` and then throwing it away.
 pub trait GenKill<T> {
     /// Inserts `elem` into the state vector.
-    fn gen(&mut self, elem: T);
+    fn gen_(&mut self, elem: T);
 
     /// Removes `elem` from the state vector.
     fn kill(&mut self, elem: T);
@@ -410,7 +410,7 @@ pub trait GenKill<T> {
     /// Calls `gen` for each element in `elems`.
     fn gen_all(&mut self, elems: impl IntoIterator<Item = T>) {
         for elem in elems {
-            self.gen(elem);
+            self.gen_(elem);
         }
     }
 
@@ -424,12 +424,12 @@ pub trait GenKill<T> {
 
 /// Stores a transfer function for a gen/kill problem.
 ///
-/// Calling `gen`/`kill` on a `GenKillSet` will "build up" a transfer function so that it can be
-/// applied multiple times efficiently. When there are multiple calls to `gen` and/or `kill` for
+/// Calling `gen_`/`kill` on a `GenKillSet` will "build up" a transfer function so that it can be
+/// applied multiple times efficiently. When there are multiple calls to `gen_` and/or `kill` for
 /// the same element, the most recent one takes precedence.
 #[derive(Clone)]
 pub struct GenKillSet<T> {
-    gen: HybridBitSet<T>,
+    gen_: HybridBitSet<T>,
     kill: HybridBitSet<T>,
 }
 
@@ -437,31 +437,31 @@ impl<T: Idx> GenKillSet<T> {
     /// Creates a new transfer function that will leave the dataflow state unchanged.
     pub fn identity(universe: usize) -> Self {
         GenKillSet {
-            gen: HybridBitSet::new_empty(universe),
+            gen_: HybridBitSet::new_empty(universe),
             kill: HybridBitSet::new_empty(universe),
         }
     }
 
     pub fn apply(&self, state: &mut impl BitSetExt<T>) {
-        state.union(&self.gen);
+        state.union(&self.gen_);
         state.subtract(&self.kill);
     }
 }
 
 impl<T: Idx> GenKill<T> for GenKillSet<T> {
-    fn gen(&mut self, elem: T) {
-        self.gen.insert(elem);
+    fn gen_(&mut self, elem: T) {
+        self.gen_.insert(elem);
         self.kill.remove(elem);
     }
 
     fn kill(&mut self, elem: T) {
         self.kill.insert(elem);
-        self.gen.remove(elem);
+        self.gen_.remove(elem);
     }
 }
 
 impl<T: Idx> GenKill<T> for BitSet<T> {
-    fn gen(&mut self, elem: T) {
+    fn gen_(&mut self, elem: T) {
         self.insert(elem);
     }
 
@@ -471,7 +471,7 @@ impl<T: Idx> GenKill<T> for BitSet<T> {
 }
 
 impl<T: Idx> GenKill<T> for ChunkedBitSet<T> {
-    fn gen(&mut self, elem: T) {
+    fn gen_(&mut self, elem: T) {
         self.insert(elem);
     }
 
@@ -481,11 +481,11 @@ impl<T: Idx> GenKill<T> for ChunkedBitSet<T> {
 }
 
 impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
-    fn gen(&mut self, elem: T) {
+    fn gen_(&mut self, elem: T) {
         match self {
             // If the state is not reachable, adding an element does nothing.
             MaybeReachable::Unreachable => {}
-            MaybeReachable::Reachable(set) => set.gen(elem),
+            MaybeReachable::Reachable(set) => set.gen_(elem),
         }
     }
 
@@ -499,7 +499,7 @@ impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
 }
 
 impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
-    fn gen(&mut self, elem: T) {
+    fn gen_(&mut self, elem: T) {
         self.0.insert(elem);
     }
 

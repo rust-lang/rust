@@ -1016,14 +1016,14 @@ macro_rules! extra_body_methods {
 macro_rules! super_body {
     ($self:ident, $body:ident, $($mutability:ident, $invalidate:tt)?) => {
         let span = $body.span;
-        if let Some(gen) = &$($mutability)? $body.coroutine {
-            if let Some(yield_ty) = $(& $mutability)? gen.yield_ty {
+        if let Some(coroutine) = &$($mutability)? $body.coroutine {
+            if let Some(yield_ty) = $(& $mutability)? coroutine.yield_ty {
                 $self.visit_ty(
                     yield_ty,
                     TyContext::YieldTy(SourceInfo::outermost(span))
                 );
             }
-            if let Some(resume_ty) = $(& $mutability)? gen.resume_ty {
+            if let Some(resume_ty) = $(& $mutability)? coroutine.resume_ty {
                 $self.visit_ty(
                     resume_ty,
                     TyContext::ResumeTy(SourceInfo::outermost(span))
