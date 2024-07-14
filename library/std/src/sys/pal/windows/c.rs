@@ -18,7 +18,6 @@ mod windows_sys;
 pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
-pub type UINT = c_uint;
 pub type WCHAR = u16;
 pub type USHORT = c_ushort;
 pub type SIZE_T = usize;

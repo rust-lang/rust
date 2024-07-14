@@ -383,7 +383,7 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe { c::ExitProcess(code as c::UINT) }
+    unsafe { c::ExitProcess(code as u32) }
 }
 
 pub fn getpid() -> u32 {
