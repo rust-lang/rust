@@ -352,15 +352,10 @@ impl<'a> Parser<'a> {
             let target = AttrsTarget { attrs: final_attrs.iter().cloned().collect(), tokens };
             self.capture_state.replace_ranges.push((start_pos..end_pos, Some(target)));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
-        }
-
-        // Only clear our `replace_ranges` when we're finished capturing entirely.
-        if matches!(self.capture_state.capturing, Capturing::No) {
+        } else if matches!(self.capture_state.capturing, Capturing::No) {
+            // Only clear the ranges once we've finished capturing entirely.
             self.capture_state.replace_ranges.clear();
-            // We don't clear `inner_attr_ranges`, as doing so repeatedly
-            // had a measurable performance impact. Most inner attributes that
-            // we insert will get removed - when we drop the parser, we'll free
-            // up the memory used by any attributes that we didn't remove from the map.
+            self.capture_state.inner_attr_ranges.clear();
         }
         Ok(ret)
     }
