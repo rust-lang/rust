@@ -90,13 +90,14 @@ macro_rules! rtunwrap {
 // `compiler/rustc_session/src/config/sigpipe.rs`.
 #[cfg_attr(test, allow(dead_code))]
 unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
+    #[cfg_attr(target_os = "teeos", allow(unused_unsafe))]
     unsafe {
-        sys::init(argc, argv, sigpipe);
+        sys::init(argc, argv, sigpipe)
+    };
 
-        // Set up the current thread to give it the right name.
-        let thread = Thread::new_main();
-        thread::set_current(thread);
-    }
+    // Set up the current thread to give it the right name.
+    let thread = Thread::new_main();
+    thread::set_current(thread);
 }
 
 // One-time runtime cleanup.
