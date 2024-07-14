@@ -21,9 +21,6 @@ pub type DWORD = c_ulong;
 pub type WCHAR = u16;
 pub type ULONG = c_ulong;
 
-#[cfg(target_vendor = "win7")]
-pub type PSRWLOCK = *mut SRWLOCK;
-
 pub type socklen_t = c_int;
 pub type ADDRESS_FAMILY = c_ushort;
 pub use FD_SET as fd_set;
