@@ -19,7 +19,6 @@ pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
 pub type WCHAR = u16;
-pub type ULONG = c_ulong;
 
 pub type socklen_t = c_int;
 pub type ADDRESS_FAMILY = c_ushort;
@@ -252,9 +251,9 @@ pub unsafe fn NtReadFile(
     apccontext: *mut c_void,
     iostatusblock: &mut IO_STATUS_BLOCK,
     buffer: *mut crate::mem::MaybeUninit<u8>,
-    length: ULONG,
+    length: u32,
     byteoffset: Option<&i64>,
-    key: Option<&ULONG>,
+    key: Option<&u32>,
 ) -> NTSTATUS {
     windows_sys::NtReadFile(
         filehandle.as_raw_handle(),
@@ -275,9 +274,9 @@ pub unsafe fn NtWriteFile(
     apccontext: *mut c_void,
     iostatusblock: &mut IO_STATUS_BLOCK,
     buffer: *const u8,
-    length: ULONG,
+    length: u32,
     byteoffset: Option<&i64>,
-    key: Option<&ULONG>,
+    key: Option<&u32>,
 ) -> NTSTATUS {
     windows_sys::NtWriteFile(
         filehandle.as_raw_handle(),
