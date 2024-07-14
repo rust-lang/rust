@@ -2059,6 +2059,7 @@ Windows.Win32.Networking.WinSock.SOCK_RDM
 Windows.Win32.Networking.WinSock.SOCK_SEQPACKET
 Windows.Win32.Networking.WinSock.SOCK_STREAM
 Windows.Win32.Networking.WinSock.SOCKADDR
+Windows.Win32.Networking.WinSock.SOCKADDR_STORAGE
 Windows.Win32.Networking.WinSock.SOCKADDR_UN
 Windows.Win32.Networking.WinSock.SOCKET
 Windows.Win32.Networking.WinSock.SOCKET_ERROR
