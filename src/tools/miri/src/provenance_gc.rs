@@ -30,6 +30,17 @@ impl<T: VisitProvenance> VisitProvenance for Option<T> {
     }
 }
 
+impl<A, B> VisitProvenance for (A, B)
+where
+    A: VisitProvenance,
+    B: VisitProvenance,
+{
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        self.0.visit_provenance(visit);
+        self.1.visit_provenance(visit);
+    }
+}
+
 impl<T: VisitProvenance> VisitProvenance for std::cell::RefCell<T> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         self.borrow().visit_provenance(visit)
