@@ -27,6 +27,9 @@ jobs:
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
