@@ -1213,6 +1213,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// let static_ref: &'static mut usize = Box::leak(x);
     /// *static_ref += 1;
     /// assert_eq!(*static_ref, 42);
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # drop(unsafe { Box::from_raw(static_ref) });
     /// ```
     ///
     /// Unsized data:
@@ -1222,6 +1225,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// let static_ref = Box::leak(x);
     /// static_ref[0] = 4;
     /// assert_eq!(*static_ref, [4, 2, 3]);
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # drop(unsafe { Box::from_raw(static_ref) });
     /// ```
     #[stable(feature = "box_leak", since = "1.26.0")]
     #[inline]

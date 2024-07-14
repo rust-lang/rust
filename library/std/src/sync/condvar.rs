@@ -35,6 +35,7 @@ impl WaitTimeoutResult {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
+    /// # let handle =
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///
@@ -58,6 +59,8 @@ impl WaitTimeoutResult {
     ///         break
     ///     }
     /// }
+    /// # // Prevent leaks for Miri.
+    /// # let _ = handle.join();
     /// ```
     #[must_use]
     #[stable(feature = "wait_timeout", since = "1.5.0")]
