@@ -1376,12 +1376,13 @@ fn ttdelim_span() {
     });
 }
 
-// Uses a macro rather than a function so that failure messages mention the
-// correct line in the test function.
-macro_rules! look {
-    ($p:ident, $dist:literal, $kind:expr) => {
-        $p.look_ahead($dist, |tok| assert_eq!($kind, tok.kind));
-    };
+#[track_caller]
+fn look(p: &Parser<'_>, dist: usize, kind: rustc_ast::token::TokenKind) {
+    // Do the `assert_eq` outside the closure so that `track_caller` works.
+    // (`#![feature(closure_track_caller)]` + `#[track_caller]` on the closure
+    // doesn't give the line number in the test below if the assertion fails.)
+    let tok = p.look_ahead(dist, |tok| tok.clone());
+    assert_eq!(kind, tok.kind);
 }
 
 #[test]
@@ -1397,63 +1398,63 @@ fn look_ahead() {
         let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
 
         // Current position is the `fn`.
-        look!(p, 0, token::Ident(kw::Fn, raw_no));
-        look!(p, 1, token::Ident(sym_f, raw_no));
-        look!(p, 2, token::OpenDelim(Delimiter::Parenthesis));
-        look!(p, 3, token::Ident(sym_x, raw_no));
-        look!(p, 4, token::Colon);
-        look!(p, 5, token::Ident(sym::u32, raw_no));
-        look!(p, 6, token::CloseDelim(Delimiter::Parenthesis));
-        look!(p, 7, token::OpenDelim(Delimiter::Brace));
-        look!(p, 8, token::Ident(sym_x, raw_no));
-        look!(p, 9, token::CloseDelim(Delimiter::Brace));
-        look!(p, 10, token::Ident(kw::Struct, raw_no));
-        look!(p, 11, token::Ident(sym_S, raw_no));
-        look!(p, 12, token::Semi);
+        look(&p, 0, token::Ident(kw::Fn, raw_no));
+        look(&p, 1, token::Ident(sym_f, raw_no));
+        look(&p, 2, token::OpenDelim(Delimiter::Parenthesis));
+        look(&p, 3, token::Ident(sym_x, raw_no));
+        look(&p, 4, token::Colon);
+        look(&p, 5, token::Ident(sym::u32, raw_no));
+        look(&p, 6, token::CloseDelim(Delimiter::Parenthesis));
+        look(&p, 7, token::OpenDelim(Delimiter::Brace));
+        look(&p, 8, token::Ident(sym_x, raw_no));
+        look(&p, 9, token::CloseDelim(Delimiter::Brace));
+        look(&p, 10, token::Ident(kw::Struct, raw_no));
+        look(&p, 11, token::Ident(sym_S, raw_no));
+        look(&p, 12, token::Semi);
         // Any lookahead past the end of the token stream returns `Eof`.
-        look!(p, 13, token::Eof);
-        look!(p, 14, token::Eof);
-        look!(p, 15, token::Eof);
-        look!(p, 100, token::Eof);
+        look(&p, 13, token::Eof);
+        look(&p, 14, token::Eof);
+        look(&p, 15, token::Eof);
+        look(&p, 100, token::Eof);
 
         // Move forward to the first `x`.
         for _ in 0..3 {
             p.bump();
         }
-        look!(p, 0, token::Ident(sym_x, raw_no));
-        look!(p, 1, token::Colon);
-        look!(p, 2, token::Ident(sym::u32, raw_no));
-        look!(p, 3, token::CloseDelim(Delimiter::Parenthesis));
-        look!(p, 4, token::OpenDelim(Delimiter::Brace));
-        look!(p, 5, token::Ident(sym_x, raw_no));
-        look!(p, 6, token::CloseDelim(Delimiter::Brace));
-        look!(p, 7, token::Ident(kw::Struct, raw_no));
-        look!(p, 8, token::Ident(sym_S, raw_no));
-        look!(p, 9, token::Semi);
-        look!(p, 10, token::Eof);
-        look!(p, 11, token::Eof);
-        look!(p, 100, token::Eof);
+        look(&p, 0, token::Ident(sym_x, raw_no));
+        look(&p, 1, token::Colon);
+        look(&p, 2, token::Ident(sym::u32, raw_no));
+        look(&p, 3, token::CloseDelim(Delimiter::Parenthesis));
+        look(&p, 4, token::OpenDelim(Delimiter::Brace));
+        look(&p, 5, token::Ident(sym_x, raw_no));
+        look(&p, 6, token::CloseDelim(Delimiter::Brace));
+        look(&p, 7, token::Ident(kw::Struct, raw_no));
+        look(&p, 8, token::Ident(sym_S, raw_no));
+        look(&p, 9, token::Semi);
+        look(&p, 10, token::Eof);
+        look(&p, 11, token::Eof);
+        look(&p, 100, token::Eof);
 
         // Move forward to the `;`.
         for _ in 0..9 {
             p.bump();
         }
-        look!(p, 0, token::Semi);
+        look(&p, 0, token::Semi);
         // Any lookahead past the end of the token stream returns `Eof`.
-        look!(p, 1, token::Eof);
-        look!(p, 100, token::Eof);
+        look(&p, 1, token::Eof);
+        look(&p, 100, token::Eof);
 
         // Move one past the `;`, i.e. past the end of the token stream.
         p.bump();
-        look!(p, 0, token::Eof);
-        look!(p, 1, token::Eof);
-        look!(p, 100, token::Eof);
+        look(&p, 0, token::Eof);
+        look(&p, 1, token::Eof);
+        look(&p, 100, token::Eof);
 
         // Bumping after Eof is idempotent.
         p.bump();
-        look!(p, 0, token::Eof);
-        look!(p, 1, token::Eof);
-        look!(p, 100, token::Eof);
+        look(&p, 0, token::Eof);
+        look(&p, 1, token::Eof);
+        look(&p, 100, token::Eof);
     });
 }
 
@@ -1476,24 +1477,261 @@ fn look_ahead_non_outermost_stream() {
         for _ in 0..3 {
             p.bump();
         }
-        look!(p, 0, token::Ident(kw::Fn, raw_no));
-        look!(p, 1, token::Ident(sym_f, raw_no));
-        look!(p, 2, token::OpenDelim(Delimiter::Parenthesis));
-        look!(p, 3, token::Ident(sym_x, raw_no));
-        look!(p, 4, token::Colon);
-        look!(p, 5, token::Ident(sym::u32, raw_no));
-        look!(p, 6, token::CloseDelim(Delimiter::Parenthesis));
-        look!(p, 7, token::OpenDelim(Delimiter::Brace));
-        look!(p, 8, token::Ident(sym_x, raw_no));
-        look!(p, 9, token::CloseDelim(Delimiter::Brace));
-        look!(p, 10, token::Ident(kw::Struct, raw_no));
-        look!(p, 11, token::Ident(sym_S, raw_no));
-        look!(p, 12, token::Semi);
-        look!(p, 13, token::CloseDelim(Delimiter::Brace));
+        look(&p, 0, token::Ident(kw::Fn, raw_no));
+        look(&p, 1, token::Ident(sym_f, raw_no));
+        look(&p, 2, token::OpenDelim(Delimiter::Parenthesis));
+        look(&p, 3, token::Ident(sym_x, raw_no));
+        look(&p, 4, token::Colon);
+        look(&p, 5, token::Ident(sym::u32, raw_no));
+        look(&p, 6, token::CloseDelim(Delimiter::Parenthesis));
+        look(&p, 7, token::OpenDelim(Delimiter::Brace));
+        look(&p, 8, token::Ident(sym_x, raw_no));
+        look(&p, 9, token::CloseDelim(Delimiter::Brace));
+        look(&p, 10, token::Ident(kw::Struct, raw_no));
+        look(&p, 11, token::Ident(sym_S, raw_no));
+        look(&p, 12, token::Semi);
+        look(&p, 13, token::CloseDelim(Delimiter::Brace));
         // Any lookahead past the end of the token stream returns `Eof`.
-        look!(p, 14, token::Eof);
-        look!(p, 15, token::Eof);
-        look!(p, 100, token::Eof);
+        look(&p, 14, token::Eof);
+        look(&p, 15, token::Eof);
+        look(&p, 100, token::Eof);
+    });
+}
+
+// FIXME(nnethercote) All the output is currently wrong.
+#[test]
+fn debug_lookahead() {
+    create_default_session_globals_then(|| {
+        let psess = psess();
+        let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
+
+        // Current position is the `fn`.
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(0)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [],
+    approx_token_stream_pos: 1,
+    ..
+}"
+        );
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(7)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"fn\",
+            No,
+        ),
+        Ident(
+            \"f\",
+            No,
+        ),
+        OpenDelim(
+            Parenthesis,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        Colon,
+        Ident(
+            \"u32\",
+            No,
+        ),
+        CloseDelim(
+            Parenthesis,
+        ),
+    ],
+    approx_token_stream_pos: 1,
+    ..
+}"
+        );
+        // There are 13 tokens. We request 15, get 14; the last one is `Eof`.
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(15)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"fn\",
+            No,
+        ),
+        Ident(
+            \"f\",
+            No,
+        ),
+        OpenDelim(
+            Parenthesis,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        Colon,
+        Ident(
+            \"u32\",
+            No,
+        ),
+        CloseDelim(
+            Parenthesis,
+        ),
+        OpenDelim(
+            Brace,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        CloseDelim(
+            Brace,
+        ),
+        Ident(
+            \"struct\",
+            No,
+        ),
+        Ident(
+            \"S\",
+            No,
+        ),
+        Semi,
+        Eof,
+    ],
+    approx_token_stream_pos: 1,
+    ..
+}"
+        );
+
+        // Move forward to the second `x`.
+        for _ in 0..8 {
+            p.bump();
+        }
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(1)),
+            "Parser {
+    prev_token: Token {
+        kind: OpenDelim(
+            Brace,
+        ),
+        span: Span {
+            lo: BytePos(
+                13,
+            ),
+            hi: BytePos(
+                14,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"x\",
+            No,
+        ),
+    ],
+    approx_token_stream_pos: 9,
+    ..
+}"
+        );
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(4)),
+            "Parser {
+    prev_token: Token {
+        kind: OpenDelim(
+            Brace,
+        ),
+        span: Span {
+            lo: BytePos(
+                13,
+            ),
+            hi: BytePos(
+                14,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"x\",
+            No,
+        ),
+        CloseDelim(
+            Brace,
+        ),
+        Ident(
+            \"struct\",
+            No,
+        ),
+        Ident(
+            \"S\",
+            No,
+        ),
+    ],
+    approx_token_stream_pos: 9,
+    ..
+}"
+        );
+
+        // Move two past the final token (the `;`).
+        for _ in 0..6 {
+            p.bump();
+        }
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(3)),
+            "Parser {
+    prev_token: Token {
+        kind: Eof,
+        span: Span {
+            lo: BytePos(
+                27,
+            ),
+            hi: BytePos(
+                28,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Eof,
+    ],
+    approx_token_stream_pos: 15,
+    ..
+}"
+        );
     });
 }
 
