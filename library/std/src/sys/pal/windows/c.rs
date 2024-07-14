@@ -8,7 +8,7 @@
 use crate::ffi::CStr;
 use crate::mem;
 pub use crate::os::raw::c_int;
-use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort, c_void};
+use crate::os::raw::{c_char, c_long, c_uint, c_ulong, c_ushort, c_void};
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
@@ -18,7 +18,6 @@ mod windows_sys;
 pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
-pub type LARGE_INTEGER = c_longlong;
 #[cfg_attr(target_vendor = "uwp", allow(unused))]
 pub type LONG = c_long;
 pub type UINT = c_uint;
@@ -270,7 +269,7 @@ pub unsafe fn NtReadFile(
     iostatusblock: &mut IO_STATUS_BLOCK,
     buffer: *mut crate::mem::MaybeUninit<u8>,
     length: ULONG,
-    byteoffset: Option<&LARGE_INTEGER>,
+    byteoffset: Option<&i64>,
     key: Option<&ULONG>,
 ) -> NTSTATUS {
     windows_sys::NtReadFile(
@@ -293,7 +292,7 @@ pub unsafe fn NtWriteFile(
     iostatusblock: &mut IO_STATUS_BLOCK,
     buffer: *const u8,
     length: ULONG,
-    byteoffset: Option<&LARGE_INTEGER>,
+    byteoffset: Option<&i64>,
     key: Option<&ULONG>,
 ) -> NTSTATUS {
     windows_sys::NtWriteFile(
@@ -452,7 +451,7 @@ compat_fn_with_fallback! {
         iostatusblock: &mut IO_STATUS_BLOCK,
         buffer: *mut crate::mem::MaybeUninit<u8>,
         length: ULONG,
-        byteoffset: Option<&LARGE_INTEGER>,
+        byteoffset: Option<&i64>,
         key: Option<&ULONG>
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
@@ -466,7 +465,7 @@ compat_fn_with_fallback! {
         iostatusblock: &mut IO_STATUS_BLOCK,
         buffer: *const u8,
         length: ULONG,
-        byteoffset: Option<&LARGE_INTEGER>,
+        byteoffset: Option<&i64>,
         key: Option<&ULONG>
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED

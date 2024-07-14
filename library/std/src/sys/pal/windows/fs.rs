@@ -495,7 +495,7 @@ impl File {
             SeekFrom::End(n) => (c::FILE_END, n),
             SeekFrom::Current(n) => (c::FILE_CURRENT, n),
         };
-        let pos = pos as c::LARGE_INTEGER;
+        let pos = pos as i64;
         let mut newpos = 0;
         cvt(unsafe { c::SetFilePointerEx(self.handle.as_raw_handle(), pos, &mut newpos, whence) })?;
         Ok(newpos as u64)
@@ -1417,10 +1417,10 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     unsafe extern "system" fn callback(
-        _TotalFileSize: c::LARGE_INTEGER,
-        _TotalBytesTransferred: c::LARGE_INTEGER,
-        _StreamSize: c::LARGE_INTEGER,
-        StreamBytesTransferred: c::LARGE_INTEGER,
+        _TotalFileSize: i64,
+        _TotalBytesTransferred: i64,
+        _StreamSize: i64,
+        StreamBytesTransferred: i64,
         dwStreamNumber: c::DWORD,
         _dwCallbackReason: c::DWORD,
         _hSourceFile: c::HANDLE,
