@@ -490,7 +490,17 @@ impl Build {
             return;
         }
 
-        let submodule_git = || helpers::git(Some(&absolute_path)).capture_stdout();
+        // Submodule updating actually happens during in the dry run mode. We need to make sure that
+        // all the git commands below are actually executed, because some follow-up code
+        // in bootstrap might depend on the submodules being checked out. Furthermore, not all
+        // the command executions below work with an empty output (produced during dry run).
+        // Therefore, all commands below are marked with `run_always()`, so that they also run in
+        // dry run mode.
+        let submodule_git = || {
+            let mut cmd = helpers::git(Some(&absolute_path)).capture_stdout();
+            cmd.run_always();
+            cmd
+        };
 
         // Determine commit checked out in submodule.
         let checked_out_hash = submodule_git().args(["rev-parse", "HEAD"]).run(self).stdout();
@@ -498,6 +508,7 @@ impl Build {
         // Determine commit that the submodule *should* have.
         let recorded = helpers::git(Some(&self.src))
             .capture_stdout()
+            .run_always()
             .args(["ls-tree", "HEAD"])
             .arg(relative_path)
             .run(self)
@@ -514,6 +525,7 @@ impl Build {
 
         println!("Updating submodule {}", relative_path.display());
         helpers::git(Some(&self.src))
+            .run_always()
             .args(["submodule", "-q", "sync"])
             .arg(relative_path)
             .run(self);
@@ -524,12 +536,14 @@ impl Build {
             // even though that has no relation to the upstream for the submodule.
             let current_branch = helpers::git(Some(&self.src))
                 .capture_stdout()
+                .run_always()
                 .args(["symbolic-ref", "--short", "HEAD"])
                 .run(self)
                 .stdout_if_ok()
                 .map(|s| s.trim().to_owned());
 
             let mut git = helpers::git(Some(&self.src)).allow_failure();
+            git.run_always();
             if let Some(branch) = current_branch {
                 // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
                 // This syntax isn't accepted by `branch.{branch}`. Strip it.
