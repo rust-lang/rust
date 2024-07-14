@@ -1,6 +1,5 @@
 //@ check-pass
 #![feature(adt_const_params)]
-//~^ WARN: the feature `adt_const_params` is incomplete
 
 const EMPTY_MATRIX: <Type as Trait>::Matrix = [0; 1];
 

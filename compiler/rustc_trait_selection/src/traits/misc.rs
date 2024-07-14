@@ -4,6 +4,7 @@ use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, FulfillmentError, ObligationCause};
 
 use hir::LangItem;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -19,7 +20,7 @@ pub enum CopyImplementationError<'tcx> {
 }
 
 pub enum ConstParamTyImplementationError<'tcx> {
-    TypeNotSized,
+    UnsizedConstParamsFeatureRequired,
     InvalidInnerTyOfBuiltinTy(Vec<(Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdtOrBuiltinAllowed,
@@ -79,9 +80,9 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     Ok(())
 }
 
-/// Checks that the fields of the type (an ADT) all implement `ConstParamTy`.
+/// Checks that the fields of the type (an ADT) all implement `(Unsized?)ConstParamTy`.
 ///
-/// If fields don't implement `ConstParamTy`, return an error containing a list of
+/// If fields don't implement `(Unsized?)ConstParamTy`, return an error containing a list of
 /// those violating fields.
 ///
 /// If it's not an ADT, int ty, `bool` or `char`, returns `Err(NotAnAdtOrBuiltinAllowed)`.
@@ -89,30 +90,10 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
+    lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    {
-        // Check for sizedness before recursing into ADT fields so that if someone tries to write:
-        // ```rust
-        //  #[derive(ConstParamTy)]
-        //  struct Foo([u8])
-        // ```
-        // They are told that const parameter types must be sized, instead of it saying that
-        // the trait implementation `[u8]: ConstParamTy` is not satisfied.
-        let infcx = tcx.infer_ctxt().build();
-        let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
-
-        ocx.register_bound(
-            parent_cause.clone(),
-            param_env,
-            self_type,
-            tcx.require_lang_item(LangItem::Sized, Some(parent_cause.span)),
-        );
-
-        if !ocx.select_all_or_error().is_empty() {
-            return Err(ConstParamTyImplementationError::TypeNotSized);
-        }
-    };
+    assert!(matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
 
     let inner_tys: Vec<_> = match *self_type.kind() {
         // Trivially okay as these types are all:
@@ -121,14 +102,23 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         // - Have structural equality
         ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => return Ok(()),
 
-        ty::Ref(..) => return Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed),
+        // Handle types gated under `feature(unsized_const_params)`
+        // FIXME(unsized_const_params): Make `const N: [u8]` work then forbid references
+        ty::Slice(inner_ty) | ty::Ref(_, inner_ty, Mutability::Not)
+            if lang_item == LangItem::UnsizedConstParamTy =>
+        {
+            vec![inner_ty]
+        }
+        ty::Str if lang_item == LangItem::UnsizedConstParamTy => {
+            vec![Ty::new_slice(tcx, tcx.types.u8)]
+        }
+        ty::Str | ty::Slice(..) | ty::Ref(_, _, Mutability::Not) => {
+            return Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired);
+        }
 
-        // Even if we currently require const params to be `Sized` we may aswell handle them correctly
-        // here anyway.
-        ty::Slice(inner_ty) | ty::Array(inner_ty, _) => vec![inner_ty],
+        ty::Array(inner_ty, _) => vec![inner_ty],
+
         // `str` morally acts like a newtype around `[u8]`
-        ty::Str => vec![Ty::new_slice(tcx, tcx.types.u8)],
-
         ty::Tuple(inner_tys) => inner_tys.into_iter().collect(),
 
         ty::Adt(adt, args) if adt.is_enum() || adt.is_struct() => {
@@ -139,7 +129,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
                 adt,
                 args,
                 parent_cause.clone(),
-                hir::LangItem::ConstParamTy,
+                lang_item,
             )
             .map_err(ConstParamTyImplementationError::InfrigingFields)?;
 
@@ -159,7 +149,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
             parent_cause.clone(),
             param_env,
             inner_ty,
-            tcx.require_lang_item(LangItem::ConstParamTy, Some(parent_cause.span)),
+            tcx.require_lang_item(lang_item, Some(parent_cause.span)),
         );
 
         let errors = ocx.select_all_or_error();

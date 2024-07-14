@@ -36,9 +36,13 @@ pub(super) fn check_trait<'tcx>(
     let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
     let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
     res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
-    res = res.and(
-        checker.check(lang_items.const_param_ty_trait(), visit_implementation_of_const_param_ty),
-    );
+    res = res.and(checker.check(lang_items.const_param_ty_trait(), |checker| {
+        visit_implementation_of_const_param_ty(checker, LangItem::ConstParamTy)
+    }));
+    res = res.and(checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
+        visit_implementation_of_const_param_ty(checker, LangItem::UnsizedConstParamTy)
+    }));
+
     res = res.and(
         checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized),
     );
@@ -122,7 +126,12 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     }
 }
 
-fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_const_param_ty(
+    checker: &Checker<'_>,
+    kind: LangItem,
+) -> Result<(), ErrorGuaranteed> {
+    assert!(matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
+
     let tcx = checker.tcx;
     let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
@@ -136,7 +145,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
     }
 
     let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
-    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
+    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, kind, cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
@@ -162,7 +171,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
                 span,
             ))
         }
-        Err(ConstParamTyImplementationError::TypeNotSized) => {
+        Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnUnsized { span }))
         }
