@@ -1,5 +1,5 @@
 //@ build-fail
-//@ compile-flags: -Copt-level=0
+//@ compile-flags: -Copt-level=0 -Zenforce-type-length-limit
 //~^^ ERROR reached the type-length limit
 
 // Test that the type length limit can be changed.
