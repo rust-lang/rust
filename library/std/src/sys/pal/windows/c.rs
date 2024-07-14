@@ -20,7 +20,6 @@ pub use windows_sys::*;
 pub type DWORD = c_ulong;
 pub type WCHAR = u16;
 pub type SIZE_T = usize;
-pub type CHAR = c_char;
 pub type ULONG = c_ulong;
 
 pub type LPCVOID = *const c_void;
@@ -142,9 +141,9 @@ pub struct MOUNT_POINT_REPARSE_BUFFER {
 #[repr(C)]
 pub struct SOCKADDR_STORAGE_LH {
     pub ss_family: ADDRESS_FAMILY,
-    pub __ss_pad1: [CHAR; 6],
+    pub __ss_pad1: [c_char; 6],
     pub __ss_align: i64,
-    pub __ss_pad2: [CHAR; 112],
+    pub __ss_pad2: [c_char; 112],
 }
 
 #[repr(C)]
@@ -153,7 +152,7 @@ pub struct sockaddr_in {
     pub sin_family: ADDRESS_FAMILY,
     pub sin_port: c_ushort,
     pub sin_addr: in_addr,
-    pub sin_zero: [CHAR; 8],
+    pub sin_zero: [c_char; 8],
 }
 
 #[repr(C)]
