@@ -181,9 +181,9 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
             c::CP_UTF8,                          // CodePage
             c::MB_ERR_INVALID_CHARS,             // dwFlags
             utf8.as_ptr(),                       // lpMultiByteStr
-            utf8.len() as c::c_int,              // cbMultiByte
+            utf8.len() as i32,                   // cbMultiByte
             utf16.as_mut_ptr() as *mut c::WCHAR, // lpWideCharStr
-            utf16.len() as c::c_int,             // cchWideChar
+            utf16.len() as i32,                  // cchWideChar
         );
         assert!(result != 0, "Unexpected error in MultiByteToWideChar");
 
@@ -374,8 +374,8 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 }
 
 fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
-    debug_assert!(utf16.len() <= c::c_int::MAX as usize);
-    debug_assert!(utf8.len() <= c::c_int::MAX as usize);
+    debug_assert!(utf16.len() <= i32::MAX as usize);
+    debug_assert!(utf8.len() <= i32::MAX as usize);
 
     if utf16.is_empty() {
         return Ok(0);
@@ -386,9 +386,9 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
             c::CP_UTF8,              // CodePage
             c::WC_ERR_INVALID_CHARS, // dwFlags
             utf16.as_ptr(),          // lpWideCharStr
-            utf16.len() as c::c_int, // cchWideChar
+            utf16.len() as i32,      // cchWideChar
             utf8.as_mut_ptr(),       // lpMultiByteStr
-            utf8.len() as c::c_int,  // cbMultiByte
+            utf8.len() as i32,       // cbMultiByte
             ptr::null(),             // lpDefaultChar
             ptr::null_mut(),         // lpUsedDefaultChar
         )

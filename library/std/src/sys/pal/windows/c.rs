@@ -7,8 +7,7 @@
 
 use crate::ffi::CStr;
 use crate::mem;
-pub use crate::os::raw::c_int;
-use crate::os::raw::{c_char, c_uint, c_ulong, c_ushort, c_void};
+use crate::os::raw::{c_char, c_int, c_uint, c_ulong, c_ushort, c_void};
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
