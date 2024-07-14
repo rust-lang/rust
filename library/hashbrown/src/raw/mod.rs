@@ -797,8 +797,8 @@ struct RawTableInner {
     // number of buckets in the table.
     bucket_mask: usize,
 
-    // [Padding], T1, T2, ..., Tlast, C1, C2, ...
-    //                                ^ points here
+    // [Padding], T_n, ..., T1, T0, CT0, CT1, ...
+    //                              ^ points here
     ctrl: NonNull<u8>,
 
     // Number of elements that can be inserted before we need to grow the table
