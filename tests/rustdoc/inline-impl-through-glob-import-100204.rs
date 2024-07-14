@@ -2,6 +2,7 @@
 //@ build-aux-docs
 //@ ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/100204
 #![crate_name="second"]
 
 extern crate first;
