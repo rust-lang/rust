@@ -8,7 +8,7 @@
 use crate::ffi::CStr;
 use crate::mem;
 pub use crate::os::raw::c_int;
-use crate::os::raw::{c_char, c_long, c_uint, c_ulong, c_ushort, c_void};
+use crate::os::raw::{c_char, c_uint, c_ulong, c_ushort, c_void};
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
@@ -18,8 +18,6 @@ mod windows_sys;
 pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
-#[cfg_attr(target_vendor = "uwp", allow(unused))]
-pub type LONG = c_long;
 pub type UINT = c_uint;
 pub type WCHAR = u16;
 pub type USHORT = c_ushort;
