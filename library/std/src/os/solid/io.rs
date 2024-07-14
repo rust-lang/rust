@@ -49,7 +49,7 @@
 
 use crate::fmt;
 use crate::marker::PhantomData;
-use crate::mem::forget;
+use crate::mem::ManuallyDrop;
 use crate::net;
 use crate::sys;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
@@ -149,9 +149,7 @@ impl AsRawFd for OwnedFd {
 impl IntoRawFd for OwnedFd {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        let fd = self.fd;
-        forget(self);
-        fd
+        ManuallyDrop::new(self).fd
     }
 }
 
