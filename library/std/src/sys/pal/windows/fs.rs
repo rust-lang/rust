@@ -79,7 +79,7 @@ pub struct OpenOptions {
     attributes: c::DWORD,
     share_mode: c::DWORD,
     security_qos_flags: c::DWORD,
-    security_attributes: c::LPSECURITY_ATTRIBUTES,
+    security_attributes: *mut c::SECURITY_ATTRIBUTES,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -241,7 +241,7 @@ impl OpenOptions {
         // receive is `SECURITY_ANONYMOUS = 0x0`, which we can't check for later on.
         self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
     }
-    pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
+    pub fn security_attributes(&mut self, attrs: *mut c::SECURITY_ATTRIBUTES) {
         self.security_attributes = attrs;
     }
 

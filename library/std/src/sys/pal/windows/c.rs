@@ -21,7 +21,6 @@ pub type DWORD = c_ulong;
 pub type WCHAR = u16;
 pub type ULONG = c_ulong;
 
-pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 pub type LPVOID = *mut c_void;
 
 #[cfg(target_vendor = "win7")]
