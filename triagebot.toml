@@ -221,6 +221,13 @@ trigger_files = [
     "library/std/src/os/android"
 ]
 
+[autolabel."O-apple"]
+trigger_files = [
+    "library/std/src/os/darwin",
+    "library/std/src/sys/pal/unix/thread_parking/darwin.rs",
+    "compiler/rustc_target/src/spec/base/apple",
+]
+
 [autolabel."O-fuchsia"]
 trigger_files = [
     "library/std/src/os/fuchsia"
@@ -250,8 +257,6 @@ trigger_files = [
 [autolabel."O-macos"]
 trigger_files = [
     "library/std/src/os/macos",
-    "library/std/src/sys/pal/unix/thread_parking/darwin.rs",
-    "compiler/rustc_target/src/spec/base/apple",
 ]
 
 [autolabel."O-netbsd"]
@@ -299,20 +304,10 @@ trigger_files = [
     "library/std/src/os/wasm"
 ]
 
-[autolabel."O-watchos"]
-trigger_files = [
-    "library/std/src/os/watchos"
-]
-
 [autolabel."O-windows"]
 trigger_files = [
     "library/std/src/sys/pal/windows",
     "library/std/src/os/windows"
-]
-
-[autolabel."O-visionos"]
-trigger_files = [
-    "library/std/src/os/visionos"
 ]
 
 [autolabel."T-bootstrap"]
