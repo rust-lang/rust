@@ -1067,3 +1067,13 @@ fn bufreader_full_initialize() {
     // But we initialized the whole buffer!
     assert_eq!(reader.initialized(), reader.capacity());
 }
+
+/// This is a regression test for https://github.com/rust-lang/rust/issues/127584.
+#[test]
+fn bufwriter_aliasing() {
+    use crate::io::{BufWriter, Cursor};
+    let mut v = vec![0; 1024];
+    let c = Cursor::new(&mut v);
+    let w = BufWriter::new(Box::new(c));
+    let _ = w.into_parts();
+}

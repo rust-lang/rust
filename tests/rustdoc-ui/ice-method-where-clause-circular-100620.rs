@@ -1,3 +1,6 @@
+//@ check-pass
+// https://github.com/rust-lang/rust/issues/100620
+
 pub trait Bar<S> {}
 
 pub trait Qux<T> {}

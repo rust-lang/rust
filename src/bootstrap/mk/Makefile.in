@@ -20,7 +20,7 @@ all:
 	$(Q)$(BOOTSTRAP) doc --stage 2 $(BOOTSTRAP_ARGS)
 
 help:
-	$(Q)echo 'Welcome to the rustbuild build system!'
+	$(Q)echo 'Welcome to bootstrap, the Rust build system!'
 	$(Q)echo
 	$(Q)echo This makefile is a thin veneer over the ./x.py script located
 	$(Q)echo in this directory. To get the full power of the build system

@@ -2,6 +2,7 @@
 //@ build-aux-docs
 //@ ignore-cross-compile
 
+// https://github.com/rust-lang/rust/issues/99734
 #![crate_name = "foo"]
 
 #[macro_use]
@@ -9,6 +10,8 @@ extern crate issue_99734_aux;
 
 pub use issue_99734_aux::*;
 
-//@ count foo/index.html '//a[@class="mod"][@title="mod foo::task"]' 1
+//@ count foo/index.html '//a[@class="fn"][@title="fn foo::main"]' 1
 
-pub mod task {}
+extern "C" {
+    pub fn main() -> std::ffi::c_int;
+}

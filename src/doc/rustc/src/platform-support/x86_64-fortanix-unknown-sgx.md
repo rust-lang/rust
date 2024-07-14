@@ -46,7 +46,7 @@ on how to setup a development and runtime environment.
 
 As a tier 2 target, the target is built by the Rust project.
 
-You can configure rustbuild like so:
+You can configure bootstrap like so:
 
 ```toml
 [build]
