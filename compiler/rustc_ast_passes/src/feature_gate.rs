@@ -607,8 +607,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
     // does not check the same for lib features unless there's at least one
     // declared lang feature
     if !sess.opts.unstable_features.is_nightly_build() {
-        let lang_features = &features.declared_lang_features;
-        if lang_features.len() == 0 {
+        if features.declared_features.is_empty() {
             return;
         }
         for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
@@ -624,7 +623,8 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
                 attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident())
             {
                 let name = ident.name;
-                let stable_since = lang_features
+                let stable_since = features
+                    .declared_lang_features
                     .iter()
                     .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
                     .next();
