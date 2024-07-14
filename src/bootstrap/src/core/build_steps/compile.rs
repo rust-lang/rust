@@ -33,7 +33,6 @@ use crate::utils::helpers::{
 };
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
-use filetime::FileTime;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
@@ -2161,8 +2160,10 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
         return;
     }
 
-    let previous_mtime = FileTime::from_last_modification_time(&path.metadata().unwrap());
+    let previous_mtime = t!(t!(path.metadata()).modified());
     command("strip").capture().arg("--strip-debug").arg(path).run(builder);
+
+    let file = t!(fs::File::open(path));
 
     // After running `strip`, we have to set the file modification time to what it was before,
     // otherwise we risk Cargo invalidating its fingerprint and rebuilding the world next time
@@ -2176,5 +2177,5 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     // In the second invocation of bootstrap, Cargo will see that the mtime of librustc_driver.so
     // is greater than the mtime of rustc-main, and will rebuild rustc-main. That will then cause
     // everything else (standard library, future stages...) to be rebuilt.
-    t!(filetime::set_file_mtime(path, previous_mtime));
+    t!(file.set_modified(previous_mtime));
 }
