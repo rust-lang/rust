@@ -35,7 +35,6 @@ use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -85,7 +84,6 @@ pub fn provide(providers: &mut Providers) {
         coroutine_kind,
         coroutine_for_closure,
         is_type_alias_impl_trait,
-        find_field,
         ..*providers
     };
 }
@@ -912,23 +910,6 @@ fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
             lower_variant_ctor(tcx, ctor_def_id.expect_local());
         }
     }
-}
-
-fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldIdx> {
-    let adt = tcx.adt_def(def_id);
-    if adt.is_enum() {
-        return None;
-    }
-
-    adt.non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
-        if field.is_unnamed() {
-            let field_ty = tcx.type_of(field.did).instantiate_identity();
-            let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
-            tcx.find_field((adt_def.did(), ident)).map(|_| idx)
-        } else {
-            (field.ident(tcx).normalize_to_macros_2_0() == ident).then_some(idx)
-        }
-    })
 }
 
 #[derive(Clone, Copy)]
