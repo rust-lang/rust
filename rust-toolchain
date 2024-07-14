@@ -1,3 +1,4 @@
 [toolchain]
 channel = "nightly-2024-07-13"
 components = ["rust-src", "rustc-dev", "llvm-tools"]
+profile = "minimal"
