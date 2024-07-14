@@ -32,15 +32,16 @@
 //! Because of that, we can assume that the only way to change the value behind a tracked place is
 //! by direct assignment.
 
-use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
-use rustc_data_structures::fx::{FxHashMap, StdEntry};
+use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -58,7 +59,7 @@ pub trait ValueAnalysis<'tcx> {
 
     const NAME: &'static str;
 
-    fn map(&self) -> &Map;
+    fn map(&self) -> &Map<'tcx>;
 
     fn handle_statement(&self, statement: &Statement<'tcx>, state: &mut State<Self::Value>) {
         self.super_statement(statement, state)
@@ -523,12 +524,12 @@ impl<V: Clone + HasBottom> State<V> {
     }
 
     /// Assign `value` to all places that are contained in `place` or may alias one.
-    pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
+    pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map<'_>, value: V) {
         self.flood_with_tail_elem(place, None, map, value)
     }
 
     /// Assign `TOP` to all places that are contained in `place` or may alias one.
-    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map)
+    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map<'_>)
     where
         V: HasTop,
     {
@@ -536,12 +537,12 @@ impl<V: Clone + HasBottom> State<V> {
     }
 
     /// Assign `value` to the discriminant of `place` and all places that may alias it.
-    fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
+    fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map<'_>, value: V) {
         self.flood_with_tail_elem(place, Some(TrackElem::Discriminant), map, value)
     }
 
     /// Assign `TOP` to the discriminant of `place` and all places that may alias it.
-    pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map)
+    pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map<'_>)
     where
         V: HasTop,
     {
@@ -559,7 +560,7 @@ impl<V: Clone + HasBottom> State<V> {
         &mut self,
         place: PlaceRef<'_>,
         tail_elem: Option<TrackElem>,
-        map: &Map,
+        map: &Map<'_>,
         value: V,
     ) {
         let State::Reachable(values) = self else { return };
@@ -570,7 +571,7 @@ impl<V: Clone + HasBottom> State<V> {
     /// This does nothing if the place is not tracked.
     ///
     /// The target place must have been flooded before calling this method.
-    fn insert_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
+    fn insert_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map<'_>) {
         match result {
             ValueOrPlace::Value(value) => self.insert_value_idx(target, value, map),
             ValueOrPlace::Place(source) => self.insert_place_idx(target, source, map),
@@ -581,7 +582,7 @@ impl<V: Clone + HasBottom> State<V> {
     /// This does nothing if the place is not tracked.
     ///
     /// The target place must have been flooded before calling this method.
-    pub fn insert_value_idx(&mut self, target: PlaceIndex, value: V, map: &Map) {
+    pub fn insert_value_idx(&mut self, target: PlaceIndex, value: V, map: &Map<'_>) {
         let State::Reachable(values) = self else { return };
         if let Some(value_index) = map.places[target].value_index {
             values.insert(value_index, value)
@@ -595,7 +596,7 @@ impl<V: Clone + HasBottom> State<V> {
     /// places that are non-overlapping or identical.
     ///
     /// The target place must have been flooded before calling this method.
-    pub fn insert_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
+    pub fn insert_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map<'_>) {
         let State::Reachable(values) = self else { return };
 
         // If both places are tracked, we copy the value to the target.
@@ -616,7 +617,7 @@ impl<V: Clone + HasBottom> State<V> {
     }
 
     /// Helper method to interpret `target = result`.
-    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map)
+    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map<'_>)
     where
         V: HasTop,
     {
@@ -627,7 +628,7 @@ impl<V: Clone + HasBottom> State<V> {
     }
 
     /// Helper method for assignments to a discriminant.
-    pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map)
+    pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map<'_>)
     where
         V: HasTop,
     {
@@ -638,25 +639,25 @@ impl<V: Clone + HasBottom> State<V> {
     }
 
     /// Retrieve the value stored for a place, or `None` if it is not tracked.
-    pub fn try_get(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
+    pub fn try_get(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
         let place = map.find(place)?;
         self.try_get_idx(place, map)
     }
 
     /// Retrieve the discriminant stored for a place, or `None` if it is not tracked.
-    pub fn try_get_discr(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
+    pub fn try_get_discr(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
         let place = map.find_discr(place)?;
         self.try_get_idx(place, map)
     }
 
     /// Retrieve the slice length stored for a place, or `None` if it is not tracked.
-    pub fn try_get_len(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
+    pub fn try_get_len(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
         let place = map.find_len(place)?;
         self.try_get_idx(place, map)
     }
 
     /// Retrieve the value stored for a place index, or `None` if it is not tracked.
-    pub fn try_get_idx(&self, place: PlaceIndex, map: &Map) -> Option<V> {
+    pub fn try_get_idx(&self, place: PlaceIndex, map: &Map<'_>) -> Option<V> {
         match self {
             State::Reachable(values) => {
                 map.places[place].value_index.map(|v| values.get(v).clone())
@@ -668,7 +669,7 @@ impl<V: Clone + HasBottom> State<V> {
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     ///
     /// This method returns ⊥ if the place is tracked and the state is unreachable.
-    pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V
+    pub fn get(&self, place: PlaceRef<'_>, map: &Map<'_>) -> V
     where
         V: HasBottom + HasTop,
     {
@@ -682,7 +683,7 @@ impl<V: Clone + HasBottom> State<V> {
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     ///
     /// This method returns ⊥ the current state is unreachable.
-    pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map) -> V
+    pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map<'_>) -> V
     where
         V: HasBottom + HasTop,
     {
@@ -696,7 +697,7 @@ impl<V: Clone + HasBottom> State<V> {
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     ///
     /// This method returns ⊥ the current state is unreachable.
-    pub fn get_len(&self, place: PlaceRef<'_>, map: &Map) -> V
+    pub fn get_len(&self, place: PlaceRef<'_>, map: &Map<'_>) -> V
     where
         V: HasBottom + HasTop,
     {
@@ -710,7 +711,7 @@ impl<V: Clone + HasBottom> State<V> {
     /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
     ///
     /// This method returns ⊥ the current state is unreachable.
-    pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V
+    pub fn get_idx(&self, place: PlaceIndex, map: &Map<'_>) -> V
     where
         V: HasBottom + HasTop,
     {
@@ -746,25 +747,25 @@ impl<V: JoinSemiLattice + Clone + HasBottom> JoinSemiLattice for State<V> {
 /// - For iteration, every [`PlaceInfo`] contains an intrusive linked list of its children.
 /// - To directly get the child for a specific projection, there is a `projections` map.
 #[derive(Debug)]
-pub struct Map {
+pub struct Map<'tcx> {
     locals: IndexVec<Local, Option<PlaceIndex>>,
     projections: FxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
-    places: IndexVec<PlaceIndex, PlaceInfo>,
+    places: IndexVec<PlaceIndex, PlaceInfo<'tcx>>,
     value_count: usize,
     // The Range corresponds to a slice into `inner_values_buffer`.
     inner_values: IndexVec<PlaceIndex, Range<usize>>,
     inner_values_buffer: Vec<ValueIndex>,
 }
 
-impl Map {
+impl<'tcx> Map<'tcx> {
     /// Returns a map that only tracks places whose type has scalar layout.
     ///
     /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
     /// chosen is an implementation detail and may not be relied upon (other than that their type
     /// are scalars).
-    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
         let mut map = Self {
-            locals: IndexVec::new(),
+            locals: IndexVec::from_elem(None, &body.local_decls),
             projections: FxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
@@ -778,18 +779,15 @@ impl Map {
     }
 
     /// Register all non-excluded places that have scalar layout.
-    fn register<'tcx>(
+    #[tracing::instrument(level = "trace", skip(self, tcx, body))]
+    fn register(
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         exclude: BitSet<Local>,
         value_limit: Option<usize>,
     ) {
-        let mut worklist = VecDeque::with_capacity(value_limit.unwrap_or(body.local_decls.len()));
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-
         // Start by constructing the places for each bare local.
-        self.locals = IndexVec::from_elem(None, &body.local_decls);
         for (local, decl) in body.local_decls.iter_enumerated() {
             if exclude.contains(local) {
                 continue;
@@ -797,16 +795,60 @@ impl Map {
 
             // Create a place for the local.
             debug_assert!(self.locals[local].is_none());
-            let place = self.places.push(PlaceInfo::new(None));
+            let place = self.places.push(PlaceInfo::new(decl.ty, None));
             self.locals[local] = Some(place);
-
-            // And push the eventual children places to the worklist.
-            self.register_children(tcx, param_env, place, decl.ty, &mut worklist);
         }
 
-        // `place.elem1.elem2` with type `ty`.
-        // `elem1` is either `Some(Variant(i))` or `None`.
-        while let Some((mut place, elem1, elem2, ty)) = worklist.pop_front() {
+        // Collect syntactic places and assignments between them.
+        let mut collector =
+            PlaceCollector { tcx, body, map: self, assignments: Default::default() };
+        collector.visit_body(body);
+        let PlaceCollector { mut assignments, .. } = collector;
+
+        // Just collecting syntactic places is not enough. We may need to propagate this pattern:
+        //      _1 = (const 5u32, const 13i64);
+        //      _2 = _1;
+        //      _3 = (_2.0 as u32);
+        //
+        // `_1.0` does not appear, but we still need to track it. This is achieved by propagating
+        // projections from assignments. We recorded an assignment between `_2` and `_1`, so we
+        // want `_1` and `_2` to have the same sub-places.
+        //
+        // This is what this fixpoint loop does. While we are still creating places, run through
+        // all the assignments, and register places for children.
+        let mut num_places = 0;
+        while num_places < self.places.len() {
+            num_places = self.places.len();
+
+            for assign in 0.. {
+                let Some(&(lhs, rhs)) = assignments.get_index(assign) else { break };
+
+                // Mirror children from `lhs` in `rhs`.
+                let mut child = self.places[lhs].first_child;
+                while let Some(lhs_child) = child {
+                    let PlaceInfo { ty, proj_elem, next_sibling, .. } = self.places[lhs_child];
+                    let rhs_child =
+                        self.register_place(ty, rhs, proj_elem.expect("child is not a projection"));
+                    assignments.insert((lhs_child, rhs_child));
+                    child = next_sibling;
+                }
+
+                // Conversely, mirror children from `rhs` in `lhs`.
+                let mut child = self.places[rhs].first_child;
+                while let Some(rhs_child) = child {
+                    let PlaceInfo { ty, proj_elem, next_sibling, .. } = self.places[rhs_child];
+                    let lhs_child =
+                        self.register_place(ty, lhs, proj_elem.expect("child is not a projection"));
+                    assignments.insert((lhs_child, rhs_child));
+                    child = next_sibling;
+                }
+            }
+        }
+        drop(assignments);
+
+        // Create values for places whose type have scalar layout.
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        for place_info in self.places.iter_mut() {
             // The user requires a bound on the number of created values.
             if let Some(value_limit) = value_limit
                 && self.value_count >= value_limit
@@ -814,19 +856,18 @@ impl Map {
                 break;
             }
 
-            // Create a place for this projection.
-            for elem in [elem1, Some(elem2)].into_iter().flatten() {
-                place = *self.projections.entry((place, elem)).or_insert_with(|| {
-                    // Prepend new child to the linked list.
-                    let next = self.places.push(PlaceInfo::new(Some(elem)));
-                    self.places[next].next_sibling = self.places[place].first_child;
-                    self.places[place].first_child = Some(next);
-                    next
-                });
+            if let Ok(ty) = tcx.try_normalize_erasing_regions(param_env, place_info.ty) {
+                place_info.ty = ty;
             }
 
-            // And push the eventual children places to the worklist.
-            self.register_children(tcx, param_env, place, ty, &mut worklist);
+            // Allocate a value slot if it doesn't have one, and the user requested one.
+            assert!(place_info.value_index.is_none());
+            if let Ok(layout) = tcx.layout_of(param_env.and(place_info.ty))
+                && layout.abi.is_scalar()
+            {
+                place_info.value_index = Some(self.value_count.into());
+                self.value_count += 1;
+            }
         }
 
         // Pre-compute the tree of ValueIndex nested in each PlaceIndex.
@@ -852,68 +893,14 @@ impl Map {
         self.projections.retain(|_, child| !self.inner_values[*child].is_empty());
     }
 
-    /// Potentially register the (local, projection) place and its fields, recursively.
-    ///
-    /// Invariant: The projection must only contain trackable elements.
-    fn register_children<'tcx>(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        place: PlaceIndex,
-        ty: Ty<'tcx>,
-        worklist: &mut VecDeque<(PlaceIndex, Option<TrackElem>, TrackElem, Ty<'tcx>)>,
-    ) {
-        // Allocate a value slot if it doesn't have one, and the user requested one.
-        assert!(self.places[place].value_index.is_none());
-        if tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.abi.is_scalar()) {
-            self.places[place].value_index = Some(self.value_count.into());
-            self.value_count += 1;
-        }
-
-        // For enums, directly create the `Discriminant`, as that's their main use.
-        if ty.is_enum() {
-            // Prepend new child to the linked list.
-            let discr = self.places.push(PlaceInfo::new(Some(TrackElem::Discriminant)));
-            self.places[discr].next_sibling = self.places[place].first_child;
-            self.places[place].first_child = Some(discr);
-            let old = self.projections.insert((place, TrackElem::Discriminant), discr);
-            assert!(old.is_none());
-
-            // Allocate a value slot since it doesn't have one.
-            assert!(self.places[discr].value_index.is_none());
-            self.places[discr].value_index = Some(self.value_count.into());
-            self.value_count += 1;
-        }
-
-        if let ty::Ref(_, ref_ty, _) | ty::RawPtr(ref_ty, _) = ty.kind()
-            && let ty::Slice(..) = ref_ty.kind()
-            // The user may have written a predicate like `[T]: Sized` in their where clauses,
-            // which makes slices scalars.
-            && self.places[place].value_index.is_none()
-        {
-            // Prepend new child to the linked list.
-            let len = self.places.push(PlaceInfo::new(Some(TrackElem::DerefLen)));
-            self.places[len].next_sibling = self.places[place].first_child;
-            self.places[place].first_child = Some(len);
-
-            let old = self.projections.insert((place, TrackElem::DerefLen), len);
-            assert!(old.is_none());
-
-            // Allocate a value slot since it doesn't have one.
-            assert!(self.places[len].value_index.is_none());
-            self.places[len].value_index = Some(self.value_count.into());
-            self.value_count += 1;
-        }
-
-        // Recurse with all fields of this place.
-        iter_fields(ty, tcx, param_env, |variant, field, ty| {
-            worklist.push_back((
-                place,
-                variant.map(TrackElem::Variant),
-                TrackElem::Field(field),
-                ty,
-            ))
-        });
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    fn register_place(&mut self, ty: Ty<'tcx>, base: PlaceIndex, elem: TrackElem) -> PlaceIndex {
+        *self.projections.entry((base, elem)).or_insert_with(|| {
+            let next = self.places.push(PlaceInfo::new(ty, Some(elem)));
+            self.places[next].next_sibling = self.places[base].first_child;
+            self.places[base].first_child = Some(next);
+            next
+        })
     }
 
     /// Precompute the list of values inside `root` and store it inside
@@ -934,7 +921,108 @@ impl Map {
         let end = self.inner_values_buffer.len();
         self.inner_values[root] = start..end;
     }
+}
 
+struct PlaceCollector<'a, 'b, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body: &'b Body<'tcx>,
+    map: &'a mut Map<'tcx>,
+    assignments: FxIndexSet<(PlaceIndex, PlaceIndex)>,
+}
+
+impl<'tcx> PlaceCollector<'_, '_, 'tcx> {
+    #[tracing::instrument(level = "trace", skip(self))]
+    fn register_place(&mut self, place: Place<'tcx>) -> Option<PlaceIndex> {
+        // Create a place for this projection.
+        let mut place_index = self.map.locals[place.local]?;
+        let mut ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
+        tracing::trace!(?place_index, ?ty);
+
+        if let ty::Ref(_, ref_ty, _) | ty::RawPtr(ref_ty, _) = ty.ty.kind()
+            && let ty::Slice(..) = ref_ty.kind()
+        {
+            self.map.register_place(self.tcx.types.usize, place_index, TrackElem::DerefLen);
+        } else if ty.ty.is_enum() {
+            let discriminant_ty = ty.ty.discriminant_ty(self.tcx);
+            self.map.register_place(discriminant_ty, place_index, TrackElem::Discriminant);
+        }
+
+        for proj in place.projection {
+            let track_elem = proj.try_into().ok()?;
+            ty = ty.projection_ty(self.tcx, proj);
+            place_index = self.map.register_place(ty.ty, place_index, track_elem);
+            tracing::trace!(?proj, ?place_index, ?ty);
+
+            if let ty::Ref(_, ref_ty, _) | ty::RawPtr(ref_ty, _) = ty.ty.kind()
+                && let ty::Slice(..) = ref_ty.kind()
+            {
+                self.map.register_place(self.tcx.types.usize, place_index, TrackElem::DerefLen);
+            } else if ty.ty.is_enum() {
+                let discriminant_ty = ty.ty.discriminant_ty(self.tcx);
+                self.map.register_place(discriminant_ty, place_index, TrackElem::Discriminant);
+            }
+        }
+
+        Some(place_index)
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for PlaceCollector<'_, '_, 'tcx> {
+    #[tracing::instrument(level = "trace", skip(self))]
+    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, _: Location) {
+        if !ctxt.is_use() {
+            return;
+        }
+
+        self.register_place(*place);
+    }
+
+    fn visit_assign(&mut self, lhs: &Place<'tcx>, rhs: &Rvalue<'tcx>, location: Location) {
+        self.super_assign(lhs, rhs, location);
+
+        match rhs {
+            Rvalue::Use(Operand::Move(rhs) | Operand::Copy(rhs)) | Rvalue::CopyForDeref(rhs) => {
+                let Some(lhs) = self.register_place(*lhs) else { return };
+                let Some(rhs) = self.register_place(*rhs) else { return };
+                self.assignments.insert((lhs, rhs));
+            }
+            Rvalue::Aggregate(kind, fields) => {
+                let Some(mut lhs) = self.register_place(*lhs) else { return };
+                match **kind {
+                    // Do not propagate unions.
+                    AggregateKind::Adt(_, _, _, _, Some(_)) => return,
+                    AggregateKind::Adt(_, variant, _, _, None) => {
+                        let ty = self.map.places[lhs].ty;
+                        if ty.is_enum() {
+                            lhs = self.map.register_place(ty, lhs, TrackElem::Variant(variant));
+                        }
+                    }
+                    AggregateKind::RawPtr(..)
+                    | AggregateKind::Array(_)
+                    | AggregateKind::Tuple
+                    | AggregateKind::Closure(..)
+                    | AggregateKind::Coroutine(..)
+                    | AggregateKind::CoroutineClosure(..) => {}
+                }
+                for (index, field) in fields.iter_enumerated() {
+                    if let Some(rhs) = field.place()
+                        && let Some(rhs) = self.register_place(rhs)
+                    {
+                        let lhs = self.map.register_place(
+                            self.map.places[rhs].ty,
+                            lhs,
+                            TrackElem::Field(index),
+                        );
+                        self.assignments.insert((lhs, rhs));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl<'tcx> Map<'tcx> {
     /// Applies a single projection element, yielding the corresponding child.
     pub fn apply(&self, place: PlaceIndex, elem: TrackElem) -> Option<PlaceIndex> {
         self.projections.get(&(place, elem)).copied()
@@ -974,7 +1062,10 @@ impl Map {
     }
 
     /// Iterate over all direct children.
-    fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> + '_ {
+    fn children(
+        &self,
+        parent: PlaceIndex,
+    ) -> impl Iterator<Item = PlaceIndex> + Captures<'_> + Captures<'tcx> {
         Children::new(self, parent)
     }
 
@@ -1081,7 +1172,10 @@ impl Map {
 /// Together, `first_child` and `next_sibling` form an intrusive linked list, which is used to
 /// model a tree structure (a replacement for a member like `children: Vec<PlaceIndex>`).
 #[derive(Debug)]
-struct PlaceInfo {
+struct PlaceInfo<'tcx> {
+    /// Type of the referenced place.
+    ty: Ty<'tcx>,
+
     /// We store a [`ValueIndex`] if and only if the placed is tracked by the analysis.
     value_index: Option<ValueIndex>,
 
@@ -1095,24 +1189,24 @@ struct PlaceInfo {
     next_sibling: Option<PlaceIndex>,
 }
 
-impl PlaceInfo {
-    fn new(proj_elem: Option<TrackElem>) -> Self {
-        Self { next_sibling: None, first_child: None, proj_elem, value_index: None }
+impl<'tcx> PlaceInfo<'tcx> {
+    fn new(ty: Ty<'tcx>, proj_elem: Option<TrackElem>) -> Self {
+        Self { ty, next_sibling: None, first_child: None, proj_elem, value_index: None }
     }
 }
 
-struct Children<'a> {
-    map: &'a Map,
+struct Children<'a, 'tcx> {
+    map: &'a Map<'tcx>,
     next: Option<PlaceIndex>,
 }
 
-impl<'a> Children<'a> {
-    fn new(map: &'a Map, parent: PlaceIndex) -> Self {
+impl<'a, 'tcx> Children<'a, 'tcx> {
+    fn new(map: &'a Map<'tcx>, parent: PlaceIndex) -> Self {
         Self { map, next: map.places[parent].first_child }
     }
 }
 
-impl<'a> Iterator for Children<'a> {
+impl Iterator for Children<'_, '_> {
     type Item = PlaceIndex;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1261,7 +1355,7 @@ fn debug_with_context_rec<V: Debug + Eq + HasBottom>(
     place_str: &str,
     new: &StateData<V>,
     old: Option<&StateData<V>>,
-    map: &Map,
+    map: &Map<'_>,
     f: &mut Formatter<'_>,
 ) -> std::fmt::Result {
     if let Some(value) = map.places[place].value_index {
@@ -1305,7 +1399,7 @@ fn debug_with_context_rec<V: Debug + Eq + HasBottom>(
 fn debug_with_context<V: Debug + Eq + HasBottom>(
     new: &StateData<V>,
     old: Option<&StateData<V>>,
-    map: &Map,
+    map: &Map<'_>,
     f: &mut Formatter<'_>,
 ) -> std::fmt::Result {
     for (local, place) in map.locals.iter_enumerated() {

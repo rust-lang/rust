@@ -106,8 +106,7 @@
 -         _7 = (_10.0: f32);
 +         _7 = const 4f32;
           StorageLive(_8);
--         _8 = (_10.1: std::option::Option<S>);
-+         _8 = const Option::<S>::Some(S(1_i32));
+          _8 = (_10.1: std::option::Option<S>);
           StorageLive(_9);
           _9 = (_10.2: &[f32]);
           StorageDead(_10);
@@ -157,8 +156,7 @@
 +         _23 = const 82f32;
           StorageLive(_24);
           _37 = deref_copy (*_26);
--         _24 = ((*_37).1: std::option::Option<S>);
-+         _24 = const Option::<S>::Some(S(35_i32));
+          _24 = ((*_37).1: std::option::Option<S>);
           StorageLive(_25);
           _38 = deref_copy (*_26);
           _25 = ((*_38).2: &[f32]);
@@ -168,12 +166,11 @@
 -         _28 = _23;
 +         _28 = const 82f32;
           StorageLive(_29);
--         _29 = _24;
-+         _29 = const Option::<S>::Some(S(35_i32));
+          _29 = _24;
           StorageLive(_30);
           _30 = _25;
 -         _27 = BigStruct(move _28, move _29, move _30);
-+         _27 = BigStruct(const 82f32, const Option::<S>::Some(S(35_i32)), move _30);
++         _27 = BigStruct(const 82f32, move _29, move _30);
           StorageDead(_30);
           StorageDead(_29);
           StorageDead(_28);
@@ -199,29 +196,21 @@
       }
   }
   
-+ ALLOC2 (size: 8, align: 4) { .. }
-+ 
-+ ALLOC3 (size: 8, align: 4) { .. }
-+ 
-+ ALLOC4 (size: 8, align: 4) { .. }
-+ 
-+ ALLOC5 (size: 8, align: 4) { .. }
-+ 
-+ ALLOC6 (size: 4, align: 4) { .. }
++ ALLOC2 (size: 4, align: 4) { .. }
 + 
   ALLOC1 (static: BIG_STAT, size: 8, align: 8) { .. }
   
 - ALLOC2 (size: 32, align: 8) { .. }
-+ ALLOC7 (size: 32, align: 8) { .. }
++ ALLOC3 (size: 32, align: 8) { .. }
   
 - ALLOC3 (size: 8, align: 4) { .. }
-+ ALLOC8 (size: 8, align: 4) { .. }
++ ALLOC4 (size: 8, align: 4) { .. }
   
   ALLOC0 (static: SMALL_STAT, size: 8, align: 8) { .. }
   
 - ALLOC4 (size: 32, align: 8) { .. }
-+ ALLOC9 (size: 32, align: 8) { .. }
++ ALLOC5 (size: 32, align: 8) { .. }
   
 - ALLOC5 (size: 4, align: 4) { .. }
-+ ALLOC10 (size: 4, align: 4) { .. }
++ ALLOC6 (size: 4, align: 4) { .. }
   
