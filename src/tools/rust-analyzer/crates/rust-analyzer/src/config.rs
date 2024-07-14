@@ -1128,7 +1128,7 @@ pub struct WorkspaceSymbolConfig {
     /// How many items are returned at most.
     pub search_limit: usize,
 }
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientCommandsConfig {
     pub run_single: bool,
     pub debug_single: bool,

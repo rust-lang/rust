@@ -135,7 +135,6 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             }
                         }
                     }
-                    edit.rename();
                 }
                 Anchor::Replace(stmt) => {
                     cov_mark::hit!(test_extract_var_expr_stmt);
@@ -150,7 +149,6 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             }
                         }
                     }
-                    edit.rename();
                 }
                 Anchor::WrapInBlock(to_wrap) => {
                     let indent_to = to_wrap.indent_level();
@@ -194,12 +192,12 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             }
                         }
                     }
-                    edit.rename();
 
                     // fixup indentation of block
                     block.indent(indent_to);
                 }
             }
+            edit.rename();
         },
     )
 }

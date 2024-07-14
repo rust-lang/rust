@@ -1336,15 +1336,14 @@ pub(crate) fn code_action(
         command: None,
     };
 
-    if assist.command == Some(assists::Command::TriggerSignatureHelp)
-        && snap.config.client_commands().trigger_parameter_hints
-    {
-        res.command = Some(command::trigger_parameter_hints());
-    } else if assist.command == Some(assists::Command::Rename)
-        && snap.config.client_commands().rename
-    {
-        res.command = Some(command::rename());
-    }
+    let commands = snap.config.client_commands();
+    res.command = match assist.command {
+        Some(assists::Command::TriggerSignatureHelp) if commands.trigger_parameter_hints => {
+            Some(command::trigger_parameter_hints())
+        }
+        Some(assists::Command::Rename) if commands.rename => Some(command::rename()),
+        _ => None,
+    };
 
     match (assist.source_change, resolve_data) {
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
