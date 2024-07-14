@@ -355,7 +355,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
             c::SetLastError(0);
             c::ReadConsoleW(
                 handle,
-                buf.as_mut_ptr() as c::LPVOID,
+                buf.as_mut_ptr() as *mut core::ffi::c_void,
                 buf.len() as u32,
                 &mut amount,
                 &input_control,

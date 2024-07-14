@@ -225,7 +225,7 @@ fn random_number() -> usize {
 // Abstracts over `ReadFileEx` and `WriteFileEx`
 type AlertableIoFn = unsafe extern "system" fn(
     BorrowedHandle<'_>,
-    c::LPVOID,
+    *mut core::ffi::c_void,
     c::DWORD,
     *mut c::OVERLAPPED,
     c::LPOVERLAPPED_COMPLETION_ROUTINE,
@@ -327,7 +327,7 @@ impl AnonPipe {
     unsafe fn alertable_io_internal(
         &self,
         io: AlertableIoFn,
-        buf: c::LPVOID,
+        buf: *mut core::ffi::c_void,
         len: c::DWORD,
     ) -> io::Result<usize> {
         // Use "alertable I/O" to synchronize the pipe I/O.

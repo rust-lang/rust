@@ -115,7 +115,7 @@ extern "C" fn process_heap_init_and_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`
     flags: c::DWORD,
     dwBytes: usize,
-) -> c::LPVOID {
+) -> *mut c_void {
     let heap = init_or_get_process_heap();
     if core::intrinsics::unlikely(heap.is_null()) {
         return ptr::null_mut();
@@ -129,7 +129,7 @@ fn process_heap_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`,
     flags: c::DWORD,
     dwBytes: usize,
-) -> c::LPVOID {
+) -> *mut c_void {
     let heap = HEAP.load(Ordering::Relaxed);
     if core::intrinsics::likely(!heap.is_null()) {
         // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`.
@@ -240,7 +240,7 @@ unsafe impl GlobalAlloc for System {
 
         // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
         // `block` is a pointer to the start of an allocated block.
-        unsafe { HeapFree(heap, 0, block as c::LPVOID) };
+        unsafe { HeapFree(heap, 0, block.cast::<c_void>()) };
     }
 
     #[inline]
@@ -253,7 +253,7 @@ unsafe impl GlobalAlloc for System {
             // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
             // `ptr` is a pointer to the start of an allocated block.
             // The returned pointer points to the start of an allocated block.
-            unsafe { HeapReAlloc(heap, 0, ptr as c::LPVOID, new_size) as *mut u8 }
+            unsafe { HeapReAlloc(heap, 0, ptr.cast::<c_void>(), new_size).cast::<u8>() }
         } else {
             // SAFETY: `realloc_fallback` is implemented using `dealloc` and `alloc`, which will
             // correctly handle `ptr` and return a pointer satisfying the guarantees of `System`

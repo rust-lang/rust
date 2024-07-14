@@ -21,8 +21,6 @@ pub type DWORD = c_ulong;
 pub type WCHAR = u16;
 pub type ULONG = c_ulong;
 
-pub type LPVOID = *mut c_void;
-
 #[cfg(target_vendor = "win7")]
 pub type PSRWLOCK = *mut SRWLOCK;
 
@@ -390,7 +388,7 @@ compat_fn_with_fallback! {
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: *mut HANDLE,
         DesiredAccess: DWORD,
-        ObjectAttributes: LPVOID,
+        ObjectAttributes: *mut c_void,
         Flags: ULONG
     ) -> NTSTATUS {
         panic!("keyed events not available")
@@ -398,7 +396,7 @@ compat_fn_with_fallback! {
     #[cfg(target_vendor = "win7")]
     pub fn NtReleaseKeyedEvent(
         EventHandle: HANDLE,
-        Key: LPVOID,
+        Key: *mut c_void,
         Alertable: BOOLEAN,
         Timeout: *mut c_longlong
     ) -> NTSTATUS {
@@ -407,7 +405,7 @@ compat_fn_with_fallback! {
     #[cfg(target_vendor = "win7")]
     pub fn NtWaitForKeyedEvent(
         EventHandle: HANDLE,
-        Key: LPVOID,
+        Key: *mut c_void,
         Alertable: BOOLEAN,
         Timeout: *mut c_longlong
     ) -> NTSTATUS {
