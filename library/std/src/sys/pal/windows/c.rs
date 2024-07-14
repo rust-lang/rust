@@ -19,7 +19,6 @@ pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
 pub type WCHAR = u16;
-pub type USHORT = c_ushort;
 pub type SIZE_T = usize;
 pub type CHAR = c_char;
 pub type ULONG = c_ulong;
@@ -33,7 +32,7 @@ pub type LPVOID = *mut c_void;
 pub type PSRWLOCK = *mut SRWLOCK;
 
 pub type socklen_t = c_int;
-pub type ADDRESS_FAMILY = USHORT;
+pub type ADDRESS_FAMILY = c_ushort;
 pub use FD_SET as fd_set;
 pub use LINGER as linger;
 pub use TIMEVAL as timeval;
@@ -152,7 +151,7 @@ pub struct SOCKADDR_STORAGE_LH {
 #[derive(Copy, Clone)]
 pub struct sockaddr_in {
     pub sin_family: ADDRESS_FAMILY,
-    pub sin_port: USHORT,
+    pub sin_port: c_ushort,
     pub sin_addr: in_addr,
     pub sin_zero: [CHAR; 8],
 }
@@ -161,7 +160,7 @@ pub struct sockaddr_in {
 #[derive(Copy, Clone)]
 pub struct sockaddr_in6 {
     pub sin6_family: ADDRESS_FAMILY,
-    pub sin6_port: USHORT,
+    pub sin6_port: c_ushort,
     pub sin6_flowinfo: c_ulong,
     pub sin6_addr: in6_addr,
     pub sin6_scope_id: c_ulong,
