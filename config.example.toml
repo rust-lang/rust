@@ -609,7 +609,7 @@
 
 # Forces frame pointers to be used with `-Cforce-frame-pointers`.
 # This can be helpful for profiling at a small performance cost.
-# frame-pointers = false
+#frame-pointers = false
 
 # Indicates whether stack protectors should be used
 # via the unstable option `-Zstack-protector`.
