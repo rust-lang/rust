@@ -103,7 +103,13 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
-            Err(infringing_fields_error(tcx, fields, LangItem::Copy, impl_did, span))
+            Err(infringing_fields_error(
+                tcx,
+                fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
+                LangItem::Copy,
+                impl_did,
+                span,
+            ))
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
@@ -125,7 +131,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
 
     let param_env = tcx.param_env(impl_did);
 
-    if let ty::ImplPolarity::Negative = header.polarity {
+    if let ty::ImplPolarity::Negative | ty::ImplPolarity::Reservation = header.polarity {
         return Ok(());
     }
 
@@ -134,11 +140,31 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
-            Err(infringing_fields_error(tcx, fields, LangItem::ConstParamTy, impl_did, span))
+            Err(infringing_fields_error(
+                tcx,
+                fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
+                LangItem::ConstParamTy,
+                impl_did,
+                span,
+            ))
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
+        }
+        Err(ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(infringing_tys)) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            Err(infringing_fields_error(
+                tcx,
+                infringing_tys.into_iter().map(|(ty, reason)| (span, ty, reason)),
+                LangItem::ConstParamTy,
+                impl_did,
+                span,
+            ))
+        }
+        Err(ConstParamTyImplementationError::TypeNotSized) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnUnsized { span }))
         }
     }
 }
@@ -501,9 +527,9 @@ pub fn coerce_unsized_info<'tcx>(
     Ok(CoerceUnsizedInfo { custom_kind: kind })
 }
 
-fn infringing_fields_error(
-    tcx: TyCtxt<'_>,
-    fields: Vec<(&ty::FieldDef, Ty<'_>, InfringingFieldsReason<'_>)>,
+fn infringing_fields_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infringing_tys: impl Iterator<Item = (Span, Ty<'tcx>, InfringingFieldsReason<'tcx>)>,
     lang_item: LangItem,
     impl_did: LocalDefId,
     impl_span: Span,
@@ -521,13 +547,13 @@ fn infringing_fields_error(
 
     let mut label_spans = Vec::new();
 
-    for (field, ty, reason) in fields {
+    for (span, ty, reason) in infringing_tys {
         // Only report an error once per type.
         if !seen_tys.insert(ty) {
             continue;
         }
 
-        label_spans.push(tcx.def_span(field.did));
+        label_spans.push(span);
 
         match reason {
             InfringingFieldsReason::Fulfill(fulfillment_errors) => {

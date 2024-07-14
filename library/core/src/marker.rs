@@ -995,12 +995,21 @@ marker_impls! {
         isize, i8, i16, i32, i64, i128,
         bool,
         char,
-        str /* Technically requires `[u8]: ConstParamTy` */,
         (),
         {T: ConstParamTy, const N: usize} [T; N],
-        {T: ConstParamTy} [T],
-        {T: ?Sized + ConstParamTy} &T,
 }
+
+#[unstable(feature = "adt_const_params", issue = "95174")]
+#[rustc_reservation_impl = "types that are not `Sized` are not supported as the type of a const generic parameter"]
+impl<T> ConstParamTy for [T] {}
+
+#[unstable(feature = "adt_const_params", issue = "95174")]
+#[rustc_reservation_impl = "types that are not `Sized` are not supported as the type of a const generic parameter"]
+impl ConstParamTy for str {}
+
+#[unstable(feature = "adt_const_params", issue = "95174")]
+#[rustc_reservation_impl = "references are not supported as the type of a const generic parameter"]
+impl<T: ?Sized> ConstParamTy for &T {}
 
 /// A common trait implemented by all function pointers.
 #[unstable(

@@ -924,8 +924,6 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
 
             if tcx.features().adt_const_params {
                 enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
-                    let trait_def_id =
-                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span));
                     wfcx.register_bound(
                         ObligationCause::new(
                             hir_ty.span,
@@ -934,7 +932,13 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ),
                         wfcx.param_env,
                         ty,
-                        trait_def_id,
+                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span)),
+                    );
+                    wfcx.register_bound(
+                        ObligationCause::new(hir_ty.span, param.def_id, ObligationCauseCode::Misc),
+                        wfcx.param_env,
+                        ty,
+                        tcx.require_lang_item(LangItem::Sized, Some(hir_ty.span)),
                     );
                     Ok(())
                 })
@@ -965,7 +969,11 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     cause,
                 ) {
                     // Can never implement `ConstParamTy`, don't suggest anything.
-                    Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => false,
+                    Err(
+                        ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed
+                        | ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(..)
+                        | ConstParamTyImplementationError::TypeNotSized,
+                    ) => false,
                     // May be able to implement `ConstParamTy`. Only emit the feature help
                     // if the type is local, since the user may be able to fix the local type.
                     Err(ConstParamTyImplementationError::InfrigingFields(..)) => {

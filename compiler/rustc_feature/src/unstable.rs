@@ -339,8 +339,8 @@ declare_features! (
     (unstable, abi_riscv_interrupt, "1.73.0", Some(111889)),
     /// Allows `extern "x86-interrupt" fn()`.
     (unstable, abi_x86_interrupt, "1.17.0", Some(40180)),
-    /// Allows additional const parameter types, such as `&'static str` or user defined types
-    (incomplete, adt_const_params, "1.56.0", Some(95174)),
+    /// Allows additional const parameter types, such as `[u8; 10]` or user defined types
+    (unstable, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
     /// Allows trait methods with arbitrary self types.
