@@ -33,7 +33,7 @@ macro_rules! check_ci_llvm {
         assert!(
             $name.is_none(),
             "setting {} is incompatible with download-ci-llvm.",
-            stringify!($name)
+            stringify!($name).replace("_", "-")
         );
     };
 }
@@ -1568,7 +1568,15 @@ impl Config {
         let mut lld_enabled = None;
 
         let mut is_user_configured_rust_channel = false;
+
         if let Some(rust) = toml.rust {
+            config.download_rustc_commit =
+                config.download_ci_rustc_commit(rust.download_rustc.clone());
+
+            if config.download_rustc_commit.is_some() {
+                check_incompatible_options_for_ci_rustc(&rust);
+            }
+
             let Rust {
                 optimize: optimize_toml,
                 debug: debug_toml,
@@ -1616,7 +1624,7 @@ impl Config {
                 new_symbol_mangling,
                 profile_generate,
                 profile_use,
-                download_rustc,
+                download_rustc: _,
                 lto,
                 validate_mir_opts,
                 frame_pointers,
@@ -1626,11 +1634,7 @@ impl Config {
             } = rust;
 
             is_user_configured_rust_channel = channel.is_some();
-            set(&mut config.channel, channel);
-
-            config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
-
-            // FIXME: handle download-rustc incompatible options.
+            set(&mut config.channel, channel.clone());
 
             debug = debug_toml;
             debug_assertions = debug_assertions_toml;
@@ -2606,6 +2610,113 @@ impl Config {
 
         Some(commit.to_string())
     }
+}
+
+/// Checks the CI rustc incompatible options by destructuring the `Rust` instance
+/// and makes sure that no rust options from config.toml are missed.
+fn check_incompatible_options_for_ci_rustc(rust: &Rust) {
+    macro_rules! err {
+        ($name:expr) => {
+            assert!(
+                $name.is_none(),
+                "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
+                stringify!($name).replace("_", "-")
+            );
+        };
+    }
+
+    macro_rules! warn {
+        ($name:expr) => {
+            if $name.is_some() {
+                println!(
+                    "WARNING: `rust.{}` has no effect with `rust.download-rustc`.",
+                    stringify!($name).replace("_", "-")
+                );
+            }
+        };
+    }
+
+    let Rust {
+        // Following options are the CI rustc incompatible ones.
+        optimize,
+        debug_logging,
+        debuginfo_level_rustc,
+        llvm_tools,
+        llvm_bitcode_linker,
+        lto,
+        stack_protector,
+        strip,
+        lld_mode,
+        jemalloc,
+        rpath,
+        channel,
+        description,
+        incremental,
+        default_linker,
+
+        // Rest of the options can simply be ignored.
+        debug: _,
+        codegen_units: _,
+        codegen_units_std: _,
+        debug_assertions: _,
+        debug_assertions_std: _,
+        overflow_checks: _,
+        overflow_checks_std: _,
+        debuginfo_level: _,
+        debuginfo_level_std: _,
+        debuginfo_level_tools: _,
+        debuginfo_level_tests: _,
+        split_debuginfo: _,
+        backtrace: _,
+        parallel_compiler: _,
+        musl_root: _,
+        verbose_tests: _,
+        optimize_tests: _,
+        codegen_tests: _,
+        omit_git_hash: _,
+        dist_src: _,
+        save_toolstates: _,
+        codegen_backends: _,
+        lld: _,
+        deny_warnings: _,
+        backtrace_on_ice: _,
+        verify_llvm_ir: _,
+        thin_lto_import_instr_limit: _,
+        remap_debuginfo: _,
+        test_compare_mode: _,
+        llvm_libunwind: _,
+        control_flow_guard: _,
+        ehcont_guard: _,
+        new_symbol_mangling: _,
+        profile_generate: _,
+        profile_use: _,
+        download_rustc: _,
+        validate_mir_opts: _,
+        frame_pointers: _,
+    } = rust;
+
+    // There are two kinds of checks for CI rustc incompatible options:
+    //    1. Checking an option that may change the compiler behaviour/output.
+    //    2. Checking an option that have no effect on the compiler behaviour/output.
+    //
+    // If the option belongs to the first category, we call `err` macro for a hard error;
+    // otherwise, we just print a warning with `warn` macro.
+    err!(optimize);
+    err!(debug_logging);
+    err!(debuginfo_level_rustc);
+    err!(default_linker);
+    err!(rpath);
+    err!(strip);
+    err!(stack_protector);
+    err!(lld_mode);
+    err!(llvm_tools);
+    err!(llvm_bitcode_linker);
+    err!(jemalloc);
+    err!(lto);
+
+    warn!(channel);
+    warn!(description);
+    warn!(incremental);
 }
 
 fn set<T>(field: &mut T, val: Option<T>) {
