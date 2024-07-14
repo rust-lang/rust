@@ -627,7 +627,7 @@ impl Step for Size {
 
     #[inline]
     unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
-        Self::from_bytes(u64::forward_unchecked(start.bytes(), count))
+        Self::from_bytes(unsafe { u64::forward_unchecked(start.bytes(), count) })
     }
 
     #[inline]
@@ -642,7 +642,7 @@ impl Step for Size {
 
     #[inline]
     unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
-        Self::from_bytes(u64::backward_unchecked(start.bytes(), count))
+        Self::from_bytes(unsafe { u64::backward_unchecked(start.bytes(), count) })
     }
 }
 

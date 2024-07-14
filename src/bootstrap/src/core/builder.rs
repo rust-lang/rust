@@ -2001,6 +2001,7 @@ impl<'a> Builder<'a> {
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
             rustflags.arg("-Wkeyword_idents_2024");
+            rustflags.arg("-Wunsafe_op_in_unsafe_fn");
         }
 
         if self.config.rust_frame_pointers {

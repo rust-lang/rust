@@ -49,12 +49,16 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
-    llvm::LLVMRustInstallErrorHandlers();
+    unsafe {
+        llvm::LLVMRustInstallErrorHandlers();
+    }
     // On Windows, an LLVM assertion will open an Abort/Retry/Ignore dialog
     // box for the purpose of launching a debugger. However, on CI this will
     // cause it to hang until it times out, which can take several hours.
     if std::env::var_os("CI").is_some() {
-        llvm::LLVMRustDisableSystemDialogsOnCrash();
+        unsafe {
+            llvm::LLVMRustDisableSystemDialogsOnCrash();
+        }
     }
 
     fn llvm_arg_to_arg_name(full_arg: &str) -> &str {
@@ -124,12 +128,12 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
-        llvm::LLVMRustTimeTraceProfilerInitialize();
+        unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() };
     }
 
     rustc_llvm::initialize_available_targets();
 
-    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
+    unsafe { llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr()) };
 }
 
 pub fn time_trace_profiler_finish(file_name: &Path) {
@@ -442,8 +446,8 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
             let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
                 .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
             unsafe extern "C" fn callback(out: *mut c_void, string: *const c_char, len: usize) {
-                let out = &mut *(out as *mut &mut String);
-                let bytes = slice::from_raw_parts(string as *const u8, len);
+                let out = unsafe { &mut *(out as *mut &mut String) };
+                let bytes = unsafe { slice::from_raw_parts(string as *const u8, len) };
                 write!(out, "{}", String::from_utf8_lossy(bytes)).unwrap();
             }
             unsafe {

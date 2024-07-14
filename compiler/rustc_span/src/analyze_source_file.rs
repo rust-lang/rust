@@ -89,13 +89,13 @@ cfg_match! {
                 let ptr = src_bytes.as_ptr() as *const __m128i;
                 // We don't know if the pointer is aligned to 16 bytes, so we
                 // use `loadu`, which supports unaligned loading.
-                let chunk = _mm_loadu_si128(ptr.add(chunk_index));
+                let chunk = unsafe { _mm_loadu_si128(ptr.add(chunk_index)) };
 
                 // For character in the chunk, see if its byte value is < 0, which
                 // indicates that it's part of a UTF-8 char.
-                let multibyte_test = _mm_cmplt_epi8(chunk, _mm_set1_epi8(0));
+                let multibyte_test = unsafe { _mm_cmplt_epi8(chunk, _mm_set1_epi8(0)) };
                 // Create a bit mask from the comparison results.
-                let multibyte_mask = _mm_movemask_epi8(multibyte_test);
+                let multibyte_mask = unsafe { _mm_movemask_epi8(multibyte_test) };
 
                 // If the bit mask is all zero, we only have ASCII chars here:
                 if multibyte_mask == 0 {
@@ -104,19 +104,19 @@ cfg_match! {
                     // Check if there are any control characters in the chunk. All
                     // control characters that we can encounter at this point have a
                     // byte value less than 32 or ...
-                    let control_char_test0 = _mm_cmplt_epi8(chunk, _mm_set1_epi8(32));
-                    let control_char_mask0 = _mm_movemask_epi8(control_char_test0);
+                    let control_char_test0 = unsafe { _mm_cmplt_epi8(chunk, _mm_set1_epi8(32)) };
+                    let control_char_mask0 = unsafe { _mm_movemask_epi8(control_char_test0) };
 
                     // ... it's the ASCII 'DEL' character with a value of 127.
-                    let control_char_test1 = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(127));
-                    let control_char_mask1 = _mm_movemask_epi8(control_char_test1);
+                    let control_char_test1 = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(127)) };
+                    let control_char_mask1 = unsafe { _mm_movemask_epi8(control_char_test1) };
 
                     let control_char_mask = control_char_mask0 | control_char_mask1;
 
                     if control_char_mask != 0 {
                         // Check for newlines in the chunk
-                        let newlines_test = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8));
-                        let newlines_mask = _mm_movemask_epi8(newlines_test);
+                        let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
+                        let newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
 
                         if control_char_mask == newlines_mask {
                             // All control characters are newlines, record them
