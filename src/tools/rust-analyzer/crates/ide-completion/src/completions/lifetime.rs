@@ -47,7 +47,7 @@ pub(crate) fn complete_lifetime(
         }
     });
     if param_lifetime.is_none() {
-        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static));
+        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static.clone()));
     }
 }
 

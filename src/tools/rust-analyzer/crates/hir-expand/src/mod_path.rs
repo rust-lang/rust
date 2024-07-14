@@ -120,7 +120,8 @@ impl ModPath {
 
     #[allow(non_snake_case)]
     pub fn is_Self(&self) -> bool {
-        self.kind == PathKind::Plain && matches!(&*self.segments, [name] if *name == sym::Self_)
+        self.kind == PathKind::Plain
+            && matches!(&*self.segments, [name] if *name == sym::Self_.clone())
     }
 
     /// If this path is a single identifier, like `foo`, return its name.
@@ -264,7 +265,7 @@ fn convert_path(
         }
         ast::PathSegmentKind::SelfTypeKw => ModPath::from_segments(
             PathKind::Plain,
-            Some(Name::new_symbol(sym::Self_, SyntaxContextId::ROOT)),
+            Some(Name::new_symbol(sym::Self_.clone(), SyntaxContextId::ROOT)),
         ),
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
         ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
@@ -396,7 +397,7 @@ macro_rules! __path {
     ($start:ident $(:: $seg:ident)*) => ({
         $crate::__known_path!($start $(:: $seg)*);
         $crate::mod_path::ModPath::from_segments($crate::mod_path::PathKind::Abs, vec![
-            $crate::name::Name::new_symbol_root(intern::sym::$start), $($crate::name::Name::new_symbol_root(intern::sym::$seg),)*
+            $crate::name::Name::new_symbol_root(intern::sym::$start.clone()), $($crate::name::Name::new_symbol_root(intern::sym::$seg.clone()),)*
         ])
     });
 }

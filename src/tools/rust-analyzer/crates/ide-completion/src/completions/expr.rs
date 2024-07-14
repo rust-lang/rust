@@ -190,7 +190,7 @@ pub(crate) fn complete_expr_path(
                                 path_ctx,
                                 strukt,
                                 None,
-                                Some(Name::new_symbol_root(sym::Self_)),
+                                Some(Name::new_symbol_root(sym::Self_.clone())),
                             );
                         }
                     }
@@ -214,7 +214,7 @@ pub(crate) fn complete_expr_path(
                                 ctx,
                                 un,
                                 None,
-                                Some(Name::new_symbol_root(sym::Self_)),
+                                Some(Name::new_symbol_root(sym::Self_.clone())),
                             );
                         }
                     }

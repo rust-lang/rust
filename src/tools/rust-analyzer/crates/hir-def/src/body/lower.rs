@@ -188,7 +188,7 @@ impl ExprCollector<'_> {
                 let is_mutable =
                     self_param.mut_token().is_some() && self_param.amp_token().is_none();
                 let binding_id: la_arena::Idx<Binding> = self.alloc_binding(
-                    Name::new_symbol_root(sym::self_),
+                    Name::new_symbol_root(sym::self_.clone()),
                     BindingAnnotation::new(is_mutable, false),
                 );
                 self.body.self_param = Some(binding_id);
@@ -1732,14 +1732,14 @@ impl ExprCollector<'_> {
         let Some(new_v1_formatted) = LangItem::FormatArguments.ty_rel_path(
             self.db,
             self.krate,
-            Name::new_symbol_root(sym::new_v1_formatted),
+            Name::new_symbol_root(sym::new_v1_formatted.clone()),
         ) else {
             return self.missing_expr();
         };
         let Some(unsafe_arg_new) = LangItem::FormatUnsafeArg.ty_rel_path(
             self.db,
             self.krate,
-            Name::new_symbol_root(sym::new),
+            Name::new_symbol_root(sym::new.clone()),
         ) else {
             return self.missing_expr();
         };
@@ -1822,10 +1822,10 @@ impl ExprCollector<'_> {
                 self.db,
                 self.krate,
                 match alignment {
-                    Some(FormatAlignment::Left) => Name::new_symbol_root(sym::Left),
-                    Some(FormatAlignment::Right) => Name::new_symbol_root(sym::Right),
-                    Some(FormatAlignment::Center) => Name::new_symbol_root(sym::Center),
-                    None => Name::new_symbol_root(sym::Unknown),
+                    Some(FormatAlignment::Left) => Name::new_symbol_root(sym::Left.clone()),
+                    Some(FormatAlignment::Right) => Name::new_symbol_root(sym::Right.clone()),
+                    Some(FormatAlignment::Center) => Name::new_symbol_root(sym::Center.clone()),
+                    None => Name::new_symbol_root(sym::Unknown.clone()),
                 },
             );
             match align {
@@ -1851,7 +1851,7 @@ impl ExprCollector<'_> {
             let format_placeholder_new = LangItem::FormatPlaceholder.ty_rel_path(
                 self.db,
                 self.krate,
-                Name::new_symbol_root(sym::new),
+                Name::new_symbol_root(sym::new.clone()),
             );
             match format_placeholder_new {
                 Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
@@ -1899,7 +1899,7 @@ impl ExprCollector<'_> {
                 let count_is = match LangItem::FormatCount.ty_rel_path(
                     self.db,
                     self.krate,
-                    Name::new_symbol_root(sym::Is),
+                    Name::new_symbol_root(sym::Is.clone()),
                 ) {
                     Some(count_is) => self.alloc_expr_desugared(Expr::Path(count_is)),
                     None => self.missing_expr(),
@@ -1921,7 +1921,7 @@ impl ExprCollector<'_> {
                     let count_param = match LangItem::FormatCount.ty_rel_path(
                         self.db,
                         self.krate,
-                        Name::new_symbol_root(sym::Param),
+                        Name::new_symbol_root(sym::Param.clone()),
                     ) {
                         Some(count_param) => self.alloc_expr_desugared(Expr::Path(count_param)),
                         None => self.missing_expr(),
@@ -1940,7 +1940,7 @@ impl ExprCollector<'_> {
             None => match LangItem::FormatCount.ty_rel_path(
                 self.db,
                 self.krate,
-                Name::new_symbol_root(sym::Implied),
+                Name::new_symbol_root(sym::Implied.clone()),
             ) {
                 Some(count_param) => self.alloc_expr_desugared(Expr::Path(count_param)),
                 None => self.missing_expr(),
@@ -1963,16 +1963,16 @@ impl ExprCollector<'_> {
             self.db,
             self.krate,
             Name::new_symbol_root(match ty {
-                Format(Display) => sym::new_display,
-                Format(Debug) => sym::new_debug,
-                Format(LowerExp) => sym::new_lower_exp,
-                Format(UpperExp) => sym::new_upper_exp,
-                Format(Octal) => sym::new_octal,
-                Format(Pointer) => sym::new_pointer,
-                Format(Binary) => sym::new_binary,
-                Format(LowerHex) => sym::new_lower_hex,
-                Format(UpperHex) => sym::new_upper_hex,
-                Usize => sym::from_usize,
+                Format(Display) => sym::new_display.clone(),
+                Format(Debug) => sym::new_debug.clone(),
+                Format(LowerExp) => sym::new_lower_exp.clone(),
+                Format(UpperExp) => sym::new_upper_exp.clone(),
+                Format(Octal) => sym::new_octal.clone(),
+                Format(Pointer) => sym::new_pointer.clone(),
+                Format(Binary) => sym::new_binary.clone(),
+                Format(LowerHex) => sym::new_lower_hex.clone(),
+                Format(UpperHex) => sym::new_upper_hex.clone(),
+                Usize => sym::from_usize.clone(),
             }),
         ) {
             Some(new_fn) => self.alloc_expr_desugared(Expr::Path(new_fn)),

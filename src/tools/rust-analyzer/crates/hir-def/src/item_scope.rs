@@ -119,7 +119,7 @@ struct DeriveMacroInvocation {
 }
 
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
-    BuiltinType::ALL
+    BuiltinType::all_builtin_types()
         .iter()
         .map(|(name, ty)| (name.clone(), PerNs::types((*ty).into(), Visibility::Public, None)))
         .collect()

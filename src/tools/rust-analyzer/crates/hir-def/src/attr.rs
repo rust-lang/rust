@@ -9,7 +9,7 @@ use hir_expand::{
     attrs::{collect_attrs, Attr, AttrId, RawAttrs},
     HirFileId, InFile,
 };
-use intern::sym;
+use intern::{sym, Symbol};
 use la_arena::{ArenaMap, Idx, RawIdx};
 use mbe::DelimiterKind;
 use syntax::{
@@ -153,7 +153,7 @@ impl Attrs {
     }
 
     pub fn lang_item(&self) -> Option<LangItem> {
-        self.by_key("lang").string_value().and_then(LangItem::from_str)
+        self.by_key("lang").string_value().and_then(|it| LangItem::from_symbol(&Symbol::intern(it)))
     }
 
     pub fn has_doc_hidden(&self) -> bool {
@@ -200,7 +200,11 @@ impl Attrs {
                 .segments()
                 .iter()
                 .rev()
-                .zip([sym::core, sym::prelude, sym::v1, sym::test].iter().rev())
+                .zip(
+                    [sym::core.clone(), sym::prelude.clone(), sym::v1.clone(), sym::test.clone()]
+                        .iter()
+                        .rev(),
+                )
                 .all(|it| it.0 == it.1)
         })
     }

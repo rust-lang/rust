@@ -485,7 +485,7 @@ impl ExternCrateDeclData {
 
         let name = extern_crate.name.clone();
         let krate = loc.container.krate();
-        let crate_id = if name == sym::self_ {
+        let crate_id = if name == sym::self_.clone() {
             Some(krate)
         } else {
             db.crate_def_map(krate)

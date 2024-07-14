@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use intern::{sym::MISSING_NAME, Symbol};
+use intern::{sym, Symbol};
 use span::SyntaxContextId;
 use syntax::{ast, format_smolstr, utils::is_raw_identifier, SmolStr};
 
@@ -13,10 +13,19 @@ use syntax::{ast, format_smolstr, utils::is_raw_identifier, SmolStr};
 /// Note that `Name` holds and prints escaped name i.e. prefixed with "r#" when it
 /// is a raw identifier. Use [`unescaped()`][Name::unescaped] when you need the
 /// name without "r#".
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     symbol: Symbol,
     ctx: (),
+}
+
+impl fmt::Debug for Name {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Name")
+            .field("symbol", &self.symbol.as_str())
+            .field("ctx", &self.ctx)
+            .finish()
+    }
 }
 
 impl Ord for Name {
@@ -116,8 +125,8 @@ impl Name {
     /// Ideally, we want a `gensym` semantics for missing names -- each missing
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
-    pub const fn missing() -> Name {
-        Name { symbol: MISSING_NAME, ctx: () }
+    pub fn missing() -> Name {
+        Name { symbol: sym::MISSING_NAME.clone(), ctx: () }
     }
 
     /// Returns true if this is a fake name for things missing in the source code. See

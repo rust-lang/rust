@@ -91,7 +91,7 @@ impl TaggedArcPtr {
     }
 
     #[inline]
-    const fn pack_arc(ptr: NonNull<*const str>) -> NonNull<*const str> {
+    fn pack_arc(ptr: NonNull<*const str>) -> NonNull<*const str> {
         let packed_tag = true as usize;
 
         // can't use this strict provenance stuff here due to trait methods not being const
@@ -112,7 +112,7 @@ impl TaggedArcPtr {
         // }
         // so what follows is roughly what the above looks like but inlined
 
-        let self_addr = unsafe { core::mem::transmute::<*const _, usize>(ptr.as_ptr()) };
+        let self_addr = ptr.as_ptr() as *const *const str as usize;
         let addr = self_addr | packed_tag;
         let dest_addr = addr as isize;
         let offset = dest_addr.wrapping_sub(self_addr as isize);
@@ -222,7 +222,7 @@ impl Symbol {
             .try_as_arc_owned()
             .unwrap(),
         );
-        debug_assert_eq!(Arc::count(&arc), 1);
+        debug_assert_eq!(Arc::count(arc), 1);
 
         // Shrink the backing storage if the shard is less than 50% occupied.
         if shard.len() * 2 < shard.capacity() {

@@ -21,43 +21,53 @@ pub fn lang_items_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, LangIte
     Some(match op {
         BinaryOp::LogicOp(_) => return None,
         BinaryOp::ArithOp(aop) => match aop {
-            ArithOp::Add => (Name::new_symbol_root(sym::add), LangItem::Add),
-            ArithOp::Mul => (Name::new_symbol_root(sym::mul), LangItem::Mul),
-            ArithOp::Sub => (Name::new_symbol_root(sym::sub), LangItem::Sub),
-            ArithOp::Div => (Name::new_symbol_root(sym::div), LangItem::Div),
-            ArithOp::Rem => (Name::new_symbol_root(sym::rem), LangItem::Rem),
-            ArithOp::Shl => (Name::new_symbol_root(sym::shl), LangItem::Shl),
-            ArithOp::Shr => (Name::new_symbol_root(sym::shr), LangItem::Shr),
-            ArithOp::BitXor => (Name::new_symbol_root(sym::bitxor), LangItem::BitXor),
-            ArithOp::BitOr => (Name::new_symbol_root(sym::bitor), LangItem::BitOr),
-            ArithOp::BitAnd => (Name::new_symbol_root(sym::bitand), LangItem::BitAnd),
+            ArithOp::Add => (Name::new_symbol_root(sym::add.clone()), LangItem::Add),
+            ArithOp::Mul => (Name::new_symbol_root(sym::mul.clone()), LangItem::Mul),
+            ArithOp::Sub => (Name::new_symbol_root(sym::sub.clone()), LangItem::Sub),
+            ArithOp::Div => (Name::new_symbol_root(sym::div.clone()), LangItem::Div),
+            ArithOp::Rem => (Name::new_symbol_root(sym::rem.clone()), LangItem::Rem),
+            ArithOp::Shl => (Name::new_symbol_root(sym::shl.clone()), LangItem::Shl),
+            ArithOp::Shr => (Name::new_symbol_root(sym::shr.clone()), LangItem::Shr),
+            ArithOp::BitXor => (Name::new_symbol_root(sym::bitxor.clone()), LangItem::BitXor),
+            ArithOp::BitOr => (Name::new_symbol_root(sym::bitor.clone()), LangItem::BitOr),
+            ArithOp::BitAnd => (Name::new_symbol_root(sym::bitand.clone()), LangItem::BitAnd),
         },
         BinaryOp::Assignment { op: Some(aop) } => match aop {
-            ArithOp::Add => (Name::new_symbol_root(sym::add_assign), LangItem::AddAssign),
-            ArithOp::Mul => (Name::new_symbol_root(sym::mul_assign), LangItem::MulAssign),
-            ArithOp::Sub => (Name::new_symbol_root(sym::sub_assign), LangItem::SubAssign),
-            ArithOp::Div => (Name::new_symbol_root(sym::div_assign), LangItem::DivAssign),
-            ArithOp::Rem => (Name::new_symbol_root(sym::rem_assign), LangItem::RemAssign),
-            ArithOp::Shl => (Name::new_symbol_root(sym::shl_assign), LangItem::ShlAssign),
-            ArithOp::Shr => (Name::new_symbol_root(sym::shr_assign), LangItem::ShrAssign),
-            ArithOp::BitXor => (Name::new_symbol_root(sym::bitxor_assign), LangItem::BitXorAssign),
-            ArithOp::BitOr => (Name::new_symbol_root(sym::bitor_assign), LangItem::BitOrAssign),
-            ArithOp::BitAnd => (Name::new_symbol_root(sym::bitand_assign), LangItem::BitAndAssign),
+            ArithOp::Add => (Name::new_symbol_root(sym::add_assign.clone()), LangItem::AddAssign),
+            ArithOp::Mul => (Name::new_symbol_root(sym::mul_assign.clone()), LangItem::MulAssign),
+            ArithOp::Sub => (Name::new_symbol_root(sym::sub_assign.clone()), LangItem::SubAssign),
+            ArithOp::Div => (Name::new_symbol_root(sym::div_assign.clone()), LangItem::DivAssign),
+            ArithOp::Rem => (Name::new_symbol_root(sym::rem_assign.clone()), LangItem::RemAssign),
+            ArithOp::Shl => (Name::new_symbol_root(sym::shl_assign.clone()), LangItem::ShlAssign),
+            ArithOp::Shr => (Name::new_symbol_root(sym::shr_assign.clone()), LangItem::ShrAssign),
+            ArithOp::BitXor => {
+                (Name::new_symbol_root(sym::bitxor_assign.clone()), LangItem::BitXorAssign)
+            }
+            ArithOp::BitOr => {
+                (Name::new_symbol_root(sym::bitor_assign.clone()), LangItem::BitOrAssign)
+            }
+            ArithOp::BitAnd => {
+                (Name::new_symbol_root(sym::bitand_assign.clone()), LangItem::BitAndAssign)
+            }
         },
         BinaryOp::CmpOp(cop) => match cop {
-            CmpOp::Eq { negated: false } => (Name::new_symbol_root(sym::eq), LangItem::PartialEq),
-            CmpOp::Eq { negated: true } => (Name::new_symbol_root(sym::ne), LangItem::PartialEq),
+            CmpOp::Eq { negated: false } => {
+                (Name::new_symbol_root(sym::eq.clone()), LangItem::PartialEq)
+            }
+            CmpOp::Eq { negated: true } => {
+                (Name::new_symbol_root(sym::ne.clone()), LangItem::PartialEq)
+            }
             CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
-                (Name::new_symbol_root(sym::le), LangItem::PartialOrd)
+                (Name::new_symbol_root(sym::le.clone()), LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Less, strict: true } => {
-                (Name::new_symbol_root(sym::lt), LangItem::PartialOrd)
+                (Name::new_symbol_root(sym::lt.clone()), LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
-                (Name::new_symbol_root(sym::ge), LangItem::PartialOrd)
+                (Name::new_symbol_root(sym::ge.clone()), LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
-                (Name::new_symbol_root(sym::gt), LangItem::PartialOrd)
+                (Name::new_symbol_root(sym::gt.clone()), LangItem::PartialOrd)
             }
         },
         BinaryOp::Assignment { op: None } => return None,

@@ -289,17 +289,16 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 chalk_ir::Binders::new(binders, bound)
             }
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
-                if let Some((future_trait, future_output)) = self
-                    .db
-                    .lang_item(self.krate, LangItem::Future)
-                    .and_then(|item| item.as_trait())
-                    .and_then(|trait_| {
-                        let alias = self
-                            .db
-                            .trait_data(trait_)
-                            .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
-                        Some((trait_, alias))
-                    })
+                if let Some((future_trait, future_output)) =
+                    self.db
+                        .lang_item(self.krate, LangItem::Future)
+                        .and_then(|item| item.as_trait())
+                        .and_then(|trait_| {
+                            let alias = self.db.trait_data(trait_).associated_type_by_name(
+                                &Name::new_symbol_root(sym::Output.clone()),
+                            )?;
+                            Some((trait_, alias))
+                        })
                 {
                     // Making up Symbol’s value as variable is void: AsyncBlock<T>:
                     //

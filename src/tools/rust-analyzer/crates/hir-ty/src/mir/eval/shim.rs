@@ -319,7 +319,7 @@ impl Evaluator<'_> {
             return Some(LangItem::BeginPanic);
         }
 
-        let candidate = attrs.by_key("lang").string_value().and_then(LangItem::from_str)?;
+        let candidate = attrs.lang_item()?;
         // We want to execute these functions with special logic
         // `PanicFmt` is not detected here as it's redirected later.
         if [BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
@@ -1279,7 +1279,7 @@ impl Evaluator<'_> {
                     if let Some(def) = target.as_trait().and_then(|it| {
                         self.db
                             .trait_data(it)
-                            .method_by_name(&Name::new_symbol_root(sym::call_once))
+                            .method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
                     }) {
                         self.exec_fn_trait(
                             def,

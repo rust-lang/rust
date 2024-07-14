@@ -150,9 +150,9 @@ fn is_ref_and_impls_iter_method(
         _ => return None,
     };
     let wanted_method = Name::new_symbol_root(if ref_expr.mut_token().is_some() {
-        sym::iter_mut
+        sym::iter_mut.clone()
     } else {
-        sym::iter
+        sym::iter.clone()
     });
     let expr_behind_ref = ref_expr.expr()?;
     let ty = sema.type_of_expr(&expr_behind_ref)?.adjusted();

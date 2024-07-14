@@ -152,8 +152,9 @@ pub(crate) fn deref_by_trait(
 
     let deref_trait =
         db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())?;
-    let target =
-        db.trait_data(deref_trait).associated_type_by_name(&Name::new_symbol_root(sym::Target))?;
+    let target = db
+        .trait_data(deref_trait)
+        .associated_type_by_name(&Name::new_symbol_root(sym::Target.clone()))?;
 
     let projection = {
         let b = TyBuilder::subst_for_def(db, deref_trait, None);

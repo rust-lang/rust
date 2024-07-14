@@ -897,7 +897,7 @@ pub fn callable_sig_from_fn_trait(
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
     let output_assoc_type = db
         .trait_data(fn_once_trait)
-        .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
+        .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
 
     let mut table = InferenceTable::new(db, trait_env.clone());
     let b = TyBuilder::trait_ref(db, fn_once_trait);

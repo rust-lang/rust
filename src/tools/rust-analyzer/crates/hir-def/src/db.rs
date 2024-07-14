@@ -262,8 +262,8 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
     let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
     for attr in &**attrs {
         match attr.path().as_ident() {
-            Some(ident) if *ident == sym::no_std => return true,
-            Some(ident) if *ident == sym::cfg_attr => {}
+            Some(ident) if *ident == sym::no_std.clone() => return true,
+            Some(ident) if *ident == sym::cfg_attr.clone() => {}
             _ => continue,
         }
 

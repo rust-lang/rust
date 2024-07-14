@@ -324,7 +324,8 @@ impl<'a> Ctx<'a> {
                 let self_type = match self_param.ty() {
                     Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
                     None => {
-                        let self_type = TypeRef::Path(Name::new_symbol_root(sym::Self_).into());
+                        let self_type =
+                            TypeRef::Path(Name::new_symbol_root(sym::Self_.clone()).into());
                         match self_param.kind() {
                             ast::SelfParamKind::Owned => self_type,
                             ast::SelfParamKind::Ref => TypeRef::Reference(
@@ -670,7 +671,7 @@ impl<'a> Ctx<'a> {
             // Traits and trait aliases get the Self type as an implicit first type parameter.
             generics.type_or_consts.alloc(
                 TypeParamData {
-                    name: Some(Name::new_symbol_root(sym::Self_)),
+                    name: Some(Name::new_symbol_root(sym::Self_.clone())),
                     default: None,
                     provenance: TypeParamProvenance::TraitSelf,
                 }
@@ -681,7 +682,7 @@ impl<'a> Ctx<'a> {
             generics.fill_bounds(
                 &self.body_ctx,
                 bounds,
-                Either::Left(TypeRef::Path(Name::new_symbol_root(sym::Self_).into())),
+                Either::Left(TypeRef::Path(Name::new_symbol_root(sym::Self_.clone()).into())),
             );
         }
 
@@ -746,7 +747,7 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     let mut generic_args: Vec<_> =
         std::iter::repeat(None).take(path.segments().len() - 1).collect();
     let binding = AssociatedTypeBinding {
-        name: Name::new_symbol_root(sym::Output),
+        name: Name::new_symbol_root(sym::Output.clone()),
         args: None,
         type_ref: Some(orig),
         bounds: Box::default(),

@@ -91,13 +91,13 @@ pub(crate) fn complete_undotted_self(
                         in_breakable: expr_ctx.in_breakable,
                     },
                 },
-                Some(Name::new_symbol_root(sym::self_)),
+                Some(Name::new_symbol_root(sym::self_.clone())),
                 field,
                 &ty,
             )
         },
         |acc, field, ty| {
-            acc.add_tuple_field(ctx, Some(Name::new_symbol_root(sym::self_)), field, &ty)
+            acc.add_tuple_field(ctx, Some(Name::new_symbol_root(sym::self_.clone())), field, &ty)
         },
         true,
         false,
@@ -115,7 +115,7 @@ pub(crate) fn complete_undotted_self(
                 },
             },
             func,
-            Some(Name::new_symbol_root(sym::self_)),
+            Some(Name::new_symbol_root(sym::self_.clone())),
             None,
         )
     });

@@ -223,7 +223,7 @@ fn option_variants(
     let fam = FamousDefs(sema, sema.scope(expr)?.krate());
     let option_variants = fam.core_option_Option()?.variants(sema.db);
     match &*option_variants {
-        &[variant0, variant1] => Some(if variant0.name(sema.db) == sym::None {
+        &[variant0, variant1] => Some(if variant0.name(sema.db) == sym::None.clone() {
             (variant0, variant1)
         } else {
             (variant1, variant0)

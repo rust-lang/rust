@@ -228,7 +228,7 @@ impl InferenceContext<'_> {
             Path::LangItem(..) => (
                 PathSegment {
                     name: {
-                        _d = Name::new_symbol_root(sym::Unknown);
+                        _d = Name::new_symbol_root(sym::Unknown.clone());
                         &_d
                     },
                     args_and_bindings: None,

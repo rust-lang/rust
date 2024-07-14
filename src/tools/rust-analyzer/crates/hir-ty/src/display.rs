@@ -1171,8 +1171,9 @@ impl HirDisplay for Ty {
                             .lang_item(body.module(db.upcast()).krate(), LangItem::Future)
                             .and_then(LangItemTarget::as_trait);
                         let output = future_trait.and_then(|t| {
-                            db.trait_data(t)
-                                .associated_type_by_name(&Name::new_symbol_root(sym::Output))
+                            db.trait_data(t).associated_type_by_name(&Name::new_symbol_root(
+                                sym::Output.clone(),
+                            ))
                         });
                         write!(f, "impl ")?;
                         if let Some(t) = future_trait {

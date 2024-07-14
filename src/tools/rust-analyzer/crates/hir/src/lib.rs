@@ -1827,7 +1827,7 @@ impl DefWithBody {
                         continue;
                     }
                     let mut need_mut = &mol[local];
-                    if body[binding_id].name == sym::self_
+                    if body[binding_id].name == sym::self_.clone()
                         && need_mut == &mir::MutabilityReason::Unused
                     {
                         need_mut = &mir::MutabilityReason::Not;
@@ -2589,7 +2589,7 @@ pub struct StaticLifetime;
 
 impl StaticLifetime {
     pub fn name(self) -> Name {
-        Name::new_symbol_root(sym::tick_static)
+        Name::new_symbol_root(sym::tick_static.clone())
     }
 }
 
@@ -3249,7 +3249,7 @@ impl Local {
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
-        self.name(db) == sym::self_
+        self.name(db) == sym::self_.clone()
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {

@@ -367,7 +367,11 @@ fn panic_expand(
     let dollar_crate = dollar_crate(span);
     let call_site_span = span_with_call_site_ctxt(db, span, id);
 
-    let mac = if use_panic_2021(db, call_site_span) { sym::panic_2021 } else { sym::panic_2015 };
+    let mac = if use_panic_2021(db, call_site_span) {
+        sym::panic_2021.clone()
+    } else {
+        sym::panic_2015.clone()
+    };
 
     // Expand to a macro call `$crate::panic::panic_{edition}`
     let mut call = quote!(call_site_span =>#dollar_crate::panic::#mac!);
@@ -396,9 +400,9 @@ fn unreachable_expand(
     let call_site_span = span_with_call_site_ctxt(db, span, id);
 
     let mac = if use_panic_2021(db, call_site_span) {
-        sym::unreachable_2021
+        sym::unreachable_2021.clone()
     } else {
-        sym::unreachable_2015
+        sym::unreachable_2015.clone()
     };
 
     // Expand to a macro call `$crate::panic::panic_{edition}`
@@ -431,7 +435,7 @@ fn use_panic_2021(db: &dyn ExpandDatabase, span: Span) -> bool {
         // FIXME: Record allow_internal_unstable in the macro def (not been done yet because it
         // would consume quite a bit extra memory for all call locs...)
         // if let Some(features) = expn.def.allow_internal_unstable {
-        //     if features.iter().any(|&f| f == sym::edition_panic) {
+        //     if features.iter().any(|&f| f == sym::edition_panic.clone()) {
         //         span = expn.call_site;
         //         continue;
         //     }

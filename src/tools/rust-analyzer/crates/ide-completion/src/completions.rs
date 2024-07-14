@@ -618,7 +618,8 @@ fn enum_variants_with_paths(
     let mut process_variant = |variant: Variant| {
         let self_path = hir::ModPath::from_segments(
             hir::PathKind::Plain,
-            iter::once(Name::new_symbol_root(sym::Self_)).chain(iter::once(variant.name(ctx.db))),
+            iter::once(Name::new_symbol_root(sym::Self_.clone()))
+                .chain(iter::once(variant.name(ctx.db))),
         );
 
         cb(acc, ctx, variant, self_path);
