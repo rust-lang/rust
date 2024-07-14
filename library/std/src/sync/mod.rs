@@ -157,6 +157,7 @@
 //! [`RwLock`]: crate::sync::RwLock
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::sync::{Arc, Weak};

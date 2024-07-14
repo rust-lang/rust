@@ -160,6 +160,7 @@
 //! [`from_wide`]: crate::os::windows::ffi::OsStringExt::from_wide "os::windows::ffi::OsStringExt::from_wide"
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[unstable(feature = "c_str_module", issue = "112134")]
 pub mod c_str;

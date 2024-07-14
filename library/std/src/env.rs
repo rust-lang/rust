@@ -9,6 +9,7 @@
 //! and those without will return a [`String`].
 
 #![stable(feature = "env", since = "1.0.0")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;

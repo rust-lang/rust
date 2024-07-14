@@ -293,6 +293,7 @@
 //! [`Arc`]: crate::sync::Arc
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;

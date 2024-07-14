@@ -2,6 +2,7 @@
 
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, nonstandard_style, missing_debug_implementations)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 pub mod raw;
 

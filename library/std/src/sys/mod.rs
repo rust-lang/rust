@@ -1,3 +1,5 @@
+#![allow(unsafe_op_in_unsafe_fn)]
+
 /// The PAL (platform abstraction layer) contains platform-specific abstractions
 /// for implementing the features in the other submodules, e.g. UNIX file
 /// descriptors.
