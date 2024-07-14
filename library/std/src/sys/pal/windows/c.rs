@@ -28,8 +28,6 @@ pub type LPCVOID = *const c_void;
 pub type LPOVERLAPPED = *mut OVERLAPPED;
 pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 pub type LPVOID = *mut c_void;
-pub type LPWCH = *mut WCHAR;
-pub type LPWSTR = *mut WCHAR;
 
 #[cfg(target_vendor = "win7")]
 pub type PSRWLOCK = *mut SRWLOCK;

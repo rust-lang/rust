@@ -81,7 +81,7 @@ pub fn error_string(mut errnum: i32) -> String {
 }
 
 pub struct Env {
-    base: c::LPWCH,
+    base: *mut c::WCHAR,
     iter: EnvIterator,
 }
 
@@ -126,7 +126,7 @@ impl Iterator for Env {
 }
 
 #[derive(Clone)]
-struct EnvIterator(c::LPWCH);
+struct EnvIterator(*mut c::WCHAR);
 
 impl Iterator for EnvIterator {
     type Item = (OsString, OsString);

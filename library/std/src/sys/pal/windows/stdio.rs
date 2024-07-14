@@ -182,12 +182,12 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         // Note that this theoretically checks validity twice in the (most common) case
         // where the underlying byte sequence is valid utf-8 (given the check in `write()`).
         let result = c::MultiByteToWideChar(
-            c::CP_UTF8,                      // CodePage
-            c::MB_ERR_INVALID_CHARS,         // dwFlags
-            utf8.as_ptr(),                   // lpMultiByteStr
-            utf8.len() as c::c_int,          // cbMultiByte
-            utf16.as_mut_ptr() as c::LPWSTR, // lpWideCharStr
-            utf16.len() as c::c_int,         // cchWideChar
+            c::CP_UTF8,                          // CodePage
+            c::MB_ERR_INVALID_CHARS,             // dwFlags
+            utf8.as_ptr(),                       // lpMultiByteStr
+            utf8.len() as c::c_int,              // cbMultiByte
+            utf16.as_mut_ptr() as *mut c::WCHAR, // lpWideCharStr
+            utf16.len() as c::c_int,             // cchWideChar
         );
         assert!(result != 0, "Unexpected error in MultiByteToWideChar");
 
