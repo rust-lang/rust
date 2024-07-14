@@ -227,7 +227,7 @@ type AlertableIoFn = unsafe extern "system" fn(
     BorrowedHandle<'_>,
     c::LPVOID,
     c::DWORD,
-    c::LPOVERLAPPED,
+    *mut c::OVERLAPPED,
     c::LPOVERLAPPED_COMPLETION_ROUTINE,
 ) -> c::BOOL;
 
