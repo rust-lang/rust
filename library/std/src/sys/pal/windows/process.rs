@@ -19,7 +19,7 @@ use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
-use crate::sys::c::{self, NonZeroDWORD, EXIT_FAILURE, EXIT_SUCCESS};
+use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -717,7 +717,7 @@ pub struct ExitStatus(c::DWORD);
 
 impl ExitStatus {
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
-        match NonZeroDWORD::try_from(self.0) {
+        match NonZero::<u32>::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }
@@ -750,7 +750,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(c::NonZeroDWORD);
+pub struct ExitStatusError(NonZero<u32>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
