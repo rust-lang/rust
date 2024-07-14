@@ -68,7 +68,7 @@ const MAX_BUFFER_SIZE: usize = 8192;
 // UTF-16 to UTF-8.
 pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
 
-pub fn get_handle(handle_id: c::DWORD) -> io::Result<c::HANDLE> {
+pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
     let handle = unsafe { c::GetStdHandle(handle_id) };
     if handle == c::INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
@@ -87,11 +87,7 @@ fn is_console(handle: c::HANDLE) -> bool {
     unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
 }
 
-fn write(
-    handle_id: c::DWORD,
-    data: &[u8],
-    incomplete_utf8: &mut IncompleteUtf8,
-) -> io::Result<usize> {
+fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> io::Result<usize> {
     if data.is_empty() {
         return Ok(0);
     }

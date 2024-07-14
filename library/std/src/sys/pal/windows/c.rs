@@ -17,7 +17,6 @@ pub(super) mod windows_targets;
 mod windows_sys;
 pub use windows_sys::*;
 
-pub type DWORD = c_ulong;
 pub type WCHAR = u16;
 
 pub type socklen_t = c_int;
@@ -316,13 +315,13 @@ compat_fn_with_fallback! {
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
     pub fn SetThreadDescription(hthread: HANDLE, lpthreaddescription: PCWSTR) -> HRESULT {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); E_NOTIMPL
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL
     }
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getthreaddescription
     pub fn GetThreadDescription(hthread: HANDLE, lpthreaddescription: *mut PWSTR) -> HRESULT {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); E_NOTIMPL
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL
     }
 
     // >= Win8 / Server 2012
@@ -383,9 +382,9 @@ compat_fn_with_fallback! {
     #[cfg(target_vendor = "win7")]
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: *mut HANDLE,
-        DesiredAccess: DWORD,
+        DesiredAccess: u32,
         ObjectAttributes: *mut c_void,
-        Flags: ULONG
+        Flags: u32
     ) -> NTSTATUS {
         panic!("keyed events not available")
     }
@@ -433,9 +432,9 @@ compat_fn_with_fallback! {
         apccontext: *mut c_void,
         iostatusblock: &mut IO_STATUS_BLOCK,
         buffer: *mut crate::mem::MaybeUninit<u8>,
-        length: ULONG,
+        length: u32,
         byteoffset: Option<&i64>,
-        key: Option<&ULONG>
+        key: Option<&u32>
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }
@@ -447,9 +446,9 @@ compat_fn_with_fallback! {
         apccontext: *mut c_void,
         iostatusblock: &mut IO_STATUS_BLOCK,
         buffer: *const u8,
-        length: ULONG,
+        length: u32,
         byteoffset: Option<&i64>,
-        key: Option<&ULONG>
+        key: Option<&u32>
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }

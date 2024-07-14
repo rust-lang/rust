@@ -76,8 +76,8 @@ impl SystemTime {
     fn from_intervals(intervals: i64) -> SystemTime {
         SystemTime {
             t: c::FILETIME {
-                dwLowDateTime: intervals as c::DWORD,
-                dwHighDateTime: (intervals >> 32) as c::DWORD,
+                dwLowDateTime: intervals as u32,
+                dwHighDateTime: (intervals >> 32) as u32,
             },
         }
     }

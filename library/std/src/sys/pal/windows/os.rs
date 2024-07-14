@@ -52,10 +52,10 @@ pub fn error_string(mut errnum: i32) -> String {
         let res = c::FormatMessageW(
             flags | c::FORMAT_MESSAGE_FROM_SYSTEM | c::FORMAT_MESSAGE_IGNORE_INSERTS,
             module,
-            errnum as c::DWORD,
+            errnum as u32,
             0,
             buf.as_mut_ptr(),
-            buf.len() as c::DWORD,
+            buf.len() as u32,
             ptr::null(),
         ) as usize;
         if res == 0 {

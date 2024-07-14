@@ -156,7 +156,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         opts.share_mode(0);
         let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
         let mut sa = c::SECURITY_ATTRIBUTES {
-            nLength: size as c::DWORD,
+            nLength: size as u32,
             lpSecurityDescriptor: ptr::null_mut(),
             bInheritHandle: their_handle_inheritable as i32,
         };
@@ -226,7 +226,7 @@ fn random_number() -> usize {
 type AlertableIoFn = unsafe extern "system" fn(
     BorrowedHandle<'_>,
     *mut core::ffi::c_void,
-    c::DWORD,
+    u32,
     *mut c::OVERLAPPED,
     c::LPOVERLAPPED_COMPLETION_ROUTINE,
 ) -> c::BOOL;
@@ -244,7 +244,7 @@ impl AnonPipe {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
-            let len = crate::cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
+            let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             self.alertable_io_internal(c::ReadFileEx, buf.as_mut_ptr() as _, len)
         };
 
@@ -260,7 +260,7 @@ impl AnonPipe {
 
     pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
         let result = unsafe {
-            let len = crate::cmp::min(buf.capacity(), c::DWORD::MAX as usize) as c::DWORD;
+            let len = crate::cmp::min(buf.capacity(), u32::MAX as usize) as u32;
             self.alertable_io_internal(c::ReadFileEx, buf.as_mut().as_mut_ptr() as _, len)
         };
 
@@ -295,7 +295,7 @@ impl AnonPipe {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         unsafe {
-            let len = crate::cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
+            let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             self.alertable_io_internal(c::WriteFileEx, buf.as_ptr() as _, len)
         }
     }
@@ -328,7 +328,7 @@ impl AnonPipe {
         &self,
         io: AlertableIoFn,
         buf: *mut core::ffi::c_void,
-        len: c::DWORD,
+        len: u32,
     ) -> io::Result<usize> {
         // Use "alertable I/O" to synchronize the pipe I/O.
         // This has four steps.

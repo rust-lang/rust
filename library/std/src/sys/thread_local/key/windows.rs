@@ -33,11 +33,11 @@ use crate::sync::atomic::{
 use crate::sys::c;
 use crate::sys::thread_local::guard;
 
-pub type Key = c::DWORD;
+pub type Key = u32;
 type Dtor = unsafe extern "C" fn(*mut u8);
 
 pub struct LazyKey {
-    /// The key value shifted up by one. Since TLS_OUT_OF_INDEXES == DWORD::MAX
+    /// The key value shifted up by one. Since TLS_OUT_OF_INDEXES == u32::MAX
     /// is not a valid key value, this allows us to use zero as sentinel value
     /// without risking overflow.
     key: AtomicU32,

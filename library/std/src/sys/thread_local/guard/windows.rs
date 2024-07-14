@@ -75,9 +75,9 @@ pub fn enable() {
 
 #[link_section = ".CRT$XLB"]
 #[cfg_attr(miri, used)] // Miri only considers explicitly `#[used]` statics for `lookup_link_section`
-pub static CALLBACK: unsafe extern "system" fn(*mut c_void, c::DWORD, *mut c_void) = tls_callback;
+pub static CALLBACK: unsafe extern "system" fn(*mut c_void, u32, *mut c_void) = tls_callback;
 
-unsafe extern "system" fn tls_callback(_h: *mut c_void, dw_reason: c::DWORD, _pv: *mut c_void) {
+unsafe extern "system" fn tls_callback(_h: *mut c_void, dw_reason: u32, _pv: *mut c_void) {
     // See comments above for what this is doing. Note that we don't need this
     // trickery on GNU windows, just on MSVC.
     #[cfg(all(target_env = "msvc", not(target_thread_local)))]

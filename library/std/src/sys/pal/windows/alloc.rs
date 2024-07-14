@@ -15,7 +15,7 @@ mod tests;
 // See https://docs.microsoft.com/windows/win32/api/heapapi/
 
 // Flag to indicate that the memory returned by `HeapAlloc` should be zeroed.
-const HEAP_ZERO_MEMORY: c::DWORD = 0x00000008;
+const HEAP_ZERO_MEMORY: u32 = 0x00000008;
 
 // Get a handle to the default heap of the current process, or null if the operation fails.
 //
@@ -113,7 +113,7 @@ fn init_or_get_process_heap() -> c::HANDLE {
 #[cold]
 extern "C" fn process_heap_init_and_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`
-    flags: c::DWORD,
+    flags: u32,
     dwBytes: usize,
 ) -> *mut c_void {
     let heap = init_or_get_process_heap();
@@ -127,7 +127,7 @@ extern "C" fn process_heap_init_and_alloc(
 #[inline(never)]
 fn process_heap_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`,
-    flags: c::DWORD,
+    flags: u32,
     dwBytes: usize,
 ) -> *mut c_void {
     let heap = HEAP.load(Ordering::Relaxed);
