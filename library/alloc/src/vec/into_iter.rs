@@ -120,10 +120,15 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// This is roughly equivalent to the following, but more efficient
     ///
     /// ```
-    /// # let mut into_iter = Vec::<u8>::with_capacity(10).into_iter();
+    /// # let mut vec = Vec::<u8>::with_capacity(10);
+    /// # let ptr = vec.as_mut_ptr();
+    /// # let mut into_iter = vec.into_iter();
     /// let mut into_iter = std::mem::replace(&mut into_iter, Vec::new().into_iter());
     /// (&mut into_iter).for_each(drop);
     /// std::mem::forget(into_iter);
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # drop(unsafe { Vec::<u8>::from_raw_parts(ptr, 0, 10) });
     /// ```
     ///
     /// This method is used by in-place iteration, refer to the vec::in_place_collect

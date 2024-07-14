@@ -13,7 +13,7 @@ use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort, c_vo
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
-mod windows_targets;
+pub(super) mod windows_targets;
 
 mod windows_sys;
 pub use windows_sys::*;
