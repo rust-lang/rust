@@ -18,6 +18,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
+use rustc_middle::ty::layout::MaybeResult;
 use rustc_middle::ty::{
     self,
     layout::{LayoutOf, TyAndLayout},
@@ -159,6 +160,35 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
     None
 }
 
+/// Gets an instance for a path; fails gracefully if the path does not exist.
+pub fn try_resolve_path<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    path: &[&str],
+    namespace: Namespace,
+) -> Option<ty::Instance<'tcx>> {
+    let did = try_resolve_did(tcx, path, Some(namespace))?;
+    Some(ty::Instance::mono(tcx, did))
+}
+
+/// Gets an instance for a path.
+#[track_caller]
+pub fn resolve_path<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    path: &[&str],
+    namespace: Namespace,
+) -> ty::Instance<'tcx> {
+    try_resolve_path(tcx, path, namespace)
+        .unwrap_or_else(|| panic!("failed to find required Rust item: {path:?}"))
+}
+
+/// Gets the layout of a type at a path.
+#[track_caller]
+pub fn path_ty_layout<'tcx>(cx: &impl LayoutOf<'tcx>, path: &[&str]) -> TyAndLayout<'tcx> {
+    let ty =
+        resolve_path(cx.tcx(), path, Namespace::TypeNS).ty(cx.tcx(), ty::ParamEnv::reveal_all());
+    cx.layout_of(ty).to_result().ok().unwrap()
+}
+
 /// Call `f` for each exported symbol.
 pub fn iter_exported_symbols<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -259,23 +289,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         try_resolve_did(*self.eval_context_ref().tcx, path, None).is_some()
     }
 
-    /// Gets an instance for a path; fails gracefully if the path does not exist.
-    fn try_resolve_path(&self, path: &[&str], namespace: Namespace) -> Option<ty::Instance<'tcx>> {
-        let tcx = self.eval_context_ref().tcx.tcx;
-        let did = try_resolve_did(tcx, path, Some(namespace))?;
-        Some(ty::Instance::mono(tcx, did))
-    }
-
-    /// Gets an instance for a path.
-    fn resolve_path(&self, path: &[&str], namespace: Namespace) -> ty::Instance<'tcx> {
-        self.try_resolve_path(path, namespace)
-            .unwrap_or_else(|| panic!("failed to find required Rust item: {path:?}"))
-    }
-
     /// Evaluates the scalar at the specified path.
     fn eval_path(&self, path: &[&str]) -> OpTy<'tcx> {
         let this = self.eval_context_ref();
-        let instance = this.resolve_path(path, Namespace::ValueNS);
+        let instance = resolve_path(*this.tcx, path, Namespace::ValueNS);
         // We don't give a span -- this isn't actually used directly by the program anyway.
         let const_val = this.eval_global(instance).unwrap_or_else(|err| {
             panic!("failed to evaluate required Rust item: {path:?}\n{err:?}")
@@ -344,19 +361,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
             );
         }
-        let ty = this
-            .resolve_path(&["libc", name], Namespace::TypeNS)
-            .ty(*this.tcx, ty::ParamEnv::reveal_all());
-        this.layout_of(ty).unwrap()
+        path_ty_layout(this, &["libc", name])
     }
 
     /// Helper function to get the `TyAndLayout` of a `windows` type
     fn windows_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
-        let ty = this
-            .resolve_path(&["std", "sys", "pal", "windows", "c", name], Namespace::TypeNS)
-            .ty(*this.tcx, ty::ParamEnv::reveal_all());
-        this.layout_of(ty).unwrap()
+        path_ty_layout(this, &["std", "sys", "pal", "windows", "c", name])
     }
 
     /// Project to the given *named* field (which must be a struct or union type).

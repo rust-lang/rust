@@ -41,9 +41,11 @@ function run_tests {
   if [ -n "${TEST_TARGET-}" ]; then
     begingroup "Testing foreign architecture $TEST_TARGET"
     TARGET_FLAG="--target $TEST_TARGET"
+    MULTI_TARGET_FLAG=""
   else
     begingroup "Testing host architecture"
     TARGET_FLAG=""
+    MULTI_TARGET_FLAG="--multi-target"
   fi
 
   ## ui test suite
@@ -93,7 +95,7 @@ function run_tests {
     echo 'build.rustc-wrapper = "thisdoesnotexist"' > .cargo/config.toml
   fi
   # Run the actual test
-  time ${PYTHON} test-cargo-miri/run-test.py $TARGET_FLAG
+  time ${PYTHON} test-cargo-miri/run-test.py $TARGET_FLAG $MULTI_TARGET_FLAG
   # Clean up
   unset RUSTC MIRI
   rm -rf .cargo
