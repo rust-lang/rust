@@ -28,7 +28,7 @@ impl RwLock {
         RwLock { rwl: SpinIdOnceCell::new() }
     }
 
-    /// Get the inner mutex's ID, which is lazily created.
+    /// Gets the inner mutex's ID, which is lazily created.
     fn raw(&self) -> abi::ID {
         match self.rwl.get_or_try_init(|| new_rwl().map(|id| (id, ()))) {
             Ok((id, ())) => id,

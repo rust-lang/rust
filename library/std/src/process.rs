@@ -2056,7 +2056,7 @@ impl ExitCode {
     // representation of an ExitCode
     //
     // More info: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
-    /// Convert an `ExitCode` into an i32
+    /// Converts an `ExitCode` into an i32
     #[unstable(
         feature = "process_exitcode_internals",
         reason = "exposed only for libstd",
@@ -2079,7 +2079,7 @@ impl Default for ExitCode {
 
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 impl From<u8> for ExitCode {
-    /// Construct an `ExitCode` from an arbitrary u8 value.
+    /// Constructs an `ExitCode` from an arbitrary u8 value.
     fn from(code: u8) -> Self {
         ExitCode(imp::ExitCode::from(code))
     }

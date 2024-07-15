@@ -1175,7 +1175,7 @@ mod ref_keyword {}
 
 #[doc(keyword = "return")]
 //
-/// Return a value from a function.
+/// Returns a value from a function.
 ///
 /// A `return` marks the end of an execution path in a function:
 ///
@@ -2310,7 +2310,7 @@ mod where_keyword {}
 #[doc(alias = "promise")]
 #[doc(keyword = "async")]
 //
-/// Return a [`Future`] instead of blocking the current thread.
+/// Returns a [`Future`] instead of blocking the current thread.
 ///
 /// Use `async` in front of `fn`, `closure`, or a `block` to turn the marked code into a `Future`.
 /// As such the code will not be run immediately, but will only be evaluated when the returned

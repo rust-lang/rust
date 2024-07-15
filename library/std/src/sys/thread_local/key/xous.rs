@@ -79,7 +79,7 @@ fn tls_ptr_addr() -> *mut *mut u8 {
     core::ptr::with_exposed_provenance_mut::<*mut u8>(tp)
 }
 
-/// Create an area of memory that's unique per thread. This area will
+/// Creates an area of memory that's unique per thread. This area will
 /// contain all thread local pointers.
 fn tls_table() -> &'static mut [*mut u8] {
     let tp = tls_ptr_addr();

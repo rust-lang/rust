@@ -271,7 +271,7 @@ impl Backtrace {
         enabled
     }
 
-    /// Capture a stack backtrace of the current thread.
+    /// Captures a stack backtrace of the current thread.
     ///
     /// This function will capture a stack backtrace of the current OS thread of
     /// execution, returning a `Backtrace` type which can be later used to print

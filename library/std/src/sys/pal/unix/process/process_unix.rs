@@ -1047,7 +1047,7 @@ impl From<c_int> for ExitStatus {
     }
 }
 
-/// Convert a signal number to a readable, searchable name.
+/// Converts a signal number to a readable, searchable name.
 ///
 /// This string should be displayed right after the signal number.
 /// If a signal is unrecognized, it returns the empty string, so that

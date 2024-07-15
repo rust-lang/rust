@@ -114,8 +114,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Drops remaining elements and relinquishes the backing allocation.
-    /// This method guarantees it won't panic before relinquishing
-    /// the backing allocation.
+    ///
+    /// This method guarantees it won't panic before relinquishing the backing
+    /// allocation.
     ///
     /// This is roughly equivalent to the following, but more efficient
     ///

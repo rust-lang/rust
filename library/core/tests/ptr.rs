@@ -1050,7 +1050,7 @@ fn nonnull_tagged_pointer_with_provenance() {
         /// A mask for the non-data-carrying bits of the address.
         pub const ADDRESS_MASK: usize = usize::MAX << Self::NUM_BITS;
 
-        /// Create a new tagged pointer from a possibly null pointer.
+        /// Creates a new tagged pointer from a possibly null pointer.
         pub fn new(pointer: *mut T) -> Option<TaggedPointer<T>> {
             Some(TaggedPointer(NonNull::new(pointer)?))
         }

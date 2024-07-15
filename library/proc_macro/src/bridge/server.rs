@@ -350,7 +350,7 @@ where
 
 /// A message pipe used for communicating between server and client threads.
 pub trait MessagePipe<T>: Sized {
-    /// Create a new pair of endpoints for the message pipe.
+    /// Creates a new pair of endpoints for the message pipe.
     fn new() -> (Self, Self);
 
     /// Send a message to the other endpoint of this pipe.

@@ -175,7 +175,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 }
 
 impl<T, F> LazyLock<T, F> {
-    /// Get the inner value if it has already been initialized.
+    /// Gets the inner value if it has already been initialized.
     fn get(&self) -> Option<&T> {
         if self.once.is_completed() {
             // SAFETY:

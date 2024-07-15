@@ -949,10 +949,10 @@ macro_rules! uint_impl {
         }
 
         /// Strict integer division. Computes `self / rhs`.
-        /// Strict division on unsigned types is just normal division.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
+        ///
+        /// Strict division on unsigned types is just normal division. There's no
+        /// way overflow could ever happen. This function exists so that all
+        /// operations are accounted for in the strict operations.
         ///
         /// # Panics
         ///
@@ -1008,12 +1008,11 @@ macro_rules! uint_impl {
         }
 
         /// Strict Euclidean division. Computes `self.div_euclid(rhs)`.
-        /// Strict division on unsigned types is just normal division.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
+        ///
+        /// Strict division on unsigned types is just normal division. There's no
+        /// way overflow could ever happen. This function exists so that all
+        /// operations are accounted for in the strict operations. Since, for the
+        /// positive integers, all common definitions of division are equal, this
         /// is exactly equal to `self.strict_div(rhs)`.
         ///
         /// # Panics
@@ -1071,11 +1070,11 @@ macro_rules! uint_impl {
         }
 
         /// Strict integer remainder. Computes `self % rhs`.
-        /// Strict remainder calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
+        ///
+        /// Strict remainder calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way overflow could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// strict operations.
         ///
         /// # Panics
         ///
@@ -1131,14 +1130,13 @@ macro_rules! uint_impl {
         }
 
         /// Strict Euclidean modulo. Computes `self.rem_euclid(rhs)`.
-        /// Strict modulo calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self.strict_rem(rhs)`.
+        ///
+        /// Strict modulo calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way overflow could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// strict operations. Since, for the positive integers, all common
+        /// definitions of division are equal, this is exactly equal to
+        /// `self.strict_rem(rhs)`.
         ///
         /// # Panics
         ///
@@ -1914,10 +1912,10 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) division. Computes `self / rhs`.
-        /// Wrapped division on unsigned types is just normal division.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
+        ///
+        /// Wrapped division on unsigned types is just normal division. There's
+        /// no way wrapping could ever happen. This function exists so that all
+        /// operations are accounted for in the wrapping operations.
         ///
         /// # Panics
         ///
@@ -1941,13 +1939,12 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping Euclidean division. Computes `self.div_euclid(rhs)`.
-        /// Wrapped division on unsigned types is just normal division.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self.wrapping_div(rhs)`.
+        ///
+        /// Wrapped division on unsigned types is just normal division. There's
+        /// no way wrapping could ever happen. This function exists so that all
+        /// operations are accounted for in the wrapping operations. Since, for
+        /// the positive integers, all common definitions of division are equal,
+        /// this is exactly equal to `self.wrapping_div(rhs)`.
         ///
         /// # Panics
         ///
@@ -1971,11 +1968,11 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) remainder. Computes `self % rhs`.
-        /// Wrapped remainder calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
+        ///
+        /// Wrapped remainder calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way wrapping could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// wrapping operations.
         ///
         /// # Panics
         ///
@@ -1999,14 +1996,13 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping Euclidean modulo. Computes `self.rem_euclid(rhs)`.
-        /// Wrapped modulo calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self.wrapping_rem(rhs)`.
+        ///
+        /// Wrapped modulo calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way wrapping could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// wrapping operations. Since, for the positive integers, all common
+        /// definitions of division are equal, this is exactly equal to
+        /// `self.wrapping_rem(rhs)`.
         ///
         /// # Panics
         ///
@@ -2162,7 +2158,7 @@ macro_rules! uint_impl {
             acc.wrapping_mul(base)
         }
 
-        /// Calculates `self` + `rhs`
+        /// Calculates `self` + `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2236,7 +2232,7 @@ macro_rules! uint_impl {
             (c, b || d)
         }
 
-        /// Calculates `self` + `rhs` with a signed `rhs`
+        /// Calculates `self` + `rhs` with a signed `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2967,7 +2963,7 @@ macro_rules! uint_impl {
             self.one_less_than_next_power_of_two().wrapping_add(1)
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// big-endian (network) byte order.
         ///
         #[doc = $to_xe_bytes_doc]
@@ -2987,7 +2983,7 @@ macro_rules! uint_impl {
             self.to_be().to_ne_bytes()
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// little-endian byte order.
         ///
         #[doc = $to_xe_bytes_doc]
@@ -3007,7 +3003,7 @@ macro_rules! uint_impl {
             self.to_le().to_ne_bytes()
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// native byte order.
         ///
         /// As the target platform's native endianness is used, portable code
@@ -3045,7 +3041,7 @@ macro_rules! uint_impl {
             unsafe { mem::transmute(self) }
         }
 
-        /// Create a native endian integer value from its representation
+        /// Creates a native endian integer value from its representation
         /// as a byte array in big endian.
         ///
         #[doc = $from_xe_bytes_doc]
@@ -3074,7 +3070,7 @@ macro_rules! uint_impl {
             Self::from_be(Self::from_ne_bytes(bytes))
         }
 
-        /// Create a native endian integer value from its representation
+        /// Creates a native endian integer value from its representation
         /// as a byte array in little endian.
         ///
         #[doc = $from_xe_bytes_doc]
@@ -3103,7 +3099,7 @@ macro_rules! uint_impl {
             Self::from_le(Self::from_ne_bytes(bytes))
         }
 
-        /// Create a native endian integer value from its memory representation
+        /// Creates a native endian integer value from its memory representation
         /// as a byte array in native endianness.
         ///
         /// As the target platform's native endianness is used, portable code

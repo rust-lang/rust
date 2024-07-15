@@ -1092,7 +1092,7 @@ pub fn try_set_output_capture(
     OUTPUT_CAPTURE.try_with(move |slot| slot.replace(sink))
 }
 
-/// Write `args` to the capture buffer if enabled and possible, or `global_s`
+/// Writes `args` to the capture buffer if enabled and possible, or `global_s`
 /// otherwise. `label` identifies the stream in a panic message.
 ///
 /// This function is used to print error messages, so it takes extra

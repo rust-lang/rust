@@ -48,7 +48,7 @@ pub use bufwriter::WriterPanicked;
 pub struct IntoInnerError<W>(W, Error);
 
 impl<W> IntoInnerError<W> {
-    /// Construct a new IntoInnerError
+    /// Constructs a new IntoInnerError
     fn new(writer: W, error: Error) -> Self {
         Self(writer, error)
     }

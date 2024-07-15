@@ -118,10 +118,12 @@ impl<T> ManuallyDrop<T> {
 }
 
 impl<T: ?Sized> ManuallyDrop<T> {
-    /// Manually drops the contained value. This is exactly equivalent to calling
-    /// [`ptr::drop_in_place`] with a pointer to the contained value. As such, unless
-    /// the contained value is a packed struct, the destructor will be called in-place
-    /// without moving the value, and thus can be used to safely drop [pinned] data.
+    /// Manually drops the contained value.
+    ///
+    /// This is exactly equivalent to calling [`ptr::drop_in_place`] with a
+    /// pointer to the contained value. As such, unless the contained value is a
+    /// packed struct, the destructor will be called in-place without moving the
+    /// value, and thus can be used to safely drop [pinned] data.
     ///
     /// If you have ownership of the value, you can use [`ManuallyDrop::into_inner`] instead.
     ///

@@ -26,7 +26,7 @@ const fn size_align<T>() -> (usize, usize) {
 /// You build a `Layout` up as an input to give to an allocator.
 ///
 /// All layouts have an associated size and a power-of-two alignment. The size, when rounded up to
-/// the nearest multiple of `align`, does not overflow isize (i.e., the rounded value will always be
+/// the nearest multiple of `align`, does not overflow `isize` (i.e., the rounded value will always be
 /// less than or equal to `isize::MAX`).
 ///
 /// (Note that layouts are *not* required to have non-zero size,
@@ -61,7 +61,7 @@ impl Layout {
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow isize (i.e., the rounded value must be
+    ///    must not overflow `isize` (i.e., the rounded value must be
     ///    less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]

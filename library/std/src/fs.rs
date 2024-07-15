@@ -50,7 +50,7 @@ use crate::time::SystemTime;
 /// }
 /// ```
 ///
-/// Read the contents of a file into a [`String`] (you can also use [`read`]):
+/// Reads the contents of a file into a [`String`] (you can also use [`read`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -229,7 +229,7 @@ pub struct DirBuilder {
     recursive: bool,
 }
 
-/// Read the entire contents of a file into a bytes vector.
+/// Reads the entire contents of a file into a bytes vector.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_end`]
 /// with fewer imports and without an intermediate variable.
@@ -268,7 +268,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     inner(path.as_ref())
 }
 
-/// Read the entire contents of a file into a string.
+/// Reads the entire contents of a file into a string.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_string`]
 /// with fewer imports and without an intermediate variable.
@@ -311,7 +311,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     inner(path.as_ref())
 }
 
-/// Write a slice as the entire contents of a file.
+/// Writes a slice as the entire contents of a file.
 ///
 /// This function will create a file if it does not exist,
 /// and will entirely replace its contents if it does.
@@ -767,7 +767,7 @@ fn buffer_capacity_required(mut file: &File) -> Option<usize> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for &File {
-    /// Read some bytes from the file.
+    /// Reads some bytes from the file.
     ///
     /// See [`Read::read`] docs for more info.
     ///
@@ -835,7 +835,7 @@ impl Read for &File {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for &File {
-    /// Write some bytes from the file.
+    /// Writes some bytes from the file.
     ///
     /// See [`Write::write`] docs for more info.
     ///
@@ -1526,7 +1526,7 @@ impl FromInner<fs_imp::FileAttr> for Metadata {
 }
 
 impl FileTimes {
-    /// Create a new `FileTimes` with no times set.
+    /// Creates a new `FileTimes` with no times set.
     ///
     /// Using the resulting `FileTimes` in [`File::set_times`] will not modify any timestamps.
     #[stable(feature = "file_set_times", since = "1.75.0")]
@@ -2005,7 +2005,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::unlink(path.as_ref())
 }
 
-/// Given a path, query the file system to get information about a file,
+/// Given a path, queries the file system to get information about a file,
 /// directory, etc.
 ///
 /// This function will traverse symbolic links to query information about the
@@ -2044,7 +2044,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_ref()).map(Metadata)
 }
 
-/// Query the metadata about a file without following symlinks.
+/// Queries the metadata about a file without following symlinks.
 ///
 /// # Platform-specific behavior
 ///
@@ -2079,7 +2079,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::lstat(path.as_ref()).map(Metadata)
 }
 
-/// Rename a file or directory to a new name, replacing the original file if
+/// Renames a file or directory to a new name, replacing the original file if
 /// `to` already exists.
 ///
 /// This will not work if the new name is on a different mount point.

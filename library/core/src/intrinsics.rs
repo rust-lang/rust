@@ -1252,7 +1252,7 @@ extern "rust-intrinsic" {
     /// - If the code actually wants to work on the address the pointer points to, it can use `as`
     ///   casts or [`ptr.addr()`][pointer::addr].
     ///
-    /// Turning a `*mut T` into an `&mut T`:
+    /// Turning a `*mut T` into a `&mut T`:
     ///
     /// ```
     /// let ptr: *mut i32 = &mut 0;
@@ -1264,7 +1264,7 @@ extern "rust-intrinsic" {
     /// let ref_casted = unsafe { &mut *ptr };
     /// ```
     ///
-    /// Turning an `&mut T` into an `&mut U`:
+    /// Turning a `&mut T` into a `&mut U`:
     ///
     /// ```
     /// let ptr = &mut 0;
@@ -1277,7 +1277,7 @@ extern "rust-intrinsic" {
     /// let val_casts = unsafe { &mut *(ptr as *mut i32 as *mut u32) };
     /// ```
     ///
-    /// Turning an `&str` into a `&[u8]`:
+    /// Turning a `&str` into a `&[u8]`:
     ///
     /// ```
     /// // this is not a good way to do this.
@@ -1363,7 +1363,7 @@ extern "rust-intrinsic" {
     /// }
     ///
     /// // This gets rid of the type safety problems; `&mut *` will *only* give
-    /// // you an `&mut T` from an `&mut T` or `*mut T`.
+    /// // you a `&mut T` from a `&mut T` or `*mut T`.
     /// fn split_at_mut_casts<T>(slice: &mut [T], mid: usize)
     ///                          -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
@@ -1944,7 +1944,7 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
 
-    /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
+    /// Converts with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
     ///
     /// Stabilized as [`f32::to_int_unchecked`] and [`f64::to_int_unchecked`].

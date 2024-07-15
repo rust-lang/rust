@@ -249,7 +249,7 @@ pub use core::panic::Location;
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
-/// Panic the current thread with the given message as the panic payload.
+/// Panics the current thread with the given message as the panic payload.
 ///
 /// The message can be of any (`Any + Send`) type, not just strings.
 ///
@@ -380,7 +380,7 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rust_panic_without_hook(payload)
 }
 
-/// Make all future panics abort directly without running the panic hook or unwinding.
+/// Makes all future panics abort directly without running the panic hook or unwinding.
 ///
 /// There is no way to undo this; the effect lasts until the process exits or
 /// execs (or the equivalent).
@@ -461,7 +461,7 @@ impl BacktraceStyle {
 // Internally stores equivalent of an Option<BacktraceStyle>.
 static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 
-/// Configure whether the default panic hook will capture and display a
+/// Configures whether the default panic hook will capture and display a
 /// backtrace.
 ///
 /// The default value for this setting may be set by the `RUST_BACKTRACE`

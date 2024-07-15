@@ -1268,9 +1268,11 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,
-    /// `&'a mut T`. Note that the type `T` must outlive the chosen lifetime
-    /// `'a`. If the type has only static references, or none at all, then this
-    /// may be chosen to be `'static`.
+    /// `&'a mut T`.
+    ///
+    /// Note that the type `T` must outlive the chosen lifetime `'a`. If the type
+    /// has only static references, or none at all, then this may be chosen to be
+    /// `'static`.
     ///
     /// This function is mainly useful for data that lives for the remainder of
     /// the program's life. Dropping the returned reference will cause a memory
@@ -1853,7 +1855,7 @@ impl<T, const N: usize> TryFrom<Vec<T>> for Box<[T; N]> {
 }
 
 impl<A: Allocator> Box<dyn Any, A> {
-    /// Attempt to downcast the box to a concrete type.
+    /// Attempts to downcast the box to a concrete type.
     ///
     /// # Examples
     ///
@@ -1912,7 +1914,7 @@ impl<A: Allocator> Box<dyn Any, A> {
 }
 
 impl<A: Allocator> Box<dyn Any + Send, A> {
-    /// Attempt to downcast the box to a concrete type.
+    /// Attempts to downcast the box to a concrete type.
     ///
     /// # Examples
     ///
@@ -1971,7 +1973,7 @@ impl<A: Allocator> Box<dyn Any + Send, A> {
 }
 
 impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
-    /// Attempt to downcast the box to a concrete type.
+    /// Attempts to downcast the box to a concrete type.
     ///
     /// # Examples
     ///

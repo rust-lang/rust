@@ -222,7 +222,7 @@ impl RwLock {
         }
     }
 
-    /// Wake up waiting threads after unlocking.
+    /// Wakes up waiting threads after unlocking.
     ///
     /// If both are waiting, this will wake up only one writer, but will fall
     /// back to waking up readers if there was no writer to wake up.

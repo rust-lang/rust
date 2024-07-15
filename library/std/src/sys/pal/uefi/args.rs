@@ -76,7 +76,7 @@ impl DoubleEndedIterator for Args {
 /// This implementation is based on what is defined in Section 3.4 of
 /// [UEFI Shell Specification](https://uefi.org/sites/default/files/resources/UEFI_Shell_Spec_2_0.pdf)
 ///
-/// Return None in the following cases:
+/// Returns None in the following cases:
 /// - Invalid UTF-16 (unpaired surrogate)
 /// - Empty/improper arguments
 fn parse_lp_cmd_line(code_units: &[u16]) -> Option<Vec<OsString>> {
