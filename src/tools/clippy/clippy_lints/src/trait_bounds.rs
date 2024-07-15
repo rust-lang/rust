@@ -102,9 +102,9 @@ impl TraitBounds {
 impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS, TRAIT_DUPLICATION_IN_BOUNDS]);
 
 impl<'tcx> LateLintPass<'tcx> for TraitBounds {
-    fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
-        self.check_type_repetition(cx, gen);
-        check_trait_bound_duplication(cx, gen);
+    fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) {
+        self.check_type_repetition(cx, generics);
+        check_trait_bound_duplication(cx, generics);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
@@ -238,7 +238,7 @@ impl TraitBounds {
     }
 
     #[allow(clippy::mutable_key_type)]
-    fn check_type_repetition<'tcx>(&self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
+    fn check_type_repetition<'tcx>(&self, cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) {
         struct SpanlessTy<'cx, 'tcx> {
             ty: &'tcx Ty<'tcx>,
             cx: &'cx LateContext<'tcx>,
@@ -258,12 +258,12 @@ impl TraitBounds {
         }
         impl Eq for SpanlessTy<'_, '_> {}
 
-        if gen.span.from_expansion() {
+        if generics.span.from_expansion() {
             return;
         }
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
-        for bound in gen.predicates {
+        for bound in generics.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
@@ -301,8 +301,8 @@ impl TraitBounds {
     }
 }
 
-fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() {
+fn check_trait_bound_duplication(cx: &LateContext<'_>, generics: &'_ Generics<'_>) {
+    if generics.span.from_expansion() {
         return;
     }
 
@@ -313,7 +313,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
     //       |
     // collects each of these where clauses into a set keyed by generic name and comparable trait
     // eg. (T, Clone)
-    let where_predicates = gen
+    let where_predicates = generics
         .predicates
         .iter()
         .filter_map(|pred| {
@@ -342,7 +342,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
     //            |
     // compare trait bounds keyed by generic name and comparable trait to collected where
     // predicates eg. (T, Clone)
-    for predicate in gen.predicates.iter().filter(|pred| !pred.in_where_clause()) {
+    for predicate in generics.predicates.iter().filter(|pred| !pred.in_where_clause()) {
         if let WherePredicate::BoundPredicate(bound_predicate) = predicate
             && bound_predicate.origin != PredicateOrigin::ImplTrait
             && !bound_predicate.span.from_expansion()

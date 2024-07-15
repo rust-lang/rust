@@ -116,7 +116,7 @@ where
                     self.0.kill(place.local);
                 }
             }
-            Some(DefUse::Use) => self.0.gen(place.local),
+            Some(DefUse::Use) => self.0.gen_(place.local),
             None => {}
         }
 
@@ -154,7 +154,7 @@ impl DefUse {
     fn apply(trans: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
             Some(DefUse::Def) => trans.kill(place.local),
-            Some(DefUse::Use) => trans.gen(place.local),
+            Some(DefUse::Use) => trans.gen_(place.local),
             None => {}
         }
     }

@@ -1051,7 +1051,7 @@ fn simplify_fn_type<'tcx, 'a>(
         let mut ty_generics = Vec::new();
         let mut ty_constraints = Vec::new();
         if let Some(arg_generics) = arg.generic_args() {
-            for ty in arg_generics.into_iter().filter_map(|gen| match gen {
+            for ty in arg_generics.into_iter().filter_map(|param| match param {
                 clean::GenericArg::Type(ty) => Some(ty),
                 _ => None,
             }) {
@@ -1172,8 +1172,8 @@ fn simplify_fn_constraint<'tcx, 'a>(
 ) {
     let mut ty_constraints = Vec::new();
     let ty_constrained_assoc = RenderTypeId::AssociatedType(constraint.assoc.name);
-    for gen in &constraint.assoc.args {
-        match gen {
+    for param in &constraint.assoc.args {
+        match param {
             clean::GenericArg::Type(arg) => simplify_fn_type(
                 self_,
                 generics,
