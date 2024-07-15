@@ -20,8 +20,6 @@ pub mod run;
 pub mod scoped_run;
 pub mod targets;
 
-use std::path::PathBuf;
-
 // Re-exports of third-party library crates.
 pub use bstr;
 pub use gimli;
@@ -85,8 +83,6 @@ pub use assertion_helpers::{
     shallow_find_files,
 };
 
-use command::Command;
-
 /// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
 #[track_caller]
 pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
@@ -105,18 +101,4 @@ pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
     };
     llvm_ar().obj_to_ar().output_input(&lib_path, &obj_file).run();
     path(lib_path)
-}
-
-/// Set the runtime library path as needed for running the host rustc/rustdoc/etc.
-pub fn set_host_rpath(cmd: &mut Command) {
-    let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
-    cmd.env(&ld_lib_path_envvar, {
-        let mut paths = vec![];
-        paths.push(cwd());
-        paths.push(PathBuf::from(env_var("HOST_RPATH_DIR")));
-        for p in std::env::split_paths(&env_var(&ld_lib_path_envvar)) {
-            paths.push(p.to_path_buf());
-        }
-        std::env::join_paths(paths.iter()).unwrap()
-    });
 }

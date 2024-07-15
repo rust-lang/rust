@@ -1,8 +1,10 @@
-use command::Command;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-use crate::{command, cwd, env_var, set_host_rpath};
+use crate::command::Command;
+use crate::env_checked::env_var;
+use crate::path_helpers::cwd;
+use crate::util::set_host_rpath;
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.

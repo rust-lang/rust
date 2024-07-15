@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::{env_var, Command};
+use crate::command::Command;
+use crate::env_checked::env_var;
 
 /// Construct a new `llvm-readobj` invocation with the `GNU` output style.
 /// This assumes that `llvm-readobj` is available at `$LLVM_BIN_DIR/llvm-readobj`.
