@@ -158,8 +158,12 @@ impl FromStableHash for Fingerprint {
     type Hash = StableHasherHash;
 
     #[inline]
-    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
-        Fingerprint(_0, _1)
+    fn from(hash: Self::Hash) -> Self {
+        let bytes = hash.as_bytes();
+        Fingerprint(
+            u64::from_ne_bytes(bytes[0..8].try_into().unwrap()),
+            u64::from_ne_bytes(bytes[8..16].try_into().unwrap()),
+        )
     }
 }
 

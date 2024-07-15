@@ -11,9 +11,9 @@ mod tests;
 
 pub use crate::hashes::{Hash128, Hash64};
 
+pub use rustc_stable_hash::hashers::Blake3Hash as StableHasherHash;
+pub use rustc_stable_hash::hashers::StableBlake3Hasher as StableHasher;
 pub use rustc_stable_hash::FromStableHash;
-pub use rustc_stable_hash::SipHasher128Hash as StableHasherHash;
-pub use rustc_stable_hash::StableSipHasher128 as StableHasher;
 
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
 /// stable across multiple compilation sessions.

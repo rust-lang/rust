@@ -60,8 +60,9 @@ impl FromStableHash for Hash64 {
     type Hash = StableHasherHash;
 
     #[inline]
-    fn from(StableHasherHash([_0, __1]): Self::Hash) -> Self {
-        Self { inner: _0 }
+    fn from(hash: Self::Hash) -> Self {
+        let bytes = hash.as_bytes();
+        Self { inner: u64::from_ne_bytes(bytes[0..8].try_into().unwrap()) }
     }
 }
 
@@ -127,8 +128,9 @@ impl FromStableHash for Hash128 {
     type Hash = StableHasherHash;
 
     #[inline]
-    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
-        Self { inner: u128::from(_0) | (u128::from(_1) << 64) }
+    fn from(hash: Self::Hash) -> Self {
+        let bytes = hash.as_bytes();
+        Self { inner: u128::from_ne_bytes(bytes[0..16].try_into().unwrap()) }
     }
 }
 
