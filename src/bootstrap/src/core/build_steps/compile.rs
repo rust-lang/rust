@@ -1837,7 +1837,7 @@ impl Step for Assemble {
             // `wasm32-wasip2` target of Rust.
             let wasm_component_ld_exe =
                 builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                    compiler: build_compiler.with_stage(0),
+                    compiler: build_compiler,
                     target: target_compiler.host,
                 });
             builder.copy_link(
