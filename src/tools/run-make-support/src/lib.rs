@@ -11,13 +11,13 @@ pub mod artifact_names;
 pub mod diff;
 pub mod env_checked;
 pub mod external_deps;
+pub mod fs_helpers;
 pub mod fs_wrapper;
 pub mod path_helpers;
 pub mod run;
 pub mod targets;
 
 use std::fs;
-use std::io;
 use std::panic;
 use std::path::{Path, PathBuf};
 
@@ -71,35 +71,10 @@ pub use artifact_names::{
 /// Path-related helpers.
 pub use path_helpers::{cwd, cygpath_windows, path, source_root};
 
+/// Helpers for common fs operations.
+pub use fs_helpers::{copy_dir_all, create_symlink, read_dir};
+
 use command::{Command, CompletedProcess};
-
-/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
-#[cfg(target_family = "windows")]
-pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
-    if link.as_ref().exists() {
-        std::fs::remove_dir(link.as_ref()).unwrap();
-    }
-    use std::os::windows::fs;
-    fs::symlink_file(original.as_ref(), link.as_ref()).expect(&format!(
-        "failed to create symlink {:?} for {:?}",
-        link.as_ref().display(),
-        original.as_ref().display(),
-    ));
-}
-
-/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
-#[cfg(target_family = "unix")]
-pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
-    if link.as_ref().exists() {
-        std::fs::remove_dir(link.as_ref()).unwrap();
-    }
-    use std::os::unix::fs;
-    fs::symlink(original.as_ref(), link.as_ref()).expect(&format!(
-        "failed to create symlink {:?} for {:?}",
-        link.as_ref().display(),
-        original.as_ref().display(),
-    ));
-}
 
 // FIXME(Oneirical): This will no longer be required after compiletest receives the ability
 // to manipulate read-only files. See https://github.com/rust-lang/rust/issues/126334
@@ -275,36 +250,6 @@ pub fn invalid_utf8_not_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expecte
     }
 }
 
-/// Copy a directory into another.
-pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
-    fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
-        let dst = dst.as_ref();
-        if !dst.is_dir() {
-            std::fs::create_dir_all(&dst)?;
-        }
-        for entry in std::fs::read_dir(src)? {
-            let entry = entry?;
-            let ty = entry.file_type()?;
-            if ty.is_dir() {
-                copy_dir_all_inner(entry.path(), dst.join(entry.file_name()))?;
-            } else {
-                std::fs::copy(entry.path(), dst.join(entry.file_name()))?;
-            }
-        }
-        Ok(())
-    }
-
-    if let Err(e) = copy_dir_all_inner(&src, &dst) {
-        // Trying to give more context about what exactly caused the failure
-        panic!(
-            "failed to copy `{}` to `{}`: {:?}",
-            src.as_ref().display(),
-            dst.as_ref().display(),
-            e
-        );
-    }
-}
-
 /// Check that all files in `dir1` exist and have the same content in `dir2`. Panic otherwise.
 pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     let dir2 = dir2.as_ref();
@@ -328,12 +273,6 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
             );
         }
     });
-}
-
-pub fn read_dir<F: FnMut(&Path)>(dir: impl AsRef<Path>, mut callback: F) {
-    for entry in fs_wrapper::read_dir(dir) {
-        callback(&entry.unwrap().path());
-    }
 }
 
 /// Check that `actual` is equal to `expected`. Panic otherwise.
