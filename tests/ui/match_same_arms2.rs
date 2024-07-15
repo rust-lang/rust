@@ -6,6 +6,9 @@
     clippy::match_single_binding,
     clippy::match_like_matches_macro
 )]
+
+//@no-rustfix: need to change the suggestion to a multipart suggestion
+
 fn bar<T>(_: T) {}
 fn foo() -> bool {
     unimplemented!()
