@@ -2,196 +2,330 @@ error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:20:12
    |
 LL |     if let .0..Y = 0 {}
-   |            ^^ help: must have an integer part: `0.0`
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0..Y = 0 {}
+   |            +
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:22:16
    |
 LL |     if let X.. .0 = 0 {}
-   |                ^^ help: must have an integer part: `0.0`
+   |                ^^
+   |
+help: must have an integer part
+   |
+LL |     if let X.. 0.0 = 0 {}
+   |                +
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:33:12
    |
 LL |     if let .0..=Y = 0 {}
-   |            ^^ help: must have an integer part: `0.0`
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0..=Y = 0 {}
+   |            +
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:35:16
    |
 LL |     if let X..=.0 = 0 {}
-   |                ^^ help: must have an integer part: `0.0`
+   |                ^^
+   |
+help: must have an integer part
+   |
+LL |     if let X..=0.0 = 0 {}
+   |                +
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:58:12
    |
 LL |     if let .0...Y = 0 {}
-   |            ^^ help: must have an integer part: `0.0`
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0...Y = 0 {}
+   |            +
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:62:17
    |
 LL |     if let X... .0 = 0 {}
-   |                 ^^ help: must have an integer part: `0.0`
+   |                 ^^
+   |
+help: must have an integer part
+   |
+LL |     if let X... 0.0 = 0 {}
+   |                 +
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:73:12
    |
 LL |     if let .0.. = 0 {}
-   |            ^^ help: must have an integer part: `0.0`
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0.. = 0 {}
+   |            +
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:79:13
    |
 LL |     if let 0..= = 0 {}
-   |             ^^^ help: use `..` instead
+   |             ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let 0..= = 0 {}
+LL +     if let 0.. = 0 {}
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:80:13
    |
 LL |     if let X..= = 0 {}
-   |             ^^^ help: use `..` instead
+   |             ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let X..= = 0 {}
+LL +     if let X.. = 0 {}
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:81:16
    |
 LL |     if let true..= = 0 {}
-   |                ^^^ help: use `..` instead
+   |                ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let true..= = 0 {}
+LL +     if let true.. = 0 {}
+   |
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:83:12
    |
 LL |     if let .0..= = 0 {}
-   |            ^^ help: must have an integer part: `0.0`
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0..= = 0 {}
+   |            +
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:83:14
    |
 LL |     if let .0..= = 0 {}
-   |              ^^^ help: use `..` instead
+   |              ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let .0..= = 0 {}
+LL +     if let .0.. = 0 {}
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:89:13
    |
 LL |     if let 0... = 0 {}
-   |             ^^^ help: use `..` instead
+   |             ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let 0... = 0 {}
+LL +     if let 0.. = 0 {}
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:90:13
    |
 LL |     if let X... = 0 {}
-   |             ^^^ help: use `..` instead
+   |             ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let X... = 0 {}
+LL +     if let X.. = 0 {}
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:91:16
    |
 LL |     if let true... = 0 {}
-   |                ^^^ help: use `..` instead
+   |                ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let true... = 0 {}
+LL +     if let true.. = 0 {}
+   |
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:93:12
    |
 LL |     if let .0... = 0 {}
-   |            ^^ help: must have an integer part: `0.0`
+   |            ^^
+   |
+help: must have an integer part
+   |
+LL |     if let 0.0... = 0 {}
+   |            +
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:93:14
    |
 LL |     if let .0... = 0 {}
-   |              ^^^ help: use `..` instead
+   |              ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     if let .0... = 0 {}
+LL +     if let .0.. = 0 {}
+   |
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:103:15
    |
 LL |     if let .. .0 = 0 {}
-   |               ^^ help: must have an integer part: `0.0`
+   |               ^^
+   |
+help: must have an integer part
+   |
+LL |     if let .. 0.0 = 0 {}
+   |               +
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:113:15
    |
 LL |     if let ..=.0 = 0 {}
-   |               ^^ help: must have an integer part: `0.0`
+   |               ^^
+   |
+help: must have an integer part
+   |
+LL |     if let ..=0.0 = 0 {}
+   |               +
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:119:12
    |
 LL |     if let ...3 = 0 {}
-   |            ^^^ help: use `..=` instead
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL |     if let ..=3 = 0 {}
+   |            ~~~
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:121:12
    |
 LL |     if let ...Y = 0 {}
-   |            ^^^ help: use `..=` instead
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL |     if let ..=Y = 0 {}
+   |            ~~~
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:123:12
    |
 LL |     if let ...true = 0 {}
-   |            ^^^ help: use `..=` instead
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL |     if let ..=true = 0 {}
+   |            ~~~
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:126:15
    |
 LL |     if let ....3 = 0 {}
-   |               ^^ help: must have an integer part: `0.3`
+   |               ^^
+   |
+help: must have an integer part
+   |
+LL |     if let ...0.3 = 0 {}
+   |               +
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:126:12
    |
 LL |     if let ....3 = 0 {}
-   |            ^^^ help: use `..=` instead
+   |            ^^^
+   |
+help: use `..=` instead
+   |
+LL |     if let ..=.3 = 0 {}
+   |            ~~~
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:152:17
    |
 LL |             let ...$e;
-   |                 ^^^ help: use `..=` instead
+   |                 ^^^
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `..=` instead
+   |
+LL |             let ..=$e;
+   |                 ~~~
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:159:19
    |
 LL |             let $e...;
-   |                   ^^^ help: use `..` instead
+   |                   ^^^
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `..` instead
+   |
+LL -             let $e...;
+LL +             let $e..;
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:161:19
    |
 LL |             let $e..=;
-   |                   ^^^ help: use `..` instead
+   |                   ^^^
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `..` instead
+   |
+LL -             let $e..=;
+LL +             let $e..;
+   |
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:40:13

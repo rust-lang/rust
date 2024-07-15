@@ -2,13 +2,23 @@ error: missing `in` in `for` loop
   --> $DIR/issue-40782.rs:4:11
    |
 LL |     for _i 0..2 {
-   |           ^ help: try adding `in` here
+   |           ^
+   |
+help: try adding `in` here
+   |
+LL |     for _i in 0..2 {
+   |            ++
 
 error: missing `in` in `for` loop
   --> $DIR/issue-40782.rs:6:12
    |
 LL |     for _i of 0..2 {
-   |            ^^ help: try using `in` here instead
+   |            ^^
+   |
+help: try using `in` here instead
+   |
+LL |     for _i in 0..2 {
+   |            ~~
 
 error: aborting due to 2 previous errors
 
