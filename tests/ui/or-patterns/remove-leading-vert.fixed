@@ -8,7 +8,7 @@ fn main() {}
 
 #[cfg(FALSE)]
 fn leading() {
-    fn fun1( A: E) {} //~ ERROR top-level or-patterns are not allowed
+    fn fun1(  A: E) {} //~ ERROR top-level or-patterns are not allowed
     fn fun2(  A: E) {} //~ ERROR unexpected `||` before function parameter
     let ( | A): E;
     let ( | A): (E); //~ ERROR unexpected token `||` in pattern

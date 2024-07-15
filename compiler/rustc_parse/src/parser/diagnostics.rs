@@ -3,8 +3,8 @@ use super::{
     BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep, TokenType,
 };
 use crate::errors::{
-    AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, BadQPathStage2, BadTypePlus,
-    BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, AwaitSuggestion,
+    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
     ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
     ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
@@ -566,7 +566,10 @@ impl<'a> Parser<'a> {
             && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Eq)))
         {
             // Likely typo: `=` → `==` in let expr or enum item
-            return Err(self.dcx().create_err(UseEqInstead { span: self.token.span }));
+            return Err(self.dcx().create_err(UseEqInstead {
+                span: self.token.span,
+                suggestion: self.token.span.with_lo(self.token.span.lo() + BytePos(1)),
+            }));
         }
 
         if self.token.is_keyword(kw::Move) && self.prev_token.is_keyword(kw::Async) {
@@ -1151,7 +1154,7 @@ impl<'a> Parser<'a> {
             // Eat from where we started until the end token so that parsing can continue
             // as if we didn't have those extra angle brackets.
             self.eat_to_tokens(end);
-            let span = lo.until(self.token.span);
+            let span = lo.to(self.prev_token.span);
 
             let num_extra_brackets = number_of_gt + number_of_shr * 2;
             return Some(self.dcx().emit_err(UnmatchedAngleBrackets { span, num_extra_brackets }));
@@ -1539,7 +1542,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
         if impl_dyn_multi {
-            self.dcx().emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(ty), span: ty.span });
+            self.dcx().emit_err(AmbiguousPlus {
+                span: ty.span,
+                suggestion: AddParen { lo: ty.span.shrink_to_lo(), hi: ty.span.shrink_to_hi() },
+            });
         }
     }
 
@@ -1604,25 +1610,14 @@ impl<'a> Parser<'a> {
         }
 
         self.bump(); // `+`
-        let bounds = self.parse_generic_bounds()?;
+        let _bounds = self.parse_generic_bounds()?;
         let sum_span = ty.span.to(self.prev_token.span);
 
         let sub = match &ty.kind {
-            TyKind::Ref(lifetime, mut_ty) => {
-                let sum_with_parens = pprust::to_string(|s| {
-                    s.s.word("&");
-                    s.print_opt_lifetime(lifetime);
-                    s.print_mutability(mut_ty.mutbl, false);
-                    s.popen();
-                    s.print_type(&mut_ty.ty);
-                    if !bounds.is_empty() {
-                        s.word(" + ");
-                        s.print_type_bounds(&bounds);
-                    }
-                    s.pclose()
-                });
-
-                BadTypePlusSub::AddParen { sum_with_parens, span: sum_span }
+            TyKind::Ref(_lifetime, mut_ty) => {
+                let lo = mut_ty.ty.span.shrink_to_lo();
+                let hi = self.prev_token.span.shrink_to_hi();
+                BadTypePlusSub::AddParen { suggestion: AddParen { lo, hi } }
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => BadTypePlusSub::ForgotParen { span: sum_span },
             _ => BadTypePlusSub::ExpectPath { span: sum_span },
@@ -1964,18 +1959,14 @@ impl<'a> Parser<'a> {
         is_question: bool,
     ) -> (Span, ErrorGuaranteed) {
         let span = lo.to(hi);
-        let applicability = match expr.kind {
-            ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
-            _ => Applicability::MachineApplicable,
-        };
-
         let guar = self.dcx().emit_err(IncorrectAwait {
             span,
-            sugg_span: (span, applicability),
-            expr: self.span_to_snippet(expr.span).unwrap_or_else(|_| pprust::expr_to_string(expr)),
-            question_mark: if is_question { "?" } else { "" },
+            suggestion: AwaitSuggestion {
+                removal: lo.until(expr.span),
+                dot_await: expr.span.shrink_to_hi(),
+                question_mark: if is_question { "?" } else { "" },
+            },
         });
-
         (span, guar)
     }
 

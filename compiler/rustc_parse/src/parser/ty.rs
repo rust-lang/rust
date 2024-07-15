@@ -209,6 +209,7 @@ impl<'a> Parser<'a> {
         recover_qpath: RecoverQPath,
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, FnRetTy> {
+        let lo = self.prev_token.span;
         Ok(if self.eat(&token::RArrow) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
             let ty = self.parse_ty_common(
@@ -224,7 +225,10 @@ impl<'a> Parser<'a> {
             // Don't `eat` to prevent `=>` from being added as an expected token which isn't
             // actually expected and could only confuse users
             self.bump();
-            self.dcx().emit_err(ReturnTypesUseThinArrow { span: self.prev_token.span });
+            self.dcx().emit_err(ReturnTypesUseThinArrow {
+                span: self.prev_token.span,
+                suggestion: lo.between(self.token.span),
+            });
             let ty = self.parse_ty_common(
                 allow_plus,
                 AllowCVariadic::No,
@@ -794,8 +798,11 @@ impl<'a> Parser<'a> {
         {
             if self.token.is_keyword(kw::Dyn) {
                 // Account for `&dyn Trait + dyn Other`.
-                self.dcx().emit_err(InvalidDynKeyword { span: self.token.span });
                 self.bump();
+                self.dcx().emit_err(InvalidDynKeyword {
+                    span: self.prev_token.span,
+                    suggestion: self.prev_token.span.until(self.token.span),
+                });
             }
             bounds.push(self.parse_generic_bound()?);
             if allow_plus == AllowPlus::No || !self.eat_plus() {
@@ -861,7 +868,7 @@ impl<'a> Parser<'a> {
         if has_parens {
             // FIXME(Centril): Consider not erroring here and accepting `('lt)` instead,
             // possibly introducing `GenericBound::Paren(P<GenericBound>)`?
-            self.recover_paren_lifetime(lo, lt.ident.span)?;
+            self.recover_paren_lifetime(lo)?;
         }
         Ok(bound)
     }
@@ -909,16 +916,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover on `('lifetime)` with `(` already eaten.
-    fn recover_paren_lifetime(&mut self, lo: Span, lt_span: Span) -> PResult<'a, ()> {
+    fn recover_paren_lifetime(&mut self, lo: Span) -> PResult<'a, ()> {
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
         let span = lo.to(self.prev_token.span);
-        let (sugg, snippet) = if let Ok(snippet) = self.span_to_snippet(lt_span) {
-            (Some(span), snippet)
-        } else {
-            (None, String::new())
-        };
+        let sugg = errors::RemoveParens { lo, hi: self.prev_token.span };
 
-        self.dcx().emit_err(errors::ParenthesizedLifetime { span, sugg, snippet });
+        self.dcx().emit_err(errors::ParenthesizedLifetime { span, sugg });
         Ok(())
     }
 
