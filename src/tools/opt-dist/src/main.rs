@@ -155,7 +155,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .artifact_dir(Utf8PathBuf::from("/tmp/tmp-multistage/opt-artifacts"))
                 .build_dir(checkout_dir.join("obj"))
                 .shared_llvm(true)
-                .use_bolt(true)
+                .use_bolt(false)
                 .skipped_tests(vec![
                     // Fails because of linker errors, as of June 2023.
                     "tests/ui/process/nofile-limit.rs".to_string(),
