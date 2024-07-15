@@ -13,6 +13,7 @@ mod macros;
 pub mod run;
 pub mod rustc;
 pub mod rustdoc;
+pub mod targets;
 
 use std::env;
 use std::ffi::OsString;
@@ -37,6 +38,7 @@ pub use llvm::{
 pub use run::{cmd, run, run_fail, run_with_args};
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
+pub use targets::{is_darwin, is_msvc, is_windows, target, uname};
 
 use command::{Command, CompletedProcess};
 
@@ -58,28 +60,17 @@ pub fn env_var_os(name: &str) -> OsString {
     }
 }
 
-/// `TARGET`
-#[must_use]
-pub fn target() -> String {
-    env_var("TARGET")
-}
-
-/// Check if target is windows-like.
-#[must_use]
-pub fn is_windows() -> bool {
-    target().contains("windows")
-}
-
-/// Check if target uses msvc.
-#[must_use]
-pub fn is_msvc() -> bool {
-    target().contains("msvc")
-}
-
-/// Check if target uses macOS.
-#[must_use]
-pub fn is_darwin() -> bool {
-    target().contains("darwin")
+/// `AR`
+#[track_caller]
+pub fn ar(inputs: &[impl AsRef<Path>], output_path: impl AsRef<Path>) {
+    let output = fs::File::create(&output_path).expect(&format!(
+        "the file in path \"{}\" could not be created",
+        output_path.as_ref().display()
+    ));
+    let mut builder = ar::Builder::new(output);
+    for input in inputs {
+        builder.append_path(input).unwrap();
+    }
 }
 
 #[track_caller]
@@ -348,20 +339,11 @@ pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
     output.stdout_utf8().trim().to_string()
 }
 
-/// Run `uname`. This assumes that `uname` is available on the platform!
-#[track_caller]
-#[must_use]
-pub fn uname() -> String {
-    let caller = panic::Location::caller();
-    let mut uname = Command::new("uname");
-    let output = uname.run();
-    if !output.status().success() {
-        handle_failed_output(&uname, output, caller.line());
-    }
-    output.stdout_utf8()
-}
-
-fn handle_failed_output(cmd: &Command, output: CompletedProcess, caller_line_number: u32) -> ! {
+pub(crate) fn handle_failed_output(
+    cmd: &Command,
+    output: CompletedProcess,
+    caller_line_number: u32,
+) -> ! {
     if output.status().success() {
         eprintln!("command unexpectedly succeeded at line {caller_line_number}");
     } else {
