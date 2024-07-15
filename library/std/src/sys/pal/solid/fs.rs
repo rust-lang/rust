@@ -527,12 +527,20 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     for child in readdir(path)? {
-        let child = child?;
-        let child_type = child.file_type()?;
-        if child_type.is_dir() {
-            remove_dir_all(&child.path())?;
-        } else {
-            unlink(&child.path())?;
+        let result: io::Result<()> = try {
+            let child = child?;
+            let child_type = child.file_type()?;
+            if child_type.is_dir() {
+                remove_dir_all(&child.path())?;
+            } else {
+                unlink(&child.path())?;
+            }
+        };
+        // ignore internal NotFound errors
+        if let Err(err) = result
+            && err.kind() != io::ErrorKind::NotFound
+        {
+            return result;
         }
     }
     rmdir(path)

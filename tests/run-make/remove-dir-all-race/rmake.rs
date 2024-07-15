@@ -3,10 +3,10 @@ use run_make_support::{
     run_in_tmpdir,
 };
 use std::fs::remove_dir_all;
-use std::thread;
-use std::time::Duration;
 use std::path::Path;
 use std::sync::Once;
+use std::thread;
+use std::time::Duration;
 
 fn main() {
     let mut race_happened = false;
@@ -21,7 +21,7 @@ fn main() {
                     thread::sleep(Duration::from_nanos(i));
                     remove_dir_all("outer").unwrap();
                 });
-    
+
                 let race_happened_ref = &race_happened;
                 let t2 = scope.spawn(|| {
                     let r1 = remove_dir_all("outer/inner");
@@ -31,7 +31,7 @@ fn main() {
                     }
                 });
             });
-            
+
             assert!(!Path::new("outer").exists());
 
             // trying to remove the top-level directory should
@@ -42,5 +42,8 @@ fn main() {
             assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         }
     });
-    assert!(race_happened, "multithreaded deletion never raced, try increasing the number of attempts or adjusting the sleep timing");
+    assert!(
+        race_happened,
+        "multithreaded deletion never raced, try increasing the number of attempts or adjusting the sleep timing"
+    );
 }

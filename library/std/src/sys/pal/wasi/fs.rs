@@ -794,10 +794,18 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
             io::const_io_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")
         })?;
 
-        if entry.file_type()?.is_dir() {
-            remove_dir_all_recursive(&entry.inner.dir.fd, path.as_ref())?;
-        } else {
-            entry.inner.dir.fd.unlink_file(path)?;
+        let result: io::Result<()> = try {
+            if entry.file_type()?.is_dir() {
+                remove_dir_all_recursive(&entry.inner.dir.fd, path.as_ref())?;
+            } else {
+                entry.inner.dir.fd.unlink_file(path)?;
+            }
+        };
+        // ignore internal NotFound errors
+        if let Err(err) = result
+            && err.kind() != io::ErrorKind::NotFound
+        {
+            return result;
         }
     }
 
