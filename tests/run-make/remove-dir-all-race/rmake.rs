@@ -5,26 +5,34 @@ use run_make_support::{
 use std::fs::remove_dir_all;
 use std::thread;
 use std::time::Duration;
+use std::path::Path;
+use std::sync::Once;
 
 fn main() {
+    let mut race_happened = false;
     run_in_tmpdir(|| {
-        for i in 0..15 {
+        for i in 0..150 {
             create_dir("outer");
             create_dir("outer/inner");
             write("outer/inner.txt", b"sometext");
 
-            let t1 = thread::spawn(move || {
-                thread::sleep(Duration::from_nanos(i));
-                remove_dir_all("outer").unwrap();
+            thread::scope(|scope| {
+                let t1 = scope.spawn(|| {
+                    thread::sleep(Duration::from_nanos(i));
+                    remove_dir_all("outer").unwrap();
+                });
+    
+                let race_happened_ref = &race_happened;
+                let t2 = scope.spawn(|| {
+                    let r1 = remove_dir_all("outer/inner");
+                    let r2 = remove_dir_all("outer/inner.txt");
+                    if r1.is_ok() && r2.is_err() {
+                        race_happened = true;
+                    }
+                });
             });
-
-            let t2 = thread::spawn(move || {
-                let _ = remove_dir_all("outer/inner");
-                let _ = remove_dir_all("outer/inner.txt");
-            });
-
-            t1.join().unwrap();
-            t2.join().unwrap();
+            
+            assert!(!Path::new("outer").exists());
 
             // trying to remove the top-level directory should
             // still result in an error
@@ -33,5 +41,6 @@ fn main() {
             };
             assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         }
-    })
+    });
+    assert!(race_happened, "thread deletion never raced");
 }
