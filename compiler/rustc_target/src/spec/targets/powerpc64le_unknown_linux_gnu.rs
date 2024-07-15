@@ -10,10 +10,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "powerpc64le-unknown-linux-gnu".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("PPC64LE Linux (kernel 3.10, glibc 2.17)".into()),
+            tier: Some(2),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout: "e-m:e-Fn32-i64:64-n32:64-S128-v256:256:256-v512:512:512".into(),

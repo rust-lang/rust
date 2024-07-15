@@ -17,10 +17,10 @@ pub fn target() -> Target {
         // While ld64 doesn't understand i686, LLVM does.
         llvm_target: macos_llvm_target(Arch::I686).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("32-bit macOS (10.12+, Sierra+)".into()),
+            tier: Some(3),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-p270:32:32-p271:32:32-p272:64:64-\
