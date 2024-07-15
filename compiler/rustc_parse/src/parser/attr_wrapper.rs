@@ -256,16 +256,6 @@ impl<'a> Parser<'a> {
             return Ok(ret);
         }
 
-        let mut inner_attr_replace_ranges = Vec::new();
-        // Take the captured ranges for any inner attributes that we parsed.
-        for inner_attr in ret.attrs().iter().filter(|a| a.style == ast::AttrStyle::Inner) {
-            if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&inner_attr.id) {
-                inner_attr_replace_ranges.push((attr_range, None));
-            } else {
-                self.dcx().span_delayed_bug(inner_attr.span, "Missing token range for attribute");
-            }
-        }
-
         let replace_ranges_end = self.capture_state.replace_ranges.len();
 
         assert!(
@@ -282,6 +272,16 @@ impl<'a> Parser<'a> {
             + self.break_last_token as u32;
 
         let num_calls = end_pos - start_pos;
+
+        // Take the captured ranges for any inner attributes that we parsed.
+        let mut inner_attr_replace_ranges = Vec::new();
+        for inner_attr in ret.attrs().iter().filter(|a| a.style == ast::AttrStyle::Inner) {
+            if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&inner_attr.id) {
+                inner_attr_replace_ranges.push((attr_range, None));
+            } else {
+                self.dcx().span_delayed_bug(inner_attr.span, "Missing token range for attribute");
+            }
+        }
 
         // This is hot enough for `deep-vector` that checking the conditions for an empty iterator
         // is measurably faster than actually executing the iterator.
