@@ -1,4 +1,3 @@
-#![allow(unsafe_op_in_unsafe_fn)]
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsStr;
@@ -325,6 +324,7 @@ impl AnonPipe {
     /// [`ReadFileEx`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfileex
     /// [`WriteFileEx`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefileex
     /// [Asynchronous Procedure Call]: https://docs.microsoft.com/en-us/windows/win32/sync/asynchronous-procedure-calls
+    #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn alertable_io_internal(
         &self,
         io: AlertableIoFn,
@@ -561,6 +561,7 @@ impl<'a> Drop for AsyncPipe<'a> {
     }
 }
 
+#[allow(unsafe_op_in_unsafe_fn)]
 unsafe fn slice_to_end(v: &mut Vec<u8>) -> &mut [u8] {
     if v.capacity() == 0 {
         v.reserve(16);
@@ -568,5 +569,6 @@ unsafe fn slice_to_end(v: &mut Vec<u8>) -> &mut [u8] {
     if v.capacity() == v.len() {
         v.reserve(1);
     }
+    // FIXME: Isn't this just spare_capacity_mut but worse?
     slice::from_raw_parts_mut(v.as_mut_ptr().add(v.len()), v.capacity() - v.len())
 }

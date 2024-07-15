@@ -1,4 +1,3 @@
-#![allow(unsafe_op_in_unsafe_fn)]
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
@@ -23,6 +22,8 @@ pub struct Thread {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+    #[allow(unsafe_op_in_unsafe_fn)]
+    // FIXME: check the internal safety
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
 
@@ -70,7 +71,7 @@ impl Thread {
     ///
     /// `name` must end with a zero value
     pub unsafe fn set_name_wide(name: &[u16]) {
-        c::SetThreadDescription(c::GetCurrentThread(), name.as_ptr());
+        unsafe { c::SetThreadDescription(c::GetCurrentThread(), name.as_ptr()) };
     }
 
     pub fn join(self) {
