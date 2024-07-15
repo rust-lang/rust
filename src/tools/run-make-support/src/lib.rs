@@ -3,17 +3,13 @@
 //! notably is built via cargo: this means that if your test wants some non-trivial utility, such
 //! as `object` or `wasmparser`, they can be re-exported and be made available through this library.
 
-pub mod cc;
-pub mod clang;
 mod command;
 pub mod diff;
 pub mod env_checked;
+pub mod external_deps;
 pub mod fs_wrapper;
-pub mod llvm;
 mod macros;
 pub mod run;
-pub mod rustc;
-pub mod rustdoc;
 pub mod targets;
 
 use std::fs;
@@ -27,17 +23,26 @@ pub use object;
 pub use regex;
 pub use wasmparser;
 
+// Re-exports of external dependencies.
+pub use external_deps::{cc, clang, htmldocck, llvm, python, rustc, rustdoc};
+
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
-pub use diff::{diff, Diff};
-pub use env_checked::{env_var, env_var_os};
+pub use htmldocck::htmldocck;
 pub use llvm::{
     llvm_ar, llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmFilecheck,
     LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
-pub use run::{cmd, run, run_fail, run_with_args};
+pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
+
+pub use diff::{diff, Diff};
+
+pub use env_checked::{env_var, env_var_os};
+
+pub use run::{cmd, run, run_fail, run_with_args};
+
 pub use targets::{is_darwin, is_msvc, is_windows, target, uname};
 
 use command::{Command, CompletedProcess};
@@ -53,21 +58,6 @@ pub fn ar(inputs: &[impl AsRef<Path>], output_path: impl AsRef<Path>) {
     for input in inputs {
         builder.append_path(input).unwrap();
     }
-}
-
-#[track_caller]
-#[must_use]
-pub fn python_command() -> Command {
-    let python_path = env_var("PYTHON");
-    Command::new(python_path)
-}
-
-#[track_caller]
-#[must_use]
-pub fn htmldocck() -> Command {
-    let mut python = python_command();
-    python.arg(source_root().join("src/etc/htmldocck.py"));
-    python
 }
 
 /// Returns the path for a local test file.
