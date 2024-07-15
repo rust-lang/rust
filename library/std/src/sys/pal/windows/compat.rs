@@ -112,8 +112,10 @@ impl Module {
     /// (e.g. kernel32 and ntdll).
     pub unsafe fn new(name: &CStr) -> Option<Self> {
         // SAFETY: A CStr is always null terminated.
-        let module = c::GetModuleHandleA(name.as_ptr().cast::<u8>());
-        NonNull::new(module).map(Self)
+        unsafe {
+            let module = c::GetModuleHandleA(name.as_ptr().cast::<u8>());
+            NonNull::new(module).map(Self)
+        }
     }
 
     // Try to get the address of a function.

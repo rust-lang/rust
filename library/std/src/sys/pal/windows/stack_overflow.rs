@@ -1,4 +1,5 @@
 #![cfg_attr(test, allow(dead_code))]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::sys::c;
 use crate::thread;

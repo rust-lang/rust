@@ -1,6 +1,7 @@
 //! Implementation of `std::os` functionality for Windows.
 
 #![allow(nonstandard_style)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
