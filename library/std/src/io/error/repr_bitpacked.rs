@@ -267,11 +267,14 @@ where
                 // Using this rather than unwrap meaningfully improves the code
                 // for callers which only care about one variant (usually
                 // `Custom`)
-                core::hint::unreachable_unchecked();
+                unsafe { core::hint::unreachable_unchecked() };
             });
             ErrorData::Simple(kind)
         }
-        TAG_SIMPLE_MESSAGE => ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()),
+        TAG_SIMPLE_MESSAGE => {
+            // SAFETY: per tag
+            unsafe { ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()) }
+        }
         TAG_CUSTOM => {
             // It would be correct for us to use `ptr::byte_sub` here (see the
             // comment above the `wrapping_add` call in `new_custom` for why),
