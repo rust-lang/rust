@@ -88,8 +88,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
     // and all `Expression` dependencies (operands) are also generated, for any other
     // `BasicCoverageBlock`s not already associated with a coverage span.
-    let bcbs_with_counter_mappings =
-        extracted_mappings.all_bcbs_with_counter_mappings(&basic_coverage_blocks);
+    let bcbs_with_counter_mappings = extracted_mappings.all_bcbs_with_counter_mappings();
     if bcbs_with_counter_mappings.is_empty() {
         // No relevant spans were found in MIR, so skip instrumenting this function.
         return;
@@ -163,6 +162,7 @@ fn create_mappings<'tcx>(
 
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
     let ExtractedMappings {
+        num_bcbs: _,
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bytes: _,
