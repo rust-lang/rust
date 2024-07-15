@@ -4,11 +4,12 @@
 //! as `object` or `wasmparser`, they can be re-exported and be made available through this library.
 
 mod command;
+mod macros;
+
 pub mod diff;
 pub mod env_checked;
 pub mod external_deps;
 pub mod fs_wrapper;
-mod macros;
 pub mod run;
 pub mod targets;
 
@@ -17,6 +18,7 @@ use std::io;
 use std::panic;
 use std::path::{Path, PathBuf};
 
+// Re-exports of third-party library crates.
 pub use bstr;
 pub use gimli;
 pub use object;
@@ -26,6 +28,7 @@ pub use wasmparser;
 // Re-exports of external dependencies.
 pub use external_deps::{cc, clang, htmldocck, llvm, python, rustc, rustdoc};
 
+// These rely on external dependencies.
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
@@ -37,12 +40,18 @@ pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
+/// [`diff`] is implemented in terms of the [similar] library.
+///
+/// [similar]: https://github.com/mitsuhiko/similar
 pub use diff::{diff, Diff};
 
+/// Panic-on-fail [`std::env::var`] and [`std::env::var_os`] wrappers.
 pub use env_checked::{env_var, env_var_os};
 
+/// Convenience helpers for running binaries and other commands.
 pub use run::{cmd, run, run_fail, run_with_args};
 
+/// Helpers for checking target information.
 pub use targets::{is_darwin, is_msvc, is_windows, target, uname};
 
 use command::{Command, CompletedProcess};
