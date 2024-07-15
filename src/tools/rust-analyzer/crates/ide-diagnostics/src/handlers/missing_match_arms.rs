@@ -608,8 +608,8 @@ fn main() {
     // `Never` is deliberately not defined so that it's an uninferred type.
     // We ignore these to avoid triggering bugs in the analysis.
     match Option::<Never>::None {
-        None => (),
-        Some(never) => match never {},
+        Option::None => (),
+        Option::Some(never) => match never {},
     }
     match Option::<Never>::None {
         Option::Some(_never) => {},
