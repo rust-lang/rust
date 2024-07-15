@@ -15,5 +15,9 @@ smallvec = "1.8.1"
 [features]
 # tidy-alphabetical-start
 default = ["nightly"]
-nightly = ["rustc_serialize", "rustc_macros", "rustc_index_macros/nightly"]
+nightly = [
+    "dep:rustc_serialize",
+    "dep:rustc_macros",
+    "rustc_index_macros/nightly",
+]
 # tidy-alphabetical-end

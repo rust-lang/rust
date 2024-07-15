@@ -26,5 +26,5 @@ tracing = "0.1"
 
 [features]
 # tidy-alphabetical-start
-rustc_use_parallel_compiler = ["rustc-rayon-core"]
+rustc_use_parallel_compiler = ["dep:rustc-rayon-core"]
 # tidy-alphabetical-end
