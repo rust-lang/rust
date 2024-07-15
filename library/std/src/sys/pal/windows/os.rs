@@ -1,7 +1,6 @@
 //! Implementation of `std::os` functionality for Windows.
 
 #![allow(nonstandard_style)]
-#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
@@ -305,15 +304,21 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
 }
 
 pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    let k = to_u16s(k)?;
-    let v = to_u16s(v)?;
+    // SAFETY: We ensure that k and v are null-terminated wide strings.
+    unsafe {
+        let k = to_u16s(k)?;
+        let v = to_u16s(v)?;
 
-    cvt(c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr())).map(drop)
+        cvt(c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr())).map(drop)
+    }
 }
 
 pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
-    let v = to_u16s(n)?;
-    cvt(c::SetEnvironmentVariableW(v.as_ptr(), ptr::null())).map(drop)
+    // SAFETY: We ensure that v is a null-terminated wide strings.
+    unsafe {
+        let v = to_u16s(n)?;
+        cvt(c::SetEnvironmentVariableW(v.as_ptr(), ptr::null())).map(drop)
+    }
 }
 
 pub fn temp_dir() -> PathBuf {
