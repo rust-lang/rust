@@ -244,7 +244,9 @@ impl<T: ?Sized> ReentrantLock<T> {
     }
 
     unsafe fn increment_lock_count(&self) -> Option<()> {
-        *self.lock_count.get() = (*self.lock_count.get()).checked_add(1)?;
+        unsafe {
+            *self.lock_count.get() = (*self.lock_count.get()).checked_add(1)?;
+        }
         Some(())
     }
 }

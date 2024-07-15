@@ -200,11 +200,12 @@ impl<T> Channel<T> {
             return Err(msg);
         }
 
-        let slot: &Slot<T> = &*(token.array.slot as *const Slot<T>);
-
         // Write the message into the slot and update the stamp.
-        slot.msg.get().write(MaybeUninit::new(msg));
-        slot.stamp.store(token.array.stamp, Ordering::Release);
+        unsafe {
+            let slot: &Slot<T> = &*(token.array.slot as *const Slot<T>);
+            slot.msg.get().write(MaybeUninit::new(msg));
+            slot.stamp.store(token.array.stamp, Ordering::Release);
+        }
 
         // Wake a sleeping receiver.
         self.receivers.notify();
@@ -291,11 +292,14 @@ impl<T> Channel<T> {
             return Err(());
         }
 
-        let slot: &Slot<T> = &*(token.array.slot as *const Slot<T>);
-
         // Read the message from the slot and update the stamp.
-        let msg = slot.msg.get().read().assume_init();
-        slot.stamp.store(token.array.stamp, Ordering::Release);
+        let msg = unsafe {
+            let slot: &Slot<T> = &*(token.array.slot as *const Slot<T>);
+
+            let msg = slot.msg.get().read().assume_init();
+            slot.stamp.store(token.array.stamp, Ordering::Release);
+            msg
+        };
 
         // Wake a sleeping sender.
         self.senders.notify();
@@ -471,7 +475,7 @@ impl<T> Channel<T> {
             false
         };
 
-        self.discard_all_messages(tail);
+        unsafe { self.discard_all_messages(tail) };
         disconnected
     }
 
