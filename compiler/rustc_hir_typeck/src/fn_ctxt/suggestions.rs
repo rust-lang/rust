@@ -1429,6 +1429,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
+    // Suggest to change `Option<&Vec<T>>::unwrap_or(&[])` to `Option::map_or(&[], |v| v)`.
+    #[instrument(level = "trace", skip(self, err, provided_expr))]
+    pub(crate) fn suggest_deref_unwrap_or(
+        &self,
+        err: &mut Diag<'_>,
+        error_span: Span,
+        callee_ty: Option<Ty<'tcx>>,
+        call_ident: Option<Ident>,
+        expected_ty: Ty<'tcx>,
+        provided_ty: Ty<'tcx>,
+        provided_expr: &Expr<'tcx>,
+        is_method: bool,
+    ) {
+        if !is_method {
+            return;
+        }
+        let Some(callee_ty) = callee_ty else {
+            return;
+        };
+        let ty::Adt(callee_adt, _) = callee_ty.peel_refs().kind() else {
+            return;
+        };
+        let adt_name = if self.tcx.is_diagnostic_item(sym::Option, callee_adt.did()) {
+            "Option"
+        } else if self.tcx.is_diagnostic_item(sym::Result, callee_adt.did()) {
+            "Result"
+        } else {
+            return;
+        };
+
+        let Some(call_ident) = call_ident else {
+            return;
+        };
+        if call_ident.name != sym::unwrap_or {
+            return;
+        }
+
+        let ty::Ref(_, peeled, _mutability) = provided_ty.kind() else {
+            return;
+        };
+
+        // NOTE: Can we reuse `suggest_deref_or_ref`?
+
+        // Create an dummy type `&[_]` so that both &[] and `&Vec<T>` can coerce to it.
+        let dummy_ty = if let ty::Array(elem_ty, size) = peeled.kind()
+            && let ty::Infer(_) = elem_ty.kind()
+            && size.try_eval_target_usize(self.tcx, self.param_env) == Some(0)
+        {
+            let slice = Ty::new_slice(self.tcx, *elem_ty);
+            Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, slice)
+        } else {
+            provided_ty
+        };
+
+        if !self.can_coerce(expected_ty, dummy_ty) {
+            return;
+        }
+        let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
+        err.multipart_suggestion_verbose(
+            msg,
+            vec![
+                (call_ident.span, "map_or".to_owned()),
+                (provided_expr.span.shrink_to_hi(), ", |v| v".to_owned()),
+            ],
+            Applicability::MachineApplicable,
+        );
+    }
+
     /// Suggest wrapping the block in square brackets instead of curly braces
     /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
     pub(crate) fn suggest_block_to_brackets(
