@@ -364,8 +364,8 @@ declare_lint_pass!(MiscEarlyLints => [
 ]);
 
 impl EarlyLintPass for MiscEarlyLints {
-    fn check_generics(&mut self, cx: &EarlyContext<'_>, gen: &Generics) {
-        for param in &gen.params {
+    fn check_generics(&mut self, cx: &EarlyContext<'_>, generics: &Generics) {
+        for param in &generics.params {
             builtin_type_shadow::check(cx, param);
         }
     }

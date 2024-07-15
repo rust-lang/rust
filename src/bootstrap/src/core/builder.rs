@@ -1998,6 +1998,9 @@ impl<'a> Builder<'a> {
         if mode == Mode::Rustc {
             rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
+            // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
+            // of the individual lints are satisfied.
+            rustflags.arg("-Wkeyword_idents_2024");
         }
 
         if self.config.rust_frame_pointers {
