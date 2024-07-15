@@ -28,6 +28,13 @@ pub fn is_darwin() -> bool {
     target().contains("darwin")
 }
 
+/// Check if `component` is within `LLVM_COMPONENTS`
+#[must_use]
+pub fn llvm_components_contain(component: &str) -> bool {
+    // `LLVM_COMPONENTS` is a space-separated list of words
+    env_var("LLVM_COMPONENTS").split_whitespace().find(|s| s == &component).is_some()
+}
+
 /// Run `uname`. This assumes that `uname` is available on the platform!
 #[track_caller]
 #[must_use]
