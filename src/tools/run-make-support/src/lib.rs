@@ -137,13 +137,13 @@ pub fn set_host_rpath(cmd: &mut Command) {
     });
 }
 
-/// Check that all files in `dir1` exist and have the same content in `dir2`. Panic otherwise.
-pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
+/// Assert that all files in `dir1` exist and have the same content in `dir2`
+pub fn assert_recursive_eq(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     let dir2 = dir2.as_ref();
     read_dir(dir1, |entry_path| {
         let entry_name = entry_path.file_name().unwrap();
         if entry_path.is_dir() {
-            recursive_diff(&entry_path, &dir2.join(entry_name));
+            assert_recursive_eq(&entry_path, &dir2.join(entry_name));
         } else {
             let path2 = dir2.join(entry_name);
             let file1 = fs_wrapper::read(&entry_path);
