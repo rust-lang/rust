@@ -4,6 +4,7 @@ use std::{fmt, iter, mem};
 use base_db::CrateId;
 use hir_expand::{name::Name, MacroDefId};
 use intern::{sym, Interned};
+use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 use triomphe::Arc;
@@ -497,9 +498,11 @@ impl Resolver {
                 res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
             })
         });
-        def_map.macro_use_prelude().for_each(|(name, (def, _extern_crate))| {
-            res.add(name, ScopeDef::ModuleDef(def.into()));
-        });
+        def_map.macro_use_prelude().iter().sorted_by_key(|&(k, _)| k.clone()).for_each(
+            |(name, &(def, _extern_crate))| {
+                res.add(name, ScopeDef::ModuleDef(def.into()));
+            },
+        );
         def_map.extern_prelude().for_each(|(name, (def, _extern_crate))| {
             res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def.into())));
         });

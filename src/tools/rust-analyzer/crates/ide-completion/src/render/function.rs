@@ -259,7 +259,7 @@ pub(super) fn add_call_parens<'b>(
 
 fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'static str {
     if let Some(derefed_ty) = ty.remove_ref() {
-        for (name, local) in ctx.locals.iter() {
+        for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
             if name.as_str() == arg {
                 return if local.ty(ctx.db) == derefed_ty {
                     if ty.is_mutable_reference() {

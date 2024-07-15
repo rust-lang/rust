@@ -323,7 +323,7 @@ pub struct ModuleData {
     ///
     /// [`None`] for block modules because they are always its `DefMap`'s root.
     pub parent: Option<LocalModuleId>,
-    pub children: FxHashMap<Name, LocalModuleId>,
+    pub children: FxIndexMap<Name, LocalModuleId>,
     pub scope: ItemScope,
 }
 
@@ -593,10 +593,8 @@ impl DefMap {
         self.data.extern_prelude.iter().map(|(name, &def)| (name, def))
     }
 
-    pub(crate) fn macro_use_prelude(
-        &self,
-    ) -> impl Iterator<Item = (&Name, (MacroId, Option<ExternCrateId>))> + '_ {
-        self.macro_use_prelude.iter().map(|(name, &def)| (name, def))
+    pub(crate) fn macro_use_prelude(&self) -> &FxHashMap<Name, (MacroId, Option<ExternCrateId>)> {
+        &self.macro_use_prelude
     }
 
     pub(crate) fn resolve_path(
@@ -668,7 +666,7 @@ impl ModuleData {
             origin,
             visibility,
             parent: None,
-            children: FxHashMap::default(),
+            children: Default::default(),
             scope: ItemScope::default(),
         }
     }

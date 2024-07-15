@@ -1348,6 +1348,7 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
         .keys()
         .map(|name| name.display(&db).to_string())
         .sorted()
+        .sorted()
         .join("\n");
 
     expect![[r#"

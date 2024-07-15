@@ -15,7 +15,7 @@ use syntax::{
 use crate::{
     helpers::item_name,
     items_locator::{self, AssocSearchMode, DEFAULT_QUERY_SEARCH_LIMIT},
-    RootDatabase,
+    FxIndexSet, RootDatabase,
 };
 
 /// A candidate for import, derived during various IDE activities:
@@ -262,7 +262,7 @@ impl ImportAssets {
 
         let scope = match sema.scope(&self.candidate_node) {
             Some(it) => it,
-            None => return <FxHashSet<_>>::default().into_iter(),
+            None => return <FxIndexSet<_>>::default().into_iter(),
         };
 
         let krate = self.module_with_candidate.krate();
@@ -319,7 +319,7 @@ fn path_applicable_imports(
     path_candidate: &PathImportCandidate,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath> + Copy,
     scope_filter: impl Fn(ItemInNs) -> bool + Copy,
-) -> FxHashSet<LocatedImport> {
+) -> FxIndexSet<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::path_applicable_imports").entered();
 
     match &path_candidate.qualifier {
@@ -500,7 +500,7 @@ fn trait_applicable_items(
     trait_assoc_item: bool,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
     scope_filter: impl Fn(hir::Trait) -> bool,
-) -> FxHashSet<LocatedImport> {
+) -> FxIndexSet<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::trait_applicable_items").entered();
 
     let db = sema.db;
@@ -566,7 +566,7 @@ fn trait_applicable_items(
         definitions_exist_in_trait_crate || definitions_exist_in_receiver_crate()
     });
 
-    let mut located_imports = FxHashSet::default();
+    let mut located_imports = FxIndexSet::default();
     let mut trait_import_paths = FxHashMap::default();
 
     if trait_assoc_item {

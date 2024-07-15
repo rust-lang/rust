@@ -37,6 +37,7 @@ const _: () =
 /// A pointer that points to a pointer to a `str`, it may be backed as a `&'static &'static str` or
 /// `Arc<Box<str>>` but its size is that of a thin pointer. The active variant is encoded as a tag
 /// in the LSB of the alignment niche.
+// Note, Ideally this would encode a `ThinArc<str>` and `ThinRef<str>`/`ThinConstPtr<str>` instead of the double indirection.
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 struct TaggedArcPtr {
     packed: NonNull<*const str>,
