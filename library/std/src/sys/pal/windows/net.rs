@@ -250,7 +250,7 @@ impl Socket {
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
-        let length = cmp::min(bufs.len(), c::DWORD::MAX as usize) as c::DWORD;
+        let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nread = 0;
         let mut flags = 0;
         let result = unsafe {
@@ -335,7 +335,7 @@ impl Socket {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let length = cmp::min(bufs.len(), c::DWORD::MAX as usize) as c::DWORD;
+        let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nwritten = 0;
         let result = unsafe {
             c::WSASend(
@@ -371,7 +371,7 @@ impl Socket {
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
-        let raw: c::DWORD = net::getsockopt(self, c::SOL_SOCKET, kind)?;
+        let raw: u32 = net::getsockopt(self, c::SOL_SOCKET, kind)?;
         if raw == 0 {
             Ok(None)
         } else {
