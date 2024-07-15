@@ -2241,9 +2241,13 @@ impl<'a> Parser<'a> {
             let kw_token = self.token.clone();
             let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item(ForceCollect::No)?;
+            let mut item = item.unwrap().span;
+            if self.token == token::Comma {
+                item = item.to(self.token.span);
+            }
             self.dcx().emit_err(errors::NestedAdt {
                 span: kw_token.span,
-                item: item.unwrap().span,
+                item,
                 kw_str,
                 keyword: keyword.as_str(),
             });

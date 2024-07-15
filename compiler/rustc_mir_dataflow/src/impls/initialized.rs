@@ -283,7 +283,7 @@ impl<'a, 'mir, 'tcx> MaybeInitializedPlaces<'a, 'mir, 'tcx> {
     ) {
         match state {
             DropFlagState::Absent => trans.kill(path),
-            DropFlagState::Present => trans.gen(path),
+            DropFlagState::Present => trans.gen_(path),
         }
     }
 }
@@ -295,7 +295,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, '_, 'tcx> {
         state: DropFlagState,
     ) {
         match state {
-            DropFlagState::Absent => trans.gen(path),
+            DropFlagState::Absent => trans.gen_(path),
             DropFlagState::Present => trans.kill(path),
         }
     }
@@ -309,7 +309,7 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     ) {
         match state {
             DropFlagState::Absent => trans.kill(path),
-            DropFlagState::Present => trans.gen(path),
+            DropFlagState::Present => trans.gen_(path),
         }
     }
 }
@@ -331,7 +331,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, '_, 'tcx> {
             MaybeReachable::Reachable(ChunkedBitSet::new_empty(self.move_data().move_paths.len()));
         drop_flag_effects_for_function_entry(self.body, self.mdpe, |path, s| {
             assert!(s == DropFlagState::Present);
-            state.gen(path);
+            state.gen_(path);
         });
     }
 }
@@ -362,7 +362,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, '_, 'tcx> {
             && let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref())
         {
             on_all_children_bits(self.move_data(), mpi, |child| {
-                trans.gen(child);
+                trans.gen_(child);
             })
         }
     }
@@ -400,7 +400,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, '_, 'tcx> {
                 self.move_data(),
                 self.move_data().rev_lookup.find(place.as_ref()),
                 |mpi| {
-                    trans.gen(mpi);
+                    trans.gen_(mpi);
                 },
             );
         });
@@ -572,7 +572,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, '_, 'tcx> {
                 self.move_data(),
                 enum_place,
                 variant,
-                |mpi| trans.gen(mpi),
+                |mpi| trans.gen_(mpi),
             );
         });
     }
@@ -643,7 +643,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
                 self.move_data(),
                 self.move_data().rev_lookup.find(place.as_ref()),
                 |mpi| {
-                    trans.gen(mpi);
+                    trans.gen_(mpi);
                 },
             );
         });
@@ -738,7 +738,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, '_, 'tcx> {
 
         let call_loc = self.body.terminator_loc(block);
         for init_index in &init_loc_map[call_loc] {
-            trans.gen(*init_index);
+            trans.gen_(*init_index);
         }
     }
 }

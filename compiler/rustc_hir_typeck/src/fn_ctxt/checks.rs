@@ -2554,7 +2554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .and_then(|node| node.generics())
                         .into_iter()
                         .flat_map(|generics| generics.params)
-                        .find(|gen| &gen.def_id.to_def_id() == res_def_id)
+                        .find(|param| &param.def_id.to_def_id() == res_def_id)
                 } else {
                     None
                 }

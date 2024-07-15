@@ -3218,10 +3218,10 @@ impl<'hir> Item<'hir> {
             ItemKind::Static(ty, mutbl, body), (ty, *mutbl, *body);
 
         expect_const, (&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
-            ItemKind::Const(ty, gen, body), (ty, gen, *body);
+            ItemKind::Const(ty, generics, body), (ty, generics, *body);
 
         expect_fn, (&FnSig<'hir>, &'hir Generics<'hir>, BodyId),
-            ItemKind::Fn(sig, gen, body), (sig, gen, *body);
+            ItemKind::Fn(sig, generics, body), (sig, generics, *body);
 
         expect_macro, (&ast::MacroDef, MacroKind), ItemKind::Macro(def, mk), (def, *mk);
 
@@ -3233,25 +3233,25 @@ impl<'hir> Item<'hir> {
         expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm(asm), asm;
 
         expect_ty_alias, (&'hir Ty<'hir>, &'hir Generics<'hir>),
-            ItemKind::TyAlias(ty, gen), (ty, gen);
+            ItemKind::TyAlias(ty, generics), (ty, generics);
 
         expect_opaque_ty, &OpaqueTy<'hir>, ItemKind::OpaqueTy(ty), ty;
 
-        expect_enum, (&EnumDef<'hir>, &'hir Generics<'hir>), ItemKind::Enum(def, gen), (def, gen);
+        expect_enum, (&EnumDef<'hir>, &'hir Generics<'hir>), ItemKind::Enum(def, generics), (def, generics);
 
         expect_struct, (&VariantData<'hir>, &'hir Generics<'hir>),
-            ItemKind::Struct(data, gen), (data, gen);
+            ItemKind::Struct(data, generics), (data, generics);
 
         expect_union, (&VariantData<'hir>, &'hir Generics<'hir>),
-            ItemKind::Union(data, gen), (data, gen);
+            ItemKind::Union(data, generics), (data, generics);
 
         expect_trait,
             (IsAuto, Safety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
-            ItemKind::Trait(is_auto, safety, gen, bounds, items),
-            (*is_auto, *safety, gen, bounds, items);
+            ItemKind::Trait(is_auto, safety, generics, bounds, items),
+            (*is_auto, *safety, generics, bounds, items);
 
         expect_trait_alias, (&'hir Generics<'hir>, GenericBounds<'hir>),
-            ItemKind::TraitAlias(gen, bounds), (gen, bounds);
+            ItemKind::TraitAlias(generics, bounds), (generics, bounds);
 
         expect_impl, &'hir Impl<'hir>, ItemKind::Impl(imp), imp;
     }
