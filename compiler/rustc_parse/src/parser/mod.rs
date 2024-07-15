@@ -221,6 +221,7 @@ enum Capturing {
     Yes,
 }
 
+// This state is used by `Parser::collect_tokens_trailing_token`.
 #[derive(Clone, Debug)]
 struct CaptureState {
     capturing: Capturing,
