@@ -1,8 +1,9 @@
 //! Collection of assertions and assertion-related helpers.
 
-use std::path::{Path, PathBuf};
 use std::panic;
+use std::path::{Path, PathBuf};
 
+use crate::fs_helpers;
 use crate::fs_wrapper;
 use crate::path_helpers::cwd;
 
@@ -139,4 +140,29 @@ pub fn assert_not_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N)
         eprintln!("{}", needle);
         panic!("needle was unexpectedly found in haystack");
     }
+}
+
+/// Assert that all files in `dir1` exist and have the same content in `dir2`
+pub fn assert_recursive_eq(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
+    let dir2 = dir2.as_ref();
+    fs_helpers::read_dir(dir1, |entry_path| {
+        let entry_name = entry_path.file_name().unwrap();
+        if entry_path.is_dir() {
+            assert_recursive_eq(&entry_path, &dir2.join(entry_name));
+        } else {
+            let path2 = dir2.join(entry_name);
+            let file1 = fs_wrapper::read(&entry_path);
+            let file2 = fs_wrapper::read(&path2);
+
+            // We don't use `assert_eq!` because they are `Vec<u8>`, so not great for display.
+            // Why not using String? Because there might be minified files or even potentially
+            // binary ones, so that would display useless output.
+            assert!(
+                file1 == file2,
+                "`{}` and `{}` have different content",
+                entry_path.display(),
+                path2.display(),
+            );
+        }
+    });
 }

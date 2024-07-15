@@ -78,7 +78,7 @@ pub use fs_helpers::{copy_dir_all, create_symlink, read_dir};
 pub use scoped_run::{run_in_tmpdir, test_while_readonly};
 
 pub use assertion_helpers::{
-    assert_contains, assert_equals, assert_not_contains,
+    assert_contains, assert_equals, assert_not_contains, assert_recursive_eq,
     count_regex_matches_in_files_with_extension, filename_not_in_denylist, has_extension,
     has_prefix, has_suffix, invalid_utf8_contains, invalid_utf8_not_contains, not_contains,
     shallow_find_files,
@@ -134,30 +134,5 @@ pub fn set_host_rpath(cmd: &mut Command) {
             paths.push(p.to_path_buf());
         }
         std::env::join_paths(paths.iter()).unwrap()
-    });
-}
-
-/// Assert that all files in `dir1` exist and have the same content in `dir2`
-pub fn assert_recursive_eq(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
-    let dir2 = dir2.as_ref();
-    read_dir(dir1, |entry_path| {
-        let entry_name = entry_path.file_name().unwrap();
-        if entry_path.is_dir() {
-            assert_recursive_eq(&entry_path, &dir2.join(entry_name));
-        } else {
-            let path2 = dir2.join(entry_name);
-            let file1 = fs_wrapper::read(&entry_path);
-            let file2 = fs_wrapper::read(&path2);
-
-            // We don't use `assert_eq!` because they are `Vec<u8>`, so not great for display.
-            // Why not using String? Because there might be minified files or even potentially
-            // binary ones, so that would display useless output.
-            assert!(
-                file1 == file2,
-                "`{}` and `{}` have different content",
-                entry_path.display(),
-                path2.display(),
-            );
-        }
     });
 }
