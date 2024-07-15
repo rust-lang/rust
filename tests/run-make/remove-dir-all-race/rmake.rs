@@ -44,6 +44,8 @@ fn main() {
     });
     assert!(
         race_happened,
-        "multithreaded deletion never raced, try increasing the number of attempts or adjusting the sleep timing"
+        "multithreaded deletion never raced, \
+         try increasing the number of attempts or \
+         adjusting the sleep timing"
     );
 }
