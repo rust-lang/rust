@@ -714,7 +714,7 @@ impl<'a> Parser<'a> {
                                 type_err.cancel();
                                 self.dcx().emit_err(errors::MalformedLoopLabel {
                                     span: label.ident.span,
-                                    correct_label: label.ident,
+                                    suggestion: label.ident.span.shrink_to_lo(),
                                 });
                                 return Ok(expr);
                             }
@@ -856,7 +856,7 @@ impl<'a> Parser<'a> {
         let hi = self.interpolated_or_expr_span(&expr);
         let span = lo.to(hi);
         if let Some(lt) = lifetime {
-            self.error_remove_borrow_lifetime(span, lt.ident.span);
+            self.error_remove_borrow_lifetime(span, lt.ident.span.until(expr.span));
         }
         Ok((span, ExprKind::AddrOf(borrow_kind, mutbl, expr)))
     }
@@ -1653,6 +1653,7 @@ impl<'a> Parser<'a> {
         let lo = label_.ident.span;
         let label = Some(label_);
         let ate_colon = self.eat(&token::Colon);
+        let tok_sp = self.token.span;
         let expr = if self.eat_keyword(kw::While) {
             self.parse_expr_while(label, lo)
         } else if self.eat_keyword(kw::For) {
@@ -1747,7 +1748,7 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(errors::RequireColonAfterLabeledExpression {
                 span: expr.span,
                 label: lo,
-                label_end: lo.shrink_to_hi(),
+                label_end: lo.between(tok_sp),
             });
         }
 
@@ -2106,7 +2107,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.dcx().emit_err(errors::FloatLiteralRequiresIntegerPart {
                     span: token.span,
-                    correct: pprust::token_to_string(token).into_owned(),
+                    suggestion: token.span.shrink_to_lo(),
                 });
             }
         }
@@ -2741,7 +2742,7 @@ impl<'a> Parser<'a> {
         if !attrs.is_empty()
             && let [x0 @ xn] | [x0, .., xn] = &*attrs.take_for_recovery(self.psess)
         {
-            let attributes = x0.span.to(xn.span);
+            let attributes = x0.span.until(branch_span);
             let last = xn.span;
             let ctx = if is_ctx_else { "else" } else { "if" };
             self.dcx().emit_err(errors::OuterAttributeNotAllowedOnIfElse {

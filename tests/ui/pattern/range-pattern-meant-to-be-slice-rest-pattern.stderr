@@ -2,7 +2,12 @@ error: range-to patterns with `...` are not allowed
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:13
    |
 LL |         [_, ...tail] => println!("{tail}"),
-   |             ^^^ help: use `..=` instead
+   |             ^^^
+   |
+help: use `..=` instead
+   |
+LL |         [_, ..=tail] => println!("{tail}"),
+   |             ~~~
 
 error[E0425]: cannot find value `rest` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:13

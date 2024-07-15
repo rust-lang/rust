@@ -19,7 +19,12 @@ error: missing type for `static` item
   --> $DIR/removed-syntax-static-fn.rs:4:14
    |
 LL |     static fn f() {}
-   |              ^ help: provide a type for the item: `: <type>`
+   |              ^
+   |
+help: provide a type for the item
+   |
+LL |     static fn: <type> f() {}
+   |              ++++++++
 
 error: aborting due to 3 previous errors
 

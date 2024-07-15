@@ -6,7 +6,11 @@ LL |     let _ @ a = 0;
    |         |   |
    |         |   binding on the right, should be on the left
    |         pattern on the left, should be on the right
-   |         help: switch the order: `a @ _`
+   |
+help: switch the order
+   |
+LL |     let a @ _ = 0;
+   |         ~~~~~
 
 error: pattern on wrong side of `@`
   --> $DIR/wild-before-at-syntactically-rejected.rs:10:9
@@ -16,7 +20,11 @@ LL |     let _ @ ref a = 0;
    |         |   |
    |         |   binding on the right, should be on the left
    |         pattern on the left, should be on the right
-   |         help: switch the order: `ref a @ _`
+   |
+help: switch the order
+   |
+LL |     let ref a @ _ = 0;
+   |         ~~~~~~~~~
 
 error: pattern on wrong side of `@`
   --> $DIR/wild-before-at-syntactically-rejected.rs:12:9
@@ -26,7 +34,11 @@ LL |     let _ @ ref mut a = 0;
    |         |   |
    |         |   binding on the right, should be on the left
    |         pattern on the left, should be on the right
-   |         help: switch the order: `ref mut a @ _`
+   |
+help: switch the order
+   |
+LL |     let ref mut a @ _ = 0;
+   |         ~~~~~~~~~~~~~
 
 error: left-hand side of `@` must be a binding
   --> $DIR/wild-before-at-syntactically-rejected.rs:14:9
