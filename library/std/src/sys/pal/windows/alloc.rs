@@ -15,7 +15,7 @@ mod tests;
 // See https://docs.microsoft.com/windows/win32/api/heapapi/
 
 // Flag to indicate that the memory returned by `HeapAlloc` should be zeroed.
-const HEAP_ZERO_MEMORY: c::DWORD = 0x00000008;
+const HEAP_ZERO_MEMORY: u32 = 0x00000008;
 
 // Get a handle to the default heap of the current process, or null if the operation fails.
 //
@@ -113,9 +113,9 @@ fn init_or_get_process_heap() -> c::HANDLE {
 #[cold]
 extern "C" fn process_heap_init_and_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`
-    flags: c::DWORD,
-    dwBytes: c::SIZE_T,
-) -> c::LPVOID {
+    flags: u32,
+    dwBytes: usize,
+) -> *mut c_void {
     let heap = init_or_get_process_heap();
     if core::intrinsics::unlikely(heap.is_null()) {
         return ptr::null_mut();
@@ -127,9 +127,9 @@ extern "C" fn process_heap_init_and_alloc(
 #[inline(never)]
 fn process_heap_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`,
-    flags: c::DWORD,
-    dwBytes: c::SIZE_T,
-) -> c::LPVOID {
+    flags: u32,
+    dwBytes: usize,
+) -> *mut c_void {
     let heap = HEAP.load(Ordering::Relaxed);
     if core::intrinsics::likely(!heap.is_null()) {
         // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`.
@@ -240,7 +240,7 @@ unsafe impl GlobalAlloc for System {
 
         // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
         // `block` is a pointer to the start of an allocated block.
-        unsafe { HeapFree(heap, 0, block as c::LPVOID) };
+        unsafe { HeapFree(heap, 0, block.cast::<c_void>()) };
     }
 
     #[inline]
@@ -253,7 +253,7 @@ unsafe impl GlobalAlloc for System {
             // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
             // `ptr` is a pointer to the start of an allocated block.
             // The returned pointer points to the start of an allocated block.
-            unsafe { HeapReAlloc(heap, 0, ptr as c::LPVOID, new_size) as *mut u8 }
+            unsafe { HeapReAlloc(heap, 0, ptr.cast::<c_void>(), new_size).cast::<u8>() }
         } else {
             // SAFETY: `realloc_fallback` is implemented using `dealloc` and `alloc`, which will
             // correctly handle `ptr` and return a pointer satisfying the guarantees of `System`

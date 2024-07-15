@@ -602,7 +602,8 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     pub unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
-        mem::transmute(value)
+        // SAFETY: start with &[u8], end with fancy &[u8]
+        unsafe { &*(value as *const [u8] as *const Wtf8) }
     }
 
     /// Creates a mutable WTF-8 slice from a mutable WTF-8 byte slice.
@@ -611,7 +612,8 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
-        mem::transmute(value)
+        // SAFETY: start with &mut [u8], end with fancy &mut [u8]
+        unsafe { &mut *(value as *mut [u8] as *mut Wtf8) }
     }
 
     /// Returns the length, in WTF-8 bytes.
@@ -942,8 +944,12 @@ pub fn check_utf8_boundary(slice: &Wtf8, index: usize) {
 /// Copied from core::str::raw::slice_unchecked
 #[inline]
 pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
-    // memory layout of a &[u8] and &Wtf8 are the same
-    Wtf8::from_bytes_unchecked(slice::from_raw_parts(s.bytes.as_ptr().add(begin), end - begin))
+    // SAFETY: memory layout of a &[u8] and &Wtf8 are the same
+    unsafe {
+        let len = end - begin;
+        let start = s.as_bytes().as_ptr().add(begin);
+        Wtf8::from_bytes_unchecked(slice::from_raw_parts(start, len))
+    }
 }
 
 /// Copied from core::str::raw::slice_error_fail

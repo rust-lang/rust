@@ -4,12 +4,11 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 #![allow(clippy::style)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::CStr;
 use crate::mem;
-use crate::num::NonZero;
-pub use crate::os::raw::c_int;
-use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort, c_void};
+use crate::os::raw::{c_char, c_int, c_uint, c_ulong, c_ushort, c_void};
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
@@ -18,30 +17,10 @@ pub(super) mod windows_targets;
 mod windows_sys;
 pub use windows_sys::*;
 
-pub type DWORD = c_ulong;
-pub type NonZeroDWORD = NonZero<c_ulong>;
-pub type LARGE_INTEGER = c_longlong;
-#[cfg_attr(target_vendor = "uwp", allow(unused))]
-pub type LONG = c_long;
-pub type UINT = c_uint;
 pub type WCHAR = u16;
-pub type USHORT = c_ushort;
-pub type SIZE_T = usize;
-pub type CHAR = c_char;
-pub type ULONG = c_ulong;
-
-pub type LPCVOID = *const c_void;
-pub type LPOVERLAPPED = *mut OVERLAPPED;
-pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
-pub type LPVOID = *mut c_void;
-pub type LPWCH = *mut WCHAR;
-pub type LPWSTR = *mut WCHAR;
-
-#[cfg(target_vendor = "win7")]
-pub type PSRWLOCK = *mut SRWLOCK;
 
 pub type socklen_t = c_int;
-pub type ADDRESS_FAMILY = USHORT;
+pub type ADDRESS_FAMILY = c_ushort;
 pub use FD_SET as fd_set;
 pub use LINGER as linger;
 pub use TIMEVAL as timeval;
@@ -151,25 +130,25 @@ pub struct MOUNT_POINT_REPARSE_BUFFER {
 #[repr(C)]
 pub struct SOCKADDR_STORAGE_LH {
     pub ss_family: ADDRESS_FAMILY,
-    pub __ss_pad1: [CHAR; 6],
+    pub __ss_pad1: [c_char; 6],
     pub __ss_align: i64,
-    pub __ss_pad2: [CHAR; 112],
+    pub __ss_pad2: [c_char; 112],
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct sockaddr_in {
     pub sin_family: ADDRESS_FAMILY,
-    pub sin_port: USHORT,
+    pub sin_port: c_ushort,
     pub sin_addr: in_addr,
-    pub sin_zero: [CHAR; 8],
+    pub sin_zero: [c_char; 8],
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct sockaddr_in6 {
     pub sin6_family: ADDRESS_FAMILY,
-    pub sin6_port: USHORT,
+    pub sin6_port: c_ushort,
     pub sin6_flowinfo: c_ulong,
     pub sin6_addr: in6_addr,
     pub sin6_scope_id: c_ulong,
@@ -271,9 +250,9 @@ pub unsafe fn NtReadFile(
     apccontext: *mut c_void,
     iostatusblock: &mut IO_STATUS_BLOCK,
     buffer: *mut crate::mem::MaybeUninit<u8>,
-    length: ULONG,
-    byteoffset: Option<&LARGE_INTEGER>,
-    key: Option<&ULONG>,
+    length: u32,
+    byteoffset: Option<&i64>,
+    key: Option<&u32>,
 ) -> NTSTATUS {
     windows_sys::NtReadFile(
         filehandle.as_raw_handle(),
@@ -294,9 +273,9 @@ pub unsafe fn NtWriteFile(
     apccontext: *mut c_void,
     iostatusblock: &mut IO_STATUS_BLOCK,
     buffer: *const u8,
-    length: ULONG,
-    byteoffset: Option<&LARGE_INTEGER>,
-    key: Option<&ULONG>,
+    length: u32,
+    byteoffset: Option<&i64>,
+    key: Option<&u32>,
 ) -> NTSTATUS {
     windows_sys::NtWriteFile(
         filehandle.as_raw_handle(),
@@ -336,13 +315,13 @@ compat_fn_with_fallback! {
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
     pub fn SetThreadDescription(hthread: HANDLE, lpthreaddescription: PCWSTR) -> HRESULT {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); E_NOTIMPL
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL
     }
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getthreaddescription
     pub fn GetThreadDescription(hthread: HANDLE, lpthreaddescription: *mut PWSTR) -> HRESULT {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); E_NOTIMPL
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL
     }
 
     // >= Win8 / Server 2012
@@ -403,27 +382,27 @@ compat_fn_with_fallback! {
     #[cfg(target_vendor = "win7")]
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: *mut HANDLE,
-        DesiredAccess: DWORD,
-        ObjectAttributes: LPVOID,
-        Flags: ULONG
+        DesiredAccess: u32,
+        ObjectAttributes: *mut c_void,
+        Flags: u32
     ) -> NTSTATUS {
         panic!("keyed events not available")
     }
     #[cfg(target_vendor = "win7")]
     pub fn NtReleaseKeyedEvent(
         EventHandle: HANDLE,
-        Key: LPVOID,
+        Key: *const c_void,
         Alertable: BOOLEAN,
-        Timeout: *mut c_longlong
+        Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
     }
     #[cfg(target_vendor = "win7")]
     pub fn NtWaitForKeyedEvent(
         EventHandle: HANDLE,
-        Key: LPVOID,
+        Key: *const c_void,
         Alertable: BOOLEAN,
-        Timeout: *mut c_longlong
+        Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
     }
@@ -453,9 +432,9 @@ compat_fn_with_fallback! {
         apccontext: *mut c_void,
         iostatusblock: &mut IO_STATUS_BLOCK,
         buffer: *mut crate::mem::MaybeUninit<u8>,
-        length: ULONG,
-        byteoffset: Option<&LARGE_INTEGER>,
-        key: Option<&ULONG>
+        length: u32,
+        byteoffset: Option<&i64>,
+        key: Option<&u32>
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }
@@ -467,9 +446,9 @@ compat_fn_with_fallback! {
         apccontext: *mut c_void,
         iostatusblock: &mut IO_STATUS_BLOCK,
         buffer: *const u8,
-        length: ULONG,
-        byteoffset: Option<&LARGE_INTEGER>,
-        key: Option<&ULONG>
+        length: u32,
+        byteoffset: Option<&i64>,
+        key: Option<&u32>
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }

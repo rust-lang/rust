@@ -1,4 +1,5 @@
 #![unstable(issue = "none", feature = "windows_handle")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
@@ -141,7 +142,7 @@ impl Handle {
         buf: &mut [u8],
         overlapped: *mut c::OVERLAPPED,
     ) -> io::Result<Option<usize>> {
-        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
+        let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
         let mut amt = 0;
         let res =
             cvt(c::ReadFile(self.as_raw_handle(), buf.as_mut_ptr(), len, &mut amt, overlapped));
@@ -209,12 +210,7 @@ impl Handle {
         Ok(Self(self.0.try_clone()?))
     }
 
-    pub fn duplicate(
-        &self,
-        access: c::DWORD,
-        inherit: bool,
-        options: c::DWORD,
-    ) -> io::Result<Self> {
+    pub fn duplicate(&self, access: u32, inherit: bool, options: u32) -> io::Result<Self> {
         Ok(Self(self.0.as_handle().duplicate(access, inherit, options)?))
     }
 
@@ -233,7 +229,7 @@ impl Handle {
         let mut io_status = c::IO_STATUS_BLOCK::PENDING;
 
         // The length is clamped at u32::MAX.
-        let len = cmp::min(len, c::DWORD::MAX as usize) as c::DWORD;
+        let len = cmp::min(len, u32::MAX as usize) as u32;
         let status = c::NtReadFile(
             self.as_handle(),
             ptr::null_mut(),
@@ -281,7 +277,7 @@ impl Handle {
         let mut io_status = c::IO_STATUS_BLOCK::PENDING;
 
         // The length is clamped at u32::MAX.
-        let len = cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
+        let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
         let status = unsafe {
             c::NtWriteFile(
                 self.as_handle(),
