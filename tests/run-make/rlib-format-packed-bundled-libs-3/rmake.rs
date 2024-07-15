@@ -6,11 +6,16 @@
 // See https://github.com/rust-lang/rust/pull/105601
 
 use run_make_support::{
-    build_native_static_lib, fs_wrapper, is_msvc, llvm_ar, regex, rust_lib_name, rustc,
-    static_lib_name,
+    build_native_static_lib, is_msvc, llvm_ar, regex, rfs, rust_lib_name, rustc, static_lib_name,
 };
 
-// FIXME only-linux test-various
+//@ ignore-cross-compile
+// Reason: Invalid library format (not ELF) causes compilation failure
+// in the final `rustc` call.
+
+//@ only-linux
+// Reason: differences in the native lib compilation process causes differences
+// in the --print link-args output
 
 fn main() {
     build_native_static_lib("native_dep_1");
@@ -36,16 +41,12 @@ fn main() {
         .arg(rust_lib_name("rust_dep_cfg"))
         .run()
         .assert_stdout_contains(static_lib_name("native_dep_2"));
+    llvm_ar().arg("t").arg(static_lib_name("main")).run().assert_stdout_contains("native_dep_1.o");
     llvm_ar()
         .arg("t")
         .arg(static_lib_name("main"))
         .run()
-        .assert_stdout_contains(object_file_name("native_dep_1"));
-    llvm_ar()
-        .arg("t")
-        .arg(static_lib_name("main"))
-        .run()
-        .assert_stdout_not_contains(object_file_name("native_dep_2"));
+        .assert_stdout_not_contains("native_dep_2.o");
 
     // Test bundle with whole archive.
     rustc().input("rust_dep.rs").crate_type("rlib").run();
@@ -64,8 +65,8 @@ fn main() {
         .assert_stdout_not_contains("native_dep_4");
 
     // The compiler shouldn't use files which it doesn't know about.
-    fs_wrapper::remove_file(static_lib_name("native_dep_1"));
-    fs_wrapper::remove_file(static_lib_name("native_dep_3"));
+    rfs::remove_file(static_lib_name("native_dep_1"));
+    rfs::remove_file(static_lib_name("native_dep_3"));
 
     let out = rustc()
         .input("main.rs")
@@ -80,9 +81,4 @@ fn main() {
     ).unwrap();
 
     assert!(re.is_match(&out));
-}
-
-//FIXME(Oneirical): potential helper fn if this works on msvc too
-fn object_file_name(name: &str) -> String {
-    if is_msvc() { format!("{name}.obj") } else { format!("{name}.o") }
 }

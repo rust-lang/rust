@@ -48,7 +48,6 @@ run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
 run-make/issue-88756-default-output/Makefile
-run-make/issue-97463-abi-param-passing/Makefile
 run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/libtest-json/Makefile
