@@ -12,7 +12,10 @@
 #![unstable(feature = "f16", issue = "116909")]
 
 use crate::convert::FloatToInt;
+#[cfg(not(test))]
+use crate::intrinsics;
 use crate::mem;
+use crate::num::FpCategory;
 
 /// Basic mathematical constants.
 #[unstable(feature = "f16", issue = "116909")]
@@ -244,7 +247,13 @@ impl f16 {
 
     /// Sign bit
     #[cfg(not(bootstrap))]
-    const SIGN_MASK: u16 = 0x8000;
+    pub(crate) const SIGN_MASK: u16 = 0x8000;
+
+    /// Exponent mask
+    pub(crate) const EXP_MASK: u16 = 0x7c00;
+
+    /// Mantissa mask
+    pub(crate) const MAN_MASK: u16 = 0x03ff;
 
     /// Minimum representable positive value (min subnormal)
     #[cfg(not(bootstrap))]
@@ -342,6 +351,159 @@ impl f16 {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
         self.abs_private() < Self::INFINITY
+    }
+
+    /// Returns `true` if the number is [subnormal].
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let min = f16::MIN_POSITIVE; // 6.1035e-5
+    /// let max = f16::MAX;
+    /// let lower_than_min = 1.0e-7_f16;
+    /// let zero = 0.0_f16;
+    ///
+    /// assert!(!min.is_subnormal());
+    /// assert!(!max.is_subnormal());
+    ///
+    /// assert!(!zero.is_subnormal());
+    /// assert!(!f16::NAN.is_subnormal());
+    /// assert!(!f16::INFINITY.is_subnormal());
+    /// // Values between `0` and `min` are Subnormal.
+    /// assert!(lower_than_min.is_subnormal());
+    /// # }
+    /// ```
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[inline]
+    #[must_use]
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn is_subnormal(self) -> bool {
+        matches!(self.classify(), FpCategory::Subnormal)
+    }
+
+    /// Returns `true` if the number is neither zero, infinite, [subnormal], or NaN.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let min = f16::MIN_POSITIVE; // 6.1035e-5
+    /// let max = f16::MAX;
+    /// let lower_than_min = 1.0e-7_f16;
+    /// let zero = 0.0_f16;
+    ///
+    /// assert!(min.is_normal());
+    /// assert!(max.is_normal());
+    ///
+    /// assert!(!zero.is_normal());
+    /// assert!(!f16::NAN.is_normal());
+    /// assert!(!f16::INFINITY.is_normal());
+    /// // Values between `0` and `min` are Subnormal.
+    /// assert!(!lower_than_min.is_normal());
+    /// # }
+    /// ```
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[inline]
+    #[must_use]
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn is_normal(self) -> bool {
+        matches!(self.classify(), FpCategory::Normal)
+    }
+
+    /// Returns the floating point category of the number. If only one property
+    /// is going to be tested, it is generally faster to use the specific
+    /// predicate instead.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// use std::num::FpCategory;
+    ///
+    /// let num = 12.4_f16;
+    /// let inf = f16::INFINITY;
+    ///
+    /// assert_eq!(num.classify(), FpCategory::Normal);
+    /// assert_eq!(inf.classify(), FpCategory::Infinite);
+    /// # }
+    /// ```
+    #[inline]
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn classify(self) -> FpCategory {
+        // A previous implementation for f32/f64 tried to only use bitmask-based checks,
+        // using `to_bits` to transmute the float to its bit repr and match on that.
+        // Unfortunately, floating point numbers can be much worse than that.
+        // This also needs to not result in recursive evaluations of `to_bits`.
+        //
+
+        // Platforms without native support generally convert to `f32` to perform operations,
+        // and most of these platforms correctly round back to `f16` after each operation.
+        // However, some platforms have bugs where they keep the excess `f32` precision (e.g.
+        // WASM, see llvm/llvm-project#96437). This implementation makes a best-effort attempt
+        // to account for that excess precision.
+        if self.is_infinite() {
+            // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
+            FpCategory::Infinite
+        } else if self.is_nan() {
+            // And it may not be NaN, as it can simply be an "overextended" finite value.
+            FpCategory::Nan
+        } else {
+            // However, std can't simply compare to zero to check for zero, either,
+            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
+            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
+            // Most of std's targets don't use those, but they are used for thumbv7neon.
+            // So, this does use bitpattern matching for the rest.
+
+            // SAFETY: f16 to u16 is fine. Usually.
+            // If classify has gotten this far, the value is definitely in one of these categories.
+            unsafe { f16::partial_classify(self) }
+        }
+    }
+
+    /// This doesn't actually return a right answer for NaN on purpose,
+    /// seeing as how it cannot correctly discern between a floating point NaN,
+    /// and some normal floating point numbers truncated from an x87 FPU.
+    ///
+    /// # Safety
+    ///
+    /// This requires making sure you call this function for values it answers correctly on,
+    /// otherwise it returns a wrong answer. This is not important for memory safety per se,
+    /// but getting floats correct is important for not accidentally leaking const eval
+    /// runtime-deviating logic which may or may not be acceptable.
+    #[inline]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const unsafe fn partial_classify(self) -> FpCategory {
+        // SAFETY: The caller is not asking questions for which this will tell lies.
+        let b = unsafe { mem::transmute::<f16, u16>(self) };
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
+        }
+    }
+
+    /// This operates on bits, and only bits, so it can ignore concerns about weird FPUs.
+    /// FIXME(jubilee): In a just world, this would be the entire impl for classify,
+    /// plus a transmute. We do not live in a just world, but we can make it more so.
+    #[inline]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const fn classify_bits(b: u16) -> FpCategory {
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
+        }
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
@@ -634,12 +796,52 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_bits(self) -> u16 {
-        // SAFETY: `u16` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        unsafe { mem::transmute(self) }
+    pub const fn to_bits(self) -> u16 {
+        // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
+        // ...sorta.
+        //
+        // It turns out that at runtime, it is possible for a floating point number
+        // to be subject to a floating point mode that alters nonzero subnormal numbers
+        // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
+        //
+        // And, of course evaluating to a NaN value is fairly nondeterministic.
+        // More precisely: when NaN should be returned is knowable, but which NaN?
+        // So far that's defined by a combination of LLVM and the CPU, not Rust.
+        // This function, however, allows observing the bitstring of a NaN,
+        // thus introspection on CTFE.
+        //
+        // In order to preserve, at least for the moment, const-to-runtime equivalence,
+        // we reject any of these possible situations from happening.
+        #[inline]
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_f16_to_u16(ct: f16) -> u16 {
+            // FIXME(f16_f128): we should use `.classify()` like `f32` and `f64`, but we don't yet
+            // want to rely on that on all platforms because it is nondeterministic (e.g. x86 has
+            // convention discrepancies calling intrinsics). So just classify the bits instead.
+
+            // SAFETY: this is a POD transmutation
+            let bits = unsafe { mem::transmute::<f16, u16>(ct) };
+            match f16::classify_bits(bits) {
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f16::to_bits on a NaN")
+                }
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f16::to_bits on a subnormal number")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => bits,
+            }
+        }
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_f16_to_u16(x: f16) -> u16 {
+            // SAFETY: `u16` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
+        intrinsics::const_eval_select((self,), ct_f16_to_u16, rt_f16_to_u16)
     }
 
     /// Raw transmutation from `u16`.
@@ -683,11 +885,52 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_bits(v: u16) -> Self {
-        // SAFETY: `u16` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        unsafe { mem::transmute(v) }
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_bits(v: u16) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
+        // SAFETY: `u16` is a plain old datatype so we can always transmute from it
+        // ...sorta.
+        //
+        // It turns out that at runtime, it is possible for a floating point number
+        // to be subject to floating point modes that alter nonzero subnormal numbers
+        // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
+        // This is not a problem usually, but at least one tier2 platform for Rust
+        // actually exhibits this behavior by default: thumbv7neon
+        // aka "the Neon FPU in AArch32 state"
+        //
+        // And, of course evaluating to a NaN value is fairly nondeterministic.
+        // More precisely: when NaN should be returned is knowable, but which NaN?
+        // So far that's defined by a combination of LLVM and the CPU, not Rust.
+        // This function, however, allows observing the bitstring of a NaN,
+        // thus introspection on CTFE.
+        //
+        // In order to preserve, at least for the moment, const-to-runtime equivalence,
+        // reject any of these possible situations from happening.
+        #[inline]
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_u16_to_f16(ct: u16) -> f16 {
+            match f16::classify_bits(ct) {
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f16::from_bits on a subnormal number")
+                }
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f16::from_bits on NaN")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
+                    // SAFETY: It's not a frumious number
+                    unsafe { mem::transmute::<u16, f16>(ct) }
+                }
+            }
+        }
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_u16_to_f16(x: u16) -> f16 {
+            // SAFETY: `u16` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
+        intrinsics::const_eval_select((v,), ct_u16_to_f16, rt_u16_to_f16)
     }
 
     /// Return the memory representation of this floating point number as a byte array in
@@ -709,8 +952,9 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_be_bytes(self) -> [u8; 2] {
+    pub const fn to_be_bytes(self) -> [u8; 2] {
         self.to_bits().to_be_bytes()
     }
 
@@ -733,8 +977,9 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_le_bytes(self) -> [u8; 2] {
+    pub const fn to_le_bytes(self) -> [u8; 2] {
         self.to_bits().to_le_bytes()
     }
 
@@ -770,8 +1015,9 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_ne_bytes(self) -> [u8; 2] {
+    pub const fn to_ne_bytes(self) -> [u8; 2] {
         self.to_bits().to_ne_bytes()
     }
 
@@ -793,7 +1039,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_be_bytes(bytes: [u8; 2]) -> Self {
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_be_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
 
@@ -815,7 +1062,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_le_bytes(bytes: [u8; 2]) -> Self {
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_le_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
 
@@ -848,7 +1096,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_ne_bytes(bytes: [u8; 2]) -> Self {
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_ne_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }
 
