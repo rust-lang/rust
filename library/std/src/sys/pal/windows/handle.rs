@@ -1,4 +1,5 @@
 #![unstable(issue = "none", feature = "windows_handle")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;

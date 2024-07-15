@@ -1,4 +1,5 @@
 #![allow(missing_docs, nonstandard_style)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::ErrorKind;
@@ -54,11 +55,13 @@ impl<T> IoResult<T> for Result<T, api::WinError> {
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
-    stack_overflow::init();
+    unsafe {
+        stack_overflow::init();
 
-    // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
-    // exists, we have to call it ourselves.
-    thread::Thread::set_name_wide(wide_str!("main"));
+        // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
+        // exists, we have to call it ourselves.
+        thread::Thread::set_name_wide(wide_str!("main"));
+    }
 }
 
 // SAFETY: must be called only once during runtime cleanup.

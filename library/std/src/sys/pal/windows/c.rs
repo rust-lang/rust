@@ -4,6 +4,7 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 #![allow(clippy::style)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::CStr;
 use crate::mem;
