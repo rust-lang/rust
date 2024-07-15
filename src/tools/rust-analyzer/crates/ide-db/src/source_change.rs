@@ -5,7 +5,7 @@
 
 use std::{collections::hash_map::Entry, iter, mem};
 
-use crate::SnippetCap;
+use crate::{assists::Command, SnippetCap};
 use base_db::{AnchoredPathBuf, FileId};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
@@ -194,7 +194,7 @@ pub struct SourceChangeBuilder {
     pub edit: TextEditBuilder,
     pub file_id: FileId,
     pub source_change: SourceChange,
-    pub trigger_signature_help: bool,
+    pub command: Option<Command>,
 
     /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
     pub mutated_tree: Option<TreeMutator>,
@@ -236,7 +236,7 @@ impl SourceChangeBuilder {
             edit: TextEdit::builder(),
             file_id,
             source_change: SourceChange::default(),
-            trigger_signature_help: false,
+            command: None,
             mutated_tree: None,
             snippet_builder: None,
         }
@@ -304,8 +304,15 @@ impl SourceChangeBuilder {
         let file_system_edit = FileSystemEdit::MoveFile { src, dst };
         self.source_change.push_file_system_edit(file_system_edit);
     }
+
+    /// Triggers the parameter hint popup after the assist is applied
     pub fn trigger_signature_help(&mut self) {
-        self.trigger_signature_help = true;
+        self.command = Some(Command::TriggerSignatureHelp);
+    }
+
+    /// Renames the item at the cursor position after the assist is applied
+    pub fn rename(&mut self) {
+        self.command = Some(Command::Rename);
     }
 
     /// Adds a tabstop snippet to place the cursor before `node`

@@ -1128,13 +1128,14 @@ pub struct WorkspaceSymbolConfig {
     /// How many items are returned at most.
     pub search_limit: usize,
 }
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientCommandsConfig {
     pub run_single: bool,
     pub debug_single: bool,
     pub show_reference: bool,
     pub goto_location: bool,
     pub trigger_parameter_hints: bool,
+    pub rename: bool,
 }
 
 #[derive(Debug)]
@@ -1901,6 +1902,7 @@ impl Config {
             show_reference: get("rust-analyzer.showReferences"),
             goto_location: get("rust-analyzer.gotoLocation"),
             trigger_parameter_hints: get("editor.action.triggerParameterHints"),
+            rename: get("editor.action.rename"),
         }
     }
 

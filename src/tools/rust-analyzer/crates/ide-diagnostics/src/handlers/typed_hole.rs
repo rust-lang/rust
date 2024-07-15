@@ -82,7 +82,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
                 original_range.file_id,
                 TextEdit::replace(original_range.range, code),
             )),
-            trigger_signature_help: false,
+            command: None,
         })
         .collect();
 

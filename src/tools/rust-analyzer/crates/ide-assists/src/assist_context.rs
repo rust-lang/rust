@@ -185,11 +185,11 @@ impl Assists {
             return None;
         }
 
-        let mut trigger_signature_help = false;
+        let mut command = None;
         let source_change = if self.resolve.should_resolve(&id) {
             let mut builder = SourceChangeBuilder::new(self.file);
             f(&mut builder);
-            trigger_signature_help = builder.trigger_signature_help;
+            command = builder.command.take();
             Some(builder.finish())
         } else {
             None
@@ -197,7 +197,7 @@ impl Assists {
 
         let label = Label::new(label);
         let group = group.cloned();
-        self.buf.push(Assist { id, label, group, target, source_change, trigger_signature_help });
+        self.buf.push(Assist { id, label, group, target, source_change, command });
         Some(())
     }
 

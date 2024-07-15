@@ -613,7 +613,7 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
         group: None,
         target,
         source_change: None,
-        trigger_signature_help: false,
+        command: None,
     }
 }
 

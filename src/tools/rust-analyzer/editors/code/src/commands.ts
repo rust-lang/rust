@@ -118,6 +118,12 @@ export function triggerParameterHints(_: CtxInit): Cmd {
     };
 }
 
+export function rename(_: CtxInit): Cmd {
+    return async () => {
+        await vscode.commands.executeCommand("editor.action.rename");
+    };
+}
+
 export function openLogs(ctx: CtxInit): Cmd {
     return async () => {
         if (ctx.client.outputChannel) {

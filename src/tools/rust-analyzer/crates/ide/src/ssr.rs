@@ -45,7 +45,7 @@ pub(crate) fn ssr_assists(
             group: Some(GroupLabel("Apply SSR".into())),
             target: comment_range,
             source_change,
-            trigger_signature_help: false,
+            command: None,
         };
 
         ssr_assists.push(assist);
@@ -143,7 +143,7 @@ mod tests {
                         is_snippet: false,
                     },
                 ),
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&apply_in_file_assist);
@@ -196,7 +196,7 @@ mod tests {
                         is_snippet: false,
                     },
                 ),
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&apply_in_workspace_assist);
@@ -236,7 +236,7 @@ mod tests {
                 ),
                 target: 10..21,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&apply_in_file_assist);
@@ -256,7 +256,7 @@ mod tests {
                 ),
                 target: 10..21,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&apply_in_workspace_assist);

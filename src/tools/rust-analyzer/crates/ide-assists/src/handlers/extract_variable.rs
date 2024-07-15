@@ -197,6 +197,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     block.indent(indent_to);
                 }
             }
+            edit.rename();
         },
     )
 }

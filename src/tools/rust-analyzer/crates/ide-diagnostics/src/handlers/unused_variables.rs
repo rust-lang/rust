@@ -73,7 +73,7 @@ fn fixes(
             diagnostic_range.file_id,
             TextEdit::replace(name_range, format!("_{}", var_name.display(db))),
         )),
-        trigger_signature_help: false,
+        command: None,
     }])
 }
 
