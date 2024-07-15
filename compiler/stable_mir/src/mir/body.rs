@@ -100,6 +100,10 @@ impl Body {
     pub fn spread_arg(&self) -> Option<Local> {
         self.spread_arg
     }
+
+    pub fn arg_count(&self) -> usize {
+        self.arg_count
+    }
 }
 
 type LocalDecls = Vec<LocalDecl>;
