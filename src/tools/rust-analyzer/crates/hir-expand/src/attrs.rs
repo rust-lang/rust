@@ -5,9 +5,10 @@ use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
 use intern::{sym, Interned};
+
 use mbe::{
-    desugar_doc_comment_text, syntax_node_to_token_tree, token_to_literal, DelimiterKind,
-    DocCommentDesugarMode, Punct,
+    desugar_doc_comment_text, syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode,
+    Punct,
 };
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
@@ -20,7 +21,7 @@ use crate::{
     db::ExpandDatabase,
     mod_path::ModPath,
     span_map::SpanMapRef,
-    tt::{self, Subtree},
+    tt::{self, token_to_literal, Subtree},
     InFile,
 };
 

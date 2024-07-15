@@ -197,7 +197,7 @@ mod tests {
                 .into(),
             ),
             TokenTree::Leaf(Leaf::Literal(Literal {
-                text: "\"Foo\"".into(),
+                text: "Foo".into(),
                 span: Span {
                     range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                     anchor,
@@ -263,32 +263,35 @@ mod tests {
     #[test]
     fn test_proc_macro_rpc_works() {
         let tt = fixture_token_tree();
-        let mut span_data_table = Default::default();
-        let task = ExpandMacro {
-            data: ExpandMacroData {
-                macro_body: FlatTree::new(&tt, CURRENT_API_VERSION, &mut span_data_table),
-                macro_name: Default::default(),
-                attributes: None,
-                has_global_spans: ExpnGlobals {
-                    serialize: true,
-                    def_site: 0,
-                    call_site: 0,
-                    mixed_site: 0,
+        for v in RUST_ANALYZER_SPAN_SUPPORT..=CURRENT_API_VERSION {
+            let mut span_data_table = Default::default();
+            let task = ExpandMacro {
+                data: ExpandMacroData {
+                    macro_body: FlatTree::new(&tt, v, &mut span_data_table),
+                    macro_name: Default::default(),
+                    attributes: None,
+                    has_global_spans: ExpnGlobals {
+                        serialize: true,
+                        def_site: 0,
+                        call_site: 0,
+                        mixed_site: 0,
+                    },
+                    span_data_table: Vec::new(),
                 },
-                span_data_table: Vec::new(),
-            },
-            lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
-            env: Default::default(),
-            current_dir: Default::default(),
-        };
+                lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
+                env: Default::default(),
+                current_dir: Default::default(),
+            };
 
-        let json = serde_json::to_string(&task).unwrap();
-        // println!("{}", json);
-        let back: ExpandMacro = serde_json::from_str(&json).unwrap();
+            let json = serde_json::to_string(&task).unwrap();
+            // println!("{}", json);
+            let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(
-            tt,
-            back.data.macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table)
-        );
+            assert_eq!(
+                tt,
+                back.data.macro_body.to_subtree_resolved(v, &span_data_table),
+                "version: {v}"
+            );
+        }
     }
 }
