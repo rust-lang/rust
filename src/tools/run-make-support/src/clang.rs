@@ -16,7 +16,7 @@ pub struct Clang {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(Clang);
+crate::macros::impl_common_helpers!(Clang);
 
 impl Clang {
     /// Construct a new `clang` invocation. `clang` is not always available for all targets.

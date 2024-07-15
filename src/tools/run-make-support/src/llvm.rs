@@ -70,11 +70,11 @@ pub struct LlvmAr {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(LlvmReadobj);
-crate::impl_common_helpers!(LlvmProfdata);
-crate::impl_common_helpers!(LlvmFilecheck);
-crate::impl_common_helpers!(LlvmObjdump);
-crate::impl_common_helpers!(LlvmAr);
+crate::macros::impl_common_helpers!(LlvmReadobj);
+crate::macros::impl_common_helpers!(LlvmProfdata);
+crate::macros::impl_common_helpers!(LlvmFilecheck);
+crate::macros::impl_common_helpers!(LlvmObjdump);
+crate::macros::impl_common_helpers!(LlvmAr);
 
 /// Generate the path to the bin directory of LLVM.
 #[must_use]

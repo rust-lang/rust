@@ -20,7 +20,7 @@ pub struct Cc {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(Cc);
+crate::macros::impl_common_helpers!(Cc);
 
 impl Cc {
     /// Construct a new platform-specific C compiler invocation.

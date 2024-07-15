@@ -22,7 +22,7 @@ pub struct Rustdoc {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(Rustdoc);
+crate::macros::impl_common_helpers!(Rustdoc);
 
 #[track_caller]
 fn setup_common() -> Command {

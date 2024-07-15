@@ -31,7 +31,7 @@ pub struct Rustc {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(Rustc);
+crate::macros::impl_common_helpers!(Rustc);
 
 #[track_caller]
 fn setup_common() -> Command {
