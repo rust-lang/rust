@@ -564,7 +564,7 @@ ul.block, .block li {
 	/* extend click target to far edge of screen (mile wide bar) */
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
-	background-clip: padding-box;
+	background-clip: border-box;
 }
 
 .sidebar h2 {
@@ -641,11 +641,50 @@ ul.block, .block li {
 	text-align: center;
 }
 
+.sidebar-crate .logo-container img {
+	/* When in a horizontal logo lockup, the highlight color of the crate name menu item
+		extends underneath the actual logo (in a vertical lockup, that background highlight
+		extends to the left edge of the screen).
+
+		To prevent a weird-looking colored band from appearing under the logo, cover it up
+		with the sidebar's background. Additionally, the crate name extends slightly above
+		the logo, so that its highlight has a bit of space to let the ascenders breath while
+		also having those ascenders meet exactly with the top of the logo.
+
+		In ANSI art, make it look like this:
+		|        ┌─────┐
+		|    (R) │ std │
+		|        └─────┘
+
+		Not like this (which would happen without the z-index):
+		|     ┌────────┐
+		|    (│    std │
+		|     └────────┘
+
+		Not like this (which would happen without the background):
+		|     ┌────────┐
+		|    (R)   std │
+		|     └────────┘
+
+		Nor like this (which would happen without the negative margin):
+		|     ─────────┐
+		|    (R) │ std │
+		|        └─────┘
+		*/
+	margin-top: -16px;
+	border-top: solid 16px transparent;
+	box-sizing: content-box;
+	position: relative;
+	background-color: var(--sidebar-background-color);
+	background-clip: border-box;
+	z-index: 1;
+}
+
 .sidebar-crate h2 a {
 	display: block;
 	/* extend click target to far edge of screen (mile wide bar) */
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
-	background-clip: padding-box;
+	background-clip: border-box;
 	margin: 0 calc(-24px + 0.25rem) 0 calc(-0.2rem - var(--sidebar-elems-left-padding));
 	/* Align the sidebar crate link with the search bar, which have different
 		font sizes.

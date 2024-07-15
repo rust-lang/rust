@@ -5,8 +5,8 @@ go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
 set-window-size: (1280, 1024)
 // offsetWidth = width of sidebar + left and right margins
 assert-property: (".sidebar-crate .logo-container", {"offsetWidth": "96", "offsetHeight": 48})
-// offsetWidth = width of sidebar
-assert-property: (".sidebar-crate .logo-container img", {"offsetWidth": "48", "offsetHeight": 48})
+// offsetWidth = width of sidebar, offsetHeight = height + top padding
+assert-property: (".sidebar-crate .logo-container img", {"offsetWidth": "48", "offsetHeight": 64})
 
 set-window-size: (400, 600)
 // offset = size + margin
