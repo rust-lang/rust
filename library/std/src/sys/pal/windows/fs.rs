@@ -1,3 +1,4 @@
+#![allow(unsafe_op_in_unsafe_fn)]
 use core::ptr::addr_of;
 
 use crate::os::windows::prelude::*;

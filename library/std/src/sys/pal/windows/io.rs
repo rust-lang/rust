@@ -1,3 +1,4 @@
+#![allow(unsafe_op_in_unsafe_fn)]
 use crate::marker::PhantomData;
 use crate::mem::size_of;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};

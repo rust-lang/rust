@@ -24,6 +24,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(windows))]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod ffi;
 pub mod fs;

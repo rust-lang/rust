@@ -436,7 +436,7 @@ impl Socket {
     pub unsafe fn from_raw(raw: c::SOCKET) -> Self {
         debug_assert_eq!(mem::size_of::<c::SOCKET>(), mem::size_of::<RawSocket>());
         debug_assert_eq!(mem::align_of::<c::SOCKET>(), mem::align_of::<RawSocket>());
-        Self::from_raw_socket(raw as RawSocket)
+        unsafe { Self::from_raw_socket(raw as RawSocket) }
     }
 }
 
@@ -486,6 +486,6 @@ impl IntoRawSocket for Socket {
 
 impl FromRawSocket for Socket {
     unsafe fn from_raw_socket(raw_socket: RawSocket) -> Self {
-        Self(FromRawSocket::from_raw_socket(raw_socket))
+        unsafe { Self(FromRawSocket::from_raw_socket(raw_socket)) }
     }
 }
