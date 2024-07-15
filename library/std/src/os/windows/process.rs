@@ -16,7 +16,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
     unsafe fn from_raw_handle(handle: RawHandle) -> process::Stdio {
-        let handle = sys::handle::Handle::from_raw_handle(handle as *mut _);
+        let handle = unsafe { sys::handle::Handle::from_raw_handle(handle as *mut _) };
         let io = sys::process::Stdio::Handle(handle);
         process::Stdio::from_inner(io)
     }
@@ -407,7 +407,7 @@ impl CommandExt for process::Command {
         attribute: usize,
         value: T,
     ) -> &mut process::Command {
-        self.as_inner_mut().raw_attribute(attribute, value);
+        unsafe { self.as_inner_mut().raw_attribute(attribute, value) };
         self
     }
 }
