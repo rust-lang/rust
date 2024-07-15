@@ -390,18 +390,18 @@ compat_fn_with_fallback! {
     #[cfg(target_vendor = "win7")]
     pub fn NtReleaseKeyedEvent(
         EventHandle: HANDLE,
-        Key: *mut c_void,
+        Key: *const c_void,
         Alertable: BOOLEAN,
-        Timeout: *mut c_longlong
+        Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
     }
     #[cfg(target_vendor = "win7")]
     pub fn NtWaitForKeyedEvent(
         EventHandle: HANDLE,
-        Key: *mut c_void,
+        Key: *const c_void,
         Alertable: BOOLEAN,
-        Timeout: *mut c_longlong
+        Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
     }
