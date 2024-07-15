@@ -5,6 +5,7 @@
 
 mod command;
 mod macros;
+mod util;
 
 pub mod ar;
 pub mod artifact_names;
@@ -19,7 +20,7 @@ pub mod run;
 pub mod scoped_run;
 pub mod targets;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // Re-exports of third-party library crates.
 pub use bstr;
@@ -84,7 +85,7 @@ pub use assertion_helpers::{
     shallow_find_files,
 };
 
-use command::{Command, CompletedProcess};
+use command::Command;
 
 /// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
 #[track_caller]
@@ -104,23 +105,6 @@ pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
     };
     llvm_ar().obj_to_ar().output_input(&lib_path, &obj_file).run();
     path(lib_path)
-}
-
-pub(crate) fn handle_failed_output(
-    cmd: &Command,
-    output: CompletedProcess,
-    caller_line_number: u32,
-) -> ! {
-    if output.status().success() {
-        eprintln!("command unexpectedly succeeded at line {caller_line_number}");
-    } else {
-        eprintln!("command failed at line {caller_line_number}");
-    }
-    eprintln!("{cmd:?}");
-    eprintln!("output status: `{}`", output.status());
-    eprintln!("=== STDOUT ===\n{}\n\n", output.stdout_utf8());
-    eprintln!("=== STDERR ===\n{}\n\n", output.stderr_utf8());
-    std::process::exit(1)
 }
 
 /// Set the runtime library path as needed for running the host rustc/rustdoc/etc.

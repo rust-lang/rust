@@ -1,7 +1,8 @@
 use std::panic;
 
 use crate::command::Command;
-use crate::{env_var, handle_failed_output};
+use crate::env_var;
+use crate::util::handle_failed_output;
 
 /// `TARGET`
 #[must_use]
