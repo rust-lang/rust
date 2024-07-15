@@ -142,7 +142,7 @@ fn main() {
 
 #[track_caller]
 fn symbols_check(path: &str, symbol_check_type: SymbolCheckType, exists_once: bool) {
-    let out = llvm_readobj().arg("--dyn-symbols").input(path).run().stdout_utf8();
+    let out = llvm_readobj().arg("--dyn-symbols").input(path).run().invalid_stdout_utf8();
     assert_eq!(
         out.lines()
             .filter(|&line| !line.contains("__imp_") && has_symbol(line, symbol_check_type))
