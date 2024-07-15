@@ -735,9 +735,9 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// * `self` and `origin` must either
     ///
+    ///   * point to the same address, or
     ///   * both be *derived from* a pointer to the same [allocated object], and the memory range between
-    ///     the two pointers must be either empty or in bounds of that object. (See below for an example.)
-    ///   * or both be derived from an integer literal/constant, and point to the same address.
+    ///     the two pointers must be in bounds of that object. (See below for an example.)
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
@@ -789,14 +789,15 @@ impl<T: ?Sized> NonNull<T> {
     /// let ptr1 = NonNull::new(Box::into_raw(Box::new(0u8))).unwrap();
     /// let ptr2 = NonNull::new(Box::into_raw(Box::new(1u8))).unwrap();
     /// let diff = (ptr2.addr().get() as isize).wrapping_sub(ptr1.addr().get() as isize);
-    /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
-    /// let ptr2_other = NonNull::new(ptr1.as_ptr().wrapping_byte_offset(diff)).unwrap();
+    /// // Make ptr2_other an "alias" of ptr2.add(1), but derived from ptr1.
+    /// let diff_plus_1 = diff.wrapping_add(1);
+    /// let ptr2_other = NonNull::new(ptr1.as_ptr().wrapping_byte_offset(diff_plus_1)).unwrap();
     /// assert_eq!(ptr2.addr(), ptr2_other.addr());
     /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
     /// // computing their offset is undefined behavior, even though
-    /// // they point to the same address!
+    /// // they point to addresses that are in-bounds of the same object!
     ///
-    /// let zero = unsafe { ptr2_other.offset_from(ptr2) }; // Undefined Behavior
+    /// let one = unsafe { ptr2_other.offset_from(ptr2) }; // Undefined Behavior! ⚠️
     /// ```
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
