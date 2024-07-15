@@ -8,7 +8,10 @@ use intern::sym;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
 use span::{Edition, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
-use syntax::unescape::{unescape_byte, unescape_char, unescape_unicode, Mode};
+use syntax::{
+    format_smolstr,
+    unescape::{unescape_byte, unescape_char, unescape_unicode, Mode},
+};
 
 use crate::{
     db::ExpandDatabase,
@@ -265,7 +268,7 @@ fn file_expand(
 ) -> ExpandResult<tt::Subtree> {
     // FIXME: RA purposefully lacks knowledge of absolute file names
     // so just return "".
-    let file_name = "";
+    let file_name = "file";
 
     let expanded = quote! {span =>
         #file_name
@@ -275,34 +278,36 @@ fn file_expand(
 }
 
 fn format_args_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    tt: &tt::Subtree,
-    span: Span,
-) -> ExpandResult<tt::Subtree> {
-    format_args_expand_general(db, id, tt, "", span)
-}
-
-fn format_args_nl_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    tt: &tt::Subtree,
-    span: Span,
-) -> ExpandResult<tt::Subtree> {
-    format_args_expand_general(db, id, tt, "\\n", span)
-}
-
-fn format_args_expand_general(
     _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
-    // FIXME: Make use of this so that mir interpretation works properly
-    _end_string: &str,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
     let pound = mk_pound(span);
     let mut tt = tt.clone();
     tt.delimiter.kind = tt::DelimiterKind::Parenthesis;
+    ExpandResult::ok(quote! {span =>
+        builtin #pound format_args #tt
+    })
+}
+
+fn format_args_nl_expand(
+    _db: &dyn ExpandDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+    span: Span,
+) -> ExpandResult<tt::Subtree> {
+    let pound = mk_pound(span);
+    let mut tt = tt.clone();
+    tt.delimiter.kind = tt::DelimiterKind::Parenthesis;
+    if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+        text,
+        kind: tt::LitKind::Str,
+        ..
+    }))) = tt.token_trees.first_mut()
+    {
+        *text = format_smolstr!("{text}\\n");
+    }
     ExpandResult::ok(quote! {span =>
         builtin #pound format_args #tt
     })
@@ -788,7 +793,7 @@ fn include_str_expand(
 
 fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &str) -> Option<String> {
     let krate = db.lookup_intern_macro_call(arg_id).krate;
-    db.crate_graph()[krate].env.get(key)
+    db.crate_graph()[krate].env.get(key).map(|it| it.escape_debug().to_string())
 }
 
 fn env_expand(

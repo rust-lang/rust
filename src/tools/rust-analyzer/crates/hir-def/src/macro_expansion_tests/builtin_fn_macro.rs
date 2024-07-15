@@ -154,7 +154,7 @@ fn main() { file!(); }
 #[rustc_builtin_macro]
 macro_rules! file {() => {}}
 
-fn main() { ""; }
+fn main() { "file"; }
 "##]],
     );
 }
