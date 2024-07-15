@@ -9,6 +9,8 @@ const ALLOWED_SOURCES: &[&str] = &[
     r#""registry+https://github.com/rust-lang/crates.io-index""#,
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
+    // WIP blake3
+    r#""git+https://github.com/Urgau/rustc-stable-hash.git?rev=368f4ef#368f4ef468ca97fd4757c896f53349d9fa4def1b""#,
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
