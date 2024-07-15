@@ -615,6 +615,127 @@ pub unsafe fn _mm512_zextph128_ph512(a: __m128h) -> __m512h {
     )
 }
 
+macro_rules! cmp_asm {
+    ($mask_type: ty, $reg: ident, $a: expr, $b: expr) => {{
+        let dst: $mask_type;
+        crate::arch::asm!(
+            "vcmpph {k}, {a}, {b}, {imm8}",
+            k = lateout(kreg) dst,
+            a = in($reg) $a,
+            b = in($reg) $b,
+            imm8 = const IMM5,
+            options(pure, nomem, nostack)
+        );
+        dst
+    }};
+    ($mask_type: ty, $mask: expr, $reg: ident, $a: expr, $b: expr) => {{
+        let dst: $mask_type;
+        crate::arch::asm!(
+            "vcmpph {k} {{ {mask} }}, {a}, {b}, {imm8}",
+            k = lateout(kreg) dst,
+            mask = in(kreg) $mask,
+            a = in($reg) $a,
+            b = in($reg) $b,
+            imm8 = const IMM5,
+            options(pure, nomem, nostack)
+        );
+        dst
+    }};
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,sse")]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cmp_ph_mask<const IMM5: i32>(a: __m128h, b: __m128h) -> __mmask8 {
+    static_assert_uimm_bits!(IMM5, 5);
+    cmp_asm!(__mmask8, xmm_reg, a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k using zeromask k (elements are
+/// zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cmp_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,sse")]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cmp_ph_mask<const IMM5: i32>(
+    k1: __mmask8,
+    a: __m128h,
+    b: __m128h,
+) -> __mmask8 {
+    static_assert_uimm_bits!(IMM5, 5);
+    cmp_asm!(__mmask8, k1, xmm_reg, a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmp_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,avx")]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cmp_ph_mask<const IMM5: i32>(a: __m256h, b: __m256h) -> __mmask16 {
+    static_assert_uimm_bits!(IMM5, 5);
+    cmp_asm!(__mmask16, ymm_reg, a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k using zeromask k (elements are
+/// zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cmp_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,avx")]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cmp_ph_mask<const IMM5: i32>(
+    k1: __mmask16,
+    a: __m256h,
+    b: __m256h,
+) -> __mmask16 {
+    static_assert_uimm_bits!(IMM5, 5);
+    cmp_asm!(__mmask16, k1, ymm_reg, a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cmp_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512bw,avx512f")]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cmp_ph_mask<const IMM5: i32>(a: __m512h, b: __m512h) -> __mmask32 {
+    static_assert_uimm_bits!(IMM5, 5);
+    cmp_asm!(__mmask32, zmm_reg, a, b)
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k using zeromask k (elements are
+/// zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cmp_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512bw,avx512f")]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cmp_ph_mask<const IMM5: i32>(
+    k1: __mmask32,
+    a: __m512h,
+    b: __m512h,
+) -> __mmask32 {
+    static_assert_uimm_bits!(IMM5, 5);
+    cmp_asm!(__mmask32, k1, zmm_reg, a, b)
+}
+
 /// Compare the lower half-precision (16-bit) floating-point elements in a and b based on the comparison
 /// operand specified by imm8, and store the result in mask vector k. Exceptions can be suppressed by
 /// passing _MM_FROUND_NO_EXC in the sae parameter.
@@ -10639,6 +10760,520 @@ pub unsafe fn _mm_maskz_reduce_round_sh<const IMM8: i32, const SAE: i32>(
     _mm_mask_reduce_round_sh::<IMM8, SAE>(_mm_setzero_ph(), k, a, b)
 }
 
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by addition. Returns the
+/// sum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_reduce_add_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_reduce_add_ph(a: __m128h) -> f16 {
+    let b = simd_shuffle!(a, a, [4, 5, 6, 7, 0, 1, 2, 3]);
+    let a = _mm_add_ph(a, b);
+    let b = simd_shuffle!(a, a, [2, 3, 0, 1, 4, 5, 6, 7]);
+    let a = _mm_add_ph(a, b);
+    simd_extract::<_, f16>(a, 0) + simd_extract::<_, f16>(a, 1)
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by addition. Returns the
+/// sum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_reduce_add_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_reduce_add_ph(a: __m256h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let q = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    _mm_reduce_add_ph(_mm_add_ph(p, q))
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by addition. Returns the
+/// sum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_reduce_add_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_reduce_add_ph(a: __m512h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let q = simd_shuffle!(
+        a,
+        a,
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+    );
+    _mm256_reduce_add_ph(_mm256_add_ph(p, q))
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by multiplication. Returns
+/// the product of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_reduce_mul_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_reduce_mul_ph(a: __m128h) -> f16 {
+    let b = simd_shuffle!(a, a, [4, 5, 6, 7, 0, 1, 2, 3]);
+    let a = _mm_mul_ph(a, b);
+    let b = simd_shuffle!(a, a, [2, 3, 0, 1, 4, 5, 6, 7]);
+    let a = _mm_mul_ph(a, b);
+    simd_extract::<_, f16>(a, 0) * simd_extract::<_, f16>(a, 1)
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by multiplication. Returns
+/// the product of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_reduce_mul_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_reduce_mul_ph(a: __m256h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let q = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    _mm_reduce_mul_ph(_mm_mul_ph(p, q))
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by multiplication. Returns
+/// the product of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_reduce_mul_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_reduce_mul_ph(a: __m512h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let q = simd_shuffle!(
+        a,
+        a,
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+    );
+    _mm256_reduce_mul_ph(_mm256_mul_ph(p, q))
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by minimum. Returns the
+/// minimum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_reduce_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_reduce_min_ph(a: __m128h) -> f16 {
+    let b = simd_shuffle!(a, a, [4, 5, 6, 7, 0, 1, 2, 3]);
+    let a = _mm_min_ph(a, b);
+    let b = simd_shuffle!(a, a, [2, 3, 0, 1, 4, 5, 6, 7]);
+    let a = _mm_min_ph(a, b);
+    let b = simd_shuffle!(a, a, [1, 0, 2, 3, 4, 5, 6, 7]);
+    simd_extract!(_mm_min_sh(a, b), 0)
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by minimum. Returns the
+/// minimum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_reduce_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_reduce_min_ph(a: __m256h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let q = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    _mm_reduce_min_ph(_mm_min_ph(p, q))
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by minimum. Returns the
+/// minimum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_reduce_min_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_reduce_min_ph(a: __m512h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let q = simd_shuffle!(
+        a,
+        a,
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+    );
+    _mm256_reduce_min_ph(_mm256_min_ph(p, q))
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by maximum. Returns the
+/// maximum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_reduce_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_reduce_max_ph(a: __m128h) -> f16 {
+    let b = simd_shuffle!(a, a, [4, 5, 6, 7, 0, 1, 2, 3]);
+    let a = _mm_max_ph(a, b);
+    let b = simd_shuffle!(a, a, [2, 3, 0, 1, 4, 5, 6, 7]);
+    let a = _mm_max_ph(a, b);
+    let b = simd_shuffle!(a, a, [1, 0, 2, 3, 4, 5, 6, 7]);
+    simd_extract!(_mm_max_sh(a, b), 0)
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by maximum. Returns the
+/// maximum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_reduce_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_reduce_max_ph(a: __m256h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let q = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    _mm_reduce_max_ph(_mm_max_ph(p, q))
+}
+
+/// Reduce the packed half-precision (16-bit) floating-point elements in a by maximum. Returns the
+/// maximum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_reduce_max_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_reduce_max_ph(a: __m512h) -> f16 {
+    let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let q = simd_shuffle!(
+        a,
+        a,
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+    );
+    _mm256_reduce_max_ph(_mm256_max_ph(p, q))
+}
+
+macro_rules! fpclass_asm {
+    ($mask_type: ty, $reg: ident, $a: expr) => {{
+        let dst: $mask_type;
+        crate::arch::asm!(
+            "vfpclassph {k}, {src}, {imm8}",
+            k = lateout(kreg) dst,
+            src = in($reg) $a,
+            imm8 = const IMM8,
+            options(pure, nomem, nostack)
+        );
+        dst
+    }};
+    ($mask_type: ty, $mask: expr, $reg: ident, $a: expr) => {{
+        let dst: $mask_type;
+        crate::arch::asm!(
+            "vfpclassph {k} {{ {mask} }}, {src}, {imm8}",
+            k = lateout(kreg) dst,
+            mask = in(kreg) $mask,
+            src = in($reg) $a,
+            imm8 = const IMM8,
+            options(pure, nomem, nostack)
+        );
+        dst
+    }};
+}
+
+/// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fpclass_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,sse")]
+#[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_fpclass_ph_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!(__mmask8, xmm_reg, a)
+}
+
+/// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_fpclass_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,sse")]
+#[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!(__mmask8, k1, xmm_reg, a)
+}
+
+/// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fpclass_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,avx")]
+#[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_fpclass_ph_mask<const IMM8: i32>(a: __m256h) -> __mmask16 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!(__mmask16, ymm_reg, a)
+}
+
+/// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_fpclass_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl,avx512f,avx")]
+#[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask16, a: __m256h) -> __mmask16 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!(__mmask16, k1, ymm_reg, a)
+}
+
+/// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k.
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fpclass_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512bw,avx512f")]
+#[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_fpclass_ph_mask<const IMM8: i32>(a: __m512h) -> __mmask32 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!(__mmask32, zmm_reg, a)
+}
+
+/// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
+/// by imm8, and store the results in mask vector k using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fpclass_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512bw,avx512f")]
+#[cfg_attr(test, assert_instr(vfpclassph, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask32, a: __m512h) -> __mmask32 {
+    static_assert_uimm_bits!(IMM8, 8);
+    fpclass_asm!(__mmask32, k1, zmm_reg, a)
+}
+
+/// Test the lower half-precision (16-bit) floating-point element in a for special categories specified
+/// by imm8, and store the result in mask vector k.
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fpclass_sh_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vfpclasssh, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_fpclass_sh_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
+    _mm_mask_fpclass_sh_mask::<IMM8>(0xff, a)
+}
+
+/// Test the lower half-precision (16-bit) floating-point element in a for special categories specified
+/// by imm8, and store the result in mask vector k using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+/// imm can be a combination of:
+///
+///     0x01 // QNaN
+///     0x02 // Positive Zero
+///     0x04 // Negative Zero
+///     0x08 // Positive Infinity
+///     0x10 // Negative Infinity
+///     0x20 // Denormal
+///     0x40 // Negative
+///     0x80 // SNaN
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_fpclass_sh_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vfpclasssh, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_fpclass_sh_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __mmask8 {
+    static_assert_uimm_bits!(IMM8, 8);
+    vfpclasssh(a, IMM8, k1)
+}
+
+/// Blend packed half-precision (16-bit) floating-point elements from a and b using control mask k,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_blend_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_blend_ph(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
+    simd_select_bitmask(k, b, a)
+}
+
+/// Blend packed half-precision (16-bit) floating-point elements from a and b using control mask k,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_blend_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_blend_ph(k: __mmask16, a: __m256h, b: __m256h) -> __m256h {
+    simd_select_bitmask(k, b, a)
+}
+
+/// Blend packed half-precision (16-bit) floating-point elements from a and b using control mask k,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_blend_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_blend_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m512h {
+    simd_select_bitmask(k, b, a)
+}
+
+/// Shuffle half-precision (16-bit) floating-point elements in a and b using the corresponding selector
+/// and index in idx, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_permutex2var_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_permutex2var_ph(a: __m128h, idx: __m128i, b: __m128h) -> __m128h {
+    _mm_castsi128_ph(_mm_permutex2var_epi16(
+        _mm_castph_si128(a),
+        idx,
+        _mm_castph_si128(b),
+    ))
+}
+
+/// Shuffle half-precision (16-bit) floating-point elements in a and b using the corresponding selector
+/// and index in idx, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutex2var_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_permutex2var_ph(a: __m256h, idx: __m256i, b: __m256h) -> __m256h {
+    _mm256_castsi256_ph(_mm256_permutex2var_epi16(
+        _mm256_castph_si256(a),
+        idx,
+        _mm256_castph_si256(b),
+    ))
+}
+
+/// Shuffle half-precision (16-bit) floating-point elements in a and b using the corresponding selector
+/// and index in idx, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_permutex2var_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_permutex2var_ph(a: __m512h, idx: __m512i, b: __m512h) -> __m512h {
+    _mm512_castsi512_ph(_mm512_permutex2var_epi16(
+        _mm512_castph_si512(a),
+        idx,
+        _mm512_castph_si512(b),
+    ))
+}
+
+/// Shuffle half-precision (16-bit) floating-point elements in a using the corresponding index in idx,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_permutexvar_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_permutexvar_ph(idx: __m128i, a: __m128h) -> __m128h {
+    _mm_castsi128_ph(_mm_permutexvar_epi16(idx, _mm_castph_si128(a)))
+}
+
+/// Shuffle half-precision (16-bit) floating-point elements in a using the corresponding index in idx,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutexvar_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_permutexvar_ph(idx: __m256i, a: __m256h) -> __m256h {
+    _mm256_castsi256_ph(_mm256_permutexvar_epi16(idx, _mm256_castph_si256(a)))
+}
+
+/// Shuffle half-precision (16-bit) floating-point elements in a using the corresponding index in idx,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_permutexvar_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_permutexvar_ph(idx: __m512i, a: __m512h) -> __m512h {
+    _mm512_castsi512_ph(_mm512_permutexvar_epi16(idx, _mm512_castph_si512(a)))
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.sh"]
@@ -10832,6 +11467,9 @@ extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.reduce.sh"]
     fn vreducesh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8, imm8: i32, sae: i32)
         -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.mask.fpclass.sh"]
+    fn vfpclasssh(a: __m128h, imm8: i32, k: __mmask8) -> __mmask8;
 }
 
 #[cfg(test)]
@@ -11214,6 +11852,80 @@ mod tests {
             0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cmp_ph_mask() {
+        let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let b = _mm_set_ph(1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0);
+        let r = _mm_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
+        assert_eq!(r, 0b11110000);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cmp_ph_mask() {
+        let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let b = _mm_set_ph(1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0);
+        let r = _mm_mask_cmp_ph_mask::<_CMP_EQ_OQ>(0b01010101, a, b);
+        assert_eq!(r, 0b01010000);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cmp_ph_mask() {
+        let a = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let b = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0, 9.0, 10.0, 11.0, 12.0, -13.0, -14.0, -15.0,
+            -16.0,
+        );
+        let r = _mm256_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
+        assert_eq!(r, 0b1111000011110000);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cmp_ph_mask() {
+        let a = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let b = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0, 9.0, 10.0, 11.0, 12.0, -13.0, -14.0, -15.0,
+            -16.0,
+        );
+        let r = _mm256_mask_cmp_ph_mask::<_CMP_EQ_OQ>(0b0101010101010101, a, b);
+        assert_eq!(r, 0b0101000001010000);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cmp_ph_mask() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let b = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0, 9.0, 10.0, 11.0, 12.0, -13.0, -14.0, -15.0,
+            -16.0, 17.0, 18.0, 19.0, 20.0, -21.0, -22.0, -23.0, -24.0, 25.0, 26.0, 27.0, 28.0,
+            -29.0, -30.0, -31.0, -32.0,
+        );
+        let r = _mm512_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
+        assert_eq!(r, 0b11110000111100001111000011110000);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cmp_ph_mask() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let b = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0, 9.0, 10.0, 11.0, 12.0, -13.0, -14.0, -15.0,
+            -16.0, 17.0, 18.0, 19.0, 20.0, -21.0, -22.0, -23.0, -24.0, 25.0, 26.0, 27.0, 28.0,
+            -29.0, -30.0, -31.0, -32.0,
+        );
+        let r = _mm512_mask_cmp_ph_mask::<_CMP_EQ_OQ>(0b01010101010101010101010101010101, a, b);
+        assert_eq!(r, 0b01010000010100000101000001010000);
     }
 
     #[simd_test(enable = "avx512fp16")]
@@ -17753,5 +18465,419 @@ mod tests {
             _mm_maskz_reduce_round_sh::<{ 16 | _MM_FROUND_TO_ZERO }, _MM_FROUND_NO_EXC>(1, a, b);
         let e = _mm_setr_ph(0.25, 10., 11., 12., 13., 14., 15., 16.);
         assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_reduce_add_ph() {
+        let a = _mm_set1_ph(2.0);
+        let r = _mm_reduce_add_ph(a);
+        assert_eq!(r, 16.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_reduce_add_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let r = _mm256_reduce_add_ph(a);
+        assert_eq!(r, 32.0);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_reduce_add_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let r = _mm512_reduce_add_ph(a);
+        assert_eq!(r, 64.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_reduce_mul_ph() {
+        let a = _mm_set1_ph(2.0);
+        let r = _mm_reduce_mul_ph(a);
+        assert_eq!(r, 256.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_reduce_mul_ph() {
+        let a = _mm256_set1_ph(2.0);
+        let r = _mm256_reduce_mul_ph(a);
+        assert_eq!(r, 65536.0);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_reduce_mul_ph() {
+        let a = _mm512_set1_ph(2.0);
+        let r = _mm512_reduce_mul_ph(a);
+        assert_eq!(r, 16777216.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_reduce_max_ph() {
+        let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_reduce_max_ph(a);
+        assert_eq!(r, 8.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_reduce_max_ph() {
+        let a = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm256_reduce_max_ph(a);
+        assert_eq!(r, 16.0);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_reduce_max_ph() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let r = _mm512_reduce_max_ph(a);
+        assert_eq!(r, 32.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_reduce_min_ph() {
+        let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_reduce_min_ph(a);
+        assert_eq!(r, 1.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_reduce_min_ph() {
+        let a = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm256_reduce_min_ph(a);
+        assert_eq!(r, 1.0);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_reduce_min_ph() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let r = _mm512_reduce_min_ph(a);
+        assert_eq!(r, 1.0);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_fpclass_ph_mask() {
+        let a = _mm_set_ph(
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+        );
+        let r = _mm_fpclass_ph_mask::<0x18>(a); // infinities
+        assert_eq!(r, 0b01100000);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_fpclass_ph_mask() {
+        let a = _mm_set_ph(
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+        );
+        let r = _mm_mask_fpclass_ph_mask::<0x18>(0b01010101, a);
+        assert_eq!(r, 0b01000000);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_fpclass_ph_mask() {
+        let a = _mm256_set_ph(
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+        );
+        let r = _mm256_fpclass_ph_mask::<0x18>(a); // infinities
+        assert_eq!(r, 0b0110000001100000);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_fpclass_ph_mask() {
+        let a = _mm256_set_ph(
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+        );
+        let r = _mm256_mask_fpclass_ph_mask::<0x18>(0b0101010101010101, a);
+        assert_eq!(r, 0b0100000001000000);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_fpclass_ph_mask() {
+        let a = _mm512_set_ph(
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+        );
+        let r = _mm512_fpclass_ph_mask::<0x18>(a); // infinities
+        assert_eq!(r, 0b01100000011000000110000001100000);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_fpclass_ph_mask() {
+        let a = _mm512_set_ph(
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+            1.,
+            f16::INFINITY,
+            f16::NEG_INFINITY,
+            0.0,
+            -0.0,
+            -2.0,
+            f16::NAN,
+            5.9e-8, // Denormal
+        );
+        let r = _mm512_mask_fpclass_ph_mask::<0x18>(0b01010101010101010101010101010101, a);
+        assert_eq!(r, 0b01000000010000000100000001000000);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_fpclass_sh_mask() {
+        let a = _mm_set_sh(f16::INFINITY);
+        let r = _mm_fpclass_sh_mask::<0x18>(a);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_fpclass_sh_mask() {
+        let a = _mm_set_sh(f16::INFINITY);
+        let r = _mm_mask_fpclass_sh_mask::<0x18>(0, a);
+        assert_eq!(r, 0);
+        let r = _mm_mask_fpclass_sh_mask::<0x18>(1, a);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_blend_ph() {
+        let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let b = _mm_set_ph(-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0);
+        let r = _mm_mask_blend_ph(0b01010101, a, b);
+        let e = _mm_set_ph(1.0, -2.0, 3.0, -4.0, 5.0, -6.0, 7.0, -8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_blend_ph() {
+        let a = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let b = _mm256_set_ph(
+            -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0, -10.0, -11.0, -12.0, -13.0,
+            -14.0, -15.0, -16.0,
+        );
+        let r = _mm256_mask_blend_ph(0b0101010101010101, a, b);
+        let e = _mm256_set_ph(
+            1.0, -2.0, 3.0, -4.0, 5.0, -6.0, 7.0, -8.0, 9.0, -10.0, 11.0, -12.0, 13.0, -14.0, 15.0,
+            -16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_blend_ph() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let b = _mm512_set_ph(
+            -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0, -10.0, -11.0, -12.0, -13.0,
+            -14.0, -15.0, -16.0, -17.0, -18.0, -19.0, -20.0, -21.0, -22.0, -23.0, -24.0, -25.0,
+            -26.0, -27.0, -28.0, -29.0, -30.0, -31.0, -32.0,
+        );
+        let r = _mm512_mask_blend_ph(0b01010101010101010101010101010101, a, b);
+        let e = _mm512_set_ph(
+            1.0, -2.0, 3.0, -4.0, 5.0, -6.0, 7.0, -8.0, 9.0, -10.0, 11.0, -12.0, 13.0, -14.0, 15.0,
+            -16.0, 17.0, -18.0, 19.0, -20.0, 21.0, -22.0, 23.0, -24.0, 25.0, -26.0, 27.0, -28.0,
+            29.0, -30.0, 31.0, -32.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_permutex2var_ph() {
+        let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let b = _mm_setr_ph(9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
+        let idx = _mm_setr_epi16(0, 2, 4, 6, 8, 10, 12, 14);
+        let r = _mm_permutex2var_ph(a, idx, b);
+        let e = _mm_setr_ph(1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_permutex2var_ph() {
+        let a = _mm256_setr_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let b = _mm256_setr_ph(
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let idx = _mm256_setr_epi16(0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30);
+        let r = _mm256_permutex2var_ph(a, idx, b);
+        let e = _mm256_setr_ph(
+            1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0, 17.0, 19.0, 21.0, 23.0, 25.0, 27.0, 29.0,
+            31.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_permutex2var_ph() {
+        let a = _mm512_setr_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let b = _mm512_setr_ph(
+            33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0,
+            47.0, 48.0, 49.0, 50.0, 51.0, 52.0, 53.0, 54.0, 55.0, 56.0, 57.0, 58.0, 59.0, 60.0,
+            61.0, 62.0, 63.0, 64.0,
+        );
+        let idx = _mm512_set_epi16(
+            62, 60, 58, 56, 54, 52, 50, 48, 46, 44, 42, 40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20,
+            18, 16, 14, 12, 10, 8, 6, 4, 2, 0,
+        );
+        let r = _mm512_permutex2var_ph(a, idx, b);
+        let e = _mm512_setr_ph(
+            1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0, 17.0, 19.0, 21.0, 23.0, 25.0, 27.0, 29.0,
+            31.0, 33.0, 35.0, 37.0, 39.0, 41.0, 43.0, 45.0, 47.0, 49.0, 51.0, 53.0, 55.0, 57.0,
+            59.0, 61.0, 63.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_permutexvar_ph() {
+        let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let idx = _mm_set_epi16(0, 2, 4, 6, 1, 3, 5, 7);
+        let r = _mm_permutexvar_ph(idx, a);
+        let e = _mm_setr_ph(1.0, 3.0, 5.0, 7.0, 2.0, 4.0, 6.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_permutexvar_ph() {
+        let a = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let idx = _mm256_set_epi16(0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15);
+        let r = _mm256_permutexvar_ph(idx, a);
+        let e = _mm256_setr_ph(
+            1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_permutexvar_ph() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let idx = _mm512_set_epi16(
+            0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 1, 3, 5, 7, 9, 11, 13, 15,
+            17, 19, 21, 23, 25, 27, 29, 31,
+        );
+        let r = _mm512_permutexvar_ph(idx, a);
+        let e = _mm512_setr_ph(
+            1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 13.0, 15.0, 17.0, 19.0, 21.0, 23.0, 25.0, 27.0, 29.0,
+            31.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0, 26.0, 28.0,
+            30.0, 32.0,
+        );
+        assert_eq_m512h(r, e);
     }
 }
