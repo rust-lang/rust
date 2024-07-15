@@ -22,8 +22,6 @@ mod partitioning;
 mod polymorphize;
 mod util;
 
-use collector::should_codegen_locally;
-
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 fn custom_coerce_unsize_info<'tcx>(
@@ -73,7 +71,7 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     !def_id.is_local()
         && tcx.is_compiler_builtins(LOCAL_CRATE)
         && !is_llvm_intrinsic(tcx, def_id)
-        && !should_codegen_locally(tcx, instance)
+        && !tcx.should_codegen_locally(instance)
 }
 
 pub fn provide(providers: &mut Providers) {
