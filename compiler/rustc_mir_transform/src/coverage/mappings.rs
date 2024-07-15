@@ -159,6 +159,15 @@ impl ExtractedMappings {
 
         bcbs_with_counter_mappings
     }
+
+    /// Returns the set of BCBs that have one or more `Code` mappings.
+    pub(super) fn bcbs_with_ordinary_code_mappings(&self) -> BitSet<BasicCoverageBlock> {
+        let mut bcbs = BitSet::new_empty(self.num_bcbs);
+        for &CodeMapping { span: _, bcb } in &self.code_mappings {
+            bcbs.insert(bcb);
+        }
+        bcbs
+    }
 }
 
 fn resolve_block_markers(

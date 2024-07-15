@@ -25,7 +25,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
 
 use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
-use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
+use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
 use crate::MirPass;
 
@@ -108,7 +108,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     inject_coverage_statements(
         mir_body,
         &basic_coverage_blocks,
-        bcb_has_counter_mappings,
+        &extracted_mappings,
         &coverage_counters,
     );
 
@@ -219,7 +219,7 @@ fn create_mappings<'tcx>(
 fn inject_coverage_statements<'tcx>(
     mir_body: &mut mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
-    bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
+    extracted_mappings: &ExtractedMappings,
     coverage_counters: &CoverageCounters,
 ) {
     // Inject counter-increment statements into MIR.
@@ -252,11 +252,16 @@ fn inject_coverage_statements<'tcx>(
     // can check whether the injected statement survived MIR optimization.
     // (BCB edges can't have spans, so we only need to process BCB nodes here.)
     //
+    // We only do this for ordinary `Code` mappings, because branch and MC/DC
+    // mappings might have expressions that don't correspond to any single
+    // point in the control-flow graph.
+    //
     // See the code in `rustc_codegen_llvm::coverageinfo::map_data` that deals
     // with "expressions seen" and "zero terms".
+    let eligible_bcbs = extracted_mappings.bcbs_with_ordinary_code_mappings();
     for (bcb, expression_id) in coverage_counters
         .bcb_nodes_with_coverage_expressions()
-        .filter(|&(bcb, _)| bcb_has_coverage_spans(bcb))
+        .filter(|&(bcb, _)| eligible_bcbs.contains(bcb))
     {
         inject_statement(
             mir_body,
