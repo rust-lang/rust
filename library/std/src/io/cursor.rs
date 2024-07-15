@@ -482,7 +482,7 @@ where
     A: Allocator,
 {
     debug_assert!(vec.capacity() >= pos + buf.len());
-    vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len());
+    unsafe { vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len()) };
     pos + buf.len()
 }
 

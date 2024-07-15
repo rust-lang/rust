@@ -293,7 +293,6 @@
 //! [`Arc`]: crate::sync::Arc
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
@@ -383,11 +382,11 @@ pub(crate) unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize
 where
     F: FnOnce(&mut Vec<u8>) -> Result<usize>,
 {
-    let mut g = Guard { len: buf.len(), buf: buf.as_mut_vec() };
+    let mut g = Guard { len: buf.len(), buf: unsafe { buf.as_mut_vec() } };
     let ret = f(g.buf);
 
     // SAFETY: the caller promises to only append data to `buf`
-    let appended = g.buf.get_unchecked(g.len..);
+    let appended = unsafe { g.buf.get_unchecked(g.len..) };
     if str::from_utf8(appended).is_err() {
         ret.and_then(|_| Err(Error::INVALID_UTF8))
     } else {
