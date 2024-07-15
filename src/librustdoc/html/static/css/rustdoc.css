@@ -1828,6 +1828,11 @@ details.toggle > summary:not(.hideme)::before {
 	left: -24px;
 }
 
+details.implementors-toggle > summary:not(.hideme)::before {
+	left: -34px;
+	top: 9px;
+}
+
 /* When a "hideme" summary is open and the "Expand description" or "Show
 	methods" text is hidden, we want the [-] toggle that remains to not
 	affect the layout of the items to its right. To do that, we use
