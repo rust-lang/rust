@@ -15,9 +15,9 @@ pub mod fs_helpers;
 pub mod fs_wrapper;
 pub mod path_helpers;
 pub mod run;
+pub mod scoped_run;
 pub mod targets;
 
-use std::fs;
 use std::panic;
 use std::path::{Path, PathBuf};
 
@@ -74,39 +74,10 @@ pub use path_helpers::{cwd, cygpath_windows, path, source_root};
 /// Helpers for common fs operations.
 pub use fs_helpers::{copy_dir_all, create_symlink, read_dir};
 
+/// Helpers for scoped test execution where certain properties are attempted to be maintained.
+pub use scoped_run::{run_in_tmpdir, test_while_readonly};
+
 use command::{Command, CompletedProcess};
-
-// FIXME(Oneirical): This will no longer be required after compiletest receives the ability
-// to manipulate read-only files. See https://github.com/rust-lang/rust/issues/126334
-/// Ensure that the path P is read-only while the test runs, and restore original permissions
-/// at the end so compiletest can clean up.
-/// This will panic on Windows if the path is a directory (as it would otherwise do nothing)
-#[track_caller]
-pub fn test_while_readonly<P: AsRef<Path>, F: FnOnce() + std::panic::UnwindSafe>(
-    path: P,
-    closure: F,
-) {
-    let path = path.as_ref();
-    if is_windows() && path.is_dir() {
-        eprintln!("This helper function cannot be used on Windows to make directories readonly.");
-        eprintln!(
-            "See the official documentation:
-            https://doc.rust-lang.org/std/fs/struct.Permissions.html#method.set_readonly"
-        );
-        panic!("`test_while_readonly` on directory detected while on Windows.");
-    }
-    let metadata = fs_wrapper::metadata(&path);
-    let original_perms = metadata.permissions();
-
-    let mut new_perms = original_perms.clone();
-    new_perms.set_readonly(true);
-    fs_wrapper::set_permissions(&path, new_perms);
-
-    let success = std::panic::catch_unwind(closure);
-
-    fs_wrapper::set_permissions(&path, original_perms);
-    success.unwrap();
-}
 
 /// Browse the directory `path` non-recursively and return all files which respect the parameters
 /// outlined by `closure`.
@@ -315,25 +286,4 @@ pub fn assert_not_contains<S1: AsRef<str>, S2: AsRef<str>>(haystack: S1, needle:
         eprintln!("{}", needle);
         panic!("needle was unexpectedly found in haystack");
     }
-}
-
-/// This function is designed for running commands in a temporary directory
-/// that is cleared after the function ends.
-///
-/// What this function does:
-/// 1) Creates a temporary directory (`tmpdir`)
-/// 2) Copies all files from the current directory to `tmpdir`
-/// 3) Changes the current working directory to `tmpdir`
-/// 4) Calls `callback`
-/// 5) Switches working directory back to the original one
-/// 6) Removes `tmpdir`
-pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
-    let original_dir = cwd();
-    let tmpdir = original_dir.join("../temporary-directory");
-    copy_dir_all(".", &tmpdir);
-
-    std::env::set_current_dir(&tmpdir).unwrap();
-    callback();
-    std::env::set_current_dir(original_dir).unwrap();
-    fs::remove_dir_all(tmpdir).unwrap();
 }
