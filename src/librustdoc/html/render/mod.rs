@@ -1267,7 +1267,7 @@ fn render_assoc_items_inner(
                 let id =
                     cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
                 let derived_id = cx.derive_id(&id);
-                tmp_buf.write_str("<details class=\"toggle implementors-toggle\" open><summary>");
+                tmp_buf.write_str("<details class=\"toggle big-toggle\" open><summary>");
                 close_tags.push("</details>");
                 write_impl_section_heading(
                     &mut tmp_buf,

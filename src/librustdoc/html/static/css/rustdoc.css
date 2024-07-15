@@ -1733,7 +1733,7 @@ details.toggle {
 	position: relative;
 }
 
-details.implementors-toggle {
+details.big-toggle {
 	/* This makes [-] on the same line as <summary>. */
 	contain: inline-size;
 }
@@ -1828,7 +1828,7 @@ details.toggle > summary:not(.hideme)::before {
 	left: -24px;
 }
 
-details.implementors-toggle > summary:not(.hideme)::before {
+details.big-toggle > summary:not(.hideme)::before {
 	left: -34px;
 	top: 9px;
 }
