@@ -17,10 +17,10 @@ pub fn target() -> Target {
         // correctly, we do too.
         llvm_target: macos_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit macOS (10.12+, Sierra+)".into()),
+            tier: Some(1),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

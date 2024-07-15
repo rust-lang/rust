@@ -75,10 +75,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-elf".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("Fortanix ABI for 64-bit Intel SGX".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:
