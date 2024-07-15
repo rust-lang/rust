@@ -42,5 +42,5 @@ fn main() {
             assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         }
     });
-    assert!(race_happened, "thread deletion never raced");
+    assert!(race_happened, "multithreaded deletion never raced, try increasing the number of attempts or adjusting the sleep timing");
 }
