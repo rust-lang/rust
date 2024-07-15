@@ -16,7 +16,6 @@ members = [
   "src/tools/linkchecker",
   "src/tools/lint-docs",
   "src/tools/miropt-test-tools",
-  "src/tools/rustbook",
   "src/tools/unstable-book-gen",
   "src/tools/tidy",
   "src/tools/tier-check",
