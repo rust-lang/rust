@@ -7,6 +7,7 @@ mod command;
 mod macros;
 
 pub mod ar;
+pub mod artifact_names;
 pub mod diff;
 pub mod env_checked;
 pub mod external_deps;
@@ -61,6 +62,11 @@ pub use run::{cmd, run, run_fail, run_with_args};
 /// Helpers for checking target information.
 pub use targets::{is_darwin, is_msvc, is_windows, target, uname};
 
+/// Helpers for building names of output artifacts that are potentially target-specific.
+pub use artifact_names::{
+    bin_name, dynamic_lib_extension, dynamic_lib_name, rust_lib_name, static_lib_name,
+};
+
 use command::{Command, CompletedProcess};
 
 /// Returns the path for a local test file.
@@ -100,82 +106,6 @@ pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
         link.as_ref().display(),
         original.as_ref().display(),
     ));
-}
-
-/// Construct the static library name based on the platform.
-#[must_use]
-pub fn static_lib_name(name: &str) -> String {
-    // See tools.mk (irrelevant lines omitted):
-    //
-    // ```makefile
-    // ifeq ($(UNAME),Darwin)
-    //     STATICLIB = $(TMPDIR)/lib$(1).a
-    // else
-    //     ifdef IS_WINDOWS
-    //         ifdef IS_MSVC
-    //             STATICLIB = $(TMPDIR)/$(1).lib
-    //         else
-    //             STATICLIB = $(TMPDIR)/lib$(1).a
-    //         endif
-    //     else
-    //         STATICLIB = $(TMPDIR)/lib$(1).a
-    //     endif
-    // endif
-    // ```
-    assert!(!name.contains(char::is_whitespace), "static library name cannot contain whitespace");
-
-    if is_msvc() { format!("{name}.lib") } else { format!("lib{name}.a") }
-}
-
-/// Construct the dynamic library name based on the platform.
-#[must_use]
-pub fn dynamic_lib_name(name: &str) -> String {
-    // See tools.mk (irrelevant lines omitted):
-    //
-    // ```makefile
-    // ifeq ($(UNAME),Darwin)
-    //     DYLIB = $(TMPDIR)/lib$(1).dylib
-    // else
-    //     ifdef IS_WINDOWS
-    //         DYLIB = $(TMPDIR)/$(1).dll
-    //     else
-    //         DYLIB = $(TMPDIR)/lib$(1).so
-    //     endif
-    // endif
-    // ```
-    assert!(!name.contains(char::is_whitespace), "dynamic library name cannot contain whitespace");
-
-    let extension = dynamic_lib_extension();
-    if is_darwin() {
-        format!("lib{name}.{extension}")
-    } else if is_windows() {
-        format!("{name}.{extension}")
-    } else {
-        format!("lib{name}.{extension}")
-    }
-}
-
-#[must_use]
-pub fn dynamic_lib_extension() -> &'static str {
-    if is_darwin() {
-        "dylib"
-    } else if is_windows() {
-        "dll"
-    } else {
-        "so"
-    }
-}
-
-/// Generate the name a rust library (rlib) would have.
-#[must_use]
-pub fn rust_lib_name(name: &str) -> String {
-    format!("lib{name}.rlib")
-}
-
-/// Construct the binary name based on platform.
-#[must_use]
-pub fn bin_name(name: &str) -> String {
-    if is_windows() { format!("{name}.exe") } else { name.to_string() }
 }
 
 /// Return the current working directory.
