@@ -1,7 +1,7 @@
 use run_make_support::fs_wrapper::copy;
 use std::path::{Path, PathBuf};
 
-use run_make_support::{copy_dir_all, recursive_diff, rustdoc};
+use run_make_support::{assert_recursive_eq, copy_dir_all, rustdoc};
 
 #[derive(PartialEq)]
 enum JsonOutput {
@@ -45,5 +45,5 @@ fn main() {
 
     // Check if all docs(including both json and html formats) are still the same after multiple
     // compilations.
-    recursive_diff(&out_dir, &tmp_out_dir);
+    assert_recursive_eq(&out_dir, &tmp_out_dir);
 }
