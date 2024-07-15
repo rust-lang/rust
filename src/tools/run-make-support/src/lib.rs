@@ -12,6 +12,7 @@ pub mod diff;
 pub mod env_checked;
 pub mod external_deps;
 pub mod fs_wrapper;
+pub mod path_helpers;
 pub mod run;
 pub mod targets;
 
@@ -67,18 +68,10 @@ pub use artifact_names::{
     bin_name, dynamic_lib_extension, dynamic_lib_name, rust_lib_name, static_lib_name,
 };
 
+/// Path-related helpers.
+pub use path_helpers::{cwd, cygpath_windows, path, source_root};
+
 use command::{Command, CompletedProcess};
-
-/// Returns the path for a local test file.
-pub fn path<P: AsRef<Path>>(p: P) -> PathBuf {
-    cwd().join(p.as_ref())
-}
-
-/// Path to the root rust-lang/rust source checkout.
-#[must_use]
-pub fn source_root() -> PathBuf {
-    env_var("SOURCE_ROOT").into()
-}
 
 /// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
 #[cfg(target_family = "windows")]
@@ -106,12 +99,6 @@ pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
         link.as_ref().display(),
         original.as_ref().display(),
     ));
-}
-
-/// Return the current working directory.
-#[must_use]
-pub fn cwd() -> PathBuf {
-    std::env::current_dir().unwrap()
 }
 
 // FIXME(Oneirical): This will no longer be required after compiletest receives the ability
@@ -225,23 +212,6 @@ pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str)
     }
 
     count
-}
-
-/// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
-/// available on the platform!
-#[track_caller]
-#[must_use]
-pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
-    let caller = panic::Location::caller();
-    let mut cygpath = Command::new("cygpath");
-    cygpath.arg("-w");
-    cygpath.arg(path.as_ref());
-    let output = cygpath.run();
-    if !output.status().success() {
-        handle_failed_output(&cygpath, output, caller.line());
-    }
-    // cygpath -w can attach a newline
-    output.stdout_utf8().trim().to_string()
 }
 
 pub(crate) fn handle_failed_output(
