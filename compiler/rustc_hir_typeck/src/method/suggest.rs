@@ -2034,6 +2034,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             IsSuggestion(true),
                             rcvr_ty,
                             expr_id,
+                            None,
                             ProbeScope::TraitsInScope,
                         )
                         .is_ok()
@@ -3095,6 +3096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 IsSuggestion(true),
                 deref_ty,
                 ty.hir_id,
+                None,
                 ProbeScope::TraitsInScope,
             ) {
                 if deref_ty.is_suggestable(self.tcx, true)

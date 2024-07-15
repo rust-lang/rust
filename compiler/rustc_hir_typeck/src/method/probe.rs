@@ -97,6 +97,27 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
 
     scope_expr_id: HirId,
 
+    /// Delegation item can be expanded into method calls or fully qualified calls
+    /// depending on the callee's signature. Method calls are used to allow
+    /// autoref/autoderef for target expression. For example in:
+    ///
+    /// ```ignore (illustrative)
+    /// trait Trait : Sized {
+    ///     fn by_value(self) -> i32 { 1 }
+    ///     fn by_mut_ref(&mut self) -> i32 { 2 }
+    ///     fn by_ref(&self) -> i32 { 3 }
+    /// }
+    ///
+    /// struct NewType(SomeType);
+    /// impl Trait for NewType {
+    ///     reuse Trait::* { self.0 }
+    /// }
+    /// ```
+    ///
+    /// `self.0` will automatically coerce. The difference with existing method lookup
+    /// is that methods in delegation items are pre-resolved by callee path (`Trait::*`).
+    expected_def_id: Option<DefId>,
+
     /// Is this probe being done for a diagnostic? This will skip some error reporting
     /// machinery, since we don't particularly care about, for example, similarly named
     /// candidates if we're *reporting* similarly named candidates.
@@ -249,6 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 IsSuggestion(true),
                 self_ty,
                 scope_expr_id,
+                None,
                 ProbeScope::AllTraits,
                 |probe_cx| Ok(probe_cx.candidate_method_names(candidate_filter)),
             )
@@ -264,6 +286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     IsSuggestion(true),
                     self_ty,
                     scope_expr_id,
+                    None,
                     ProbeScope::AllTraits,
                     |probe_cx| probe_cx.pick(),
                 )
@@ -282,6 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
+        expected_def_id: Option<DefId>,
         scope: ProbeScope,
     ) -> PickResult<'tcx> {
         self.probe_op(
@@ -292,6 +316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             is_suggestion,
             self_ty,
             scope_expr_id,
+            expected_def_id,
             scope,
             |probe_cx| probe_cx.pick(),
         )
@@ -316,6 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             is_suggestion,
             self_ty,
             scope_expr_id,
+            None,
             scope,
             |probe_cx| {
                 Ok(probe_cx
@@ -336,6 +362,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
+        expected_def_id: Option<DefId>,
         scope: ProbeScope,
         op: OP,
     ) -> Result<R, MethodError<'tcx>>
@@ -477,6 +504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &orig_values,
                 steps.steps,
                 scope_expr_id,
+                expected_def_id,
                 is_suggestion,
             );
 
@@ -572,6 +600,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         orig_steps_var_values: &'a OriginalQueryValues<'tcx>,
         steps: &'tcx [CandidateStep<'tcx>],
         scope_expr_id: HirId,
+        expected_def_id: Option<DefId>,
         is_suggestion: IsSuggestion,
     ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
@@ -591,6 +620,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             static_candidates: RefCell::new(Vec::new()),
             unsatisfied_predicates: RefCell::new(Vec::new()),
             scope_expr_id,
+            expected_def_id,
             is_suggestion,
         }
     }
@@ -1221,6 +1251,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> = candidates
             .iter()
+            .filter(|candidate| {
+                !matches!(self.expected_def_id, Some(def_id) if def_id != candidate.item.def_id)
+            })
             .map(|probe| {
                 (probe, self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
             })
@@ -1679,6 +1712,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.orig_steps_var_values,
                 self.steps,
                 self.scope_expr_id,
+                None,
                 IsSuggestion(true),
             );
             pcx.allow_similar_names = true;
