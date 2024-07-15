@@ -25,6 +25,7 @@ shift
 # Apparently applying `-fPIC` everywhere allows them to link successfully.
 export CFLAGS="-fPIC $CFLAGS"
 
+# insignificant change
 MUSL=musl-1.2.3
 
 # may have been downloaded in a previous run
