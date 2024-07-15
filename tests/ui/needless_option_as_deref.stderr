@@ -19,5 +19,11 @@ error: derefed type is same as origin
 LL |     let _ = x.as_deref_mut();
    |             ^^^^^^^^^^^^^^^^ help: try: `x`
 
-error: aborting due to 3 previous errors
+error: derefed type is same as origin
+  --> tests/ui/needless_option_as_deref.rs:59:38
+   |
+LL |             let _ = S { field: other(maybe_side_effect.as_deref_mut()) };
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `maybe_side_effect`
+
+error: aborting due to 4 previous errors
 
