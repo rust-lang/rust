@@ -7,6 +7,7 @@ pub mod cc;
 pub mod clang;
 mod command;
 pub mod diff;
+pub mod env_checked;
 pub mod fs_wrapper;
 pub mod llvm;
 mod macros;
@@ -15,8 +16,6 @@ pub mod rustc;
 pub mod rustdoc;
 pub mod targets;
 
-use std::env;
-use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::panic;
@@ -31,6 +30,7 @@ pub use wasmparser;
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use diff::{diff, Diff};
+pub use env_checked::{env_var, env_var_os};
 pub use llvm::{
     llvm_ar, llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmFilecheck,
     LlvmObjdump, LlvmProfdata, LlvmReadobj,
@@ -41,24 +41,6 @@ pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 pub use targets::{is_darwin, is_msvc, is_windows, target, uname};
 
 use command::{Command, CompletedProcess};
-
-#[track_caller]
-#[must_use]
-pub fn env_var(name: &str) -> String {
-    match env::var(name) {
-        Ok(v) => v,
-        Err(err) => panic!("failed to retrieve environment variable {name:?}: {err:?}"),
-    }
-}
-
-#[track_caller]
-#[must_use]
-pub fn env_var_os(name: &str) -> OsString {
-    match env::var_os(name) {
-        Some(v) => v,
-        None => panic!("failed to retrieve environment variable {name:?}"),
-    }
-}
 
 /// `AR`
 #[track_caller]
@@ -206,7 +188,7 @@ pub fn bin_name(name: &str) -> String {
 /// Return the current working directory.
 #[must_use]
 pub fn cwd() -> PathBuf {
-    env::current_dir().unwrap()
+    std::env::current_dir().unwrap()
 }
 
 // FIXME(Oneirical): This will no longer be required after compiletest receives the ability
@@ -363,10 +345,10 @@ pub fn set_host_rpath(cmd: &mut Command) {
         let mut paths = vec![];
         paths.push(cwd());
         paths.push(PathBuf::from(env_var("HOST_RPATH_DIR")));
-        for p in env::split_paths(&env_var(&ld_lib_path_envvar)) {
+        for p in std::env::split_paths(&env_var(&ld_lib_path_envvar)) {
             paths.push(p.to_path_buf());
         }
-        env::join_paths(paths.iter()).unwrap()
+        std::env::join_paths(paths.iter()).unwrap()
     });
 }
 
@@ -518,8 +500,8 @@ pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
     let tmpdir = original_dir.join("../temporary-directory");
     copy_dir_all(".", &tmpdir);
 
-    env::set_current_dir(&tmpdir).unwrap();
+    std::env::set_current_dir(&tmpdir).unwrap();
     callback();
-    env::set_current_dir(original_dir).unwrap();
+    std::env::set_current_dir(original_dir).unwrap();
     fs::remove_dir_all(tmpdir).unwrap();
 }
