@@ -228,6 +228,7 @@ use rustc_middle::ty::{
     self, AssocKind, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, VtblEntry,
 };
+use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::EntryFnType;
 use rustc_session::Limit;
@@ -930,7 +931,7 @@ fn visit_instance_use<'tcx>(
 
 /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
 /// can just link to the upstream crate and therefore don't need a mono item.
-pub(crate) fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+pub(crate) fn should_codegen_locally_hook<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -> bool {
     let Some(def_id) = instance.def.def_id_if_not_guaranteed_local_codegen() else {
         return true;
     };
@@ -946,7 +947,7 @@ pub(crate) fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance
     }
 
     if tcx.is_reachable_non_generic(def_id)
-        || instance.polymorphize(tcx).upstream_monomorphization(tcx).is_some()
+        || instance.polymorphize(*tcx).upstream_monomorphization(*tcx).is_some()
     {
         // We can link to the item in question, no instance needed in this crate.
         return false;
@@ -965,6 +966,12 @@ pub(crate) fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance
     }
 
     true
+}
+
+/// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
+/// can just link to the upstream crate and therefore don't need a mono item.
+pub(crate) fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+    tcx.should_codegen_locally(instance)
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,
@@ -1612,4 +1619,8 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     });
 
     (mono_items, state.usage_map.into_inner())
+}
+
+pub fn provide(providers: &mut Providers) {
+    providers.hooks.should_codegen_locally = should_codegen_locally_hook;
 }
