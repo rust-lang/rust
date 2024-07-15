@@ -1241,7 +1241,7 @@ declare_lint! {
     Deny,
     "type parameter default erroneously allowed in invalid location",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
     };
 }
