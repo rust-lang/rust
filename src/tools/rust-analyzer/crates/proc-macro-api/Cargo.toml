@@ -28,6 +28,8 @@ span.workspace = true
 # InternIds for the syntax context
 base-db.workspace = true
 la-arena.workspace = true
+# only here to parse via token_to_literal
+mbe.workspace = true
 
 [lints]
 workspace = true

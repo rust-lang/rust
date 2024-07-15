@@ -141,6 +141,7 @@ impl FlatTree {
             ident: Vec::new(),
             token_tree: Vec::new(),
             text: Vec::new(),
+            version,
         };
         w.write(subtree);
 
@@ -178,6 +179,7 @@ impl FlatTree {
             ident: Vec::new(),
             token_tree: Vec::new(),
             text: Vec::new(),
+            version,
         };
         w.write(subtree);
 
@@ -228,6 +230,7 @@ impl FlatTree {
             token_tree: self.token_tree,
             text: self.text,
             span_data_table,
+            version,
         }
         .read()
     }
@@ -253,6 +256,7 @@ impl FlatTree {
             token_tree: self.token_tree,
             text: self.text,
             span_data_table: &(),
+            version,
         }
         .read()
     }
@@ -386,8 +390,9 @@ impl InternableSpan for Span {
 
 struct Writer<'a, 'span, S: InternableSpan> {
     work: VecDeque<(usize, &'a tt::Subtree<S>)>,
-    string_table: FxHashMap<&'a str, u32>,
+    string_table: FxHashMap<std::borrow::Cow<'a, str>, u32>,
     span_data_table: &'span mut S::Table,
+    version: u32,
 
     subtree: Vec<SubtreeRepr>,
     literal: Vec<LiteralRepr>,
@@ -425,9 +430,15 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Literal(lit) => {
                         let idx = self.literal.len() as u32;
-                        let text = self.intern(&lit.text);
                         let id = self.token_id_of(lit.span);
-                        let suffix = lit.suffix.as_ref().map(|s| self.intern(s)).unwrap_or(!0);
+                        let (text, suffix) = if self.version >= EXTENDED_LEAF_DATA {
+                            (
+                                self.intern(&lit.text),
+                                lit.suffix.as_ref().map(|s| self.intern(s)).unwrap_or(!0),
+                            )
+                        } else {
+                            (self.intern_owned(format!("{lit}")), !0)
+                        };
                         self.literal.push(LiteralRepr {
                             id,
                             text,
@@ -456,13 +467,15 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
                     }
                     tt::Leaf::Ident(ident) => {
                         let idx = self.ident.len() as u32;
-                        let text = self.intern(&ident.text);
                         let id = self.token_id_of(ident.span);
-                        self.ident.push(IdentRepr {
-                            id,
-                            text,
-                            is_raw: ident.is_raw == tt::IdentIsRaw::Yes,
-                        });
+                        let text = if self.version >= EXTENDED_LEAF_DATA {
+                            self.intern(&ident.text)
+                        } else if ident.is_raw.yes() {
+                            self.intern_owned(format!("r#{}", ident.text,))
+                        } else {
+                            self.intern(&ident.text)
+                        };
+                        self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
                         idx << 2 | 0b11
                     }
                 },
@@ -484,15 +497,25 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
 
     pub(crate) fn intern(&mut self, text: &'a str) -> u32 {
         let table = &mut self.text;
-        *self.string_table.entry(text).or_insert_with(|| {
+        *self.string_table.entry(text.into()).or_insert_with(|| {
             let idx = table.len();
             table.push(text.to_owned());
+            idx as u32
+        })
+    }
+
+    pub(crate) fn intern_owned(&mut self, text: String) -> u32 {
+        let table = &mut self.text;
+        *self.string_table.entry(text.clone().into()).or_insert_with(|| {
+            let idx = table.len();
+            table.push(text);
             idx as u32
         })
     }
 }
 
 struct Reader<'span, S: InternableSpan> {
+    version: u32,
     subtree: Vec<SubtreeRepr>,
     literal: Vec<LiteralRepr>,
     punct: Vec<PunctRepr>,
@@ -528,30 +551,36 @@ impl<'span, S: InternableSpan> Reader<'span, S> {
                             0b01 => {
                                 use tt::LitKind::*;
                                 let repr = &self.literal[idx];
-                                tt::Leaf::Literal(tt::Literal {
-                                    text: self.text[repr.text as usize].as_str().into(),
-                                    span: read_span(repr.id),
-                                    kind: match u16::to_le_bytes(repr.kind) {
-                                        [0, _] => Err(()),
-                                        [1, _] => Byte,
-                                        [2, _] => Char,
-                                        [3, _] => Integer,
-                                        [4, _] => Float,
-                                        [5, _] => Str,
-                                        [6, r] => StrRaw(r),
-                                        [7, _] => ByteStr,
-                                        [8, r] => ByteStrRaw(r),
-                                        [9, _] => CStr,
-                                        [10, r] => CStrRaw(r),
-                                        _ => unreachable!(),
-                                    },
-                                    suffix: if repr.suffix != !0 {
-                                        Some(Box::new(
-                                            self.text[repr.suffix as usize].as_str().into(),
-                                        ))
-                                    } else {
-                                        None
-                                    },
+                                let text = self.text[repr.text as usize].as_str();
+                                let span = read_span(repr.id);
+                                tt::Leaf::Literal(if self.version >= EXTENDED_LEAF_DATA {
+                                    tt::Literal {
+                                        text: text.into(),
+                                        span,
+                                        kind: match u16::to_le_bytes(repr.kind) {
+                                            [0, _] => Err(()),
+                                            [1, _] => Byte,
+                                            [2, _] => Char,
+                                            [3, _] => Integer,
+                                            [4, _] => Float,
+                                            [5, _] => Str,
+                                            [6, r] => StrRaw(r),
+                                            [7, _] => ByteStr,
+                                            [8, r] => ByteStrRaw(r),
+                                            [9, _] => CStr,
+                                            [10, r] => CStrRaw(r),
+                                            _ => unreachable!(),
+                                        },
+                                        suffix: if repr.suffix != !0 {
+                                            Some(Box::new(
+                                                self.text[repr.suffix as usize].as_str().into(),
+                                            ))
+                                        } else {
+                                            None
+                                        },
+                                    }
+                                } else {
+                                    tt::token_to_literal(text.into(), span)
                                 })
                                 .into()
                             }
@@ -566,14 +595,23 @@ impl<'span, S: InternableSpan> Reader<'span, S> {
                             }
                             0b11 => {
                                 let repr = &self.ident[idx];
+                                let text = self.text[repr.text as usize].as_str();
+                                let (is_raw, text) = if self.version >= EXTENDED_LEAF_DATA {
+                                    (
+                                        if repr.is_raw {
+                                            tt::IdentIsRaw::Yes
+                                        } else {
+                                            tt::IdentIsRaw::No
+                                        },
+                                        text,
+                                    )
+                                } else {
+                                    tt::IdentIsRaw::split_from_symbol(text)
+                                };
                                 tt::Leaf::Ident(tt::Ident {
-                                    text: self.text[repr.text as usize].as_str().into(),
+                                    text: text.into(),
                                     span: read_span(repr.id),
-                                    is_raw: if repr.is_raw {
-                                        tt::IdentIsRaw::Yes
-                                    } else {
-                                        tt::IdentIsRaw::No
-                                    },
+                                    is_raw,
                                 })
                                 .into()
                             }

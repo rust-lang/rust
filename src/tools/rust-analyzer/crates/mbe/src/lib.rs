@@ -6,13 +6,6 @@
 //! The tests for this functionality live in another crate:
 //! `hir_def::macro_expansion_tests::mbe`.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
-
-#[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_lexer as rustc_lexer;
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_lexer;
-
 mod expander;
 mod parser;
 mod syntax_bridge;
@@ -36,7 +29,7 @@ pub use tt::{Delimiter, DelimiterKind, Punct};
 pub use crate::syntax_bridge::{
     desugar_doc_comment_text, parse_exprs_with_sep, parse_to_token_tree,
     parse_to_token_tree_static_span, syntax_node_to_token_tree, syntax_node_to_token_tree_modified,
-    token_to_literal, token_tree_to_syntax_node, DocCommentDesugarMode, SpanMapper,
+    token_tree_to_syntax_node, DocCommentDesugarMode, SpanMapper,
 };
 
 pub use crate::syntax_bridge::dummy_test_span_utils::*;

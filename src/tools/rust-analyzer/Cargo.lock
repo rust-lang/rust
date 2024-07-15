@@ -1046,7 +1046,6 @@ dependencies = [
  "arrayvec",
  "cov-mark",
  "parser",
- "ra-ap-rustc_lexer",
  "rustc-hash",
  "smallvec",
  "span",
@@ -1326,6 +1325,7 @@ dependencies = [
  "base-db",
  "indexmap",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mbe",
  "paths",
  "rustc-hash",
  "serde",
@@ -2218,6 +2218,7 @@ name = "tt"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "ra-ap-rustc_lexer",
  "smol_str",
  "stdx",
  "text-size",

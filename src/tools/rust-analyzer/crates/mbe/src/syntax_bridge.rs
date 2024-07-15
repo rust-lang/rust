@@ -4,7 +4,7 @@ use std::fmt;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, SpanAnchor, SpanData, SpanMap};
-use stdx::{format_to, itertools::Itertools, never, non_empty_vec::NonEmptyVec};
+use stdx::{format_to, never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
     format_smolstr, AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement,
@@ -14,6 +14,7 @@ use syntax::{
 use tt::{
     buffer::{Cursor, TokenBuffer},
     iter::TtIter,
+    token_to_literal,
 };
 
 use crate::to_parser_input::to_parser_input;
@@ -398,56 +399,6 @@ where
     } else {
         subtree
     }
-}
-
-pub fn token_to_literal<S>(text: SmolStr, span: S) -> tt::Literal<S>
-where
-    S: Copy,
-{
-    use rustc_lexer::LiteralKind;
-
-    let token = rustc_lexer::tokenize(&text).next_tuple();
-    let Some((rustc_lexer::Token {
-        kind: rustc_lexer::TokenKind::Literal { kind, suffix_start },
-        ..
-    },)) = token
-    else {
-        return tt::Literal { span, text, kind: tt::LitKind::Err(()), suffix: None };
-    };
-
-    let (kind, start_offset, end_offset) = match kind {
-        LiteralKind::Int { .. } => (tt::LitKind::Integer, 0, 0),
-        LiteralKind::Float { .. } => (tt::LitKind::Float, 0, 0),
-        LiteralKind::Char { terminated } => (tt::LitKind::Char, 1, terminated as usize),
-        LiteralKind::Byte { terminated } => (tt::LitKind::Byte, 2, terminated as usize),
-        LiteralKind::Str { terminated } => (tt::LitKind::Str, 1, terminated as usize),
-        LiteralKind::ByteStr { terminated } => (tt::LitKind::ByteStr, 2, terminated as usize),
-        LiteralKind::CStr { terminated } => (tt::LitKind::CStr, 2, terminated as usize),
-        LiteralKind::RawStr { n_hashes } => (
-            tt::LitKind::StrRaw(n_hashes.unwrap_or_default()),
-            2 + n_hashes.unwrap_or_default() as usize,
-            1 + n_hashes.unwrap_or_default() as usize,
-        ),
-        LiteralKind::RawByteStr { n_hashes } => (
-            tt::LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
-            3 + n_hashes.unwrap_or_default() as usize,
-            1 + n_hashes.unwrap_or_default() as usize,
-        ),
-        LiteralKind::RawCStr { n_hashes } => (
-            tt::LitKind::CStrRaw(n_hashes.unwrap_or_default()),
-            3 + n_hashes.unwrap_or_default() as usize,
-            1 + n_hashes.unwrap_or_default() as usize,
-        ),
-    };
-
-    let (lit, suffix) = text.split_at(suffix_start as usize);
-    let lit = &lit[start_offset..lit.len() - end_offset];
-    let suffix = match suffix {
-        "" | "_" => None,
-        suffix => Some(Box::new(suffix.into())),
-    };
-
-    tt::Literal { span, text: lit.into(), kind, suffix }
 }
 
 fn is_single_token_op(kind: SyntaxKind) -> bool {

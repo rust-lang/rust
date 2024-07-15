@@ -2,14 +2,21 @@
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_lexer as rustc_lexer;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_lexer;
+
 pub mod buffer;
 pub mod iter;
 
 use std::fmt;
 
-use stdx::impl_from;
+use stdx::{impl_from, itertools::Itertools as _};
 
-pub use smol_str::SmolStr;
+pub use smol_str::{format_smolstr, SmolStr};
 pub use text_size::{TextRange, TextSize};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -194,6 +201,56 @@ pub struct Literal<S> {
     pub span: S,
     pub kind: LitKind,
     pub suffix: Option<Box<SmolStr>>,
+}
+
+pub fn token_to_literal<S>(text: SmolStr, span: S) -> Literal<S>
+where
+    S: Copy,
+{
+    use rustc_lexer::LiteralKind;
+
+    let token = rustc_lexer::tokenize(&text).next_tuple();
+    let Some((rustc_lexer::Token {
+        kind: rustc_lexer::TokenKind::Literal { kind, suffix_start },
+        ..
+    },)) = token
+    else {
+        return Literal { span, text, kind: LitKind::Err(()), suffix: None };
+    };
+
+    let (kind, start_offset, end_offset) = match kind {
+        LiteralKind::Int { .. } => (LitKind::Integer, 0, 0),
+        LiteralKind::Float { .. } => (LitKind::Float, 0, 0),
+        LiteralKind::Char { terminated } => (LitKind::Char, 1, terminated as usize),
+        LiteralKind::Byte { terminated } => (LitKind::Byte, 2, terminated as usize),
+        LiteralKind::Str { terminated } => (LitKind::Str, 1, terminated as usize),
+        LiteralKind::ByteStr { terminated } => (LitKind::ByteStr, 2, terminated as usize),
+        LiteralKind::CStr { terminated } => (LitKind::CStr, 2, terminated as usize),
+        LiteralKind::RawStr { n_hashes } => (
+            LitKind::StrRaw(n_hashes.unwrap_or_default()),
+            2 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawByteStr { n_hashes } => (
+            LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawCStr { n_hashes } => (
+            LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+    };
+
+    let (lit, suffix) = text.split_at(suffix_start as usize);
+    let lit = &lit[start_offset..lit.len() - end_offset];
+    let suffix = match suffix {
+        "" | "_" => None,
+        suffix => Some(Box::new(suffix.into())),
+    };
+
+    Literal { span, text: lit.into(), kind, suffix }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
