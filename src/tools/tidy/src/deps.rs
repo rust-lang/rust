@@ -21,6 +21,9 @@ const LICENSES: &[&str] = &[
     "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
+    "BSD-2-Clause",                                        // arrayref
+    "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception", // blake3
+    "CC0-1.0 OR MIT-0 OR Apache-2.0",                      // constant_time_eq
     "ISC",
     "MIT / Apache-2.0",
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
@@ -232,15 +235,18 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "annotate-snippets",
     "anstyle",
     "ar_archive_writer",
+    "arrayref",
     "arrayvec",
     "autocfg",
     "bitflags",
+    "blake3",
     "block-buffer",
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
     "cfg_aliases",
     "compiler_builtins",
+    "constant_time_eq",
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",
