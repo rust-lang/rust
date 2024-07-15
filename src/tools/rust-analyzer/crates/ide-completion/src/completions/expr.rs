@@ -1,6 +1,6 @@
 //! Completion of names from the current scope in expression position.
 
-use hir::{ImportPathConfig, ScopeDef};
+use hir::{sym, ImportPathConfig, Name, ScopeDef};
 use syntax::ast;
 
 use crate::{
@@ -190,7 +190,7 @@ pub(crate) fn complete_expr_path(
                                 path_ctx,
                                 strukt,
                                 None,
-                                Some(hir::known::SELF_TYPE),
+                                Some(Name::new_symbol_root(sym::Self_.clone())),
                             );
                         }
                     }
@@ -210,7 +210,12 @@ pub(crate) fn complete_expr_path(
 
                         acc.add_union_literal(ctx, un, path, None);
                         if complete_self {
-                            acc.add_union_literal(ctx, un, None, Some(hir::known::SELF_TYPE));
+                            acc.add_union_literal(
+                                ctx,
+                                un,
+                                None,
+                                Some(Name::new_symbol_root(sym::Self_.clone())),
+                            );
                         }
                     }
                     hir::Adt::Enum(e) => {

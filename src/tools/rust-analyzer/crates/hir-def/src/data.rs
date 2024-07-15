@@ -6,7 +6,7 @@ use base_db::CrateId;
 use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
-use intern::Interned;
+use intern::{sym, Interned};
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
 use triomphe::Arc;
@@ -485,7 +485,7 @@ impl ExternCrateDeclData {
 
         let name = extern_crate.name.clone();
         let krate = loc.container.krate();
-        let crate_id = if name == hir_expand::name![self] {
+        let crate_id = if name == sym::self_.clone() {
             Some(krate)
         } else {
             db.crate_def_map(krate)

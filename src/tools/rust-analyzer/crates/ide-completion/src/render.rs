@@ -280,8 +280,7 @@ pub(crate) fn render_expr(
     let mut snippet_formatter = |ty: &hir::Type| {
         let arg_name = ty
             .as_adt()
-            .and_then(|adt| adt.name(ctx.db).as_text())
-            .map(|s| stdx::to_lower_snake_case(s.as_str()))
+            .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
             .unwrap_or_else(|| String::from("_"));
         let res = format!("${{{i}:{arg_name}}}");
         i += 1;
@@ -290,8 +289,7 @@ pub(crate) fn render_expr(
 
     let mut label_formatter = |ty: &hir::Type| {
         ty.as_adt()
-            .and_then(|adt| adt.name(ctx.db).as_text())
-            .map(|s| stdx::to_lower_snake_case(s.as_str()))
+            .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
             .unwrap_or_else(|| String::from("..."))
     };
 

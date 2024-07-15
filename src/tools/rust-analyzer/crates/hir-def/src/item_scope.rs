@@ -1,10 +1,9 @@
 //! Describes items defined or visible (ie, imported) in a certain scope.
 //! This is shared between modules and blocks.
 
-use std::collections::hash_map::Entry;
-
 use base_db::CrateId;
 use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCallId};
+use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
 use once_cell::sync::Lazy;
@@ -17,8 +16,8 @@ use crate::{
     db::DefDatabase,
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
-    AdtId, BuiltinType, ConstId, ExternCrateId, HasModule, ImplId, LocalModuleId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId, UseId,
+    AdtId, BuiltinType, ConstId, ExternCrateId, FxIndexMap, HasModule, ImplId, LocalModuleId,
+    Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
 };
 
 #[derive(Debug, Default)]
@@ -67,9 +66,9 @@ pub struct ItemScope {
     /// Defs visible in this scope. This includes `declarations`, but also
     /// imports. The imports belong to this module and can be resolved by using them on
     /// the `use_imports_*` fields.
-    types: FxHashMap<Name, (ModuleDefId, Visibility, Option<ImportOrExternCrate>)>,
-    values: FxHashMap<Name, (ModuleDefId, Visibility, Option<ImportId>)>,
-    macros: FxHashMap<Name, (MacroId, Visibility, Option<ImportId>)>,
+    types: FxIndexMap<Name, (ModuleDefId, Visibility, Option<ImportOrExternCrate>)>,
+    values: FxIndexMap<Name, (ModuleDefId, Visibility, Option<ImportId>)>,
+    macros: FxIndexMap<Name, (MacroId, Visibility, Option<ImportId>)>,
     unresolved: FxHashSet<Name>,
 
     /// The defs declared in this scope. Each def has a single scope where it is
@@ -118,8 +117,8 @@ struct DeriveMacroInvocation {
     derive_call_ids: SmallVec<[Option<MacroCallId>; 1]>,
 }
 
-pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
-    BuiltinType::ALL
+pub(crate) static BUILTIN_SCOPE: Lazy<FxIndexMap<Name, PerNs>> = Lazy::new(|| {
+    BuiltinType::all_builtin_types()
         .iter()
         .map(|(name, ty)| (name.clone(), PerNs::types((*ty).into(), Visibility::Public, None)))
         .collect()

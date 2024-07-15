@@ -150,7 +150,7 @@ fn try_lookup_macro_def_in_macro_use(
 
     for mod_def in krate.root_module().declarations(sema.db) {
         if let ModuleDef::Macro(mac) = mod_def {
-            if mac.name(sema.db).as_str() == Some(token.text()) {
+            if mac.name(sema.db).as_str() == token.text() {
                 if let Some(nav) = mac.try_to_nav(sema.db) {
                     return Some(nav.call_site);
                 }

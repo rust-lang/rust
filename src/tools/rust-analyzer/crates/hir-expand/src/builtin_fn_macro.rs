@@ -3,6 +3,7 @@
 use base_db::{AnchoredPath, FileId};
 use cfg::CfgExpr;
 use either::Either;
+use intern::sym;
 use itertools::Itertools;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
 use span::{Edition, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
@@ -11,8 +12,7 @@ use syntax::ast::{self, AstToken};
 use crate::{
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
-    name::{self, known},
-    quote,
+    name, quote,
     quote::dollar_crate,
     tt::{self, DelimSpan},
     ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroFileIdExt,
@@ -48,8 +48,8 @@ macro_rules! register_builtin {
 
         fn find_by_name(ident: &name::Name) -> Option<Either<BuiltinFnLikeExpander, EagerExpander>> {
             match ident {
-                $( id if id == &name::name![$name] => Some(Either::Left(BuiltinFnLikeExpander::$kind)), )*
-                $( id if id == &name::name![$e_name] => Some(Either::Right(EagerExpander::$e_kind)), )*
+                $( id if id == &sym::$name => Some(Either::Left(BuiltinFnLikeExpander::$kind)), )*
+                $( id if id == &sym::$e_name => Some(Either::Right(EagerExpander::$e_kind)), )*
                 _ => return None,
             }
         }
@@ -367,8 +367,11 @@ fn panic_expand(
     let dollar_crate = dollar_crate(span);
     let call_site_span = span_with_call_site_ctxt(db, span, id);
 
-    let mac =
-        if use_panic_2021(db, call_site_span) { known::panic_2021 } else { known::panic_2015 };
+    let mac = if use_panic_2021(db, call_site_span) {
+        sym::panic_2021.clone()
+    } else {
+        sym::panic_2015.clone()
+    };
 
     // Expand to a macro call `$crate::panic::panic_{edition}`
     let mut call = quote!(call_site_span =>#dollar_crate::panic::#mac!);
@@ -397,9 +400,9 @@ fn unreachable_expand(
     let call_site_span = span_with_call_site_ctxt(db, span, id);
 
     let mac = if use_panic_2021(db, call_site_span) {
-        known::unreachable_2021
+        sym::unreachable_2021.clone()
     } else {
-        known::unreachable_2015
+        sym::unreachable_2015.clone()
     };
 
     // Expand to a macro call `$crate::panic::panic_{edition}`
@@ -432,7 +435,7 @@ fn use_panic_2021(db: &dyn ExpandDatabase, span: Span) -> bool {
         // FIXME: Record allow_internal_unstable in the macro def (not been done yet because it
         // would consume quite a bit extra memory for all call locs...)
         // if let Some(features) = expn.def.allow_internal_unstable {
-        //     if features.iter().any(|&f| f == sym::edition_panic) {
+        //     if features.iter().any(|&f| f == sym::edition_panic.clone()) {
         //         span = expn.call_site;
         //         continue;
         //     }

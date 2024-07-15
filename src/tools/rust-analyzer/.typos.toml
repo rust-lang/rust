@@ -14,6 +14,8 @@ extend-ignore-re = [
     "\\w*\\.{3,4}\\w*",
     '"flate2"',
     "raison d'être",
+    "inout",
+    "optin"
 ]
 
 [default.extend-words]

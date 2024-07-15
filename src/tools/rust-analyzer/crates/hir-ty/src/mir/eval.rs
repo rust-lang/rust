@@ -14,8 +14,8 @@ use hir_def::{
     AdtId, ConstId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
     StaticId, VariantId,
 };
-use hir_expand::{mod_path::ModPath, HirFileIdExt, InFile};
-use intern::Interned;
+use hir_expand::{mod_path::path, name::Name, HirFileIdExt, InFile};
+use intern::{sym, Interned};
 use la_arena::ArenaMap;
 use rustc_abi::TargetDataLayout;
 use rustc_apfloat::{
@@ -35,7 +35,7 @@ use crate::{
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
     method_resolution::{is_dyn_method, lookup_impl_const},
-    name, static_lifetime,
+    static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
     CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstScalar, FnDefId, Interner, MemoryMap,
@@ -631,15 +631,21 @@ impl Evaluator<'_> {
             cached_fn_trait_func: db
                 .lang_item(crate_id, LangItem::Fn)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call.clone()))
+                }),
             cached_fn_mut_trait_func: db
                 .lang_item(crate_id, LangItem::FnMut)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call_mut])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call_mut.clone()))
+                }),
             cached_fn_once_trait_func: db
                 .lang_item(crate_id, LangItem::FnOnce)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call_once])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
+                }),
         })
     }
 
@@ -2633,10 +2639,7 @@ impl Evaluator<'_> {
         let static_data = self.db.static_data(st);
         let result = if !static_data.is_extern {
             let konst = self.db.const_eval_static(st).map_err(|e| {
-                MirEvalError::ConstEvalError(
-                    static_data.name.as_str().unwrap_or("_").to_owned(),
-                    Box::new(e),
-                )
+                MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;
             self.allocate_const_in_heap(locals, &konst)?
         } else {
@@ -2693,7 +2696,7 @@ impl Evaluator<'_> {
     ) -> Result<()> {
         let Some(drop_fn) = (|| {
             let drop_trait = self.db.lang_item(self.crate_id, LangItem::Drop)?.as_trait()?;
-            self.db.trait_data(drop_trait).method_by_name(&name![drop])
+            self.db.trait_data(drop_trait).method_by_name(&Name::new_symbol_root(sym::drop.clone()))
         })() else {
             // in some tests we don't have drop trait in minicore, and
             // we can ignore drop in them.
@@ -2797,14 +2800,13 @@ pub fn render_const_using_debug_impl(
     let resolver = owner.resolver(db.upcast());
     let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
-            hir_expand::mod_path::PathKind::Abs,
-            [name![core], name![fmt], name![Debug]],
-        )),
+        &hir_def::path::Path::from_known_path_with_no_generic(path![core::fmt::Debug]),
     ) else {
         not_supported!("core::fmt::Debug not found");
     };
-    let Some(debug_fmt_fn) = db.trait_data(debug_trait).method_by_name(&name![fmt]) else {
+    let Some(debug_fmt_fn) =
+        db.trait_data(debug_trait).method_by_name(&Name::new_symbol_root(sym::fmt.clone()))
+    else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
     // a1 = &[""]
@@ -2829,10 +2831,7 @@ pub fn render_const_using_debug_impl(
     evaluator.write_memory(a3.offset(5 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
-            hir_expand::mod_path::PathKind::Abs,
-            [name![std], name![fmt], name![format]],
-        )),
+        &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
     ) else {
         not_supported!("std::fmt::format not found");
     };

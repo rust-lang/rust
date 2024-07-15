@@ -10,6 +10,7 @@ use hir_expand::{
     InFile, MacroCallId,
 };
 use limit::Limit;
+use span::SyntaxContextId;
 use syntax::{ast, Parse};
 use triomphe::Arc;
 
@@ -50,6 +51,11 @@ impl Expander {
 
     pub fn krate(&self) -> CrateId {
         self.module.krate
+    }
+
+    pub fn syntax_context(&self) -> SyntaxContextId {
+        // FIXME:
+        SyntaxContextId::ROOT
     }
 
     pub fn enter_expand<T: ast::AstNode>(

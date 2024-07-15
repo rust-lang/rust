@@ -1113,9 +1113,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             .iter()
                             .map(|it| {
                                 let o = match it.1.name.as_str() {
-                                    Some("start") => lp.take(),
-                                    Some("end") => rp.take(),
-                                    Some("exhausted") => {
+                                    "start" => lp.take(),
+                                    "end" => rp.take(),
+                                    "exhausted" => {
                                         Some(Operand::from_bytes(Box::new([0]), TyBuilder::bool()))
                                     }
                                     _ => None,

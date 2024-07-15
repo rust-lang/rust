@@ -9,6 +9,7 @@ use hir_expand::{
     attrs::{collect_attrs, Attr, AttrId, RawAttrs},
     HirFileId, InFile,
 };
+use intern::{sym, Symbol};
 use la_arena::{ArenaMap, Idx, RawIdx};
 use mbe::DelimiterKind;
 use syntax::{
@@ -152,7 +153,7 @@ impl Attrs {
     }
 
     pub fn lang_item(&self) -> Option<LangItem> {
-        self.by_key("lang").string_value().and_then(LangItem::from_str)
+        self.by_key("lang").string_value().and_then(|it| LangItem::from_symbol(&Symbol::intern(it)))
     }
 
     pub fn has_doc_hidden(&self) -> bool {
@@ -199,8 +200,12 @@ impl Attrs {
                 .segments()
                 .iter()
                 .rev()
-                .zip(["core", "prelude", "v1", "test"].iter().rev())
-                .all(|it| it.0.as_str() == Some(it.1))
+                .zip(
+                    [sym::core.clone(), sym::prelude.clone(), sym::v1.clone(), sym::test.clone()]
+                        .iter()
+                        .rev(),
+                )
+                .all(|it| it.0 == it.1)
         })
     }
 
@@ -566,6 +571,10 @@ impl<'attr> AttrQuery<'attr> {
 
     pub fn string_value(self) -> Option<&'attr str> {
         self.attrs().find_map(|attr| attr.string_value())
+    }
+
+    pub fn string_value_with_span(self) -> Option<(&'attr str, span::Span)> {
+        self.attrs().find_map(|attr| attr.string_value_with_span())
     }
 
     pub fn string_value_unescape(self) -> Option<Cow<'attr, str>> {

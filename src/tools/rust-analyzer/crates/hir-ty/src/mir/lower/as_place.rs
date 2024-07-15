@@ -4,7 +4,7 @@ use crate::mir::MutBorrowKind;
 
 use super::*;
 use hir_def::FunctionId;
-use hir_expand::name;
+use intern::sym;
 
 macro_rules! not_supported {
     ($it: expr) => {
@@ -189,10 +189,10 @@ impl MirLowerCtx<'_> {
                                 if let Some(deref_trait) =
                                     self.resolve_lang_item(LangItem::DerefMut)?.as_trait()
                                 {
-                                    if let Some(deref_fn) = self
-                                        .db
-                                        .trait_data(deref_trait)
-                                        .method_by_name(&name![deref_mut])
+                                    if let Some(deref_fn) =
+                                        self.db.trait_data(deref_trait).method_by_name(
+                                            &Name::new_symbol_root(sym::deref_mut.clone()),
+                                        )
                                     {
                                         break 'b deref_fn == f;
                                     }
@@ -324,12 +324,17 @@ impl MirLowerCtx<'_> {
         mutability: bool,
     ) -> Result<Option<(Place, BasicBlockId)>> {
         let (chalk_mut, trait_lang_item, trait_method_name, borrow_kind) = if !mutability {
-            (Mutability::Not, LangItem::Deref, name![deref], BorrowKind::Shared)
+            (
+                Mutability::Not,
+                LangItem::Deref,
+                Name::new_symbol_root(sym::deref.clone()),
+                BorrowKind::Shared,
+            )
         } else {
             (
                 Mutability::Mut,
                 LangItem::DerefMut,
-                name![deref_mut],
+                Name::new_symbol_root(sym::deref_mut.clone()),
                 BorrowKind::Mut { kind: MutBorrowKind::Default },
             )
         };

@@ -25,11 +25,8 @@ use hir_def::{
 };
 use hir_expand::{
     mod_path::path,
+    name::{AsName, Name},
     HirFileId, InFile, InMacroFile, MacroFileId, MacroFileIdExt,
-    {
-        name,
-        name::{AsName, Name},
-    },
 };
 use hir_ty::{
     diagnostics::{
@@ -40,6 +37,7 @@ use hir_ty::{
     method_resolution, Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
     TyLoweringContext,
 };
+use intern::sym;
 use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::{
@@ -368,7 +366,7 @@ impl SourceAnalyzer {
                 let items = into_future_trait.items(db);
                 let into_future_type = items.into_iter().find_map(|item| match item {
                     AssocItem::TypeAlias(alias)
-                        if alias.name(db) == hir_expand::name![IntoFuture] =>
+                        if alias.name(db) == Name::new_symbol_root(sym::IntoFuture.clone()) =>
                     {
                         Some(alias)
                     }
@@ -397,15 +395,21 @@ impl SourceAnalyzer {
                 // This can be either `Deref::deref` or `DerefMut::deref_mut`.
                 // Since deref kind is inferenced and stored in `InferenceResult.method_resolution`,
                 // use that result to find out which one it is.
-                let (deref_trait, deref) =
-                    self.lang_trait_fn(db, LangItem::Deref, &name![deref])?;
+                let (deref_trait, deref) = self.lang_trait_fn(
+                    db,
+                    LangItem::Deref,
+                    &Name::new_symbol_root(sym::deref.clone()),
+                )?;
                 self.infer
                     .as_ref()
                     .and_then(|infer| {
                         let expr = self.expr_id(db, &prefix_expr.clone().into())?;
                         let (func, _) = infer.method_resolution(expr)?;
-                        let (deref_mut_trait, deref_mut) =
-                            self.lang_trait_fn(db, LangItem::DerefMut, &name![deref_mut])?;
+                        let (deref_mut_trait, deref_mut) = self.lang_trait_fn(
+                            db,
+                            LangItem::DerefMut,
+                            &Name::new_symbol_root(sym::deref_mut.clone()),
+                        )?;
                         if func == deref_mut {
                             Some((deref_mut_trait, deref_mut))
                         } else {
@@ -414,8 +418,12 @@ impl SourceAnalyzer {
                     })
                     .unwrap_or((deref_trait, deref))
             }
-            ast::UnaryOp::Not => self.lang_trait_fn(db, LangItem::Not, &name![not])?,
-            ast::UnaryOp::Neg => self.lang_trait_fn(db, LangItem::Neg, &name![neg])?,
+            ast::UnaryOp::Not => {
+                self.lang_trait_fn(db, LangItem::Not, &Name::new_symbol_root(sym::not.clone()))?
+            }
+            ast::UnaryOp::Neg => {
+                self.lang_trait_fn(db, LangItem::Neg, &Name::new_symbol_root(sym::neg.clone()))?
+            }
         };
 
         let ty = self.ty_of_expr(db, &prefix_expr.expr()?)?;
@@ -435,15 +443,19 @@ impl SourceAnalyzer {
         let base_ty = self.ty_of_expr(db, &index_expr.base()?)?;
         let index_ty = self.ty_of_expr(db, &index_expr.index()?)?;
 
-        let (index_trait, index_fn) = self.lang_trait_fn(db, LangItem::Index, &name![index])?;
+        let (index_trait, index_fn) =
+            self.lang_trait_fn(db, LangItem::Index, &Name::new_symbol_root(sym::index.clone()))?;
         let (op_trait, op_fn) = self
             .infer
             .as_ref()
             .and_then(|infer| {
                 let expr = self.expr_id(db, &index_expr.clone().into())?;
                 let (func, _) = infer.method_resolution(expr)?;
-                let (index_mut_trait, index_mut_fn) =
-                    self.lang_trait_fn(db, LangItem::IndexMut, &name![index_mut])?;
+                let (index_mut_trait, index_mut_fn) = self.lang_trait_fn(
+                    db,
+                    LangItem::IndexMut,
+                    &Name::new_symbol_root(sym::index_mut.clone()),
+                )?;
                 if func == index_mut_fn {
                     Some((index_mut_trait, index_mut_fn))
                 } else {

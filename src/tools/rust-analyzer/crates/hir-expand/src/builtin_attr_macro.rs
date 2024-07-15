@@ -1,4 +1,5 @@
 //! Builtin attributes.
+use intern::sym;
 use span::{MacroCallId, Span};
 
 use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallKind};
@@ -19,7 +20,7 @@ macro_rules! register_builtin {
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
                 match name {
-                    $( id if id == &name::name![$name] => Some(BuiltinAttrExpander::$variant), )*
+                    $( id if id == &sym::$name => Some(BuiltinAttrExpander::$variant), )*
                      _ => None,
                 }
             }

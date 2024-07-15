@@ -20,6 +20,9 @@ type Guard<T> = dashmap::RwLockWriteGuard<
     HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>,
 >;
 
+mod symbol;
+pub use self::symbol::{symbols as sym, Symbol};
+
 pub struct Interned<T: Internable + ?Sized> {
     arc: Arc<T>,
 }

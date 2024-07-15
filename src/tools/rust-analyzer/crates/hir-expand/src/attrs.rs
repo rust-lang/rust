@@ -4,7 +4,7 @@ use std::{borrow::Cow, fmt, ops};
 use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
-use intern::Interned;
+use intern::{sym, Interned};
 use mbe::{syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
@@ -12,6 +12,7 @@ use syntax::unescape;
 use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::ThinArc;
 
+use crate::name::Name;
 use crate::{
     db::ExpandDatabase,
     mod_path::ModPath,
@@ -58,7 +59,10 @@ impl RawAttrs {
                             text: SmolStr::new(format_smolstr!("\"{}\"", Self::escape_chars(doc))),
                             span,
                         }))),
-                        path: Interned::new(ModPath::from(crate::name!(doc))),
+                        path: Interned::new(ModPath::from(Name::new_symbol(
+                            sym::doc.clone(),
+                            span.ctx,
+                        ))),
                         ctxt: span.ctx,
                     }
                 }),
@@ -115,7 +119,7 @@ impl RawAttrs {
     pub fn filter(self, db: &dyn ExpandDatabase, krate: CrateId) -> RawAttrs {
         let has_cfg_attrs = self
             .iter()
-            .any(|attr| attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]));
+            .any(|attr| attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr.clone()));
         if !has_cfg_attrs {
             return self;
         }
@@ -125,7 +129,7 @@ impl RawAttrs {
             self.iter()
                 .flat_map(|attr| -> SmallVec<[_; 1]> {
                     let is_cfg_attr =
-                        attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
+                        attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr.clone());
                     if !is_cfg_attr {
                         return smallvec![attr.clone()];
                     }
@@ -316,6 +320,20 @@ impl Attr {
         }
     }
 
+    /// #[path = "string"]
+    pub fn string_value_with_span(&self) -> Option<(&str, span::Span)> {
+        match self.input.as_deref()? {
+            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
+                Some(it) => it.trim_matches('#'),
+                None => it.text.as_str(),
+            }
+            .strip_prefix('"')?
+            .strip_suffix('"')
+            .zip(Some(it.span)),
+            _ => None,
+        }
+    }
+
     pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
         match self.input.as_deref()? {
             AttrInput::Literal(it) => match it.text.strip_prefix('r') {
@@ -369,7 +387,7 @@ impl Attr {
     }
 
     pub fn cfg(&self) -> Option<CfgExpr> {
-        if *self.path.as_ident()? == crate::name![cfg] {
+        if *self.path.as_ident()? == sym::cfg.clone() {
             self.token_tree_value().map(CfgExpr::parse)
         } else {
             None

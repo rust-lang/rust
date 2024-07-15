@@ -2,7 +2,7 @@
 use base_db::{salsa, CrateId, FileId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::ExpandDatabase, HirFileId, MacroDefId};
-use intern::Interned;
+use intern::{sym, Interned};
 use la_arena::ArenaMap;
 use span::MacroCallId;
 use syntax::{ast, AstPtr};
@@ -261,9 +261,9 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
     let item_tree = db.file_item_tree(file.into());
     let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
     for attr in &**attrs {
-        match attr.path().as_ident().and_then(|id| id.as_text()) {
-            Some(ident) if ident == "no_std" => return true,
-            Some(ident) if ident == "cfg_attr" => {}
+        match attr.path().as_ident() {
+            Some(ident) if *ident == sym::no_std.clone() => return true,
+            Some(ident) if *ident == sym::cfg_attr.clone() => {}
             _ => continue,
         }
 

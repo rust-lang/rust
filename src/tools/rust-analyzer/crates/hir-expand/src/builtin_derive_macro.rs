@@ -1,5 +1,6 @@
 //! Builtin derives.
 
+use intern::sym;
 use itertools::izip;
 use mbe::DocCommentDesugarMode;
 use rustc_hash::FxHashSet;
@@ -36,7 +37,7 @@ macro_rules! register_builtin {
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
                 match name {
-                    $( id if id == &name::name![$trait] => Some(BuiltinDeriveExpander::$trait), )*
+                    $( id if id == &sym::$trait => Some(BuiltinDeriveExpander::$trait), )*
                      _ => None,
                 }
             }

@@ -188,7 +188,7 @@ fn compute_return_type_match(
         CompletionRelevanceReturnType::Constructor
     } else if ret_type
         .as_adt()
-        .and_then(|adt| adt.name(db).as_str().map(|name| name.ends_with("Builder")))
+        .map(|adt| adt.name(db).as_str().ends_with("Builder"))
         .unwrap_or(false)
     {
         // fn([..]) -> [..]Builder
@@ -227,11 +227,7 @@ pub(super) fn add_call_parens<'b>(
                         None => {
                             let name = match param.ty().as_adt() {
                                 None => "_".to_owned(),
-                                Some(adt) => adt
-                                    .name(ctx.db)
-                                    .as_text()
-                                    .map(|s| to_lower_snake_case(s.as_str()))
-                                    .unwrap_or_else(|| "_".to_owned()),
+                                Some(adt) => to_lower_snake_case(adt.name(ctx.db).as_str()),
                             };
                             f(&format_args!("${{{}:{name}}}", index + offset))
                         }
@@ -263,8 +259,8 @@ pub(super) fn add_call_parens<'b>(
 
 fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'static str {
     if let Some(derefed_ty) = ty.remove_ref() {
-        for (name, local) in ctx.locals.iter() {
-            if name.as_text().as_deref() == Some(arg) {
+        for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
+            if name.as_str() == arg {
                 return if local.ty(ctx.db) == derefed_ty {
                     if ty.is_mutable_reference() {
                         "&mut "

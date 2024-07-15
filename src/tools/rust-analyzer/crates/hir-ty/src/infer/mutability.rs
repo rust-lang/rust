@@ -6,7 +6,8 @@ use hir_def::{
     hir::{Array, BinaryOp, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp},
     lang_item::LangItem,
 };
-use hir_expand::name;
+use hir_expand::name::Name;
+use intern::sym;
 
 use crate::{lower::lower_to_chalk_mutability, Adjust, Adjustment, AutoBorrow, OverloadedDeref};
 
@@ -108,8 +109,10 @@ impl InferenceContext<'_> {
                             .lang_item(self.table.trait_env.krate, LangItem::IndexMut)
                             .and_then(|l| l.as_trait())
                         {
-                            if let Some(index_fn) =
-                                self.db.trait_data(index_trait).method_by_name(&name![index_mut])
+                            if let Some(index_fn) = self
+                                .db
+                                .trait_data(index_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::index_mut.clone()))
                             {
                                 *f = index_fn;
                                 let base_adjustments = self
@@ -139,8 +142,10 @@ impl InferenceContext<'_> {
                             .lang_item(self.table.trait_env.krate, LangItem::DerefMut)
                             .and_then(|l| l.as_trait())
                         {
-                            if let Some(deref_fn) =
-                                self.db.trait_data(deref_trait).method_by_name(&name![deref_mut])
+                            if let Some(deref_fn) = self
+                                .db
+                                .trait_data(deref_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
                             {
                                 *f = deref_fn;
                             }

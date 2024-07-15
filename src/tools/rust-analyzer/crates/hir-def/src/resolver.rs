@@ -2,11 +2,9 @@
 use std::{fmt, iter, mem};
 
 use base_db::CrateId;
-use hir_expand::{
-    name::{name, Name},
-    MacroDefId,
-};
-use intern::Interned;
+use hir_expand::{name::Name, MacroDefId};
+use intern::{sym, Interned};
+use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 use triomphe::Arc;
@@ -197,12 +195,12 @@ impl Resolver {
                     }
                 }
                 &Scope::ImplDefScope(impl_) => {
-                    if first_name == &name![Self] {
+                    if *first_name == sym::Self_.clone() {
                         return Some((TypeNs::SelfType(impl_), remaining_idx(), None));
                     }
                 }
                 &Scope::AdtScope(adt) => {
-                    if first_name == &name![Self] {
+                    if *first_name == sym::Self_.clone() {
                         return Some((TypeNs::AdtSelfType(adt), remaining_idx(), None));
                     }
                 }
@@ -294,7 +292,7 @@ impl Resolver {
             }
         };
         let n_segments = path.segments().len();
-        let tmp = name![self];
+        let tmp = Name::new_symbol_root(sym::self_.clone());
         let first_name = if path.is_self() { &tmp } else { path.segments().first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         if skip_to_mod {
@@ -325,7 +323,7 @@ impl Resolver {
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
-                        if first_name == &name![Self] {
+                        if *first_name == sym::Self_.clone() {
                             return Some(ResolveValueResult::ValueNs(
                                 ValueNs::ImplSelf(impl_),
                                 None,
@@ -352,7 +350,7 @@ impl Resolver {
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
-                        if first_name == &name![Self] {
+                        if *first_name == sym::Self_.clone() {
                             return Some(ResolveValueResult::Partial(
                                 TypeNs::SelfType(impl_),
                                 1,
@@ -361,7 +359,7 @@ impl Resolver {
                         }
                     }
                     Scope::AdtScope(adt) => {
-                        if first_name == &name![Self] {
+                        if *first_name == sym::Self_.clone() {
                             let ty = TypeNs::AdtSelfType(*adt);
                             return Some(ResolveValueResult::Partial(ty, 1, None));
                         }
@@ -425,7 +423,7 @@ impl Resolver {
     }
 
     pub fn resolve_lifetime(&self, lifetime: &LifetimeRef) -> Option<LifetimeNs> {
-        if lifetime.name == name::known::STATIC_LIFETIME {
+        if lifetime.name == sym::tick_static.clone() {
             return Some(LifetimeNs::Static);
         }
 
@@ -500,9 +498,11 @@ impl Resolver {
                 res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
             })
         });
-        def_map.macro_use_prelude().for_each(|(name, (def, _extern_crate))| {
-            res.add(name, ScopeDef::ModuleDef(def.into()));
-        });
+        def_map.macro_use_prelude().iter().sorted_by_key(|&(k, _)| k.clone()).for_each(
+            |(name, &(def, _extern_crate))| {
+                res.add(name, ScopeDef::ModuleDef(def.into()));
+            },
+        );
         def_map.extern_prelude().for_each(|(name, (def, _extern_crate))| {
             res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def.into())));
         });
@@ -781,10 +781,10 @@ impl Scope {
                 }
             }
             Scope::ImplDefScope(i) => {
-                acc.add(&name![Self], ScopeDef::ImplSelfType(*i));
+                acc.add(&Name::new_symbol_root(sym::Self_.clone()), ScopeDef::ImplSelfType(*i));
             }
             Scope::AdtScope(i) => {
-                acc.add(&name![Self], ScopeDef::AdtSelfType(*i));
+                acc.add(&Name::new_symbol_root(sym::Self_.clone()), ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(scope) => {
                 if let Some((label, name)) = scope.expr_scopes.label(scope.scope_id) {

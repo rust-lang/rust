@@ -470,7 +470,7 @@ fn add_enum_def(
         .module()
         .scope(ctx.db(), Some(*target_module))
         .iter()
-        .any(|(name, _)| name.as_str() == Some("Bool"))
+        .any(|(name, _)| name.as_str() == "Bool")
     {
         return None;
     }

@@ -3,10 +3,11 @@ use std::mem;
 
 use hir_expand::name::Name;
 use rustc_parse_format as parse;
+use span::SyntaxContextId;
 use stdx::TupleExt;
 use syntax::{
     ast::{self, IsString},
-    SmolStr, TextRange, TextSize,
+    TextRange, TextSize,
 };
 
 use crate::hir::ExprId;
@@ -174,6 +175,7 @@ pub(crate) fn parse(
     is_direct_literal: bool,
     mut synth: impl FnMut(Name) -> ExprId,
     mut record_usage: impl FnMut(Name, Option<TextRange>),
+    call_ctx: SyntaxContextId,
 ) -> FormatArgs {
     let Ok(text) = s.value() else {
         return FormatArgs {
@@ -248,7 +250,7 @@ pub(crate) fn parse(
                 }
             }
             ArgRef::Name(name, span) => {
-                let name = Name::new_text_dont_use(SmolStr::new(name));
+                let name = Name::new(name, call_ctx);
                 if let Some((index, _)) = args.by_name(&name) {
                     record_usage(name, span);
                     // Name found in `args`, so we resolve it to its index.

@@ -3,6 +3,7 @@
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
 use hir_expand::name::Name;
+use intern::{sym, Symbol};
 use rustc_hash::FxHashMap;
 use syntax::SmolStr;
 use triomphe::Arc;
@@ -191,8 +192,7 @@ impl LangItems {
 }
 
 pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
-    let attrs = db.attrs(item);
-    attrs.by_key("lang").string_value().and_then(LangItem::from_str)
+    db.attrs(item).lang_item()
 }
 
 pub(crate) fn notable_traits_in_deps(
@@ -260,10 +260,9 @@ macro_rules! language_item_table {
             }
 
             /// Opposite of [`LangItem::name`]
-            #[allow(clippy::should_implement_trait)]
-            pub fn from_str(name: &str) -> Option<Self> {
-                match name {
-                    $( stringify!($name) => Some(LangItem::$variant), )*
+            pub fn from_symbol(sym: &Symbol) -> Option<Self> {
+                match sym {
+                    $(sym if *sym == $module::$name => Some(LangItem::$variant), )*
                     _ => None,
                 }
             }
@@ -274,7 +273,7 @@ macro_rules! language_item_table {
 impl LangItem {
     /// Opposite of [`LangItem::name`]
     pub fn from_name(name: &hir_expand::name::Name) -> Option<Self> {
-        Self::from_str(name.as_str()?)
+        Self::from_symbol(name.symbol())
     }
 
     pub fn path(&self, db: &dyn DefDatabase, start_crate: CrateId) -> Option<Path> {
@@ -360,7 +359,7 @@ language_item_table! {
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
 
-    Fn,                      kw::fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    Fn,                      sym::fn_,                 fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
     FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
 

@@ -247,7 +247,7 @@ impl<'a> DeclValidator<'a> {
         // Check the module name.
         let Some(module_name) = module_id.name(self.db.upcast()) else { return };
         let Some(module_name_replacement) =
-            module_name.as_str().and_then(to_lower_snake_case).map(|new_name| Replacement {
+            to_lower_snake_case(module_name.as_str()).map(|new_name| Replacement {
                 current_name: module_name,
                 suggested_text: new_name,
                 expected_case: CaseType::LowerSnakeCase,

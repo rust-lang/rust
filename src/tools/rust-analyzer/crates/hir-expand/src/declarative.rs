@@ -2,6 +2,7 @@
 use std::sync::OnceLock;
 
 use base_db::{CrateId, VersionReq};
+use intern::sym;
 use mbe::DocCommentDesugarMode;
 use span::{Edition, MacroCallId, Span, SyntaxContextId};
 use stdx::TupleExt;
@@ -111,8 +112,10 @@ impl DeclarativeMacroExpander {
             match &*attrs
                 .iter()
                 .find(|it| {
-                    it.path.as_ident().and_then(|it| it.as_str())
-                        == Some("rustc_macro_transparency")
+                    it.path
+                        .as_ident()
+                        .map(|it| *it == sym::rustc_macro_transparency.clone())
+                        .unwrap_or(false)
                 })?
                 .token_tree_value()?
                 .token_trees

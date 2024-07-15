@@ -58,7 +58,7 @@ use hir_def::{
     TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{
-    attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, AstId, MacroCallKind, ValueResult,
+    attrs::collect_attrs, proc_macro::ProcMacroKind, AstId, MacroCallKind, ValueResult,
 };
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
@@ -131,7 +131,7 @@ pub use {
         change::ChangeWithProcMacros,
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
-        name::{known, Name},
+        name::Name,
         proc_macro::ProcMacros,
         tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
         MacroFileIdExt,
@@ -145,6 +145,7 @@ pub use {
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
+    intern::{sym, Symbol},
 };
 
 // These are negative re-exports: pub using these names is forbidden, they
@@ -1826,7 +1827,7 @@ impl DefWithBody {
                         continue;
                     }
                     let mut need_mut = &mol[local];
-                    if body[binding_id].name.as_str() == Some("self")
+                    if body[binding_id].name == sym::self_.clone()
                         && need_mut == &mir::MutabilityReason::Unused
                     {
                         need_mut = &mir::MutabilityReason::Not;
@@ -1836,7 +1837,7 @@ impl DefWithBody {
 
                     match (need_mut, is_mut) {
                         (mir::MutabilityReason::Unused, _) => {
-                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
+                            let should_ignore = body[binding_id].name.as_str().starts_with('_');
                             if !should_ignore {
                                 acc.push(UnusedVariable { local }.into())
                             }
@@ -1866,7 +1867,7 @@ impl DefWithBody {
                         }
                         (mir::MutabilityReason::Not, true) => {
                             if !infer.mutated_bindings_in_closure.contains(&binding_id) {
-                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
+                                let should_ignore = body[binding_id].name.as_str().starts_with('_');
                                 if !should_ignore {
                                     acc.push(UnusedMut { local }.into())
                                 }
@@ -2588,7 +2589,7 @@ pub struct StaticLifetime;
 
 impl StaticLifetime {
     pub fn name(self) -> Name {
-        known::STATIC_LIFETIME
+        Name::new_symbol_root(sym::tick_static.clone())
     }
 }
 
@@ -3248,7 +3249,7 @@ impl Local {
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
-        self.name(db) == name![self]
+        self.name(db) == sym::self_.clone()
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {

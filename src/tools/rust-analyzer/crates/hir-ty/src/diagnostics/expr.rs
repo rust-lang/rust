@@ -8,7 +8,7 @@ use either::Either;
 use hir_def::lang_item::LangItem;
 use hir_def::{resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
 use hir_def::{ItemContainerId, Lookup};
-use hir_expand::name;
+use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
@@ -423,7 +423,9 @@ impl FilterMapNextChecker {
                     ItemContainerId::TraitId(iterator_trait_id) => {
                         let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
-                            &AssocItemId::FunctionId(id) if *name == name![filter_map] => Some(id),
+                            &AssocItemId::FunctionId(id) if *name == sym::filter_map.clone() => {
+                                Some(id)
+                            }
                             _ => None,
                         })
                     }

@@ -239,7 +239,7 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_trait(&mut self, trait_id: TraitId) {
         let trait_data = self.db.trait_data(trait_id);
-        self.with_container_name(trait_data.name.as_text(), |s| {
+        self.with_container_name(Some(trait_data.name.as_str().into()), |s| {
             for &(_, assoc_item_id) in &trait_data.items {
                 s.push_assoc_item(assoc_item_id);
             }

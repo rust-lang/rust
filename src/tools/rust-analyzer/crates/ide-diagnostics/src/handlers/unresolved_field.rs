@@ -76,7 +76,7 @@ fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<A
     let expr = d.expr.value.to_node(&root);
 
     let error_range = ctx.sema.original_range_opt(expr.syntax())?;
-    let field_name = d.name.as_str()?;
+    let field_name = d.name.as_str();
     // Convert the receiver to an ADT
     let adt = d.receiver.strip_references().as_adt()?;
     let target_module = adt.module(ctx.sema.db);
