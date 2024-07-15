@@ -6,6 +6,7 @@
 mod command;
 mod macros;
 
+pub mod ar;
 pub mod diff;
 pub mod env_checked;
 pub mod external_deps;
@@ -40,7 +41,13 @@ pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
-/// [`diff`] is implemented in terms of the [similar] library.
+/// [`ar`][mod@ar] currently uses the [ar][rust-ar] rust library, but that is subject to changes, we
+/// may switch to `llvm-ar` subject to experimentation.
+///
+/// [rust-ar]: https://github.com/mdsteele/rust-ar
+pub use ar::ar;
+
+/// [`diff`][mod@diff] is implemented in terms of the [similar] library.
 ///
 /// [similar]: https://github.com/mitsuhiko/similar
 pub use diff::{diff, Diff};
@@ -55,19 +62,6 @@ pub use run::{cmd, run, run_fail, run_with_args};
 pub use targets::{is_darwin, is_msvc, is_windows, target, uname};
 
 use command::{Command, CompletedProcess};
-
-/// `AR`
-#[track_caller]
-pub fn ar(inputs: &[impl AsRef<Path>], output_path: impl AsRef<Path>) {
-    let output = fs::File::create(&output_path).expect(&format!(
-        "the file in path \"{}\" could not be created",
-        output_path.as_ref().display()
-    ));
-    let mut builder = ar::Builder::new(output);
-    for input in inputs {
-        builder.append_path(input).unwrap();
-    }
-}
 
 /// Returns the path for a local test file.
 pub fn path<P: AsRef<Path>>(p: P) -> PathBuf {
