@@ -4,11 +4,11 @@ use std::fmt;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, SpanAnchor, SpanData, SpanMap};
-use stdx::{never, non_empty_vec::NonEmptyVec};
+use stdx::{format_to, itertools::Itertools, never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
-    AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
-    SyntaxKind::*,
+    format_smolstr, AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement,
+    SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
 use tt::{
@@ -317,18 +317,29 @@ where
                         .into()
                 }
                 kind => {
-                    macro_rules! make_leaf {
-                        ($i:ident) => {
-                            tt::$i { span: conv.span_for(abs_range), text: token.to_text(conv) }
-                                .into()
+                    macro_rules! make_ident {
+                        () => {
+                            tt::Ident {
+                                span: conv.span_for(abs_range),
+                                text: token.to_text(conv),
+                                is_raw: tt::IdentIsRaw::No,
+                            }
+                            .into()
                         };
                     }
                     let leaf: tt::Leaf<_> = match kind {
-                        T![true] | T![false] => make_leaf!(Ident),
-                        IDENT => make_leaf!(Ident),
-                        UNDERSCORE => make_leaf!(Ident),
-                        k if k.is_keyword() => make_leaf!(Ident),
-                        k if k.is_literal() => make_leaf!(Literal),
+                        T![true] | T![false] => make_ident!(),
+                        IDENT => {
+                            let text = token.to_text(conv);
+                            tt::Ident::new(text, conv.span_for(abs_range)).into()
+                        }
+                        UNDERSCORE => make_ident!(),
+                        k if k.is_keyword() => make_ident!(),
+                        k if k.is_literal() => {
+                            let text = token.to_text(conv);
+                            let span = conv.span_for(abs_range);
+                            token_to_literal(text, span).into()
+                        }
                         LIFETIME_IDENT => {
                             let apostrophe = tt::Leaf::from(tt::Punct {
                                 char: '\'',
@@ -344,6 +355,7 @@ where
                                     abs_range.start() + TextSize::of('\''),
                                     abs_range.end(),
                                 )),
+                                is_raw: tt::IdentIsRaw::No,
                             });
                             token_trees.push(ident.into());
                             continue;
@@ -388,6 +400,56 @@ where
     }
 }
 
+pub fn token_to_literal<S>(text: SmolStr, span: S) -> tt::Literal<S>
+where
+    S: Copy,
+{
+    use rustc_lexer::LiteralKind;
+
+    let token = rustc_lexer::tokenize(&text).next_tuple();
+    let Some((rustc_lexer::Token {
+        kind: rustc_lexer::TokenKind::Literal { kind, suffix_start },
+        ..
+    },)) = token
+    else {
+        return tt::Literal { span, text, kind: tt::LitKind::Err(()), suffix: None };
+    };
+
+    let (kind, start_offset, end_offset) = match kind {
+        LiteralKind::Int { .. } => (tt::LitKind::Integer, 0, 0),
+        LiteralKind::Float { .. } => (tt::LitKind::Float, 0, 0),
+        LiteralKind::Char { terminated } => (tt::LitKind::Char, 1, terminated as usize),
+        LiteralKind::Byte { terminated } => (tt::LitKind::Byte, 2, terminated as usize),
+        LiteralKind::Str { terminated } => (tt::LitKind::Str, 1, terminated as usize),
+        LiteralKind::ByteStr { terminated } => (tt::LitKind::ByteStr, 2, terminated as usize),
+        LiteralKind::CStr { terminated } => (tt::LitKind::CStr, 2, terminated as usize),
+        LiteralKind::RawStr { n_hashes } => (
+            tt::LitKind::StrRaw(n_hashes.unwrap_or_default()),
+            2 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawByteStr { n_hashes } => (
+            tt::LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawCStr { n_hashes } => (
+            tt::LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+    };
+
+    let (lit, suffix) = text.split_at(suffix_start as usize);
+    let lit = &lit[start_offset..lit.len() - end_offset];
+    let suffix = match suffix {
+        "" | "_" => None,
+        suffix => Some(Box::new(suffix.into())),
+    };
+
+    tt::Literal { span, text: lit.into(), kind, suffix }
+}
+
 fn is_single_token_op(kind: SyntaxKind) -> bool {
     matches!(
         kind,
@@ -421,16 +483,10 @@ fn is_single_token_op(kind: SyntaxKind) -> bool {
 /// That is, strips leading `///` (or `/**`, etc)
 /// and strips the ending `*/`
 /// And then quote the string, which is needed to convert to `tt::Literal`
-fn doc_comment_text(comment: &ast::Comment, mode: DocCommentDesugarMode) -> SmolStr {
-    let prefix_len = comment.prefix().len();
-    let mut text = &comment.text()[prefix_len..];
-
-    // Remove ending "*/"
-    if comment.kind().shape == ast::CommentShape::Block {
-        text = &text[0..text.len() - 2];
-    }
-
-    let text = match mode {
+///
+/// Note that proc-macros desugar with string literals where as macro_rules macros desugar with raw string literals.
+pub fn desugar_doc_comment_text(text: &str, mode: DocCommentDesugarMode) -> (SmolStr, tt::LitKind) {
+    match mode {
         DocCommentDesugarMode::Mbe => {
             let mut num_of_hashes = 0;
             let mut count = 0;
@@ -444,14 +500,13 @@ fn doc_comment_text(comment: &ast::Comment, mode: DocCommentDesugarMode) -> Smol
             }
 
             // Quote raw string with delimiters
-            // Note that `tt::Literal` expect an escaped string
-            format!(r#"r{delim}"{text}"{delim}"#, delim = "#".repeat(num_of_hashes))
+            (text.into(), tt::LitKind::StrRaw(num_of_hashes))
         }
         // Quote string with delimiters
-        // Note that `tt::Literal` expect an escaped string
-        DocCommentDesugarMode::ProcMacro => format!(r#""{}""#, text.escape_debug()),
-    };
-    text.into()
+        DocCommentDesugarMode::ProcMacro => {
+            (format_smolstr!("{}", text.escape_debug()), tt::LitKind::Str)
+        }
+    }
 }
 
 fn convert_doc_comment<S: Copy>(
@@ -463,8 +518,13 @@ fn convert_doc_comment<S: Copy>(
     let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
 
-    let mk_ident =
-        |s: &str| tt::TokenTree::from(tt::Leaf::from(tt::Ident { text: s.into(), span }));
+    let mk_ident = |s: &str| {
+        tt::TokenTree::from(tt::Leaf::from(tt::Ident {
+            text: s.into(),
+            span,
+            is_raw: tt::IdentIsRaw::No,
+        }))
+    };
 
     let mk_punct = |c: char| {
         tt::TokenTree::from(tt::Leaf::from(tt::Punct {
@@ -475,7 +535,15 @@ fn convert_doc_comment<S: Copy>(
     };
 
     let mk_doc_literal = |comment: &ast::Comment| {
-        let lit = tt::Literal { text: doc_comment_text(comment, mode), span };
+        let prefix_len = comment.prefix().len();
+        let mut text = &comment.text()[prefix_len..];
+
+        // Remove ending "*/"
+        if comment.kind().shape == ast::CommentShape::Block {
+            text = &text[0..text.len() - 2];
+        }
+        let (text, kind) = desugar_doc_comment_text(text, mode);
+        let lit = tt::Literal { text, span, kind, suffix: None };
 
         tt::TokenTree::from(tt::Leaf::from(lit))
     };
@@ -902,16 +970,17 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
 
 impl<Ctx> TtTreeSink<'_, Ctx>
 where
-    SpanData<Ctx>: Copy,
+    SpanData<Ctx>: Copy + fmt::Debug,
 {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
         let (text, span) = match self.cursor.token_tree() {
-            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Literal(lit), _)) => {
-                (lit.text.as_str(), lit.span)
-            }
-            _ => unreachable!(),
+            Some(tt::buffer::TokenTreeRef::Leaf(
+                tt::Leaf::Literal(tt::Literal { text, span, kind: tt::LitKind::Float, suffix: _ }),
+                _,
+            )) => (text.as_str(), *span),
+            tt => unreachable!("{tt:?}"),
         };
         // FIXME: Span splitting
         match text.split_once('.') {
@@ -954,7 +1023,7 @@ where
         }
 
         let mut last = self.cursor;
-        for _ in 0..n_tokens {
+        'tokens: for _ in 0..n_tokens {
             let tmp: u8;
             if self.cursor.eof() {
                 break;
@@ -962,23 +1031,36 @@ where
             last = self.cursor;
             let (text, span) = loop {
                 break match self.cursor.token_tree() {
-                    Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
-                        // Mark the range if needed
-                        let (text, span) = match leaf {
-                            tt::Leaf::Ident(ident) => (ident.text.as_str(), ident.span),
-                            tt::Leaf::Punct(punct) => {
-                                assert!(punct.char.is_ascii());
-                                tmp = punct.char as u8;
-                                (
-                                    std::str::from_utf8(std::slice::from_ref(&tmp)).unwrap(),
-                                    punct.span,
-                                )
+                    Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => match leaf {
+                        tt::Leaf::Ident(ident) => {
+                            if ident.is_raw.yes() {
+                                self.buf.push_str("r#");
+                                self.text_pos += TextSize::of("r#");
                             }
-                            tt::Leaf::Literal(lit) => (lit.text.as_str(), lit.span),
-                        };
-                        self.cursor = self.cursor.bump();
-                        (text, span)
-                    }
+                            let r = (ident.text.as_str(), ident.span);
+                            self.cursor = self.cursor.bump();
+                            r
+                        }
+                        tt::Leaf::Punct(punct) => {
+                            assert!(punct.char.is_ascii());
+                            tmp = punct.char as u8;
+                            let r = (
+                                std::str::from_utf8(std::slice::from_ref(&tmp)).unwrap(),
+                                punct.span,
+                            );
+                            self.cursor = self.cursor.bump();
+                            r
+                        }
+                        tt::Leaf::Literal(lit) => {
+                            let buf_l = self.buf.len();
+                            format_to!(self.buf, "{lit}");
+                            debug_assert_ne!(self.buf.len() - buf_l, 0);
+                            self.text_pos += TextSize::new((self.buf.len() - buf_l) as u32);
+                            self.token_map.push(self.text_pos, lit.span);
+                            self.cursor = self.cursor.bump();
+                            continue 'tokens;
+                        }
+                    },
                     Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
                         self.cursor = self.cursor.subtree().unwrap();
                         match delim_to_str(subtree.delimiter.kind, false) {

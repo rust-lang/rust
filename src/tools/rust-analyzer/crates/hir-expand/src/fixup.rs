@@ -86,6 +86,7 @@ pub(crate) fn fixup_syntax(
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
                     ctx: span.ctx,
                 },
+                is_raw: tt::IdentIsRaw::No,
             });
             append.insert(node.clone().into(), vec![replacement]);
             preorder.skip_subtree();
@@ -101,6 +102,7 @@ pub(crate) fn fixup_syntax(
                             Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
                                 span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -137,7 +139,8 @@ pub(crate) fn fixup_syntax(
                         append.insert(if_token.into(), vec![
                             Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -167,7 +170,8 @@ pub(crate) fn fixup_syntax(
                         append.insert(while_token.into(), vec![
                             Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -214,7 +218,8 @@ pub(crate) fn fixup_syntax(
                         append.insert(match_token.into(), vec![
                             Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -248,7 +253,8 @@ pub(crate) fn fixup_syntax(
                     ].map(|text|
                         Leaf::Ident(Ident {
                             text: text.into(),
-                            span: fake_span(node_range)
+                            span: fake_span(node_range),
+                            is_raw: tt::IdentIsRaw::No
                         }),
                     );
 
@@ -281,7 +287,8 @@ pub(crate) fn fixup_syntax(
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
                                     text: "__ra_fixup".into(),
-                                    span: fake_span(node_range)
+                                    span: fake_span(node_range),
+                                    is_raw: tt::IdentIsRaw::No
                                 })
                             ]);
                         }
@@ -293,7 +300,8 @@ pub(crate) fn fixup_syntax(
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
                                     text: "__ra_fixup".into(),
-                                    span: fake_span(node_range)
+                                    span: fake_span(node_range),
+                                    is_raw: tt::IdentIsRaw::No
                                 })
                             ]);
                         }
@@ -326,7 +334,8 @@ pub(crate) fn fixup_syntax(
                         append.insert(node.into(), vec![
                             Leaf::Ident(Ident {
                                 text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             })
                         ]);
                     }

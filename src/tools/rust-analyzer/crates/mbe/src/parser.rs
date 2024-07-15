@@ -205,7 +205,11 @@ fn next_op(
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Ident(ident) if ident.text == "crate" => {
                         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
-                        Op::Ident(tt::Ident { text: "$crate".into(), span: ident.span })
+                        Op::Ident(tt::Ident {
+                            text: "$crate".into(),
+                            span: ident.span,
+                            is_raw: tt::IdentIsRaw::No,
+                        })
                     }
                     tt::Leaf::Ident(ident) => {
                         let kind = eat_fragment_kind(edition, src, mode)?;
@@ -380,9 +384,11 @@ fn parse_metavar_expr(new_meta_vars: bool, src: &mut TtIter<'_, Span>) -> Result
 fn parse_depth(src: &mut TtIter<'_, Span>) -> Result<usize, ()> {
     if src.len() == 0 {
         Ok(0)
-    } else if let tt::Leaf::Literal(lit) = src.expect_literal()? {
+    } else if let tt::Leaf::Literal(tt::Literal { text, suffix: None, .. }) =
+        src.expect_literal()?
+    {
         // Suffixes are not allowed.
-        lit.text.parse().map_err(|_| ())
+        text.parse().map_err(|_| ())
     } else {
         Err(())
     }

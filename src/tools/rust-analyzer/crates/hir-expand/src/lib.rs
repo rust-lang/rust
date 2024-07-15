@@ -59,7 +59,7 @@ pub use span::{HirFileId, MacroCallId, MacroFileId};
 
 pub mod tt {
     pub use span::Span;
-    pub use tt::{DelimiterKind, Spacing};
+    pub use tt::{DelimiterKind, IdentIsRaw, LitKind, Spacing};
 
     pub type Delimiter = ::tt::Delimiter<Span>;
     pub type DelimSpan = ::tt::DelimSpan<Span>;

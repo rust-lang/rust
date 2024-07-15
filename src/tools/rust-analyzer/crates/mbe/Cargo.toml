@@ -17,6 +17,7 @@ rustc-hash.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 arrayvec.workspace = true
+ra-ap-rustc_lexer.workspace = true
 
 # local deps
 syntax.workspace = true

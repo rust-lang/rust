@@ -8,7 +8,7 @@ use std::{
 use proc_macro::bridge::{self, server};
 
 use crate::server_impl::{
-    delim_to_external, delim_to_internal, literal_with_stringify_parts,
+    delim_to_external, delim_to_internal, literal_kind_to_external, literal_kind_to_internal,
     token_stream::TokenStreamBuilder, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
@@ -25,10 +25,8 @@ mod tt {
 }
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
-#[allow(unused)]
 type Punct = tt::Punct;
 type Spacing = tt::Spacing;
-#[allow(unused)]
 type Literal = tt::Literal;
 type Span = tt::TokenId;
 type TokenStream = crate::server_impl::TokenStream<Span>;
@@ -162,20 +160,23 @@ impl server::TokenStream for TokenIdServer {
 
             bridge::TokenTree::Ident(ident) => {
                 let text = ident.sym.text(self.interner);
-                let text =
-                    if ident.is_raw { ::tt::SmolStr::from_iter(["r#", &text]) } else { text };
-                let ident: tt::Ident = tt::Ident { text, span: ident.span };
+                let ident: tt::Ident = tt::Ident {
+                    text,
+                    span: ident.span,
+                    is_raw: if ident.is_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No },
+                };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
             }
 
             bridge::TokenTree::Literal(literal) => {
-                let text = literal_with_stringify_parts(&literal, self.interner, |parts| {
-                    ::tt::SmolStr::from_iter(parts.iter().copied())
-                });
-
-                let literal = tt::Literal { text, span: literal.span };
+                let literal = Literal {
+                    text: literal.symbol.text(self.interner),
+                    suffix: literal.suffix.map(|it| Box::new(it.text(self.interner))),
+                    span: literal.span,
+                    kind: literal_kind_to_internal(literal.kind),
+                };
 
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
@@ -183,7 +184,7 @@ impl server::TokenStream for TokenIdServer {
             }
 
             bridge::TokenTree::Punct(p) => {
-                let punct = tt::Punct {
+                let punct = Punct {
                     char: p.ch as char,
                     spacing: if p.joint { Spacing::Joint } else { Spacing::Alone },
                     span: p.span,
@@ -238,16 +239,17 @@ impl server::TokenStream for TokenIdServer {
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(self.interner, ident.text.trim_start_matches("r#")),
-                        is_raw: ident.text.starts_with("r#"),
+                        sym: Symbol::intern(self.interner, &ident.text),
+                        is_raw: ident.is_raw.yes(),
                         span: ident.span,
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
                         span: lit.span,
-                        ..server::FreeFunctions::literal_from_str(self, &lit.text)
-                            .unwrap_or_else(|_| panic!("`{}`", lit.text))
+                        kind: literal_kind_to_external(lit.kind),
+                        symbol: Symbol::intern(self.interner, &lit.text),
+                        suffix: lit.suffix.map(|it| Symbol::intern(self.interner, &it)),
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
@@ -383,10 +385,12 @@ mod tests {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "struct".into(),
                     span: tt::TokenId(0),
+                    is_raw: tt::IdentIsRaw::No,
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "T".into(),
                     span: tt::TokenId(0),
+                    is_raw: tt::IdentIsRaw::No,
                 })),
                 tt::TokenTree::Subtree(tt::Subtree {
                     delimiter: tt::Delimiter {
@@ -411,6 +415,7 @@ mod tests {
                 kind: tt::DelimiterKind::Parenthesis,
             },
             token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                is_raw: tt::IdentIsRaw::No,
                 text: "a".into(),
                 span: tt::TokenId(0),
             }))]),
@@ -430,6 +435,7 @@ mod tests {
             tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "_".into(),
                 span: tt::TokenId(0),
+                is_raw: tt::IdentIsRaw::No,
             }))
         );
     }

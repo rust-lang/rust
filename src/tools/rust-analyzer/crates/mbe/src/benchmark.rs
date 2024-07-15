@@ -226,13 +226,24 @@ fn invocation_fixtures(
             *seed
         }
         fn make_ident(ident: &str) -> tt::TokenTree<Span> {
-            tt::Leaf::Ident(tt::Ident { span: DUMMY, text: SmolStr::new(ident) }).into()
+            tt::Leaf::Ident(tt::Ident {
+                span: DUMMY,
+                text: SmolStr::new(ident),
+                is_raw: tt::IdentIsRaw::No,
+            })
+            .into()
         }
         fn make_punct(char: char) -> tt::TokenTree<Span> {
             tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone }).into()
         }
         fn make_literal(lit: &str) -> tt::TokenTree<Span> {
-            tt::Leaf::Literal(tt::Literal { span: DUMMY, text: SmolStr::new(lit) }).into()
+            tt::Leaf::Literal(tt::Literal {
+                span: DUMMY,
+                text: SmolStr::new(lit),
+                kind: tt::LitKind::Str,
+                suffix: None,
+            })
+            .into()
         }
         fn make_subtree(
             kind: tt::DelimiterKind,

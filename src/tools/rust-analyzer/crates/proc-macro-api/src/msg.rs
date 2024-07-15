@@ -19,8 +19,10 @@ pub const VERSION_CHECK_VERSION: u32 = 1;
 pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
 pub const HAS_GLOBAL_SPANS: u32 = 3;
 pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
+/// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field
+pub const EXTENDED_LEAF_DATA: u32 = 5;
 
-pub const CURRENT_API_VERSION: u32 = RUST_ANALYZER_SPAN_SUPPORT;
+pub const CURRENT_API_VERSION: u32 = EXTENDED_LEAF_DATA;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
@@ -178,6 +180,7 @@ mod tests {
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
+                    is_raw: tt::IdentIsRaw::No,
                 }
                 .into(),
             ),
@@ -185,26 +188,28 @@ mod tests {
                 Ident {
                     text: "Foo".into(),
                     span: Span {
-                        range: TextRange::at(TextSize::new(5), TextSize::of("Foo")),
+                        range: TextRange::at(TextSize::new(5), TextSize::of("r#Foo")),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
+                    is_raw: tt::IdentIsRaw::Yes,
                 }
                 .into(),
             ),
             TokenTree::Leaf(Leaf::Literal(Literal {
-                text: "Foo".into(),
-
+                text: "\"Foo\"".into(),
                 span: Span {
-                    range: TextRange::at(TextSize::new(8), TextSize::of("Foo")),
+                    range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
+                kind: tt::LitKind::Str,
+                suffix: None,
             })),
             TokenTree::Leaf(Leaf::Punct(Punct {
                 char: '@',
                 span: Span {
-                    range: TextRange::at(TextSize::new(11), TextSize::of('@')),
+                    range: TextRange::at(TextSize::new(13), TextSize::of('@')),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
@@ -213,18 +218,27 @@ mod tests {
             TokenTree::Subtree(Subtree {
                 delimiter: Delimiter {
                     open: Span {
-                        range: TextRange::at(TextSize::new(12), TextSize::of('{')),
+                        range: TextRange::at(TextSize::new(14), TextSize::of('{')),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
                     close: Span {
-                        range: TextRange::at(TextSize::new(13), TextSize::of('}')),
+                        range: TextRange::at(TextSize::new(19), TextSize::of('}')),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
                     kind: DelimiterKind::Brace,
                 },
-                token_trees: Box::new([]),
+                token_trees: Box::new([TokenTree::Leaf(Leaf::Literal(Literal {
+                    text: "0".into(),
+                    span: Span {
+                        range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
+                        anchor,
+                        ctx: SyntaxContextId::ROOT,
+                    },
+                    kind: tt::LitKind::Integer,
+                    suffix: Some(Box::new("u32".into())),
+                }))]),
             }),
         ]);
 
@@ -236,7 +250,7 @@ mod tests {
                     ctx: SyntaxContextId::ROOT,
                 },
                 close: Span {
-                    range: TextRange::empty(TextSize::new(13)),
+                    range: TextRange::empty(TextSize::new(19)),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },

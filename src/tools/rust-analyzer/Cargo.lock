@@ -1046,6 +1046,7 @@ dependencies = [
  "arrayvec",
  "cov-mark",
  "parser",
+ "ra-ap-rustc_lexer",
  "rustc-hash",
  "smallvec",
  "span",

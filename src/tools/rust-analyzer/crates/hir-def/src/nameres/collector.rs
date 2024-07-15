@@ -82,7 +82,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                     .iter()
                     .enumerate()
                     .map(|(idx, it)| {
-                        let name = Name::new(&it.name, ctx);
+                        let name = Name::new(&it.name, tt::IdentIsRaw::No, ctx);
                         (
                             name,
                             if !db.expand_proc_attr_macros() {
@@ -2144,7 +2144,7 @@ impl ModCollector<'_, '_> {
             let name;
             let name = match attrs.by_key("rustc_builtin_macro").string_value_with_span() {
                 Some((it, span)) => {
-                    name = Name::new(it, span.ctx);
+                    name = Name::new(it, tt::IdentIsRaw::No, span.ctx);
                     &name
                 }
                 None => {
