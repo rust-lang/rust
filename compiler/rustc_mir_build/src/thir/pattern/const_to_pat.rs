@@ -7,14 +7,13 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
 use tracing::{debug, instrument, trace};
-
-use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
@@ -49,11 +48,6 @@ struct ConstToPat<'tcx> {
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 
-    // This tracks if we emitted some hard error for a given const value, so that
-    // we will not subsequently issue an irrelevant lint for the same const
-    // value.
-    saw_const_match_error: Cell<Option<ErrorGuaranteed>>,
-
     // inference context used for checking `T: Structural` bounds.
     infcx: InferCtxt<'tcx>,
 
@@ -73,7 +67,6 @@ impl<'tcx> ConstToPat<'tcx> {
             span,
             infcx,
             param_env: pat_ctxt.param_env,
-            saw_const_match_error: Cell::new(None),
             treat_byte_string_as_slice: pat_ctxt
                 .typeck_results
                 .treat_byte_string_as_slice
@@ -131,7 +124,7 @@ impl<'tcx> ConstToPat<'tcx> {
         // Convert the valtree to a const.
         let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
 
-        if self.saw_const_match_error.get().is_none() {
+        if !inlined_const_as_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
             if !self.type_has_partial_eq_impl(ty) {
                 let err = TypeNotPartialEq { span: self.span, non_peq_ty: ty };
@@ -205,7 +198,6 @@ impl<'tcx> ConstToPat<'tcx> {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty,);
                 let err = TypeNotStructural { span, non_sm_ty: ty };
                 let e = tcx.dcx().emit_err(err);
-                self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                 PatKind::Error(e)
             }
@@ -273,7 +265,6 @@ impl<'tcx> ConstToPat<'tcx> {
                     if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
                         let e = tcx.dcx().emit_err(err);
-                        self.saw_const_match_error.set(Some(e));
                         // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                         PatKind::Error(e)
                     } else {
@@ -307,7 +298,6 @@ impl<'tcx> ConstToPat<'tcx> {
                     // NaNs are not ever equal to anything so they make no sense as patterns.
                     // Also see <https://github.com/rust-lang/rfcs/pull/3535>.
                     let e = tcx.dcx().emit_err(NaNPattern { span });
-                    self.saw_const_match_error.set(Some(e));
                     PatKind::Error(e)
                 } else {
                     PatKind::Constant {
@@ -328,7 +318,6 @@ impl<'tcx> ConstToPat<'tcx> {
             _ => {
                 let err = InvalidPattern { span, non_sm_ty: ty };
                 let e = tcx.dcx().emit_err(err);
-                self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                 PatKind::Error(e)
             }
