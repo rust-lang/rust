@@ -447,6 +447,15 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
             ControlFlow::Continue(())
         }
     }
+
+    #[inline]
+    fn visit_error(&mut self, _guar: <I as Interner>::ErrorGuaranteed) -> Self::Result {
+        if self.flags.intersects(TypeFlags::HAS_ERROR) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
