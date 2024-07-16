@@ -120,5 +120,4 @@ run-make/test-benches/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
 run-make/translation/Makefile
-run-make/unstable-flag-required/Makefile
 run-make/x86_64-fortanix-unknown-sgx-lvi/Makefile
