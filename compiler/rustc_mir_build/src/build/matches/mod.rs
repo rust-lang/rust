@@ -24,6 +24,7 @@ use tracing::{debug, instrument};
 use util::visit_bindings;
 
 // helper functions, broken out by category:
+mod match_pair;
 mod simplify;
 mod test;
 mod util;
@@ -1195,17 +1196,27 @@ impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
     }
 }
 
+/// Node in a tree of "match pairs", where each pair consists of a place to be
+/// tested, and a test to perform on that place.
+///
+/// Each node also has a list of subpairs (possibly empty) that must also match,
+/// and a reference to the THIR pattern it represents.
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
     /// This place...
-    // This can be `None` if it referred to a non-captured place in a closure.
-    // Invariant: place.is_none() => test_case is Irrefutable
-    // In other words this must be `Some(_)` after simplification.
+    ///
+    /// ---
+    /// This can be `None` if it referred to a non-captured place in a closure.
+    ///
+    /// Invariant: Can only be `None` when `test_case` is `Irrefutable`.
+    /// Therefore this must be `Some(_)` after simplification.
     place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
-    // Invariant: after creation and simplification in `Candidate::new()`, this must not be
-    // `Irrefutable`.
+    ///
+    /// ---
+    /// Invariant: after creation and simplification in [`FlatPat::new`],
+    /// this must not be [`TestCase::Irrefutable`].
     test_case: TestCase<'pat, 'tcx>,
 
     /// ... and these subpairs must match.
