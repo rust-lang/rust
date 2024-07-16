@@ -473,9 +473,41 @@ impl StepDescription {
             return;
         }
 
-        // Handle all PathSets.
+        let mut path_lookup: Vec<(PathBuf, bool)> =
+            paths.clone().into_iter().map(|p| (p, false)).collect();
+
+        // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
+        // compared to the given CLI paths. So we can respect to the CLI order by using this value to sort
+        // the steps.
+        let mut steps_to_run = vec![];
+
         for (desc, should_run) in v.iter().zip(&should_runs) {
             let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+
+            // This value is used for sorting the step execution order.
+            // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.
+            //
+            // If we resolve the step's path from the given CLI input, this value will be updated with
+            // the step's actual index.
+            let mut closest_index = usize::MAX;
+
+            // Find the closest index from the original list of paths given by the CLI input.
+            for (index, (path, is_used)) in path_lookup.iter_mut().enumerate() {
+                if !*is_used && !paths.contains(path) {
+                    closest_index = index;
+                    *is_used = true;
+                    break;
+                }
+            }
+
+            steps_to_run.push((closest_index, desc, pathsets));
+        }
+
+        // Sort the steps before running them to respect the CLI order.
+        steps_to_run.sort_by_key(|(index, _, _)| *index);
+
+        // Handle all PathSets.
+        for (_index, desc, pathsets) in steps_to_run {
             if !pathsets.is_empty() {
                 desc.maybe_run(builder, pathsets);
             }
