@@ -21,8 +21,8 @@ use crate::{
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
     CustomProcMacroExpander, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap,
-    HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
-    MacroFileId,
+    HirFileId, HirFileIdRepr, Lookup, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
+    MacroDefKind, MacroFileId,
 };
 /// This is just to ensure the types of smart_macro_arg and macro_arg are the same
 type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
@@ -99,6 +99,7 @@ pub trait ExpandDatabase: SourceDatabase {
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
+    #[deprecated = "calling this is incorrect, call `macro_arg_considering_derives` instead"]
     fn macro_arg(&self, id: MacroCallId) -> MacroArgResult;
     #[salsa::transparent]
     fn macro_arg_considering_derives(
@@ -140,7 +141,11 @@ pub trait ExpandDatabase: SourceDatabase {
 fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId) -> SyntaxContextId {
     match file.repr() {
         HirFileIdRepr::FileId(_) => SyntaxContextId::ROOT,
-        HirFileIdRepr::MacroFile(m) => db.macro_arg(m.macro_call_id).2.ctx,
+        HirFileIdRepr::MacroFile(m) => {
+            db.macro_arg_considering_derives(m.macro_call_id, &m.macro_call_id.lookup(db).kind)
+                .2
+                .ctx
+        }
     }
 }
 
@@ -393,6 +398,7 @@ pub(crate) fn parse_with_map(
 /// Other wise return the [macro_arg] for the macro_call_id.
 ///
 /// This is not connected to the database so it does not cached the result. However, the inner [macro_arg] query is
+#[allow(deprecated)] // we are macro_arg_considering_derives
 fn macro_arg_considering_derives(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
