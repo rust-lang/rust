@@ -14,9 +14,8 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
-    CannotInlineNakedFunction, NakedFunctionsAsmBlock, NakedFunctionsAsmOptions,
-    NakedFunctionsMustUseNoreturn, NakedFunctionsOperands, NoPatterns, ParamsNotAllowed,
-    UndefinedNakedFunctionAbi,
+    NakedFunctionsAsmBlock, NakedFunctionsAsmOptions, NakedFunctionsMustUseNoreturn,
+    NakedFunctionsOperands, NoPatterns, ParamsNotAllowed, UndefinedNakedFunctionAbi,
 };
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -53,15 +52,6 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         check_no_patterns(tcx, body.params);
         check_no_parameters_use(tcx, body);
         check_asm(tcx, def_id, body);
-        check_inline(tcx, def_id);
-    }
-}
-
-/// Check that the function isn't inlined.
-fn check_inline(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let attrs = tcx.get_attrs(def_id, sym::inline);
-    for attr in attrs {
-        tcx.dcx().emit_err(CannotInlineNakedFunction { span: attr.span });
     }
 }
 

@@ -69,9 +69,6 @@ passes_break_non_loop =
     .suggestion = use `break` on its own without a value inside this `{$kind}` loop
     .break_expr_suggestion = alternatively, you might have meant to use the available loop label
 
-passes_cannot_inline_naked_function =
-    naked functions cannot be inlined
-
 passes_cannot_stabilize_deprecated =
     an API can't be stabilized after it is deprecated
     .label = invalid version
@@ -485,15 +482,17 @@ passes_naked_functions_asm_block =
 passes_naked_functions_asm_options =
     asm options unsupported in naked functions: {$unsupported_options}
 
+passes_naked_functions_codegen_attribute =
+    cannot use additional code generation attributes with `#[naked]`
+    .label = this attribute is incompatible with `#[naked]`
+    .label2 = function marked with `#[naked]` here
+
 passes_naked_functions_must_use_noreturn =
     asm in naked functions must use `noreturn` option
     .suggestion = consider specifying that the asm block is responsible for returning from the function
 
 passes_naked_functions_operands =
     only `const` and `sym` operands are supported in naked functions
-
-passes_naked_tracked_caller =
-    cannot use `#[track_caller]` with `#[naked]`
 
 passes_no_link =
     attribute should be applied to an `extern crate` item

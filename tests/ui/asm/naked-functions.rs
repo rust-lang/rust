@@ -168,37 +168,6 @@ pub unsafe extern "C" fn inline_none() {
 }
 
 #[naked]
-#[inline]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_hint() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
-#[inline(always)]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_always() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
-#[inline(never)]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_never() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
-#[inline]
-//~^ ERROR naked functions cannot be inlined
-#[inline(always)]
-//~^ ERROR naked functions cannot be inlined
-#[inline(never)]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_all() {
-    asm!("", options(noreturn));
-}
-
 #[naked]
 pub unsafe extern "C" fn allow_compile_error(a: u32) -> u32 {
     compile_error!("this is a user specified error")

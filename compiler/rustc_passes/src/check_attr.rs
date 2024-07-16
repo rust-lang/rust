@@ -155,7 +155,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_std_internal_symbol] => {
                     self.check_rustc_std_internal_symbol(attr, span, target)
                 }
-                [sym::naked] => self.check_naked(hir_id, attr, span, target),
+                [sym::naked] => self.check_naked(hir_id, attr, span, target, attrs),
                 [sym::rustc_never_returns_null_ptr] => {
                     self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
@@ -410,12 +410,33 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
+    fn check_naked(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+        attrs: &[Attribute],
+    ) -> bool {
+        const FORBIDDEN: [rustc_span::Symbol; 3] =
+            [sym::track_caller, sym::inline, sym::target_feature];
+
+        for other_attr in attrs {
+            if FORBIDDEN.into_iter().any(|name| other_attr.has_name(name)) {
+                self.dcx().emit_err(errors::NakedFunctionCodegenAttribute {
+                    span: other_attr.span,
+                    naked_span: attr.span,
+                });
+
+                return false;
+            }
+        }
+
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
-            // `#[allow_internal_unstable]` attribute with just a lint, because we previously
+            // `#[naked]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
@@ -488,7 +509,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if a `#[track_caller]` is applied to a non-naked function. Returns `true` if valid.
+    /// Checks if a `#[track_caller]` is applied to a function. Returns `true` if valid.
     fn check_track_caller(
         &self,
         hir_id: HirId,
@@ -498,10 +519,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
-                self.dcx().emit_err(errors::NakedTrackedCaller { attr_span });
-                false
-            }
             Target::Fn => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
                 // `extern` declarations and `#[track_caller]` would alter their ABI.
