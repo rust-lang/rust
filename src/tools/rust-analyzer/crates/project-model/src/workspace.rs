@@ -10,6 +10,7 @@ use base_db::{
     LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
+use intern::{sym, Symbol};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
@@ -977,8 +978,8 @@ fn cargo_to_crate_graph(
 
             if cargo[pkg].is_local {
                 // Add test cfg for local crates
-                cfg_options.insert_atom("test".into());
-                cfg_options.insert_atom("rust_analyzer".into());
+                cfg_options.insert_atom(sym::test.clone());
+                cfg_options.insert_atom(sym::rust_analyzer.clone());
             }
 
             override_cfg.apply(&mut cfg_options, &cargo[pkg].name);
@@ -1144,8 +1145,8 @@ fn detached_file_to_crate_graph(
         sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load);
 
     let mut cfg_options = CfgOptions::from_iter(rustc_cfg);
-    cfg_options.insert_atom("test".into());
-    cfg_options.insert_atom("rust_analyzer".into());
+    cfg_options.insert_atom(sym::test.clone());
+    cfg_options.insert_atom(sym::rust_analyzer.clone());
     override_cfg.apply(&mut cfg_options, "");
     let cfg_options = Arc::new(cfg_options);
 
@@ -1307,7 +1308,7 @@ fn add_target_crate_root(
     let cfg_options = {
         let mut opts = cfg_options;
         for feature in pkg.active_features.iter() {
-            opts.insert_key_value("feature".into(), feature.into());
+            opts.insert_key_value(sym::feature.clone(), Symbol::intern(feature));
         }
         if let Some(cfgs) = build_data.as_ref().map(|it| &it.cfgs) {
             opts.extend(cfgs.iter().cloned());
@@ -1381,8 +1382,8 @@ fn sysroot_to_crate_graph(
                 &CfgOverrides {
                     global: CfgDiff::new(
                         vec![
-                            CfgAtom::Flag("debug_assertions".into()),
-                            CfgAtom::Flag("miri".into()),
+                            CfgAtom::Flag(sym::debug_assertions.clone()),
+                            CfgAtom::Flag(sym::miri.clone()),
                         ],
                         vec![],
                     )
@@ -1394,7 +1395,7 @@ fn sysroot_to_crate_graph(
 
             let mut pub_deps = vec![];
             let mut libproc_macro = None;
-            let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag("test".into())]).unwrap();
+            let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag(sym::test.clone())]).unwrap();
             for (cid, c) in cg.iter_mut() {
                 // uninject `test` flag so `core` keeps working.
                 Arc::make_mut(&mut c.cfg_options).apply_diff(diff.clone());
@@ -1449,8 +1450,8 @@ fn sysroot_to_crate_graph(
             let cfg_options = Arc::new({
                 let mut cfg_options = CfgOptions::default();
                 cfg_options.extend(rustc_cfg);
-                cfg_options.insert_atom("debug_assertions".into());
-                cfg_options.insert_atom("miri".into());
+                cfg_options.insert_atom(sym::debug_assertions.clone());
+                cfg_options.insert_atom(sym::miri.clone());
                 cfg_options
             });
             let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched

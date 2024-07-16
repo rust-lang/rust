@@ -9,9 +9,10 @@ use std::fmt;
 
 use rustc_hash::FxHashSet;
 
+use intern::Symbol;
+
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;
-use smol_str::SmolStr;
 
 /// Configuration options used for conditional compilation on items with `cfg` attributes.
 /// We have two kind of options in different namespaces: atomic options like `unix`, and
@@ -48,11 +49,11 @@ impl CfgOptions {
         cfg.fold(&|atom| self.enabled.contains(atom))
     }
 
-    pub fn insert_atom(&mut self, key: SmolStr) {
+    pub fn insert_atom(&mut self, key: Symbol) {
         self.enabled.insert(CfgAtom::Flag(key));
     }
 
-    pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
+    pub fn insert_key_value(&mut self, key: Symbol, value: Symbol) {
         self.enabled.insert(CfgAtom::KeyValue { key, value });
     }
 
@@ -66,19 +67,16 @@ impl CfgOptions {
         }
     }
 
-    pub fn get_cfg_keys(&self) -> impl Iterator<Item = &SmolStr> {
+    pub fn get_cfg_keys(&self) -> impl Iterator<Item = &Symbol> {
         self.enabled.iter().map(|it| match it {
             CfgAtom::Flag(key) => key,
             CfgAtom::KeyValue { key, .. } => key,
         })
     }
 
-    pub fn get_cfg_values<'a>(
-        &'a self,
-        cfg_key: &'a str,
-    ) -> impl Iterator<Item = &'a SmolStr> + 'a {
+    pub fn get_cfg_values<'a>(&'a self, cfg_key: &'a str) -> impl Iterator<Item = &'a Symbol> + 'a {
         self.enabled.iter().filter_map(move |it| match it {
-            CfgAtom::KeyValue { key, value } if cfg_key == key => Some(value),
+            CfgAtom::KeyValue { key, value } if cfg_key == key.as_str() => Some(value),
             _ => None,
         })
     }

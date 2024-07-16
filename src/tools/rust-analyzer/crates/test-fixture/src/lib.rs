@@ -481,9 +481,9 @@ impl FileMeta {
         let mut cfg = CfgOptions::default();
         for (k, v) in f.cfgs {
             if let Some(v) = v {
-                cfg.insert_key_value(k.into(), v.into());
+                cfg.insert_key_value(Symbol::intern(&k), Symbol::intern(&v));
             } else {
-                cfg.insert_atom(k.into());
+                cfg.insert_atom(Symbol::intern(&k));
             }
         }
 

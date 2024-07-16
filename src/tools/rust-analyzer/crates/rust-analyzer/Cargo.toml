@@ -54,6 +54,7 @@ hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true
 ide-db.workspace = true
+intern.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
 ide.workspace = true

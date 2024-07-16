@@ -8,6 +8,7 @@ use std::{fmt, iter, ops::Not, sync::OnceLock};
 use cfg::{CfgAtom, CfgDiff};
 use dirs::config_dir;
 use flycheck::{CargoOptions, FlycheckConfig};
+use hir::Symbol;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
     GenericParameterHints, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
@@ -1691,8 +1692,11 @@ impl Config {
                     self.cargo_cfgs()
                         .iter()
                         .map(|(key, val)| match val {
-                            Some(val) => CfgAtom::KeyValue { key: key.into(), value: val.into() },
-                            None => CfgAtom::Flag(key.into()),
+                            Some(val) => CfgAtom::KeyValue {
+                                key: Symbol::intern(key),
+                                value: Symbol::intern(val),
+                            },
+                            None => CfgAtom::Flag(Symbol::intern(key)),
                         })
                         .collect(),
                     vec![],

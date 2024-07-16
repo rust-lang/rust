@@ -563,7 +563,12 @@ fn concat_bytes_expand(
     };
     for (i, t) in tt.token_trees.iter().enumerate() {
         match t {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { symbol: text, span, kind, suffix: _ })) => {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                symbol: text,
+                span,
+                kind,
+                suffix: _,
+            })) => {
                 record_span(*span);
                 match kind {
                     tt::LitKind::Byte => {
