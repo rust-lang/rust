@@ -22,28 +22,30 @@ pub struct Thread {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    #[allow(unsafe_op_in_unsafe_fn)]
-    // FIXME: check the internal safety
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
 
         // CreateThread rounds up values for the stack size to the nearest page size (at least 4kb).
         // If a value of zero is given then the default stack size is used instead.
-        let ret = c::CreateThread(
-            ptr::null_mut(),
-            stack,
-            Some(thread_start),
-            p as *mut _,
-            c::STACK_SIZE_PARAM_IS_A_RESERVATION,
-            ptr::null_mut(),
-        );
-        let ret = HandleOrNull::from_raw_handle(ret);
+        // SAFETY: `thread_start` has the right ABI for a thread's entry point.
+        // `p` is simply passed through to the new thread without being touched.
+        let ret = unsafe {
+            let ret = c::CreateThread(
+                ptr::null_mut(),
+                stack,
+                Some(thread_start),
+                p as *mut _,
+                c::STACK_SIZE_PARAM_IS_A_RESERVATION,
+                ptr::null_mut(),
+            );
+            HandleOrNull::from_raw_handle(ret)
+        };
         return if let Ok(handle) = ret.try_into() {
             Ok(Thread { handle: Handle::from_inner(handle) })
         } else {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            unsafe { drop(Box::from_raw(p)) };
             Err(io::Error::last_os_error())
         };
 
@@ -51,7 +53,9 @@ impl Thread {
             // Next, reserve some stack space for if we otherwise run out of stack.
             stack_overflow::reserve_stack();
             // Finally, let's run some code.
-            Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+            // SAFETY: We are simply recreating the box that was leaked earlier.
+            // It's the responsibility of the one who call `Thread::new` to ensure this is safe to call here.
+            unsafe { Box::from_raw(main as *mut Box<dyn FnOnce()>)() };
             0
         }
     }
