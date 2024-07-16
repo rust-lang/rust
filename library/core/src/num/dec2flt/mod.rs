@@ -250,7 +250,7 @@ pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
         None => return Err(pfe_invalid()),
     };
     num.negative = negative;
-    if cfg!(not(feature = "optimize_for_size")) {
+    if !cfg!(feature = "optimize_for_size") {
         if let Some(value) = num.try_fast_path::<F>() {
             return Ok(value);
         }
