@@ -1,11 +1,11 @@
 //! Error Reporting for static impl Traits.
 
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{
     ButCallingIntroduces, ButNeedsToSatisfy, DynTraitConstraintSuggestion, MoreTargeted,
     ReqIntroducedLocations,
 };
-use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_data_structures::fx::FxIndexSet;

@@ -1,5 +1,5 @@
+use crate::error_reporting::infer::nice_region_error::find_anon_type;
 use crate::fluent_generated as fluent;
-use crate::infer::error_reporting::nice_region_error::find_anon_type;
 use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, SubdiagMessageOp, Subdiagnostic};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;

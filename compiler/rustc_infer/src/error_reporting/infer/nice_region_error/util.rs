@@ -1,12 +1,12 @@
 //! Helper functions corresponding to lifetime errors due to
 //! anonymous regions.
 
-use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::infer::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, Binder, Region, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
+
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 
 /// Information about the anonymous region we are searching for.
 #[derive(Debug)]

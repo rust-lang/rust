@@ -11,9 +11,9 @@ pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
 
+use crate::error_reporting::infer::TypeErrCtxt;
 use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
-use error_reporting::TypeErrCtxt;
 use free_regions::RegionRelations;
 use lexical_region_resolve::LexicalRegionResolutions;
 use opaque_types::OpaqueTypeStorage;
@@ -54,7 +54,6 @@ use type_variable::TypeVariableOrigin;
 pub mod at;
 pub mod canonical;
 mod context;
-pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod lexical_region_resolve;
@@ -66,6 +65,8 @@ pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
 pub mod type_variable;
+// FIXME(error_reporting): Where should we put this?
+pub mod need_type_info;
 
 #[must_use]
 #[derive(Debug)]

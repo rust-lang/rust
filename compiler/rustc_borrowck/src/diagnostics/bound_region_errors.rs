@@ -1,7 +1,7 @@
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
+use rustc_infer::error_reporting::infer::nice_region_error::NiceRegionError;
 use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::RegionVariableOrigin;
