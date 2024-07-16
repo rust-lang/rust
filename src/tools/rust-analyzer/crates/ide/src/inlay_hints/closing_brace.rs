@@ -18,7 +18,7 @@ pub(super) fn hints(
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
-    node: SyntaxNode,
+    mut node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
@@ -52,6 +52,13 @@ pub(super) fn hints(
 
         let module = ast::Module::cast(list.syntax().parent()?)?;
         (format!("mod {}", module.name()?), module.name().map(name))
+    } else if let Some(label) = ast::Label::cast(node.clone()) {
+        // in this case, `ast::Label` could be seen as a part of `ast::BlockExpr`, to respect the `min_lines` config
+        node = node.parent()?;
+        let block = label.syntax().parent().and_then(ast::BlockExpr::cast)?;
+        closing_token = block.stmt_list()?.r_curly_token()?;
+        let lifetime = label.lifetime().map_or_else(String::new, |it| it.to_string());
+        (lifetime, Some(label.syntax().text_range()))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
         closing_token = block.stmt_list()?.r_curly_token()?;
 
