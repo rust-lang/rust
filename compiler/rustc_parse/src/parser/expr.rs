@@ -885,15 +885,15 @@ impl<'a> Parser<'a> {
         self.collect_tokens_for_expr(attrs, |this, attrs| {
             let base = this.parse_expr_bottom()?;
             let span = this.interpolated_or_expr_span(&base);
-            this.parse_expr_dot_or_call_with(base, span, attrs)
+            this.parse_expr_dot_or_call_with(attrs, base, span)
         })
     }
 
     pub(super) fn parse_expr_dot_or_call_with(
         &mut self,
+        mut attrs: ast::AttrVec,
         e0: P<Expr>,
         lo: Span,
-        mut attrs: ast::AttrVec,
     ) -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code

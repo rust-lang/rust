@@ -164,7 +164,7 @@ impl<'a> Parser<'a> {
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_dot_or_call_with(expr, lo, attrs)
+                this.parse_expr_dot_or_call_with(attrs, expr, lo)
             })?;
             // `DUMMY_SP` will get overwritten later in this function
             Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), TrailingToken::None))
@@ -206,7 +206,7 @@ impl<'a> Parser<'a> {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
-            let e = self.parse_expr_dot_or_call_with(e, lo, attrs)?;
+            let e = self.parse_expr_dot_or_call_with(attrs, e, lo)?;
             let e = self
                 .parse_expr_assoc_with(0, LhsExpr::Parsed { expr: e, starts_statement: false })?;
             StmtKind::Expr(e)
