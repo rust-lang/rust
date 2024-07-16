@@ -104,6 +104,7 @@ pub(crate) struct Candidate<'tcx> {
     pub(crate) item: ty::AssocItem,
     pub(crate) kind: CandidateKind<'tcx>,
     pub(crate) import_ids: SmallVec<[LocalDefId; 1]>,
+    receiver_trait_derefs: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -176,6 +177,11 @@ pub struct Pick<'tcx> {
 
     /// Unstable candidates alongside the stable ones.
     unstable_candidates: Vec<(Candidate<'tcx>, Symbol)>,
+
+    /// Number of jumps along the Receiver::target chain we followed
+    /// to identify this method. Used only for deshadowing errors.
+    #[allow(dead_code)]
+    pub receiver_trait_derefs: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -497,6 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item,
                             kind: CandidateKind::TraitCandidate(ty::Binder::dummy(trait_ref)),
                             import_ids: smallvec![],
+                            receiver_trait_derefs: 0usize,
                         },
                         false,
                     );
@@ -646,12 +653,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_inherent_candidates(&mut self) {
         for step in self.steps.iter() {
-            self.assemble_probe(&step.self_ty);
+            self.assemble_probe(&step.self_ty, step.autoderefs);
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_probe(&mut self, self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>) {
+    fn assemble_probe(
+        &mut self,
+        self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
+        receiver_trait_derefs: usize,
+    ) {
         let raw_self_ty = self_ty.value.value;
         match *raw_self_ty.kind() {
             ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
@@ -675,27 +686,39 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
                     self.fcx.instantiate_canonical(self.span, self_ty);
 
-                self.assemble_inherent_candidates_from_object(generalized_self_ty);
-                self.assemble_inherent_impl_candidates_for_type(p.def_id());
+                self.assemble_inherent_candidates_from_object(
+                    generalized_self_ty,
+                    receiver_trait_derefs,
+                );
+                self.assemble_inherent_impl_candidates_for_type(p.def_id(), receiver_trait_derefs);
                 if self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(
+                        raw_self_ty,
+                        receiver_trait_derefs,
+                    );
                 }
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
-                self.assemble_inherent_impl_candidates_for_type(def_id);
+                self.assemble_inherent_impl_candidates_for_type(def_id, receiver_trait_derefs);
                 if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(
+                        raw_self_ty,
+                        receiver_trait_derefs,
+                    );
                 }
             }
             ty::Foreign(did) => {
-                self.assemble_inherent_impl_candidates_for_type(did);
+                self.assemble_inherent_impl_candidates_for_type(did, receiver_trait_derefs);
                 if self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(
+                        raw_self_ty,
+                        receiver_trait_derefs,
+                    );
                 }
             }
             ty::Param(p) => {
-                self.assemble_inherent_candidates_from_param(p);
+                self.assemble_inherent_candidates_from_param(p, receiver_trait_derefs);
             }
             ty::Bool
             | ty::Char
@@ -708,29 +731,38 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::Never
-            | ty::Tuple(..) => self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty),
+            | ty::Tuple(..) => self
+                .assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_trait_derefs),
             _ => {}
         }
     }
 
-    fn assemble_inherent_candidates_for_incoherent_ty(&mut self, self_ty: Ty<'tcx>) {
+    fn assemble_inherent_candidates_for_incoherent_ty(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        receiver_trait_derefs: usize,
+    ) {
         let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
         for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
-            self.assemble_inherent_impl_probe(impl_def_id);
+            self.assemble_inherent_impl_probe(impl_def_id, receiver_trait_derefs);
         }
     }
 
-    fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
+    fn assemble_inherent_impl_candidates_for_type(
+        &mut self,
+        def_id: DefId,
+        receiver_trait_derefs: usize,
+    ) {
         let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id).into_iter().flatten();
         for &impl_def_id in impl_def_ids {
-            self.assemble_inherent_impl_probe(impl_def_id);
+            self.assemble_inherent_impl_probe(impl_def_id, receiver_trait_derefs);
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_impl_probe(&mut self, impl_def_id: DefId) {
+    fn assemble_inherent_impl_probe(&mut self, impl_def_id: DefId, receiver_trait_derefs: usize) {
         if !self.impl_dups.insert(impl_def_id) {
             return; // already visited
         }
@@ -746,6 +778,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     item,
                     kind: InherentImplCandidate(impl_def_id),
                     import_ids: smallvec![],
+                    receiver_trait_derefs,
                 },
                 true,
             );
@@ -753,7 +786,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_candidates_from_object(&mut self, self_ty: Ty<'tcx>) {
+    fn assemble_inherent_candidates_from_object(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        receiver_trait_derefs: usize,
+    ) {
         let principal = match self_ty.kind() {
             ty::Dynamic(ref data, ..) => Some(data),
             _ => None,
@@ -782,6 +819,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         item,
                         kind: ObjectCandidate(new_trait_ref),
                         import_ids: smallvec![],
+                        receiver_trait_derefs,
                     },
                     true,
                 );
@@ -790,7 +828,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
+    fn assemble_inherent_candidates_from_param(
+        &mut self,
+        param_ty: ty::ParamTy,
+        receiver_trait_derefs: usize,
+    ) {
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
@@ -817,6 +859,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     item,
                     kind: WhereClauseCandidate(poly_trait_ref),
                     import_ids: smallvec![],
+                    receiver_trait_derefs,
                 },
                 true,
             );
@@ -910,6 +953,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 item,
                                 import_ids: import_ids.clone(),
                                 kind: TraitCandidate(bound_trait_ref),
+                                receiver_trait_derefs: 0usize,
                             },
                             false,
                         );
@@ -933,6 +977,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         item,
                         import_ids: import_ids.clone(),
                         kind: TraitCandidate(ty::Binder::dummy(trait_ref)),
+                        receiver_trait_derefs: 0usize,
                     },
                     false,
                 );
@@ -1408,6 +1453,7 @@ impl<'tcx> Pick<'tcx> {
             autoref_or_ptr_adjustment: _,
             self_ty,
             unstable_candidates: _,
+            receiver_trait_derefs: _,
         } = *self;
         self_ty != other.self_ty || def_id != other.item.def_id
     }
@@ -1777,6 +1823,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             autoref_or_ptr_adjustment: None,
             self_ty,
             unstable_candidates: vec![],
+            receiver_trait_derefs: 0,
         })
     }
 
@@ -2070,6 +2117,7 @@ impl<'tcx> Candidate<'tcx> {
             autoref_or_ptr_adjustment: None,
             self_ty,
             unstable_candidates,
+            receiver_trait_derefs: self.receiver_trait_derefs,
         }
     }
 }
