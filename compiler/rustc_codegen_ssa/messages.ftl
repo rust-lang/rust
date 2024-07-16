@@ -4,8 +4,7 @@ codegen_ssa_add_native_library = failed to add native library {$library_path}: {
 
 codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
 
-codegen_ssa_archive_build_failure =
-    failed to build archive: {$error}
+codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
@@ -198,7 +197,7 @@ codegen_ssa_read_file = failed to read file: {$message}
 
 codegen_ssa_repair_vs_build_tools = the Visual Studio build tools may need to be repaired using the Visual Studio installer
 
-codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib: {$error}
+codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib at `{$path}`: {$error}
 
 codegen_ssa_rlib_incompatible_dependency_formats = `{$ty1}` and `{$ty2}` do not have equivalent dependency formats (`{$list1}` vs `{$list2}`)
 

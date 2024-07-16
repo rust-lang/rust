@@ -2911,7 +2911,8 @@ fn add_static_crate(
                 false
             }),
         ) {
-            sess.dcx().emit_fatal(errors::RlibArchiveBuildFailure { error });
+            sess.dcx()
+                .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
         }
         if archive.build(&dst) {
             link_upstream(&dst);
