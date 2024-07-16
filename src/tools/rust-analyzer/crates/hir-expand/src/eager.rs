@@ -54,6 +54,7 @@ pub fn expand_eager_macro_input(
         ctxt: call_site,
     }
     .intern(db);
+    #[allow(deprecated)] // builtin eager macros are never derives
     let (_, _, span) = db.macro_arg(arg_id);
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         db.parse_macro_expansion(arg_id.as_macro_file());
