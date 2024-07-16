@@ -54,15 +54,15 @@ pub enum Component<I: Interner> {
 /// Push onto `out` all the things that must outlive `'a` for the condition
 /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
 pub fn push_outlives_components<I: Interner>(
-    tcx: I,
+    cx: I,
     ty: I::Ty,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
-    ty.visit_with(&mut OutlivesCollector { tcx, out, visited: Default::default() });
+    ty.visit_with(&mut OutlivesCollector { cx, out, visited: Default::default() });
 }
 
 struct OutlivesCollector<'a, I: Interner> {
-    tcx: I,
+    cx: I,
     out: &'a mut SmallVec<[Component<I>; 4]>,
     visited: SsoHashSet<I::Ty>,
 }
@@ -147,7 +147,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                     // OutlivesProjectionComponents. Continue walking
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
-                    compute_alias_components_recursive(self.tcx, ty, &mut subcomponents);
+                    compute_alias_components_recursive(self.cx, ty, &mut subcomponents);
                     self.out.push(Component::EscapingAlias(subcomponents.into_iter().collect()));
                 }
             }
@@ -206,7 +206,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
 /// This should not be used to get the components of `parent` itself.
 /// Use [push_outlives_components] instead.
 pub fn compute_alias_components_recursive<I: Interner>(
-    tcx: I,
+    cx: I,
     alias_ty: I::Ty,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
@@ -215,9 +215,9 @@ pub fn compute_alias_components_recursive<I: Interner>(
     };
 
     let opt_variances =
-        if kind == ty::Opaque { Some(tcx.variances_of(alias_ty.def_id)) } else { None };
+        if kind == ty::Opaque { Some(cx.variances_of(alias_ty.def_id)) } else { None };
 
-    let mut visitor = OutlivesCollector { tcx, out, visited: Default::default() };
+    let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
 
     for (index, child) in alias_ty.args.iter().enumerate() {
         if opt_variances.and_then(|variances| variances.get(index)) == Some(ty::Bivariant) {
