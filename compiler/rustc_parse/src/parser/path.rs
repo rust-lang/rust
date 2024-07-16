@@ -258,6 +258,7 @@ impl<'a> Parser<'a> {
                         self.bump(); // bump past the colon
                         self.dcx().emit_err(PathSingleColon {
                             span: self.prev_token.span,
+                            suggestion: self.prev_token.span.shrink_to_hi(),
                             type_ascription: self
                                 .psess
                                 .unstable_features
@@ -329,6 +330,7 @@ impl<'a> Parser<'a> {
                             err.cancel();
                             err = self.dcx().create_err(PathSingleColon {
                                 span: self.token.span,
+                                suggestion: self.prev_token.span.shrink_to_hi(),
                                 type_ascription: self
                                     .psess
                                     .unstable_features

@@ -220,19 +220,6 @@ pub enum MappingKind {
 }
 
 impl MappingKind {
-    /// Iterator over all coverage terms in this mapping kind.
-    pub fn terms(&self) -> impl Iterator<Item = CovTerm> {
-        let zero = || None.into_iter().chain(None);
-        let one = |a| Some(a).into_iter().chain(None);
-        let two = |a, b| Some(a).into_iter().chain(Some(b));
-        match *self {
-            Self::Code(term) => one(term),
-            Self::Branch { true_term, false_term } => two(true_term, false_term),
-            Self::MCDCBranch { true_term, false_term, .. } => two(true_term, false_term),
-            Self::MCDCDecision(_) => zero(),
-        }
-    }
-
     /// Returns a copy of this mapping kind, in which all coverage terms have
     /// been replaced with ones returned by the given function.
     pub fn map_terms(&self, map_fn: impl Fn(CovTerm) -> CovTerm) -> Self {

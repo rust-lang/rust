@@ -2,13 +2,25 @@ error: unexpected lifetime `'a` in pattern
   --> $DIR/lifetime-in-pattern-recover.rs:2:10
    |
 LL |     let &'a x = &0;
-   |          ^^ help: remove the lifetime
+   |          ^^
+   |
+help: remove the lifetime
+   |
+LL -     let &'a x = &0;
+LL +     let &x = &0;
+   |
 
 error: unexpected lifetime `'a` in pattern
   --> $DIR/lifetime-in-pattern-recover.rs:3:10
    |
 LL |     let &'a mut y = &mut 0;
-   |          ^^ help: remove the lifetime
+   |          ^^
+   |
+help: remove the lifetime
+   |
+LL -     let &'a mut y = &mut 0;
+LL +     let &mut y = &mut 0;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/lifetime-in-pattern-recover.rs:5:33

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_test_module_or_function;
+use clippy_utils::is_in_test;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -100,7 +100,6 @@ declare_clippy_lint! {
 #[derive(Default)]
 pub struct WildcardImports {
     warn_on_all: bool,
-    test_modules_deep: u32,
     allowed_segments: FxHashSet<String>,
 }
 
@@ -108,7 +107,6 @@ impl WildcardImports {
     pub fn new(warn_on_all: bool, allowed_wildcard_imports: FxHashSet<String>) -> Self {
         Self {
             warn_on_all,
-            test_modules_deep: 0,
             allowed_segments: allowed_wildcard_imports,
         }
     }
@@ -122,15 +120,12 @@ impl LateLintPass<'_> for WildcardImports {
             return;
         }
 
-        if is_test_module_or_function(cx.tcx, item) {
-            self.test_modules_deep = self.test_modules_deep.saturating_add(1);
-        }
         let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
         if cx.tcx.visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module.to_def_id()) {
             return;
         }
         if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind
-            && (self.warn_on_all || !self.check_exceptions(item, use_path.segments))
+            && (self.warn_on_all || !self.check_exceptions(cx, item, use_path.segments))
             && let used_imports = cx.tcx.names_imported_by_glob_use(item.owner_id.def_id)
             && !used_imports.is_empty() // Already handled by `unused_imports`
             && !used_imports.contains(&kw::Underscore)
@@ -180,20 +175,14 @@ impl LateLintPass<'_> for WildcardImports {
             span_lint_and_sugg(cx, lint, span, message, "try", sugg, applicability);
         }
     }
-
-    fn check_item_post(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if is_test_module_or_function(cx.tcx, item) {
-            self.test_modules_deep = self.test_modules_deep.saturating_sub(1);
-        }
-    }
 }
 
 impl WildcardImports {
-    fn check_exceptions(&self, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
+    fn check_exceptions(&self, cx: &LateContext<'_>, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
         item.span.from_expansion()
             || is_prelude_import(segments)
-            || (is_super_only_import(segments) && self.test_modules_deep > 0)
             || is_allowed_via_config(segments, &self.allowed_segments)
+            || (is_super_only_import(segments) && is_in_test(cx.tcx, item.hir_id()))
     }
 }
 

@@ -23,7 +23,6 @@ run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
 run-make/emit-to-stdout/Makefile
-run-make/env-dep-info/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
@@ -37,7 +36,6 @@ run-make/extern-fn-with-packed-struct/Makefile
 run-make/extern-fn-with-union/Makefile
 run-make/extern-multiple-copies/Makefile
 run-make/extern-multiple-copies2/Makefile
-run-make/extra-filename-with-temp-outputs/Makefile
 run-make/fmt-write-bloat/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
@@ -58,9 +56,7 @@ run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
-run-make/issue-83045/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
-run-make/issue-85019-moved-src-dir/Makefile
 run-make/issue-85401-static-mir/Makefile
 run-make/issue-88756-default-output/Makefile
 run-make/issue-97463-abi-param-passing/Makefile
@@ -116,7 +112,6 @@ run-make/return-non-c-like-enum-from-c/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
-run-make/rustc-macro-dep-files/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile

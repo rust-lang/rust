@@ -76,7 +76,7 @@ impl BorrowedSocket<'_> {
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
         assert!(socket != sys::c::INVALID_SOCKET as RawSocket);
-        Self { socket, _phantom: PhantomData }
+        unsafe { Self { socket, _phantom: PhantomData } }
     }
 }
 
@@ -201,8 +201,10 @@ impl IntoRawSocket for OwnedSocket {
 impl FromRawSocket for OwnedSocket {
     #[inline]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
-        debug_assert_ne!(socket, sys::c::INVALID_SOCKET as RawSocket);
-        Self { socket }
+        unsafe {
+            debug_assert_ne!(socket, sys::c::INVALID_SOCKET as RawSocket);
+            Self { socket }
+        }
     }
 }
 

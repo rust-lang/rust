@@ -76,8 +76,8 @@ impl SystemTime {
     fn from_intervals(intervals: i64) -> SystemTime {
         SystemTime {
             t: c::FILETIME {
-                dwLowDateTime: intervals as c::DWORD,
-                dwHighDateTime: (intervals >> 32) as c::DWORD,
+                dwLowDateTime: intervals as u32,
+                dwHighDateTime: (intervals >> 32) as u32,
             },
         }
     }
@@ -172,7 +172,7 @@ mod perf_counter {
     use crate::time::Duration;
 
     pub struct PerformanceCounterInstant {
-        ts: c::LARGE_INTEGER,
+        ts: i64,
     }
     impl PerformanceCounterInstant {
         pub fn now() -> Self {
@@ -196,7 +196,7 @@ mod perf_counter {
         }
     }
 
-    fn frequency() -> c::LARGE_INTEGER {
+    fn frequency() -> i64 {
         // Either the cached result of `QueryPerformanceFrequency` or `0` for
         // uninitialized. Storing this as a single `AtomicU64` allows us to use
         // `Relaxed` operations, as we are only interested in the effects on a
@@ -206,7 +206,7 @@ mod perf_counter {
         let cached = FREQUENCY.load(Ordering::Relaxed);
         // If a previous thread has filled in this global state, use that.
         if cached != 0 {
-            return cached as c::LARGE_INTEGER;
+            return cached as i64;
         }
         // ... otherwise learn for ourselves ...
         let mut frequency = 0;
@@ -218,8 +218,8 @@ mod perf_counter {
         frequency
     }
 
-    fn query() -> c::LARGE_INTEGER {
-        let mut qpc_value: c::LARGE_INTEGER = 0;
+    fn query() -> i64 {
+        let mut qpc_value: i64 = 0;
         cvt(unsafe { c::QueryPerformanceCounter(&mut qpc_value) }).unwrap();
         qpc_value
     }

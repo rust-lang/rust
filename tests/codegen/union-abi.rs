@@ -1,5 +1,9 @@
 //@ ignore-emscripten vectors passed directly
 //@ compile-flags: -O -C no-prepopulate-passes
+// 32-bit x86 returns `f32` differently to avoid the x87 stack.
+//@ revisions: x86 other
+//@[x86] only-x86
+//@[other] ignore-x86
 
 // This test that using union forward the abi of the inner type, as
 // discussed in #54668
@@ -67,7 +71,8 @@ pub union UnionF32 {
     a: f32,
 }
 
-// CHECK: define {{(dso_local )?}}float @test_UnionF32(float %_1)
+// other: define {{(dso_local )?}}float @test_UnionF32(float %_1)
+// x86: define {{(dso_local )?}}i32 @test_UnionF32(float %_1)
 #[no_mangle]
 pub fn test_UnionF32(_: UnionF32) -> UnionF32 {
     loop {}
@@ -78,7 +83,8 @@ pub union UnionF32F32 {
     b: f32,
 }
 
-// CHECK: define {{(dso_local )?}}float @test_UnionF32F32(float %_1)
+// other: define {{(dso_local )?}}float @test_UnionF32F32(float %_1)
+// x86: define {{(dso_local )?}}i32 @test_UnionF32F32(float %_1)
 #[no_mangle]
 pub fn test_UnionF32F32(_: UnionF32F32) -> UnionF32F32 {
     loop {}

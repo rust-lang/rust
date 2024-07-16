@@ -2,8 +2,8 @@ use regex::Regex;
 use similar::TextDiff;
 use std::path::{Path, PathBuf};
 
-use crate::drop_bomb::DropBomb;
 use crate::fs_wrapper;
+use build_helper::drop_bomb::DropBomb;
 
 #[cfg(test)]
 mod tests;

@@ -20,7 +20,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 
     let mut v = (0, 0);
     let ret = unsafe {
-        c::RtlGenRandom(ptr::addr_of_mut!(v).cast::<c_void>(), mem::size_of_val(&v) as c::ULONG)
+        c::RtlGenRandom(ptr::addr_of_mut!(v).cast::<c_void>(), mem::size_of_val(&v) as u32)
     };
 
     if ret != 0 { v } else { panic!("RNG broken: {}", io::Error::last_os_error()) }

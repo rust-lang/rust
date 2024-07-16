@@ -50,13 +50,10 @@ impl_lint_pass!(ManualBits => [MANUAL_BITS]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualBits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !self.msrv.meets(msrvs::MANUAL_BITS) {
-            return;
-        }
-
         if let ExprKind::Binary(bin_op, left_expr, right_expr) = expr.kind
             && let BinOpKind::Mul = &bin_op.node
             && !in_external_macro(cx.sess(), expr.span)
+            && self.msrv.meets(msrvs::MANUAL_BITS)
             && let ctxt = expr.span.ctxt()
             && left_expr.span.ctxt() == ctxt
             && right_expr.span.ctxt() == ctxt

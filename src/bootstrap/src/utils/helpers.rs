@@ -1,4 +1,4 @@
-//! Various utility functions used throughout rustbuild.
+//! Various utility functions used throughout bootstrap.
 //!
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
@@ -244,7 +244,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 
 // FIXME: get rid of this function
 pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.command.status() {
+    let status = match cmd.as_command_mut().status() {
         Ok(status) => status,
         Err(e) => {
             println!("failed to execute command: {cmd:?}\nERROR: {e}");
@@ -338,13 +338,13 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
 /// When `clang-cl` is used with instrumentation, we need to add clang's runtime library resource
 /// directory to the linker flags, otherwise there will be linker errors about the profiler runtime
 /// missing. This function returns the path to that directory.
-pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
+pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> PathBuf {
     // Similar to how LLVM does it, to find clang's library runtime directory:
     // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
-    let mut builtins_locator = Command::new(clang_cl_path);
+    let mut builtins_locator = command(clang_cl_path);
     builtins_locator.args(["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
 
-    let clang_rt_builtins = output(&mut builtins_locator);
+    let clang_rt_builtins = builtins_locator.capture_stdout().run(builder).stdout();
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
     assert!(
         clang_rt_builtins.exists(),
@@ -501,6 +501,7 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
 /// bootstrap-specific needs/hacks from a single source, rather than applying them on next to every
 /// git command creation, which is painful to ensure that the required change is applied
 /// on each one of them correctly.
+#[track_caller]
 pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     let mut git = command("git");
 

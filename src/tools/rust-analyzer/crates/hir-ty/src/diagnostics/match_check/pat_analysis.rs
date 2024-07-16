@@ -5,11 +5,10 @@ use std::fmt;
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use intern::sym;
 use once_cell::unsync::Lazy;
-use rustc_index::IndexVec;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
-    Captures, PatCx, PrivateUninhabitedField,
+    Captures, IndexVec, PatCx, PrivateUninhabitedField,
 };
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
@@ -54,7 +53,7 @@ impl EnumVariantContiguousIndex {
     }
 }
 
-impl rustc_index::Idx for EnumVariantContiguousIndex {
+impl rustc_pattern_analysis::Idx for EnumVariantContiguousIndex {
     fn new(idx: usize) -> Self {
         EnumVariantContiguousIndex(idx)
     }

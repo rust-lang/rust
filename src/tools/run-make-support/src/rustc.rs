@@ -4,13 +4,15 @@ use std::path::Path;
 
 use crate::{command, cwd, env_var, set_host_rpath};
 
-/// Construct a new `rustc` invocation.
+/// Construct a new `rustc` invocation. This will automatically set the library
+/// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
 #[track_caller]
 pub fn rustc() -> Rustc {
     Rustc::new()
 }
 
-/// Construct a plain `rustc` invocation with no flags set.
+/// Construct a plain `rustc` invocation with no flags set. Note that [`set_host_rpath`]
+/// still presets the environment variable `HOST_RPATH_DIR` by default.
 #[track_caller]
 pub fn bare_rustc() -> Rustc {
     Rustc::bare()
@@ -42,7 +44,8 @@ fn setup_common() -> Command {
 impl Rustc {
     // `rustc` invocation constructor methods
 
-    /// Construct a new `rustc` invocation.
+    /// Construct a new `rustc` invocation. This will automatically set the library
+    /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
     #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();

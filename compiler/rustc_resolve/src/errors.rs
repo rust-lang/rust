@@ -240,16 +240,18 @@ pub(crate) struct AttemptToUseNonConstantValueInConstant<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
+#[multipart_suggestion(
     resolve_attempt_to_use_non_constant_value_in_constant_with_suggestion,
-    code = "{suggestion} {ident}",
-    applicability = "maybe-incorrect"
+    style = "verbose",
+    applicability = "has-placeholders"
 )]
 pub(crate) struct AttemptToUseNonConstantValueInConstantWithSuggestion<'a> {
-    #[primary_span]
+    // #[primary_span]
+    #[suggestion_part(code = "{suggestion} ")]
     pub(crate) span: Span,
-    pub(crate) ident: Ident,
     pub(crate) suggestion: &'a str,
+    #[suggestion_part(code = ": /* Type */")]
+    pub(crate) type_span: Option<Span>,
     pub(crate) current: &'a str,
 }
 
@@ -1089,8 +1091,8 @@ pub(crate) struct ToolWasAlreadyRegistered {
 #[derive(Diagnostic)]
 #[diag(resolve_tool_only_accepts_identifiers)]
 pub(crate) struct ToolOnlyAcceptsIdentifiers {
-    #[label]
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) tool: Symbol,
 }

@@ -123,7 +123,7 @@ struct TOFinder<'tcx, 'a> {
     param_env: ty::ParamEnv<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
-    map: &'a Map,
+    map: &'a Map<'tcx>,
     loop_headers: &'a BitSet<BasicBlock>,
     /// We use an arena to avoid cloning the slices when cloning `state`.
     arena: &'a DroplessArena,

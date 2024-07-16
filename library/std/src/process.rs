@@ -96,9 +96,9 @@
 //! child processes must agree on how the commandline string is encoded.
 //!
 //! Most programs use the standard C run-time `argv`, which in practice results
-//! in consistent argument handling. However some programs have their own way of
+//! in consistent argument handling. However, some programs have their own way of
 //! parsing the commandline string. In these cases using [`arg`] or [`args`] may
-//! result in the child process seeing a different array of arguments then the
+//! result in the child process seeing a different array of arguments than the
 //! parent process intended.
 //!
 //! Two ways of mitigating this are:

@@ -221,6 +221,10 @@ infer_opaque_hidden_type =
 
 infer_outlives_bound = lifetime of the source pointer does not outlive lifetime bound of the object type
 infer_outlives_content = lifetime of reference outlives lifetime of borrowed content...
+
+infer_precise_capturing_existing = add `{$new_lifetime}` to the `use<...>` bound to explicitly capture it
+infer_precise_capturing_new = add a `use<...>` bound to explicitly capture `{$new_lifetime}`
+
 infer_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
 infer_prlf_defined_without_sub = the lifetime defined here...
 infer_prlf_known_limitation = this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)

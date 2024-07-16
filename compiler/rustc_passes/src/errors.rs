@@ -1493,14 +1493,6 @@ pub struct TraitImplConstStable {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_feature_only_on_nightly, code = E0554)]
-pub struct FeatureOnlyOnNightly {
-    #[primary_span]
-    pub span: Span,
-    pub release_channel: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_unknown_feature, code = E0635)]
 pub struct UnknownFeature {
     #[primary_span]

@@ -26,7 +26,12 @@ error: bare CR not allowed in string, use `\r` instead
   --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:19:18
    |
 LL |     let _s = "foobar";
-   |                  ^ help: escape the character: `\r`
+   |                  ^
+   |
+help: escape the character
+   |
+LL |     let _s = "foo\rbar";
+   |                  ++
 
 error: bare CR not allowed in raw string
   --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:22:19

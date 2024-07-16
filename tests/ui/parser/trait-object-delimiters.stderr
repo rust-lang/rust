@@ -2,7 +2,12 @@ error: ambiguous `+` in a type
   --> $DIR/trait-object-delimiters.rs:3:13
    |
 LL | fn foo1(_: &dyn Drop + AsRef<str>) {}
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: use parentheses to disambiguate: `(dyn Drop + AsRef<str>)`
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn foo1(_: &(dyn Drop + AsRef<str>)) {}
+   |             +                     +
 
 error: incorrect parentheses around trait bounds
   --> $DIR/trait-object-delimiters.rs:6:17
@@ -52,9 +57,14 @@ error: invalid `dyn` keyword
   --> $DIR/trait-object-delimiters.rs:16:25
    |
 LL | fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
-   |                         ^^^ help: remove this keyword
+   |                         ^^^
    |
    = help: `dyn` is only needed at the start of a trait `+`-separated list
+help: remove this keyword
+   |
+LL - fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
+LL + fn foo5(_: &(dyn Drop + AsRef<str>)) {}
+   |
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-delimiters.rs:3:24

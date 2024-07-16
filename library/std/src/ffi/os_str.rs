@@ -184,7 +184,7 @@ impl OsString {
     #[inline]
     #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: Vec<u8>) -> Self {
-        OsString { inner: Buf::from_encoded_bytes_unchecked(bytes) }
+        OsString { inner: unsafe { Buf::from_encoded_bytes_unchecked(bytes) } }
     }
 
     /// Converts to an [`OsStr`] slice.
@@ -813,7 +813,7 @@ impl OsStr {
     #[inline]
     #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: &[u8]) -> &Self {
-        Self::from_inner(Slice::from_encoded_bytes_unchecked(bytes))
+        Self::from_inner(unsafe { Slice::from_encoded_bytes_unchecked(bytes) })
     }
 
     #[inline]

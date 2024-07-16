@@ -37,7 +37,7 @@ impl<'a> LintExtractor<'a> {
             .map_err(|e| format!("could not read {}: {}", groups_path.display(), e))?;
         let new_contents =
             contents.replace("{{groups-table}}", &self.make_groups_table(lints, &groups)?);
-        // Delete the output because rustbuild uses hard links in its copies.
+        // Delete the output because bootstrap uses hard links in its copies.
         let _ = fs::remove_file(&groups_path);
         fs::write(&groups_path, new_contents)
             .map_err(|e| format!("could not write to {}: {}", groups_path.display(), e))?;

@@ -1,6 +1,7 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use super::sync::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -132,7 +133,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?;
                 let active_thread = this.active_thread();
-                this.machine.tls.set_macos_thread_dtor(active_thread, dtor, data)?;
+                this.machine.tls.add_macos_thread_dtor(active_thread, dtor, data)?;
             }
 
             // Querying system information
@@ -172,6 +173,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.read_scalar(len)?,
                 )?;
                 this.write_scalar(res, dest)?;
+            }
+
+            "os_unfair_lock_lock" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_lock(lock_op)?;
+            }
+            "os_unfair_lock_trylock" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_trylock(lock_op, dest)?;
+            }
+            "os_unfair_lock_unlock" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_unlock(lock_op)?;
+            }
+            "os_unfair_lock_assert_owner" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_assert_owner(lock_op)?;
+            }
+            "os_unfair_lock_assert_not_owner" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_assert_not_owner(lock_op)?;
             }
 
             _ => return Ok(EmulateItemResult::NotSupported),

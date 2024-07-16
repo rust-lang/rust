@@ -14,12 +14,12 @@ impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
 
     fn create_dll_import_lib(
         &self,
-        _sess: &Session,
+        sess: &Session,
         _lib_name: &str,
         _dll_imports: &[rustc_session::cstore::DllImport],
         _tmpdir: &Path,
         _is_direct_dependency: bool,
     ) -> PathBuf {
-        unimplemented!("creating dll imports is not yet supported");
+        sess.dcx().fatal("raw-dylib is not yet supported by rustc_codegen_cranelift");
     }
 }

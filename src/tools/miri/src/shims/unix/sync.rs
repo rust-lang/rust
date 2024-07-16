@@ -473,7 +473,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ret = if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
             if owner_thread != this.active_thread() {
-                this.mutex_enqueue_and_block(id, Scalar::from_i32(0), dest.clone());
+                this.mutex_enqueue_and_block(id, Some((Scalar::from_i32(0), dest.clone())));
                 return Ok(());
             } else {
                 // Trying to acquire the same mutex again.

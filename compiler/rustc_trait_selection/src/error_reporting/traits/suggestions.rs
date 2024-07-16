@@ -3810,6 +3810,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()
                     && let Some(failed_pred) = failed_pred.as_trait_clause()
+                    && where_pred.def_id() == failed_pred.def_id()
                 {
                     self.enter_forall(where_pred, |where_pred| {
                         let failed_pred = self.instantiate_binder_with_fresh_vars(

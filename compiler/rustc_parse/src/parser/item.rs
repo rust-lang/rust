@@ -387,8 +387,8 @@ impl<'a> Parser<'a> {
         let span = if is_pub { self.prev_token.span.to(ident_span) } else { ident_span };
         let insert_span = ident_span.shrink_to_lo();
 
-        let ident = if (!is_const
-            || self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Parenthesis)))
+        let ident = if self.token.is_ident()
+            && (!is_const || self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Parenthesis)))
             && self.look_ahead(1, |t| {
                 [
                     token::Lt,
@@ -810,7 +810,7 @@ impl<'a> Parser<'a> {
                         self.dcx().struct_span_err(non_item_span, "non-item in item list");
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
                     if is_let {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             non_item_span,
                             "consider using `const` instead of `let` for associated const",
                             "const",
@@ -2241,9 +2241,13 @@ impl<'a> Parser<'a> {
             let kw_token = self.token.clone();
             let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item(ForceCollect::No)?;
+            let mut item = item.unwrap().span;
+            if self.token == token::Comma {
+                item = item.to(self.token.span);
+            }
             self.dcx().emit_err(errors::NestedAdt {
                 span: kw_token.span,
-                item: item.unwrap().span,
+                item,
                 kw_str,
                 keyword: keyword.as_str(),
             });

@@ -54,7 +54,7 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
         _: Location,
     ) {
         match stmt.kind {
-            StatementKind::StorageLive(l) => trans.gen(l),
+            StatementKind::StorageLive(l) => trans.gen_(l),
             StatementKind::StorageDead(l) => trans.kill(l),
             _ => (),
         }
@@ -127,7 +127,7 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageDead<'a> {
     ) {
         match stmt.kind {
             StatementKind::StorageLive(l) => trans.kill(l),
-            StatementKind::StorageDead(l) => trans.gen(l),
+            StatementKind::StorageDead(l) => trans.gen_(l),
             _ => (),
         }
     }
@@ -208,7 +208,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
             StatementKind::Assign(box (place, _))
             | StatementKind::SetDiscriminant { box place, .. }
             | StatementKind::Deinit(box place) => {
-                trans.gen(place.local);
+                trans.gen_(place.local);
             }
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
@@ -250,7 +250,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {
-                trans.gen(destination.local);
+                trans.gen_(destination.local);
             }
 
             // Note that we do *not* gen the `resume_arg` of `Yield` terminators. The reason for
@@ -265,7 +265,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
                         InlineAsmOperand::Out { place, .. }
                         | InlineAsmOperand::InOut { out_place: place, .. } => {
                             if let Some(place) = place {
-                                trans.gen(place.local);
+                                trans.gen_(place.local);
                             }
                         }
                         InlineAsmOperand::In { .. }
@@ -341,7 +341,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         _block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        return_places.for_each(|place| trans.gen(place.local));
+        return_places.for_each(|place| trans.gen_(place.local));
     }
 }
 
