@@ -17,32 +17,30 @@ pub struct DwarfReader {
     pub ptr: *const u8,
 }
 
-#[repr(C, packed)]
-struct Unaligned<T>(T);
-
+#[forbid(unsafe_op_in_unsafe_fn)]
 impl DwarfReader {
     pub fn new(ptr: *const u8) -> DwarfReader {
         DwarfReader { ptr }
     }
 
-    // DWARF streams are packed, so e.g., a u32 would not necessarily be aligned
-    // on a 4-byte boundary. This may cause problems on platforms with strict
-    // alignment requirements. By wrapping data in a "packed" struct, we are
-    // telling the backend to generate "misalignment-safe" code.
+    /// Read a type T and then bump the pointer by that amount.
+    ///
+    /// DWARF streams are "packed", so all types must be read at align 1.
     pub unsafe fn read<T: Copy>(&mut self) -> T {
-        let Unaligned(result) = *(self.ptr as *const Unaligned<T>);
-        self.ptr = self.ptr.add(mem::size_of::<T>());
-        result
+        unsafe {
+            let result = self.ptr.cast::<T>().read_unaligned();
+            self.ptr = self.ptr.byte_add(mem::size_of::<T>());
+            result
+        }
     }
 
-    // ULEB128 and SLEB128 encodings are defined in Section 7.6 - "Variable
-    // Length Data".
+    /// ULEB128 and SLEB128 encodings are defined in Section 7.6 - "Variable Length Data".
     pub unsafe fn read_uleb128(&mut self) -> u64 {
         let mut shift: usize = 0;
         let mut result: u64 = 0;
         let mut byte: u8;
         loop {
-            byte = self.read::<u8>();
+            byte = unsafe { self.read::<u8>() };
             result |= ((byte & 0x7F) as u64) << shift;
             shift += 7;
             if byte & 0x80 == 0 {
@@ -57,7 +55,7 @@ impl DwarfReader {
         let mut result: u64 = 0;
         let mut byte: u8;
         loop {
-            byte = self.read::<u8>();
+            byte = unsafe { self.read::<u8>() };
             result |= ((byte & 0x7F) as u64) << shift;
             shift += 7;
             if byte & 0x80 == 0 {
