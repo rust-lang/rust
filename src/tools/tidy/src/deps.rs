@@ -94,6 +94,7 @@ const EXCEPTIONS: ExceptionList = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
+    ("subtle", "BSD-3-Clause"),                              // rustc blake2 deps
     ("wasm-encoder", "Apache-2.0 WITH LLVM-exception"),      // rustc
     ("wasmparser", "Apache-2.0 WITH LLVM-exception"),        // rustc
     // tidy-alphabetical-end
@@ -235,6 +236,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "arrayvec",
     "autocfg",
     "bitflags",
+    "blake2",
     "block-buffer",
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
@@ -376,6 +378,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "stacker",
     "static_assertions",
     "strsim",
+    "subtle",
     "syn",
     "synstructure",
     "tempfile",
