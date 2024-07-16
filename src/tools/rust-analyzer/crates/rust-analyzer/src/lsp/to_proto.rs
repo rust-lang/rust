@@ -1399,7 +1399,11 @@ pub(crate) fn runnable(
                     cargo_args,
                     cwd: cwd.into(),
                     executable_args,
-                    environment: Default::default(),
+                    environment: spec
+                        .sysroot_root
+                        .map(|root| ("RUSTC_TOOLCHAIN".to_owned(), root.to_string()))
+                        .into_iter()
+                        .collect(),
                 }),
             }))
         }
