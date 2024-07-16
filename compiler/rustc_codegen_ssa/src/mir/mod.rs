@@ -16,6 +16,7 @@ use std::iter;
 
 mod analyze;
 mod block;
+mod cmse;
 pub mod constant;
 pub mod coverageinfo;
 pub mod debuginfo;

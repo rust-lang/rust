@@ -1040,9 +1040,9 @@ pub struct CompilerBuiltinsCannotCall {
 pub struct CmseCallInputsStackSpill {
     #[primary_span]
     #[label(codegen_ssa_call)]
-    pub span: Span,
+    pub call_site_span: Span,
     #[label]
-    pub func_span: Span,
+    pub function_definition_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1051,7 +1051,7 @@ pub struct CmseCallInputsStackSpill {
 pub struct CmseCallOutputStackSpill {
     #[primary_span]
     #[label(codegen_ssa_call)]
-    pub span: Span,
+    pub call_site_span: Span,
     #[label]
-    pub func_span: Span,
+    pub function_definition_span: Span,
 }

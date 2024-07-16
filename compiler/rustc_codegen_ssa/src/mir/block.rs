@@ -5,10 +5,9 @@ use super::{CachedLlbb, FunctionCx, LocalRef};
 
 use crate::base;
 use crate::common::{self, IntPredicate};
-use crate::errors::{
-    CmseCallInputsStackSpill, CmseCallOutputStackSpill, CompilerBuiltinsCannotCall,
-};
+use crate::errors::CompilerBuiltinsCannotCall;
 use crate::meth;
+use crate::mir::cmse;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -836,58 +835,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
         let callee = self.codegen_operand(bx, func);
 
-        let fn_sig = callee.layout.ty.fn_sig(bx.tcx()).skip_binder();
-
-        if let rustc_target::spec::abi::Abi::CCmseNonSecureCall = fn_sig.abi {
-            let mut accum = 0u64;
-
-            for arg_def in fn_sig.inputs().iter() {
-                let layout = bx.layout_of(*arg_def);
-
-                let align = layout.layout.align().abi.bytes();
-                let size = layout.layout.size().bytes();
-
-                accum += size;
-                accum = accum.next_multiple_of(Ord::max(4, align));
-            }
-
-            // the available argument space is 16 bytes (4 32-bit registers) in total
-            let available_space = 16;
-
-            if accum > available_space {
-                let err = CmseCallInputsStackSpill { span, func_span: func.span(self.mir) };
-                bx.tcx().dcx().emit_err(err);
-            }
-
-            let mut ret_layout = bx.layout_of(fn_sig.output());
-
-            // unwrap any `repr(transparent)` wrappers
-            loop {
-                if ret_layout.is_transparent::<Bx>() {
-                    match ret_layout.non_1zst_field(bx) {
-                        None => break,
-                        Some((_, layout)) => ret_layout = layout,
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            let valid_2register_return_types =
-                [bx.tcx().types.i64, bx.tcx().types.u64, bx.tcx().types.f64];
-
-            // A Composite Type larger than 4 bytes is stored in memory at an address
-            // passed as an extra argument when the function was called. That is not allowed
-            // for cmse_nonsecure_entry functions.
-            let is_valid_output = ret_layout.layout.size().bytes() <= 4
-                || valid_2register_return_types.contains(&ret_layout.ty);
-
-            if !is_valid_output {
-                let err = CmseCallOutputStackSpill { span, func_span: func.span(self.mir) };
-                bx.tcx().dcx().emit_err(err);
-            }
-        }
-
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
                 Some(
@@ -922,6 +869,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // and figuring out how many extra args were passed to a C-variadic `fn`.
         let sig = callee.layout.ty.fn_sig(bx.tcx());
         let abi = sig.abi();
+
+        // emit errors if cmse ABI conditions are violated
+        cmse::validate_cmse_abi(bx, &sig.skip_binder(), span, func.span(self.mir));
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
