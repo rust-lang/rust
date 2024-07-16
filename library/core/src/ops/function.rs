@@ -29,9 +29,9 @@ use crate::marker::Tuple;
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/ch13-01-closures.html
+/// [book]: ../../../book/ch13-01-closures.html
 /// [function pointers]: fn
-/// [nomicon]: ../../nomicon/hrtb.html
+/// [nomicon]: ../../../nomicon/hrtb.html
 ///
 /// # Examples
 ///
@@ -105,9 +105,9 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/ch13-01-closures.html
+/// [book]: ../../../book/ch13-01-closures.html
 /// [function pointers]: fn
-/// [nomicon]: ../../nomicon/hrtb.html
+/// [nomicon]: ../../../nomicon/hrtb.html
 ///
 /// # Examples
 ///
@@ -191,9 +191,9 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/ch13-01-closures.html
+/// [book]: ../../../book/ch13-01-closures.html
 /// [function pointers]: fn
-/// [nomicon]: ../../nomicon/hrtb.html
+/// [nomicon]: ../../../nomicon/hrtb.html
 ///
 /// # Examples
 ///
