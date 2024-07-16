@@ -1214,6 +1214,30 @@ impl Expr {
         }
     }
 
+    pub fn peel_uwu(&self) -> &Expr {
+        let mut expr = self;
+        loop {
+            match &expr.kind {
+                ExprKind::Block(blk, None) => {
+                    if blk.stmts.len() == 1
+                        && let StmtKind::Expr(blk) = &blk.stmts[0].kind
+                    {
+                        expr = blk;
+                    } else {
+                        break;
+                    }
+                }
+                ExprKind::Paren(paren) => {
+                    expr = paren;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        expr
+    }
+
     pub fn peel_parens(&self) -> &Expr {
         let mut expr = self;
         while let ExprKind::Paren(inner) = &expr.kind {
@@ -1614,15 +1638,15 @@ pub struct QSelf {
 }
 
 /// A capture clause used in closures and `async` blocks.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Ord, PartialOrd)]
 pub enum CaptureBy {
+    /// `move` keyword was not specified.
+    Ref,
     /// `move |x| y + x`.
     Value {
         /// The span of the `move` keyword.
         move_kw: Span,
     },
-    /// `move` keyword was not specified.
-    Ref,
 }
 
 /// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.

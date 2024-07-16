@@ -219,18 +219,53 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         *fn_decl_span,
                         *fn_arg_span,
                     ),
-                    None => self.lower_expr_closure(
-                        binder,
-                        *capture_clause,
-                        e.id,
-                        hir_id,
-                        *constness,
-                        *movability,
-                        fn_decl,
-                        body,
-                        *fn_decl_span,
-                        *fn_arg_span,
-                    ),
+                    None => {
+                        let peeled = body.peel_uwu();
+                        if let ast::ExprKind::Gen(
+                            gen_capture_clause,
+                            block,
+                            gen_kind @ ast::GenBlockKind::Async,
+                            span,
+                        ) = &peeled.kind
+                        {
+                            let coroutine_kind = match gen_kind {
+                                GenBlockKind::Async => CoroutineKind::Async { span: *span, closure_id: peeled.node_id(), return_impl_trait_id: self.next_node_id() },
+                                GenBlockKind::Gen => CoroutineKind::Gen { span: *span, closure_id: peeled.node_id(), return_impl_trait_id: self.next_node_id() },
+                                GenBlockKind::AsyncGen => CoroutineKind::AsyncGen { span: *span, closure_id: peeled.node_id(), return_impl_trait_id: self.next_node_id() },
+                            };
+                            let id = self.next_node_id();
+                            self.lower_expr_coroutine_closure(
+                                binder,
+                                capture_clause.max(*gen_capture_clause),
+                                e.id,
+                                hir_id,
+                                coroutine_kind,
+                                fn_decl,
+                                &ast::Expr {
+                                    id,
+                                    span: *span,
+                                    kind: ExprKind::Block(block.clone(), None),
+                                    attrs: thin_vec![],
+                                    tokens: None,
+                                },
+                                *fn_decl_span,
+                                *fn_arg_span,
+                            )
+                        } else {
+                            self.lower_expr_closure(
+                                binder,
+                                *capture_clause,
+                                e.id,
+                                hir_id,
+                                *constness,
+                                *movability,
+                                fn_decl,
+                                body,
+                                *fn_decl_span,
+                                *fn_arg_span,
+                            )
+                        }
+                    }
                 },
                 ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
                     let desugaring_kind = match genblock_kind {
