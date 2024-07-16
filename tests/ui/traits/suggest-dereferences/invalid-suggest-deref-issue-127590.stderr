@@ -10,10 +10,6 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
    = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
 note: required by a bound in `std::iter::zip`
   --> $SRC_DIR/core/src/iter/adapters/zip.rs:LL:COL
-help: consider dereferencing here
-   |
-LL |     for (src, dest) in std::iter::zip(fields.iter(), *&variant.iter()) {
-   |                                                      +
 help: consider removing the leading `&`-reference
    |
 LL -     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
@@ -43,10 +39,6 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone(
    = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
 note: required by a bound in `std::iter::zip`
   --> $SRC_DIR/core/src/iter/adapters/zip.rs:LL:COL
-help: consider dereferencing here
-   |
-LL |     for (src, dest) in std::iter::zip(fields.iter(), *&variant.iter().clone()) {
-   |                                                      +
 help: consider removing the leading `&`-reference
    |
 LL -     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone()) {
