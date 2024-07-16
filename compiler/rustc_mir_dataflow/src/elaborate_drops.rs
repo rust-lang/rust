@@ -111,7 +111,11 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
     fn body(&self) -> &'a Body<'tcx>;
     fn tcx(&self) -> TyCtxt<'tcx>;
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+
+    // A param-env that can be used to compute drop queries (such as `Ty::needs_drop`).
+    // If this is `None`, then the elaborator must handle the type as if it were unknown,
+    // i.e. emitting full drops.
+    fn param_env(&self) -> Option<ty::ParamEnv<'tcx>>;
 
     // Drop logic
 
@@ -276,9 +280,11 @@ where
                 let subpath = self.elaborator.field_subpath(variant_path, field);
                 let tcx = self.tcx();
 
-                assert_eq!(self.elaborator.param_env().reveal(), Reveal::All);
-                let field_ty =
-                    tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, args));
+                let mut field_ty = f.ty(tcx, args);
+                if let Some(param_env) = self.elaborator.param_env() {
+                    assert_eq!(param_env.reveal(), Reveal::All);
+                    field_ty = tcx.normalize_erasing_regions(param_env, field_ty);
+                }
 
                 (tcx.mk_place_field(base_place, field, field_ty), subpath)
             })
@@ -374,9 +380,9 @@ where
         debug!("drop_ladder({:?}, {:?})", self, fields);
 
         let mut fields = fields;
-        fields.retain(|&(place, _)| {
-            self.place_ty(place).needs_drop(self.tcx(), self.elaborator.param_env())
-        });
+        if let Some(param_env) = self.elaborator.param_env() {
+            fields.retain(|&(place, _)| self.place_ty(place).needs_drop(self.tcx(), param_env));
+        }
 
         debug!("drop_ladder - fields needing drop: {:?}", fields);
 
@@ -548,10 +554,13 @@ where
                 have_otherwise = true;
 
                 let param_env = self.elaborator.param_env();
-                let have_field_with_drop_glue = variant
-                    .fields
-                    .iter()
-                    .any(|field| field.ty(tcx, args).needs_drop(tcx, param_env));
+
+                let have_field_with_drop_glue = param_env.is_none_or(|param_env| {
+                    variant
+                        .fields
+                        .iter()
+                        .any(|field| field.ty(tcx, args).needs_drop(tcx, param_env))
+                });
                 if have_field_with_drop_glue {
                     have_otherwise_with_drop_glue = true;
                 }
@@ -869,7 +878,10 @@ where
             ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
-                let size = size.try_eval_target_usize(self.tcx(), self.elaborator.param_env());
+                let size = self
+                    .elaborator
+                    .param_env()
+                    .and_then(|param_env| size.try_eval_target_usize(self.tcx(), param_env));
                 self.open_drop_for_array(*ety, size)
             }
             ty::Slice(ety) => self.drop_loop_pair(*ety),

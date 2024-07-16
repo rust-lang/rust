@@ -161,8 +161,8 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, '_, 'tcx> {
         self.ctxt.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.ctxt.param_env()
+    fn param_env(&self) -> Option<ty::ParamEnv<'tcx>> {
+        Some(self.ctxt.param_env())
     }
 
     #[instrument(level = "debug", skip(self), ret)]

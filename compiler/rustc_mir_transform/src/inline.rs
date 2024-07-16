@@ -12,9 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{
-    self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -321,15 +319,6 @@ impl<'tcx> Inliner<'tcx> {
             // These have no own callable MIR.
             InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
                 return Err("instance without MIR (intrinsic / virtual)");
-            }
-
-            // FIXME(#127030): `ConstParamHasTy` has bad interactions with
-            // the drop shim builder, which does not evaluate predicates in
-            // the correct param-env for types being dropped. Stall resolving
-            // the MIR for this instance until all of its const params are
-            // substituted.
-            InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
-                return Err("still needs substitution");
             }
 
             // This cannot result in an immediate cycle since the callee MIR is a shim, which does

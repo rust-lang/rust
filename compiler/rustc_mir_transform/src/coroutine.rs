@@ -1174,7 +1174,8 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.def_id();
     let param_env = tcx.param_env(def_id);
 
-    let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env };
+    let mut elaborator =
+        DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env: Some(param_env) };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
