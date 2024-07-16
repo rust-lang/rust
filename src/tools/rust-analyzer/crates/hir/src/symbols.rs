@@ -293,7 +293,7 @@ impl<'a> SymbolCollector<'a> {
         if let Some(attrs) = def.attrs(self.db) {
             for alias in attrs.doc_aliases() {
                 self.symbols.push(FileSymbol {
-                    name: alias,
+                    name: alias.as_str().into(),
                     def,
                     loc: dec_loc.clone(),
                     container_name: self.current_container_name.clone(),
@@ -330,7 +330,7 @@ impl<'a> SymbolCollector<'a> {
         if let Some(attrs) = def.attrs(self.db) {
             for alias in attrs.doc_aliases() {
                 self.symbols.push(FileSymbol {
-                    name: alias,
+                    name: alias.as_str().into(),
                     def,
                     loc: dec_loc.clone(),
                     container_name: self.current_container_name.clone(),

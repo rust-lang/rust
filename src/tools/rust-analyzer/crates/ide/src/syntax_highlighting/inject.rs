@@ -3,7 +3,7 @@
 use std::mem;
 
 use either::Either;
-use hir::{InFile, Semantics};
+use hir::{sym, InFile, Semantics};
 use ide_db::{
     active_parameter::ActiveParameter, base_db::FileId, defs::Definition,
     documentation::docs_with_rangemap, rust_doc::is_rust_fence, SymbolKind,
@@ -153,7 +153,7 @@ pub(super) fn doc_comment(
     let mut new_comments = Vec::new();
     let mut string;
 
-    for attr in attributes.by_key("doc").attrs() {
+    for attr in attributes.by_key(&sym::doc).attrs() {
         let InFile { file_id, value: src } = attrs_source_map.source_of(attr);
         if file_id != src_file_id {
             continue;
@@ -271,7 +271,7 @@ fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::Stri
         // #[cfg_attr(..., doc = "", ...)]
         None => {
             // We gotta hunt the string token manually here
-            let text = attr.string_value()?;
+            let text = attr.string_value()?.as_str();
             // FIXME: We just pick the first string literal that has the same text as the doc attribute
             // This means technically we might highlight the wrong one
             it.syntax()

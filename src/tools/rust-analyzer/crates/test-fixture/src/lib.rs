@@ -267,7 +267,7 @@ impl ChangeFixture {
             let core_crate = crate_graph.add_crate_root(
                 core_file,
                 Edition::CURRENT,
-                Some(CrateDisplayName::from_canonical_name("core".to_owned())),
+                Some(CrateDisplayName::from_canonical_name("core")),
                 None,
                 Default::default(),
                 Default::default(),
@@ -314,7 +314,7 @@ impl ChangeFixture {
             let proc_macros_crate = crate_graph.add_crate_root(
                 proc_lib_file,
                 Edition::CURRENT,
-                Some(CrateDisplayName::from_canonical_name("proc_macros".to_owned())),
+                Some(CrateDisplayName::from_canonical_name("proc_macros")),
                 None,
                 Default::default(),
                 Default::default(),
@@ -530,7 +530,7 @@ fn parse_crate(
 
     let origin = match LangCrateOrigin::from(&*name) {
         LangCrateOrigin::Other => {
-            let name = name.clone();
+            let name = Symbol::intern(&name);
             if non_workspace_member {
                 CrateOrigin::Library { repo, name }
             } else {

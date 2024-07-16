@@ -70,6 +70,7 @@ name = "base-db"
 version = "0.0.0"
 dependencies = [
  "cfg",
+ "intern",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lz4_flex",
  "rustc-hash",

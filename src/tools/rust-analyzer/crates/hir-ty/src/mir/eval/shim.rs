@@ -15,9 +15,9 @@ use crate::{
     error_lifetime,
     mir::eval::{
         pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
-        Interned, InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned,
-        ItemContainerId, LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability,
-        Result, Substitution, Ty, TyBuilder, TyExt,
+        InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId,
+        LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Substitution,
+        Ty, TyBuilder, TyExt,
     },
 };
 
@@ -54,12 +54,12 @@ impl Evaluator<'_> {
 
         let function_data = self.db.function_data(def);
         let is_intrinsic = match &function_data.abi {
-            Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
+            Some(abi) => *abi == sym::rust_dash_intrinsic,
             None => match def.lookup(self.db.upcast()).container {
                 hir_def::ItemContainerId::ExternBlockId(block) => {
                     let id = block.lookup(self.db.upcast()).id;
-                    id.item_tree(self.db.upcast())[id.value].abi.as_deref()
-                        == Some("rust-intrinsic")
+                    id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                        == Some(&sym::rust_dash_intrinsic)
                 }
                 _ => false,
             },
@@ -76,12 +76,12 @@ impl Evaluator<'_> {
             return Ok(true);
         }
         let is_platform_intrinsic = match &function_data.abi {
-            Some(abi) => *abi == Interned::new_str("platform-intrinsic"),
+            Some(abi) => *abi == sym::platform_dash_intrinsic,
             None => match def.lookup(self.db.upcast()).container {
                 hir_def::ItemContainerId::ExternBlockId(block) => {
                     let id = block.lookup(self.db.upcast()).id;
-                    id.item_tree(self.db.upcast())[id.value].abi.as_deref()
-                        == Some("platform-intrinsic")
+                    id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                        == Some(&sym::platform_dash_intrinsic)
                 }
                 _ => false,
             },
@@ -100,7 +100,7 @@ impl Evaluator<'_> {
         let is_extern_c = match def.lookup(self.db.upcast()).container {
             hir_def::ItemContainerId::ExternBlockId(block) => {
                 let id = block.lookup(self.db.upcast()).id;
-                id.item_tree(self.db.upcast())[id.value].abi.as_deref() == Some("C")
+                id.item_tree(self.db.upcast())[id.value].abi.as_ref() == Some(&sym::C)
             }
             _ => false,
         };
@@ -314,7 +314,7 @@ impl Evaluator<'_> {
         use LangItem::*;
         let attrs = self.db.attrs(def.into());
 
-        if attrs.by_key("rustc_const_panic_str").exists() {
+        if attrs.by_key(&sym::rustc_const_panic_str).exists() {
             // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
             return Some(LangItem::BeginPanic);
         }

@@ -6,7 +6,7 @@ use base_db::CrateId;
 use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
-use intern::{sym, Interned};
+use intern::{sym, Interned, Symbol};
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
 use triomphe::Arc;
@@ -38,7 +38,7 @@ pub struct FunctionData {
     pub ret_type: Interned<TypeRef>,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub abi: Option<Interned<str>>,
+    pub abi: Option<Symbol>,
     pub legacy_const_generics_indices: Box<[u32]>,
     pub rustc_allow_incoherent_impl: bool,
     flags: FnFlags,
@@ -92,12 +92,12 @@ impl FunctionData {
 
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let legacy_const_generics_indices = attrs
-            .by_key("rustc_legacy_const_generics")
+            .by_key(&sym::rustc_legacy_const_generics)
             .tt_values()
             .next()
             .map(parse_rustc_legacy_const_generics)
             .unwrap_or_default();
-        let rustc_allow_incoherent_impl = attrs.by_key("rustc_allow_incoherent_impl").exists();
+        let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
 
         Arc::new(FunctionData {
             name: func.name.clone(),
@@ -200,8 +200,8 @@ impl TypeAliasData {
             ModItem::from(loc.id.value).into(),
         );
         let rustc_has_incoherent_inherent_impls =
-            attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
-        let rustc_allow_incoherent_impl = attrs.by_key("rustc_allow_incoherent_impl").exists();
+            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
+        let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
@@ -251,10 +251,10 @@ impl TraitData {
         let visibility = item_tree[tr_def.visibility].clone();
         let attrs = item_tree.attrs(db, module_id.krate(), ModItem::from(tree_id.value).into());
         let skip_array_during_method_dispatch =
-            attrs.by_key("rustc_skip_array_during_method_dispatch").exists();
+            attrs.by_key(&sym::rustc_skip_array_during_method_dispatch).exists();
         let rustc_has_incoherent_inherent_impls =
-            attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
-        let fundamental = attrs.by_key("fundamental").exists();
+            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
+        let fundamental = attrs.by_key(&sym::fundamental).exists();
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
         collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
@@ -393,7 +393,7 @@ impl Macro2Data {
 
         let helpers = item_tree
             .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
-            .by_key("rustc_builtin_macro")
+            .by_key(&sym::rustc_builtin_macro)
             .tt_values()
             .next()
             .and_then(|attr| parse_macro_name_and_helper_attrs(&attr.token_trees))
@@ -423,7 +423,7 @@ impl MacroRulesData {
 
         let macro_export = item_tree
             .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
-            .by_key("macro_export")
+            .by_key(&sym::macro_export)
             .exists();
 
         Arc::new(MacroRulesData { name: makro.name.clone(), macro_export })
@@ -526,7 +526,7 @@ impl ConstData {
 
         let rustc_allow_incoherent_impl = item_tree
             .attrs(db, loc.container.module(db).krate(), ModItem::from(loc.id.value).into())
-            .by_key("rustc_allow_incoherent_impl")
+            .by_key(&sym::rustc_allow_incoherent_impl)
             .exists();
 
         Arc::new(ConstData {

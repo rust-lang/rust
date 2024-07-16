@@ -95,7 +95,7 @@ fn repr_from_value(
     item_tree: &ItemTree,
     of: AttrOwner,
 ) -> Option<ReprOptions> {
-    item_tree.attrs(db, krate, of).by_key("repr").tt_values().find_map(parse_repr_tt)
+    item_tree.attrs(db, krate, of).by_key(&sym::repr).tt_values().find_map(parse_repr_tt)
 }
 
 fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
@@ -194,10 +194,10 @@ impl StructData {
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
 
         let mut flags = StructFlags::NO_FLAGS;
-        if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
+        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL;
         }
-        if attrs.by_key("fundamental").exists() {
+        if attrs.by_key(&sym::fundamental).exists() {
             flags |= StructFlags::IS_FUNDAMENTAL;
         }
         if let Some(lang) = attrs.lang_item() {
@@ -248,10 +248,10 @@ impl StructData {
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let mut flags = StructFlags::NO_FLAGS;
-        if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
+        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL;
         }
-        if attrs.by_key("fundamental").exists() {
+        if attrs.by_key(&sym::fundamental).exists() {
             flags |= StructFlags::IS_FUNDAMENTAL;
         }
 
@@ -287,7 +287,7 @@ impl EnumData {
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let rustc_has_incoherent_inherent_impls = item_tree
             .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
-            .by_key("rustc_has_incoherent_inherent_impls")
+            .by_key(&sym::rustc_has_incoherent_inherent_impls)
             .exists();
 
         let enum_ = &item_tree[loc.id.value];

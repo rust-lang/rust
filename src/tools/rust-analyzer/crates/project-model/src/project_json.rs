@@ -224,6 +224,7 @@ impl ProjectJson {
                     Crate {
                         display_name: crate_data
                             .display_name
+                            .as_deref()
                             .map(CrateDisplayName::from_canonical_name),
                         root_module,
                         edition: crate_data.edition.into(),

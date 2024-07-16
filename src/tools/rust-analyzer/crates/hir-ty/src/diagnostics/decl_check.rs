@@ -24,6 +24,7 @@ use hir_expand::{
     name::{AsName, Name},
     HirFileId, MacroFileIdExt,
 };
+use intern::sym;
 use stdx::{always, never};
 use syntax::{
     ast::{self, HasName},
@@ -163,8 +164,8 @@ impl<'a> DeclValidator<'a> {
         let is_allowed = |def_id| {
             let attrs = self.db.attrs(def_id);
             // don't bug the user about directly no_mangle annotated stuff, they can't do anything about it
-            (!recursing && attrs.by_key("no_mangle").exists())
-                || attrs.by_key("allow").tt_values().any(|tt| {
+            (!recursing && attrs.by_key(&sym::no_mangle).exists())
+                || attrs.by_key(&sym::allow).tt_values().any(|tt| {
                     let allows = tt.to_string();
                     allows.contains(allow_name)
                         || allows.contains(allow::BAD_STYLE)

@@ -1,6 +1,6 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
-use std::{borrow::Cow, hash::Hash, ops, slice::Iter as SliceIter};
+use std::{borrow::Cow, hash::Hash, ops, slice};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -14,7 +14,7 @@ use la_arena::{ArenaMap, Idx, RawIdx};
 use mbe::DelimiterKind;
 use syntax::{
     ast::{self, HasAttrs},
-    AstPtr, SmolStr,
+    AstPtr,
 };
 use triomphe::Arc;
 
@@ -121,12 +121,12 @@ impl Attrs {
 }
 
 impl Attrs {
-    pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
+    pub fn by_key<'attrs>(&'attrs self, key: &'attrs Symbol) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
     }
 
     pub fn cfg(&self) -> Option<CfgExpr> {
-        let mut cfgs = self.by_key("cfg").tt_values().map(CfgExpr::parse);
+        let mut cfgs = self.by_key(&sym::cfg).tt_values().map(CfgExpr::parse);
         let first = cfgs.next()?;
         match cfgs.next() {
             Some(second) => {
@@ -138,7 +138,7 @@ impl Attrs {
     }
 
     pub fn cfgs(&self) -> impl Iterator<Item = CfgExpr> + '_ {
-        self.by_key("cfg").tt_values().map(CfgExpr::parse)
+        self.by_key(&sym::cfg).tt_values().map(CfgExpr::parse)
     }
 
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
@@ -148,50 +148,50 @@ impl Attrs {
         }
     }
 
-    pub fn lang(&self) -> Option<&str> {
-        self.by_key("lang").string_value()
+    pub fn lang(&self) -> Option<&Symbol> {
+        self.by_key(&sym::lang).string_value()
     }
 
     pub fn lang_item(&self) -> Option<LangItem> {
-        self.by_key("lang").string_value().and_then(|it| LangItem::from_symbol(&Symbol::intern(it)))
+        self.by_key(&sym::lang).string_value().and_then(LangItem::from_symbol)
     }
 
     pub fn has_doc_hidden(&self) -> bool {
-        self.by_key("doc").tt_values().any(|tt| {
+        self.by_key(&sym::doc).tt_values().any(|tt| {
             tt.delimiter.kind == DelimiterKind::Parenthesis &&
                 matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::hidden)
         })
     }
 
     pub fn has_doc_notable_trait(&self) -> bool {
-        self.by_key("doc").tt_values().any(|tt| {
+        self.by_key(&sym::doc).tt_values().any(|tt| {
             tt.delimiter.kind == DelimiterKind::Parenthesis &&
                 matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::notable_trait)
         })
     }
 
     pub fn doc_exprs(&self) -> impl Iterator<Item = DocExpr> + '_ {
-        self.by_key("doc").tt_values().map(DocExpr::parse)
+        self.by_key(&sym::doc).tt_values().map(DocExpr::parse)
     }
 
-    pub fn doc_aliases(&self) -> impl Iterator<Item = SmolStr> + '_ {
+    pub fn doc_aliases(&self) -> impl Iterator<Item = Symbol> + '_ {
         self.doc_exprs().flat_map(|doc_expr| doc_expr.aliases().to_vec())
     }
 
-    pub fn export_name(&self) -> Option<&str> {
-        self.by_key("export_name").string_value()
+    pub fn export_name(&self) -> Option<&Symbol> {
+        self.by_key(&sym::export_name).string_value()
     }
 
     pub fn is_proc_macro(&self) -> bool {
-        self.by_key("proc_macro").exists()
+        self.by_key(&sym::proc_macro).exists()
     }
 
     pub fn is_proc_macro_attribute(&self) -> bool {
-        self.by_key("proc_macro_attribute").exists()
+        self.by_key(&sym::proc_macro_attribute).exists()
     }
 
     pub fn is_proc_macro_derive(&self) -> bool {
-        self.by_key("proc_macro_derive").exists()
+        self.by_key(&sym::proc_macro_derive).exists()
     }
 
     pub fn is_test(&self) -> bool {
@@ -210,27 +210,27 @@ impl Attrs {
     }
 
     pub fn is_ignore(&self) -> bool {
-        self.by_key("ignore").exists()
+        self.by_key(&sym::ignore).exists()
     }
 
     pub fn is_bench(&self) -> bool {
-        self.by_key("bench").exists()
+        self.by_key(&sym::bench).exists()
     }
 
     pub fn is_unstable(&self) -> bool {
-        self.by_key("unstable").exists()
+        self.by_key(&sym::unstable).exists()
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DocAtom {
     /// eg. `#[doc(hidden)]`
-    Flag(SmolStr),
+    Flag(Symbol),
     /// eg. `#[doc(alias = "it")]`
     ///
     /// Note that a key can have multiple values that are all considered "active" at the same time.
     /// For example, `#[doc(alias = "x")]` and `#[doc(alias = "y")]`.
-    KeyValue { key: SmolStr, value: SmolStr },
+    KeyValue { key: Symbol, value: Symbol },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -239,7 +239,7 @@ pub enum DocExpr {
     /// eg. `#[doc(hidden)]`, `#[doc(alias = "x")]`
     Atom(DocAtom),
     /// eg. `#[doc(alias("x", "y"))]`
-    Alias(Vec<SmolStr>),
+    Alias(Vec<Symbol>),
 }
 
 impl From<DocAtom> for DocExpr {
@@ -253,9 +253,9 @@ impl DocExpr {
         next_doc_expr(&mut tt.token_trees.iter()).unwrap_or(DocExpr::Invalid)
     }
 
-    pub fn aliases(&self) -> &[SmolStr] {
+    pub fn aliases(&self) -> &[Symbol] {
         match self {
-            DocExpr::Atom(DocAtom::KeyValue { key, value }) if key == "alias" => {
+            DocExpr::Atom(DocAtom::KeyValue { key, value }) if *key == sym::alias => {
                 std::slice::from_ref(value)
             }
             DocExpr::Alias(aliases) => aliases,
@@ -264,7 +264,7 @@ impl DocExpr {
     }
 }
 
-fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr> {
+fn next_doc_expr<S>(it: &mut slice::Iter<'_, tt::TokenTree<S>>) -> Option<DocExpr> {
     let name = match it.next() {
         None => return None,
         Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.sym.clone(),
@@ -282,9 +282,7 @@ fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr>
                 }))) => {
                     it.next();
                     it.next();
-                    // FIXME: escape? raw string?
-                    let value = SmolStr::new(text.as_str());
-                    DocAtom::KeyValue { key: name.as_str().into(), value }.into()
+                    DocAtom::KeyValue { key: name, value: text.clone() }.into()
                 }
                 _ => return Some(DocExpr::Invalid),
             }
@@ -292,12 +290,12 @@ fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr>
         Some(tt::TokenTree::Subtree(subtree)) => {
             it.next();
             let subs = parse_comma_sep(subtree);
-            match name.as_str() {
-                "alias" => DocExpr::Alias(subs),
+            match &name {
+                s if *s == sym::alias => DocExpr::Alias(subs),
                 _ => DocExpr::Invalid,
             }
         }
-        _ => DocAtom::Flag(name.as_str().into()).into(),
+        _ => DocAtom::Flag(name).into(),
     };
 
     // Eat comma separator
@@ -309,16 +307,16 @@ fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr>
     Some(ret)
 }
 
-fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<SmolStr> {
+fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<Symbol> {
     subtree
         .token_trees
         .iter()
         .filter_map(|tt| match tt {
             tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
                 kind: tt::LitKind::Str,
-                symbol: text,
+                symbol,
                 ..
-            })) => Some(SmolStr::new(text.as_str())),
+            })) => Some(symbol.clone()),
             _ => None,
         })
         .collect()
@@ -565,7 +563,7 @@ impl AttrSourceMap {
 #[derive(Debug, Clone, Copy)]
 pub struct AttrQuery<'attr> {
     attrs: &'attr Attrs,
-    key: &'static str,
+    key: &'attr Symbol,
 }
 
 impl<'attr> AttrQuery<'attr> {
@@ -573,11 +571,11 @@ impl<'attr> AttrQuery<'attr> {
         self.attrs().filter_map(|attr| attr.token_tree_value())
     }
 
-    pub fn string_value(self) -> Option<&'attr str> {
+    pub fn string_value(self) -> Option<&'attr Symbol> {
         self.attrs().find_map(|attr| attr.string_value())
     }
 
-    pub fn string_value_with_span(self) -> Option<(&'attr str, span::Span)> {
+    pub fn string_value_with_span(self) -> Option<(&'attr Symbol, span::Span)> {
         self.attrs().find_map(|attr| attr.string_value_with_span())
     }
 
@@ -591,9 +589,7 @@ impl<'attr> AttrQuery<'attr> {
 
     pub fn attrs(self) -> impl Iterator<Item = &'attr Attr> + Clone {
         let key = self.key;
-        self.attrs
-            .iter()
-            .filter(move |attr| attr.path.as_ident().map_or(false, |s| s.to_smol_str() == key))
+        self.attrs.iter().filter(move |attr| attr.path.as_ident().map_or(false, |s| *s == *key))
     }
 
     /// Find string value for a specific key inside token tree
@@ -602,10 +598,10 @@ impl<'attr> AttrQuery<'attr> {
     /// #[doc(html_root_url = "url")]
     ///       ^^^^^^^^^^^^^ key
     /// ```
-    pub fn find_string_value_in_tt(self, key: &'attr str) -> Option<&str> {
+    pub fn find_string_value_in_tt(self, key: &'attr Symbol) -> Option<&str> {
         self.tt_values().find_map(|tt| {
             let name = tt.token_trees.iter()
-                .skip_while(|tt| !matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { sym, ..} )) if sym.as_str() == key))
+                .skip_while(|tt| !matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { sym, ..} )) if *sym == *key))
                 .nth(2);
 
             match name {
@@ -660,6 +656,7 @@ mod tests {
     //! This module contains tests for doc-expression parsing.
     //! Currently, it tests `#[doc(hidden)]` and `#[doc(alias)]`.
 
+    use intern::Symbol;
     use triomphe::Arc;
 
     use base_db::FileId;
@@ -685,24 +682,29 @@ mod tests {
 
     #[test]
     fn test_doc_expr_parser() {
-        assert_parse_result("#![doc(hidden)]", DocAtom::Flag("hidden".into()).into());
+        assert_parse_result("#![doc(hidden)]", DocAtom::Flag(Symbol::intern("hidden")).into());
 
         assert_parse_result(
             r#"#![doc(alias = "foo")]"#,
-            DocAtom::KeyValue { key: "alias".into(), value: "foo".into() }.into(),
+            DocAtom::KeyValue { key: Symbol::intern("alias"), value: Symbol::intern("foo") }.into(),
         );
 
-        assert_parse_result(r#"#![doc(alias("foo"))]"#, DocExpr::Alias(["foo".into()].into()));
+        assert_parse_result(
+            r#"#![doc(alias("foo"))]"#,
+            DocExpr::Alias([Symbol::intern("foo")].into()),
+        );
         assert_parse_result(
             r#"#![doc(alias("foo", "bar", "baz"))]"#,
-            DocExpr::Alias(["foo".into(), "bar".into(), "baz".into()].into()),
+            DocExpr::Alias(
+                [Symbol::intern("foo"), Symbol::intern("bar"), Symbol::intern("baz")].into(),
+            ),
         );
 
         assert_parse_result(
             r#"
         #[doc(alias("Bar", "Qux"))]
         struct Foo;"#,
-            DocExpr::Alias(["Bar".into(), "Qux".into()].into()),
+            DocExpr::Alias([Symbol::intern("Bar"), Symbol::intern("Qux")].into()),
         );
     }
 }

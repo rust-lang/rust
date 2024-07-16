@@ -62,7 +62,7 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
 use hir_expand::name::Name;
-use intern::sym;
+use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -423,45 +423,45 @@ impl Hash for FnAbi {
 }
 
 impl FnAbi {
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> FnAbi {
+    #[rustfmt::skip]
+    pub fn from_symbol(s: &Symbol) -> FnAbi {
         match s {
-            "aapcs-unwind" => FnAbi::AapcsUnwind,
-            "aapcs" => FnAbi::Aapcs,
-            "avr-interrupt" => FnAbi::AvrInterrupt,
-            "avr-non-blocking-interrupt" => FnAbi::AvrNonBlockingInterrupt,
-            "C-cmse-nonsecure-call" => FnAbi::CCmseNonsecureCall,
-            "C-unwind" => FnAbi::CUnwind,
-            "C" => FnAbi::C,
-            "cdecl-unwind" => FnAbi::CDeclUnwind,
-            "cdecl" => FnAbi::CDecl,
-            "efiapi" => FnAbi::Efiapi,
-            "fastcall-unwind" => FnAbi::FastcallUnwind,
-            "fastcall" => FnAbi::Fastcall,
-            "msp430-interrupt" => FnAbi::Msp430Interrupt,
-            "platform-intrinsic" => FnAbi::PlatformIntrinsic,
-            "ptx-kernel" => FnAbi::PtxKernel,
-            "riscv-interrupt-m" => FnAbi::RiscvInterruptM,
-            "riscv-interrupt-s" => FnAbi::RiscvInterruptS,
-            "rust-call" => FnAbi::RustCall,
-            "rust-cold" => FnAbi::RustCold,
-            "rust-intrinsic" => FnAbi::RustIntrinsic,
-            "Rust" => FnAbi::Rust,
-            "stdcall-unwind" => FnAbi::StdcallUnwind,
-            "stdcall" => FnAbi::Stdcall,
-            "system-unwind" => FnAbi::SystemUnwind,
-            "system" => FnAbi::System,
-            "sysv64-unwind" => FnAbi::Sysv64Unwind,
-            "sysv64" => FnAbi::Sysv64,
-            "thiscall-unwind" => FnAbi::ThiscallUnwind,
-            "thiscall" => FnAbi::Thiscall,
-            "unadjusted" => FnAbi::Unadjusted,
-            "vectorcall-unwind" => FnAbi::VectorcallUnwind,
-            "vectorcall" => FnAbi::Vectorcall,
-            "wasm" => FnAbi::Wasm,
-            "win64-unwind" => FnAbi::Win64Unwind,
-            "win64" => FnAbi::Win64,
-            "x86-interrupt" => FnAbi::X86Interrupt,
+            s if *s == sym::aapcs_dash_unwind => FnAbi::AapcsUnwind,
+            s if *s == sym::aapcs => FnAbi::Aapcs,
+            s if *s == sym::avr_dash_interrupt => FnAbi::AvrInterrupt,
+            s if *s == sym::avr_dash_non_dash_blocking_dash_interrupt => FnAbi::AvrNonBlockingInterrupt,
+            s if *s == sym::C_dash_cmse_dash_nonsecure_dash_call => FnAbi::CCmseNonsecureCall,
+            s if *s == sym::C_dash_unwind => FnAbi::CUnwind,
+            s if *s == sym::C => FnAbi::C,
+            s if *s == sym::cdecl_dash_unwind => FnAbi::CDeclUnwind,
+            s if *s == sym::cdecl => FnAbi::CDecl,
+            s if *s == sym::efiapi => FnAbi::Efiapi,
+            s if *s == sym::fastcall_dash_unwind => FnAbi::FastcallUnwind,
+            s if *s == sym::fastcall => FnAbi::Fastcall,
+            s if *s == sym::msp430_dash_interrupt => FnAbi::Msp430Interrupt,
+            s if *s == sym::platform_dash_intrinsic => FnAbi::PlatformIntrinsic,
+            s if *s == sym::ptx_dash_kernel => FnAbi::PtxKernel,
+            s if *s == sym::riscv_dash_interrupt_dash_m => FnAbi::RiscvInterruptM,
+            s if *s == sym::riscv_dash_interrupt_dash_s => FnAbi::RiscvInterruptS,
+            s if *s == sym::rust_dash_call => FnAbi::RustCall,
+            s if *s == sym::rust_dash_cold => FnAbi::RustCold,
+            s if *s == sym::rust_dash_intrinsic => FnAbi::RustIntrinsic,
+            s if *s == sym::Rust => FnAbi::Rust,
+            s if *s == sym::stdcall_dash_unwind => FnAbi::StdcallUnwind,
+            s if *s == sym::stdcall => FnAbi::Stdcall,
+            s if *s == sym::system_dash_unwind => FnAbi::SystemUnwind,
+            s if *s == sym::system => FnAbi::System,
+            s if *s == sym::sysv64_dash_unwind => FnAbi::Sysv64Unwind,
+            s if *s == sym::sysv64 => FnAbi::Sysv64,
+            s if *s == sym::thiscall_dash_unwind => FnAbi::ThiscallUnwind,
+            s if *s == sym::thiscall => FnAbi::Thiscall,
+            s if *s == sym::unadjusted => FnAbi::Unadjusted,
+            s if *s == sym::vectorcall_dash_unwind => FnAbi::VectorcallUnwind,
+            s if *s == sym::vectorcall => FnAbi::Vectorcall,
+            s if *s == sym::wasm => FnAbi::Wasm,
+            s if *s == sym::win64_dash_unwind => FnAbi::Win64Unwind,
+            s if *s == sym::win64 => FnAbi::Win64,
+            s if *s == sym::x86_dash_interrupt => FnAbi::X86Interrupt,
             _ => FnAbi::Unknown,
         }
     }

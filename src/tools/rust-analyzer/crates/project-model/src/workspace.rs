@@ -894,7 +894,10 @@ fn project_json_to_crate_graph(
                     .collect();
                 override_cfg.apply(
                     &mut cfg_options,
-                    display_name.as_ref().map(|it| it.canonical_name()).unwrap_or_default(),
+                    display_name
+                        .as_ref()
+                        .map(|it| it.canonical_name().as_str())
+                        .unwrap_or_default(),
                 );
                 let crate_graph_crate_id = crate_graph.add_crate_root(
                     file_id,
@@ -917,7 +920,7 @@ fn project_json_to_crate_graph(
                 if *is_proc_macro {
                     if let Some(path) = proc_macro_dylib_path.clone() {
                         let node = Ok((
-                            display_name.as_ref().map(|it| it.canonical_name().to_owned()),
+                            display_name.as_ref().map(|it| it.canonical_name().as_str().to_owned()),
                             path,
                         ));
                         proc_macros.insert(crate_graph_crate_id, node);
@@ -1014,12 +1017,12 @@ fn cargo_to_crate_graph(
                 if pkg_data.is_local {
                     CrateOrigin::Local {
                         repo: pkg_data.repository.clone(),
-                        name: Some(pkg_data.name.clone()),
+                        name: Some(Symbol::intern(&pkg_data.name)),
                     }
                 } else {
                     CrateOrigin::Library {
                         repo: pkg_data.repository.clone(),
-                        name: pkg_data.name.clone(),
+                        name: Symbol::intern(&pkg_data.name),
                     }
                 },
             );
@@ -1157,9 +1160,7 @@ fn detached_file_to_crate_graph(
             return (crate_graph, FxHashMap::default());
         }
     };
-    let display_name = detached_file
-        .file_stem()
-        .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_owned()));
+    let display_name = detached_file.file_stem().map(CrateDisplayName::from_canonical_name);
     let detached_file_crate = crate_graph.add_crate_root(
         file_id,
         Edition::CURRENT,
@@ -1232,7 +1233,7 @@ fn handle_rustc_crates(
                         file_id,
                         &rustc_workspace[tgt].name,
                         kind,
-                        CrateOrigin::Rustc { name: rustc_workspace[pkg].name.clone() },
+                        CrateOrigin::Rustc { name: Symbol::intern(&rustc_workspace[pkg].name) },
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -1329,7 +1330,7 @@ fn add_target_crate_root(
     let crate_id = crate_graph.add_crate_root(
         file_id,
         edition,
-        Some(CrateDisplayName::from_canonical_name(cargo_name.to_owned())),
+        Some(CrateDisplayName::from_canonical_name(cargo_name)),
         Some(pkg.version.to_string()),
         Arc::new(cfg_options),
         potential_cfg_options.map(Arc::new),
@@ -1402,7 +1403,7 @@ fn sysroot_to_crate_graph(
                 // patch the origin
                 if c.origin.is_local() {
                     let lang_crate = LangCrateOrigin::from(
-                        c.display_name.as_ref().map_or("", |it| it.canonical_name()),
+                        c.display_name.as_ref().map_or("", |it| it.canonical_name().as_str()),
                     );
                     c.origin = CrateOrigin::Lang(lang_crate);
                     match lang_crate {
@@ -1459,8 +1460,7 @@ fn sysroot_to_crate_graph(
                 .filter_map(|krate| {
                     let file_id = load(&stitched[krate].root)?;
 
-                    let display_name =
-                        CrateDisplayName::from_canonical_name(stitched[krate].name.clone());
+                    let display_name = CrateDisplayName::from_canonical_name(&stitched[krate].name);
                     let crate_id = crate_graph.add_crate_root(
                         file_id,
                         Edition::CURRENT,
