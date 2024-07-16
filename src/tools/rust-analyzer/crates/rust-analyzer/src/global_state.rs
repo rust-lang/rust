@@ -579,6 +579,7 @@ impl GlobalStateSnapshot {
                         target_kind: target_data.kind,
                         required_features: target_data.required_features.clone(),
                         features: package_data.features.keys().cloned().collect(),
+                        sysroot_root: workspace.sysroot.root().map(ToOwned::to_owned),
                     }));
                 }
                 ProjectWorkspaceKind::Json(project) => {

@@ -50,7 +50,7 @@ use crate::{
         self, CrateInfoResult, ExternalDocsPair, ExternalDocsResponse, FetchDependencyListParams,
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
-    target_spec::TargetSpec,
+    target_spec::{CargoTargetSpec, TargetSpec},
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
@@ -848,6 +848,14 @@ pub(crate) fn handle_runnables(
                 if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
                     runnable.label = format!("{} + expect", runnable.label);
                     r.environment.insert("UPDATE_EXPECT".to_owned(), "1".to_owned());
+                    if let Some(TargetSpec::Cargo(CargoTargetSpec {
+                        sysroot_root: Some(sysroot_root),
+                        ..
+                    })) = &target_spec
+                    {
+                        r.environment
+                            .insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
+                    }
                 }
             }
             res.push(runnable);
@@ -889,7 +897,12 @@ pub(crate) fn handle_runnables(
                         override_cargo: config.override_cargo.clone(),
                         cargo_args,
                         executable_args: Vec::new(),
-                        environment: Default::default(),
+                        environment: spec
+                            .sysroot_root
+                            .as_ref()
+                            .map(|root| ("RUSTC_TOOLCHAIN".to_owned(), root.to_string()))
+                            .into_iter()
+                            .collect(),
                     }),
                 })
             }

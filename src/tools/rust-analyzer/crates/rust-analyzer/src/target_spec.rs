@@ -57,6 +57,7 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) crate_id: CrateId,
     pub(crate) required_features: Vec<String>,
     pub(crate) features: FxHashSet<String>,
+    pub(crate) sysroot_root: Option<vfs::AbsPathBuf>,
 }
 
 #[derive(Clone, Debug)]
