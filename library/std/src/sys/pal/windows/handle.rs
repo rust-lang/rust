@@ -138,7 +138,7 @@ impl Handle {
 
     pub unsafe fn read_overlapped(
         &self,
-        buf: &mut [u8],
+        buf: &mut [mem::MaybeUninit<u8>],
         overlapped: *mut c::OVERLAPPED,
     ) -> io::Result<Option<usize>> {
         // SAFETY: We have exclusive access to the buffer and it's up to the caller to
@@ -146,8 +146,13 @@ impl Handle {
         unsafe {
             let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
             let mut amt = 0;
-            let res =
-                cvt(c::ReadFile(self.as_raw_handle(), buf.as_mut_ptr(), len, &mut amt, overlapped));
+            let res = cvt(c::ReadFile(
+                self.as_raw_handle(),
+                buf.as_mut_ptr().cast::<u8>(),
+                len,
+                &mut amt,
+                overlapped,
+            ));
             match res {
                 Ok(_) => Ok(Some(amt as usize)),
                 Err(e) => {
