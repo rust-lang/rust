@@ -72,7 +72,6 @@ run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
 run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
-run-make/manual-link/Makefile
 run-make/min-global-align/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/native-link-modifier-bundle/Makefile
