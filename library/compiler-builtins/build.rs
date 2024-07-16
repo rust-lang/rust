@@ -164,8 +164,6 @@ fn configure_check_cfg() {
         "__bswapsi2",
         "__bswapdi2",
         "__bswapti2",
-        "__clzsi2",
-        "__clzdi2",
         "__divdi3",
         "__divsi3",
         "__divmoddi4",
@@ -346,8 +344,6 @@ mod c {
             ("__absvsi2", "absvsi2.c"),
             ("__addvdi3", "addvdi3.c"),
             ("__addvsi3", "addvsi3.c"),
-            ("__clzdi2", "clzdi2.c"),
-            ("__clzsi2", "clzsi2.c"),
             ("__cmpdi2", "cmpdi2.c"),
             ("__ctzdi2", "ctzdi2.c"),
             ("__ctzsi2", "ctzsi2.c"),
@@ -435,8 +431,6 @@ mod c {
                 ("__aeabi_frsub", "arm/aeabi_frsub.c"),
                 ("__bswapdi2", "arm/bswapdi2.S"),
                 ("__bswapsi2", "arm/bswapsi2.S"),
-                ("__clzdi2", "arm/clzdi2.S"),
-                ("__clzsi2", "arm/clzsi2.S"),
                 ("__divmodsi4", "arm/divmodsi4.S"),
                 ("__divsi3", "arm/divsi3.S"),
                 ("__modsi3", "arm/modsi3.S"),
@@ -572,9 +566,6 @@ mod c {
                 }
             }
             sources.remove(&to_remove);
-
-            // But use some generic implementations where possible
-            sources.extend(&[("__clzdi2", "clzdi2.c"), ("__clzsi2", "clzsi2.c")])
         }
 
         if llvm_target[0] == "thumbv7m" || llvm_target[0] == "thumbv7em" {
