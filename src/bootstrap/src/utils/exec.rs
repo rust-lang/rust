@@ -1,4 +1,5 @@
 use crate::Build;
+use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
@@ -170,6 +171,18 @@ impl BootstrapCommand {
     /// Returns the source code location where this command was created.
     pub fn get_created_location(&self) -> std::panic::Location<'static> {
         self.drop_bomb.get_created_location()
+    }
+
+    /// If in a CI environment, forces the command to run with colors.
+    pub fn force_coloring_in_ci(&mut self, ci_env: CiEnv) {
+        if ci_env != CiEnv::None {
+            // Due to use of stamp/docker, the output stream of bootstrap is not
+            // a TTY in CI, so coloring is by-default turned off.
+            // The explicit `TERM=xterm` environment is needed for
+            // `--color always` to actually work. This env var was lost when
+            // compiling through the Makefile. Very strange.
+            self.env("TERM", "xterm").args(["--color", "always"]);
+        }
     }
 }
 

@@ -125,6 +125,7 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
         generate_smart_stamp_hash(
+            builder,
             &builder.config.src.join("src/llvm-project"),
             builder.in_tree_llvm_info.sha().unwrap_or_default(),
         )
@@ -912,7 +913,7 @@ impl Step for Lld {
             if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
                 // Find clang's runtime library directory and push that as a search path to the
                 // cmake linker flags.
-                let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+                let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
                 ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
             }
         }
