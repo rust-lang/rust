@@ -1033,3 +1033,25 @@ pub struct CompilerBuiltinsCannotCall {
     pub caller: String,
     pub callee: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_cmse_call_inputs_stack_spill, code = E0798)]
+#[note]
+pub struct CmseCallInputsStackSpill {
+    #[primary_span]
+    #[label(codegen_ssa_call)]
+    pub span: Span,
+    #[label]
+    pub func_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_cmse_call_output_stack_spill, code = E0798)]
+#[note]
+pub struct CmseCallOutputStackSpill {
+    #[primary_span]
+    #[label(codegen_ssa_call)]
+    pub span: Span,
+    #[label]
+    pub func_span: Span,
+}
