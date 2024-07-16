@@ -75,7 +75,6 @@ run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
 run-make/min-global-align/Makefile
-run-make/missing-crate-dependency/Makefile
 run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
