@@ -9,7 +9,7 @@ use itertools::{EitherOrBoth, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make, HasName},
-    AstNode, SmolStr, SyntaxNode,
+    AstNode, SmolStr, SyntaxNode, ToSmolStr,
 };
 
 use crate::{
@@ -459,7 +459,7 @@ fn find_import_for_segment(
     unresolved_first_segment: &str,
 ) -> Option<ItemInNs> {
     let segment_is_name = item_name(db, original_item)
-        .map(|name| name.to_smol_str() == unresolved_first_segment)
+        .map(|name| name.display_no_db().to_smolstr() == unresolved_first_segment)
         .unwrap_or(false);
 
     Some(if segment_is_name {
@@ -483,7 +483,7 @@ fn module_with_segment_name(
     };
     while let Some(module) = current_module {
         if let Some(module_name) = module.name(db) {
-            if module_name.to_smol_str() == segment_name {
+            if module_name.display_no_db().to_smolstr() == segment_name {
                 return Some(module);
             }
         }

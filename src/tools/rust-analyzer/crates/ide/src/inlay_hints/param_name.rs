@@ -10,7 +10,10 @@ use hir::{Callable, Semantics};
 use ide_db::{base_db::FileRange, RootDatabase};
 
 use stdx::to_lower_snake_case;
-use syntax::ast::{self, AstNode, HasArgList, HasName, UnaryOp};
+use syntax::{
+    ast::{self, AstNode, HasArgList, HasName, UnaryOp},
+    ToSmolStr,
+};
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
@@ -118,7 +121,7 @@ fn should_hide_param_name_hint(
     }
 
     let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_smol_str()),
+        hir::CallableKind::Function(it) => Some(it.name(sema.db).display_no_db().to_smolstr()),
         _ => None,
     };
     let fn_name = fn_name.as_deref();

@@ -4,10 +4,10 @@ use core::fmt;
 use std::{panic::RefUnwindSafe, sync};
 
 use base_db::{CrateId, Env};
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::Span;
 use stdx::never;
-use syntax::SmolStr;
 use triomphe::Arc;
 
 use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
@@ -53,7 +53,7 @@ pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
 
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
-    pub name: SmolStr,
+    pub name: Symbol,
     pub kind: ProcMacroKind,
     pub expander: sync::Arc<dyn ProcMacroExpander>,
     pub disabled: bool,

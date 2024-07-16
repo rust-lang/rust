@@ -621,7 +621,7 @@ impl flags::AnalysisStats {
                 module
                     .krate()
                     .display_name(db)
-                    .map(|it| it.canonical_name().to_owned())
+                    .map(|it| it.canonical_name().as_str().to_owned())
                     .into_iter()
                     .chain(
                         module
@@ -912,7 +912,7 @@ impl flags::AnalysisStats {
                 module
                     .krate()
                     .display_name(db)
-                    .map(|it| it.canonical_name().to_owned())
+                    .map(|it| it.canonical_name().as_str().to_owned())
                     .into_iter()
                     .chain(
                         module

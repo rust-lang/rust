@@ -2,6 +2,7 @@
 
 use hir::Name;
 use ide_db::{documentation::HasDocs, SymbolKind};
+use syntax::ToSmolStr;
 
 use crate::{context::CompletionContext, CompletionItem, CompletionItemKind};
 
@@ -18,7 +19,7 @@ pub(crate) fn complete_extern_crate(acc: &mut Completions, ctx: &CompletionConte
         let mut item = CompletionItem::new(
             CompletionItemKind::SymbolKind(SymbolKind::Module),
             ctx.source_range(),
-            name.to_smol_str(),
+            name.display_no_db().to_smolstr(),
         );
         item.set_documentation(module.docs(ctx.db));
 

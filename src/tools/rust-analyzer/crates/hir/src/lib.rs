@@ -82,7 +82,7 @@ use span::{Edition, MacroCallId};
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasName},
-    format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
+    format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr, T,
 };
 use triomphe::Arc;
 
@@ -259,7 +259,7 @@ impl Crate {
     pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
         let attrs = db.attrs(AttrDefId::ModuleId(self.root_module().into()));
-        let doc_url = attrs.by_key("doc").find_string_value_in_tt("html_root_url");
+        let doc_url = attrs.by_key(&sym::doc).find_string_value_in_tt(&sym::html_root_url);
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
@@ -677,9 +677,9 @@ impl Module {
                             TypeOrConstParamId { parent, local_id },
                         ))
                     });
-                let res = type_params
-                    .chain(lifetime_params)
-                    .any(|p| db.attrs(AttrDefId::GenericParamId(p)).by_key("may_dangle").exists());
+                let res = type_params.chain(lifetime_params).any(|p| {
+                    db.attrs(AttrDefId::GenericParamId(p)).by_key(&sym::may_dangle).exists()
+                });
                 Some(res)
             })()
             .unwrap_or(false);
@@ -2088,14 +2088,14 @@ impl Function {
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
         let data = db.function_data(self.id);
-        data.attrs.export_name() == Some("main")
-            || self.module(db).is_crate_root() && data.name.to_smol_str() == "main"
+        data.attrs.export_name() == Some(&sym::main)
+            || self.module(db).is_crate_root() && data.name == sym::main
     }
 
     /// Is this a function with an `export_name` of `main`?
     pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
         let data = db.function_data(self.id);
-        data.attrs.export_name() == Some("main")
+        data.attrs.export_name() == Some(&sym::main)
     }
 
     /// Does this function have the ignore attribute?
@@ -4607,7 +4607,7 @@ impl Type {
     ) -> impl Iterator<Item = SmolStr> + 'a {
         // iterate the lifetime
         self.as_adt()
-            .and_then(|a| a.lifetime(db).map(|lt| lt.name.to_smol_str()))
+            .and_then(|a| a.lifetime(db).map(|lt| lt.name.display_no_db().to_smolstr()))
             .into_iter()
             // add the type and const parameters
             .chain(self.type_and_const_arguments(db))

@@ -65,7 +65,7 @@ pub use rowan::{
     TokenAtOffset, WalkEvent,
 };
 pub use rustc_lexer::unescape;
-pub use smol_str::{format_smolstr, SmolStr};
+pub use smol_str::{format_smolstr, SmolStr, ToSmolStr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

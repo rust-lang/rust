@@ -3,7 +3,7 @@
 use std::collections::hash_map::Entry;
 
 use hir_expand::{mod_path::path, name::AsName, span_map::SpanMapRef, HirFileId};
-use intern::sym;
+use intern::{sym, Symbol};
 use la_arena::Arena;
 use rustc_hash::FxHashMap;
 use span::{AstIdMap, SyntaxContextId};
@@ -766,11 +766,11 @@ enum HasImplicitSelf {
     No,
 }
 
-fn lower_abi(abi: ast::Abi) -> Interned<str> {
+fn lower_abi(abi: ast::Abi) -> Symbol {
     match abi.abi_string() {
-        Some(tok) => Interned::new_str(tok.text_without_quotes()),
+        Some(tok) => Symbol::intern(tok.text_without_quotes()),
         // `extern` default to be `extern "C"`.
-        _ => Interned::new_str("C"),
+        _ => sym::C.clone(),
     }
 }
 

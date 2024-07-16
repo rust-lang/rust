@@ -17,7 +17,7 @@ use hir::{
 use stdx::{format_to, impl_from};
 use syntax::{
     ast::{self, AstNode},
-    match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
+    match_ast, SyntaxKind, SyntaxNode, SyntaxToken, ToSmolStr,
 };
 
 use crate::documentation::{Documentation, HasDocs};
@@ -670,7 +670,7 @@ impl NameRefClass {
                                 hir::AssocItem::TypeAlias(it) => Some(it),
                                 _ => None,
                             })
-                            .find(|alias| alias.name(sema.db).to_smol_str() == name_ref.text().as_str())
+                            .find(|alias| alias.name(sema.db).display_no_db().to_smolstr() == name_ref.text().as_str())
                         {
                             return Some(NameRefClass::Definition(Definition::TypeAlias(ty)));
                         }

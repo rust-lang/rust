@@ -6,7 +6,7 @@ use base_db::{FileId, SourceDatabaseExt};
 use hir::{Crate, DescendPreference, ItemInNs, ModuleDef, Name, Semantics};
 use syntax::{
     ast::{self, make},
-    AstToken, SyntaxKind, SyntaxToken, TokenAtOffset,
+    AstToken, SyntaxKind, SyntaxToken, ToSmolStr, TokenAtOffset,
 };
 
 use crate::{
@@ -50,9 +50,9 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
     }
 
     segments.extend(
-        path.segments()
-            .iter()
-            .map(|segment| make::path_segment(make::name_ref(&segment.to_smol_str()))),
+        path.segments().iter().map(|segment| {
+            make::path_segment(make::name_ref(&segment.display_no_db().to_smolstr()))
+        }),
     );
     make::path_from_segments(segments, is_abs)
 }

@@ -19,7 +19,7 @@ use span::TextSize;
 use stdx::{always, format_to};
 use syntax::{
     ast::{self, AstNode},
-    SmolStr, SyntaxNode,
+    SmolStr, SyntaxNode, ToSmolStr,
 };
 
 use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
@@ -332,7 +332,7 @@ pub(crate) fn runnable_fn(
             };
             canonical_path
                 .map(TestId::Path)
-                .unwrap_or(TestId::Name(def.name(sema.db).to_smol_str()))
+                .unwrap_or(TestId::Name(def.name(sema.db).display_no_db().to_smolstr()))
         };
 
         if def.is_test(sema.db) {
@@ -481,7 +481,8 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         Some(path)
     })();
 
-    let test_id = path.map_or_else(|| TestId::Name(def_name.to_smol_str()), TestId::Path);
+    let test_id =
+        path.map_or_else(|| TestId::Name(def_name.display_no_db().to_smolstr()), TestId::Path);
 
     let mut nav = match def {
         Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),

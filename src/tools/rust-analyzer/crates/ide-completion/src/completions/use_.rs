@@ -48,7 +48,7 @@ pub(crate) fn complete_use_path(
                     let unknown_is_current = |name: &hir::Name| {
                         matches!(
                             name_ref,
-                            Some(name_ref) if name_ref.syntax().text() == name.to_smol_str().as_str()
+                            Some(name_ref) if name_ref.syntax().text() == name.as_str()
                         )
                     };
                     for (name, def) in module_scope {

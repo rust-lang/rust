@@ -5,7 +5,6 @@
 use hir_expand::name::Name;
 use intern::{sym, Symbol};
 use rustc_hash::FxHashMap;
-use syntax::SmolStr;
 use triomphe::Arc;
 
 use crate::{
@@ -253,9 +252,9 @@ macro_rules! language_item_table {
         }
 
         impl LangItem {
-            pub fn name(self) -> SmolStr {
+            pub fn name(self) -> &'static str {
                 match self {
-                    $( LangItem::$variant => SmolStr::new(stringify!($name)), )*
+                    $( LangItem::$variant => stringify!($name), )*
                 }
             }
 

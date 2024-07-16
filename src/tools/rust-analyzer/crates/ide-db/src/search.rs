@@ -8,14 +8,14 @@ use std::mem;
 
 use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
-    AsAssocItem, DefWithBody, DescendPreference, HasAttrs, HasSource, HirFileIdExt, InFile,
+    sym, AsAssocItem, DefWithBody, DescendPreference, HasAttrs, HasSource, HirFileIdExt, InFile,
     InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use nohash_hasher::IntMap;
 use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize};
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize, ToSmolStr};
 use triomphe::Arc;
 
 use crate::{
@@ -333,7 +333,7 @@ impl Definition {
         if let Definition::Macro(macro_def) = self {
             return match macro_def.kind(db) {
                 hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).by_key("macro_export").exists() {
+                    if macro_def.attrs(db).by_key(&sym::macro_export).exists() {
                         SearchScope::reverse_dependencies(db, module.krate())
                     } else {
                         SearchScope::krate(db, module.krate())
@@ -456,7 +456,7 @@ impl<'a> FindUsages<'a> {
                 module
                     .krate()
                     .display_name(self.sema.db)
-                    .map(|crate_name| crate_name.crate_name().as_smol_str().clone())
+                    .map(|crate_name| crate_name.crate_name().symbol().as_str().into())
             }
             _ => {
                 let self_kw_refs = || {
@@ -468,7 +468,10 @@ impl<'a> FindUsages<'a> {
                 };
                 // We need to unescape the name in case it is written without "r#" in earlier
                 // editions of Rust where it isn't a keyword.
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.unescaped().to_smol_str())
+                self.def
+                    .name(sema.db)
+                    .or_else(self_kw_refs)
+                    .map(|it| it.unescaped().display(sema.db).to_smolstr())
             }
         };
         let name = match &name {

@@ -15,7 +15,7 @@ use hir_def::{
     StaticId, VariantId,
 };
 use hir_expand::{mod_path::path, name::Name, HirFileIdExt, InFile};
-use intern::{sym, Interned};
+use intern::sym;
 use la_arena::ArenaMap;
 use rustc_abi::TargetDataLayout;
 use rustc_apfloat::{

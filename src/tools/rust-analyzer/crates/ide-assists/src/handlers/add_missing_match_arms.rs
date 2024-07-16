@@ -1,7 +1,7 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, Crate, HasAttrs, HasSource, ImportPathConfig, ModuleDef, Semantics};
+use hir::{sym, Adt, Crate, HasAttrs, HasSource, ImportPathConfig, ModuleDef, Semantics};
 use ide_db::RootDatabase;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
@@ -381,7 +381,7 @@ impl ExtendedEnum {
     fn is_non_exhaustive(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
             ExtendedEnum::Enum(e) => {
-                e.attrs(db).by_key("non_exhaustive").exists() && e.module(db).krate() != krate
+                e.attrs(db).by_key(&sym::non_exhaustive).exists() && e.module(db).krate() != krate
             }
             _ => false,
         }

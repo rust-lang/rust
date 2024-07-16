@@ -24,10 +24,11 @@ use hir_expand::{
     name::{AsName, Name},
     HirFileId, MacroFileIdExt,
 };
+use intern::sym;
 use stdx::{always, never};
 use syntax::{
     ast::{self, HasName},
-    AstNode, AstPtr,
+    AstNode, AstPtr, ToSmolStr,
 };
 
 use crate::db::HirDatabase;
@@ -163,8 +164,8 @@ impl<'a> DeclValidator<'a> {
         let is_allowed = |def_id| {
             let attrs = self.db.attrs(def_id);
             // don't bug the user about directly no_mangle annotated stuff, they can't do anything about it
-            (!recursing && attrs.by_key("no_mangle").exists())
-                || attrs.by_key("allow").tt_values().any(|tt| {
+            (!recursing && attrs.by_key(&sym::no_mangle).exists())
+                || attrs.by_key(&sym::allow).tt_values().any(|tt| {
                     let allows = tt.to_string();
                     allows.contains(allow_name)
                         || allows.contains(allow::BAD_STYLE)
@@ -325,7 +326,9 @@ impl<'a> DeclValidator<'a> {
                     let bind_name = &body.bindings[*id].name;
                     let replacement = Replacement {
                         current_name: bind_name.clone(),
-                        suggested_text: to_lower_snake_case(&bind_name.to_smol_str())?,
+                        suggested_text: to_lower_snake_case(
+                            &bind_name.display_no_db().to_smolstr(),
+                        )?,
                         expected_case: CaseType::LowerSnakeCase,
                     };
                     Some((pat_id, replacement))
@@ -405,10 +408,12 @@ impl<'a> DeclValidator<'a> {
         let mut struct_fields_replacements = fields
             .iter()
             .filter_map(|(_, field)| {
-                to_lower_snake_case(&field.name.to_smol_str()).map(|new_name| Replacement {
-                    current_name: field.name.clone(),
-                    suggested_text: new_name,
-                    expected_case: CaseType::LowerSnakeCase,
+                to_lower_snake_case(&field.name.display_no_db().to_smolstr()).map(|new_name| {
+                    Replacement {
+                        current_name: field.name.clone(),
+                        suggested_text: new_name,
+                        expected_case: CaseType::LowerSnakeCase,
+                    }
                 })
             })
             .peekable();
@@ -497,7 +502,7 @@ impl<'a> DeclValidator<'a> {
             .variants
             .iter()
             .filter_map(|(_, name)| {
-                to_camel_case(&name.to_smol_str()).map(|new_name| Replacement {
+                to_camel_case(&name.display_no_db().to_smolstr()).map(|new_name| Replacement {
                     current_name: name.clone(),
                     suggested_text: new_name,
                     expected_case: CaseType::UpperCamelCase,
@@ -564,10 +569,12 @@ impl<'a> DeclValidator<'a> {
         let mut variant_field_replacements = fields
             .iter()
             .filter_map(|(_, field)| {
-                to_lower_snake_case(&field.name.to_smol_str()).map(|new_name| Replacement {
-                    current_name: field.name.clone(),
-                    suggested_text: new_name,
-                    expected_case: CaseType::LowerSnakeCase,
+                to_lower_snake_case(&field.name.display_no_db().to_smolstr()).map(|new_name| {
+                    Replacement {
+                        current_name: field.name.clone(),
+                        suggested_text: new_name,
+                        expected_case: CaseType::LowerSnakeCase,
+                    }
                 })
             })
             .peekable();
@@ -704,9 +711,11 @@ impl<'a> DeclValidator<'a> {
             CaseType::UpperSnakeCase => to_upper_snake_case,
             CaseType::UpperCamelCase => to_camel_case,
         };
-        let Some(replacement) = to_expected_case_type(&name.to_smol_str()).map(|new_name| {
-            Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
-        }) else {
+        let Some(replacement) =
+            to_expected_case_type(&name.display(self.db.upcast()).to_smolstr()).map(|new_name| {
+                Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
+            })
+        else {
             return;
         };
 

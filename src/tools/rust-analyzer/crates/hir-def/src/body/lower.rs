@@ -8,7 +8,7 @@ use hir_expand::{
     name::{AsName, Name},
     ExpandError, InFile,
 };
-use intern::{sym, Interned};
+use intern::{sym, Interned, Symbol};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::AstIdMap;
@@ -1623,30 +1623,29 @@ impl ExprCollector<'_> {
             }
         }
 
-        let lit_pieces =
-            fmt.template
-                .iter()
-                .enumerate()
-                .filter_map(|(i, piece)| {
-                    match piece {
-                        FormatArgsPiece::Literal(s) => Some(
-                            self.alloc_expr_desugared(Expr::Literal(Literal::String(s.clone()))),
-                        ),
-                        &FormatArgsPiece::Placeholder(_) => {
-                            // Inject empty string before placeholders when not already preceded by a literal piece.
-                            if i == 0
-                                || matches!(fmt.template[i - 1], FormatArgsPiece::Placeholder(_))
-                            {
-                                Some(self.alloc_expr_desugared(Expr::Literal(Literal::String(
-                                    "".into(),
-                                ))))
-                            } else {
-                                None
-                            }
+        let lit_pieces = fmt
+            .template
+            .iter()
+            .enumerate()
+            .filter_map(|(i, piece)| {
+                match piece {
+                    FormatArgsPiece::Literal(s) => {
+                        Some(self.alloc_expr_desugared(Expr::Literal(Literal::String(s.clone()))))
+                    }
+                    &FormatArgsPiece::Placeholder(_) => {
+                        // Inject empty string before placeholders when not already preceded by a literal piece.
+                        if i == 0 || matches!(fmt.template[i - 1], FormatArgsPiece::Placeholder(_))
+                        {
+                            Some(self.alloc_expr_desugared(Expr::Literal(Literal::String(
+                                Symbol::empty(),
+                            ))))
+                        } else {
+                            None
                         }
                     }
-                })
-                .collect();
+                }
+            })
+            .collect();
         let lit_pieces = self.alloc_expr_desugared(Expr::Array(Array::ElementList {
             elements: lit_pieces,
             is_assignee_expr: false,

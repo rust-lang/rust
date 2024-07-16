@@ -4,7 +4,7 @@ use std::{borrow::Cow, fmt, ops};
 use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
-use intern::{sym, Interned};
+use intern::{sym, Interned, Symbol};
 
 use mbe::{
     desugar_doc_comment_text, syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode,
@@ -310,26 +310,26 @@ impl Attr {
 
 impl Attr {
     /// #[path = "string"]
-    pub fn string_value(&self) -> Option<&str> {
+    pub fn string_value(&self) -> Option<&Symbol> {
         match self.input.as_deref()? {
             AttrInput::Literal(tt::Literal {
                 symbol: text,
                 kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
                 ..
-            }) => Some(text.as_str()),
+            }) => Some(text),
             _ => None,
         }
     }
 
     /// #[path = "string"]
-    pub fn string_value_with_span(&self) -> Option<(&str, span::Span)> {
+    pub fn string_value_with_span(&self) -> Option<(&Symbol, span::Span)> {
         match self.input.as_deref()? {
             AttrInput::Literal(tt::Literal {
                 symbol: text,
                 kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
                 span,
                 suffix: _,
-            }) => Some((text.as_str(), *span)),
+            }) => Some((text, *span)),
             _ => None,
         }
     }

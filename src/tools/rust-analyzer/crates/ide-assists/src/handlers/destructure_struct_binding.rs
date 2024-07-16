@@ -1,4 +1,4 @@
-use hir::{HasVisibility, ImportPathConfig};
+use hir::{sym, HasVisibility, ImportPathConfig};
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -7,7 +7,7 @@ use ide_db::{
     FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode};
+use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode, ToSmolStr};
 use text_edit::TextRange;
 
 use crate::{
@@ -98,7 +98,7 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let kind = struct_type.kind(ctx.db());
     let struct_def_path = module.find_path(ctx.db(), struct_def, cfg)?;
 
-    let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key("non_exhaustive").exists();
+    let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key(&sym::non_exhaustive).exists();
     let is_foreign_crate =
         struct_def.module(ctx.db()).map_or(false, |m| m.krate() != module.krate());
 
@@ -251,7 +251,7 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
             .visible_fields
             .iter()
             .map(|field| {
-                let field_name = field.name(ctx.db()).to_smol_str();
+                let field_name = field.name(ctx.db()).display_no_db().to_smolstr();
                 let new_name = new_field_name(field_name.clone(), &data.names_in_scope);
                 (field_name, new_name)
             })

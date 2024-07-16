@@ -82,8 +82,7 @@ impl HirDisplay for Function {
             f.write_str("unsafe ")?;
         }
         if let Some(abi) = &data.abi {
-            // FIXME: String escape?
-            write!(f, "extern \"{}\" ", &**abi)?;
+            write!(f, "extern \"{}\" ", abi.as_str())?;
         }
         write!(f, "fn {}", data.name.display(f.db.upcast()))?;
 

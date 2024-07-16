@@ -14,7 +14,7 @@ use ide_db::{base_db::FileRange, RootDatabase};
 
 use syntax::{
     ast::{self, AstNode},
-    match_ast,
+    match_ast, ToSmolStr,
 };
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
@@ -88,7 +88,7 @@ pub(super) fn hints(
                 .and_then(|d| {
                     Some(FileRange { file_id: d.file_id.file_id()?, range: d.value.text_range() })
                 });
-            let name = binding.name.to_smol_str();
+            let name = binding.name.display_no_db().to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables
             }

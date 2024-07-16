@@ -1935,7 +1935,7 @@ impl HirDisplay for TypeRef {
                 }
                 if let Some(abi) = abi {
                     f.write_str("extern \"")?;
-                    f.write_str(abi)?;
+                    f.write_str(abi.as_str())?;
                     f.write_str("\" ")?;
                 }
                 write!(f, "fn(")?;
@@ -2044,7 +2044,7 @@ impl HirDisplay for Path {
                     .display_name
                     .as_ref()
                     .map(|name| name.canonical_name())
-                    .unwrap_or("$crate");
+                    .unwrap_or(&sym::dollar_crate);
                 write!(f, "{name}")?
             }
         }

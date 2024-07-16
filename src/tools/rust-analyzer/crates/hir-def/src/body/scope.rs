@@ -338,7 +338,7 @@ mod tests {
         let actual = scopes
             .scope_chain(scope)
             .flat_map(|scope| scopes.entries(scope))
-            .map(|it| it.name().to_smol_str())
+            .map(|it| it.name().as_str())
             .collect::<Vec<_>>()
             .join("\n");
         let expected = expected.join("\n");

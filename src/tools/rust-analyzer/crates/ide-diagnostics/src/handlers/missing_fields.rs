@@ -11,7 +11,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, make},
-    AstNode, SyntaxNode, SyntaxNodePtr,
+    AstNode, SyntaxNode, SyntaxNodePtr, ToSmolStr,
 };
 use text_edit::TextEdit;
 
@@ -146,7 +146,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                     }
                 };
                 let field = make::record_expr_field(
-                    make::name_ref(&f.name(ctx.sema.db).to_smol_str()),
+                    make::name_ref(&f.name(ctx.sema.db).display_no_db().to_smolstr()),
                     field_expr,
                 );
                 new_field_list.add_field(field.clone_for_update());
@@ -160,7 +160,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             let new_field_list = old_field_list.clone_for_update();
             for (f, _) in missing_fields.iter() {
                 let field = make::record_pat_field_shorthand(make::name_ref(
-                    &f.name(ctx.sema.db).to_smol_str(),
+                    &f.name(ctx.sema.db).display_no_db().to_smolstr(),
                 ));
                 new_field_list.add_field(field.clone_for_update());
             }

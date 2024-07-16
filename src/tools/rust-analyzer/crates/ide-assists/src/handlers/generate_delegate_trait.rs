@@ -22,7 +22,7 @@ use syntax::{
         WherePred,
     },
     ted::{self, Position},
-    AstNode, NodeOrToken, SmolStr, SyntaxKind,
+    AstNode, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
 };
 
 // Assist: generate_delegate_trait
@@ -170,11 +170,11 @@ impl Delegee {
 
         for m in it.module(db).path_to_root(db).iter().rev() {
             if let Some(name) = m.name(db) {
-                s.push_str(&format!("{}::", name.to_smol_str()));
+                s.push_str(&format!("{}::", name.display_no_db().to_smolstr()));
             }
         }
 
-        s.push_str(&it.name(db).to_smol_str());
+        s.push_str(&it.name(db).display_no_db().to_smolstr());
         s
     }
 }
@@ -259,7 +259,7 @@ fn generate_impl(
                 strukt_params.clone(),
                 strukt_params.map(|params| params.to_generic_args()),
                 delegee.is_auto(db),
-                make::ty(&delegee.name(db).to_smol_str()),
+                make::ty(&delegee.name(db).display_no_db().to_smolstr()),
                 strukt_ty,
                 bound_def.where_clause(),
                 ast_strukt.where_clause(),
@@ -349,7 +349,8 @@ fn generate_impl(
 
             let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
 
-            let path_type = make::ty(&trait_.name(db).to_smol_str()).clone_for_update();
+            let path_type =
+                make::ty(&trait_.name(db).display_no_db().to_smolstr()).clone_for_update();
             transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type.syntax())?;
 
             // 3) Generate delegate trait impl

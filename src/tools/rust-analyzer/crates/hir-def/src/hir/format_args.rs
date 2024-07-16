@@ -1,7 +1,7 @@
 //! Parses `format_args` input.
-use std::mem;
 
 use hir_expand::name::Name;
+use intern::Symbol;
 use rustc_parse_format as parse;
 use span::SyntaxContextId;
 use stdx::TupleExt;
@@ -29,7 +29,7 @@ pub struct FormatArguments {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FormatArgsPiece {
-    Literal(Box<str>),
+    Literal(Symbol),
     Placeholder(FormatPlaceholder),
 }
 
@@ -291,9 +291,8 @@ pub(crate) fn parse(
             parse::Piece::NextArgument(arg) => {
                 let parse::Argument { position, position_span, format } = *arg;
                 if !unfinished_literal.is_empty() {
-                    template.push(FormatArgsPiece::Literal(
-                        mem::take(&mut unfinished_literal).into_boxed_str(),
-                    ));
+                    template.push(FormatArgsPiece::Literal(Symbol::intern(&unfinished_literal)));
+                    unfinished_literal.clear();
                 }
 
                 let span = parser.arg_places.get(placeholder_index).and_then(|&s| to_span(s));
@@ -413,7 +412,7 @@ pub(crate) fn parse(
     }
 
     if !unfinished_literal.is_empty() {
-        template.push(FormatArgsPiece::Literal(unfinished_literal.into_boxed_str()));
+        template.push(FormatArgsPiece::Literal(Symbol::intern(&unfinished_literal)));
     }
 
     if !invalid_refs.is_empty() {

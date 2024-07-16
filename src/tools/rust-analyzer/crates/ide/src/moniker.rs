@@ -408,7 +408,7 @@ pub(crate) fn def_to_moniker(
                     }),
                 ),
             };
-            PackageInformation { name, repo, version }
+            PackageInformation { name: name.as_str().to_owned(), repo, version }
         },
     })
 }

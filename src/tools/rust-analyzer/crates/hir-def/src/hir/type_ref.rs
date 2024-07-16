@@ -9,7 +9,7 @@ use hir_expand::{
     name::{AsName, Name},
     AstId,
 };
-use intern::Interned;
+use intern::{sym, Interned, Symbol};
 use syntax::ast::{self, HasGenericArgs, HasName, IsString};
 
 use crate::{
@@ -122,9 +122,9 @@ pub enum TypeRef {
     /// A fn pointer. Last element of the vector is the return type.
     Fn(
         Vec<(Option<Name>, TypeRef)>,
-        bool,                  /*varargs*/
-        bool,                  /*is_unsafe*/
-        Option<Interned<str>>, /* abi */
+        bool,           /*varargs*/
+        bool,           /*is_unsafe*/
+        Option<Symbol>, /* abi */
     ),
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
@@ -230,11 +230,11 @@ impl TypeRef {
                 } else {
                     Vec::new()
                 };
-                fn lower_abi(abi: ast::Abi) -> Interned<str> {
+                fn lower_abi(abi: ast::Abi) -> Symbol {
                     match abi.abi_string() {
-                        Some(tok) => Interned::new_str(tok.text_without_quotes()),
+                        Some(tok) => Symbol::intern(tok.text_without_quotes()),
                         // `extern` default to be `extern "C"`.
-                        _ => Interned::new_str("C"),
+                        _ => sym::C.clone(),
                     }
                 }
 

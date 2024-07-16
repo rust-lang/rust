@@ -19,7 +19,7 @@ use syntax::{
     algo,
     ast::{self, AstChildren, HasArgList},
     match_ast, AstNode, Direction, NodeOrToken, SyntaxElementChildren, SyntaxNode, SyntaxToken,
-    TextRange, TextSize, T,
+    TextRange, TextSize, ToSmolStr, T,
 };
 
 use crate::RootDatabase;
@@ -379,7 +379,7 @@ fn add_assoc_type_bindings(
 
     for item in tr.items_with_supertraits(db) {
         if let AssocItem::TypeAlias(ty) = item {
-            let name = ty.name(db).to_smol_str();
+            let name = ty.name(db).display_no_db().to_smolstr();
             if !present_bindings.contains(&*name) {
                 buf.clear();
                 format_to!(buf, "{} = …", name);

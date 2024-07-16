@@ -46,7 +46,7 @@ use ast::{AstNode, StructKind};
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
-use intern::Interned;
+use intern::{Interned, Symbol};
 use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
@@ -712,7 +712,7 @@ pub struct ExternCrate {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExternBlock {
-    pub abi: Option<Interned<str>>,
+    pub abi: Option<Symbol>,
     pub ast_id: FileAstId<ast::ExternBlock>,
     pub children: Box<[ModItem]>,
 }
@@ -722,7 +722,7 @@ pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub explicit_generic_params: Interned<GenericParams>,
-    pub abi: Option<Interned<str>>,
+    pub abi: Option<Symbol>,
     pub params: IdxRange<Param>,
     pub ret_type: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Fn>,
