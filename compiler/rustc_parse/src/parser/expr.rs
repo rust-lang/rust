@@ -785,19 +785,10 @@ impl<'a> Parser<'a> {
             }
         };
 
-        self.parse_and_disallow_postfix_after_cast(cast_expr)
-    }
-
-    /// Parses a postfix operators such as `.`, `?`, or index (`[]`) after a cast,
-    /// then emits an error and returns the newly parsed tree.
-    /// The resulting parse tree for `&x as T[0]` has a precedence of `((&x) as T)[0]`.
-    fn parse_and_disallow_postfix_after_cast(
-        &mut self,
-        cast_expr: P<Expr>,
-    ) -> PResult<'a, P<Expr>> {
-        if let ExprKind::Type(_, _) = cast_expr.kind {
-            panic!("ExprKind::Type must not be parsed");
-        }
+        // Try to parse a postfix operator such as `.`, `?`, or index (`[]`)
+        // after a cast. If one is present, emit an error then return a valid
+        // parse tree; For something like `&x as T[0]` will be as if it was
+        // written `((&x) as T)[0]`.
 
         let span = cast_expr.span;
 
