@@ -1375,7 +1375,7 @@ impl<'a> Parser<'a> {
     /// Parses things like parenthesized exprs, macros, `return`, etc.
     ///
     /// N.B., this does not parse outer attributes, and is private because it only works
-    /// correctly if called from `parse_dot_or_call_expr()`.
+    /// correctly if called from `parse_expr_dot_or_call`.
     fn parse_expr_bottom(&mut self) -> PResult<'a, P<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
