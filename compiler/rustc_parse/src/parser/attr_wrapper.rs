@@ -1,5 +1,5 @@
-use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing};
 use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, ToAttrTokenStream};
 use rustc_ast::{self as ast};
@@ -165,8 +165,10 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
 impl<'a> Parser<'a> {
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
-    /// into a `LazyAttrTokenStream`, and returned along with the result
-    /// of the callback.
+    /// into a `LazyAttrTokenStream`, and returned along with the first part of
+    /// the callback's result. The second (bool) part of the callback's result
+    /// indicates if an extra token should be captured, e.g. a comma or
+    /// semicolon.
     ///
     /// The `attrs` passed in are in `AttrWrapper` form, which is opaque. The
     /// `AttrVec` within is passed to `f`. See the comment on `AttrWrapper` for
@@ -187,7 +189,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
-        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, TrailingToken)>,
+        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, bool)>,
     ) -> PResult<'a, R> {
         // We only bail out when nothing could possibly observe the collected tokens:
         // 1. We cannot be force collecting tokens (since force-collecting requires tokens
@@ -212,7 +214,7 @@ impl<'a> Parser<'a> {
         let has_outer_attrs = !attrs.attrs.is_empty();
         let replace_ranges_start = self.capture_state.replace_ranges.len();
 
-        let (mut ret, trailing) = {
+        let (mut ret, capture_trailing) = {
             let prev_capturing = mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
             let ret_and_trailing = f(self, attrs.attrs);
             self.capture_state.capturing = prev_capturing;
@@ -266,27 +268,13 @@ impl<'a> Parser<'a> {
 
         let replace_ranges_end = self.capture_state.replace_ranges.len();
 
-        // Capture a trailing token if requested by the callback 'f'
-        let captured_trailing = match trailing {
-            TrailingToken::None => false,
-            TrailingToken::Gt => {
-                assert_eq!(self.token.kind, token::Gt);
-                false
-            }
-            TrailingToken::Semi => {
-                assert_eq!(self.token.kind, token::Semi);
-                true
-            }
-            TrailingToken::MaybeComma => self.token.kind == token::Comma,
-        };
-
         assert!(
-            !(self.break_last_token && captured_trailing),
+            !(self.break_last_token && capture_trailing),
             "Cannot set break_last_token and have trailing token"
         );
 
         let end_pos = self.num_bump_calls
-            + captured_trailing as u32
+            + capture_trailing as u32
             // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens), then
             // extend the range of captured tokens to include it, since the parser was not actually
             // bumped past it. When the `LazyAttrTokenStream` gets converted into an

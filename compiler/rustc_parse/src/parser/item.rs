@@ -1,8 +1,6 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, TrailingToken,
-};
+use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
 use crate::maybe_whole;
@@ -146,7 +144,7 @@ impl<'a> Parser<'a> {
                 let span = lo.to(this.prev_token.span);
                 let id = DUMMY_NODE_ID;
                 let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
-                return Ok((Some(item), TrailingToken::None));
+                return Ok((Some(item), false));
             }
 
             // At this point, we have failed to parse an item.
@@ -161,7 +159,7 @@ impl<'a> Parser<'a> {
             if !attrs_allowed {
                 this.recover_attrs_no_item(&attrs)?;
             }
-            Ok((None, TrailingToken::None))
+            Ok((None, false))
         })
     }
 
@@ -1555,7 +1553,7 @@ impl<'a> Parser<'a> {
 
                 let vis = this.parse_visibility(FollowedByType::No)?;
                 if !this.recover_nested_adt_item(kw::Enum)? {
-                    return Ok((None, TrailingToken::None));
+                    return Ok((None, false));
                 }
                 let ident = this.parse_field_ident("enum", vlo)?;
 
@@ -1567,7 +1565,7 @@ impl<'a> Parser<'a> {
                     this.bump();
                     this.parse_delim_args()?;
 
-                    return Ok((None, TrailingToken::MaybeComma));
+                    return Ok((None, this.token == token::Comma));
                 }
 
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
@@ -1624,7 +1622,7 @@ impl<'a> Parser<'a> {
                     is_placeholder: false,
                 };
 
-                Ok((Some(vr), TrailingToken::MaybeComma))
+                Ok((Some(vr), this.token == token::Comma))
             },
         )
         .map_err(|mut err| {
@@ -1816,7 +1814,7 @@ impl<'a> Parser<'a> {
                         attrs,
                         is_placeholder: false,
                     },
-                    TrailingToken::MaybeComma,
+                    p.token == token::Comma,
                 ))
             })
         })
@@ -1831,8 +1829,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
-                .map(|field| (field, TrailingToken::None))
+            this.parse_single_struct_field(adt_ty, lo, vis, attrs).map(|field| (field, false))
         })
     }
 
@@ -2735,7 +2732,7 @@ impl<'a> Parser<'a> {
             if let Some(mut param) = this.parse_self_param()? {
                 param.attrs = attrs;
                 let res = if first_param { Ok(param) } else { this.recover_bad_self_param(param) };
-                return Ok((res?, TrailingToken::None));
+                return Ok((res?, false));
             }
 
             let is_name_required = match this.token.kind {
@@ -2751,7 +2748,7 @@ impl<'a> Parser<'a> {
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {
                         let guar = err.emit();
-                        Ok((dummy_arg(ident, guar), TrailingToken::None))
+                        Ok((dummy_arg(ident, guar), false))
                     } else {
                         Err(err)
                     };
@@ -2794,7 +2791,7 @@ impl<'a> Parser<'a> {
 
             Ok((
                 Param { attrs, id: ast::DUMMY_NODE_ID, is_placeholder: false, pat, span, ty },
-                TrailingToken::None,
+                false,
             ))
         })
     }
