@@ -76,16 +76,16 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        let mutex = mutex::raw(mutex);
+        let mutex = unsafe { mutex::raw(mutex) };
         self.verify(mutex);
-        let r = libc::pthread_cond_wait(raw(self), mutex);
+        let r = unsafe { libc::pthread_cond_wait(raw(self), mutex) };
         debug_assert_eq!(r, 0);
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::sys::time::Timespec;
 
-        let mutex = mutex::raw(mutex);
+        let mutex = unsafe { mutex::raw(mutex) };
         self.verify(mutex);
 
         let timeout = Timespec::now(libc::CLOCK_MONOTONIC)
@@ -93,7 +93,7 @@ impl Condvar {
             .and_then(|t| t.to_timespec())
             .unwrap_or(TIMESPEC_MAX);
 
-        let r = pthread_cond_timedwait(raw(self), mutex, &timeout);
+        let r = unsafe { pthread_cond_timedwait(raw(self), mutex, &timeout) };
         assert!(r == libc::ETIMEDOUT || r == 0);
         r == 0
     }
