@@ -128,14 +128,10 @@ impl<'a> Parser<'a> {
             Some(item.into_inner())
         });
 
-        let item =
-            self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
-                let item =
-                    this.parse_item_common_(attrs, mac_allowed, attrs_allowed, fn_parse_mode);
-                Ok((item?, TrailingToken::None))
-            })?;
-
-        Ok(item)
+        self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+            let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, fn_parse_mode)?;
+            Ok((item, TrailingToken::None))
+        })
     }
 
     fn parse_item_common_(
