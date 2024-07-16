@@ -133,6 +133,14 @@ pub(crate) fn expand_test_or_bench(
         };
     };
 
+    if let Some(attr) = attr::find_by_name(&item.attrs, sym::naked) {
+        cx.dcx().emit_err(errors::NakedFunctionTestingAttribute {
+            testing_span: attr_sp,
+            naked_span: attr.span,
+        });
+        return vec![Annotatable::Item(item)];
+    }
+
     // check_*_signature will report any errors in the type so compilation
     // will fail. We shouldn't try to expand in this case because the errors
     // would be spurious.
