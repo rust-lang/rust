@@ -141,8 +141,15 @@ impl<'tcx> NewPermission {
     ) -> Option<Self> {
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.param_env());
         let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.param_env());
+        let is_protected = kind == RetagKind::FnEntry;
+        // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
+        // interior mutability and protectors interact poorly.
+        // To eliminate the case of Protected Reserved IM we override interior mutability
+        // in the case of a protected reference: protected references are always considered
+        // "freeze".
         let initial_state = match mutability {
-            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze),
+            Mutability::Mut if ty_is_unpin =>
+                Permission::new_reserved(ty_is_freeze || is_protected),
             Mutability::Not if ty_is_freeze => Permission::new_frozen(),
             // Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
@@ -151,7 +158,7 @@ impl<'tcx> NewPermission {
             _ => return None,
         };
 
-        let protector = (kind == RetagKind::FnEntry).then_some(ProtectorKind::StrongProtector);
+        let protector = is_protected.then_some(ProtectorKind::StrongProtector);
         Some(Self { zero_size: false, initial_state, protector })
     }
 

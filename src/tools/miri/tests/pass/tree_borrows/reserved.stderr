@@ -6,7 +6,7 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 | RsM |      └─┬──<TAG=base>
 | RsM |        ├─┬──<TAG=x>
 | RsM |        │ └─┬──<TAG=caller:x>
-| RsCM|        │   └────<TAG=callee:x>
+| RsC |        │   └────<TAG=callee:x>
 | RsM |        └────<TAG=y, caller:y, callee:y>
 ──────────────────────────────────────────────────
 [interior mut] Foreign Read: Re* -> Re*
