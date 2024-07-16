@@ -1,9 +1,9 @@
-//! Implementation of rustbuild, the Rust build system.
+//! Implementation of bootstrap, the Rust build system.
 //!
 //! This module, and its descendants, are the implementation of the Rust build
 //! system. Most of this build system is backed by Cargo but the outer layer
 //! here serves as the ability to orchestrate calling Cargo, sequencing Cargo
-//! builds, building artifacts like LLVM, etc. The goals of rustbuild are:
+//! builds, building artifacts like LLVM, etc. The goals of bootstrap are:
 //!
 //! * To be an easily understandable, easily extensible, and maintainable build
 //!   system.
@@ -23,21 +23,20 @@ use std::fmt::Display;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::str;
 use std::sync::OnceLock;
 use std::time::SystemTime;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
-use filetime::FileTime;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::channel::GitInfo;
 use utils::helpers::hex_encode;
 
 use crate::core::builder;
-use crate::core::builder::Kind;
+use crate::core::builder::{Builder, Kind};
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
@@ -490,15 +489,29 @@ impl Build {
             return;
         }
 
-        let submodule_git = || helpers::git(Some(&absolute_path));
+        // Submodule updating actually happens during in the dry run mode. We need to make sure that
+        // all the git commands below are actually executed, because some follow-up code
+        // in bootstrap might depend on the submodules being checked out. Furthermore, not all
+        // the command executions below work with an empty output (produced during dry run).
+        // Therefore, all commands below are marked with `run_always()`, so that they also run in
+        // dry run mode.
+        let submodule_git = || {
+            let mut cmd = helpers::git(Some(&absolute_path)).capture_stdout();
+            cmd.run_always();
+            cmd
+        };
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = output(&mut submodule_git().args(["rev-parse", "HEAD"]).command);
+        let checked_out_hash = submodule_git().args(["rev-parse", "HEAD"]).run(self).stdout();
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
-        let recorded = output(
-            &mut helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path).command,
-        );
+        let recorded = helpers::git(Some(&self.src))
+            .capture_stdout()
+            .run_always()
+            .args(["ls-tree", "HEAD"])
+            .arg(relative_path)
+            .run(self)
+            .stdout();
         let actual_hash = recorded
             .split_whitespace()
             .nth(2)
@@ -511,6 +524,7 @@ impl Build {
 
         println!("Updating submodule {}", relative_path.display());
         helpers::git(Some(&self.src))
+            .run_always()
             .args(["submodule", "-q", "sync"])
             .arg(relative_path)
             .run(self);
@@ -519,21 +533,16 @@ impl Build {
         let update = |progress: bool| {
             // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
             // even though that has no relation to the upstream for the submodule.
-            let current_branch = {
-                let output = helpers::git(Some(&self.src))
-                    .args(["symbolic-ref", "--short", "HEAD"])
-                    .command
-                    .stderr(Stdio::inherit())
-                    .output();
-                let output = t!(output);
-                if output.status.success() {
-                    Some(String::from_utf8(output.stdout).unwrap().trim().to_owned())
-                } else {
-                    None
-                }
-            };
+            let current_branch = helpers::git(Some(&self.src))
+                .capture_stdout()
+                .run_always()
+                .args(["symbolic-ref", "--short", "HEAD"])
+                .run(self)
+                .stdout_if_ok()
+                .map(|s| s.trim().to_owned());
 
-            let mut git = helpers::git(Some(&self.src));
+            let mut git = helpers::git(Some(&self.src)).allow_failure();
+            git.run_always();
             if let Some(branch) = current_branch {
                 // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
                 // This syntax isn't accepted by `branch.{branch}`. Strip it.
@@ -547,8 +556,7 @@ impl Build {
             git.arg(relative_path);
             git
         };
-        // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
-        if !update(true).command.status().map_or(false, |status| status.success()) {
+        if !update(true).run(self).is_success() {
             update(false).run(self);
         }
 
@@ -934,17 +942,26 @@ impl Build {
 
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
+    #[track_caller]
     fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
+        command.mark_as_executed();
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
 
-        self.verbose(|| println!("running: {command:?}"));
+        let created_at = command.get_created_location();
+        let executed_at = std::panic::Location::caller();
 
-        command.command.stdout(command.stdout.stdio());
-        command.command.stderr(command.stderr.stdio());
+        self.verbose(|| {
+            println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
+        });
 
-        let output = command.command.output();
+        let stdout = command.stdout.stdio();
+        command.as_command_mut().stdout(stdout);
+        let stderr = command.stderr.stdio();
+        command.as_command_mut().stderr(stderr);
+
+        let output = command.as_command_mut().output();
 
         use std::fmt::Write;
 
@@ -956,8 +973,11 @@ impl Build {
             Ok(output) => {
                 writeln!(
                     message,
-                    "\n\nCommand {command:?} did not execute successfully.\
-            \nExpected success, got: {}",
+                    r#"
+Command {command:?} did not execute successfully.
+Expected success, got {}
+Created at: {created_at}
+Executed at: {executed_at}"#,
                     output.status,
                 )
                 .unwrap();
@@ -1693,9 +1713,13 @@ impl Build {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
-            let atime = FileTime::from_last_access_time(&metadata);
-            let mtime = FileTime::from_last_modification_time(&metadata);
-            t!(filetime::set_file_times(dst, atime, mtime));
+
+            let file_times = fs::FileTimes::new()
+                .set_accessed(t!(metadata.accessed()))
+                .set_modified(t!(metadata.modified()));
+
+            let dst_file = t!(fs::File::open(dst));
+            t!(dst_file.set_times(file_times));
         }
     }
 
@@ -1928,22 +1952,28 @@ fn envify(s: &str) -> String {
 ///
 /// In case of errors during `git` command execution (e.g., in tarball sources), default values
 /// are used to prevent panics.
-pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
+pub fn generate_smart_stamp_hash(
+    builder: &Builder<'_>,
+    dir: &Path,
+    additional_input: &str,
+) -> String {
     let diff = helpers::git(Some(dir))
+        .capture_stdout()
+        .allow_failure()
         .arg("diff")
-        .command
-        .output()
-        .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
+        .run(builder)
+        .stdout_if_ok()
         .unwrap_or_default();
 
     let status = helpers::git(Some(dir))
+        .capture_stdout()
+        .allow_failure()
         .arg("status")
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
-        .command
-        .output()
-        .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
+        .run(builder)
+        .stdout_if_ok()
         .unwrap_or_default();
 
     let mut hasher = sha2::Sha256::new();

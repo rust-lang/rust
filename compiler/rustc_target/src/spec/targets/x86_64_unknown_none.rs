@@ -18,9 +18,7 @@ pub fn target() -> Target {
         relro_level: RelroLevel::Full,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        features:
-            "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
-                .into(),
+        features: "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-avx,-avx2,+soft-float".into(),
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
@@ -30,10 +28,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-none-elf".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("Freestanding/bare-metal x86_64 softfloat".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(false),
         },
         pointer_width: 64,
         data_layout:

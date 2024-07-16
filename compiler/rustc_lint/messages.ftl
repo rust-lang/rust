@@ -52,10 +52,6 @@ lint_builtin_allow_internal_unsafe =
 lint_builtin_anonymous_params = anonymous parameters are deprecated and will be removed in the next edition
     .suggestion = try naming the parameter or explicitly ignoring it
 
-lint_builtin_asm_labels = avoid using named labels in inline assembly
-    .help = only local labels of the form `<number>:` should be used in inline asm
-    .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
-
 lint_builtin_clashing_extern_diff_name = `{$this}` redeclares `{$orig}` with a different signature
     .previous_decl_label = `{$orig}` previously declared here
     .mismatch_label = this signature doesn't match the previous declaration
@@ -162,6 +158,8 @@ lint_builtin_unreachable_pub = unreachable `pub` {$what}
     .help = or consider exporting it for use by other crates
 
 lint_builtin_unsafe_block = usage of an `unsafe` block
+
+lint_builtin_unsafe_extern_block = usage of an `unsafe extern` block
 
 lint_builtin_unsafe_impl = implementation of an `unsafe` trait
 
@@ -403,6 +401,19 @@ lint_incomplete_include =
 
 lint_inner_macro_attribute_unstable = inner macro attributes are unstable
 
+lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
+    .label = use a different label that doesn't start with `0` or `1`
+    .note = an LLVM bug makes these labels ambiguous with a binary literal number
+    .note = see <https://bugs.llvm.org/show_bug.cgi?id=36144> for more information
+
+lint_invalid_asm_label_format_arg = avoid using named labels in inline assembly
+    .help = only local labels of the form `<number>:` should be used in inline asm
+    .note1 = format arguments may expand to a non-numeric value
+    .note2 = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+lint_invalid_asm_label_named = avoid using named labels in inline assembly
+    .help = only local labels of the form `<number>:` should be used in inline asm
+    .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+lint_invalid_asm_label_no_span = the label may be declared in the expansion of a macro
 lint_invalid_crate_type_value = invalid `crate_type` value
     .suggestion = did you mean
 

@@ -19,7 +19,7 @@ use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
-use crate::sys::c::{self, NonZeroDWORD, EXIT_FAILURE, EXIT_SUCCESS};
+use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -174,7 +174,7 @@ pub struct Command {
 
 pub enum Stdio {
     Inherit,
-    InheritSpecific { from_stdio_id: c::DWORD },
+    InheritSpecific { from_stdio_id: u32 },
     Null,
     MakePipe,
     Pipe(AnonPipe),
@@ -364,7 +364,7 @@ impl Command {
             };
             si_ptr = core::ptr::addr_of_mut!(si_ex) as _;
         } else {
-            si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
+            si.cb = mem::size_of::<c::STARTUPINFOW>() as u32;
             si_ptr = core::ptr::addr_of_mut!(si) as _;
         }
 
@@ -566,7 +566,7 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 }
 
 impl Stdio {
-    fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
+    fn to_handle(&self, stdio_id: u32, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
         let use_stdio_id = |stdio_id| match stdio::get_handle(stdio_id) {
             Ok(io) => unsafe {
                 let io = Handle::from_raw_handle(io);
@@ -601,7 +601,7 @@ impl Stdio {
             Stdio::Null => {
                 let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
                 let mut sa = c::SECURITY_ATTRIBUTES {
-                    nLength: size as c::DWORD,
+                    nLength: size as u32,
                     lpSecurityDescriptor: ptr::null_mut(),
                     bInheritHandle: 1,
                 };
@@ -713,11 +713,11 @@ impl Process {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
-pub struct ExitStatus(c::DWORD);
+pub struct ExitStatus(u32);
 
 impl ExitStatus {
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
-        match NonZeroDWORD::try_from(self.0) {
+        match NonZero::<u32>::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }
@@ -727,9 +727,9 @@ impl ExitStatus {
     }
 }
 
-/// Converts a raw `c::DWORD` to a type-safe `ExitStatus` by wrapping it without copying.
-impl From<c::DWORD> for ExitStatus {
-    fn from(u: c::DWORD) -> ExitStatus {
+/// Converts a raw `u32` to a type-safe `ExitStatus` by wrapping it without copying.
+impl From<u32> for ExitStatus {
+    fn from(u: u32) -> ExitStatus {
         ExitStatus(u)
     }
 }
@@ -750,7 +750,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(c::NonZeroDWORD);
+pub struct ExitStatusError(NonZero<u32>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
@@ -765,7 +765,7 @@ impl ExitStatusError {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitCode(c::DWORD);
+pub struct ExitCode(u32);
 
 impl ExitCode {
     pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
@@ -779,13 +779,13 @@ impl ExitCode {
 
 impl From<u8> for ExitCode {
     fn from(code: u8) -> Self {
-        ExitCode(c::DWORD::from(code))
+        ExitCode(u32::from(code))
     }
 }
 
 impl From<u32> for ExitCode {
     fn from(code: u32) -> Self {
-        ExitCode(c::DWORD::from(code))
+        ExitCode(u32::from(code))
     }
 }
 

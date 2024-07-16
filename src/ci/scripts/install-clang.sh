@@ -40,7 +40,7 @@ if isMacOS; then
     # our own clang can figure out the correct include path on its own.
     ciCommandSetEnv SDKROOT "$(xcrun --sdk macosx --show-sdk-path)"
 
-    # Configure `AR` specifically so rustbuild doesn't try to infer it as
+    # Configure `AR` specifically so bootstrap doesn't try to infer it as
     # `clang-ar` by accident.
     ciCommandSetEnv AR "ar"
 elif isWindows && ! isKnownToBeMingwBuild; then

@@ -45,7 +45,7 @@ impl GitInfo {
         }
 
         // Make sure git commands work
-        match helpers::git(Some(dir)).arg("rev-parse").command.output() {
+        match helpers::git(Some(dir)).arg("rev-parse").as_command_mut().output() {
             Ok(ref out) if out.status.success() => {}
             _ => return GitInfo::Absent,
         }
@@ -58,16 +58,17 @@ impl GitInfo {
 
         // Ok, let's scrape some info
         let ver_date = output(
-            &mut helpers::git(Some(dir))
+            helpers::git(Some(dir))
                 .arg("log")
                 .arg("-1")
                 .arg("--date=short")
                 .arg("--pretty=format:%cd")
-                .command,
+                .as_command_mut(),
         );
-        let ver_hash = output(&mut helpers::git(Some(dir)).arg("rev-parse").arg("HEAD").command);
+        let ver_hash =
+            output(helpers::git(Some(dir)).arg("rev-parse").arg("HEAD").as_command_mut());
         let short_ver_hash = output(
-            &mut helpers::git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").command,
+            helpers::git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").as_command_mut(),
         );
         GitInfo::Present(Some(Info {
             commit_date: ver_date.trim().to_string(),

@@ -542,6 +542,7 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
                 }
             }
             Outlives(lifetime) => GenericBound::Outlives(convert_lifetime(lifetime)),
+            Use(args) => GenericBound::Use(args.into_iter().map(|arg| arg.to_string()).collect()),
         }
     }
 }

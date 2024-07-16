@@ -106,10 +106,13 @@ error: expected identifier, found `,`
   --> $DIR/bad-syntax.rs:42:12
    |
 LL | #[coverage(,off)]
-   |            ^
-   |            |
-   |            expected identifier
-   |            help: remove this comma
+   |            ^ expected identifier
+   |
+help: remove this comma
+   |
+LL - #[coverage(,off)]
+LL + #[coverage(off)]
+   |
 
 error: multiple `coverage` attributes
   --> $DIR/bad-syntax.rs:7:1

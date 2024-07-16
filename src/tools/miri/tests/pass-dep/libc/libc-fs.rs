@@ -36,6 +36,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_sync_file_range();
     test_isatty();
+    test_read_and_uninit();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -385,6 +386,40 @@ fn test_isatty() {
 
         // Cleanup after test.
         drop(file);
+        remove_file(&path).unwrap();
+    }
+}
+
+fn test_read_and_uninit() {
+    use std::mem::MaybeUninit;
+    {
+        // We test that libc::read initializes its buffer.
+        let path = utils::prepare_with_content("pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
+        let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        unsafe {
+            let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
+            assert_ne!(fd, -1);
+            let mut buf: MaybeUninit<[u8; 2]> = std::mem::MaybeUninit::uninit();
+            assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 2), 2);
+            let buf = buf.assume_init();
+            assert_eq!(buf, [1, 2]);
+            assert_eq!(libc::close(fd), 0);
+        }
+        remove_file(&path).unwrap();
+    }
+    {
+        // We test that if we requested to read 4 bytes, but actually read 3 bytes, then
+        // 3 bytes (not 4) will be overwritten, and remaining byte will be left as-is.
+        let path = utils::prepare_with_content("pass-libc-read-and-uninit-2.txt", &[1u8, 2, 3]);
+        let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        unsafe {
+            let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
+            assert_ne!(fd, -1);
+            let mut buf = [42u8; 5];
+            assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 4), 3);
+            assert_eq!(buf, [1, 2, 3, 42, 42]);
+            assert_eq!(libc::close(fd), 0);
+        }
         remove_file(&path).unwrap();
     }
 }

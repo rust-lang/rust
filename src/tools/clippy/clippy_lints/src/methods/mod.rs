@@ -628,12 +628,11 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))` or
-    /// `_.or_else(|x| Err(y))`.
+    /// Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))`
+    /// or `_.or_else(|x| Err(y))`.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.map(|x| y)` or `_.map_err(|x| y)`.
+    /// This can be written more concisely as `_.map(|x| y)` or `_.map_err(|x| y)`.
     ///
     /// ### Example
     /// ```no_run
@@ -4121,7 +4120,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let x = Some(0).inspect(|x| println!("{x}"));
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.81.0"]
     pub MANUAL_INSPECT,
     complexity,
     "use of `map` returning the original item"

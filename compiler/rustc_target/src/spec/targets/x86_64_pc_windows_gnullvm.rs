@@ -12,10 +12,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-pc-windows-gnu".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit x86 MinGW (Windows 10+), LLVM ABI".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

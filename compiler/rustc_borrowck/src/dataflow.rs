@@ -553,7 +553,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, '_, 'tcx> {
                         panic!("could not find BorrowIndex for location {location:?}");
                     });
 
-                    trans.gen(index);
+                    trans.gen_(index);
                 }
 
                 // Make sure there are no remaining borrows for variables

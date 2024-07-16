@@ -16,7 +16,7 @@
 use crate::ast::{AttrStyle, StmtKind};
 use crate::ast_traits::{HasAttrs, HasTokens};
 use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
-use crate::AttrVec;
+use crate::{AttrVec, Attribute};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
@@ -179,11 +179,10 @@ impl AttrTokenStream {
         AttrTokenStream(Lrc::new(tokens))
     }
 
-    /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`.
-    /// During conversion, `AttrTokenTree::AttrsTarget` get 'flattened'
-    /// back to a `TokenStream` of the form `outer_attr attr_target`.
-    /// If there are inner attributes, they are inserted into the proper
-    /// place in the attribute target tokens.
+    /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`. During
+    /// conversion, any `AttrTokenTree::AttrsTarget` gets "flattened" back to a
+    /// `TokenStream`, as described in the comment on
+    /// `attrs_and_tokens_to_token_trees`.
     pub fn to_token_trees(&self) -> Vec<TokenTree> {
         let mut res = Vec::with_capacity(self.0.len());
         for tree in self.0.iter() {
@@ -200,51 +199,7 @@ impl AttrTokenStream {
                     ))
                 }
                 AttrTokenTree::AttrsTarget(target) => {
-                    let idx = target
-                        .attrs
-                        .partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
-                    let (outer_attrs, inner_attrs) = target.attrs.split_at(idx);
-
-                    let mut target_tokens = target.tokens.to_attr_token_stream().to_token_trees();
-                    if !inner_attrs.is_empty() {
-                        let mut found = false;
-                        // Check the last two trees (to account for a trailing semi)
-                        for tree in target_tokens.iter_mut().rev().take(2) {
-                            if let TokenTree::Delimited(span, spacing, delim, delim_tokens) = tree {
-                                // Inner attributes are only supported on extern blocks, functions,
-                                // impls, and modules. All of these have their inner attributes
-                                // placed at the beginning of the rightmost outermost braced group:
-                                // e.g. fn foo() { #![my_attr] }
-                                //
-                                // Therefore, we can insert them back into the right location
-                                // without needing to do any extra position tracking.
-                                //
-                                // Note: Outline modules are an exception - they can
-                                // have attributes like `#![my_attr]` at the start of a file.
-                                // Support for custom attributes in this position is not
-                                // properly implemented - we always synthesize fake tokens,
-                                // so we never reach this code.
-
-                                let mut stream = TokenStream::default();
-                                for inner_attr in inner_attrs {
-                                    stream.push_stream(inner_attr.get_tokens());
-                                }
-                                stream.push_stream(delim_tokens.clone());
-                                *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
-                                found = true;
-                                break;
-                            }
-                        }
-
-                        assert!(
-                            found,
-                            "Failed to find trailing delimited group in: {target_tokens:?}"
-                        );
-                    }
-                    for attr in outer_attrs {
-                        res.extend(attr.get_tokens().0.iter().cloned());
-                    }
-                    res.extend(target_tokens);
+                    attrs_and_tokens_to_token_trees(&target.attrs, &target.tokens, &mut res);
                 }
             }
         }
@@ -252,15 +207,76 @@ impl AttrTokenStream {
     }
 }
 
+// Converts multiple attributes and the tokens for a target AST node into token trees, and appends
+// them to `res`.
+//
+// Example: if the AST node is "fn f() { blah(); }", then:
+// - Simple if no attributes are present, e.g. "fn f() { blah(); }"
+// - Simple if only outer attribute are present, e.g. "#[outer1] #[outer2] fn f() { blah(); }"
+// - Trickier if inner attributes are present, because they must be moved within the AST node's
+//   tokens, e.g. "#[outer] fn f() { #![inner] blah() }"
+fn attrs_and_tokens_to_token_trees(
+    attrs: &[Attribute],
+    target_tokens: &LazyAttrTokenStream,
+    res: &mut Vec<TokenTree>,
+) {
+    let idx = attrs.partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
+    let (outer_attrs, inner_attrs) = attrs.split_at(idx);
+
+    // Add outer attribute tokens.
+    for attr in outer_attrs {
+        res.extend(attr.token_trees());
+    }
+
+    // Add target AST node tokens.
+    res.extend(target_tokens.to_attr_token_stream().to_token_trees());
+
+    // Insert inner attribute tokens.
+    if !inner_attrs.is_empty() {
+        let mut found = false;
+        // Check the last two trees (to account for a trailing semi)
+        for tree in res.iter_mut().rev().take(2) {
+            if let TokenTree::Delimited(span, spacing, delim, delim_tokens) = tree {
+                // Inner attributes are only supported on extern blocks, functions,
+                // impls, and modules. All of these have their inner attributes
+                // placed at the beginning of the rightmost outermost braced group:
+                // e.g. fn foo() { #![my_attr] }
+                //
+                // Therefore, we can insert them back into the right location
+                // without needing to do any extra position tracking.
+                //
+                // Note: Outline modules are an exception - they can
+                // have attributes like `#![my_attr]` at the start of a file.
+                // Support for custom attributes in this position is not
+                // properly implemented - we always synthesize fake tokens,
+                // so we never reach this code.
+                let mut tts = vec![];
+                for inner_attr in inner_attrs {
+                    tts.extend(inner_attr.token_trees());
+                }
+                tts.extend(delim_tokens.0.iter().cloned());
+                let stream = TokenStream::new(tts);
+                *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
+                found = true;
+                break;
+            }
+        }
+        assert!(found, "Failed to find trailing delimited group in: {res:?}");
+    }
+}
+
 /// Stores the tokens for an attribute target, along
 /// with its attributes.
 ///
 /// This is constructed during parsing when we need to capture
-/// tokens.
+/// tokens, for `cfg` and `cfg_attr` attributes.
 ///
 /// For example, `#[cfg(FALSE)] struct Foo {}` would
 /// have an `attrs` field containing the `#[cfg(FALSE)]` attr,
 /// and a `tokens` field storing the (unparsed) tokens `struct Foo {}`
+///
+/// The `cfg`/`cfg_attr` processing occurs in
+/// `StripUnconfigured::configure_tokens`.
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct AttrsTarget {
     /// Attributes, both outer and inner.
@@ -437,18 +453,10 @@ impl TokenStream {
     }
 
     pub fn from_ast(node: &(impl HasAttrs + HasTokens + fmt::Debug)) -> TokenStream {
-        let Some(tokens) = node.tokens() else {
-            panic!("missing tokens for node: {:?}", node);
-        };
-        let attrs = node.attrs();
-        let attr_stream = if attrs.is_empty() {
-            tokens.to_attr_token_stream()
-        } else {
-            let target =
-                AttrsTarget { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
-            AttrTokenStream::new(vec![AttrTokenTree::AttrsTarget(target)])
-        };
-        TokenStream::new(attr_stream.to_token_trees())
+        let tokens = node.tokens().unwrap_or_else(|| panic!("missing tokens for node: {:?}", node));
+        let mut tts = vec![];
+        attrs_and_tokens_to_token_trees(node.attrs(), tokens, &mut tts);
+        TokenStream::new(tts)
     }
 
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {

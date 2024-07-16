@@ -1,4 +1,5 @@
 //@ test-mir-pass: GVN
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 
 // EMIT_MIR address_of_pair.fn0.GVN.diff
 pub fn fn0() -> bool {

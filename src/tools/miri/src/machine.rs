@@ -30,6 +30,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::{
     concurrency::{
+        cpu_affinity::{self, CpuAffinityMask},
         data_race::{self, NaReadType, NaWriteType},
         weak_memory,
     },
@@ -471,6 +472,12 @@ pub struct MiriMachine<'tcx> {
 
     /// The set of threads.
     pub(crate) threads: ThreadManager<'tcx>,
+
+    /// Stores which thread is eligible to run on which CPUs.
+    /// This has no effect at all, it is just tracked to produce the correct result
+    /// in `sched_getaffinity`
+    pub(crate) thread_cpu_affinity: FxHashMap<ThreadId, CpuAffinityMask>,
+
     /// The state of the primitive synchronization objects.
     pub(crate) sync: SynchronizationObjects,
 
@@ -627,6 +634,18 @@ impl<'tcx> MiriMachine<'tcx> {
         let stack_addr = if tcx.pointer_size().bits() < 32 { page_size } else { page_size * 32 };
         let stack_size =
             if tcx.pointer_size().bits() < 32 { page_size * 4 } else { page_size * 16 };
+        assert!(
+            usize::try_from(config.num_cpus).unwrap() <= cpu_affinity::MAX_CPUS,
+            "miri only supports up to {} CPUs, but {} were configured",
+            cpu_affinity::MAX_CPUS,
+            config.num_cpus
+        );
+        let threads = ThreadManager::default();
+        let mut thread_cpu_affinity = FxHashMap::default();
+        if matches!(&*tcx.sess.target.os, "linux" | "freebsd" | "android") {
+            thread_cpu_affinity
+                .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
+        }
         MiriMachine {
             tcx,
             borrow_tracker,
@@ -644,7 +663,8 @@ impl<'tcx> MiriMachine<'tcx> {
             fds: shims::FdTable::new(config.mute_stdout_stderr),
             dirs: Default::default(),
             layouts,
-            threads: ThreadManager::default(),
+            threads,
+            thread_cpu_affinity,
             sync: SynchronizationObjects::default(),
             static_roots: Vec::new(),
             profiler,
@@ -765,6 +785,7 @@ impl VisitProvenance for MiriMachine<'_> {
         #[rustfmt::skip]
         let MiriMachine {
             threads,
+            thread_cpu_affinity: _,
             sync: _,
             tls,
             env_vars,

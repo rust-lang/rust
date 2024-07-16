@@ -419,7 +419,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match result {
             Ok(read_bytes) => {
                 // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                this.write_bytes_ptr(buf, bytes)?;
+                // Crucially, if fewer than `bytes.len()` bytes were read, only write
+                // that much into the output buffer!
+                this.write_bytes_ptr(
+                    buf,
+                    bytes[..usize::try_from(read_bytes).unwrap()].iter().copied(),
+                )?;
                 Ok(read_bytes)
             }
             Err(e) => {

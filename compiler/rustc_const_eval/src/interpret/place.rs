@@ -995,13 +995,25 @@ where
     }
 
     /// Returns a wide MPlace of type `str` to a new 1-aligned allocation.
+    /// Immutable strings are deduplicated and stored in global memory.
     pub fn allocate_str(
         &mut self,
         str: &str,
         kind: MemoryKind<M::MemoryKind>,
         mutbl: Mutability,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let ptr = self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl)?;
+        let tcx = self.tcx.tcx;
+
+        // Use cache for immutable strings.
+        let ptr = if mutbl.is_not() {
+            // Use dedup'd allocation function.
+            let id = tcx.allocate_bytes_dedup(str.as_bytes());
+
+            // Turn untagged "global" pointers (obtained via `tcx`) into the machine pointer to the allocation.
+            M::adjust_alloc_root_pointer(&self, Pointer::from(id), Some(kind))?
+        } else {
+            self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl)?
+        };
         let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
         let layout = self.layout_of(self.tcx.types.str_).unwrap();
         Ok(self.ptr_with_meta_to_mplace(ptr.into(), MemPlaceMeta::Meta(meta), layout))

@@ -58,7 +58,7 @@ jobs:
 
     - name: Run lintcheck
       if: steps.cache-json.outputs.cache-hit != 'true'
-      run: ./target/debug/lintcheck --format json
+      run: ./target/debug/lintcheck --format json --warn-all
 
     - name: Upload base JSON
       uses: actions/upload-artifact@v4
@@ -86,7 +86,7 @@ jobs:
       run: cargo build --manifest-path=lintcheck/Cargo.toml
 
     - name: Run lintcheck
-      run: ./target/debug/lintcheck --format json
+      run: ./target/debug/lintcheck --format json --warn-all
 
     - name: Upload head JSON
       uses: actions/upload-artifact@v4

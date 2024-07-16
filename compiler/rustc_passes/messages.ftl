@@ -290,9 +290,6 @@ passes_export_name =
 passes_extern_main =
     the `main` function cannot be declared in an `extern` block
 
-passes_feature_only_on_nightly =
-    `#![feature]` may not be used on the {$release_channel} release channel
-
 passes_feature_previously_declared =
     feature `{$feature}` is declared {$declared}, but was previously declared {$prev_declared}
 

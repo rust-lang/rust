@@ -79,7 +79,7 @@ pub(crate) fn merge_bounds(
     !bounds.iter_mut().any(|b| {
         let trait_ref = match *b {
             clean::GenericBound::TraitBound(ref mut tr, _) => tr,
-            clean::GenericBound::Outlives(..) => return false,
+            clean::GenericBound::Outlives(..) | clean::GenericBound::Use(_) => return false,
         };
         // If this QPath's trait `trait_did` is the same as, or a supertrait
         // of, the bound's trait `did` then we can keep going, otherwise

@@ -393,7 +393,6 @@ pub(crate) struct AllocMap<'tcx> {
     alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,
 
     /// Used to ensure that statics and functions only get one associated `AllocId`.
-    /// Should never contain a `GlobalAlloc::Memory`!
     //
     // FIXME: Should we just have two separate dedup maps for statics and functions each?
     dedup: FxHashMap<GlobalAlloc<'tcx>, AllocId>,
@@ -433,13 +432,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Reserves a new ID *if* this allocation has not been dedup-reserved before.
-    /// Should only be used for "symbolic" allocations (function pointers, vtables, statics), we
-    /// don't want to dedup IDs for "real" memory!
+    /// Should not be used for mutable memory.
     fn reserve_and_set_dedup(self, alloc: GlobalAlloc<'tcx>) -> AllocId {
         let mut alloc_map = self.alloc_map.lock();
-        match alloc {
-            GlobalAlloc::Function { .. } | GlobalAlloc::Static(..) | GlobalAlloc::VTable(..) => {}
-            GlobalAlloc::Memory(..) => bug!("Trying to dedup-reserve memory with real data!"),
+        if let GlobalAlloc::Memory(mem) = alloc {
+            if mem.inner().mutability.is_mut() {
+                bug!("trying to dedup-reserve mutable memory");
+            }
         }
         if let Some(&alloc_id) = alloc_map.dedup.get(&alloc) {
             return alloc_id;
@@ -449,6 +448,12 @@ impl<'tcx> TyCtxt<'tcx> {
         alloc_map.alloc_map.insert(id, alloc.clone());
         alloc_map.dedup.insert(alloc, id);
         id
+    }
+
+    /// Generates an `AllocId` for a memory allocation. If the exact same memory has been
+    /// allocated before, this will return the same `AllocId`.
+    pub fn reserve_and_set_memory_dedup(self, mem: ConstAllocation<'tcx>) -> AllocId {
+        self.reserve_and_set_dedup(GlobalAlloc::Memory(mem))
     }
 
     /// Generates an `AllocId` for a static or return a cached one in case this function has been

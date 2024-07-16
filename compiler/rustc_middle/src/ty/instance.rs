@@ -541,7 +541,9 @@ impl<'tcx> Instance<'tcx> {
         // which means that rustc basically hangs.
         //
         // Bail out in these cases to avoid that bad user experience.
-        if !tcx.type_length_limit().value_within_limit(type_length(args)) {
+        if tcx.sess.opts.unstable_opts.enforce_type_length_limit
+            && !tcx.type_length_limit().value_within_limit(type_length(args))
+        {
             return Ok(None);
         }
 

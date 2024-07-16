@@ -22,12 +22,17 @@ def fail(msg):
     print("\nTEST FAIL: {}".format(msg))
     sys.exit(1)
 
-def cargo_miri(cmd, quiet = True):
+def cargo_miri(cmd, quiet = True, targets = None):
     args = ["cargo", "miri", cmd] + CARGO_EXTRA_FLAGS
     if quiet:
         args += ["-q"]
-    if ARGS.target:
+
+    if targets is not None:
+        for target in targets:
+            args.extend(("--target", target))
+    elif ARGS.target is not None:
         args += ["--target", ARGS.target]
+
     return args
 
 def normalize_stdout(str):
@@ -186,10 +191,21 @@ def test_cargo_miri_test():
         default_ref, "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
     )
+    if ARGS.multi_target:
+        test_cargo_miri_multi_target()
+
+
+def test_cargo_miri_multi_target():
+    test("`cargo miri test` (multiple targets)",
+        cargo_miri("test", targets = ["aarch64-unknown-linux-gnu", "s390x-unknown-linux-gnu"]),
+        "test.multiple_targets.stdout.ref", "test.stderr-empty.ref",
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
+    )
 
 args_parser = argparse.ArgumentParser(description='`cargo miri` testing')
 args_parser.add_argument('--target', help='the target to test')
 args_parser.add_argument('--bless', help='bless the reference files', action='store_true')
+args_parser.add_argument('--multi-target', help='run tests related to multiple targets', action='store_true')
 ARGS = args_parser.parse_args()
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))

@@ -974,7 +974,7 @@ combined_remains() {
     --package-name=rust \
     --input-tarballs="$OUT_DIR/rustc.tar.gz,$OUT_DIR/cargo.tar.gz,$OUT_DIR/rust-docs.tar.gz"
     for component in rustc cargo rust-docs; do
-    # rustbuild wants the original extracted package intact too
+    # bootstrap wants the original extracted package intact too
     try test -d "$WORK_DIR/$component/$component"
     try test -d "$WORK_DIR/rust/$component"
     done

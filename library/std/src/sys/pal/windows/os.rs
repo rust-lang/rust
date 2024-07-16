@@ -1,6 +1,7 @@
 //! Implementation of `std::os` functionality for Windows.
 
 #![allow(nonstandard_style)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
@@ -52,10 +53,10 @@ pub fn error_string(mut errnum: i32) -> String {
         let res = c::FormatMessageW(
             flags | c::FORMAT_MESSAGE_FROM_SYSTEM | c::FORMAT_MESSAGE_IGNORE_INSERTS,
             module,
-            errnum as c::DWORD,
+            errnum as u32,
             0,
             buf.as_mut_ptr(),
-            buf.len() as c::DWORD,
+            buf.len() as u32,
             ptr::null(),
         ) as usize;
         if res == 0 {
@@ -81,7 +82,7 @@ pub fn error_string(mut errnum: i32) -> String {
 }
 
 pub struct Env {
-    base: c::LPWCH,
+    base: *mut c::WCHAR,
     iter: EnvIterator,
 }
 
@@ -126,7 +127,7 @@ impl Iterator for Env {
 }
 
 #[derive(Clone)]
-struct EnvIterator(c::LPWCH);
+struct EnvIterator(*mut c::WCHAR);
 
 impl Iterator for EnvIterator {
     type Item = (OsString, OsString);
@@ -383,7 +384,7 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe { c::ExitProcess(code as c::UINT) }
+    unsafe { c::ExitProcess(code as u32) }
 }
 
 pub fn getpid() -> u32 {

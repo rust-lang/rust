@@ -6,9 +6,9 @@ pub fn target() -> Target {
         llvm_target: "riscv32".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(false),
         },
         pointer_width: 32,
         arch: "riscv32".into(),

@@ -16,10 +16,10 @@ LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl Sized + use<> { x }
    |                       |                 opaque type defined here
    |                       hidden type `&'a ()` captures the lifetime `'a` as defined here
    |
-help: to declare that `impl Sized` captures `'a`, you can add an explicit `'a` lifetime bound
+help: add `'a` to the `use<...>` bound to explicitly capture it
    |
-LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl Sized + use<> + 'a { x }
-   |                                                            ++++
+LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl Sized + use<'a> { x }
+   |                                                          ++
 
 error: aborting due to 2 previous errors
 

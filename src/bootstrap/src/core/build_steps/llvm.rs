@@ -125,6 +125,7 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
         generate_smart_stamp_hash(
+            builder,
             &builder.config.src.join("src/llvm-project"),
             builder.in_tree_llvm_info.sha().unwrap_or_default(),
         )
@@ -172,7 +173,7 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
             // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
             config.src.join("src/version"),
         ]);
-        output(&mut rev_list.command).trim().to_owned()
+        output(rev_list.as_command_mut()).trim().to_owned()
     } else if let Some(info) = channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
     } else {
@@ -254,7 +255,7 @@ pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
         let head_sha =
-            output(&mut helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").command);
+            output(helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").as_command_mut());
         let head_sha = head_sha.trim();
         llvm_sha == head_sha
     }
@@ -912,7 +913,7 @@ impl Step for Lld {
             if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
                 // Find clang's runtime library directory and push that as a search path to the
                 // cmake linker flags.
-                let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+                let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
                 ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
             }
         }

@@ -2,38 +2,41 @@
 
 /// 1. nest here
 ///    lazy continuation
-//~^ ERROR: doc list item missing indentation
+//~^ ERROR: doc list item without indentation
 fn one() {}
 
 /// 1. first line
 ///    lazy list continuations don't make warnings with this lint
-//~^ ERROR: doc list item missing indentation
-///    because they don't have the
-//~^ ERROR: doc list item missing indentation
+///
+//~^ ERROR: doc list item without indentation
+/// because they don't have the
+//~^ ERROR: doc list item without indentation
 fn two() {}
 
 ///   - nest here
 ///     lazy continuation
-//~^ ERROR: doc list item missing indentation
+//~^ ERROR: doc list item without indentation
 fn three() {}
 
 ///   - first line
 ///     lazy list continuations don't make warnings with this lint
-//~^ ERROR: doc list item missing indentation
-///     because they don't have the
-//~^ ERROR: doc list item missing indentation
+///
+//~^ ERROR: doc list item without indentation
+/// because they don't have the
+//~^ ERROR: doc list item without indentation
 fn four() {}
 
 ///   - nest here
 ///     lazy continuation
-//~^ ERROR: doc list item missing indentation
+//~^ ERROR: doc list item without indentation
 fn five() {}
 
 ///   - - first line
 ///       this will warn on the lazy continuation
-//~^ ERROR: doc list item missing indentation
-///       and so should this
-//~^ ERROR: doc list item missing indentation
+///
+//~^ ERROR: doc list item without indentation
+///     and so should this
+//~^ ERROR: doc list item without indentation
 fn six() {}
 
 ///   - - first line
@@ -54,7 +57,7 @@ fn seven() {}
 /// * `protocol_descriptors`: A Json Representation of the ProtocolDescriptors
 ///     to set up. Example:
 ///   'protocol_descriptors': [
-//~^ ERROR: doc list item missing indentation
+//~^ ERROR: doc list item without indentation
 ///      {
 ///          'protocol': 25,  # u64 Representation of ProtocolIdentifier::AVDTP
 ///          'params': [
@@ -73,5 +76,5 @@ fn seven() {}
 ///          }]
 ///      }
 ///   ]
-//~^ ERROR: doc list item missing indentation
+//~^ ERROR: doc list item without indentation
 fn eight() {}

@@ -32,6 +32,12 @@ declare_features! (
     // feature-group-start: removed features
     // -------------------------------------------------------------------------
 
+    // Note that the version indicates when it got *removed*.
+    // When moving an unstable feature here, set the version number to
+    // `CURRENT RUSTC VERSION` with ` ` replaced by `_`.
+    // (But not all features below do this properly; many indicate the
+    // version they got originally added in.)
+
     /// Allows using the `amdgpu-kernel` ABI.
     (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None),
     (removed, advanced_slice_patterns, "1.0.0", Some(62254),
@@ -215,6 +221,9 @@ declare_features! (
     /// Permits specifying whether a function should permit unwinding or abort on unwind.
     (removed, unwind_attributes, "1.56.0", Some(58760), Some("use the C-unwind ABI instead")),
     (removed, visible_private_types, "1.0.0", None, None),
+    /// Allows `extern "wasm" fn`
+    (removed, wasm_abi, "CURRENT_RUSTC_VERSION", Some(83788),
+     Some("non-standard wasm ABI is no longer supported")),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

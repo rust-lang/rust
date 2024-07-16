@@ -1,5 +1,5 @@
 //@ test-mir-pass: DataflowConstProp
-//@ compile-flags: -Coverflow-checks=on
+//@ compile-flags: -Coverflow-checks=on -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // EMIT_MIR checked.main.DataflowConstProp.diff

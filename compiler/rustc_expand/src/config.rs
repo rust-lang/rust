@@ -187,6 +187,7 @@ impl<'a> StripUnconfigured<'a> {
             .iter()
             .filter_map(|tree| match tree.clone() {
                 AttrTokenTree::AttrsTarget(mut target) => {
+                    // Expand any `cfg_attr` attributes.
                     target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
                     if self.in_cfg(&target.attrs) {
@@ -195,6 +196,8 @@ impl<'a> StripUnconfigured<'a> {
                         );
                         Some(AttrTokenTree::AttrsTarget(target))
                     } else {
+                        // Remove the target if there's a `cfg` attribute and
+                        // the condition isn't satisfied.
                         None
                     }
                 }
@@ -253,9 +256,9 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
+    pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_parse::parse_cfg_attr(attr, &self.sess.psess)
+            rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)
         else {
             return vec![];
         };
@@ -264,7 +267,7 @@ impl<'a> StripUnconfigured<'a> {
         if expanded_attrs.is_empty() {
             self.sess.psess.buffer_lint(
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
-                attr.span,
+                cfg_attr.span,
                 ast::CRATE_NODE_ID,
                 BuiltinLintDiag::CfgAttrNoAttributes,
             );
@@ -280,20 +283,21 @@ impl<'a> StripUnconfigured<'a> {
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs
                 .into_iter()
-                .flat_map(|item| self.process_cfg_attr(&self.expand_cfg_attr_item(attr, item)))
+                .flat_map(|item| self.process_cfg_attr(&self.expand_cfg_attr_item(cfg_attr, item)))
                 .collect()
         } else {
-            expanded_attrs.into_iter().map(|item| self.expand_cfg_attr_item(attr, item)).collect()
+            expanded_attrs
+                .into_iter()
+                .map(|item| self.expand_cfg_attr_item(cfg_attr, item))
+                .collect()
         }
     }
 
     fn expand_cfg_attr_item(
         &self,
-        attr: &Attribute,
+        cfg_attr: &Attribute,
         (item, item_span): (ast::AttrItem, Span),
     ) -> Attribute {
-        let orig_tokens = attr.get_tokens();
-
         // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
         // and producing an attribute of the form `#[attr]`. We
         // have captured tokens for `attr` itself, but we need to
@@ -302,11 +306,11 @@ impl<'a> StripUnconfigured<'a> {
 
         // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
         // for `attr` when we expand it to `#[attr]`
-        let mut orig_trees = orig_tokens.trees();
+        let mut orig_trees = cfg_attr.token_trees().into_iter();
         let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) =
             orig_trees.next().unwrap().clone()
         else {
-            panic!("Bad tokens for attribute {attr:?}");
+            panic!("Bad tokens for attribute {cfg_attr:?}");
         };
 
         // We don't really have a good span to use for the synthesized `[]`
@@ -320,12 +324,12 @@ impl<'a> StripUnconfigured<'a> {
                 .unwrap_or_else(|| panic!("Missing tokens for {item:?}"))
                 .to_attr_token_stream(),
         );
-        let trees = if attr.style == AttrStyle::Inner {
+        let trees = if cfg_attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
             let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
                 orig_trees.next().unwrap().clone()
             else {
-                panic!("Bad tokens for attribute {attr:?}");
+                panic!("Bad tokens for attribute {cfg_attr:?}");
             };
             vec![
                 AttrTokenTree::Token(pound_token, Spacing::Joint),
@@ -340,7 +344,7 @@ impl<'a> StripUnconfigured<'a> {
             &self.sess.psess.attr_id_generator,
             item,
             tokens,
-            attr.style,
+            cfg_attr.style,
             item_span,
         );
         if attr.has_name(sym::crate_type) {

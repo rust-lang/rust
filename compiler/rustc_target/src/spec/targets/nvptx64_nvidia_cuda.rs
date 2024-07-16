@@ -7,10 +7,10 @@ pub fn target() -> Target {
         data_layout: "e-i64:64-i128:128-v16:16-v32:32-n16:32:64".into(),
         llvm_target: "nvptx64-nvidia-cuda".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("--emit=asm generates PTX code that runs on NVIDIA GPUs".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(false),
         },
         pointer_width: 64,
 

@@ -24,7 +24,6 @@
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
 #![feature(hash_raw_entry)]
-#![feature(hasher_prefixfree_extras)]
 #![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -67,7 +66,6 @@ pub mod owned_slice;
 pub mod packed;
 pub mod profiling;
 pub mod sharded;
-pub mod sip128;
 pub mod small_c_str;
 pub mod snapshot_map;
 pub mod sorted_map;

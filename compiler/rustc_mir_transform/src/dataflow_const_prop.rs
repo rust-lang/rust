@@ -66,7 +66,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
 }
 
 struct ConstAnalysis<'a, 'tcx> {
-    map: Map,
+    map: Map<'tcx>,
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
@@ -78,7 +78,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
 
     const NAME: &'static str = "ConstAnalysis";
 
-    fn map(&self) -> &Map {
+    fn map(&self) -> &Map<'tcx> {
         &self.map
     }
 
@@ -330,7 +330,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map<'tcx>) -> Self {
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         Self {
             map,
@@ -560,12 +560,13 @@ impl<'tcx, 'locals> Collector<'tcx, 'locals> {
         Self { patch: Patch::new(tcx), local_decls }
     }
 
+    #[instrument(level = "trace", skip(self, ecx, map), ret)]
     fn try_make_constant(
         &self,
         ecx: &mut InterpCx<'tcx, DummyMachine>,
         place: Place<'tcx>,
         state: &State<FlatSet<Scalar>>,
-        map: &Map,
+        map: &Map<'tcx>,
     ) -> Option<Const<'tcx>> {
         let ty = place.ty(self.local_decls, self.patch.tcx).ty;
         let layout = ecx.layout_of(ty).ok()?;
@@ -598,10 +599,11 @@ impl<'tcx, 'locals> Collector<'tcx, 'locals> {
     }
 }
 
+#[instrument(level = "trace", skip(map), ret)]
 fn propagatable_scalar(
     place: PlaceIndex,
     state: &State<FlatSet<Scalar>>,
-    map: &Map,
+    map: &Map<'_>,
 ) -> Option<Scalar> {
     if let FlatSet::Elem(value) = state.get_idx(place, map)
         && value.try_to_scalar_int().is_ok()
@@ -613,14 +615,14 @@ fn propagatable_scalar(
     }
 }
 
-#[instrument(level = "trace", skip(ecx, state, map))]
+#[instrument(level = "trace", skip(ecx, state, map), ret)]
 fn try_write_constant<'tcx>(
     ecx: &mut InterpCx<'tcx, DummyMachine>,
     dest: &PlaceTy<'tcx>,
     place: PlaceIndex,
     ty: Ty<'tcx>,
     state: &State<FlatSet<Scalar>>,
-    map: &Map,
+    map: &Map<'tcx>,
 ) -> InterpResult<'tcx> {
     let layout = ecx.layout_of(ty)?;
 
@@ -719,6 +721,7 @@ impl<'mir, 'tcx>
 {
     type FlowState = State<FlatSet<Scalar>>;
 
+    #[instrument(level = "trace", skip(self, results, statement))]
     fn visit_statement_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
@@ -740,6 +743,7 @@ impl<'mir, 'tcx>
         }
     }
 
+    #[instrument(level = "trace", skip(self, results, statement))]
     fn visit_statement_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
@@ -834,7 +838,7 @@ struct OperandCollector<'tcx, 'map, 'locals, 'a> {
     state: &'a State<FlatSet<Scalar>>,
     visitor: &'a mut Collector<'tcx, 'locals>,
     ecx: &'map mut InterpCx<'tcx, DummyMachine>,
-    map: &'map Map,
+    map: &'map Map<'tcx>,
 }
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
