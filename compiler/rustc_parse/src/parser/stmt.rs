@@ -72,6 +72,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::MissingLet,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(kw::Auto) && self.may_recover() {
             self.bump(); // `auto`
@@ -79,6 +80,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotAuto,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(sym::var) && self.may_recover() {
             self.bump(); // `var`
@@ -86,6 +88,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotVar,
+                force_collect,
             )?
         } else if self.check_path()
             && !self.token.is_qpath_start()
@@ -231,13 +234,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         attrs: AttrWrapper,
         subdiagnostic: fn(Span) -> errors::InvalidVariableDeclarationSub,
+        force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
-        let stmt =
-            self.collect_tokens_trailing_token(attrs, ForceCollect::Yes, |this, attrs| {
-                let local = this.parse_local(attrs)?;
-                // FIXME - maybe capture semicolon in recovery?
-                Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
-            })?;
+        let stmt = self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+            let local = this.parse_local(attrs)?;
+            // FIXME - maybe capture semicolon in recovery?
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
+        })?;
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
