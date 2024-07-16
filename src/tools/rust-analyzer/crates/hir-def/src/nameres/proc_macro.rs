@@ -1,6 +1,7 @@
 //! Nameres-specific procedural macro data and helpers.
 
 use hir_expand::name::{AsName, Name};
+use intern::sym;
 
 use crate::attr::Attrs;
 use crate::tt::{Leaf, TokenTree};
@@ -67,7 +68,7 @@ pub(crate) fn parse_macro_name_and_helper_attrs(tt: &[TokenTree]) -> Option<(Nam
             TokenTree::Leaf(Leaf::Punct(comma)),
             TokenTree::Leaf(Leaf::Ident(attributes)),
             TokenTree::Subtree(helpers)
-        ] if comma.char == ',' && attributes.text == "attributes" =>
+        ] if comma.char == ',' && attributes.sym == sym::attributes =>
         {
             let helpers = helpers
                 .token_trees

@@ -62,7 +62,7 @@ impl RawAttrs {
                     Attr {
                         id,
                         input: Some(Box::new(AttrInput::Literal(tt::Literal {
-                            text,
+                            symbol: text,
                             span,
                             kind,
                             suffix: None,
@@ -243,7 +243,7 @@ impl Attr {
         let span = span_map.span_for_range(range);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let token = lit.token();
-            Some(Box::new(AttrInput::Literal(token_to_literal(token.text().into(), span))))
+            Some(Box::new(AttrInput::Literal(token_to_literal(token.text(), span))))
         } else if let Some(tt) = ast.token_tree() {
             let tree = syntax_node_to_token_tree(
                 tt.syntax(),
@@ -260,8 +260,8 @@ impl Attr {
 
     fn from_tt(db: &dyn ExpandDatabase, mut tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
         if matches!(tt,
-            [tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { text, .. })), ..]
-            if text == "unsafe"
+            [tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { sym, .. })), ..]
+            if *sym == sym::unsafe_
         ) {
             match tt.get(1) {
                 Some(tt::TokenTree::Subtree(subtree)) => tt = &subtree.token_trees,
@@ -313,10 +313,10 @@ impl Attr {
     pub fn string_value(&self) -> Option<&str> {
         match self.input.as_deref()? {
             AttrInput::Literal(tt::Literal {
-                text,
+                symbol: text,
                 kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
                 ..
-            }) => Some(text),
+            }) => Some(text.as_str()),
             _ => None,
         }
     }
@@ -324,23 +324,24 @@ impl Attr {
     /// #[path = "string"]
     pub fn string_value_with_span(&self) -> Option<(&str, span::Span)> {
         match self.input.as_deref()? {
-            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
-                Some(it) => it.trim_matches('#'),
-                None => it.text.as_str(),
-            }
-            .strip_prefix('"')?
-            .strip_suffix('"')
-            .zip(Some(it.span)),
+            AttrInput::Literal(tt::Literal {
+                symbol: text,
+                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
+                span,
+                suffix: _,
+            }) => Some((text.as_str(), *span)),
             _ => None,
         }
     }
 
     pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
         match self.input.as_deref()? {
-            AttrInput::Literal(tt::Literal { text, kind: tt::LitKind::StrRaw(_), .. }) => {
-                Some(Cow::Borrowed(text))
+            AttrInput::Literal(tt::Literal {
+                symbol: text, kind: tt::LitKind::StrRaw(_), ..
+            }) => Some(Cow::Borrowed(text.as_str())),
+            AttrInput::Literal(tt::Literal { symbol: text, kind: tt::LitKind::Str, .. }) => {
+                unescape(text.as_str())
             }
-            AttrInput::Literal(tt::Literal { text, kind: tt::LitKind::Str, .. }) => unescape(text),
             _ => None,
         }
     }

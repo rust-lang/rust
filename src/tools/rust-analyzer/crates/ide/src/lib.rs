@@ -62,7 +62,7 @@ use std::panic::UnwindSafe;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::ChangeWithProcMacros;
+use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
@@ -248,7 +248,7 @@ impl Analysis {
         // FIXME: cfg options
         // Default to enable test for single file.
         let mut cfg_options = CfgOptions::default();
-        cfg_options.insert_atom("test".into());
+        cfg_options.insert_atom(sym::test.clone());
         crate_graph.add_crate_root(
             file_id,
             Edition::CURRENT,

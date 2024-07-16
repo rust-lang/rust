@@ -3,6 +3,7 @@
 use std::fmt;
 
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
+use intern::sym;
 use once_cell::unsync::Lazy;
 use rustc_index::IndexVec;
 use rustc_pattern_analysis::{
@@ -75,9 +76,9 @@ pub(crate) struct MatchCheckCtx<'db> {
 impl<'db> MatchCheckCtx<'db> {
     pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
         let def_map = db.crate_def_map(module.krate());
-        let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
+        let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
         let min_exhaustive_patterns =
-            def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
+            def_map.is_unstable_feature_enabled(&sym::min_exhaustive_patterns);
         Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
     }
 

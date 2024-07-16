@@ -9,7 +9,7 @@ use hir_expand::{
     name::{AsName, Name},
     HirFileId, InFile,
 };
-use intern::Interned;
+use intern::{sym, Interned};
 use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use syntax::ast::{self, HasName, HasVisibility};
@@ -112,12 +112,12 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
     let mut tts = tt.token_trees.iter().peekable();
     while let Some(tt) = tts.next() {
         if let TokenTree::Leaf(Leaf::Ident(ident)) = tt {
-            flags.insert(match &*ident.text {
-                "packed" => {
+            flags.insert(match &ident.sym {
+                s if *s == sym::packed => {
                     let pack = if let Some(TokenTree::Subtree(tt)) = tts.peek() {
                         tts.next();
                         if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
-                            lit.text.parse().unwrap_or_default()
+                            lit.symbol.as_str().parse().unwrap_or_default()
                         } else {
                             0
                         }
@@ -129,11 +129,11 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                         Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
                     ReprFlags::empty()
                 }
-                "align" => {
+                s if *s == sym::align => {
                     if let Some(TokenTree::Subtree(tt)) = tts.peek() {
                         tts.next();
                         if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
-                            if let Ok(align) = lit.text.parse() {
+                            if let Ok(align) = lit.symbol.as_str().parse() {
                                 let align = Align::from_bytes(align).ok();
                                 max_align = max_align.max(align);
                             }
@@ -141,13 +141,13 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                     }
                     ReprFlags::empty()
                 }
-                "C" => ReprFlags::IS_C,
-                "transparent" => ReprFlags::IS_TRANSPARENT,
-                "simd" => ReprFlags::IS_SIMD,
+                s if *s == sym::C => ReprFlags::IS_C,
+                s if *s == sym::transparent => ReprFlags::IS_TRANSPARENT,
+                s if *s == sym::simd => ReprFlags::IS_SIMD,
                 repr => {
-                    if let Some(builtin) = BuiltinInt::from_suffix(repr)
+                    if let Some(builtin) = BuiltinInt::from_suffix_sym(repr)
                         .map(Either::Left)
-                        .or_else(|| BuiltinUint::from_suffix(repr).map(Either::Right))
+                        .or_else(|| BuiltinUint::from_suffix_sym(repr).map(Either::Right))
                     {
                         int = Some(match builtin {
                             Either::Left(bi) => match bi {

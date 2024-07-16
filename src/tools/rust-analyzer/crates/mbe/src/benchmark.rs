@@ -1,10 +1,11 @@
 //! This module add real world mbe example for benchmark tests
 
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, Span};
 use syntax::{
     ast::{self, HasName},
-    AstNode, SmolStr,
+    AstNode,
 };
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
@@ -228,7 +229,7 @@ fn invocation_fixtures(
         fn make_ident(ident: &str) -> tt::TokenTree<Span> {
             tt::Leaf::Ident(tt::Ident {
                 span: DUMMY,
-                text: SmolStr::new(ident),
+                sym: Symbol::intern(ident),
                 is_raw: tt::IdentIsRaw::No,
             })
             .into()
@@ -239,7 +240,7 @@ fn invocation_fixtures(
         fn make_literal(lit: &str) -> tt::TokenTree<Span> {
             tt::Leaf::Literal(tt::Literal {
                 span: DUMMY,
-                text: SmolStr::new(lit),
+                symbol: Symbol::intern(lit),
                 kind: tt::LitKind::Str,
                 suffix: None,
             })

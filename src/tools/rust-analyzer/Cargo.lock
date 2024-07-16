@@ -146,6 +146,7 @@ dependencies = [
  "arbitrary",
  "derive_arbitrary",
  "expect-test",
+ "intern",
  "mbe",
  "oorandom",
  "rustc-hash",
@@ -1045,6 +1046,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "cov-mark",
+ "intern",
  "parser",
  "rustc-hash",
  "smallvec",
@@ -1324,8 +1326,8 @@ version = "0.0.0"
 dependencies = [
  "base-db",
  "indexmap",
+ "intern",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mbe",
  "paths",
  "rustc-hash",
  "serde",
@@ -1343,6 +1345,7 @@ version = "0.0.0"
 dependencies = [
  "base-db",
  "expect-test",
+ "intern",
  "libloading",
  "mbe",
  "memmap2",
@@ -1413,6 +1416,7 @@ dependencies = [
  "cargo_metadata",
  "cfg",
  "expect-test",
+ "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
@@ -1653,6 +1657,7 @@ dependencies = [
  "ide",
  "ide-db",
  "ide-ssr",
+ "intern",
  "itertools",
  "load-cargo",
  "lsp-server 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1966,6 +1971,7 @@ dependencies = [
  "base-db",
  "cfg",
  "hir-expand",
+ "intern",
  "rustc-hash",
  "span",
  "stdx",
@@ -2218,8 +2224,8 @@ name = "tt"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "intern",
  "ra-ap-rustc_lexer",
- "smol_str",
  "stdx",
  "text-size",
 ]

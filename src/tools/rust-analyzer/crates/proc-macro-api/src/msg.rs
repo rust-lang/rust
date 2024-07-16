@@ -158,6 +158,7 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 #[cfg(test)]
 mod tests {
     use base_db::FileId;
+    use intern::{sym, Symbol};
     use la_arena::RawIdx;
     use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId};
     use text_size::{TextRange, TextSize};
@@ -174,7 +175,7 @@ mod tests {
         let token_trees = Box::new([
             TokenTree::Leaf(
                 Ident {
-                    text: "struct".into(),
+                    sym: Symbol::intern("struct"),
                     span: Span {
                         range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
                         anchor,
@@ -186,7 +187,7 @@ mod tests {
             ),
             TokenTree::Leaf(
                 Ident {
-                    text: "Foo".into(),
+                    sym: Symbol::intern("Foo"),
                     span: Span {
                         range: TextRange::at(TextSize::new(5), TextSize::of("r#Foo")),
                         anchor,
@@ -197,7 +198,7 @@ mod tests {
                 .into(),
             ),
             TokenTree::Leaf(Leaf::Literal(Literal {
-                text: "Foo".into(),
+                symbol: Symbol::intern("Foo"),
                 span: Span {
                     range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                     anchor,
@@ -230,14 +231,14 @@ mod tests {
                     kind: DelimiterKind::Brace,
                 },
                 token_trees: Box::new([TokenTree::Leaf(Leaf::Literal(Literal {
-                    text: "0".into(),
+                    symbol: sym::INTEGER_0.clone(),
                     span: Span {
                         range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
                     kind: tt::LitKind::Integer,
-                    suffix: Some(Box::new("u32".into())),
+                    suffix: Some(sym::u32.clone()),
                 }))]),
             }),
         ]);

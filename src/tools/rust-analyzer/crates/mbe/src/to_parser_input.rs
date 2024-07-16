@@ -49,23 +49,22 @@ pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(buffer: &TokenBuffer<'_, S>)
                         };
                         res.push(kind);
 
-                        if kind == FLOAT_NUMBER && !lit.text.ends_with('.') {
+                        if kind == FLOAT_NUMBER && !lit.symbol.as_str().ends_with('.') {
                             // Tag the token as joint if it is float with a fractional part
                             // we use this jointness to inform the parser about what token split
                             // event to emit when we encounter a float literal in a field access
                             res.was_joint();
                         }
                     }
-                    tt::Leaf::Ident(ident) => match ident.text.as_ref() {
+                    tt::Leaf::Ident(ident) => match ident.sym.as_str() {
                         "_" => res.push(T![_]),
                         i if i.starts_with('\'') => res.push(LIFETIME_IDENT),
                         _ if ident.is_raw.yes() => res.push(IDENT),
-                        _ => match SyntaxKind::from_keyword(&ident.text) {
+                        text => match SyntaxKind::from_keyword(text) {
                             Some(kind) => res.push(kind),
                             None => {
-                                let contextual_keyword =
-                                    SyntaxKind::from_contextual_keyword(&ident.text)
-                                        .unwrap_or(SyntaxKind::IDENT);
+                                let contextual_keyword = SyntaxKind::from_contextual_keyword(text)
+                                    .unwrap_or(SyntaxKind::IDENT);
                                 res.push_ident(contextual_keyword);
                             }
                         },

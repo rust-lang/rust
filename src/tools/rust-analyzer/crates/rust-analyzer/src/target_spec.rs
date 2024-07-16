@@ -3,6 +3,7 @@
 use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
+use hir::sym;
 use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
 use project_model::project_json::Runnable;
 use project_model::{CargoFeatures, ManifestPath, TargetKind};
@@ -237,7 +238,7 @@ impl CargoTargetSpec {
 /// Fill minimal features needed
 fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
     match cfg_expr {
-        CfgExpr::Atom(CfgAtom::KeyValue { key, value }) if key == "feature" => {
+        CfgExpr::Atom(CfgAtom::KeyValue { key, value }) if *key == sym::feature => {
             features.push(value.to_string())
         }
         CfgExpr::All(preds) => {

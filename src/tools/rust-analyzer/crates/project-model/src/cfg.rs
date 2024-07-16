@@ -4,6 +4,7 @@
 use std::{fmt, str::FromStr};
 
 use cfg::{CfgDiff, CfgOptions};
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use serde::Serialize;
 
@@ -44,8 +45,10 @@ impl Extend<CfgFlag> for CfgOptions {
     fn extend<T: IntoIterator<Item = CfgFlag>>(&mut self, iter: T) {
         for cfg_flag in iter {
             match cfg_flag {
-                CfgFlag::Atom(it) => self.insert_atom(it.into()),
-                CfgFlag::KeyValue { key, value } => self.insert_key_value(key.into(), value.into()),
+                CfgFlag::Atom(it) => self.insert_atom(Symbol::intern(&it)),
+                CfgFlag::KeyValue { key, value } => {
+                    self.insert_key_value(Symbol::intern(&key), Symbol::intern(&value))
+                }
             }
         }
     }

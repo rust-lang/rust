@@ -192,13 +192,13 @@ impl Definition {
                 let AttributeTemplate { word, list, name_value_str } = it.template(db)?;
                 let mut docs = "Valid forms are:".to_owned();
                 if word {
-                    format_to!(docs, "\n - #\\[{}]", name);
+                    format_to!(docs, "\n - #\\[{}]", name.display(db));
                 }
                 if let Some(list) = list {
-                    format_to!(docs, "\n - #\\[{}({})]", name, list);
+                    format_to!(docs, "\n - #\\[{}({})]", name.display(db), list);
                 }
                 if let Some(name_value_str) = name_value_str {
-                    format_to!(docs, "\n - #\\[{} = {}]", name, name_value_str);
+                    format_to!(docs, "\n - #\\[{} = {}]", name.display(db), name_value_str);
                 }
                 Some(Documentation::new(docs.replace('*', "\\*")))
             }
@@ -256,8 +256,8 @@ impl Definition {
             Definition::GenericParam(it) => it.display(db).to_string(),
             Definition::Label(it) => it.name(db).display(db).to_string(),
             Definition::ExternCrateDecl(it) => it.display(db).to_string(),
-            Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db)),
-            Definition::ToolModule(it) => it.name(db).to_string(),
+            Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db).display(db)),
+            Definition::ToolModule(it) => it.name(db).display(db).to_string(),
             Definition::DeriveHelper(it) => format!("derive_helper {}", it.name(db).display(db)),
         }
     }

@@ -316,30 +316,36 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModP
             tt::Leaf::Punct(tt::Punct { char: ':', .. }) => PathKind::Abs,
             _ => return None,
         },
-        tt::Leaf::Ident(tt::Ident { text, span, .. }) if text == "$crate" => {
+        tt::Leaf::Ident(tt::Ident { sym: text, span, .. }) if *text == sym::dollar_crate => {
             resolve_crate_root(db, span.ctx).map(PathKind::DollarCrate).unwrap_or(PathKind::Crate)
         }
-        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "self" => PathKind::SELF,
-        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "super" => {
+        tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::self_ => PathKind::SELF,
+        tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::super_ => {
             let mut deg = 1;
-            while let Some(tt::Leaf::Ident(tt::Ident { text, span, is_raw })) = leaves.next() {
-                if text != "super" {
-                    segments.push(Name::new(text, *is_raw, span.ctx));
+            while let Some(tt::Leaf::Ident(tt::Ident { sym: text, span, is_raw })) = leaves.next() {
+                if *text != sym::super_ {
+                    segments.push(Name::new_symbol_maybe_raw(text.clone(), *is_raw, span.ctx));
                     break;
                 }
                 deg += 1;
             }
             PathKind::Super(deg)
         }
-        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "crate" => PathKind::Crate,
+        tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::crate_ => PathKind::Crate,
         tt::Leaf::Ident(ident) => {
-            segments.push(Name::new(&ident.text, ident.is_raw, ident.span.ctx));
+            segments.push(Name::new_symbol_maybe_raw(
+                ident.sym.clone(),
+                ident.is_raw,
+                ident.span.ctx,
+            ));
             PathKind::Plain
         }
         _ => return None,
     };
     segments.extend(leaves.filter_map(|leaf| match leaf {
-        ::tt::Leaf::Ident(ident) => Some(Name::new(&ident.text, ident.is_raw, ident.span.ctx)),
+        ::tt::Leaf::Ident(ident) => {
+            Some(Name::new_symbol_maybe_raw(ident.sym.clone(), ident.is_raw, ident.span.ctx))
+        }
         _ => None,
     }));
     Some(ModPath { kind, segments })

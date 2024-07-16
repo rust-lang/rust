@@ -159,14 +159,14 @@ impl Attrs {
     pub fn has_doc_hidden(&self) -> bool {
         self.by_key("doc").tt_values().any(|tt| {
             tt.delimiter.kind == DelimiterKind::Parenthesis &&
-                matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "hidden")
+                matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::hidden)
         })
     }
 
     pub fn has_doc_notable_trait(&self) -> bool {
         self.by_key("doc").tt_values().any(|tt| {
             tt.delimiter.kind == DelimiterKind::Parenthesis &&
-                matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "notable_trait")
+                matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::notable_trait)
         })
     }
 
@@ -267,7 +267,7 @@ impl DocExpr {
 fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr> {
     let name = match it.next() {
         None => return None,
-        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.text.clone(),
+        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.sym.clone(),
         Some(_) => return Some(DocExpr::Invalid),
     };
 
@@ -275,13 +275,16 @@ fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr>
     let ret = match it.as_slice().first() {
         Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) if punct.char == '=' => {
             match it.as_slice().get(1) {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
+                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                    symbol: text,
+                    kind: tt::LitKind::Str,
+                    ..
+                }))) => {
                     it.next();
                     it.next();
                     // FIXME: escape? raw string?
-                    let value =
-                        SmolStr::new(literal.text.trim_start_matches('"').trim_end_matches('"'));
-                    DocAtom::KeyValue { key: name, value }.into()
+                    let value = SmolStr::new(text.as_str());
+                    DocAtom::KeyValue { key: name.as_str().into(), value }.into()
                 }
                 _ => return Some(DocExpr::Invalid),
             }
@@ -294,7 +297,7 @@ fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr>
                 _ => DocExpr::Invalid,
             }
         }
-        _ => DocAtom::Flag(name).into(),
+        _ => DocAtom::Flag(name.as_str().into()).into(),
     };
 
     // Eat comma separator
@@ -311,10 +314,11 @@ fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<SmolStr> {
         .token_trees
         .iter()
         .filter_map(|tt| match tt {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
-                // FIXME: escape? raw string?
-                Some(SmolStr::new(lit.text.trim_start_matches('"').trim_end_matches('"')))
-            }
+            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                kind: tt::LitKind::Str,
+                symbol: text,
+                ..
+            })) => Some(SmolStr::new(text.as_str())),
             _ => None,
         })
         .collect()
@@ -598,14 +602,14 @@ impl<'attr> AttrQuery<'attr> {
     /// #[doc(html_root_url = "url")]
     ///       ^^^^^^^^^^^^^ key
     /// ```
-    pub fn find_string_value_in_tt(self, key: &'attr str) -> Option<&SmolStr> {
+    pub fn find_string_value_in_tt(self, key: &'attr str) -> Option<&str> {
         self.tt_values().find_map(|tt| {
             let name = tt.token_trees.iter()
-                .skip_while(|tt| !matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { text, ..} )) if text == key))
+                .skip_while(|tt| !matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { sym, ..} )) if sym.as_str() == key))
                 .nth(2);
 
             match name {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal{  text, kind: tt::LitKind::Str | tt::LitKind::StrRaw(_) , ..}))) => Some(text),
+                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal{  symbol: text, kind: tt::LitKind::Str | tt::LitKind::StrRaw(_) , ..}))) => Some(text.as_str()),
                 _ => None
             }
         })

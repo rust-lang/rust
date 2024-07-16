@@ -1,10 +1,9 @@
 //! Builtin macro
 
-use ::tt::SmolStr;
 use base_db::{AnchoredPath, FileId};
 use cfg::CfgExpr;
 use either::Either;
-use intern::sym;
+use intern::{sym, Symbol};
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
 use span::{Edition, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
@@ -181,10 +180,10 @@ fn line_expand(
     ExpandResult::ok(tt::Subtree {
         delimiter: tt::Delimiter::invisible_spanned(span),
         token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-            text: "0".into(),
+            symbol: sym::INTEGER_0.clone(),
             span,
             kind: tt::LitKind::Integer,
-            suffix: Some(Box::new("u32".into())),
+            suffix: Some(sym::u32.clone()),
         }))]),
     })
 }
@@ -301,12 +300,12 @@ fn format_args_nl_expand(
     let mut tt = tt.clone();
     tt.delimiter.kind = tt::DelimiterKind::Parenthesis;
     if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-        text,
+        symbol: text,
         kind: tt::LitKind::Str,
         ..
     }))) = tt.token_trees.first_mut()
     {
-        *text = format_smolstr!("{text}\\n");
+        *text = Symbol::intern(&format_smolstr!("{}\\n", text.as_str()));
     }
     ExpandResult::ok(quote! {span =>
         builtin #pound format_args #tt
@@ -460,14 +459,14 @@ fn compile_error_expand(
 ) -> ExpandResult<tt::Subtree> {
     let err = match &*tt.token_trees {
         [tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-            text,
+            symbol: text,
             span: _,
             kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
             suffix: _,
         }))] =>
         // FIXME: Use the span here!
         {
-            ExpandError::other(Box::from(&*unescape_str(text)))
+            ExpandError::other(Box::from(unescape_str(text).as_str()))
         }
         _ => ExpandError::other("`compile_error!` argument must be a string"),
     };
@@ -507,18 +506,20 @@ fn concat_expand(
                 // as-is.
                 match it.kind {
                     tt::LitKind::Char => {
-                        if let Ok(c) = unescape_char(&it.text) {
+                        if let Ok(c) = unescape_char(it.symbol.as_str()) {
                             text.extend(c.escape_default());
                         }
                         record_span(it.span);
                     }
-                    tt::LitKind::Integer | tt::LitKind::Float => format_to!(text, "{}", it.text),
+                    tt::LitKind::Integer | tt::LitKind::Float => {
+                        format_to!(text, "{}", it.symbol.as_str())
+                    }
                     tt::LitKind::Str => {
-                        text.push_str(&it.text);
+                        text.push_str(it.symbol.as_str());
                         record_span(it.span);
                     }
                     tt::LitKind::StrRaw(_) => {
-                        format_to!(text, "{}", it.text.escape_debug());
+                        format_to!(text, "{}", it.symbol.as_str().escape_debug());
                         record_span(it.span);
                     }
                     tt::LitKind::Byte
@@ -531,9 +532,9 @@ fn concat_expand(
             }
             // handle boolean literals
             tt::TokenTree::Leaf(tt::Leaf::Ident(id))
-                if i % 2 == 0 && (id.text == "true" || id.text == "false") =>
+                if i % 2 == 0 && (id.sym == sym::true_ || id.sym == sym::false_) =>
             {
-                text.push_str(id.text.as_str());
+                text.push_str(id.sym.as_str());
                 record_span(id.span);
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
@@ -562,21 +563,26 @@ fn concat_bytes_expand(
     };
     for (i, t) in tt.token_trees.iter().enumerate() {
         match t {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { text, span, kind, suffix: _ })) => {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                symbol: text,
+                span,
+                kind,
+                suffix: _,
+            })) => {
                 record_span(*span);
                 match kind {
                     tt::LitKind::Byte => {
-                        if let Ok(b) = unescape_byte(text) {
+                        if let Ok(b) = unescape_byte(text.as_str()) {
                             bytes.extend(
                                 b.escape_ascii().filter_map(|it| char::from_u32(it as u32)),
                             );
                         }
                     }
                     tt::LitKind::ByteStr => {
-                        bytes.push_str(text);
+                        bytes.push_str(text.as_str());
                     }
                     tt::LitKind::ByteStrRaw(_) => {
-                        bytes.extend(text.escape_debug());
+                        bytes.extend(text.as_str().escape_debug());
                     }
                     _ => {
                         err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
@@ -602,7 +608,7 @@ fn concat_bytes_expand(
         value: tt::Subtree {
             delimiter: tt::Delimiter::invisible_spanned(span),
             token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                text: bytes.into(),
+                symbol: Symbol::intern(&bytes),
                 span,
                 kind: tt::LitKind::ByteStr,
                 suffix: None,
@@ -621,24 +627,24 @@ fn concat_bytes_expand_subtree(
     for (ti, tt) in tree.token_trees.iter().enumerate() {
         match tt {
             tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                text,
+                symbol: text,
                 span,
                 kind: tt::LitKind::Byte,
                 suffix: _,
             })) => {
-                if let Ok(b) = unescape_byte(text) {
+                if let Ok(b) = unescape_byte(text.as_str()) {
                     bytes.extend(b.escape_ascii().filter_map(|it| char::from_u32(it as u32)));
                 }
                 record_span(*span);
             }
             tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                text,
+                symbol: text,
                 span,
                 kind: tt::LitKind::Integer,
                 suffix: _,
             })) => {
                 record_span(*span);
-                if let Ok(b) = text.parse::<u8>() {
+                if let Ok(b) = text.as_str().parse::<u8>() {
                     bytes.extend(b.escape_ascii().filter_map(|it| char::from_u32(it as u32)));
                 }
             }
@@ -662,7 +668,7 @@ fn concat_idents_expand(
     for (i, t) in tt.token_trees.iter().enumerate() {
         match t {
             tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => {
-                ident.push_str(id.text.as_str());
+                ident.push_str(id.sym.as_str());
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
             _ => {
@@ -671,7 +677,7 @@ fn concat_idents_expand(
         }
     }
     // FIXME merge spans
-    let ident = tt::Ident { text: ident.into(), span, is_raw: tt::IdentIsRaw::No };
+    let ident = tt::Ident { sym: Symbol::intern(&ident), span, is_raw: tt::IdentIsRaw::No };
     ExpandResult { value: quote!(span =>#ident), err }
 }
 
@@ -694,12 +700,12 @@ fn relative_file(
     }
 }
 
-fn parse_string(tt: &tt::Subtree) -> Result<(SmolStr, Span), ExpandError> {
+fn parse_string(tt: &tt::Subtree) -> Result<(Symbol, Span), ExpandError> {
     tt.token_trees
         .first()
         .and_then(|tt| match tt {
             tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-                text,
+                symbol: text,
                 span,
                 kind: tt::LitKind::Str,
                 suffix: _,
@@ -739,7 +745,7 @@ pub fn include_input_to_file_id(
     arg_id: MacroCallId,
     arg: &tt::Subtree,
 ) -> Result<FileId, ExpandError> {
-    relative_file(db, arg_id, &parse_string(arg)?.0, false)
+    relative_file(db, arg_id, parse_string(arg)?.0.as_str(), false)
 }
 
 fn include_bytes_expand(
@@ -752,7 +758,7 @@ fn include_bytes_expand(
     let res = tt::Subtree {
         delimiter: tt::Delimiter::invisible_spanned(span),
         token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-            text: r#"b"""#.into(),
+            symbol: Symbol::empty(),
             span,
             kind: tt::LitKind::ByteStrRaw(1),
             suffix: None,
@@ -778,7 +784,7 @@ fn include_str_expand(
     // it's unusual to `include_str!` a Rust file), but we can return an empty string.
     // Ideally, we'd be able to offer a precise expansion if the user asks for macro
     // expansion.
-    let file_id = match relative_file(db, arg_id, &path, true) {
+    let file_id = match relative_file(db, arg_id, path.as_str(), true) {
         Ok(file_id) => file_id,
         Err(_) => {
             return ExpandResult::ok(quote!(span =>""));
@@ -791,9 +797,9 @@ fn include_str_expand(
     ExpandResult::ok(quote!(span =>#text))
 }
 
-fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &str) -> Option<String> {
+fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &Symbol) -> Option<String> {
     let krate = db.lookup_intern_macro_call(arg_id).krate;
-    db.crate_graph()[krate].env.get(key).map(|it| it.escape_debug().to_string())
+    db.crate_graph()[krate].env.get(key.as_str()).map(|it| it.escape_debug().to_string())
 }
 
 fn env_expand(
@@ -813,7 +819,7 @@ fn env_expand(
     let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| {
         // The only variable rust-analyzer ever sets is `OUT_DIR`, so only diagnose that to avoid
         // unnecessary diagnostics for eg. `CARGO_PKG_NAME`.
-        if key == "OUT_DIR" {
+        if key.as_str() == "OUT_DIR" {
             err = Some(ExpandError::other(r#"`OUT_DIR` not set, enable "build scripts" to fix"#));
         }
 
@@ -867,15 +873,16 @@ fn quote_expand(
     )
 }
 
-fn unescape_str(s: &SmolStr) -> SmolStr {
-    if s.contains('\\') {
+fn unescape_str(s: &Symbol) -> Symbol {
+    if s.as_str().contains('\\') {
+        let s = s.as_str();
         let mut buf = String::with_capacity(s.len());
         unescape_unicode(s, Mode::Str, &mut |_, c| {
             if let Ok(c) = c {
                 buf.push(c)
             }
         });
-        buf.into()
+        Symbol::intern(&buf)
     } else {
         s.clone()
     }

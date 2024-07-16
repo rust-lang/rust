@@ -139,9 +139,15 @@ impl TaggedArcPtr {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct Symbol {
     repr: TaggedArcPtr,
+}
+
+impl fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(f)
+    }
 }
 
 const _: () = assert!(std::mem::size_of::<Symbol>() == std::mem::size_of::<NonNull<()>>());
@@ -172,6 +178,32 @@ impl Symbol {
                 ),
             },
         }
+    }
+
+    pub fn integer(i: usize) -> Self {
+        match i {
+            0 => symbols::INTEGER_0.clone(),
+            1 => symbols::INTEGER_1.clone(),
+            2 => symbols::INTEGER_2.clone(),
+            3 => symbols::INTEGER_3.clone(),
+            4 => symbols::INTEGER_4.clone(),
+            5 => symbols::INTEGER_5.clone(),
+            6 => symbols::INTEGER_6.clone(),
+            7 => symbols::INTEGER_7.clone(),
+            8 => symbols::INTEGER_8.clone(),
+            9 => symbols::INTEGER_9.clone(),
+            10 => symbols::INTEGER_10.clone(),
+            11 => symbols::INTEGER_11.clone(),
+            12 => symbols::INTEGER_12.clone(),
+            13 => symbols::INTEGER_13.clone(),
+            14 => symbols::INTEGER_14.clone(),
+            15 => symbols::INTEGER_15.clone(),
+            i => Symbol::intern(&format!("{i}")),
+        }
+    }
+
+    pub fn empty() -> Self {
+        symbols::__empty.clone()
     }
 
     pub fn as_str(&self) -> &str {

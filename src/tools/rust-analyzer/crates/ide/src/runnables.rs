@@ -3,7 +3,7 @@ use std::fmt;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, AsAssocItem, AttrsWithOwner, HasAttrs, HasSource, HirFileIdExt, Semantics,
+    db::HirDatabase, sym, AsAssocItem, AttrsWithOwner, HasAttrs, HasSource, HirFileIdExt, Semantics,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -403,7 +403,7 @@ pub(crate) fn runnable_impl(
 }
 
 fn has_cfg_test(attrs: AttrsWithOwner) -> bool {
-    attrs.cfgs().any(|cfg| matches!(cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if s == "test"))
+    attrs.cfgs().any(|cfg| matches!(&cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if *s == sym::test))
 }
 
 /// Creates a test mod runnable for outline modules at the top of their definition.

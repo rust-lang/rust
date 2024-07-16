@@ -14,9 +14,9 @@ mod token_stream;
 pub use token_stream::TokenStream;
 
 pub mod rust_analyzer_span;
-mod symbol;
+// mod symbol;
 pub mod token_id;
-pub use symbol::*;
+// pub use symbol::*;
 use tt::Spacing;
 
 fn delim_to_internal<S>(d: proc_macro::Delimiter, span: bridge::DelimSpan<S>) -> tt::Delimiter<S> {
