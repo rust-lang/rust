@@ -267,7 +267,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
             PatKind::Never => TestCase::Never,
         };
 
-        MatchPair { place, test_case, subpairs, pattern }
+        MatchPair { place, test_case, subpairs, pattern, coverage_id: Default::default() }
     }
 }
 

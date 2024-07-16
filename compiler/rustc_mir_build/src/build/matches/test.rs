@@ -70,11 +70,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         test: &Test<'tcx>,
         target_blocks: FxIndexMap<TestBranch<'tcx>, BasicBlock>,
+        mut target_coverage_info: Option<
+            FxIndexMap<TestBranch<'tcx>, Vec<coverage::MatchCoverageInfo>>,
+        >,
     ) {
         let place_ty = place.ty(&self.local_decls, self.tcx);
         debug!(?place, ?place_ty);
         let target_block = |branch| target_blocks.get(&branch).copied().unwrap_or(otherwise_block);
-
+        let mut target_coverage_blocks =
+            FxIndexMap::<BasicBlock, Vec<coverage::MatchCoverageInfo>>::default();
+        let mut mcdc_add_matched_block = |branch: &TestBranch<'tcx>, success_block| {
+            let Some(coverage_info) = target_coverage_info.as_mut() else {
+                return;
+            };
+            target_coverage_blocks
+                .insert(success_block, coverage_info.swap_remove(branch).unwrap_or_default());
+        };
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def } => {
@@ -82,6 +93,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let switch_targets = SwitchTargets::new(
                     adt_def.discriminants(self.tcx).filter_map(|(idx, discr)| {
                         if let Some(&block) = target_blocks.get(&TestBranch::Variant(idx)) {
+                            mcdc_add_matched_block(&TestBranch::Variant(idx), block);
                             Some((discr.val, block))
                         } else {
                             None
@@ -114,6 +126,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let switch_targets = SwitchTargets::new(
                     target_blocks.iter().filter_map(|(&branch, &block)| {
                         if let TestBranch::Constant(_, bits) = branch {
+                            mcdc_add_matched_block(&branch, block);
                             Some((bits, block))
                         } else {
                             None
@@ -131,6 +144,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::If => {
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
+                mcdc_add_matched_block(&TestBranch::Success, success_block);
                 let terminator =
                     TerminatorKind::if_(Operand::Copy(place), success_block, fail_block);
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
@@ -140,6 +154,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
+                mcdc_add_matched_block(&TestBranch::Success, success_block);
                 if let ty::Adt(def, _) = ty.kind()
                     && tcx.is_lang_item(def.did(), LangItem::String)
                 {
@@ -202,6 +217,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::Range(ref range) => {
                 let success = target_block(TestBranch::Success);
                 let fail = target_block(TestBranch::Failure);
+                mcdc_add_matched_block(&TestBranch::Success, success);
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let val = Operand::Copy(place);
 
@@ -248,6 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
+                mcdc_add_matched_block(&TestBranch::Success, success_block);
                 // result = actual == expected OR result = actual < expected
                 // branch based on result
                 self.compare(
@@ -280,6 +297,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // implies unreachability.
                 self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             }
+        }
+        if let Some(mut coverage_info) = target_coverage_info {
+            // This argument should have been `fail_block` from each `TestKind` arm, but they all are the same now.
+            target_coverage_blocks.insert(
+                target_block(TestBranch::Failure),
+                coverage_info.swap_remove(&TestBranch::Failure).unwrap_or_default(),
+            );
+            self.mcdc_match_pattern_conditions(block, target_coverage_blocks.into_iter());
         }
     }
 
@@ -539,7 +564,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test: &Test<'tcx>,
         candidate: &mut Candidate<'_, 'tcx>,
         sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
-    ) -> Option<TestBranch<'tcx>> {
+    ) -> Option<(TestBranch<'tcx>, coverage::MatchCoverageInfo)> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
@@ -749,6 +774,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         };
 
+        let match_info = candidate.coverage_id.new_match_info(
+            match_pair.coverage_id,
+            match_pair.pattern.span,
+            fully_matched,
+        );
+
         if fully_matched {
             // Replace the match pair by its sub-pairs.
             let match_pair = candidate.match_pairs.remove(match_pair_index);
@@ -757,7 +788,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             candidate.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
         }
 
-        ret
+        ret.map(|branch| (branch, match_info))
     }
 }
 

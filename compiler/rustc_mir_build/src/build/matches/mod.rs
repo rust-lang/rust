@@ -207,10 +207,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Increment the decision depth, in case we encounter boolean expressions
                 // further down.
-                this.mcdc_increment_depth_if_enabled();
                 let place =
                     unpack!(block = this.as_temp(block, Some(temp_scope), expr_id, mutability));
-                this.mcdc_decrement_depth_if_enabled();
 
                 let operand = Operand::Move(Place::from(place));
 
@@ -485,6 +483,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         opt_scrutinee_place,
                     );
 
+                    let (coverage_id, candidate_span) =
+                        (candidate.coverage_id, candidate.extra_data.span);
+
                     let arm_block = this.bind_pattern(
                         outer_source_info,
                         candidate,
@@ -493,6 +494,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((arm, match_scope)),
                         EmitStorageLive::Yes,
                     );
+
+                    this.mcdc_visit_matching_decision_end(coverage_id, candidate_span, arm_block);
 
                     this.fixed_temps_scope = old_dedup_scope;
 
@@ -1058,7 +1061,7 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
 }
 
 #[derive(Debug)]
-struct Candidate<'pat, 'tcx> {
+pub(crate) struct Candidate<'pat, 'tcx> {
     /// For the candidate to match, all of these must be satisfied...
     // Invariant: all the `MatchPair`s are recursively simplified.
     // Invariant: or-patterns must be sorted at the end.
@@ -1090,6 +1093,9 @@ struct Candidate<'pat, 'tcx> {
     false_edge_start_block: Option<BasicBlock>,
     /// The `false_edge_start_block` of the next candidate.
     next_candidate_start_block: Option<BasicBlock>,
+
+    /// Identify the candidate in coverage instrument.
+    coverage_id: coverage::CandidateCovId,
 }
 
 impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
@@ -1116,6 +1122,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             pre_binding_block: None,
             false_edge_start_block: None,
             next_candidate_start_block: None,
+            coverage_id: coverage::CandidateCovId::default(),
         }
     }
 
@@ -1134,6 +1141,34 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             move |c, _| c.subcandidates.iter_mut(),
             |_| {},
         );
+    }
+
+    pub(crate) fn coverage_id(&self) -> coverage::CandidateCovId {
+        self.coverage_id
+    }
+
+    pub(crate) fn set_coverage_id(&mut self, coverage_id: coverage::CandidateCovId) {
+        self.coverage_id = coverage_id;
+        // Assign id for match pairs only if this candidate is the root.
+        if !coverage_id.subcandidate_id.is_root() {
+            return;
+        };
+        let mut latest_match_id = coverage::MatchPairId::START;
+        let mut next_match_id = || {
+            let id = latest_match_id;
+            latest_match_id = id.next_match_pair_id();
+            id
+        };
+        let mut match_pairs = self.match_pairs.iter_mut().collect::<Vec<_>>();
+        while let Some(match_pair) = match_pairs.pop() {
+            match_pair.coverage_id = next_match_id();
+            match_pairs.extend(match_pair.subpairs.iter_mut());
+            if let TestCase::Or { ref mut pats } = match_pair.test_case {
+                match_pairs.extend(
+                    pats.iter_mut().map(|flat_pat| flat_pat.match_pairs.iter_mut()).flatten(),
+                );
+            }
+        }
     }
 }
 
@@ -1213,6 +1248,9 @@ pub(crate) struct MatchPair<'pat, 'tcx> {
 
     /// The pattern this was created from.
     pattern: &'pat Pat<'tcx>,
+
+    /// Key to identify the match pair in coverage.
+    coverage_id: coverage::MatchPairId,
 }
 
 /// See [`Test`] for more.
@@ -1313,10 +1351,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
         refutable: bool,
     ) -> BasicBlock {
+        self.mcdc_create_matching_decisions(candidates, refutable);
         // This will generate code to test scrutinee_place and branch to the appropriate arm block.
         // See the doc comment on `match_candidates` for why we have an otherwise block.
         let otherwise_block =
             self.match_candidates(match_start_span, scrutinee_span, block, candidates);
+
+        self.mcdc_finish_matching_tree(candidates, refutable.then_some(otherwise_block));
 
         // Link each leaf candidate to the `false_edge_start_block` of the next one.
         let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
@@ -1620,6 +1661,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
         candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
+        self.mcdc_create_subcandidates(candidate.coverage_id, &mut candidate.subcandidates);
     }
 
     /// Simplify subcandidates and process any leftover match pairs. The candidate should have been
@@ -1742,6 +1784,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate.false_edge_start_block =
                     candidate.subcandidates[0].false_edge_start_block;
             }
+            self.mcdc_merge_subcandidates(
+                candidate.coverage_id,
+                candidate.subcandidates.iter().map(|cand| cand.coverage_id.subcandidate_id),
+            );
             for subcandidate in mem::take(&mut candidate.subcandidates) {
                 let or_block = subcandidate.pre_binding_block.unwrap();
                 self.cfg.goto(or_block, source_info, any_matches);
@@ -1843,10 +1889,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> (
         &'b mut [&'c mut Candidate<'pat, 'tcx>],
         FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
+        Option<FxIndexMap<TestBranch<'tcx>, Vec<coverage::MatchCoverageInfo>>>,
     ) {
         // For each of the possible outcomes, collect vector of candidates that apply if the test
         // has that particular outcome.
         let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_, '_>>> = Default::default();
+        let mut mcdc_match_records = (self.tcx.sess.instrument_coverage_mcdc()
+            && candidates.first().is_some_and(|candidate| candidate.coverage_id.is_valid()))
+        .then(FxIndexMap::default);
 
         let total_candidate_count = candidates.len();
 
@@ -1854,13 +1904,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // point we may encounter a candidate where the test is not relevant; at that point, we stop
         // sorting.
         while let Some(candidate) = candidates.first_mut() {
-            let Some(branch) =
+            let Some((branch, match_cov_info)) =
                 self.sort_candidate(match_place, test, candidate, &target_candidates)
             else {
                 break;
             };
             let (candidate, rest) = candidates.split_first_mut().unwrap();
             target_candidates.entry(branch).or_insert_with(Vec::new).push(candidate);
+            if let Some(records) = mcdc_match_records.as_mut() {
+                records.entry(branch).or_insert_with(Vec::new).push(match_cov_info);
+            }
             candidates = rest;
         }
 
@@ -1872,7 +1925,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("tested_candidates: {}", total_candidate_count - candidates.len());
         debug!("untested_candidates: {}", candidates.len());
 
-        (candidates, target_candidates)
+        (candidates, target_candidates, mcdc_match_records)
     }
 
     /// This is the most subtle part of the match lowering algorithm. At this point, the input
@@ -1983,8 +2036,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // For each of the N possible test outcomes, build the vector of candidates that applies if
         // the test has that particular outcome.
-        let (remaining_candidates, target_candidates) =
+        let (remaining_candidates, target_candidates, mcdc_match_records) =
             self.sort_candidates(match_place, &test, candidates);
+
+        if let Some(match_records) = mcdc_match_records.as_ref() {
+            self.mcdc_visit_pattern_conditions(match_records.values());
+        }
 
         // The block that we should branch to if none of the
         // `target_candidates` match.
@@ -2012,6 +2069,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match_place,
             &test,
             target_blocks,
+            mcdc_match_records,
         );
 
         remainder_start.and(remaining_candidates)
@@ -2072,6 +2130,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        let coverage_id = candidate.coverage_id;
         let success = self.bind_pattern(
             self.source_info(pat.span),
             candidate,
@@ -2080,6 +2139,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
             emit_storage_live,
         );
+
+        self.mcdc_visit_matching_decision_end(coverage_id, pat.span, success);
 
         // If branch coverage is enabled, record this branch.
         self.visit_coverage_conditional_let(pat, success, otherwise_block);
@@ -2247,6 +2308,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let (post_guard_block, otherwise_post_guard_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| {
                     guard_span = this.thir[guard].span;
+                    this.mcdc_visit_matching_guard(candidate.coverage_id);
                     this.then_else_break(
                         block,
                         guard,

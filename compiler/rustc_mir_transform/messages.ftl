@@ -9,6 +9,8 @@ mir_transform_const_mut_borrow = taking a mutable reference to a `const` item
     .note2 = the mutable reference will refer to this temporary, not the original `const` item
     .note3 = mutable reference created due to call to this method
 
+mir_transform_exceeds_mcdc_test_vector_limit = number of total test vectors in one function will exceed limit ({$max_num_test_vectors}) if this decision is instrumented, so MC/DC analysis ignores it
+
 mir_transform_ffi_unwind_call = call to {$foreign ->
     [true] foreign function
     *[false] function pointer
