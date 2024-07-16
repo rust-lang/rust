@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(deny(warnings)))

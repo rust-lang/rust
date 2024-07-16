@@ -27,7 +27,7 @@ use rustc_target::abi::{
 use std::ops::Range;
 use tracing::{debug, instrument, trace};
 
-pub fn const_alloc_to_llvm<'ll>(
+pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
     alloc: ConstAllocation<'_>,
     is_static: bool,

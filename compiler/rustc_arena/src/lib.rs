@@ -11,6 +11,7 @@
 #![allow(clippy::mut_from_ref)] // Arena allocators are one place where this pattern is fine.
 #![allow(internal_features)]
 #![cfg_attr(test, feature(test))]
+#![deny(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",

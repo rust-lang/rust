@@ -1,4 +1,4 @@
-pub use crate::llvm::Type;
+pub(crate) use crate::llvm::Type;
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::common;

@@ -93,7 +93,7 @@ macro_rules! span_mirbug_and_err {
 
 mod canonical;
 mod constraint_conversion;
-pub mod free_region_relations;
+pub(crate) mod free_region_relations;
 mod input_output;
 pub(crate) mod liveness;
 mod relate_tys;

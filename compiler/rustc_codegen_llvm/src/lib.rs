@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(exact_size_is_empty)]
@@ -46,11 +47,11 @@ use std::io::Write;
 use std::mem::ManuallyDrop;
 
 mod back {
-    pub mod archive;
-    pub mod lto;
-    pub mod owned_target_machine;
+    pub(crate) mod archive;
+    pub(crate) mod lto;
+    pub(crate) mod owned_target_machine;
     mod profiling;
-    pub mod write;
+    pub(crate) mod write;
 }
 
 mod abi;

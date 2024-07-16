@@ -32,6 +32,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
