@@ -17,7 +17,7 @@ pub struct DwarfReader {
     pub ptr: *const u8,
 }
 
-#[deny(unsafe_op_in_unsafe_fn)]
+#[forbid(unsafe_op_in_unsafe_fn)]
 impl DwarfReader {
     pub fn new(ptr: *const u8) -> DwarfReader {
         DwarfReader { ptr }
