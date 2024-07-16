@@ -34,8 +34,8 @@ where
 {
     type Lifted = OutlivesPredicate<U, A::Lifted>;
 
-    fn lift_to_tcx(self, tcx: U) -> Option<Self::Lifted> {
-        Some(OutlivesPredicate(self.0.lift_to_tcx(tcx)?, self.1.lift_to_tcx(tcx)?))
+    fn lift_to_interner(self, tcx: U) -> Option<Self::Lifted> {
+        Some(OutlivesPredicate(self.0.lift_to_interner(tcx)?, self.1.lift_to_interner(tcx)?))
     }
 }
 
