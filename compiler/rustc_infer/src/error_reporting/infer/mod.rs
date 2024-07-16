@@ -45,17 +45,11 @@
 //! ported to this system, and which relies on string concatenation at the
 //! time of error detection.
 
-use super::{InferCtxt, TypeTrace, ValuePairs};
+use std::borrow::Cow;
+use std::ops::{ControlFlow, Deref};
+use std::path::PathBuf;
+use std::{cmp, fmt, iter};
 
-use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
-use crate::infer;
-use crate::infer::ExpectedFound;
-use crate::traits::{
-    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-    PredicateObligation,
-};
-
-use crate::infer::relate::{self, RelateResult, TypeRelation};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     pluralize, Applicability, Diag, DiagCtxtHandle, DiagStyledString, IntoDiagArg, StringPart,
@@ -68,6 +62,7 @@ use rustc_hir::{self as hir};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
 use rustc_middle::ty::{
@@ -76,18 +71,21 @@ use rustc_middle::ty::{
 };
 use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
-use std::borrow::Cow;
-use std::ops::{ControlFlow, Deref};
-use std::path::PathBuf;
-use std::{cmp, fmt, iter};
+
+use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
+use crate::infer;
+use crate::infer::relate::{self, RelateResult, TypeRelation};
+use crate::infer::{InferCtxt, TypeTrace, ValuePairs};
+use crate::traits::{
+    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
+};
 
 mod note_and_explain;
 mod suggest;
 
-pub(crate) mod need_type_info;
-pub mod sub_relations;
-pub use need_type_info::TypeAnnotationNeeded;
 pub mod region;
+pub mod sub_relations;
 
 pub mod nice_region_error;
 
@@ -1242,7 +1240,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             Some(values) => {
                 let values = self.resolve_vars_if_possible(values);
                 let (is_simple_error, exp_found) = match values {
-                    ValuePairs::Terms(infer::ExpectedFound { expected, found }) => {
+                    ValuePairs::Terms(ExpectedFound { expected, found }) => {
                         match (expected.unpack(), found.unpack()) {
                             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                                 let is_simple_err = expected.is_simple_text(self.tcx)
@@ -1254,7 +1252,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                                 (
                                     is_simple_err,
-                                    Mismatch::Variable(infer::ExpectedFound { expected, found }),
+                                    Mismatch::Variable(ExpectedFound { expected, found }),
                                 )
                             }
                             (ty::TermKind::Const(_), ty::TermKind::Const(_)) => {
@@ -1263,13 +1261,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             _ => (false, Mismatch::Fixed("type")),
                         }
                     }
-                    ValuePairs::PolySigs(infer::ExpectedFound { expected, found }) => {
+                    ValuePairs::PolySigs(ExpectedFound { expected, found }) => {
                         OpaqueTypesVisitor::visit_expected_found(self.tcx, expected, found, span)
                             .report(diag);
                         (false, Mismatch::Fixed("signature"))
                     }
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
-                    ValuePairs::Aliases(infer::ExpectedFound { expected, .. }) => {
+                    ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
                         (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
@@ -1303,9 +1301,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
         if let Some((sp, msg)) = secondary_span {
             if swap_secondary_and_primary {
-                let terr = if let Some(infer::ValuePairs::Terms(infer::ExpectedFound {
-                    expected,
-                    ..
+                let terr = if let Some(infer::ValuePairs::Terms(ExpectedFound {
+                    expected, ..
                 })) = values
                 {
                     Cow::from(format!("expected this to be `{expected}`"))

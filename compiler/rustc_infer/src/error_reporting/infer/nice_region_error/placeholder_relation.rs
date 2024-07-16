@@ -1,9 +1,6 @@
-use crate::{
-    errors::PlaceholderRelationLfNotSatisfied,
-    infer::{
-        error_reporting::nice_region_error::NiceRegionError, RegionResolutionError, SubregionOrigin,
-    },
-};
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
+use crate::errors::PlaceholderRelationLfNotSatisfied;
+use crate::infer::{RegionResolutionError, SubregionOrigin};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::Diag;
 use rustc_middle::ty::{self, RePlaceholder, Region};

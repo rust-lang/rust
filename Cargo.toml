@@ -45,6 +45,7 @@ members = [
   "src/tools/opt-dist",
   "src/tools/coverage-dump",
   "src/tools/rustc-perf-wrapper",
+  "src/tools/wasm-component-ld",
 ]
 
 exclude = [
@@ -102,6 +103,9 @@ rustc-demangle.debug = 0
 # We ship these in every rustc tarball and even after compression they add up
 # to around 0.6MB of data every user needs to download (and 15MB on disk).
 [profile.release.package.lld-wrapper]
+debug = 0
+strip = true
+[profile.release.package.wasm-component-ld-wrapper]
 debug = 0
 strip = true
 

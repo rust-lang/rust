@@ -29,7 +29,7 @@ use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_index::IndexVec;
-use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
+use rustc_infer::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::adjustment::AllowTwoPhase;

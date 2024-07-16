@@ -269,19 +269,6 @@ impl<'a> AstValidator<'a> {
         self.session.dcx()
     }
 
-    fn check_lifetime(&self, ident: Ident) {
-        let valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Empty];
-        if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
-            self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
-        }
-    }
-
-    fn check_label(&self, ident: Ident) {
-        if ident.without_first_quote().is_reserved() {
-            self.dcx().emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
-        }
-    }
-
     fn visibility_not_permitted(&self, vis: &Visibility, note: errors::VisibilityNotPermittedNote) {
         if let VisibilityKind::Inherited = vis.kind {
             return;
@@ -908,16 +895,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.walk_ty(ty)
     }
 
-    fn visit_label(&mut self, label: &'a Label) {
-        self.check_label(label.ident);
-        visit::walk_label(self, label);
-    }
-
-    fn visit_lifetime(&mut self, lifetime: &'a Lifetime, _: visit::LifetimeCtxt) {
-        self.check_lifetime(lifetime.ident);
-        visit::walk_lifetime(self, lifetime);
-    }
-
     fn visit_field_def(&mut self, field: &'a FieldDef) {
         self.deny_unnamed_field(field);
         visit::walk_field_def(self, field)
@@ -1354,13 +1331,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             self.visit_where_predicate(predicate);
         }
-    }
-
-    fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        if let GenericParamKind::Lifetime { .. } = param.kind {
-            self.check_lifetime(param.ident);
-        }
-        visit::walk_generic_param(self, param);
     }
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {

@@ -8,7 +8,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor as _;
 use rustc_hir::LangItem;
-use rustc_infer::infer::error_reporting::{TypeAnnotationNeeded, TypeErrCtxt};
+use rustc_infer::error_reporting::infer::TypeErrCtxt;
+use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_infer::infer::{BoundRegionConversionTime, InferCtxt};
 use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{

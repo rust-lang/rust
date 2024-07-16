@@ -1230,6 +1230,12 @@ impl<'a> Parser<'a> {
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
+            if ident.without_first_quote().is_reserved()
+                && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&ident.name)
+            {
+                self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
+            }
+
             self.bump();
             Lifetime { ident, id: ast::DUMMY_NODE_ID }
         } else {

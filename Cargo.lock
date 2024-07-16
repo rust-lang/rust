@@ -236,11 +236,11 @@ checksum = "d67af77d68a931ecd5cbd8a3b5987d63a1d1d1278f7f6a60ae33db485cdebb69"
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0c269894b6fe5e9d7ada0cf69b5bf847ff35bc25fc271f08e1d080fce80339a"
+checksum = "f8412a2d690663356cba5a2532f3ed55d1e8090743bc6695b88403b27df67733"
 dependencies = [
- "object 0.32.2",
+ "object 0.35.0",
 ]
 
 [[package]]
@@ -1682,6 +1682,7 @@ dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
+ "serde",
 ]
 
 [[package]]
@@ -1890,6 +1891,12 @@ dependencies = [
  "quote",
  "syn 2.0.67",
 ]
+
+[[package]]
+name = "id-arena"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25a2bc672d1148e28034f176e01fffebb08b35768468cc954630da77a1449005"
 
 [[package]]
 name = "ident_case"
@@ -2119,6 +2126,12 @@ name = "levenshtein"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db13adb97ab515a3691f56e4dbab09283d0b86cb45abd991d8634a9d6f501760"
+
+[[package]]
+name = "lexopt"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baff4b617f7df3d896f97fe922b64817f6cd9a756bb81d40f8883f2f66dcb401"
 
 [[package]]
 name = "libc"
@@ -2634,7 +2647,7 @@ dependencies = [
  "indexmap",
  "memchr",
  "ruzstd 0.5.0",
- "wasmparser",
+ "wasmparser 0.118.2",
 ]
 
 [[package]]
@@ -2646,6 +2659,15 @@ dependencies = [
  "flate2",
  "memchr",
  "ruzstd 0.6.0",
+]
+
+[[package]]
+name = "object"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8ec7ab813848ba4522158d5517a6093db1ded27575b070f4177b8d12b41db5e"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -3436,7 +3458,7 @@ dependencies = [
  "object 0.34.0",
  "regex",
  "similar",
- "wasmparser",
+ "wasmparser 0.118.2",
 ]
 
 [[package]]
@@ -3823,7 +3845,7 @@ dependencies = [
  "thin-vec",
  "thorin-dwp",
  "tracing",
- "wasm-encoder",
+ "wasm-encoder 0.200.0",
  "windows",
 ]
 
@@ -5268,6 +5290,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "spdx"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47317bbaf63785b53861e1ae2d11b80d6b624211d42cb20efcd210ee6f8a14bc"
+dependencies = [
+ "smallvec",
+]
+
+[[package]]
 name = "spdx-expression"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6316,12 +6347,68 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
 
 [[package]]
+name = "wasm-component-ld"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "314d932d5e84c9678751b85498b1482b2f32f185744e449d3ce0b1d400376dad"
+dependencies = [
+ "anyhow",
+ "clap",
+ "lexopt",
+ "tempfile",
+ "wasmparser 0.210.0",
+ "wat",
+ "wit-component",
+]
+
+[[package]]
+name = "wasm-component-ld-wrapper"
+version = "0.1.0"
+dependencies = [
+ "wasm-component-ld",
+]
+
+[[package]]
 name = "wasm-encoder"
 version = "0.200.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e3fb0c8fbddd78aa6095b850dfeedbc7506cf5f81e633f69cf8f2333ab84b9"
 dependencies = [
  "leb128",
+]
+
+[[package]]
+name = "wasm-encoder"
+version = "0.210.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7e3764d9d6edabd8c9e16195e177be0d20f6ab942ad18af52860f12f82bc59a"
+dependencies = [
+ "leb128",
+]
+
+[[package]]
+name = "wasm-encoder"
+version = "0.211.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e7d931a1120ef357f32b74547646b6fa68ea25e377772b72874b131a9ed70d4"
+dependencies = [
+ "leb128",
+]
+
+[[package]]
+name = "wasm-metadata"
+version = "0.210.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "012729d1294907fcb0866f08460ab95426a6d0b176a599619b84cac7653452b4"
+dependencies = [
+ "anyhow",
+ "indexmap",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "spdx",
+ "wasm-encoder 0.210.0",
+ "wasmparser 0.210.0",
 ]
 
 [[package]]
@@ -6332,6 +6419,42 @@ checksum = "77f1154f1ab868e2a01d9834a805faca7bf8b50d041b4ca714d005d0dab1c50c"
 dependencies = [
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.210.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7bbcd21e7581619d9f6ca00f8c4f08f1cacfe58bf63f83af57cd0476f1026f5"
+dependencies = [
+ "ahash",
+ "bitflags 2.5.0",
+ "hashbrown",
+ "indexmap",
+ "semver",
+ "serde",
+]
+
+[[package]]
+name = "wast"
+version = "211.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b25506dd82d00da6b14a87436b3d52b1d264083fa79cdb72a0d1b04a8595ccaa"
+dependencies = [
+ "bumpalo",
+ "leb128",
+ "memchr",
+ "unicode-width",
+ "wasm-encoder 0.211.1",
+]
+
+[[package]]
+name = "wat"
+version = "1.211.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb716ca6c86eecac2d82541ffc39860118fc0af9309c4f2670637bea2e1bdd7d"
+dependencies = [
+ "wast",
 ]
 
 [[package]]
@@ -6559,6 +6682,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59b5e5f6c299a3c7890b876a2a587f3115162487e704907d9b6cd29473052ba1"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "wit-component"
+version = "0.210.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a450bdb5d032acf1fa0865451fa0c6f50e62f2d31eaa8dba967c2e2d068694a4"
+dependencies = [
+ "anyhow",
+ "bitflags 2.5.0",
+ "indexmap",
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "wasm-encoder 0.210.0",
+ "wasm-metadata",
+ "wasmparser 0.210.0",
+ "wit-parser",
+]
+
+[[package]]
+name = "wit-parser"
+version = "0.210.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a965cbd439af19a4b44a54a97ab8957d86f02d01320efc9e31c1d3605c6710"
+dependencies = [
+ "anyhow",
+ "id-arena",
+ "indexmap",
+ "log",
+ "semver",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "unicode-xid",
+ "wasmparser 0.210.0",
 ]
 
 [[package]]

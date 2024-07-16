@@ -388,6 +388,9 @@ parse_invalid_dyn_keyword = invalid `dyn` keyword
 parse_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
 parse_invalid_identifier_with_leading_number = identifiers cannot start with a number
 
+parse_invalid_label =
+    invalid label name `{$name}`
+
 parse_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are invalid
     .label = invalid suffix `{$suffix}`
     .tuple_exception_line_1 = `{$suffix}` is *temporarily* accepted on tuple index fields as it was incorrectly accepted on stable for a few releases
@@ -413,6 +416,9 @@ parse_invalid_unicode_escape = invalid unicode character escape
 
 parse_invalid_variable_declaration =
     invalid variable declaration
+
+parse_keyword_lifetime =
+    lifetimes cannot use keyword names
 
 parse_kw_bad_case = keyword `{$kw}` is written in the wrong case
     .suggestion = write it in the correct case

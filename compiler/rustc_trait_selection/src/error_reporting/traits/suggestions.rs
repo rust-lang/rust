@@ -23,7 +23,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
-use rustc_infer::infer::error_reporting::TypeErrCtxt;
+use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_macros::extension;
 use rustc_middle::hir::map;

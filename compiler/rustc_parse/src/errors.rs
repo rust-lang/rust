@@ -2010,6 +2010,21 @@ pub struct CannotBeRawIdent {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_keyword_lifetime)]
+pub struct KeywordLifetime {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_label)]
+pub struct InvalidLabel {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_cr_doc_comment)]
 pub struct CrDocComment {
     #[primary_span]

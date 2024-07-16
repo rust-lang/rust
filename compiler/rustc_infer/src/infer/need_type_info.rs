@@ -1,8 +1,8 @@
+use crate::error_reporting::infer::TypeErrCtxt;
 use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
-use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::InferCtxt;
 use rustc_errors::{codes::*, Diag, IntoDiagArg};
 use rustc_hir as hir;
