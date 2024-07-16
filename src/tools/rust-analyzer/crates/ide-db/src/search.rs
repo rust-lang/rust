@@ -15,7 +15,7 @@ use memchr::memmem::Finder;
 use nohash_hasher::IntMap;
 use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize};
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize, ToSmolStr};
 use triomphe::Arc;
 
 use crate::{
@@ -468,7 +468,10 @@ impl<'a> FindUsages<'a> {
                 };
                 // We need to unescape the name in case it is written without "r#" in earlier
                 // editions of Rust where it isn't a keyword.
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.unescaped().to_smol_str())
+                self.def
+                    .name(sema.db)
+                    .or_else(self_kw_refs)
+                    .map(|it| it.unescaped().display(sema.db).to_smolstr())
             }
         };
         let name = match &name {

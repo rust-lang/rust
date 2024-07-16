@@ -10,7 +10,7 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::{db::HirDatabase, display::HirDisplay};
-use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr};
+use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr};
 
 use crate::{Module, ModuleDef, Semantics};
 
@@ -258,10 +258,18 @@ impl<'a> SymbolCollector<'a> {
 
     fn def_with_body_id_name(&self, body_id: DefWithBodyId) -> Option<SmolStr> {
         match body_id {
-            DefWithBodyId::FunctionId(id) => Some(self.db.function_data(id).name.to_smol_str()),
-            DefWithBodyId::StaticId(id) => Some(self.db.static_data(id).name.to_smol_str()),
-            DefWithBodyId::ConstId(id) => Some(self.db.const_data(id).name.as_ref()?.to_smol_str()),
-            DefWithBodyId::VariantId(id) => Some(self.db.enum_variant_data(id).name.to_smol_str()),
+            DefWithBodyId::FunctionId(id) => {
+                Some(self.db.function_data(id).name.display_no_db().to_smolstr())
+            }
+            DefWithBodyId::StaticId(id) => {
+                Some(self.db.static_data(id).name.display_no_db().to_smolstr())
+            }
+            DefWithBodyId::ConstId(id) => {
+                Some(self.db.const_data(id).name.as_ref()?.display_no_db().to_smolstr())
+            }
+            DefWithBodyId::VariantId(id) => {
+                Some(self.db.enum_variant_data(id).name.display_no_db().to_smolstr())
+            }
             DefWithBodyId::InTypeConstId(_) => Some("in type const".into()),
         }
     }

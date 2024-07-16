@@ -7,7 +7,7 @@ use ide_db::{
     FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode};
+use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode, ToSmolStr};
 use text_edit::TextRange;
 
 use crate::{
@@ -251,7 +251,7 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
             .visible_fields
             .iter()
             .map(|field| {
-                let field_name = field.name(ctx.db()).to_smol_str();
+                let field_name = field.name(ctx.db()).display_no_db().to_smolstr();
                 let new_name = new_field_name(field_name.clone(), &data.names_in_scope);
                 (field_name, new_name)
             })

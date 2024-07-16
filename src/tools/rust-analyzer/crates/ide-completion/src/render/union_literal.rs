@@ -3,6 +3,7 @@
 use hir::{HirDisplay, Name, StructKind};
 use ide_db::SymbolKind;
 use itertools::Itertools;
+use syntax::ToSmolStr;
 
 use crate::{
     render::{
@@ -26,8 +27,12 @@ pub(crate) fn render_union_literal(
             (name.unescaped().display(ctx.db()).to_string(), name.display(ctx.db()).to_string())
         }
     };
-    let label = format_literal_label(&name.to_smol_str(), StructKind::Record, ctx.snippet_cap());
-    let lookup = format_literal_lookup(&name.to_smol_str(), StructKind::Record);
+    let label = format_literal_label(
+        &name.display_no_db().to_smolstr(),
+        StructKind::Record,
+        ctx.snippet_cap(),
+    );
+    let lookup = format_literal_lookup(&name.display_no_db().to_smolstr(), StructKind::Record);
     let mut item = CompletionItem::new(
         CompletionItemKind::SymbolKind(SymbolKind::Union),
         ctx.source_range(),
@@ -47,7 +52,10 @@ pub(crate) fn render_union_literal(
         format!(
             "{} {{ ${{1|{}|}}: ${{2:()}} }}$0",
             escaped_qualified_name,
-            fields.iter().map(|field| field.name(ctx.db()).to_smol_str()).format(",")
+            fields
+                .iter()
+                .map(|field| field.name(ctx.db()).display_no_db().to_smolstr())
+                .format(",")
         )
     } else {
         format!(

@@ -17,7 +17,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange,
+    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange, ToSmolStr,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -98,7 +98,7 @@ impl NavigationTarget {
         db: &RootDatabase,
         module: hir::Module,
     ) -> UpmappingResult<NavigationTarget> {
-        let name = module.name(db).map(|it| it.to_smol_str()).unwrap_or_default();
+        let name = module.name(db).map(|it| it.display_no_db().to_smolstr()).unwrap_or_default();
         match module.declaration_source(db) {
             Some(InFile { value, file_id }) => {
                 orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
@@ -190,7 +190,7 @@ impl TryToNav for FileSymbol {
                         .is_alias
                         .then(|| self.def.name(db))
                         .flatten()
-                        .map_or_else(|| self.name.clone(), |it| it.to_smol_str()),
+                        .map_or_else(|| self.name.clone(), |it| it.display_no_db().to_smolstr()),
                     alias: self.is_alias.then(|| self.name.clone()),
                     kind: Some(hir::ModuleDefId::from(self.def).into()),
                     full_range,
@@ -274,9 +274,9 @@ pub(crate) trait ToNavFromAst: Sized {
 
 fn container_name(db: &RootDatabase, t: impl HasContainer) -> Option<SmolStr> {
     match t.container(db) {
-        hir::ItemContainer::Trait(it) => Some(it.name(db).to_smol_str()),
+        hir::ItemContainer::Trait(it) => Some(it.name(db).display_no_db().to_smolstr()),
         // FIXME: Handle owners of blocks correctly here
-        hir::ItemContainer::Module(it) => it.name(db).map(|name| name.to_smol_str()),
+        hir::ItemContainer::Module(it) => it.name(db).map(|name| name.display_no_db().to_smolstr()),
         _ => None,
     }
 }
@@ -367,7 +367,7 @@ impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
         let InFile { file_id, value } = self.definition_source(db);
 
-        let name = self.name(db).map(|it| it.to_smol_str()).unwrap_or_default();
+        let name = self.name(db).map(|it| it.display_no_db().to_smolstr()).unwrap_or_default();
         let (syntax, focus) = match &value {
             ModuleSource::SourceFile(node) => (node.syntax(), None),
             ModuleSource::Module(node) => (node.syntax(), node.name()),
@@ -424,7 +424,10 @@ impl TryToNav for hir::ExternCrateDecl {
             |(FileRange { file_id, range: full_range }, focus_range)| {
                 let mut res = NavigationTarget::from_syntax(
                     file_id,
-                    self.alias_or_name(db).unwrap_or_else(|| self.name(db)).to_smol_str(),
+                    self.alias_or_name(db)
+                        .unwrap_or_else(|| self.name(db))
+                        .display_no_db()
+                        .to_smolstr(),
                     focus_range,
                     full_range,
                     SymbolKind::Module,
@@ -532,7 +535,7 @@ impl ToNav for LocalSource {
 
         orig_range_with_focus(db, file_id, node, name).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
-                let name = local.name(db).to_smol_str();
+                let name = local.name(db).display_no_db().to_smolstr();
                 let kind = if local.is_self(db) {
                     SymbolKind::SelfParam
                 } else if local.is_param(db) {
@@ -565,7 +568,7 @@ impl ToNav for hir::Local {
 impl TryToNav for hir::Label {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         Some(orig_range_with_focus(db, file_id, value.syntax(), value.lifetime()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
@@ -586,7 +589,7 @@ impl TryToNav for hir::Label {
 impl TryToNav for hir::TypeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.merge().source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         let value = match value {
             Either::Left(ast::TypeOrConstParam::Type(x)) => Either::Left(x),
@@ -628,7 +631,7 @@ impl TryToNav for hir::TypeOrConstParam {
 impl TryToNav for hir::LifetimeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         Some(orig_range(db, file_id, value.syntax()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
@@ -649,7 +652,7 @@ impl TryToNav for hir::LifetimeParam {
 impl TryToNav for hir::ConstParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.merge().source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         let value = match value {
             Either::Left(ast::TypeOrConstParam::Const(x)) => x,

@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::{format_smolstr, AstNode, SmolStr};
+use syntax::{format_smolstr, AstNode, SmolStr, ToSmolStr};
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
@@ -64,7 +64,7 @@ fn render(
             ),
             format_smolstr!("{}.{}", receiver.display(ctx.db()), name.display(ctx.db())),
         ),
-        _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
+        _ => (name.unescaped().display(db).to_smolstr(), name.display(db).to_smolstr()),
     };
     let has_self_param = func.self_param(db).is_some();
     let mut item = CompletionItem::new(
@@ -148,7 +148,7 @@ fn render(
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
         .detail(detail)
-        .lookup_by(name.unescaped().to_smol_str());
+        .lookup_by(name.unescaped().display(db).to_smolstr());
 
     if let Some((cap, (self_param, params))) = complete_call_parens {
         add_call_parens(&mut item, completion, cap, call, escaped_call, self_param, params);
@@ -161,7 +161,7 @@ fn render(
         None => {
             if let Some(actm) = assoc_item {
                 if let Some(trt) = actm.container_or_implemented_trait(db) {
-                    item.trait_name(trt.name(db).to_smol_str());
+                    item.trait_name(trt.name(db).display_no_db().to_smolstr());
                 }
             }
         }
@@ -219,7 +219,7 @@ pub(super) fn add_call_parens<'b>(
                 params.iter().enumerate().format_with(", ", |(index, param), f| {
                     match param.name(ctx.db) {
                         Some(n) => {
-                            let smol_str = n.to_smol_str();
+                            let smol_str = n.display_no_db().to_smolstr();
                             let text = smol_str.as_str().trim_start_matches('_');
                             let ref_ = ref_of_param(ctx, text, param.ty());
                             f(&format_args!("${{{}:{ref_}{text}}}", index + offset))

@@ -2,7 +2,7 @@
 use hir::ScopeDef;
 use ide_db::{documentation::HasDocs, SymbolKind};
 use itertools::Itertools;
-use syntax::SmolStr;
+use syntax::{SmolStr, ToSmolStr};
 
 use crate::{
     context::{CompletionContext, ExistingDerives, PathCompletionCtx, Qualified},
@@ -62,7 +62,7 @@ pub(crate) fn complete_derive_path(
                     _ => return acc.add_macro(ctx, path_ctx, mac, name),
                 };
 
-                let name_ = name.to_smol_str();
+                let name_ = name.display_no_db().to_smolstr();
                 let find = DEFAULT_DERIVE_DEPENDENCIES
                     .iter()
                     .find(|derive_completion| derive_completion.label == name_);
@@ -75,7 +75,7 @@ pub(crate) fn complete_derive_path(
                                 !existing_derives
                                     .iter()
                                     .map(|it| it.name(ctx.db))
-                                    .any(|it| it.to_smol_str() == dependency)
+                                    .any(|it| it.display_no_db().to_smolstr() == dependency)
                             },
                         ));
                         let lookup = components.join(", ");

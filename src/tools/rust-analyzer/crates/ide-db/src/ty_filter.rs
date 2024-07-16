@@ -5,7 +5,10 @@
 use std::iter;
 
 use hir::Semantics;
-use syntax::ast::{self, make, Pat};
+use syntax::{
+    ast::{self, make, Pat},
+    ToSmolStr,
+};
 
 use crate::RootDatabase;
 
@@ -26,7 +29,7 @@ impl TryEnum {
             _ => return None,
         };
         TryEnum::ALL.iter().find_map(|&var| {
-            if enum_.name(sema.db).to_smol_str() == var.type_name() {
+            if enum_.name(sema.db).display_no_db().to_smolstr() == var.type_name() {
                 return Some(var);
             }
             None

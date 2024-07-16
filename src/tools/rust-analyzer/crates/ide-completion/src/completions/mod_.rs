@@ -7,7 +7,7 @@ use ide_db::{
     base_db::{SourceDatabaseExt, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
 };
-use syntax::{ast, AstNode, SyntaxKind};
+use syntax::{ast, AstNode, SyntaxKind, ToSmolStr};
 
 use crate::{context::CompletionContext, CompletionItem, Completions};
 
@@ -139,7 +139,7 @@ fn directory_to_look_for_submodules(
     module_chain_to_containing_module_file(module, db)
         .into_iter()
         .filter_map(|module| module.name(db))
-        .try_fold(base_directory, |path, name| path.join(&name.to_smol_str()))
+        .try_fold(base_directory, |path, name| path.join(&name.display_no_db().to_smolstr()))
 }
 
 fn module_chain_to_containing_module_file(

@@ -971,6 +971,7 @@ dependencies = [
  "crossbeam-channel",
  "hir-expand",
  "ide-db",
+ "intern",
  "itertools",
  "paths",
  "proc-macro-api",

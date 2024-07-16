@@ -4,7 +4,7 @@ use hir::{
 use ide_db::base_db::FileId;
 use syntax::{
     ast::{self, edit_in_place::HasVisibilityEdit, make, HasVisibility as _},
-    AstNode, TextRange,
+    AstNode, TextRange, ToSmolStr,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -48,7 +48,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let (_, def) = module
         .scope(ctx.db(), None)
         .into_iter()
-        .find(|(name, _)| name.to_smol_str() == name_ref.text().as_str())?;
+        .find(|(name, _)| name.display_no_db().to_smolstr() == name_ref.text().as_str())?;
     let ScopeDef::ModuleDef(def) = def else {
         return None;
     };

@@ -238,7 +238,7 @@ impl<'db> ResolutionScope<'db> {
                 None,
                 |assoc_item| {
                     let item_name = assoc_item.name(self.scope.db)?;
-                    if item_name.to_smol_str().as_str() == name.text() {
+                    if item_name.as_str() == name.text() {
                         Some(hir::PathResolution::Def(assoc_item.into()))
                     } else {
                         None

@@ -4,7 +4,7 @@ use std::fmt;
 
 use intern::{sym, Symbol};
 use span::SyntaxContextId;
-use syntax::{ast, format_smolstr, utils::is_raw_identifier, SmolStr};
+use syntax::{ast, utils::is_raw_identifier};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
@@ -59,19 +59,12 @@ impl PartialEq<Name> for Symbol {
 pub struct UnescapedName<'a>(&'a Name);
 
 impl UnescapedName<'_> {
-    /// Returns the textual representation of this name as a [`SmolStr`]. Prefer using this over
-    /// [`ToString::to_string`] if possible as this conversion is cheaper in the general case.
-    pub fn to_smol_str(&self) -> SmolStr {
-        let it = self.0.symbol.as_str();
-        if let Some(stripped) = it.strip_prefix("r#") {
-            SmolStr::new(stripped)
-        } else {
-            it.into()
-        }
-    }
-
     pub fn display(&self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + '_ {
         _ = db;
+        UnescapedDisplay { name: self }
+    }
+    #[doc(hidden)]
+    pub fn display_no_db(&self) -> impl fmt::Display + '_ {
         UnescapedDisplay { name: self }
     }
 }
@@ -88,7 +81,7 @@ impl Name {
         _ = ctx;
         Name {
             symbol: if raw.yes() {
-                Symbol::intern(&format_smolstr!("{}{text}", raw.as_str()))
+                Symbol::intern(&format!("{}{text}", raw.as_str()))
             } else {
                 Symbol::intern(text)
             },
@@ -118,9 +111,7 @@ impl Name {
             // Keywords (in the current edition) *can* be used as a name in earlier editions of
             // Rust, e.g. "try" in Rust 2015. Even in such cases, we keep track of them in their
             // escaped form.
-            None if is_raw_identifier(raw_text) => {
-                Name::new_text(&format_smolstr!("r#{}", raw_text))
-            }
+            None if is_raw_identifier(raw_text) => Name::new_text(&format!("r#{}", raw_text)),
             _ => Name::new_text(raw_text),
         }
     }
@@ -151,7 +142,7 @@ impl Name {
     /// creating desugared locals and labels. The caller is responsible for picking an index
     /// that is stable across re-executions
     pub fn generate_new_name(idx: usize) -> Name {
-        Name::new_text(&format_smolstr!("<ra@gennew>{idx}"))
+        Name::new_text(&format!("<ra@gennew>{idx}"))
     }
 
     /// Returns the tuple index this name represents if it is a tuple field.
@@ -164,14 +155,6 @@ impl Name {
         self.symbol.as_str()
     }
 
-    // FIXME: Remove this
-    /// Returns the textual representation of this name as a [`SmolStr`].
-    /// Prefer using this over [`ToString::to_string`] if possible as this conversion is cheaper in
-    /// the general case.
-    pub fn to_smol_str(&self) -> SmolStr {
-        self.symbol.as_str().into()
-    }
-
     pub fn unescaped(&self) -> UnescapedName<'_> {
         UnescapedName(self)
     }
@@ -182,6 +165,12 @@ impl Name {
 
     pub fn display<'a>(&'a self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
         _ = db;
+        Display { name: self }
+    }
+
+    // FIXME: Remove this
+    #[doc(hidden)]
+    pub fn display_no_db(&self) -> impl fmt::Display + '_ {
         Display { name: self }
     }
 

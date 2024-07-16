@@ -16,6 +16,7 @@ use itertools::Itertools;
 use stdx::{always, never};
 use syntax::{
     ast, utils::is_raw_identifier, AstNode, SmolStr, SyntaxKind, SyntaxNode, TextRange, TextSize,
+    ToSmolStr,
 };
 
 use text_edit::TextEdit;
@@ -266,7 +267,7 @@ fn find_definitions(
                             // if the name differs from the definitions name it has to be an alias
                             if def
                                 .name(sema.db)
-                                .map_or(false, |it| it.to_smol_str() != name_ref.text().as_str())
+                                .map_or(false, |it| it.display_no_db().to_smolstr() != name_ref.text().as_str())
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {

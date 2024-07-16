@@ -82,7 +82,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                     .iter()
                     .enumerate()
                     .map(|(idx, it)| {
-                        let name = Name::new(&it.name, tt::IdentIsRaw::No, ctx);
+                        let name = Name::new_symbol(it.name.clone(), ctx);
                         (
                             name,
                             if !db.expand_proc_attr_macros() {

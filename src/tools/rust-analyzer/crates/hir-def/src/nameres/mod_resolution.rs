@@ -3,6 +3,7 @@ use arrayvec::ArrayVec;
 use base_db::{AnchoredPath, FileId};
 use hir_expand::{name::Name, HirFileIdExt, MacroFileIdExt};
 use limit::Limit;
+use syntax::ToSmolStr as _;
 
 use crate::{db::DefDatabase, HirFileId};
 
@@ -33,7 +34,7 @@ impl ModDir {
         let path = match attr_path {
             None => {
                 let mut path = self.dir_path.clone();
-                path.push(&name.unescaped().to_smol_str());
+                path.push(&name.unescaped().display_no_db().to_smolstr());
                 path
             }
             Some(attr_path) => {

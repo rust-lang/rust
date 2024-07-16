@@ -8,7 +8,7 @@
 //! show up for normal completions, or they won't show completions other than lifetimes depending
 //! on the fixture input.
 use hir::{sym, Name, ScopeDef};
-use syntax::{ast, TokenText};
+use syntax::{ast, ToSmolStr, TokenText};
 
 use crate::{
     completions::Completions,
@@ -41,7 +41,7 @@ pub(crate) fn complete_lifetime(
         if matches!(
             res,
             ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_))
-                 if param_lifetime != Some(&*name.to_smol_str())
+                 if param_lifetime != Some(&*name.display_no_db().to_smolstr())
         ) {
             acc.add_lifetime(ctx, name);
         }

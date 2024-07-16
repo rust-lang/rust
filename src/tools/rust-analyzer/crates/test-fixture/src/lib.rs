@@ -370,7 +370,7 @@ pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
 "#
             .into(),
             ProcMacro {
-                name: "identity".into(),
+                name: Symbol::intern("identity"),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
                 disabled: false,
@@ -385,7 +385,7 @@ pub fn derive_identity(item: TokenStream) -> TokenStream {
 "#
             .into(),
             ProcMacro {
-                name: "DeriveIdentity".into(),
+                name: Symbol::intern("DeriveIdentity"),
                 kind: ProcMacroKind::CustomDerive,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
                 disabled: false,
@@ -400,7 +400,7 @@ pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
 "#
             .into(),
             ProcMacro {
-                name: "input_replace".into(),
+                name: Symbol::intern("input_replace"),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(AttributeInputReplaceProcMacroExpander),
                 disabled: false,
@@ -415,7 +415,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
 "#
             .into(),
             ProcMacro {
-                name: "mirror".into(),
+                name: Symbol::intern("mirror"),
                 kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(MirrorProcMacroExpander),
                 disabled: false,
@@ -430,7 +430,7 @@ pub fn shorten(input: TokenStream) -> TokenStream {
 "#
             .into(),
             ProcMacro {
-                name: "shorten".into(),
+                name: Symbol::intern("shorten"),
                 kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
                 disabled: false,
@@ -448,7 +448,8 @@ fn filter_test_proc_macros(
     let mut proc_macros = Vec::new();
 
     for (c, p) in proc_macro_defs {
-        if !proc_macro_names.iter().any(|name| name == &stdx::to_lower_snake_case(&p.name)) {
+        if !proc_macro_names.iter().any(|name| name == &stdx::to_lower_snake_case(p.name.as_str()))
+        {
             continue;
         }
         proc_macros.push(p);

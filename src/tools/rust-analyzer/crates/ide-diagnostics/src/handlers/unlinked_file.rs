@@ -11,7 +11,7 @@ use ide_db::{
 use paths::Utf8Component;
 use syntax::{
     ast::{self, edit::IndentLevel, HasModuleItem, HasName},
-    AstNode, TextRange,
+    AstNode, TextRange, ToSmolStr,
 };
 use text_edit::TextEdit;
 
@@ -106,7 +106,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
                 // shouldn't occur
                 _ => continue 'crates,
             };
-            match current.children.iter().find(|(name, _)| name.to_smol_str() == seg) {
+            match current.children.iter().find(|(name, _)| name.display_no_db().to_smolstr() == seg)
+            {
                 Some((_, &child)) => current = &crate_def_map[child],
                 None => continue 'crates,
             }
@@ -156,7 +157,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
             // try finding a parent that has an inline tree from here on
             let mut current = module;
             for s in stack.iter().rev() {
-                match module.children.iter().find(|(name, _)| name.to_smol_str() == s) {
+                match module
+                    .children
+                    .iter()
+                    .find(|(name, _)| name.display_no_db().to_smolstr() == s)
+                {
                     Some((_, child)) => {
                         current = &crate_def_map[*child];
                     }
