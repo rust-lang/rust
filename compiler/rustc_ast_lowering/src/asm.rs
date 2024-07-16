@@ -187,7 +187,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .emit();
                         }
                         hir::InlineAsmOperand::Const {
-                            anon_const: self.lower_anon_const(anon_const),
+                            anon_const: self.lower_anon_const_to_anon_const(anon_const),
                         }
                     }
                     InlineAsmOperand::Sym { sym } => {
@@ -233,7 +233,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             );
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
-                                anon_const: self.lower_anon_const(&anon_const),
+                                anon_const: self.lower_anon_const_to_anon_const(&anon_const),
                             }
                         }
                     }
