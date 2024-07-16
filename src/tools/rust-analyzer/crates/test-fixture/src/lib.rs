@@ -13,6 +13,7 @@ use hir_expand::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacros,
     },
 };
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, FileId, FilePosition, FileRange, Span};
 use test_utils::{
@@ -640,11 +641,11 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
                 Leaf::Literal(it) => {
                     // XXX Currently replaces any literals with an empty string, but supporting
                     // "shortening" other literals would be nice.
-                    it.text = "\"\"".into();
+                    it.symbol = Symbol::empty();
                 }
                 Leaf::Punct(_) => {}
                 Leaf::Ident(it) => {
-                    it.text = it.text.chars().take(1).collect();
+                    it.sym = Symbol::intern(&it.sym.as_str().chars().take(1).collect::<String>());
                 }
             }
             leaf

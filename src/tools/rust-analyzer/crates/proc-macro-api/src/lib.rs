@@ -13,7 +13,6 @@ use base_db::Env;
 use paths::{AbsPath, AbsPathBuf};
 use span::Span;
 use std::{fmt, io, sync::Arc};
-use tt::SmolStr;
 
 use serde::{Deserialize, Serialize};
 
@@ -66,7 +65,7 @@ impl MacroDylib {
 pub struct ProcMacro {
     process: Arc<ProcMacroProcessSrv>,
     dylib_path: Arc<AbsPathBuf>,
-    name: SmolStr,
+    name: Box<str>,
     kind: ProcMacroKind,
 }
 

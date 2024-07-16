@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use intern::Symbol;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, SpanAnchor, SpanData, SpanMap};
 use stdx::{format_to, never, non_empty_vec::NonEmptyVec};
@@ -322,7 +323,7 @@ where
                         () => {
                             tt::Ident {
                                 span: conv.span_for(abs_range),
-                                text: token.to_text(conv),
+                                sym: Symbol::intern(&token.to_text(conv)),
                                 is_raw: tt::IdentIsRaw::No,
                             }
                             .into()
@@ -332,14 +333,14 @@ where
                         T![true] | T![false] => make_ident!(),
                         IDENT => {
                             let text = token.to_text(conv);
-                            tt::Ident::new(text, conv.span_for(abs_range)).into()
+                            tt::Ident::new(&text, conv.span_for(abs_range)).into()
                         }
                         UNDERSCORE => make_ident!(),
                         k if k.is_keyword() => make_ident!(),
                         k if k.is_literal() => {
                             let text = token.to_text(conv);
                             let span = conv.span_for(abs_range);
-                            token_to_literal(text, span).into()
+                            token_to_literal(&text, span).into()
                         }
                         LIFETIME_IDENT => {
                             let apostrophe = tt::Leaf::from(tt::Punct {
@@ -351,7 +352,7 @@ where
                             token_trees.push(apostrophe.into());
 
                             let ident = tt::Leaf::from(tt::Ident {
-                                text: SmolStr::new(&token.to_text(conv)[1..]),
+                                sym: Symbol::intern(&token.to_text(conv)[1..]),
                                 span: conv.span_for(TextRange::new(
                                     abs_range.start() + TextSize::of('\''),
                                     abs_range.end(),
@@ -436,7 +437,7 @@ fn is_single_token_op(kind: SyntaxKind) -> bool {
 /// And then quote the string, which is needed to convert to `tt::Literal`
 ///
 /// Note that proc-macros desugar with string literals where as macro_rules macros desugar with raw string literals.
-pub fn desugar_doc_comment_text(text: &str, mode: DocCommentDesugarMode) -> (SmolStr, tt::LitKind) {
+pub fn desugar_doc_comment_text(text: &str, mode: DocCommentDesugarMode) -> (Symbol, tt::LitKind) {
     match mode {
         DocCommentDesugarMode::Mbe => {
             let mut num_of_hashes = 0;
@@ -451,11 +452,11 @@ pub fn desugar_doc_comment_text(text: &str, mode: DocCommentDesugarMode) -> (Smo
             }
 
             // Quote raw string with delimiters
-            (text.into(), tt::LitKind::StrRaw(num_of_hashes))
+            (Symbol::intern(text), tt::LitKind::StrRaw(num_of_hashes))
         }
         // Quote string with delimiters
         DocCommentDesugarMode::ProcMacro => {
-            (format_smolstr!("{}", text.escape_debug()), tt::LitKind::Str)
+            (Symbol::intern(&format_smolstr!("{}", text.escape_debug())), tt::LitKind::Str)
         }
     }
 }
@@ -471,7 +472,7 @@ fn convert_doc_comment<S: Copy>(
 
     let mk_ident = |s: &str| {
         tt::TokenTree::from(tt::Leaf::from(tt::Ident {
-            text: s.into(),
+            sym: Symbol::intern(s),
             span,
             is_raw: tt::IdentIsRaw::No,
         }))
@@ -494,7 +495,7 @@ fn convert_doc_comment<S: Copy>(
             text = &text[0..text.len() - 2];
         }
         let (text, kind) = desugar_doc_comment_text(text, mode);
-        let lit = tt::Literal { text, span, kind, suffix: None };
+        let lit = tt::Literal { symbol: text, span, kind, suffix: None };
 
         tt::TokenTree::from(tt::Leaf::from(lit))
     };
@@ -928,7 +929,12 @@ where
     fn float_split(&mut self, has_pseudo_dot: bool) {
         let (text, span) = match self.cursor.token_tree() {
             Some(tt::buffer::TokenTreeRef::Leaf(
-                tt::Leaf::Literal(tt::Literal { text, span, kind: tt::LitKind::Float, suffix: _ }),
+                tt::Leaf::Literal(tt::Literal {
+                    symbol: text,
+                    span,
+                    kind: tt::LitKind::Float,
+                    suffix: _,
+                }),
                 _,
             )) => (text.as_str(), *span),
             tt => unreachable!("{tt:?}"),
@@ -988,7 +994,7 @@ where
                                 self.buf.push_str("r#");
                                 self.text_pos += TextSize::of("r#");
                             }
-                            let r = (ident.text.as_str(), ident.span);
+                            let r = (ident.sym.as_str(), ident.span);
                             self.cursor = self.cursor.bump();
                             r
                         }

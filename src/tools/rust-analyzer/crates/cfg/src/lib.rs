@@ -8,10 +8,10 @@ mod tests;
 use std::fmt;
 
 use rustc_hash::FxHashSet;
-use tt::SmolStr;
 
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;
+use smol_str::SmolStr;
 
 /// Configuration options used for conditional compilation on items with `cfg` attributes.
 /// We have two kind of options in different namespaces: atomic options like `unix`, and

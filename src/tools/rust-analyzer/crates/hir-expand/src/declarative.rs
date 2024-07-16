@@ -120,10 +120,10 @@ impl DeclarativeMacroExpander {
                 .token_tree_value()?
                 .token_trees
             {
-                [tt::TokenTree::Leaf(tt::Leaf::Ident(i)), ..] => match &*i.text {
-                    "transparent" => Some(Transparency::Transparent),
-                    "semitransparent" => Some(Transparency::SemiTransparent),
-                    "opaque" => Some(Transparency::Opaque),
+                [tt::TokenTree::Leaf(tt::Leaf::Ident(i)), ..] => match &i.sym {
+                    s if *s == sym::transparent => Some(Transparency::Transparent),
+                    s if *s == sym::semitransparent => Some(Transparency::SemiTransparent),
+                    s if *s == sym::opaque => Some(Transparency::Opaque),
                     _ => None,
                 },
                 _ => None,

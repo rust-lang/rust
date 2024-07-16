@@ -4,7 +4,7 @@
 
 use std::{fmt, slice::Iter as SliceIter};
 
-use tt::SmolStr;
+use smol_str::SmolStr;
 
 /// A simple configuration value passed in from the outside.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -66,7 +66,7 @@ impl CfgExpr {
 fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr> {
     let name = match it.next() {
         None => return None,
-        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.text.clone(),
+        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.sym.clone(),
         Some(_) => return Some(CfgExpr::Invalid),
     };
 
@@ -77,10 +77,9 @@ fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr>
                 Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
                     it.next();
                     it.next();
-                    // FIXME: escape? raw string?
-                    let value =
-                        SmolStr::new(literal.text.trim_start_matches('"').trim_end_matches('"'));
-                    CfgAtom::KeyValue { key: name, value }.into()
+                    // FIXME: escape?
+                    let value = literal.symbol.as_str().into();
+                    CfgAtom::KeyValue { key: name.as_str().into(), value }.into()
                 }
                 _ => return Some(CfgExpr::Invalid),
             }
@@ -96,7 +95,7 @@ fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr>
                 _ => CfgExpr::Invalid,
             }
         }
-        _ => CfgAtom::Flag(name).into(),
+        _ => CfgAtom::Flag(name.as_str().into()).into(),
     };
 
     // Eat comma separator

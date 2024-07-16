@@ -1,7 +1,6 @@
 //! Symbol interner for proc-macro-srv
 
 use std::{cell::RefCell, collections::HashMap, thread::LocalKey};
-use tt::SmolStr;
 
 thread_local! {
     pub(crate) static SYMBOL_INTERNER: RefCell<SymbolInterner> = Default::default();

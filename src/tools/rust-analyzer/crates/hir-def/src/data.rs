@@ -150,7 +150,7 @@ fn parse_rustc_legacy_const_generics(tt: &crate::tt::Subtree) -> Box<[u32]> {
     let mut indices = Vec::new();
     for args in tt.token_trees.chunks(2) {
         match &args[0] {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => match lit.text.parse() {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => match lit.symbol.as_str().parse() {
                 Ok(index) => indices.push(index),
                 Err(_) => break,
             },

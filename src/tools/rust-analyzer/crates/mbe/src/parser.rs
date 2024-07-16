@@ -4,8 +4,8 @@
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
+use intern::{sym, Symbol};
 use span::{Edition, Span, SyntaxContextId};
-use syntax::SmolStr;
 use tt::iter::TtIter;
 
 use crate::ParseError;
@@ -67,12 +67,12 @@ impl MetaTemplate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
     Var {
-        name: SmolStr,
+        name: Symbol,
         kind: Option<MetaVarKind>,
         id: Span,
     },
     Ignore {
-        name: SmolStr,
+        name: Symbol,
         id: Span,
     },
     Index {
@@ -82,7 +82,7 @@ pub(crate) enum Op {
         depth: usize,
     },
     Count {
-        name: SmolStr,
+        name: Symbol,
         // FIXME: `usize`` once we drop support for 1.76
         depth: Option<usize>,
     },
@@ -138,8 +138,8 @@ impl PartialEq for Separator {
         use Separator::*;
 
         match (self, other) {
-            (Ident(a), Ident(b)) => a.text == b.text,
-            (Literal(a), Literal(b)) => a.text == b.text,
+            (Ident(a), Ident(b)) => a.sym == b.sym,
+            (Literal(a), Literal(b)) => a.symbol == b.symbol,
             (Puncts(a), Puncts(b)) if a.len() == b.len() => {
                 let a_iter = a.iter().map(|a| a.char);
                 let b_iter = b.iter().map(|b| b.char);
@@ -203,23 +203,23 @@ fn next_op(
                     }
                 },
                 tt::TokenTree::Leaf(leaf) => match leaf {
-                    tt::Leaf::Ident(ident) if ident.text == "crate" => {
+                    tt::Leaf::Ident(ident) if ident.sym == sym::crate_ => {
                         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
                         Op::Ident(tt::Ident {
-                            text: "$crate".into(),
+                            sym: sym::dollar_crate.clone(),
                             span: ident.span,
                             is_raw: tt::IdentIsRaw::No,
                         })
                     }
                     tt::Leaf::Ident(ident) => {
                         let kind = eat_fragment_kind(edition, src, mode)?;
-                        let name = ident.text.clone();
+                        let name = ident.sym.clone();
                         let id = ident.span;
                         Op::Var { name, kind, id }
                     }
                     tt::Leaf::Literal(lit) if is_boolean_literal(lit) => {
                         let kind = eat_fragment_kind(edition, src, mode)?;
-                        let name = lit.text.clone();
+                        let name = lit.symbol.clone();
                         let id = lit.span;
                         Op::Var { name, kind, id }
                     }
@@ -277,7 +277,7 @@ fn eat_fragment_kind(
         let ident = src
             .expect_ident()
             .map_err(|()| ParseError::unexpected("missing fragment specifier"))?;
-        let kind = match ident.text.as_str() {
+        let kind = match ident.sym.as_str() {
             "path" => MetaVarKind::Path,
             "ty" => MetaVarKind::Ty,
             "pat" => match edition(ident.span.ctx) {
@@ -303,7 +303,7 @@ fn eat_fragment_kind(
 }
 
 fn is_boolean_literal(lit: &tt::Literal<Span>) -> bool {
-    matches!(lit.text.as_str(), "true" | "false")
+    matches!(lit.symbol.as_str(), "true" | "false")
 }
 
 fn parse_repeat(src: &mut TtIter<'_, Span>) -> Result<(Option<Separator>, RepeatKind), ParseError> {
@@ -353,23 +353,23 @@ fn parse_metavar_expr(new_meta_vars: bool, src: &mut TtIter<'_, Span>) -> Result
 
     let mut args = TtIter::new(args);
 
-    let op = match &*func.text {
-        "ignore" => {
+    let op = match &func.sym {
+        s if sym::ignore == *s => {
             if new_meta_vars {
                 args.expect_dollar()?;
             }
             let ident = args.expect_ident()?;
-            Op::Ignore { name: ident.text.clone(), id: ident.span }
+            Op::Ignore { name: ident.sym.clone(), id: ident.span }
         }
-        "index" => Op::Index { depth: parse_depth(&mut args)? },
-        "len" => Op::Len { depth: parse_depth(&mut args)? },
-        "count" => {
+        s if sym::index == *s => Op::Index { depth: parse_depth(&mut args)? },
+        s if sym::len == *s => Op::Len { depth: parse_depth(&mut args)? },
+        s if sym::count == *s => {
             if new_meta_vars {
                 args.expect_dollar()?;
             }
             let ident = args.expect_ident()?;
             let depth = if try_eat_comma(&mut args) { Some(parse_depth(&mut args)?) } else { None };
-            Op::Count { name: ident.text.clone(), depth }
+            Op::Count { name: ident.sym.clone(), depth }
         }
         _ => return Err(()),
     };
@@ -384,11 +384,11 @@ fn parse_metavar_expr(new_meta_vars: bool, src: &mut TtIter<'_, Span>) -> Result
 fn parse_depth(src: &mut TtIter<'_, Span>) -> Result<usize, ()> {
     if src.len() == 0 {
         Ok(0)
-    } else if let tt::Leaf::Literal(tt::Literal { text, suffix: None, .. }) =
+    } else if let tt::Leaf::Literal(tt::Literal { symbol: text, suffix: None, .. }) =
         src.expect_literal()?
     {
         // Suffixes are not allowed.
-        text.parse().map_err(|_| ())
+        text.as_str().parse().map_err(|_| ())
     } else {
         Err(())
     }

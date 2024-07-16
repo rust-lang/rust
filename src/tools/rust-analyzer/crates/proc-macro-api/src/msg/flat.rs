@@ -37,6 +37,7 @@
 
 use std::collections::VecDeque;
 
+use intern::Symbol;
 use la_arena::RawIdx;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
@@ -433,8 +434,8 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
                         let id = self.token_id_of(lit.span);
                         let (text, suffix) = if self.version >= EXTENDED_LEAF_DATA {
                             (
-                                self.intern(&lit.text),
-                                lit.suffix.as_ref().map(|s| self.intern(s)).unwrap_or(!0),
+                                self.intern(lit.symbol.as_str()),
+                                lit.suffix.as_ref().map(|s| self.intern(s.as_str())).unwrap_or(!0),
                             )
                         } else {
                             (self.intern_owned(format!("{lit}")), !0)
@@ -469,11 +470,11 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
                         let idx = self.ident.len() as u32;
                         let id = self.token_id_of(ident.span);
                         let text = if self.version >= EXTENDED_LEAF_DATA {
-                            self.intern(&ident.text)
+                            self.intern(ident.sym.as_str())
                         } else if ident.is_raw.yes() {
-                            self.intern_owned(format!("r#{}", ident.text,))
+                            self.intern_owned(format!("r#{}", ident.sym.as_str(),))
                         } else {
-                            self.intern(&ident.text)
+                            self.intern(ident.sym.as_str())
                         };
                         self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
                         idx << 2 | 0b11
@@ -555,7 +556,7 @@ impl<'span, S: InternableSpan> Reader<'span, S> {
                                 let span = read_span(repr.id);
                                 tt::Leaf::Literal(if self.version >= EXTENDED_LEAF_DATA {
                                     tt::Literal {
-                                        text: text.into(),
+                                        symbol: Symbol::intern(text),
                                         span,
                                         kind: match u16::to_le_bytes(repr.kind) {
                                             [0, _] => Err(()),
@@ -572,15 +573,15 @@ impl<'span, S: InternableSpan> Reader<'span, S> {
                                             _ => unreachable!(),
                                         },
                                         suffix: if repr.suffix != !0 {
-                                            Some(Box::new(
-                                                self.text[repr.suffix as usize].as_str().into(),
+                                            Some(Symbol::intern(
+                                                self.text[repr.suffix as usize].as_str(),
                                             ))
                                         } else {
                                             None
                                         },
                                     }
                                 } else {
-                                    tt::token_to_literal(text.into(), span)
+                                    tt::token_to_literal(text, span)
                                 })
                                 .into()
                             }
@@ -609,7 +610,7 @@ impl<'span, S: InternableSpan> Reader<'span, S> {
                                     tt::IdentIsRaw::split_from_symbol(text)
                                 };
                                 tt::Leaf::Ident(tt::Ident {
-                                    text: text.into(),
+                                    sym: Symbol::intern(text),
                                     span: read_span(repr.id),
                                     is_raw,
                                 })

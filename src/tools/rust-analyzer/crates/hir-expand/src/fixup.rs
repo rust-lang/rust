@@ -1,6 +1,7 @@
 //! To make attribute macros work reliably when typing, we need to take care to
 //! fix up syntax errors in the code we're passing to them.
 
+use intern::sym;
 use mbe::DocCommentDesugarMode;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
@@ -80,7 +81,7 @@ pub(crate) fn fixup_syntax(
             original.push(original_tree);
             let span = span_map.span_for_range(node_range);
             let replacement = Leaf::Ident(Ident {
-                text: "__ra_fixup".into(),
+                sym: sym::__ra_fixup.clone(),
                 span: Span {
                     range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
@@ -100,7 +101,7 @@ pub(crate) fn fixup_syntax(
                         // incomplete field access: some_expr.|
                         append.insert(node.clone().into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
+                                sym: sym::__ra_fixup.clone(),
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -138,7 +139,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(if_token.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
+                                sym: sym::__ra_fixup.clone(),
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -169,7 +170,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(while_token.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
+                                sym: sym::__ra_fixup.clone(),
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -217,7 +218,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(match_token.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
+                                sym: sym::__ra_fixup.clone(),
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -247,12 +248,12 @@ pub(crate) fn fixup_syntax(
                     };
 
                     let [pat, in_token, iter] = [
-                         "_",
-                         "in",
-                         "__ra_fixup"
-                    ].map(|text|
+                         sym::underscore.clone(),
+                         sym::in_.clone(),
+                         sym::__ra_fixup.clone(),
+                    ].map(|sym|
                         Leaf::Ident(Ident {
-                            text: text.into(),
+                            sym,
                             span: fake_span(node_range),
                             is_raw: tt::IdentIsRaw::No
                         }),
@@ -286,7 +287,7 @@ pub(crate) fn fixup_syntax(
                         if it.name_ref().is_some() && it.expr().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    text: "__ra_fixup".into(),
+                                    sym: sym::__ra_fixup.clone(),
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -299,7 +300,7 @@ pub(crate) fn fixup_syntax(
                         if it.segment().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    text: "__ra_fixup".into(),
+                                    sym: sym::__ra_fixup.clone(),
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -333,7 +334,7 @@ pub(crate) fn fixup_syntax(
                     if it.body().is_none() {
                         append.insert(node.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
+                                sym: sym::__ra_fixup.clone(),
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             })
@@ -448,9 +449,9 @@ mod tests {
     // `TokenTree`s, see the last assertion in `check()`.
     fn check_leaf_eq(a: &tt::Leaf, b: &tt::Leaf) -> bool {
         match (a, b) {
-            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.text == b.text,
+            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.symbol == b.symbol,
             (tt::Leaf::Punct(a), tt::Leaf::Punct(b)) => a.char == b.char,
-            (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.text == b.text,
+            (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.sym == b.sym,
             _ => false,
         }
     }

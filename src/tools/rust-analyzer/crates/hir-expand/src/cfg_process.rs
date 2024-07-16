@@ -9,7 +9,6 @@ use syntax::{
     AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T,
 };
 use tracing::{debug, warn};
-use tt::SmolStr;
 
 use crate::{db::ExpandDatabase, proc_macro::ProcMacroKind, MacroCallLoc, MacroDefKind};
 
@@ -263,7 +262,7 @@ where
     let name = match iter.next() {
         None => return None,
         Some(NodeOrToken::Token(element)) => match element.kind() {
-            syntax::T![ident] => SmolStr::new(element.text()),
+            syntax::T![ident] => element.text().to_owned(),
             _ => return Some(CfgExpr::Invalid),
         },
         Some(_) => return Some(CfgExpr::Invalid),
@@ -302,13 +301,13 @@ where
                         if (value_token.kind() == syntax::SyntaxKind::STRING) =>
                     {
                         let value = value_token.text();
-                        let value = SmolStr::new(value.trim_matches('"'));
-                        Some(CfgExpr::Atom(CfgAtom::KeyValue { key: name, value }))
+                        let value = value.trim_matches('"').into();
+                        Some(CfgExpr::Atom(CfgAtom::KeyValue { key: name.into(), value }))
                     }
                     _ => None,
                 }
             }
-            _ => Some(CfgExpr::Atom(CfgAtom::Flag(name))),
+            _ => Some(CfgExpr::Atom(CfgAtom::Flag(name.into()))),
         },
     };
     if let Some(NodeOrToken::Token(element)) = iter.peek() {

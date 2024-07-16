@@ -63,6 +63,7 @@ use base_db::{CrateId, FileId};
 use hir_expand::{
     name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
 };
+use intern::Symbol;
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -148,11 +149,11 @@ struct DefMapCrateData {
     proc_macro_loading_error: Option<Box<str>>,
 
     /// Custom attributes registered with `#![register_attr]`.
-    registered_attrs: Vec<SmolStr>,
+    registered_attrs: Vec<Symbol>,
     /// Custom tool modules registered with `#![register_tool]`.
-    registered_tools: Vec<SmolStr>,
+    registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
-    unstable_features: FxHashSet<SmolStr>,
+    unstable_features: FxHashSet<Symbol>,
     /// #[rustc_coherence_is_core]
     rustc_coherence_is_core: bool,
     no_core: bool,
@@ -170,7 +171,7 @@ impl DefMapCrateData {
             fn_proc_macro_mapping: FxHashMap::default(),
             proc_macro_loading_error: None,
             registered_attrs: Vec::new(),
-            registered_tools: PREDEFINED_TOOLS.into(),
+            registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
             no_core: false,
@@ -447,15 +448,15 @@ impl DefMap {
         self.derive_helpers_in_scope.get(&id.map(|it| it.upcast())).map(Deref::deref)
     }
 
-    pub fn registered_tools(&self) -> &[SmolStr] {
+    pub fn registered_tools(&self) -> &[Symbol] {
         &self.data.registered_tools
     }
 
-    pub fn registered_attrs(&self) -> &[SmolStr] {
+    pub fn registered_attrs(&self) -> &[Symbol] {
         &self.data.registered_attrs
     }
 
-    pub fn is_unstable_feature_enabled(&self, feature: &str) -> bool {
+    pub fn is_unstable_feature_enabled(&self, feature: &Symbol) -> bool {
         self.data.unstable_features.contains(feature)
     }
 

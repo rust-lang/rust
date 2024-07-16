@@ -16,6 +16,7 @@ rustc-hash.workspace = true
 
 # locals deps
 tt.workspace = true
+smol_str.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.1"

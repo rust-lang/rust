@@ -317,20 +317,20 @@ impl DefCollector<'_> {
                         .into_iter()
                         .flatten()
                         .filter_map(|(feat, _)| match feat.segments() {
-                            [name] => Some(name.to_smol_str()),
+                            [name] => Some(name.symbol().clone()),
                             _ => None,
                         });
                     crate_data.unstable_features.extend(features);
                 }
                 () if *attr_name == sym::register_attr.clone() => {
                     if let Some(ident) = attr.single_ident_value() {
-                        crate_data.registered_attrs.push(ident.text.clone());
+                        crate_data.registered_attrs.push(ident.sym.clone());
                         cov_mark::hit!(register_attr);
                     }
                 }
                 () if *attr_name == sym::register_tool.clone() => {
                     if let Some(ident) = attr.single_ident_value() {
-                        crate_data.registered_tools.push(ident.text.clone());
+                        crate_data.registered_tools.push(ident.sym.clone());
                         cov_mark::hit!(register_tool);
                     }
                 }
@@ -2129,9 +2129,7 @@ impl ModCollector<'_, '_> {
         let is_export = export_attr.exists();
         let local_inner = if is_export {
             export_attr.tt_values().flat_map(|it| it.token_trees.iter()).any(|it| match it {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    ident.text.contains("local_inner_macros")
-                }
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
                 _ => false,
             })
         } else {

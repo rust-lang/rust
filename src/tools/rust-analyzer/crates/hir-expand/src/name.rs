@@ -17,6 +17,8 @@ use syntax::{ast, format_smolstr, utils::is_raw_identifier, SmolStr};
 pub struct Name {
     symbol: Symbol,
     ctx: (),
+    // FIXME: We should probably encode rawness as a property here instead, once we have hygiene
+    // in here we've got 4 bytes of padding to fill anyways
 }
 
 impl fmt::Debug for Name {
@@ -187,14 +189,22 @@ impl Name {
         &self.symbol
     }
 
-    pub const fn new_symbol(doc: Symbol, ctx: SyntaxContextId) -> Self {
+    pub const fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
         _ = ctx;
-        Self { symbol: doc, ctx: () }
+        Self { symbol, ctx: () }
+    }
+
+    pub fn new_symbol_maybe_raw(sym: Symbol, raw: tt::IdentIsRaw, ctx: SyntaxContextId) -> Self {
+        if raw.no() {
+            Self { symbol: sym, ctx: () }
+        } else {
+            Name::new(sym.as_str(), raw, ctx)
+        }
     }
 
     // FIXME: This needs to go once we have hygiene
-    pub const fn new_symbol_root(doc: Symbol) -> Self {
-        Self { symbol: doc, ctx: () }
+    pub const fn new_symbol_root(sym: Symbol) -> Self {
+        Self { symbol: sym, ctx: () }
     }
 }
 
@@ -250,7 +260,7 @@ impl AsName for ast::NameOrNameRef {
 
 impl<Span> AsName for tt::Ident<Span> {
     fn as_name(&self) -> Name {
-        Name::resolve(&self.text)
+        Name::resolve(self.sym.as_str())
     }
 }
 

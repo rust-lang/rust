@@ -5,11 +5,12 @@ use std::{
     ops::{Bound, Range},
 };
 
+use intern::Symbol;
 use proc_macro::bridge::{self, server};
 
 use crate::server_impl::{
     delim_to_external, delim_to_internal, literal_kind_to_external, literal_kind_to_internal,
-    token_stream::TokenStreamBuilder, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
+    token_stream::TokenStreamBuilder,
 };
 mod tt {
     pub use proc_macro_api::msg::TokenId;
@@ -36,7 +37,6 @@ pub struct SourceFile;
 pub struct FreeFunctions;
 
 pub struct TokenIdServer {
-    pub(crate) interner: SymbolInternerRef,
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
@@ -117,15 +117,10 @@ impl server::FreeFunctions for TokenIdServer {
         let lit = &lit[start_offset..lit.len() - end_offset];
         let suffix = match suffix {
             "" | "_" => None,
-            suffix => Some(Symbol::intern(self.interner, suffix)),
+            suffix => Some(Symbol::intern(suffix)),
         };
 
-        Ok(bridge::Literal {
-            kind,
-            symbol: Symbol::intern(self.interner, lit),
-            suffix,
-            span: self.call_site,
-        })
+        Ok(bridge::Literal { kind, symbol: Symbol::intern(lit), suffix, span: self.call_site })
     }
 
     fn emit_diagnostic(&mut self, _: bridge::Diagnostic<Self::Span>) {}
@@ -159,9 +154,8 @@ impl server::TokenStream for TokenIdServer {
             }
 
             bridge::TokenTree::Ident(ident) => {
-                let text = ident.sym.text(self.interner);
                 let ident: tt::Ident = tt::Ident {
-                    text,
+                    sym: ident.sym,
                     span: ident.span,
                     is_raw: if ident.is_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No },
                 };
@@ -172,8 +166,8 @@ impl server::TokenStream for TokenIdServer {
 
             bridge::TokenTree::Literal(literal) => {
                 let literal = Literal {
-                    text: literal.symbol.text(self.interner),
-                    suffix: literal.suffix.map(|it| Box::new(it.text(self.interner))),
+                    symbol: literal.symbol,
+                    suffix: literal.suffix,
                     span: literal.span,
                     kind: literal_kind_to_internal(literal.kind),
                 };
@@ -239,7 +233,7 @@ impl server::TokenStream for TokenIdServer {
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(self.interner, &ident.text),
+                        sym: ident.sym,
                         is_raw: ident.is_raw.yes(),
                         span: ident.span,
                     })
@@ -248,8 +242,8 @@ impl server::TokenStream for TokenIdServer {
                     bridge::TokenTree::Literal(bridge::Literal {
                         span: lit.span,
                         kind: literal_kind_to_external(lit.kind),
-                        symbol: Symbol::intern(self.interner, &lit.text),
-                        suffix: lit.suffix.map(|it| Symbol::intern(self.interner, &it)),
+                        symbol: lit.symbol,
+                        suffix: lit.suffix,
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
@@ -366,11 +360,11 @@ impl server::Server for TokenIdServer {
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
-        Symbol::intern(&SYMBOL_INTERNER, &::tt::SmolStr::from(ident))
+        Symbol::intern(ident)
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        f(symbol.text(&SYMBOL_INTERNER).as_str())
+        f(symbol.as_str())
     }
 }
 
@@ -383,12 +377,12 @@ mod tests {
         let s = TokenStream {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    text: "struct".into(),
+                    sym: Symbol::intern("struct"),
                     span: tt::TokenId(0),
                     is_raw: tt::IdentIsRaw::No,
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    text: "T".into(),
+                    sym: Symbol::intern("T"),
                     span: tt::TokenId(0),
                     is_raw: tt::IdentIsRaw::No,
                 })),
@@ -416,7 +410,7 @@ mod tests {
             },
             token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 is_raw: tt::IdentIsRaw::No,
-                text: "a".into(),
+                sym: Symbol::intern("a"),
                 span: tt::TokenId(0),
             }))]),
         });
@@ -433,7 +427,7 @@ mod tests {
         assert_eq!(
             underscore.token_trees[0],
             tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                text: "_".into(),
+                sym: Symbol::intern("_"),
                 span: tt::TokenId(0),
                 is_raw: tt::IdentIsRaw::No,
             }))

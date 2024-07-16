@@ -5,9 +5,9 @@
 mod matcher;
 mod transcriber;
 
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, Span};
-use syntax::SmolStr;
 
 use crate::{parser::MetaVarKind, ExpandError, ExpandResult, MatchedArmIndex};
 
@@ -110,12 +110,12 @@ pub(crate) fn expand_rules(
 /// the `Bindings` we should take. We push to the stack when we enter a
 /// repetition.
 ///
-/// In other words, `Bindings` is a *multi* mapping from `SmolStr` to
+/// In other words, `Bindings` is a *multi* mapping from `Symbol` to
 /// `tt::TokenTree`, where the index to select a particular `TokenTree` among
 /// many is not a plain `usize`, but a `&[usize]`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Bindings {
-    inner: FxHashMap<SmolStr, Binding>,
+    inner: FxHashMap<Symbol, Binding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

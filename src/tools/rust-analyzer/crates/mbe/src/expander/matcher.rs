@@ -61,9 +61,9 @@
 
 use std::{rc::Rc, sync::Arc};
 
+use intern::{sym, Symbol};
 use smallvec::{smallvec, SmallVec};
 use span::{Edition, Span};
-use syntax::SmolStr;
 use tt::{iter::TtIter, DelimSpan};
 
 use crate::{
@@ -74,12 +74,12 @@ use crate::{
 };
 
 impl Bindings {
-    fn push_optional(&mut self, name: &SmolStr) {
-        self.inner.insert(name.clone(), Binding::Fragment(Fragment::Empty));
+    fn push_optional(&mut self, name: Symbol) {
+        self.inner.insert(name, Binding::Fragment(Fragment::Empty));
     }
 
-    fn push_empty(&mut self, name: &SmolStr) {
-        self.inner.insert(name.clone(), Binding::Empty);
+    fn push_empty(&mut self, name: Symbol) {
+        self.inner.insert(name, Binding::Empty);
     }
 
     fn bindings(&self) -> impl Iterator<Item = &Binding> {
@@ -127,10 +127,10 @@ pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree<Span>, edition:
 
 #[derive(Debug, Clone)]
 enum BindingKind {
-    Empty(SmolStr),
-    Optional(SmolStr),
-    Fragment(SmolStr, Fragment),
-    Missing(SmolStr, MetaVarKind),
+    Empty(Symbol),
+    Optional(Symbol),
+    Fragment(Symbol, Fragment),
+    Missing(Symbol, MetaVarKind),
     Nested(usize, usize),
 }
 
@@ -178,20 +178,20 @@ impl BindingsBuilder {
         }
     }
 
-    fn push_empty(&mut self, idx: &mut BindingsIdx, var: &SmolStr) {
+    fn push_empty(&mut self, idx: &mut BindingsIdx, var: &Symbol) {
         self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Empty(var.clone()))));
     }
 
-    fn push_optional(&mut self, idx: &mut BindingsIdx, var: &SmolStr) {
+    fn push_optional(&mut self, idx: &mut BindingsIdx, var: &Symbol) {
         self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Optional(var.clone()))));
     }
 
-    fn push_fragment(&mut self, idx: &mut BindingsIdx, var: &SmolStr, fragment: Fragment) {
+    fn push_fragment(&mut self, idx: &mut BindingsIdx, var: &Symbol, fragment: Fragment) {
         self.nodes[idx.0]
             .push(LinkNode::Node(Rc::new(BindingKind::Fragment(var.clone(), fragment))));
     }
 
-    fn push_missing(&mut self, idx: &mut BindingsIdx, var: &SmolStr, kind: MetaVarKind) {
+    fn push_missing(&mut self, idx: &mut BindingsIdx, var: &Symbol, kind: MetaVarKind) {
         self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Missing(var.clone(), kind))));
     }
 
@@ -219,10 +219,10 @@ impl BindingsBuilder {
         for cmd in nodes {
             match cmd {
                 BindingKind::Empty(name) => {
-                    bindings.push_empty(name);
+                    bindings.push_empty(name.clone());
                 }
                 BindingKind::Optional(name) => {
-                    bindings.push_optional(name);
+                    bindings.push_optional(name.clone());
                 }
                 BindingKind::Fragment(name, fragment) => {
                     bindings.inner.insert(name.clone(), Binding::Fragment(fragment.clone()));
@@ -507,7 +507,7 @@ fn match_loop_inner<'t>(
             }
             OpDelimited::Op(Op::Literal(lhs)) => {
                 if let Ok(rhs) = src.clone().expect_leaf() {
-                    if matches!(rhs, tt::Leaf::Literal(it) if it.text == lhs.text) {
+                    if matches!(rhs, tt::Leaf::Literal(it) if it.symbol == lhs.symbol) {
                         item.dot.next();
                     } else {
                         res.add_err(ExpandError::UnexpectedToken);
@@ -521,7 +521,7 @@ fn match_loop_inner<'t>(
             }
             OpDelimited::Op(Op::Ident(lhs)) => {
                 if let Ok(rhs) = src.clone().expect_leaf() {
-                    if matches!(rhs, tt::Leaf::Ident(it) if it.text == lhs.text) {
+                    if matches!(rhs, tt::Leaf::Ident(it) if it.sym == lhs.sym) {
                         item.dot.next();
                     } else {
                         res.add_err(ExpandError::UnexpectedToken);
@@ -554,7 +554,7 @@ fn match_loop_inner<'t>(
                         // ident, not a punct.
                         ExpandError::UnexpectedToken
                     } else {
-                        let lhs: SmolStr = lhs.collect();
+                        let lhs = lhs.collect::<String>();
                         ExpandError::binding_error(format!("expected punct: `{lhs}`"))
                     }
                 } else {
@@ -759,7 +759,9 @@ fn match_meta_var(
             // [1]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/rustc_expand/src/mbe/macro_parser.rs#L576
             match input.peek_n(0) {
                 Some(tt::TokenTree::Leaf(tt::Leaf::Ident(it)))
-                    if it.text == "_" || it.text == "let" || it.text == "const" =>
+                    if it.sym == sym::underscore
+                        || it.sym == sym::let_
+                        || it.sym == sym::const_ =>
                 {
                     return ExpandResult::only_err(ExpandError::NoMatchingRule)
                 }
@@ -824,7 +826,7 @@ fn match_meta_var(
     expect_fragment(input, fragment, edition).map(|it| it.map(Fragment::Tokens))
 }
 
-fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate) {
+fn collect_vars(collector_fun: &mut impl FnMut(Symbol), pattern: &MetaTemplate) {
     for op in pattern.iter() {
         match op {
             Op::Var { name, .. } => collector_fun(name.clone()),
@@ -908,13 +910,13 @@ fn expect_separator<S: Copy>(iter: &mut TtIter<'_, S>, separator: &Separator) ->
     let mut fork = iter.clone();
     let ok = match separator {
         Separator::Ident(lhs) => match fork.expect_ident_or_underscore() {
-            Ok(rhs) => rhs.text == lhs.text,
+            Ok(rhs) => rhs.sym == lhs.sym,
             Err(_) => false,
         },
         Separator::Literal(lhs) => match fork.expect_literal() {
             Ok(rhs) => match rhs {
-                tt::Leaf::Literal(rhs) => rhs.text == lhs.text,
-                tt::Leaf::Ident(rhs) => rhs.text == lhs.text,
+                tt::Leaf::Literal(rhs) => rhs.symbol == lhs.symbol,
+                tt::Leaf::Ident(rhs) => rhs.sym == lhs.symbol,
                 tt::Leaf::Punct(_) => false,
             },
             Err(_) => false,
