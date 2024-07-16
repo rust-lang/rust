@@ -1,0 +1,67 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:5:5
+   |
+LL | fn lifetime<'a, 'b>(x: &'a ()) -> impl Sized + use<'b> {
+   |             --                    -------------------- opaque type defined here
+   |             |
+   |             hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add `'a` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn lifetime<'a, 'b>(x: &'a ()) -> impl Sized + use<'b, 'a> {
+   |                                                      ++++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:11:5
+   |
+LL | fn param<'a, T>(x: &'a ()) -> impl Sized + use<T> {
+   |          --                   ------------------- opaque type defined here
+   |          |
+   |          hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add `'a` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn param<'a, T>(x: &'a ()) -> impl Sized + use<'a, T> {
+   |                                                +++
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:17:5
+   |
+LL | fn empty<'a>(x: &'a ()) -> impl Sized + use<> {
+   |          --                ------------------ opaque type defined here
+   |          |
+   |          hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add `'a` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn empty<'a>(x: &'a ()) -> impl Sized + use<'a> {
+   |                                             ++
+
+error[E0700]: hidden type for `impl Captures<'captured>` captures lifetime that does not appear in bounds
+  --> $DIR/hidden-type-suggestion.rs:26:5
+   |
+LL | fn missing<'a, 'captured, 'not_captured, Captured>(x: &'a ()) -> impl Captures<'captured> {
+   |            --                                                    ------------------------ opaque type defined here
+   |            |
+   |            hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |
+LL |     x
+   |     ^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL | fn missing<'a, 'captured, 'not_captured, Captured>(x: &'a ()) -> impl Captures<'captured> + use<'captured, 'a, Captured> {
+   |                                                                                           ++++++++++++++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

@@ -1,7 +1,7 @@
-# rustbuild - Bootstrapping Rust
+# Bootstrapping Rust
 
 This README is aimed at helping to explain how Rust is bootstrapped,
-and some of the technical details of the build system.
+and some of the technical details of the bootstrap build system.
 
 Note that this README only covers internal information, not how to use the tool.
 Please check [bootstrapping dev guide][bootstrapping-dev-guide] for further information.
@@ -12,17 +12,17 @@ Please check [bootstrapping dev guide][bootstrapping-dev-guide] for further info
 
 The build system defers most of the complicated logic of managing invocations
 of rustc and rustdoc to Cargo itself. However, moving through various stages
-and copying artifacts is still necessary for it to do. Each time rustbuild
+and copying artifacts is still necessary for it to do. Each time bootstrap
 is invoked, it will iterate through the list of predefined steps and execute
 each serially in turn if it matches the paths passed or is a default rule.
-For each step, rustbuild relies on the step internally being incremental and
-parallel. Note, though, that the `-j` parameter to rustbuild gets forwarded
+For each step, bootstrap relies on the step internally being incremental and
+parallel. Note, though, that the `-j` parameter to bootstrap gets forwarded
 to appropriate test harnesses and such.
 
 ## Build phases
 
-The rustbuild build system goes through a few phases to actually build the
-compiler. What actually happens when you invoke rustbuild is:
+Bootstrap build system goes through a few phases to actually build the
+compiler. What actually happens when you invoke bootstrap is:
 
 1. The entry point script (`x` for unix like systems, `x.ps1` for windows systems,
    `x.py` cross-platform) is run. This script is responsible for downloading the stage0
@@ -151,9 +151,9 @@ build/
     stage3/
 ```
 
-## Extending rustbuild
+## Extending bootstrap
 
-When you use the bootstrap system, you'll call it through the entry point script
+When you use bootstrap, you'll call it through the entry point script
 (`x`, `x.ps1`, or `x.py`). However, most of the code lives in `src/bootstrap`.
 `bootstrap` has a difficult problem: it is written in Rust, but yet it is run
 before the Rust compiler is built! To work around this, there are two components

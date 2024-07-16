@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
+use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 
 use super::HirTyLowerer;
 
@@ -60,7 +60,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let msg = "trait objects must include the `dyn` keyword";
             let label = "add `dyn` keyword before this trait";
             let mut diag =
-                rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
+                rustc_errors::struct_span_code_err!(self.dcx(), self_ty.span, E0782, "{}", msg);
             if self_ty.span.can_be_used_for_suggestions()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
             {

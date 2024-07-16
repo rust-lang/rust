@@ -92,7 +92,6 @@ mod errors;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
-pub mod structured_errors;
 mod variance;
 
 use rustc_hir as hir;

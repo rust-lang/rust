@@ -33,7 +33,7 @@ macro_rules! check_ci_llvm {
         assert!(
             $name.is_none(),
             "setting {} is incompatible with download-ci-llvm.",
-            stringify!($name)
+            stringify!($name).replace("_", "-")
         );
     };
 }
@@ -658,8 +658,7 @@ impl Merge for TomlConfig {
     }
 }
 
-// We are using a decl macro instead of a derive proc macro here to reduce the compile time of
-// rustbuild.
+// We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
 macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
         $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
@@ -704,7 +703,7 @@ macro_rules! define_config {
 
         // The following is a trimmed version of what serde_derive generates. All parts not relevant
         // for toml deserialization have been removed. This reduces the binary size and improves
-        // compile time of rustbuild.
+        // compile time of bootstrap.
         impl<'de> Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -1259,7 +1258,7 @@ impl Config {
         cmd.arg("rev-parse").arg("--show-cdup");
         // Discard stderr because we expect this to fail when building from a tarball.
         let output = cmd
-            .command
+            .as_command_mut()
             .stderr(std::process::Stdio::null())
             .output()
             .ok()
@@ -1329,6 +1328,17 @@ impl Config {
             config.config = None;
             TomlConfig::default()
         };
+
+        if cfg!(test) {
+            // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
+            // same ones used to call the tests (if custom ones are not defined in the toml). If we
+            // don't do that, bootstrap will use its own detection logic to find a suitable rustc
+            // and Cargo, which doesn't work when the caller is specìfying a custom local rustc or
+            // Cargo in their config.toml.
+            let build = toml.build.get_or_insert_with(Default::default);
+            build.rustc = build.rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
+            build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
+        }
 
         if let Some(include) = &toml.profile {
             // Allows creating alias for profile names, allowing
@@ -1448,7 +1458,12 @@ impl Config {
             rustc
         } else {
             config.download_beta_toolchain();
-            config.out.join(config.build.triple).join("stage0/bin/rustc")
+            config
+                .out
+                .join(config.build.triple)
+                .join("stage0")
+                .join("bin")
+                .join(exe("rustc", config.build))
         };
 
         config.initial_cargo = if let Some(cargo) = cargo {
@@ -1458,7 +1473,12 @@ impl Config {
             cargo
         } else {
             config.download_beta_toolchain();
-            config.out.join(config.build.triple).join("stage0/bin/cargo")
+            config
+                .out
+                .join(config.build.triple)
+                .join("stage0")
+                .join("bin")
+                .join(exe("cargo", config.build))
         };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
@@ -1548,7 +1568,15 @@ impl Config {
         let mut lld_enabled = None;
 
         let mut is_user_configured_rust_channel = false;
+
         if let Some(rust) = toml.rust {
+            config.download_rustc_commit =
+                config.download_ci_rustc_commit(rust.download_rustc.clone());
+
+            if config.download_rustc_commit.is_some() {
+                check_incompatible_options_for_ci_rustc(&rust);
+            }
+
             let Rust {
                 optimize: optimize_toml,
                 debug: debug_toml,
@@ -1596,7 +1624,7 @@ impl Config {
                 new_symbol_mangling,
                 profile_generate,
                 profile_use,
-                download_rustc,
+                download_rustc: _,
                 lto,
                 validate_mir_opts,
                 frame_pointers,
@@ -1606,11 +1634,7 @@ impl Config {
             } = rust;
 
             is_user_configured_rust_channel = channel.is_some();
-            set(&mut config.channel, channel);
-
-            config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
-
-            // FIXME: handle download-rustc incompatible options.
+            set(&mut config.channel, channel.clone());
 
             debug = debug_toml;
             debug_assertions = debug_assertions_toml;
@@ -2142,7 +2166,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        output(&mut git.command)
+        output(git.as_command_mut())
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -2445,22 +2469,14 @@ impl Config {
             }
         };
 
-        // Handle running from a directory other than the top level
-        let top_level = output(
-            &mut helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]).command,
-        );
-        let top_level = top_level.trim_end();
-        let compiler = format!("{top_level}/compiler/");
-        let library = format!("{top_level}/library/");
-
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
-            &mut helpers::git(Some(&self.src))
+            helpers::git(Some(&self.src))
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
                 .args(["-n1", "--first-parent", "HEAD"])
-                .command,
+                .as_command_mut(),
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2473,8 +2489,10 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", commit, "--", &compiler, &library])
-            .command
+            .args(["diff-index", "--quiet", commit])
+            .arg("--")
+            .args([self.src.join("compiler"), self.src.join("library")])
+            .as_command_mut()
             .status())
         .success();
         if has_changes {
@@ -2545,20 +2563,14 @@ impl Config {
         option_name: &str,
         if_unchanged: bool,
     ) -> Option<String> {
-        // Handle running from a directory other than the top level
-        let top_level = output(
-            &mut helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]).command,
-        );
-        let top_level = top_level.trim_end();
-
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
-            &mut helpers::git(Some(&self.src))
+            helpers::git(Some(&self.src))
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
                 .args(["-n1", "--first-parent", "HEAD"])
-                .command,
+                .as_command_mut(),
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2573,11 +2585,14 @@ impl Config {
         let mut git = helpers::git(Some(&self.src));
         git.args(["diff-index", "--quiet", commit, "--"]);
 
+        // Handle running from a directory other than the top level
+        let top_level = &self.src;
+
         for path in modified_paths {
-            git.arg(format!("{top_level}/{path}"));
+            git.arg(top_level.join(path));
         }
 
-        let has_changes = !t!(git.command.status()).success();
+        let has_changes = !t!(git.as_command_mut().status()).success();
         if has_changes {
             if if_unchanged {
                 if self.verbose > 0 {
@@ -2595,6 +2610,113 @@ impl Config {
 
         Some(commit.to_string())
     }
+}
+
+/// Checks the CI rustc incompatible options by destructuring the `Rust` instance
+/// and makes sure that no rust options from config.toml are missed.
+fn check_incompatible_options_for_ci_rustc(rust: &Rust) {
+    macro_rules! err {
+        ($name:expr) => {
+            assert!(
+                $name.is_none(),
+                "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
+                stringify!($name).replace("_", "-")
+            );
+        };
+    }
+
+    macro_rules! warn {
+        ($name:expr) => {
+            if $name.is_some() {
+                println!(
+                    "WARNING: `rust.{}` has no effect with `rust.download-rustc`.",
+                    stringify!($name).replace("_", "-")
+                );
+            }
+        };
+    }
+
+    let Rust {
+        // Following options are the CI rustc incompatible ones.
+        optimize,
+        debug_logging,
+        debuginfo_level_rustc,
+        llvm_tools,
+        llvm_bitcode_linker,
+        lto,
+        stack_protector,
+        strip,
+        lld_mode,
+        jemalloc,
+        rpath,
+        channel,
+        description,
+        incremental,
+        default_linker,
+
+        // Rest of the options can simply be ignored.
+        debug: _,
+        codegen_units: _,
+        codegen_units_std: _,
+        debug_assertions: _,
+        debug_assertions_std: _,
+        overflow_checks: _,
+        overflow_checks_std: _,
+        debuginfo_level: _,
+        debuginfo_level_std: _,
+        debuginfo_level_tools: _,
+        debuginfo_level_tests: _,
+        split_debuginfo: _,
+        backtrace: _,
+        parallel_compiler: _,
+        musl_root: _,
+        verbose_tests: _,
+        optimize_tests: _,
+        codegen_tests: _,
+        omit_git_hash: _,
+        dist_src: _,
+        save_toolstates: _,
+        codegen_backends: _,
+        lld: _,
+        deny_warnings: _,
+        backtrace_on_ice: _,
+        verify_llvm_ir: _,
+        thin_lto_import_instr_limit: _,
+        remap_debuginfo: _,
+        test_compare_mode: _,
+        llvm_libunwind: _,
+        control_flow_guard: _,
+        ehcont_guard: _,
+        new_symbol_mangling: _,
+        profile_generate: _,
+        profile_use: _,
+        download_rustc: _,
+        validate_mir_opts: _,
+        frame_pointers: _,
+    } = rust;
+
+    // There are two kinds of checks for CI rustc incompatible options:
+    //    1. Checking an option that may change the compiler behaviour/output.
+    //    2. Checking an option that have no effect on the compiler behaviour/output.
+    //
+    // If the option belongs to the first category, we call `err` macro for a hard error;
+    // otherwise, we just print a warning with `warn` macro.
+    err!(optimize);
+    err!(debug_logging);
+    err!(debuginfo_level_rustc);
+    err!(default_linker);
+    err!(rpath);
+    err!(strip);
+    err!(stack_protector);
+    err!(lld_mode);
+    err!(llvm_tools);
+    err!(llvm_bitcode_linker);
+    err!(jemalloc);
+    err!(lto);
+
+    warn!(channel);
+    warn!(description);
+    warn!(incremental);
 }
 
 fn set<T>(field: &mut T, val: Option<T>) {

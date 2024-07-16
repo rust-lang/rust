@@ -30,6 +30,7 @@ pub mod lang_items;
 pub mod lift;
 pub mod outlives;
 pub mod relate;
+pub mod search_graph;
 pub mod solve;
 
 // These modules are not `pub` since they are glob-imported.

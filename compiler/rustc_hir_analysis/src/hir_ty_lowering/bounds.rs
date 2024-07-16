@@ -76,7 +76,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if unbounds.len() > 1 {
-            tcx.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
+            self.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
                 spans: unbounds.iter().map(|ptr| ptr.span).collect(),
             });
         }
@@ -90,7 +90,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 continue;
             }
             // There was a `?Trait` bound, but it was not `?Sized`; warn.
-            tcx.dcx().span_warn(
+            self.dcx().span_warn(
                 unbound.span,
                 "relaxing a default bound only does something for `?Sized`; \
                 all other traits are not bound by default",
@@ -310,7 +310,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         duplicates
             .entry(assoc_item.def_id)
             .and_modify(|prev_span| {
-                tcx.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
+                self.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
                     span: constraint.span,
                     prev_span: *prev_span,
                     item_name: constraint.ident,
@@ -338,7 +338,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .into(),
                         ty::GenericParamDefKind::Type { .. } => {
                             let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                                tcx.dcx().emit_err(
+                                self.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Type {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
@@ -349,7 +349,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                         ty::GenericParamDefKind::Const { .. } => {
                             let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                                tcx.dcx().emit_err(
+                                self.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Const {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
@@ -371,7 +371,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             {
                 alias_ty.into()
             } else {
-                return Err(tcx.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
+                return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
                     span: constraint.span,
                     ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
                     fn_span: tcx.hir().span_if_local(assoc_item.def_id),
@@ -417,7 +417,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let ty = alias_term
                     .map_bound(|alias| tcx.type_of(alias.def_id).instantiate(tcx, alias.args));
                 let ty =
-                    check_assoc_const_binding_type(tcx, constraint.ident, ty, constraint.hir_id);
+                    check_assoc_const_binding_type(self, constraint.ident, ty, constraint.hir_id);
                 tcx.feed_anon_const_type(anon_const.def_id, ty::EarlyBinder::bind(ty));
             }
 
@@ -426,7 +426,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         match constraint.kind {
             hir::AssocItemConstraintKind::Equality { .. } if let ty::AssocKind::Fn = assoc_kind => {
-                return Err(tcx.dcx().emit_err(crate::errors::ReturnTypeNotationEqualityBound {
+                return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationEqualityBound {
                     span: constraint.span,
                 }));
             }
@@ -462,7 +462,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     late_bound_in_term,
                     |br_name| {
                         struct_span_code_err!(
-                            tcx.dcx(),
+                            self.dcx(),
                             constraint.span,
                             E0582,
                             "binding for associated type `{}` references {}, \
@@ -519,7 +519,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 ///
 /// [^1]: <https://github.com/rust-lang/project-const-generics/issues/28>.
 fn check_assoc_const_binding_type<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    cx: &dyn HirTyLowerer<'tcx>,
     assoc_const: Ident,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
     hir_id: hir::HirId,
@@ -536,13 +536,14 @@ fn check_assoc_const_binding_type<'tcx>(
     }
 
     let mut collector = GenericParamAndBoundVarCollector {
-        tcx,
+        cx,
         params: Default::default(),
         vars: Default::default(),
         depth: ty::INNERMOST,
     };
     let mut guar = ty.visit_with(&mut collector).break_value();
 
+    let tcx = cx.tcx();
     let ty_note = ty
         .make_suggestable(tcx, false, None)
         .map(|ty| crate::errors::TyOfAssocConstBindingNote { assoc_const, ty });
@@ -556,7 +557,7 @@ fn check_assoc_const_binding_type<'tcx>(
     for index in collector.params {
         let param = generics.param_at(index as _, tcx);
         let is_self_param = param.name == rustc_span::symbol::kw::SelfUpper;
-        guar.get_or_insert(tcx.dcx().emit_err(crate::errors::ParamInTyOfAssocConstBinding {
+        guar.get_or_insert(cx.dcx().emit_err(crate::errors::ParamInTyOfAssocConstBinding {
             span: assoc_const.span,
             assoc_const,
             param_name: param.name,
@@ -574,7 +575,7 @@ fn check_assoc_const_binding_type<'tcx>(
         }));
     }
     for (var_def_id, var_name) in collector.vars {
-        guar.get_or_insert(tcx.dcx().emit_err(
+        guar.get_or_insert(cx.dcx().emit_err(
             crate::errors::EscapingBoundVarInTyOfAssocConstBinding {
                 span: assoc_const.span,
                 assoc_const,
@@ -590,14 +591,14 @@ fn check_assoc_const_binding_type<'tcx>(
     Ty::new_error(tcx, guar)
 }
 
-struct GenericParamAndBoundVarCollector<'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct GenericParamAndBoundVarCollector<'a, 'tcx> {
+    cx: &'a dyn HirTyLowerer<'tcx>,
     params: FxIndexSet<u32>,
     vars: FxIndexSet<(DefId, Symbol)>,
     depth: ty::DebruijnIndex,
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 'tcx> {
     type Result = ControlFlow<ErrorGuaranteed>;
 
     fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
@@ -620,7 +621,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'tcx> 
                     ty::BoundTyKind::Param(def_id, name) => (def_id, name),
                     ty::BoundTyKind::Anon => {
                         let reported = self
-                            .tcx
+                            .cx
                             .dcx()
                             .delayed_bug(format!("unexpected anon bound ty: {:?}", bt.var));
                         return ControlFlow::Break(reported);
@@ -643,7 +644,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'tcx> 
                     ty::BrNamed(def_id, name) => (def_id, name),
                     ty::BrAnon | ty::BrEnv => {
                         let guar = self
-                            .tcx
+                            .cx
                             .dcx()
                             .delayed_bug(format!("unexpected bound region kind: {:?}", br.kind));
                         return ControlFlow::Break(guar);
@@ -661,7 +662,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'tcx> 
                 self.params.insert(param.index);
             }
             ty::ConstKind::Bound(db, ty::BoundVar { .. }) if db >= self.depth => {
-                let guar = self.tcx.dcx().delayed_bug("unexpected escaping late-bound const var");
+                let guar = self.cx.dcx().delayed_bug("unexpected escaping late-bound const var");
                 return ControlFlow::Break(guar);
             }
             _ if ct.has_param() || ct.has_bound_vars() => return ct.super_visit_with(self),

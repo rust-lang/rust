@@ -1,11 +1,16 @@
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0
+// 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
+//@ revisions: x86 other
+//@[x86] only-x86
+//@[other] ignore-x86
 
 #![crate_type = "lib"]
 
 #[no_mangle]
 pub struct F32(f32);
 
-// CHECK: define{{.*}}float @add_newtype_f32(float %a, float %b)
+// other: define{{.*}}float @add_newtype_f32(float %a, float %b)
+// x86: define{{.*}}i32 @add_newtype_f32(float %a, float %b)
 #[inline(never)]
 #[no_mangle]
 pub fn add_newtype_f32(a: F32, b: F32) -> F32 {
@@ -15,7 +20,8 @@ pub fn add_newtype_f32(a: F32, b: F32) -> F32 {
 #[no_mangle]
 pub struct F64(f64);
 
-// CHECK: define{{.*}}double @add_newtype_f64(double %a, double %b)
+// other: define{{.*}}double @add_newtype_f64(double %a, double %b)
+// x86: define{{.*}}void @add_newtype_f64(ptr{{.*}}sret([8 x i8]){{.*}}%_0, double %a, double %b)
 #[inline(never)]
 #[no_mangle]
 pub fn add_newtype_f64(a: F64, b: F64) -> F64 {

@@ -1,10 +1,10 @@
 error: missing `struct` for struct definition
-  --> $DIR/pub-ident-struct-2.rs:4:8
+  --> $DIR/pub-ident-struct-2.rs:4:5
    |
 LL |     pub bar();
-   |        ^
+   |     ^^^^^^^
    |
-help: add `struct` here to parse `bar` as a public struct
+help: add `struct` here to parse `bar` as a struct
    |
 LL |     pub struct bar();
    |         ++++++

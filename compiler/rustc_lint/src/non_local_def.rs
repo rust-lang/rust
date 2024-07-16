@@ -11,10 +11,10 @@ use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::Span;
 use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind, Symbol};
-use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_trait_selection::traits::error_reporting::ambiguity::{
+use rustc_trait_selection::error_reporting::traits::ambiguity::{
     compute_applicable_impls_for_diagnostics, CandidateSource,
 };
+use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use crate::fluent_generated as fluent;
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};

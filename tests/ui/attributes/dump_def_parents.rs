@@ -1,4 +1,4 @@
-//@ normalize-stderr-test "DefId\(.+?\)" -> "DefId(..)"
+//@ normalize-stderr-test: "DefId\(.+?\)" -> "DefId(..)"
 #![feature(rustc_attrs)]
 
 fn bar() {

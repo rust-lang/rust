@@ -502,7 +502,7 @@ impl<T> OnceLock<T> {
     #[inline]
     unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.is_initialized());
-        (&*self.value.get()).assume_init_ref()
+        unsafe { (&*self.value.get()).assume_init_ref() }
     }
 
     /// # Safety
@@ -511,7 +511,7 @@ impl<T> OnceLock<T> {
     #[inline]
     unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.is_initialized());
-        (&mut *self.value.get()).assume_init_mut()
+        unsafe { (&mut *self.value.get()).assume_init_mut() }
     }
 }
 

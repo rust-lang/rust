@@ -373,10 +373,6 @@ hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a t
 hir_analysis_parenthesized_fn_trait_expansion =
     parenthesized trait syntax expands to `{$expanded_type}`
 
-hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
-    .suggestion = cast the value to `{$cast_ty}`
-    .help = cast the value to `{$cast_ty}`
-
 hir_analysis_pattern_type_non_const_range = range patterns must have constant range start and end
 hir_analysis_pattern_type_wild_pat = wildcard patterns are not permitted for pattern types
     .label = this type is the same as the inner type without a pattern

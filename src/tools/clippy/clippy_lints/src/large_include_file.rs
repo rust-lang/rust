@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::root_macro_call_first_node;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -52,24 +51,19 @@ impl_lint_pass!(LargeIncludeFile => [LARGE_INCLUDE_FILE]);
 
 impl LateLintPass<'_> for LargeIncludeFile {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if let Some(macro_call) = root_macro_call_first_node(cx, expr)
-            && !is_lint_allowed(cx, LARGE_INCLUDE_FILE, expr.hir_id)
-            && (cx.tcx.is_diagnostic_item(sym::include_bytes_macro, macro_call.def_id)
-                || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
-            && let ExprKind::Lit(lit) = &expr.kind
-        {
-            let len = match &lit.node {
+        if let ExprKind::Lit(lit) = &expr.kind
+            && let len = match &lit.node {
                 // include_bytes
                 LitKind::ByteStr(bstr, _) => bstr.len(),
                 // include_str
                 LitKind::Str(sym, _) => sym.as_str().len(),
                 _ => return,
-            };
-
-            if len as u64 <= self.max_file_size {
-                return;
             }
-
+            && len as u64 > self.max_file_size
+            && let Some(macro_call) = root_macro_call_first_node(cx, expr)
+            && (cx.tcx.is_diagnostic_item(sym::include_bytes_macro, macro_call.def_id)
+                || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
+        {
             span_lint_and_note(
                 cx,
                 LARGE_INCLUDE_FILE,

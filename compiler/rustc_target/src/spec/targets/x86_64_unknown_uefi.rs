@@ -32,10 +32,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-windows".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit UEFI".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: None, // ?
         },
         pointer_width: 64,
         data_layout:

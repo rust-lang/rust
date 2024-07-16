@@ -33,6 +33,7 @@
 #[macro_use]
 extern crate tracing;
 
+pub mod error_reporting;
 pub mod errors;
 pub mod infer;
 pub mod regions;

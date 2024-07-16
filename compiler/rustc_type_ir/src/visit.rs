@@ -230,7 +230,7 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     }
 
     fn has_aliases(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_ALIASES)
+        self.has_type_flags(TypeFlags::HAS_ALIAS)
     }
 
     fn has_inherent_projections(&self) -> bool {

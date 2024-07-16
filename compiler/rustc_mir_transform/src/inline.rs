@@ -41,6 +41,12 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
+        // MIR correctly when Modified Condition/Decision Coverage is enabled.
+        if sess.instrument_coverage_mcdc() {
+            return false;
+        }
+
         if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
             return enabled;
         }

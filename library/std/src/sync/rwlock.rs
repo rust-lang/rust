@@ -578,7 +578,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     // successfully called from the same thread before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard {
-            data: NonNull::new_unchecked(lock.data.get()),
+            data: unsafe { NonNull::new_unchecked(lock.data.get()) },
             inner_lock: &lock.inner,
         })
     }

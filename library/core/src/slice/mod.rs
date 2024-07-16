@@ -3959,17 +3959,8 @@ impl<T> [T] {
 
     /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
     ///
-    /// This is a safe wrapper around [`slice::align_to`], so has the same weak
-    /// postconditions as that method.  You're only assured that
-    /// `self.len() == prefix.len() + middle.len() * LANES + suffix.len()`.
-    ///
-    /// Notably, all of the following are possible:
-    /// - `prefix.len() >= LANES`.
-    /// - `middle.is_empty()` despite `self.len() >= 3 * LANES`.
-    /// - `suffix.len() >= LANES`.
-    ///
-    /// That said, this is a safe method, so if you're only writing safe code,
-    /// then this can at most cause incorrect logic, not unsoundness.
+    /// This is a safe wrapper around [`slice::align_to`], so inherits the same
+    /// guarantees as that method.
     ///
     /// # Panics
     ///
@@ -4033,17 +4024,8 @@ impl<T> [T] {
     /// Split a mutable slice into a mutable prefix, a middle of aligned SIMD types,
     /// and a mutable suffix.
     ///
-    /// This is a safe wrapper around [`slice::align_to_mut`], so has the same weak
-    /// postconditions as that method.  You're only assured that
-    /// `self.len() == prefix.len() + middle.len() * LANES + suffix.len()`.
-    ///
-    /// Notably, all of the following are possible:
-    /// - `prefix.len() >= LANES`.
-    /// - `middle.is_empty()` despite `self.len() >= 3 * LANES`.
-    /// - `suffix.len() >= LANES`.
-    ///
-    /// That said, this is a safe method, so if you're only writing safe code,
-    /// then this can at most cause incorrect logic, not unsoundness.
+    /// This is a safe wrapper around [`slice::align_to_mut`], so inherits the same
+    /// guarantees as that method.
     ///
     /// This is the mutable version of [`slice::as_simd`]; see that for examples.
     ///

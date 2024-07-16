@@ -702,9 +702,13 @@ download-rustc = false
             // time `rustc_llvm` build script ran. However, the timestamps of the
             // files in the tarball are in the past, so it doesn't trigger a
             // rebuild.
-            let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
+            let now = std::time::SystemTime::now();
+            let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
+
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            t!(filetime::set_file_times(llvm_config, now, now));
+            let llvm_config_file = t!(File::open(llvm_config));
+
+            t!(llvm_config_file.set_times(file_times));
 
             if self.should_fix_bins_and_dylibs() {
                 let llvm_lib = llvm_root.join("lib");

@@ -1137,20 +1137,15 @@ LLVMRustDIBuilderGetOrCreateArray(LLVMRustDIBuilderRef Builder,
       Builder->getOrCreateArray(ArrayRef<Metadata *>(DataValue, Count)).get());
 }
 
-extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
+extern "C" void LLVMRustDIBuilderInsertDeclareAtEnd(
     LLVMRustDIBuilderRef Builder, LLVMValueRef V, LLVMMetadataRef VarInfo,
     uint64_t *AddrOps, unsigned AddrOpsCount, LLVMMetadataRef DL,
     LLVMBasicBlockRef InsertAtEnd) {
-  auto Result = Builder->insertDeclare(
-      unwrap(V), unwrap<DILocalVariable>(VarInfo),
-      Builder->createExpression(
-          llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),
-      DebugLoc(cast<MDNode>(unwrap(DL))), unwrap(InsertAtEnd));
-#if LLVM_VERSION_GE(19, 0)
-  return wrap(Result.get<llvm::Instruction *>());
-#else
-  return wrap(Result);
-#endif
+  Builder->insertDeclare(unwrap(V), unwrap<DILocalVariable>(VarInfo),
+                         Builder->createExpression(
+                             llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),
+                         DebugLoc(cast<MDNode>(unwrap(DL))),
+                         unwrap(InsertAtEnd));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(

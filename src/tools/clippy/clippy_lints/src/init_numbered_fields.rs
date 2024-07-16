@@ -1,13 +1,12 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 use std::borrow::Cow;
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -44,38 +43,56 @@ declare_lint_pass!(NumberedFields => [INIT_NUMBERED_FIELDS]);
 
 impl<'tcx> LateLintPass<'tcx> for NumberedFields {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::Struct(path, fields, None) = e.kind {
-            if !fields.is_empty()
-                && !e.span.from_expansion()
-                && fields
-                    .iter()
-                    .all(|f| f.ident.as_str().as_bytes().iter().all(u8::is_ascii_digit))
-                && !matches!(cx.qpath_res(path, e.hir_id), Res::Def(DefKind::TyAlias, ..))
-            {
-                let expr_spans = fields
-                    .iter()
-                    .map(|f| (Reverse(f.ident.as_str().parse::<usize>().unwrap()), f.expr.span))
-                    .collect::<BinaryHeap<_>>();
-                let mut appl = Applicability::MachineApplicable;
-                let snippet = format!(
-                    "{}({})",
-                    snippet_with_applicability(cx, path.span(), "..", &mut appl),
-                    expr_spans
-                        .into_iter_sorted()
-                        .map(|(_, span)| snippet_with_context(cx, span, path.span().ctxt(), "..", &mut appl).0)
-                        .intersperse(Cow::Borrowed(", "))
-                        .collect::<String>()
-                );
-                span_lint_and_sugg(
-                    cx,
-                    INIT_NUMBERED_FIELDS,
-                    e.span,
-                    "used a field initializer for a tuple struct",
-                    "try",
-                    snippet,
-                    appl,
-                );
-            }
+        if let ExprKind::Struct(path, fields @ [field, ..], None) = e.kind
+            // If the first character of any field is a digit it has to be a tuple.
+            && field.ident.as_str().as_bytes().first().is_some_and(u8::is_ascii_digit)
+            // Type aliases can't be used as functions.
+            && !matches!(
+                cx.qpath_res(path, e.hir_id),
+                Res::Def(DefKind::TyAlias | DefKind::AssocTy, _)
+            )
+            // This is the only syntax macros can use that works for all struct types.
+            && !e.span.from_expansion()
+            && let mut has_side_effects = false
+            && let Ok(mut expr_spans) = fields
+                .iter()
+                .map(|f| {
+                    has_side_effects |= f.expr.can_have_side_effects();
+                    f.ident.as_str().parse::<usize>().map(|x| (x, f.expr.span))
+                })
+                .collect::<Result<Vec<_>, _>>()
+            // We can only reorder the expressions if there are no side effects.
+            && (!has_side_effects || expr_spans.is_sorted_by_key(|&(idx, _)| idx))
+        {
+            span_lint_and_then(
+                cx,
+                INIT_NUMBERED_FIELDS,
+                e.span,
+                "used a field initializer for a tuple struct",
+                |diag| {
+                    if !has_side_effects {
+                        // We already checked the order if there are side effects.
+                        expr_spans.sort_by_key(|&(idx, _)| idx);
+                    }
+                    let mut app = Applicability::MachineApplicable;
+                    diag.span_suggestion(
+                        e.span,
+                        "use tuple initialization",
+                        format!(
+                            "{}({})",
+                            snippet_with_applicability(cx, path.span(), "..", &mut app),
+                            expr_spans
+                                .into_iter()
+                                .map(
+                                    |(_, span)| snippet_with_context(cx, span, SyntaxContext::root(), "..", &mut app).0
+                                )
+                                .intersperse(Cow::Borrowed(", "))
+                                .collect::<String>()
+                        ),
+                        app,
+                    );
+                },
+            );
         }
     }
 }

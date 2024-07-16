@@ -42,6 +42,10 @@ declare_features! (
     // feature-group-start: accepted features
     // -------------------------------------------------------------------------
 
+    // Note that the version indicates when it got *stabilized*.
+    // When moving an unstable feature here, set the version number to
+    // `CURRENT RUSTC VERSION` with ` ` replaced by `_`.
+
     /// Allows `#[target_feature(...)]` on aarch64 platforms
     (accepted, aarch64_target_feature, "1.61.0", Some(44839)),
     /// Allows using the `efiapi` ABI.

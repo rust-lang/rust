@@ -7,13 +7,13 @@ repo.  We can then check the diff and spot new or disappearing warnings.
 From the repo root, run:
 
 ```
-cargo run --target-dir lintcheck/target --manifest-path lintcheck/Cargo.toml
+cargo lintcheck
 ```
 
 or
 
 ```
-cargo lintcheck
+cargo run --target-dir lintcheck/target --manifest-path lintcheck/Cargo.toml
 ```
 
 By default, the logs will be saved into
@@ -33,6 +33,8 @@ the 200 recently most downloaded crates:
 cargo lintcheck popular -n 200 custom.toml
 ```
 
+> Note: Lintcheck isn't sandboxed. Only use it to check crates that you trust or
+> sandbox it manually.
 
 ### Configuring the Crate Sources
 
@@ -65,17 +67,11 @@ sources.
 #### Command Line Options (optional)
 
 ```toml
-bitflags = {name = "bitflags", versions = ['1.2.1'], options = ['-Wclippy::pedantic', '-Wclippy::cargo']}
+clap = {name = "clap", versions = ['4.5.8'], options = ['-Fderive']}
 ```
 
 It is possible to specify command line options for each crate. This makes it
-possible to only check a crate for certain lint groups. If no options are
-specified, the lint groups `clippy::all`, `clippy::pedantic`, and
-`clippy::cargo` are checked. If an empty array is specified only `clippy::all`
-is checked.
-
-**Note:** `-Wclippy::all` is always enabled by default, unless `-Aclippy::all`
-is explicitly specified in the options.
+possible to enable or disable features.
 
 ### Fix mode
 You can run `cargo lintcheck --fix` which will run Clippy with `--fix` and

@@ -39,4 +39,4 @@ index 42a26ae..5ac1042 100644
 +#![cfg(test)]
  #![feature(alloc_layout_extra)]
  #![feature(array_chunks)]
- #![feature(array_windows)]
+ #![feature(array_ptr_get)]

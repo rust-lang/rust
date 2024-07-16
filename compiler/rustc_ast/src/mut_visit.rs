@@ -20,7 +20,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use smallvec::{smallvec, Array, SmallVec};
 use std::ops::DerefMut;
-use std::{panic, ptr};
+use std::panic;
 use thin_vec::ThinVec;
 
 pub trait ExpectOne<A: Array> {
@@ -318,19 +318,8 @@ pub trait MutVisitor: Sized {
 //
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_clobber<T: DummyAstNode>(t: &mut T, f: impl FnOnce(T) -> T) {
-    unsafe {
-        // Safe because `t` is used in a read-only fashion by `read()` before
-        // being overwritten by `write()`.
-        let old_t = ptr::read(t);
-        let new_t =
-            panic::catch_unwind(panic::AssertUnwindSafe(|| f(old_t))).unwrap_or_else(|err| {
-                // Set `t` to some valid but possible meaningless value,
-                // and pass the fatal error further.
-                ptr::write(t, T::dummy());
-                panic::resume_unwind(err);
-            });
-        ptr::write(t, new_t);
-    }
+    let old_t = std::mem::replace(t, T::dummy());
+    *t = f(old_t);
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.

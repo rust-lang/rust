@@ -17,9 +17,7 @@
 +         _0 = const 4_u32;
           return;
       }
-+ }
-+ 
-+ ALLOC0 (size: 8, align: 4) {
-+     04 00 00 00 00 __ __ __                         │ .....░░░
   }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
   

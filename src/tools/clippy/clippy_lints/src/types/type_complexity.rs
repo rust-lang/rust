@@ -57,7 +57,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
                     bound
                         .bound_generic_params
                         .iter()
-                        .any(|gen| matches!(gen.kind, GenericParamKind::Lifetime { .. }))
+                        .any(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
                 });
                 if has_lifetime_parameters {
                     // complex trait bounds like A<'a, 'b>

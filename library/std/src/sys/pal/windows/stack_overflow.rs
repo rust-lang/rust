@@ -1,4 +1,5 @@
 #![cfg_attr(test, allow(dead_code))]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::sys::c;
 use crate::thread;
@@ -11,7 +12,7 @@ pub unsafe fn reserve_stack() {
     debug_assert_ne!(result, 0, "failed to reserve stack space for exception handling");
 }
 
-unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
+unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> i32 {
     unsafe {
         let rec = &(*(*ExceptionInfo).ExceptionRecord);
         let code = rec.ExceptionCode;

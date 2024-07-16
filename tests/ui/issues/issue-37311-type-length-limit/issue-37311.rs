@@ -15,7 +15,7 @@ impl<T> Foo for T {
     #[allow(unconditional_recursion)]
     fn recurse(&self) {
         (self, self).recurse();
-        //~^ ERROR reached the type-length limit
+        //~^ ERROR reached the recursion limit while instantiating
     }
 }
 

@@ -1018,7 +1018,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.base.get_many_unchecked_mut(ks)
+        unsafe { self.base.get_many_unchecked_mut(ks) }
     }
 
     /// Returns `true` if the map contains a value for the specified key.

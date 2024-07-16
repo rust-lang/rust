@@ -1,4 +1,4 @@
-//! Sanity checking performed by rustbuild before actually executing anything.
+//! Sanity checking performed by bootstrap before actually executing anything.
 //!
 //! This module contains the implementation of ensuring that the build
 //! environment looks reasonable before progressing. This will verify that
@@ -209,7 +209,7 @@ than building it.
 
     #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> = crate::utils::helpers::output(
-        &mut command(&build.config.initial_rustc).args(["--print", "target-list"]).command,
+        command(&build.config.initial_rustc).args(["--print", "target-list"]).as_command_mut(),
     )
     .lines()
     .map(|s| s.to_string())

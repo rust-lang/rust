@@ -1,3 +1,4 @@
+#![allow(unsafe_op_in_unsafe_fn)]
 use core::ptr::addr_of;
 
 use crate::os::windows::prelude::*;
@@ -28,12 +29,12 @@ pub struct File {
 
 #[derive(Clone)]
 pub struct FileAttr {
-    attributes: c::DWORD,
+    attributes: u32,
     creation_time: c::FILETIME,
     last_access_time: c::FILETIME,
     last_write_time: c::FILETIME,
     file_size: u64,
-    reparse_tag: c::DWORD,
+    reparse_tag: u32,
     volume_serial_number: Option<u32>,
     number_of_links: Option<u32>,
     file_index: Option<u64>,
@@ -41,8 +42,8 @@ pub struct FileAttr {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
-    attributes: c::DWORD,
-    reparse_tag: c::DWORD,
+    attributes: u32,
+    reparse_tag: u32,
 }
 
 pub struct ReadDir {
@@ -75,16 +76,16 @@ pub struct OpenOptions {
     create_new: bool,
     // system-specific
     custom_flags: u32,
-    access_mode: Option<c::DWORD>,
-    attributes: c::DWORD,
-    share_mode: c::DWORD,
-    security_qos_flags: c::DWORD,
-    security_attributes: c::LPSECURITY_ATTRIBUTES,
+    access_mode: Option<u32>,
+    attributes: u32,
+    share_mode: u32,
+    security_qos_flags: u32,
+    security_attributes: *mut c::SECURITY_ATTRIBUTES,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions {
-    attrs: c::DWORD,
+    attrs: u32,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -241,11 +242,11 @@ impl OpenOptions {
         // receive is `SECURITY_ANONYMOUS = 0x0`, which we can't check for later on.
         self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
     }
-    pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
+    pub fn security_attributes(&mut self, attrs: *mut c::SECURITY_ATTRIBUTES) {
         self.security_attributes = attrs;
     }
 
-    fn get_access_mode(&self) -> io::Result<c::DWORD> {
+    fn get_access_mode(&self) -> io::Result<u32> {
         match (self.read, self.write, self.append, self.access_mode) {
             (.., Some(mode)) => Ok(mode),
             (true, false, false, None) => Ok(c::GENERIC_READ),
@@ -261,7 +262,7 @@ impl OpenOptions {
         }
     }
 
-    fn get_creation_mode(&self) -> io::Result<c::DWORD> {
+    fn get_creation_mode(&self) -> io::Result<u32> {
         match (self.write, self.append) {
             (true, false) => {}
             (false, false) => {
@@ -287,7 +288,7 @@ impl OpenOptions {
         })
     }
 
-    fn get_flags_and_attributes(&self) -> c::DWORD {
+    fn get_flags_and_attributes(&self) -> u32 {
         self.custom_flags
             | self.attributes
             | self.security_qos_flags
@@ -397,21 +398,21 @@ impl File {
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
                 core::ptr::addr_of_mut!(info) as *mut c_void,
-                size as c::DWORD,
+                size as u32,
             ))?;
             let mut attr = FileAttr {
                 attributes: info.FileAttributes,
                 creation_time: c::FILETIME {
-                    dwLowDateTime: info.CreationTime as c::DWORD,
-                    dwHighDateTime: (info.CreationTime >> 32) as c::DWORD,
+                    dwLowDateTime: info.CreationTime as u32,
+                    dwHighDateTime: (info.CreationTime >> 32) as u32,
                 },
                 last_access_time: c::FILETIME {
-                    dwLowDateTime: info.LastAccessTime as c::DWORD,
-                    dwHighDateTime: (info.LastAccessTime >> 32) as c::DWORD,
+                    dwLowDateTime: info.LastAccessTime as u32,
+                    dwHighDateTime: (info.LastAccessTime >> 32) as u32,
                 },
                 last_write_time: c::FILETIME {
-                    dwLowDateTime: info.LastWriteTime as c::DWORD,
-                    dwHighDateTime: (info.LastWriteTime >> 32) as c::DWORD,
+                    dwLowDateTime: info.LastWriteTime as u32,
+                    dwHighDateTime: (info.LastWriteTime >> 32) as u32,
                 },
                 file_size: 0,
                 reparse_tag: 0,
@@ -425,7 +426,7 @@ impl File {
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
                 core::ptr::addr_of_mut!(info) as *mut c_void,
-                size as c::DWORD,
+                size as u32,
             ))?;
             attr.file_size = info.AllocationSize as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
@@ -495,7 +496,7 @@ impl File {
             SeekFrom::End(n) => (c::FILE_END, n),
             SeekFrom::Current(n) => (c::FILE_CURRENT, n),
         };
-        let pos = pos as c::LARGE_INTEGER;
+        let pos = pos as i64;
         let mut newpos = 0;
         cvt(unsafe { c::SetFilePointerEx(self.handle.as_raw_handle(), pos, &mut newpos, whence) })?;
         Ok(newpos as u64)
@@ -511,7 +512,7 @@ impl File {
     fn reparse_point(
         &self,
         space: &mut Align8<[MaybeUninit<u8>]>,
-    ) -> io::Result<(c::DWORD, *mut c::REPARSE_DATA_BUFFER)> {
+    ) -> io::Result<(u32, *mut c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
             cvt({
@@ -524,7 +525,7 @@ impl File {
                     ptr::null_mut(),
                     0,
                     space.0.as_mut_ptr().cast(),
-                    len as c::DWORD,
+                    len as u32,
                     &mut bytes,
                     ptr::null_mut(),
                 )
@@ -609,8 +610,7 @@ impl File {
                 "Cannot set file timestamp to 0",
             ));
         }
-        let is_max =
-            |t: c::FILETIME| t.dwLowDateTime == c::DWORD::MAX && t.dwHighDateTime == c::DWORD::MAX;
+        let is_max = |t: c::FILETIME| t.dwLowDateTime == u32::MAX && t.dwHighDateTime == u32::MAX;
         if times.accessed.map_or(false, is_max)
             || times.modified.map_or(false, is_max)
             || times.created.map_or(false, is_max)
@@ -641,7 +641,7 @@ impl File {
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
                 core::ptr::addr_of_mut!(info) as *mut c_void,
-                size as c::DWORD,
+                size as u32,
             ))?;
             Ok(info)
         }
@@ -1020,7 +1020,7 @@ impl FileTimes {
 }
 
 impl FileType {
-    fn new(attrs: c::DWORD, reparse_tag: c::DWORD) -> FileType {
+    fn new(attrs: u32, reparse_tag: u32) -> FileType {
         FileType { attributes: attrs, reparse_tag }
     }
     pub fn is_dir(&self) -> bool {
@@ -1417,16 +1417,16 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     unsafe extern "system" fn callback(
-        _TotalFileSize: c::LARGE_INTEGER,
-        _TotalBytesTransferred: c::LARGE_INTEGER,
-        _StreamSize: c::LARGE_INTEGER,
-        StreamBytesTransferred: c::LARGE_INTEGER,
-        dwStreamNumber: c::DWORD,
-        _dwCallbackReason: c::DWORD,
+        _TotalFileSize: i64,
+        _TotalBytesTransferred: i64,
+        _StreamSize: i64,
+        StreamBytesTransferred: i64,
+        dwStreamNumber: u32,
+        _dwCallbackReason: u32,
         _hSourceFile: c::HANDLE,
         _hDestinationFile: c::HANDLE,
-        lpData: c::LPCVOID,
-    ) -> c::DWORD {
+        lpData: *const c_void,
+    ) -> u32 {
         if dwStreamNumber == 1 {
             *(lpData as *mut i64) = StreamBytesTransferred;
         }

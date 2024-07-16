@@ -30,13 +30,13 @@ use crate::{
         BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
         BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
         BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
-        BuiltinMutablesTransmutes, BuiltinNamedAsmLabel, BuiltinNoMangleGeneric,
-        BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-        BuiltinTypeAliasGenericBounds, BuiltinTypeAliasGenericBoundsSuggestion,
-        BuiltinTypeAliasWhereClause, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
+        BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
+        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
+        BuiltinTypeAliasGenericBoundsSuggestion, BuiltinTypeAliasWhereClause,
+        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
         BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue, SuggestChangingAssocTypes,
+        BuiltinWhileTrue, InvalidAsmLabel, SuggestChangingAssocTypes,
     },
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
@@ -45,7 +45,7 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
-use rustc_errors::{Applicability, LintDiagnostic, MultiSpan};
+use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -69,7 +69,6 @@ use rustc_target::abi::Abi;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
-use tracing::debug;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -324,6 +323,12 @@ impl EarlyLintPass for UnsafeCode {
 
             ast::ItemKind::GlobalAsm(..) => {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
+            }
+
+            ast::ItemKind::ForeignMod(ForeignMod { safety, .. }) => {
+                if let Safety::Unsafe(_) = safety {
+                    self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeExternBlock);
+                }
             }
 
             _ => {}
@@ -2728,10 +2733,52 @@ declare_lint! {
     "named labels in inline assembly",
 }
 
-declare_lint_pass!(NamedAsmLabels => [NAMED_ASM_LABELS]);
+declare_lint! {
+    /// The `binary_asm_labels` lint detects the use of numeric labels containing only binary
+    /// digits in the inline `asm!` macro.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![feature(asm_experimental_arch)]
+    /// use std::arch::asm;
+    ///
+    /// fn main() {
+    ///     unsafe {
+    ///         asm!("0: jmp 0b");
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A [LLVM bug] causes this code to fail to compile because it interprets the `0b` as a binary
+    /// literal instead of a reference to the previous local label `0`. Note that even though the
+    /// bug is marked as fixed, it only fixes a specific usage of intel syntax within standalone
+    /// files, not inline assembly. To work around this bug, don't use labels that could be
+    /// confused with a binary literal.
+    ///
+    /// See the explanation in [Rust By Example] for more details.
+    ///
+    /// [LLVM bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
+    /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels
+    pub BINARY_ASM_LABELS,
+    Deny,
+    "labels in inline assembly containing only 0 or 1 digits",
+}
 
-impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
-    #[allow(rustc::diagnostic_outside_of_impl)]
+declare_lint_pass!(AsmLabels => [NAMED_ASM_LABELS, BINARY_ASM_LABELS]);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AsmLabelKind {
+    Named,
+    FormatArg,
+    Binary,
+}
+
+impl<'tcx> LateLintPass<'tcx> for AsmLabels {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
             kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, options, .. }),
@@ -2759,7 +2806,8 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                     None
                 };
 
-                let mut found_labels = Vec::new();
+                // diagnostics are emitted per-template, so this is created here as opposed to the outer loop
+                let mut spans = Vec::new();
 
                 // A semicolon might not actually be specified as a separator for all targets, but
                 // it seems like LLVM accepts it always.
@@ -2782,16 +2830,21 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
 
                         // Whether a { bracket has been seen and its } hasn't been found yet.
                         let mut in_bracket = false;
+                        let mut label_kind = AsmLabelKind::Named;
 
-                        // A label starts with an ASCII alphabetic character or . or _
                         // A label can also start with a format arg, if it's not a raw asm block.
                         if !raw && start == '{' {
                             in_bracket = true;
+                            label_kind = AsmLabelKind::FormatArg;
+                        } else if matches!(start, '0' | '1') {
+                            // Binary labels have only the characters `0` or `1`.
+                            label_kind = AsmLabelKind::Binary;
                         } else if !(start.is_ascii_alphabetic() || matches!(start, '.' | '_')) {
+                            // Named labels start with ASCII letters, `.` or `_`.
+                            // anything else is not a label
                             break 'label_loop;
                         }
 
-                        // Labels continue with ASCII alphanumeric characters, _, or $
                         for c in chars {
                             // Inside a template format arg, any character is permitted for the
                             // puproses of label detection because we assume that it can be
@@ -2812,8 +2865,18 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                             } else if !raw && c == '{' {
                                 // Start of a format arg.
                                 in_bracket = true;
+                                label_kind = AsmLabelKind::FormatArg;
                             } else {
-                                if !(c.is_ascii_alphanumeric() || matches!(c, '_' | '$')) {
+                                let can_continue = match label_kind {
+                                    // Format arg labels are considered to be named labels for the purposes
+                                    // of continuing outside of their {} pair.
+                                    AsmLabelKind::Named | AsmLabelKind::FormatArg => {
+                                        c.is_ascii_alphanumeric() || matches!(c, '_' | '$')
+                                    }
+                                    AsmLabelKind::Binary => matches!(c, '0' | '1'),
+                                };
+
+                                if !can_continue {
                                     // The potential label had an invalid character inside it, it
                                     // cannot be a label.
                                     break 'label_loop;
@@ -2821,25 +2884,41 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                             }
                         }
 
-                        // If all characters passed the label checks, this is likely a label.
-                        found_labels.push(possible_label);
+                        // If all characters passed the label checks, this is a label.
+                        spans.push((find_label_span(possible_label), label_kind));
                         start_idx = idx + 1;
                     }
                 }
 
-                debug!("NamedAsmLabels::check_expr(): found_labels: {:#?}", &found_labels);
-
-                if found_labels.len() > 0 {
-                    let spans = found_labels
-                        .into_iter()
-                        .filter_map(|label| find_label_span(label))
-                        .collect::<Vec<Span>>();
-                    // If there were labels but we couldn't find a span, combine the warnings and
-                    // use the template span.
-                    let target_spans: MultiSpan =
-                        if spans.len() > 0 { spans.into() } else { (*template_span).into() };
-
-                    cx.emit_span_lint(NAMED_ASM_LABELS, target_spans, BuiltinNamedAsmLabel);
+                for (span, label_kind) in spans {
+                    let missing_precise_span = span.is_none();
+                    let span = span.unwrap_or(*template_span);
+                    match label_kind {
+                        AsmLabelKind::Named => {
+                            cx.emit_span_lint(
+                                NAMED_ASM_LABELS,
+                                span,
+                                InvalidAsmLabel::Named { missing_precise_span },
+                            );
+                        }
+                        AsmLabelKind::FormatArg => {
+                            cx.emit_span_lint(
+                                NAMED_ASM_LABELS,
+                                span,
+                                InvalidAsmLabel::FormatArg { missing_precise_span },
+                            );
+                        }
+                        AsmLabelKind::Binary => {
+                            // the binary asm issue only occurs when using intel syntax
+                            if !options.contains(InlineAsmOptions::ATT_SYNTAX) {
+                                cx.emit_span_lint(
+                                    BINARY_ASM_LABELS,
+                                    span,
+                                    InvalidAsmLabel::Binary { missing_precise_span, span },
+                                )
+                            }
+                        }
+                    };
                 }
             }
         }

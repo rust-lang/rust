@@ -68,6 +68,10 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub sizet_type: Type<'gcc>,
 
     pub supports_128bit_integers: bool,
+    pub supports_f16_type: bool,
+    pub supports_f32_type: bool,
+    pub supports_f64_type: bool,
+    pub supports_f128_type: bool,
 
     pub float_type: Type<'gcc>,
     pub double_type: Type<'gcc>,
@@ -110,7 +114,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
@@ -122,16 +126,21 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context: &'gcc Context<'gcc>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         tcx: TyCtxt<'tcx>,
         supports_128bit_integers: bool,
+        supports_f16_type: bool,
+        supports_f32_type: bool,
+        supports_f64_type: bool,
+        supports_f128_type: bool,
     ) -> Self {
         let create_type = |ctype, rust_type| {
             let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
@@ -304,6 +313,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             sizet_type,
 
             supports_128bit_integers,
+            supports_f16_type,
+            supports_f32_type,
+            supports_f64_type,
+            supports_f128_type,
 
             float_type,
             double_type,
@@ -324,11 +337,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             struct_types: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             cleanup_blocks: Default::default(),
         };
         // TODO(antoyo): instead of doing this, add SsizeT to libgccjit.
@@ -385,7 +398,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn sess(&self) -> &'tcx Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     pub fn bitcast_if_needed(
@@ -432,7 +445,9 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let func_name = self.tcx.symbol_name(instance).name;
 
         let func = if self.intrinsics.borrow().contains_key(func_name) {
-            self.intrinsics.borrow()[func_name].clone()
+            self.intrinsics.borrow()[func_name]
+        } else if let Some(variable) = self.get_declared_value(func_name) {
+            return variable;
         } else {
             get_fn(self, instance)
         };
@@ -485,7 +500,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let symbol_name = tcx.symbol_name(instance).name;
                 let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
                 self.linkage.set(FunctionType::Extern);
-                let func = self.declare_fn(symbol_name, &fn_abi);
+                let func = self.declare_fn(symbol_name, fn_abi);
                 let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
                 func
             }
@@ -496,7 +511,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     "rust_eh_personality"
                 };
                 let func = self.declare_func(name, self.type_i32(), &[], true);
-                unsafe { std::mem::transmute(func) }
+                unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) }
             }
         };
         // TODO(antoyo): apply target cpu attributes.
@@ -505,7 +520,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn sess(&self) -> &Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx> {
@@ -522,7 +537,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
-        if self.get_declared_value(entry_name).is_none() {
+        if !self.functions.borrow().contains_key(entry_name) {
             Some(self.declare_entry_fn(entry_name, fn_type, ()))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
@@ -614,7 +629,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         // user defined names
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
-        name.push_str(".");
+        name.push('.');
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }

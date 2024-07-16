@@ -677,16 +677,6 @@ impl<T> Arc<T> {
 }
 
 impl<T, A: Allocator> Arc<T, A> {
-    /// Returns a reference to the underlying allocator.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Arc::allocator(&a)` instead of `a.allocator()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn allocator(this: &Self) -> &A {
-        &this.alloc
-    }
     /// Constructs a new `Arc<T>` in the provided allocator.
     ///
     /// # Examples
@@ -1424,6 +1414,8 @@ impl<T: ?Sized> Arc<T> {
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw(ptr);
     ///     assert_eq!(2, Arc::strong_count(&five));
+    /// #   // Prevent leaks for Miri.
+    /// #   Arc::decrement_strong_count(ptr);
     /// }
     /// ```
     #[inline]
@@ -1470,6 +1462,17 @@ impl<T: ?Sized> Arc<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Arc<T, A> {
+    /// Returns a reference to the underlying allocator.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Arc::allocator(&a)` instead of `a.allocator()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(this: &Self) -> &A {
+        &this.alloc
+    }
+
     /// Consumes the `Arc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Arc` using
@@ -1483,6 +1486,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// let x = Arc::new("hello".to_owned());
     /// let x_ptr = Arc::into_raw(x);
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// # // Prevent leaks for Miri.
+    /// # drop(unsafe { Arc::from_raw(x_ptr) });
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
@@ -1765,6 +1770,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw_in(ptr, System);
     ///     assert_eq!(2, Arc::strong_count(&five));
+    /// #   // Prevent leaks for Miri.
+    /// #   Arc::decrement_strong_count_in(ptr, System);
     /// }
     /// ```
     #[inline]
@@ -2715,6 +2722,13 @@ impl<T: ?Sized> Weak<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Weak<T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        &self.alloc
+    }
+
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,

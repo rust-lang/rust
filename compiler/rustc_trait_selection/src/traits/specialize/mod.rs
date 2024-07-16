@@ -14,19 +14,18 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use specialization_graph::GraphExt;
 
+use crate::error_reporting::traits::to_pretty_impl_header;
 use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{
-    self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
-};
+use crate::traits::{coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};
@@ -218,19 +217,17 @@ fn fulfill_implication<'tcx>(
         param_env, source_trait_ref, target_impl
     );
 
-    let source_trait_ref =
-        match traits::fully_normalize(infcx, ObligationCause::dummy(), param_env, source_trait_ref)
-        {
-            Ok(source_trait_ref) => source_trait_ref,
-            Err(_errors) => {
-                infcx.dcx().span_delayed_bug(
-                    infcx.tcx.def_span(source_impl),
-                    format!("failed to fully normalize {source_trait_ref}"),
-                );
-                source_trait_ref
-            }
-        };
+    let ocx = ObligationCtxt::new(infcx);
+    let source_trait_ref = ocx.normalize(&ObligationCause::dummy(), param_env, source_trait_ref);
 
+    if !ocx.select_all_or_error().is_empty() {
+        infcx.dcx().span_delayed_bug(
+            infcx.tcx.def_span(source_impl),
+            format!("failed to fully normalize {source_trait_ref}"),
+        );
+    }
+
+    let source_trait_ref = infcx.resolve_vars_if_possible(source_trait_ref);
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
     let selcx = SelectionContext::new(infcx);
@@ -252,9 +249,6 @@ fn fulfill_implication<'tcx>(
         return Err(());
     };
 
-    // Needs to be `in_snapshot` because this function is used to rebase
-    // generic parameters, which may happen inside of a select within a probe.
-    let ocx = ObligationCtxt::new(infcx);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
     ocx.register_obligations(obligations.chain(more_obligations));
@@ -484,62 +478,4 @@ fn report_conflicting_impls<'tcx>(
             Ok(())
         }
     }
-}
-
-/// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
-/// string.
-pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
-    use std::fmt::Write;
-
-    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.instantiate_identity();
-    let mut w = "impl".to_owned();
-
-    let args = GenericArgs::identity_for_item(tcx, impl_def_id);
-
-    // FIXME: Currently only handles ?Sized.
-    //        Needs to support ?Move and ?DynSized when they are implemented.
-    let mut types_without_default_bounds = FxIndexSet::default();
-    let sized_trait = tcx.lang_items().sized_trait();
-
-    let arg_names = args.iter().map(|k| k.to_string()).filter(|k| k != "'_").collect::<Vec<_>>();
-    if !arg_names.is_empty() {
-        types_without_default_bounds.extend(args.types());
-        w.push('<');
-        w.push_str(&arg_names.join(", "));
-        w.push('>');
-    }
-
-    write!(
-        w,
-        " {} for {}",
-        trait_ref.print_only_trait_path(),
-        tcx.type_of(impl_def_id).instantiate_identity()
-    )
-    .unwrap();
-
-    // The predicates will contain default bounds like `T: Sized`. We need to
-    // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
-    let predicates = tcx.predicates_of(impl_def_id).predicates;
-    let mut pretty_predicates =
-        Vec::with_capacity(predicates.len() + types_without_default_bounds.len());
-
-    for (p, _) in predicates {
-        if let Some(poly_trait_ref) = p.as_trait_clause() {
-            if Some(poly_trait_ref.def_id()) == sized_trait {
-                // FIXME(#120456) - is `swap_remove` correct?
-                types_without_default_bounds.swap_remove(&poly_trait_ref.self_ty().skip_binder());
-                continue;
-            }
-        }
-        pretty_predicates.push(p.to_string());
-    }
-
-    pretty_predicates.extend(types_without_default_bounds.iter().map(|ty| format!("{ty}: ?Sized")));
-
-    if !pretty_predicates.is_empty() {
-        write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
-    }
-
-    w.push(';');
-    Some(w)
 }

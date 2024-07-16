@@ -430,8 +430,10 @@ impl<'a> Parser<'a> {
         let eq_consumed = match self.token.kind {
             token::BinOpEq(..) => {
                 // Recover `let x <op>= 1` as `let x = 1`
-                self.dcx()
-                    .emit_err(errors::CompoundAssignmentExpressionInLet { span: self.token.span });
+                self.dcx().emit_err(errors::CompoundAssignmentExpressionInLet {
+                    span: self.token.span,
+                    suggestion: self.token.span.with_hi(self.token.span.lo() + BytePos(1)),
+                });
                 self.bump();
                 true
             }
@@ -717,7 +719,7 @@ impl<'a> Parser<'a> {
                                                 e.cancel();
                                                 self.dcx().emit_err(MalformedLoopLabel {
                                                     span: label.ident.span,
-                                                    correct_label: label.ident,
+                                                    suggestion: label.ident.span.shrink_to_lo(),
                                                 });
                                                 *expr = labeled_expr;
                                                 break 'break_recover None;

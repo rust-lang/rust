@@ -1,3 +1,4 @@
+#![allow(unsafe_op_in_unsafe_fn)]
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
@@ -45,7 +46,7 @@ impl Thread {
             Err(io::Error::last_os_error())
         };
 
-        unsafe extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
+        unsafe extern "system" fn thread_start(main: *mut c_void) -> u32 {
             // Next, reserve some stack space for if we otherwise run out of stack.
             stack_overflow::reserve_stack();
             // Finally, let's run some code.

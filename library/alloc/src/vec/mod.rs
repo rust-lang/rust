@@ -1473,6 +1473,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// // 2. `0 <= capacity` always holds whatever `capacity` is.
     /// unsafe {
     ///     vec.set_len(0);
+    /// #   // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// #   // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// #   vec.set_len(3);
     /// }
     /// ```
     ///
@@ -2391,6 +2394,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let static_ref: &'static mut [usize] = x.leak();
     /// static_ref[0] += 1;
     /// assert_eq!(static_ref, &[2, 2, 3]);
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # drop(unsafe { Box::from_raw(static_ref) });
     /// ```
     #[stable(feature = "vec_leak", since = "1.47.0")]
     #[inline]

@@ -483,7 +483,7 @@ LL +     format!("Hello {}", "world!")
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:248:9
+  --> tests/ui/needless_return.rs:277:9
    |
 LL |         return true;
    |         ^^^^^^^^^^^
@@ -497,7 +497,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:250:9
+  --> tests/ui/needless_return.rs:279:9
    |
 LL |         return false;
    |         ^^^^^^^^^^^^
@@ -509,7 +509,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:257:13
+  --> tests/ui/needless_return.rs:286:13
    |
 LL |             return 10;
    |             ^^^^^^^^^
@@ -524,7 +524,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:260:13
+  --> tests/ui/needless_return.rs:289:13
    |
 LL |             return 100;
    |             ^^^^^^^^^^
@@ -537,7 +537,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:268:9
+  --> tests/ui/needless_return.rs:297:9
    |
 LL |         return 0;
    |         ^^^^^^^^
@@ -549,7 +549,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:275:13
+  --> tests/ui/needless_return.rs:304:13
    |
 LL |             return *(x as *const isize);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -564,7 +564,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:277:13
+  --> tests/ui/needless_return.rs:306:13
    |
 LL |             return !*(x as *const isize);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -577,7 +577,7 @@ LL ~     }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:284:20
+  --> tests/ui/needless_return.rs:313:20
    |
 LL |           let _ = 42;
    |  ____________________^
@@ -594,7 +594,7 @@ LL +         let _ = 42;
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:291:20
+  --> tests/ui/needless_return.rs:320:20
    |
 LL |         let _ = 42; return;
    |                    ^^^^^^^
@@ -606,7 +606,7 @@ LL +         let _ = 42;
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:303:9
+  --> tests/ui/needless_return.rs:332:9
    |
 LL |         return Ok(format!("ok!"));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -618,7 +618,7 @@ LL +         Ok(format!("ok!"))
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:305:9
+  --> tests/ui/needless_return.rs:334:9
    |
 LL |         return Err(format!("err!"));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -630,7 +630,7 @@ LL +         Err(format!("err!"))
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:311:9
+  --> tests/ui/needless_return.rs:340:9
    |
 LL |         return if true { 1 } else { 2 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -642,7 +642,7 @@ LL +         if true { 1 } else { 2 }
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:315:9
+  --> tests/ui/needless_return.rs:344:9
    |
 LL |         return if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else { 5 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -654,7 +654,7 @@ LL +         (if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else
    |
 
 error: unneeded `return` statement
-  --> tests/ui/needless_return.rs:336:5
+  --> tests/ui/needless_return.rs:365:5
    |
 LL |     return { "a".to_string() } + "b" + { "c" };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

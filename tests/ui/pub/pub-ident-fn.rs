@@ -1,6 +1,6 @@
 //@ run-rustfix
 
-pub   foo(_s: usize) -> bool { true }
+pub foo(_s: usize) -> bool { true }
 //~^ ERROR missing `fn` for function definition
 
 fn main() {

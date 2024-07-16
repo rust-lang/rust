@@ -1,5 +1,4 @@
-//@ build-fail
-//@ error-pattern: reached the type-length limit while instantiating
+//@ build-pass
 
 //! This snippet causes the type length to blowup exponentially,
 //! so check that we don't accidentally exceed the type length limit.

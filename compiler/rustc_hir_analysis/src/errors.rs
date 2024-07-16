@@ -9,6 +9,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 mod pattern_types;
 pub use pattern_types::*;
+pub mod wrong_number_of_generic_args;
 
 mod precise_captures;
 pub(crate) use precise_captures::*;
@@ -690,20 +691,6 @@ pub(crate) struct TypeOf<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_pass_to_variadic_function, code = E0617)]
-pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
-    #[primary_span]
-    pub span: Span,
-    pub ty: Ty<'tcx>,
-    pub cast_ty: &'a str,
-    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-    pub sugg_span: Option<Span>,
-    pub replace: String,
-    #[help]
-    pub help: Option<()>,
 }
 
 #[derive(Diagnostic)]
