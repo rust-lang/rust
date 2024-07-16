@@ -79,6 +79,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     },
     prefer_no_std: false,
     prefer_prelude: true,
+    prefer_absolute: false,
     snippets: Vec::new(),
     limit: None,
 };

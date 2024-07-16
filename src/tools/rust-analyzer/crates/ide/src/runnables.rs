@@ -78,7 +78,6 @@ impl RunnableKind {
 }
 
 impl Runnable {
-    // test package::module::testname
     pub fn label(&self, target: Option<&str>) -> String {
         match &self.kind {
             RunnableKind::Test { test_id, .. } => format!("test {test_id}"),
@@ -86,7 +85,7 @@ impl Runnable {
             RunnableKind::Bench { test_id } => format!("bench {test_id}"),
             RunnableKind::DocTest { test_id, .. } => format!("doctest {test_id}"),
             RunnableKind::Bin => {
-                target.map_or_else(|| "run binary".to_owned(), |t| format!("run {t}"))
+                format!("run {}", target.unwrap_or("binary"))
             }
         }
     }
@@ -513,11 +512,11 @@ impl TestAttr {
     }
 }
 
-const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
-const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
-    &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
-
 fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
+    const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
+    const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
+        &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
+
     docs_from_attrs(attrs).map_or(false, |doc| {
         let mut in_code_block = false;
 

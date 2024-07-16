@@ -871,6 +871,38 @@ fn main() {
 }
 
 #[test]
+fn config_prefer_absolute() {
+    let fixture = r#"
+//- /lib.rs crate:dep
+pub mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+//- /main.rs crate:main deps:dep
+use ::dep::foo::bar;
+
+fn main() {
+    Ite$0
+}"#;
+    let mut config = TEST_CONFIG;
+    config.prefer_absolute = true;
+
+    check_edit_with_config(
+        config.clone(),
+        "Item",
+        fixture,
+        r#"
+use ::dep::foo::bar::{self, Item};
+
+fn main() {
+    Item
+}"#,
+    );
+}
+
+#[test]
 fn unresolved_qualifier() {
     let fixture = r#"
 mod foo {

@@ -72,6 +72,16 @@ pub struct PanicMessage(pub String);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExpandMacro {
+    pub lib: Utf8PathBuf,
+    /// Environment variables to set during macro expansion.
+    pub env: Vec<(String, String)>,
+    pub current_dir: Option<String>,
+    #[serde(flatten)]
+    pub data: ExpandMacroData,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpandMacroData {
     /// Argument of macro call.
     ///
     /// In custom derive this will be a struct or enum; in attribute-like macro - underlying
@@ -86,13 +96,6 @@ pub struct ExpandMacro {
 
     /// Possible attributes for the attribute-like macros.
     pub attributes: Option<FlatTree>,
-
-    pub lib: Utf8PathBuf,
-
-    /// Environment variables to set during macro expansion.
-    pub env: Vec<(String, String)>,
-
-    pub current_dir: Option<String>,
     /// marker for serde skip stuff
     #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
     #[serde(default)]
@@ -119,8 +122,12 @@ impl ExpnGlobals {
 }
 
 pub trait Message: Serialize + DeserializeOwned {
-    fn read(inp: &mut impl BufRead, buf: &mut String) -> io::Result<Option<Self>> {
-        Ok(match read_json(inp, buf)? {
+    fn read<R: BufRead>(
+        from_proto: ProtocolRead<R>,
+        inp: &mut R,
+        buf: &mut String,
+    ) -> io::Result<Option<Self>> {
+        Ok(match from_proto(inp, buf)? {
             None => None,
             Some(text) => {
                 let mut deserializer = serde_json::Deserializer::from_str(text);
@@ -131,44 +138,20 @@ pub trait Message: Serialize + DeserializeOwned {
             }
         })
     }
-    fn write(self, out: &mut impl Write) -> io::Result<()> {
+    fn write<W: Write>(self, to_proto: ProtocolWrite<W>, out: &mut W) -> io::Result<()> {
         let text = serde_json::to_string(&self)?;
-        write_json(out, &text)
+        to_proto(out, &text)
     }
 }
 
 impl Message for Request {}
 impl Message for Response {}
 
-fn read_json<'a>(inp: &mut impl BufRead, buf: &'a mut String) -> io::Result<Option<&'a String>> {
-    loop {
-        buf.clear();
-
-        inp.read_line(buf)?;
-        buf.pop(); // Remove trailing '\n'
-
-        if buf.is_empty() {
-            return Ok(None);
-        }
-
-        // Some ill behaved macro try to use stdout for debugging
-        // We ignore it here
-        if !buf.starts_with('{') {
-            tracing::error!("proc-macro tried to print : {}", buf);
-            continue;
-        }
-
-        return Ok(Some(buf));
-    }
-}
-
-fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
-    tracing::debug!("> {}", msg);
-    out.write_all(msg.as_bytes())?;
-    out.write_all(b"\n")?;
-    out.flush()?;
-    Ok(())
-}
+#[allow(type_alias_bounds)]
+type ProtocolRead<R: BufRead> =
+    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut String) -> io::Result<Option<&'buf String>>;
+#[allow(type_alias_bounds)]
+type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) -> io::Result<()>;
 
 #[cfg(test)]
 mod tests {
@@ -268,25 +251,30 @@ mod tests {
         let tt = fixture_token_tree();
         let mut span_data_table = Default::default();
         let task = ExpandMacro {
-            macro_body: FlatTree::new(&tt, CURRENT_API_VERSION, &mut span_data_table),
-            macro_name: Default::default(),
-            attributes: None,
+            data: ExpandMacroData {
+                macro_body: FlatTree::new(&tt, CURRENT_API_VERSION, &mut span_data_table),
+                macro_name: Default::default(),
+                attributes: None,
+                has_global_spans: ExpnGlobals {
+                    serialize: true,
+                    def_site: 0,
+                    call_site: 0,
+                    mixed_site: 0,
+                },
+                span_data_table: Vec::new(),
+            },
             lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
             env: Default::default(),
             current_dir: Default::default(),
-            has_global_spans: ExpnGlobals {
-                serialize: true,
-                def_site: 0,
-                call_site: 0,
-                mixed_site: 0,
-            },
-            span_data_table: Vec::new(),
         };
 
         let json = serde_json::to_string(&task).unwrap();
         // println!("{}", json);
         let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(tt, back.macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table));
+        assert_eq!(
+            tt,
+            back.data.macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table)
+        );
     }
 }

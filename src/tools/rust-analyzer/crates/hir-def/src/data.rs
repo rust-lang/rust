@@ -323,7 +323,7 @@ impl TraitAliasData {
 pub struct ImplData {
     pub target_trait: Option<Interned<TraitRef>>,
     pub self_ty: Interned<TypeRef>,
-    pub items: Vec<AssocItemId>,
+    pub items: Box<[AssocItemId]>,
     pub is_negative: bool,
     pub is_unsafe: bool,
     // box it as the vec is usually empty anyways
@@ -637,10 +637,6 @@ impl<'a> AssocItemCollector<'a> {
                     attr,
                 ) {
                     Ok(ResolvedAttr::Macro(call_id)) => {
-                        // If proc attribute macro expansion is disabled, skip expanding it here
-                        if !self.db.expand_proc_attr_macros() {
-                            continue 'attrs;
-                        }
                         let loc = self.db.lookup_intern_macro_call(call_id);
                         if let MacroDefKind::ProcMacro(_, exp, _) = loc.def.kind {
                             // If there's no expander for the proc macro (e.g. the

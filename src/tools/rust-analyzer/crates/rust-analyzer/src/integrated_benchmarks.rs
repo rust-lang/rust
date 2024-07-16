@@ -152,6 +152,7 @@ fn integrated_completion_benchmark() {
             },
             prefer_no_std: false,
             prefer_prelude: true,
+            prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
         };
@@ -197,6 +198,7 @@ fn integrated_completion_benchmark() {
             },
             prefer_no_std: false,
             prefer_prelude: true,
+            prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
         };
@@ -240,6 +242,7 @@ fn integrated_completion_benchmark() {
             },
             prefer_no_std: false,
             prefer_prelude: true,
+            prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
         };
@@ -299,7 +302,9 @@ fn integrated_diagnostics_benchmark() {
         },
         prefer_no_std: false,
         prefer_prelude: false,
+        prefer_absolute: false,
         term_search_fuel: 400,
+        term_search_borrowck: true,
     };
     host.analysis()
         .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)

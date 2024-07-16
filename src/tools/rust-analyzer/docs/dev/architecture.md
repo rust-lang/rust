@@ -368,7 +368,7 @@ In particular, we generate:
 
 * Documentation tests for assists
 
-See the `sourcegen` crate for details.
+See the `xtask\src\codegen\assists_doc_tests.rs` module for details.
 
 **Architecture Invariant:** we avoid bootstrapping.
 For codegen we need to parse Rust code.

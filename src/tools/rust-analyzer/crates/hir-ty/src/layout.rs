@@ -265,8 +265,10 @@ pub fn layout_of_ty_query(
             chalk_ir::Scalar::Float(f) => scalar(
                 dl,
                 Primitive::Float(match f {
+                    FloatTy::F16 => Float::F16,
                     FloatTy::F32 => Float::F32,
                     FloatTy::F64 => Float::F64,
+                    FloatTy::F128 => Float::F128,
                 }),
             ),
         },

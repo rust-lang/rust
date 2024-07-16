@@ -13,8 +13,9 @@ doctest = false
 
 [dependencies]
 object.workspace = true
-libloading = "0.8.0"
-memmap2 = "0.5.4"
+libloading.workspace = true
+memmap2.workspace = true
+snap.workspace = true
 
 stdx.workspace = true
 tt.workspace = true

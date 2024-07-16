@@ -11,9 +11,12 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
-use tt::buffer::{Cursor, TokenBuffer};
+use tt::{
+    buffer::{Cursor, TokenBuffer},
+    iter::TtIter,
+};
 
-use crate::{to_parser_input::to_parser_input, tt_iter::TtIter};
+use crate::to_parser_input::to_parser_input;
 
 #[cfg(test)]
 mod tests;
@@ -213,7 +216,7 @@ where
     let mut res = Vec::new();
 
     while iter.peek_n(0).is_some() {
-        let expanded = iter.expect_fragment(parser::PrefixEntryPoint::Expr, edition);
+        let expanded = crate::expect_fragment(&mut iter, parser::PrefixEntryPoint::Expr, edition);
 
         res.push(match expanded.value {
             None => break,

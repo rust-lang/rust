@@ -172,15 +172,30 @@ impl DeclarativeMacroExpander {
             ),
             ast::Macro::MacroDef(macro_def) => (
                 match macro_def.body() {
-                    Some(arg) => {
-                        let tt = mbe::syntax_node_to_token_tree(
-                            arg.syntax(),
+                    Some(body) => {
+                        let span =
+                            map.span_for_range(macro_def.macro_token().unwrap().text_range());
+                        let args = macro_def.args().map(|args| {
+                            mbe::syntax_node_to_token_tree(
+                                args.syntax(),
+                                map.as_ref(),
+                                span,
+                                DocCommentDesugarMode::Mbe,
+                            )
+                        });
+                        let body = mbe::syntax_node_to_token_tree(
+                            body.syntax(),
                             map.as_ref(),
-                            map.span_for_range(macro_def.macro_token().unwrap().text_range()),
+                            span,
                             DocCommentDesugarMode::Mbe,
                         );
 
-                        mbe::DeclarativeMacro::parse_macro2(&tt, edition, new_meta_vars)
+                        mbe::DeclarativeMacro::parse_macro2(
+                            args.as_ref(),
+                            &body,
+                            edition,
+                            new_meta_vars,
+                        )
                     }
                     None => mbe::DeclarativeMacro::from_err(mbe::ParseError::Expected(
                         "expected a token tree".into(),

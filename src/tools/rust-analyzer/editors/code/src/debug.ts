@@ -180,7 +180,7 @@ async function getDebugExecutable(
     env: Record<string, string>,
 ): Promise<string> {
     const cargo = new Cargo(runnableArgs.workspaceRoot || ".", debugOutput, env);
-    const executable = await cargo.executableFromArgs(runnableArgs.cargoArgs);
+    const executable = await cargo.executableFromArgs(runnableArgs);
 
     // if we are here, there were no compilation errors.
     return executable;

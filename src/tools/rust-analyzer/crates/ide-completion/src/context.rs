@@ -46,13 +46,15 @@ pub(crate) enum Visible {
 /// Existing qualifiers for the thing we are currently completing.
 #[derive(Debug, Default)]
 pub(crate) struct QualifierCtx {
+    // TODO: Add try_tok and default_tok
+    pub(crate) async_tok: Option<SyntaxToken>,
     pub(crate) unsafe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
     pub(crate) fn none(&self) -> bool {
-        self.unsafe_tok.is_none() && self.vis_node.is_none()
+        self.async_tok.is_none() && self.unsafe_tok.is_none() && self.vis_node.is_none()
     }
 }
 

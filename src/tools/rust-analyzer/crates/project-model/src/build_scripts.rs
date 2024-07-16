@@ -18,7 +18,6 @@ use itertools::Itertools;
 use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
-use semver::Version;
 use serde::Deserialize;
 use toolchain::Tool;
 
@@ -64,10 +63,8 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         allowed_features: &FxHashSet<String>,
         manifest_path: &ManifestPath,
-        toolchain: Option<&Version>,
         sysroot: &Sysroot,
     ) -> io::Result<Command> {
-        const RUST_1_75: Version = Version::new(1, 75, 0);
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = Command::new(program);
@@ -122,9 +119,7 @@ impl WorkspaceBuildScripts {
                     cmd.arg("-Zscript");
                 }
 
-                if toolchain.map_or(false, |it| *it >= RUST_1_75) {
-                    cmd.arg("--keep-going");
-                }
+                cmd.arg("--keep-going");
 
                 cmd
             }
@@ -148,7 +143,6 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
-        toolchain: Option<&Version>,
         sysroot: &Sysroot,
     ) -> io::Result<WorkspaceBuildScripts> {
         let current_dir = match &config.invocation_location {
@@ -160,13 +154,8 @@ impl WorkspaceBuildScripts {
         .as_ref();
 
         let allowed_features = workspace.workspace_features();
-        let cmd = Self::build_command(
-            config,
-            &allowed_features,
-            workspace.manifest_path(),
-            toolchain,
-            sysroot,
-        )?;
+        let cmd =
+            Self::build_command(config, &allowed_features, workspace.manifest_path(), sysroot)?;
         Self::run_per_ws(cmd, workspace, current_dir, progress)
     }
 
@@ -194,7 +183,6 @@ impl WorkspaceBuildScripts {
             &Default::default(),
             // This is not gonna be used anyways, so just construct a dummy here
             &ManifestPath::try_from(workspace_root.clone()).unwrap(),
-            None,
             &Sysroot::empty(),
         )?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and

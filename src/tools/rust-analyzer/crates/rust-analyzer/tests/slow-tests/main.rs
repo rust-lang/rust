@@ -8,15 +8,11 @@
 //! specific JSON shapes here -- there's little value in such tests, as we can't
 //! be sure without a real client anyway.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::disallowed_types)]
 
 mod ratoml;
-#[cfg(not(feature = "in-rust-tree"))]
-mod sourcegen;
 mod support;
 mod testdir;
-mod tidy;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
@@ -259,7 +255,6 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
               "executableArgs": ["test_eggs", "--exact", "--show-output"],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -290,7 +285,6 @@ fn main() {}
                 "--test",
                 "spam"
               ],
-              "cargoExtraArgs": [],
               "executableArgs": [
                 "",
                 "--show-output"
@@ -326,7 +320,6 @@ fn main() {}
             "args": {
               "cargoArgs": ["check", "--package", "foo", "--all-targets"],
               "executableArgs": [],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -338,7 +331,6 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--all-targets"],
               "executableArgs": [],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -427,7 +419,6 @@ mod tests {
                             runnable,
                             "--all-targets"
                         ],
-                        "cargoExtraArgs": [],
                         "executableArgs": []
                     },
                 },
@@ -490,7 +481,6 @@ fn otherpkg() {}
                         "mainpkg",
                         "--all-targets"
                     ],
-                    "cargoExtraArgs": [],
                     "executableArgs": []
                 },
             },
@@ -516,7 +506,6 @@ fn otherpkg() {}
                         "otherpkg",
                         "--all-targets"
                     ],
-                    "cargoExtraArgs": [],
                     "executableArgs": []
                 },
             },

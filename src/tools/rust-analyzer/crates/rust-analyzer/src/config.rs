@@ -10,17 +10,15 @@ use dirs::config_dir;
 use flycheck::{CargoOptions, FlycheckConfig};
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
-    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
-    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
-    Snippet, SnippetScope, SourceRootId,
+    GenericParameterHints, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
+    InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
+    MemoryLayoutHoverRenderKind, Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
 };
-use indexmap::IndexMap;
 use itertools::Itertools;
-use lsp_types::{ClientCapabilities, MarkupKind};
 use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
@@ -36,10 +34,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
-    caps::completion_item_edit_resolve,
+    capabilities::ClientCapabilities,
     diagnostics::DiagnosticsMapConfig,
-    line_index::PositionEncoding,
-    lsp_ext::{self, negotiated_encoding, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
+    lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
 mod patch_old_style;
@@ -341,8 +338,10 @@ config_data! {
         assist_emitMustUse: bool               = false,
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
-        /// Term search fuel in "units of work" for assists (Defaults to 400).
-        assist_termSearch_fuel: usize = 400,
+        /// Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+        assist_termSearch_borrowcheck: bool = true,
+        /// Term search fuel in "units of work" for assists (Defaults to 1800).
+        assist_termSearch_fuel: usize = 1800,
 
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = false,
@@ -358,6 +357,8 @@ config_data! {
         imports_preferPrelude: bool                       = false,
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
+        /// Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
+        imports_prefixExternPrelude: bool = false,
     }
 }
 
@@ -382,8 +383,7 @@ config_data! {
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
         completion_privateEditable_enable: bool = false,
         /// Custom completion snippets.
-        // NOTE: we use IndexMap for deterministic serialization ordering
-        completion_snippets_custom: IndexMap<String, SnippetDef> = serde_json::from_str(r#"{
+        completion_snippets_custom: FxHashMap<String, SnippetDef> = serde_json::from_str(r#"{
             "Arc::new": {
                 "postfix": "arc",
                 "body": "Arc::new(${receiver})",
@@ -426,8 +426,8 @@ config_data! {
         }"#).unwrap(),
         /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
         completion_termSearch_enable: bool = false,
-        /// Term search fuel in "units of work" for autocompletion (Defaults to 200).
-        completion_termSearch_fuel: usize = 200,
+        /// Term search fuel in "units of work" for autocompletion (Defaults to 1000).
+        completion_termSearch_fuel: usize = 1000,
 
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = FilesWatcherDef::Client,
@@ -509,6 +509,12 @@ config_data! {
         inlayHints_expressionAdjustmentHints_hideOutsideUnsafe: bool = false,
         /// Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
         inlayHints_expressionAdjustmentHints_mode: AdjustmentHintsModeDef = AdjustmentHintsModeDef::Prefix,
+        /// Whether to show const generic parameter name inlay hints.
+        inlayHints_genericParameterHints_const_enable: bool= false,
+        /// Whether to show generic lifetime parameter name inlay hints.
+        inlayHints_genericParameterHints_lifetime_enable: bool = true,
+        /// Whether to show generic type parameter name inlay hints.
+        inlayHints_genericParameterHints_type_enable: bool = false,
         /// Whether to show implicit drop hints.
         inlayHints_implicitDrops_enable: bool                      = false,
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
@@ -659,7 +665,7 @@ pub struct Config {
     discovered_projects: Vec<ProjectManifest>,
     /// The workspace roots as registered by the LSP client
     workspace_roots: Vec<AbsPathBuf>,
-    caps: lsp_types::ClientCapabilities,
+    caps: ClientCapabilities,
     root_path: AbsPathBuf,
     snippets: Vec<Snippet>,
     visual_studio_code_version: Option<Version>,
@@ -696,6 +702,15 @@ pub struct Config {
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
 
     detached_files: Vec<AbsPathBuf>,
+}
+
+// Delegate capability fetching methods
+impl std::ops::Deref for Config {
+    type Target = ClientCapabilities;
+
+    fn deref(&self) -> &Self::Target {
+        &self.caps
+    }
 }
 
 impl Config {
@@ -844,6 +859,9 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
+        // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
+        config.snippets.clear();
+
         let snips = self.completion_snippets_custom().to_owned();
 
         for (name, def) in snips.iter() {
@@ -949,23 +967,6 @@ impl ConfigChange {
         assert!(self.source_map_change.is_none());
         self.source_map_change = Some(source_root_map.clone());
     }
-}
-
-macro_rules! try_ {
-    ($expr:expr) => {
-        || -> _ { Some($expr) }()
-    };
-}
-macro_rules! try_or {
-    ($expr:expr, $or:expr) => {
-        try_!($expr).unwrap_or($or)
-    };
-}
-
-macro_rules! try_or_def {
-    ($expr:expr) => {
-        try_!($expr).unwrap_or_default()
-    };
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -1174,7 +1175,7 @@ impl std::error::Error for ConfigErrors {}
 impl Config {
     pub fn new(
         root_path: AbsPathBuf,
-        caps: ClientCapabilities,
+        caps: lsp_types::ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
         visual_studio_code_version: Option<Version>,
         user_config_path: Option<Utf8PathBuf>,
@@ -1202,7 +1203,7 @@ impl Config {
         };
 
         Config {
-            caps,
+            caps: ClientCapabilities::new(caps),
             discovered_projects: Vec::new(),
             root_path,
             snippets: Default::default(),
@@ -1240,7 +1241,19 @@ impl Config {
     }
 
     pub fn json_schema() -> serde_json::Value {
-        FullConfigInput::json_schema()
+        let mut s = FullConfigInput::json_schema();
+
+        fn sort_objects_by_field(json: &mut serde_json::Value) {
+            if let serde_json::Value::Object(object) = json {
+                let old = std::mem::take(object);
+                old.into_iter().sorted_by(|(k, _), (k2, _)| k.cmp(k2)).for_each(|(k, mut v)| {
+                    sort_objects_by_field(&mut v);
+                    object.insert(k, v);
+                });
+            }
+        }
+        sort_objects_by_field(&mut s);
+        s
     }
 
     pub fn root_path(&self) -> &AbsPathBuf {
@@ -1251,7 +1264,7 @@ impl Config {
         &self.root_ratoml_path
     }
 
-    pub fn caps(&self) -> &lsp_types::ClientCapabilities {
+    pub fn caps(&self) -> &ClientCapabilities {
         &self.caps
     }
 }
@@ -1265,7 +1278,9 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             assist_emit_must_use: self.assist_emitMustUse(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
+            prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
+            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
     }
 
@@ -1273,7 +1288,7 @@ impl Config {
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable().to_owned(),
             enable_imports_on_the_fly: self.completion_autoimport_enable().to_owned()
-                && completion_item_edit_resolve(&self.caps),
+                && self.caps.completion_item_edit_resolve(),
             enable_self_on_the_fly: self.completion_autoself_enable().to_owned(),
             enable_private_editable: self.completion_privateEditable_enable().to_owned(),
             full_function_signatures: self.completion_fullFunctionSignatures_enable().to_owned(),
@@ -1282,19 +1297,11 @@ impl Config {
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
-            snippet_cap: SnippetCap::new(try_or_def!(
-                self.caps
-                    .text_document
-                    .as_ref()?
-                    .completion
-                    .as_ref()?
-                    .completion_item
-                    .as_ref()?
-                    .snippet_support?
-            )),
+            snippet_cap: SnippetCap::new(self.completion_snippet()),
             insert_use: self.insert_use_config(source_root),
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
+            prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             snippets: self.snippets.clone().to_vec(),
             limit: self.completion_limit().to_owned(),
             enable_term_search: self.completion_termSearch_enable().to_owned(),
@@ -1323,8 +1330,10 @@ impl Config {
             insert_use: self.insert_use_config(source_root),
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
+            prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             style_lints: self.diagnostics_styleLints_enable().to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
+            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
     }
     pub fn expand_proc_attr_macros(&self) -> bool {
@@ -1342,7 +1351,7 @@ impl Config {
     }
 
     pub fn hover_actions(&self) -> HoverActionsConfig {
-        let enable = self.experimental("hoverActions") && self.hover_actions_enable().to_owned();
+        let enable = self.caps.hover_actions() && self.hover_actions_enable().to_owned();
         HoverActionsConfig {
             implementations: enable && self.hover_actions_implementations_enable().to_owned(),
             references: enable && self.hover_actions_references_enable().to_owned(),
@@ -1368,17 +1377,7 @@ impl Config {
             }),
             documentation: self.hover_documentation_enable().to_owned(),
             format: {
-                let is_markdown = try_or_def!(self
-                    .caps
-                    .text_document
-                    .as_ref()?
-                    .hover
-                    .as_ref()?
-                    .content_format
-                    .as_ref()?
-                    .as_slice())
-                .contains(&MarkupKind::Markdown);
-                if is_markdown {
+                if self.caps.hover_markdown_support() {
                     HoverDocFormat::Markdown
                 } else {
                     HoverDocFormat::PlainText
@@ -1392,22 +1391,17 @@ impl Config {
     }
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
-        let client_capability_fields = self
-            .caps
-            .text_document
-            .as_ref()
-            .and_then(|text| text.inlay_hint.as_ref())
-            .and_then(|inlay_hint_caps| inlay_hint_caps.resolve_support.as_ref())
-            .map(|inlay_resolve| inlay_resolve.properties.iter())
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect::<FxHashSet<_>>();
+        let client_capability_fields = self.inlay_hint_resolve_support_properties();
 
         InlayHintsConfig {
             render_colons: self.inlayHints_renderColons().to_owned(),
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
+            generic_parameter_hints: GenericParameterHints {
+                type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
+                lifetime_hints: self.inlayHints_genericParameterHints_lifetime_enable().to_owned(),
+                const_hints: self.inlayHints_genericParameterHints_const_enable().to_owned(),
+            },
             chaining_hints: self.inlayHints_chainingHints_enable().to_owned(),
             discriminant_hints: match self.inlayHints_discriminantHints_enable() {
                 DiscriminantHintsDef::Always => ide::DiscriminantHints::Always,
@@ -1573,163 +1567,8 @@ impl Config {
         }
     }
 
-    pub fn did_save_text_document_dynamic_registration(&self) -> bool {
-        let caps = try_or_def!(self.caps.text_document.as_ref()?.synchronization.clone()?);
-        caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
-    }
-
-    pub fn did_change_watched_files_dynamic_registration(&self) -> bool {
-        try_or_def!(
-            self.caps.workspace.as_ref()?.did_change_watched_files.as_ref()?.dynamic_registration?
-        )
-    }
-
-    pub fn did_change_watched_files_relative_pattern_support(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .workspace
-                .as_ref()?
-                .did_change_watched_files
-                .as_ref()?
-                .relative_pattern_support?
-        )
-    }
-
     pub fn prefill_caches(&self) -> bool {
         self.cachePriming_enable().to_owned()
-    }
-
-    pub fn location_link(&self) -> bool {
-        try_or_def!(self.caps.text_document.as_ref()?.definition?.link_support?)
-    }
-
-    pub fn line_folding_only(&self) -> bool {
-        try_or_def!(self.caps.text_document.as_ref()?.folding_range.as_ref()?.line_folding_only?)
-    }
-
-    pub fn hierarchical_symbols(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .text_document
-                .as_ref()?
-                .document_symbol
-                .as_ref()?
-                .hierarchical_document_symbol_support?
-        )
-    }
-
-    pub fn code_action_literals(&self) -> bool {
-        try_!(self
-            .caps
-            .text_document
-            .as_ref()?
-            .code_action
-            .as_ref()?
-            .code_action_literal_support
-            .as_ref()?)
-        .is_some()
-    }
-
-    pub fn work_done_progress(&self) -> bool {
-        try_or_def!(self.caps.window.as_ref()?.work_done_progress?)
-    }
-
-    pub fn will_rename(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.file_operations.as_ref()?.will_rename?)
-    }
-
-    pub fn change_annotation_support(&self) -> bool {
-        try_!(self
-            .caps
-            .workspace
-            .as_ref()?
-            .workspace_edit
-            .as_ref()?
-            .change_annotation_support
-            .as_ref()?)
-        .is_some()
-    }
-
-    pub fn code_action_resolve(&self) -> bool {
-        try_or_def!(self
-            .caps
-            .text_document
-            .as_ref()?
-            .code_action
-            .as_ref()?
-            .resolve_support
-            .as_ref()?
-            .properties
-            .as_slice())
-        .iter()
-        .any(|it| it == "edit")
-    }
-
-    pub fn signature_help_label_offsets(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .text_document
-                .as_ref()?
-                .signature_help
-                .as_ref()?
-                .signature_information
-                .as_ref()?
-                .parameter_information
-                .as_ref()?
-                .label_offset_support?
-        )
-    }
-
-    pub fn completion_label_details_support(&self) -> bool {
-        try_!(self
-            .caps
-            .text_document
-            .as_ref()?
-            .completion
-            .as_ref()?
-            .completion_item
-            .as_ref()?
-            .label_details_support
-            .as_ref()?)
-        .is_some()
-    }
-
-    pub fn semantics_tokens_augments_syntax_tokens(&self) -> bool {
-        try_!(self.caps.text_document.as_ref()?.semantic_tokens.as_ref()?.augments_syntax_tokens?)
-            .unwrap_or(false)
-    }
-
-    pub fn position_encoding(&self) -> PositionEncoding {
-        negotiated_encoding(&self.caps)
-    }
-
-    fn experimental(&self, index: &'static str) -> bool {
-        try_or_def!(self.caps.experimental.as_ref()?.get(index)?.as_bool()?)
-    }
-
-    pub fn code_action_group(&self) -> bool {
-        self.experimental("codeActionGroup")
-    }
-
-    pub fn local_docs(&self) -> bool {
-        self.experimental("localDocs")
-    }
-
-    pub fn open_server_logs(&self) -> bool {
-        self.experimental("openServerLogs")
-    }
-
-    pub fn server_status_notification(&self) -> bool {
-        self.experimental("serverStatusNotification")
-    }
-
-    /// Whether the client supports colored output for full diagnostics from `checkOnSave`.
-    pub fn color_diagnostic_output(&self) -> bool {
-        self.experimental("colorDiagnosticOutput")
-    }
-
-    pub fn test_explorer(&self) -> bool {
-        self.experimental("testExplorer")
     }
 
     pub fn publish_diagnostics(&self) -> bool {
@@ -2009,7 +1848,7 @@ impl Config {
     pub fn snippet_cap(&self) -> Option<SnippetCap> {
         // FIXME: Also detect the proposed lsp version at caps.workspace.workspaceEdit.snippetEditSupport
         // once lsp-types has it.
-        SnippetCap::new(self.experimental("snippetTextEdit"))
+        SnippetCap::new(self.snippet_text_edit())
     }
 
     pub fn call_info(&self) -> CallInfoConfig {
@@ -2049,36 +1888,8 @@ impl Config {
         }
     }
 
-    pub fn semantic_tokens_refresh(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.semantic_tokens.as_ref()?.refresh_support?)
-    }
-
-    pub fn code_lens_refresh(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.code_lens.as_ref()?.refresh_support?)
-    }
-
-    pub fn inlay_hints_refresh(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.inlay_hint.as_ref()?.refresh_support?)
-    }
-
-    pub fn insert_replace_support(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .text_document
-                .as_ref()?
-                .completion
-                .as_ref()?
-                .completion_item
-                .as_ref()?
-                .insert_replace_support?
-        )
-    }
-
     pub fn client_commands(&self) -> ClientCommandsConfig {
-        let commands =
-            try_or!(self.caps.experimental.as_ref()?.get("commands")?, &serde_json::Value::Null);
-        let commands: Option<lsp_ext::ClientCommandOptions> =
-            serde_json::from_value(commands.clone()).ok();
+        let commands = self.commands();
         let force = commands.is_none() && *self.lens_forceCustomCommands();
         let commands = commands.map(|it| it.commands).unwrap_or_default();
 
@@ -2637,9 +2448,8 @@ macro_rules! _config_data {
 
         /// All fields `Option<T>`, `None` representing fields not set in a particular JSON/TOML blob.
         #[allow(non_snake_case)]
-        #[derive(Clone, Serialize, Default)]
+        #[derive(Clone, Default)]
         struct $input { $(
-            #[serde(skip_serializing_if = "Option::is_none")]
             $field: Option<$ty>,
         )* }
 
@@ -2722,7 +2532,7 @@ struct DefaultConfigData {
 /// All of the config levels, all fields `Option<T>`, to describe fields that are actually set by
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
 struct FullConfigInput {
     global: GlobalConfigInput,
     local: LocalConfigInput,
@@ -2767,7 +2577,7 @@ impl FullConfigInput {
 /// All of the config levels, all fields `Option<T>`, to describe fields that are actually set by
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
 struct GlobalLocalConfigInput {
     global: GlobalConfigInput,
     local: LocalConfigInput,
@@ -2929,7 +2739,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "FxHashMap<Box<str>, Box<[Box<str>]>>" => set! {
             "type": "object",
         },
-        "IndexMap<String, SnippetDef>" => set! {
+        "FxHashMap<String, SnippetDef>" => set! {
             "type": "object",
         },
         "FxHashMap<String, String>" => set! {
@@ -3344,6 +3154,7 @@ mod tests {
     #[test]
     fn generate_package_json_config() {
         let s = Config::json_schema();
+
         let schema = format!("{s:#}");
         let mut schema = schema
             .trim_start_matches('[')
@@ -3364,7 +3175,7 @@ mod tests {
         for idx in url_offsets {
             let link = &schema[idx..];
             // matching on whitespace to ignore normal links
-            if let Some(link_end) = link.find(|c| c == ' ' || c == '[') {
+            if let Some(link_end) = link.find([' ', '[']) {
                 if link.chars().nth(link_end) == Some('[') {
                     if let Some(link_text_end) = link.find(']') {
                         let link_text = link[link_end..(link_text_end + 1)].to_string();

@@ -1,7 +1,5 @@
 //! Missing batteries for standard libraries.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 use std::io as sio;
 use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};

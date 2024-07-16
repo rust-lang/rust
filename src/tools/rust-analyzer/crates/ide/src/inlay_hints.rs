@@ -29,6 +29,7 @@ mod closure_captures;
 mod closure_ret;
 mod discriminant;
 mod fn_lifetime_fn;
+mod generic_param;
 mod implicit_drop;
 mod implicit_static;
 mod param_name;
@@ -40,6 +41,7 @@ pub struct InlayHintsConfig {
     pub type_hints: bool,
     pub discriminant_hints: DiscriminantHints,
     pub parameter_hints: bool,
+    pub generic_parameter_hints: GenericParameterHints,
     pub chaining_hints: bool,
     pub adjustment_hints: AdjustmentHints,
     pub adjustment_hints_mode: AdjustmentHintsMode,
@@ -95,6 +97,13 @@ pub enum DiscriminantHints {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GenericParameterHints {
+    pub type_hints: bool,
+    pub lifetime_hints: bool,
+    pub const_hints: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LifetimeElisionHints {
     Always,
     SkipTrivial,
@@ -127,6 +136,7 @@ pub enum InlayKind {
     GenericParamList,
     Lifetime,
     Parameter,
+    GenericParameter,
     Type,
     Drop,
     RangeExclusive,
@@ -447,6 +457,7 @@ fn ty_to_text_edit(
 //
 // * types of local variables
 // * names of function arguments
+// * names of const generic parameters
 // * types of chained expressions
 //
 // Optionally, one can enable additional hints for
@@ -454,6 +465,7 @@ fn ty_to_text_edit(
 // * return types of closure expressions
 // * elided lifetimes
 // * compiler inserted reborrows
+// * names of generic type and lifetime parameters
 //
 // Note: inlay hints for function argument names are heuristically omitted to reduce noise and will not appear if
 // any of the
@@ -543,6 +555,9 @@ fn hints(
     node: SyntaxNode,
 ) {
     closing_brace::hints(hints, sema, config, file_id, node.clone());
+    if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
+        generic_param::hints(hints, sema, config, any_has_generic_args);
+    }
     match_ast! {
         match node {
             ast::Expr(expr) => {
@@ -645,13 +660,18 @@ mod tests {
     use crate::DiscriminantHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
-    use super::{ClosureReturnTypeHints, InlayFieldsToResolve};
+    use super::{ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve};
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
         discriminant_hints: DiscriminantHints::Never,
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
+        generic_parameter_hints: GenericParameterHints {
+            type_hints: false,
+            lifetime_hints: false,
+            const_hints: false,
+        },
         chaining_hints: false,
         lifetime_elision_hints: LifetimeElisionHints::Never,
         closure_return_type_hints: ClosureReturnTypeHints::Never,

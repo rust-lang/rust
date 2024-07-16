@@ -5,6 +5,7 @@
 [relabel]
 allow-unauthenticated = [
     "S-*",
+    "A-*",
 ]
 
 [autolabel."S-waiting-on-review"]

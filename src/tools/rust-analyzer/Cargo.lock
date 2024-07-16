@@ -167,9 +167,9 @@ checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
 name = "chalk-derive"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92a0aedc4ac2adc5c0b7dc9ec38c5c816284ad28da6d4ecd01873b9683f54972"
+checksum = "9426c8fd0fe61c3da880b801d3b510524df17843a8f9ec1f5b9cec24fb7412df"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -179,9 +179,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db18493569b190f7266a04901e520fc3a5c00564475154287906f8a27302c119"
+checksum = "d5f2eb1cd6054da221bd1ac0197fb2fe5e2caf3dcb93619398fc1433f8f09093"
 dependencies = [
  "bitflags 2.5.0",
  "chalk-derive",
@@ -189,9 +189,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae4ba8ce5bd2e1b59f1f79495bc8704db09a8285e51cc5ddf01d9baee1bf447d"
+checksum = "129dc03458f71cfb9c3cd621c9c68166a94e87b85b16ccd29af015d7ff9a1c61"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -202,9 +202,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2ec1b3b7f7b1ec38f099ef39c2bc3ea29335be1b8316d114baff46d96d131e9"
+checksum = "d7e8a8c1e928f98cdf227b868416ef21dcd8cc3c61b347576d783713444d41c8"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -221,11 +221,6 @@ name = "countme"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7704b5fdd17b18ae31c4c1da5a2e0305a2bf17b5249300a9ee9ed7b72114c636"
-dependencies = [
- "dashmap",
- "once_cell",
- "rustc-hash",
-]
 
 [[package]]
 name = "cov-mark"
@@ -548,10 +543,10 @@ dependencies = [
  "limit",
  "mbe",
  "once_cell",
- "profile",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
  "rustc-hash",
+ "rustc_apfloat",
  "smallvec",
  "span",
  "stdx",
@@ -616,9 +611,10 @@ dependencies = [
  "oorandom",
  "project-model",
  "ra-ap-rustc_abi",
- "ra-ap-rustc_index 0.53.0",
+ "ra-ap-rustc_index",
  "ra-ap-rustc_pattern_analysis",
  "rustc-hash",
+ "rustc_apfloat",
  "scoped-tls",
  "smallvec",
  "span",
@@ -664,6 +660,7 @@ dependencies = [
  "profile",
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",
+ "rustc_apfloat",
  "smallvec",
  "span",
  "stdx",
@@ -809,7 +806,6 @@ checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
  "hashbrown",
- "serde",
 ]
 
 [[package]]
@@ -1046,6 +1042,7 @@ checksum = "75761162ae2b0e580d7e7c390558127e5f01b4194debd6221fd8c207fc80e3f5"
 name = "mbe"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "cov-mark",
  "parser",
  "rustc-hash",
@@ -1250,7 +1247,6 @@ dependencies = [
  "expect-test",
  "limit",
  "ra-ap-rustc_lexer",
- "sourcegen",
  "stdx",
  "tracing",
 ]
@@ -1328,18 +1324,14 @@ dependencies = [
  "base-db",
  "indexmap",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "memmap2",
- "object 0.33.0",
  "paths",
  "rustc-hash",
  "serde",
  "serde_json",
- "snap",
  "span",
  "stdx",
  "text-size",
  "tracing",
- "triomphe",
  "tt",
 ]
 
@@ -1357,6 +1349,7 @@ dependencies = [
  "proc-macro-api",
  "proc-macro-test",
  "ra-ap-rustc_lexer",
+ "snap",
  "span",
  "stdx",
  "tt",
@@ -1403,13 +1396,9 @@ name = "profile"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "countme",
- "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc",
- "once_cell",
  "perf-event",
  "tikv-jemalloc-ctl",
- "tracing",
  "windows-sys 0.52.0",
 ]
 
@@ -1492,19 +1481,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80b1d613eee933486c0613a7bc26e515e46f43adf479d1edd5e537f983e9ce46"
 dependencies = [
  "bitflags 2.5.0",
- "ra-ap-rustc_index 0.53.0",
+ "ra-ap-rustc_index",
  "tracing",
-]
-
-[[package]]
-name = "ra-ap-rustc_index"
-version = "0.44.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ad68bacffb87dcdbb23a3ce11261375078aaa06b85d348c49f39ffd5510dc20"
-dependencies = [
- "arrayvec",
- "ra-ap-rustc_index_macros 0.44.0",
- "smallvec",
 ]
 
 [[package]]
@@ -1514,20 +1492,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f072060ac77e9e1a02cc20028095993af7e72cc0804779c68bcbf47b16de49c9"
 dependencies = [
  "arrayvec",
- "ra-ap-rustc_index_macros 0.53.0",
+ "ra-ap-rustc_index_macros",
  "smallvec",
-]
-
-[[package]]
-name = "ra-ap-rustc_index_macros"
-version = "0.44.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8782aaf3a113837c533dfb1c45df91cd17e1fdd1d2f9a20c2e0d1976025c4f1f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "synstructure",
 ]
 
 [[package]]
@@ -1558,17 +1524,17 @@ version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70dad7a491c2554590222e0c9212dcb7c2e7aceb668875075012a35ea780d135"
 dependencies = [
- "ra-ap-rustc_index 0.53.0",
+ "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
 ]
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.44.0"
+version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d63d1e1d5b2a13273cee1a10011147418f40e12b70f70578ce1dee0f1cafc334"
+checksum = "34768e1faf88c31f2e9ad57b48318a52b507dafac0cddbf01b5d63bfc0b0a365"
 dependencies = [
- "ra-ap-rustc_index 0.44.0",
+ "ra-ap-rustc_index",
  "rustc-hash",
  "rustc_apfloat",
  "smallvec",
@@ -1685,7 +1651,6 @@ dependencies = [
  "ide",
  "ide-db",
  "ide-ssr",
- "indexmap",
  "itertools",
  "load-cargo",
  "lsp-server 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1708,7 +1673,6 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "sourcegen",
  "stdx",
  "syntax",
  "test-fixture",
@@ -1908,13 +1872,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
 
 [[package]]
-name = "sourcegen"
-version = "0.0.0"
-dependencies = [
- "xshell",
-]
-
-[[package]]
 name = "span"
 version = "0.0.0"
 dependencies = [
@@ -1985,6 +1942,7 @@ dependencies = [
  "rayon",
  "rowan",
  "rustc-hash",
+ "rustc_apfloat",
  "smol_str",
  "stdx",
  "test-utils",
@@ -2251,6 +2209,7 @@ dependencies = [
 name = "tt"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "smol_str",
  "stdx",
  "text-size",

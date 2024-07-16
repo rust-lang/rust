@@ -302,7 +302,7 @@ pub fn monomorphized_mir_body_query(
     subst: Substitution,
     trait_env: Arc<crate::TraitEnvironment>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
-    let generics = owner.as_generic_def_id().map(|g_def| generics(db.upcast(), g_def));
+    let generics = owner.as_generic_def_id(db.upcast()).map(|g_def| generics(db.upcast(), g_def));
     let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
     let body = db.mir_body(owner)?;
     let mut body = (*body).clone();
@@ -327,7 +327,7 @@ pub fn monomorphized_mir_body_for_closure_query(
     trait_env: Arc<crate::TraitEnvironment>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
     let InternedClosure(owner, _) = db.lookup_intern_closure(closure.into());
-    let generics = owner.as_generic_def_id().map(|g_def| generics(db.upcast(), g_def));
+    let generics = owner.as_generic_def_id(db.upcast()).map(|g_def| generics(db.upcast(), g_def));
     let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
     let body = db.mir_body_for_closure(closure)?;
     let mut body = (*body).clone();
@@ -343,7 +343,7 @@ pub fn monomorphize_mir_body_bad(
     trait_env: Arc<crate::TraitEnvironment>,
 ) -> Result<MirBody, MirLowerError> {
     let owner = body.owner;
-    let generics = owner.as_generic_def_id().map(|g_def| generics(db.upcast(), g_def));
+    let generics = owner.as_generic_def_id(db.upcast()).map(|g_def| generics(db.upcast(), g_def));
     let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
     filler.fill_body(&mut body)?;
     Ok(body)

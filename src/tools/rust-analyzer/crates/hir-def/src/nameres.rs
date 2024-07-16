@@ -103,12 +103,13 @@ const PREDEFINED_TOOLS: &[SmolStr] = &[
 /// is computed by the `block_def_map` query.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
+    /// The crate this `DefMap` belongs to.
+    krate: CrateId,
     /// When this is a block def map, this will hold the block id of the block and module that
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.
     pub modules: Arena<ModuleData>,
-    krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
@@ -124,6 +125,7 @@ pub struct DefMap {
 
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
+    // FIXME: Figure out a better way for the IDE layer to resolve these?
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
 
     /// The diagnostics that need to be emitted for this crate.

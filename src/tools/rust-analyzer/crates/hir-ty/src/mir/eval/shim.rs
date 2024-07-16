@@ -627,6 +627,7 @@ impl Evaluator<'_> {
         if let Some(name) = name.strip_prefix("atomic_") {
             return self.exec_atomic_intrinsic(name, args, generic_args, destination, locals, span);
         }
+        // FIXME(#17451): Add `f16` and `f128` intrinsics.
         if let Some(name) = name.strip_suffix("f64") {
             let result = match name {
                 "sqrt" | "sin" | "cos" | "exp" | "exp2" | "log" | "log10" | "log2" | "fabs"

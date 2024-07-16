@@ -9,8 +9,8 @@ use base_db::{
     CrateId, Upcast,
 };
 use hir_def::{
-    db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, ConstParamId,
-    DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
+    db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, CallableDefId,
+    ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
     LifetimeParamId, LocalFieldId, StaticId, TypeAliasId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
@@ -24,9 +24,8 @@ use crate::{
     lower::{GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    Binders, CallableDefId, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult,
-    Interner, PolyFnSig, QuantifiedWhereClause, Substitution, TraitEnvironment, TraitRef, Ty,
-    TyDefId, ValueTyDefId,
+    Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
+    PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -81,7 +80,31 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::cycle(crate::consteval::const_eval_discriminant_recover)]
     fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
 
+    #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
+    fn lookup_impl_method(
+        &self,
+        env: Arc<TraitEnvironment>,
+        func: FunctionId,
+        fn_subst: Substitution,
+    ) -> (FunctionId, Substitution);
+
     // endregion:mir
+
+    #[salsa::invoke(crate::layout::layout_of_adt_query)]
+    #[salsa::cycle(crate::layout::layout_of_adt_recover)]
+    fn layout_of_adt(
+        &self,
+        def: AdtId,
+        subst: Substitution,
+        env: Arc<TraitEnvironment>,
+    ) -> Result<Arc<Layout>, LayoutError>;
+
+    #[salsa::invoke(crate::layout::layout_of_ty_query)]
+    #[salsa::cycle(crate::layout::layout_of_ty_recover)]
+    fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
+
+    #[salsa::invoke(crate::layout::target_data_layout_query)]
+    fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
@@ -105,30 +128,6 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::field_types_query)]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
-    #[salsa::invoke(crate::layout::layout_of_adt_query)]
-    #[salsa::cycle(crate::layout::layout_of_adt_recover)]
-    fn layout_of_adt(
-        &self,
-        def: AdtId,
-        subst: Substitution,
-        env: Arc<TraitEnvironment>,
-    ) -> Result<Arc<Layout>, LayoutError>;
-
-    #[salsa::invoke(crate::layout::layout_of_ty_query)]
-    #[salsa::cycle(crate::layout::layout_of_ty_recover)]
-    fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
-
-    #[salsa::invoke(crate::layout::target_data_layout_query)]
-    fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
-
-    #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
-    fn lookup_impl_method(
-        &self,
-        env: Arc<TraitEnvironment>,
-        func: FunctionId,
-        fn_subst: Substitution,
-    ) -> (FunctionId, Substitution);
-
     #[salsa::invoke(crate::lower::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 
@@ -145,7 +144,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         def: GenericDefId,
         param_id: TypeOrConstParamId,
         assoc_name: Option<Name>,
-    ) -> Arc<[Binders<QuantifiedWhereClause>]>;
+    ) -> GenericPredicates;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
@@ -232,7 +231,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     ) -> sync::Arc<chalk_db::ImplDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_datum_query)]
-    fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;
+    fn fn_def_datum(&self, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_variance_query)]
     fn fn_def_variance(&self, fn_def_id: FnDefId) -> chalk_db::Variances;

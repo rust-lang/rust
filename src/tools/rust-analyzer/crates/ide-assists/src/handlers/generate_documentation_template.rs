@@ -4,7 +4,7 @@ use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
 use syntax::{
     algo::skip_whitespace_token,
-    ast::{self, edit::IndentLevel, HasDocComments, HasName},
+    ast::{self, edit::IndentLevel, HasDocComments, HasGenericArgs, HasName},
     match_ast, AstNode, AstToken,
 };
 
