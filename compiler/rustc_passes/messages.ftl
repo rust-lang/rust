@@ -485,7 +485,7 @@ passes_naked_functions_asm_options =
 passes_naked_functions_codegen_attribute =
     cannot use additional code generation attributes with `#[naked]`
     .label = this attribute is incompatible with `#[naked]`
-    .label2 = function marked with `#[naked]` here
+    .naked_attribute = function marked with `#[naked]` here
 
 passes_naked_functions_must_use_noreturn =
     asm in naked functions must use `noreturn` option

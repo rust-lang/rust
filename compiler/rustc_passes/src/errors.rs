@@ -1188,7 +1188,7 @@ pub struct NakedFunctionCodegenAttribute {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(passes_label2)]
+    #[label(passes_naked_attribute)]
     pub naked_span: Span,
 }
 

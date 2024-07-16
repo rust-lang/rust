@@ -421,20 +421,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         const FORBIDDEN: [rustc_span::Symbol; 3] =
             [sym::track_caller, sym::inline, sym::target_feature];
 
-        for other_attr in attrs {
-            if FORBIDDEN.into_iter().any(|name| other_attr.has_name(name)) {
-                self.dcx().emit_err(errors::NakedFunctionCodegenAttribute {
-                    span: other_attr.span,
-                    naked_span: attr.span,
-                });
-
-                return false;
-            }
-        }
-
         match target {
             Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+                for other_attr in attrs {
+                    if FORBIDDEN.into_iter().any(|name| other_attr.has_name(name)) {
+                        self.dcx().emit_err(errors::NakedFunctionCodegenAttribute {
+                            span: other_attr.span,
+                            naked_span: attr.span,
+                        });
+
+                        return false;
+                    }
+                }
+
+                true
+            }
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[naked]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
