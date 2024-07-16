@@ -482,7 +482,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         TyKind::Slice(ty) => vis.visit_ty(ty),
         TyKind::Ptr(mt) => vis.visit_mt(mt),
         TyKind::Ref(lt, mt) => {
-            visit_opt(lt, |lt| noop_visit_lifetime(lt, vis));
+            visit_opt(lt, |lt| vis.visit_lifetime(lt));
             vis.visit_mt(mt);
         }
         TyKind::BareFn(bft) => {
@@ -925,7 +925,7 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     vis.visit_ident(ident);
-    visit_vec(bounds, |bound| noop_visit_param_bound(bound, vis));
+    visit_vec(bounds, |bound| vis.visit_param_bound(bound));
     match kind {
         GenericParamKind::Lifetime => {}
         GenericParamKind::Type { default } => {
@@ -983,7 +983,7 @@ fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis: &mu
         }
         WherePredicate::RegionPredicate(rp) => {
             let WhereRegionPredicate { span, lifetime, bounds } = rp;
-            noop_visit_lifetime(lifetime, vis);
+            vis.visit_lifetime(lifetime);
             visit_vec(bounds, |bound| noop_visit_param_bound(bound, vis));
             vis.visit_span(span);
         }
