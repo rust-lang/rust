@@ -257,7 +257,6 @@ TrivialTypeTraversalImpls! {
     crate::ty::adjustment::PointerCoercion,
     ::rustc_span::Span,
     ::rustc_span::symbol::Ident,
-    ::rustc_errors::ErrorGuaranteed,
     ty::BoundVar,
     ty::ValTree<'tcx>,
 }
@@ -443,13 +442,14 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 pat.visit_with(visitor)
             }
 
+            ty::Error(guar) => guar.visit_with(visitor),
+
             ty::Bool
             | ty::Char
             | ty::Str
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Error(_)
             | ty::Infer(_)
             | ty::Bound(..)
             | ty::Placeholder(..)
@@ -602,6 +602,21 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     }
 }
 
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for rustc_span::ErrorGuaranteed {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        visitor.visit_error(*self)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for rustc_span::ErrorGuaranteed {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        _folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+}
+
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
@@ -614,12 +629,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst {
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for InferConst {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, _visitor: &mut V) -> V::Result {
         V::Result::output()
-    }
-}
-
-impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
-    fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        self.args.visit_with(visitor)
     }
 }
 
