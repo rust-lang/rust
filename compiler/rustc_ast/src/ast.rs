@@ -1638,7 +1638,8 @@ pub struct QSelf {
 }
 
 /// A capture clause used in closures and `async` blocks.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Ord, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, Ord, Eq, PartialOrd, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum CaptureBy {
     /// `move` keyword was not specified.
     Ref,

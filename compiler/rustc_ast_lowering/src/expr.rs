@@ -229,14 +229,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ) = &peeled.kind
                         {
                             let coroutine_kind = match gen_kind {
-                                GenBlockKind::Async => CoroutineKind::Async { span: *span, closure_id: peeled.node_id(), return_impl_trait_id: self.next_node_id() },
-                                GenBlockKind::Gen => CoroutineKind::Gen { span: *span, closure_id: peeled.node_id(), return_impl_trait_id: self.next_node_id() },
-                                GenBlockKind::AsyncGen => CoroutineKind::AsyncGen { span: *span, closure_id: peeled.node_id(), return_impl_trait_id: self.next_node_id() },
+                                GenBlockKind::Async => CoroutineKind::Async {
+                                    span: *span,
+                                    closure_id: peeled.node_id(),
+                                    return_impl_trait_id: self.next_node_id(),
+                                },
+                                GenBlockKind::Gen => CoroutineKind::Gen {
+                                    span: *span,
+                                    closure_id: peeled.node_id(),
+                                    return_impl_trait_id: self.next_node_id(),
+                                },
+                                GenBlockKind::AsyncGen => CoroutineKind::AsyncGen {
+                                    span: *span,
+                                    closure_id: peeled.node_id(),
+                                    return_impl_trait_id: self.next_node_id(),
+                                },
                             };
                             let id = self.next_node_id();
                             self.lower_expr_coroutine_closure(
                                 binder,
-                                capture_clause.max(*gen_capture_clause),
+                                (*capture_clause).max(*gen_capture_clause),
                                 e.id,
                                 hir_id,
                                 coroutine_kind,
