@@ -72,7 +72,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
                 B::optimize_fat(cgcx, &mut module)?;
                 Ok(module)
             }
-            LtoModuleCodegen::Thin(thin) => B::optimize_thin(cgcx, thin),
+            LtoModuleCodegen::Thin(thin) => unsafe { B::optimize_thin(cgcx, thin) },
         }
     }
 
