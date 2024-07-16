@@ -64,6 +64,7 @@ use crate::sync::atomic::{
 };
 use crate::sys::{c, dur2timeout};
 use crate::time::Duration;
+use core::ffi::c_void;
 
 pub struct Parker {
     state: AtomicI8,
@@ -117,7 +118,7 @@ impl Parker {
 
         loop {
             // Wait for something to happen, assuming it's still set to PARKED.
-            c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, c::INFINITE);
+            c::WaitOnAddress(self.ptr(), &PARKED as *const _ as *const c_void, 1, c::INFINITE);
             // Change NOTIFIED=>EMPTY but leave PARKED alone.
             if self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Acquire).is_ok() {
                 // Actually woken up by unpark().
@@ -144,7 +145,7 @@ impl Parker {
         }
 
         // Wait for something to happen, assuming it's still set to PARKED.
-        c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, dur2timeout(timeout));
+        c::WaitOnAddress(self.ptr(), &PARKED as *const _ as *const c_void, 1, dur2timeout(timeout));
         // Set the state back to EMPTY (from either PARKED or NOTIFIED).
         // Note that we don't just write EMPTY, but use swap() to also
         // include an acquire-ordered read to synchronize with unpark()'s
@@ -177,8 +178,8 @@ impl Parker {
         }
     }
 
-    fn ptr(&self) -> c::LPVOID {
-        core::ptr::addr_of!(self.state) as c::LPVOID
+    fn ptr(&self) -> *const c_void {
+        core::ptr::addr_of!(self.state).cast::<c_void>()
     }
 }
 

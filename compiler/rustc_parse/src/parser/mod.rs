@@ -1118,41 +1118,37 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        if let Some(&(_, span, _, delim)) = self.token_cursor.stack.last()
-            && delim != Delimiter::Invisible
-        {
-            // We are not in the outermost token stream, and the token stream
-            // we are in has non-skipped delimiters. Look for skipped
-            // delimiters in the lookahead range.
-            let tree_cursor = &self.token_cursor.tree_cursor;
-            let all_normal = (0..dist).all(|i| {
-                let token = tree_cursor.look_ahead(i);
-                !matches!(token, Some(TokenTree::Delimited(.., Delimiter::Invisible, _)))
-            });
-            if all_normal {
-                // There were no skipped delimiters. Do lookahead by plain indexing.
-                return match tree_cursor.look_ahead(dist - 1) {
-                    Some(tree) => {
-                        // Indexing stayed within the current token stream.
-                        match tree {
-                            TokenTree::Token(token, _) => looker(token),
-                            TokenTree::Delimited(dspan, _, delim, _) => {
-                                looker(&Token::new(token::OpenDelim(*delim), dspan.open))
-                            }
+        // Typically around 98% of the `dist > 0` cases have `dist == 1`, so we
+        // have a fast special case for that.
+        if dist == 1 {
+            // The index is zero because the tree cursor's index always points
+            // to the next token to be gotten.
+            match self.token_cursor.tree_cursor.look_ahead(0) {
+                Some(tree) => {
+                    // Indexing stayed within the current token tree.
+                    return match tree {
+                        TokenTree::Token(token, _) => looker(token),
+                        TokenTree::Delimited(dspan, _, delim, _) => {
+                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
                         }
+                    };
+                }
+                None => {
+                    // The tree cursor lookahead went (one) past the end of the
+                    // current token tree. Try to return a close delimiter.
+                    if let Some(&(_, span, _, delim)) = self.token_cursor.stack.last()
+                        && delim != Delimiter::Invisible
+                    {
+                        // We are not in the outermost token stream, so we have
+                        // delimiters. Also, those delimiters are not skipped.
+                        return looker(&Token::new(token::CloseDelim(delim), span.close));
                     }
-                    None => {
-                        // Indexing went past the end of the current token
-                        // stream. Use the close delimiter, no matter how far
-                        // ahead `dist` went.
-                        looker(&Token::new(token::CloseDelim(delim), span.close))
-                    }
-                };
+                }
             }
         }
 
-        // We are in a more complex case. Just clone the token cursor and use
-        // `next`, skipping delimiters as necessary. Slow but simple.
+        // Just clone the token cursor and use `next`, skipping delimiters as
+        // necessary. Slow but simple.
         let mut cursor = self.token_cursor.clone();
         let mut i = 0;
         let mut token = Token::dummy();
@@ -1541,14 +1537,16 @@ impl<'a> Parser<'a> {
 
                 // we don't need N spans, but we want at least one, so print all of prev_token
                 dbg_fmt.field("prev_token", &parser.prev_token);
-                // make it easier to peek farther ahead by taking TokenKinds only until EOF
-                let tokens = (0..*lookahead)
-                    .map(|i| parser.look_ahead(i, |tok| tok.kind.clone()))
-                    .scan(parser.prev_token == TokenKind::Eof, |eof, tok| {
-                        let current = eof.then_some(tok.clone()); // include a trailing EOF token
-                        *eof |= &tok == &TokenKind::Eof;
-                        current
-                    });
+                let mut tokens = vec![];
+                for i in 0..*lookahead {
+                    let tok = parser.look_ahead(i, |tok| tok.kind.clone());
+                    let is_eof = tok == TokenKind::Eof;
+                    tokens.push(tok);
+                    if is_eof {
+                        // Don't look ahead past EOF.
+                        break;
+                    }
+                }
                 dbg_fmt.field_with("tokens", |field| field.debug_list().entries(tokens).finish());
                 dbg_fmt.field("approx_token_stream_pos", &parser.num_bump_calls);
 
@@ -1607,7 +1605,7 @@ pub(crate) fn make_unclosed_delims_error(
 enum FlatToken {
     /// A token - this holds both delimiter (e.g. '{' and '}')
     /// and non-delimiter tokens
-    Token(Token),
+    Token((Token, Spacing)),
     /// Holds the `AttrsTarget` for an AST node. The `AttrsTarget` is inserted
     /// directly into the constructed `AttrTokenStream` as an
     /// `AttrTokenTree::AttrsTarget`.

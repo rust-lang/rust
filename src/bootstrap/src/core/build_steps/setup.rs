@@ -484,7 +484,7 @@ impl Step for Hook {
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
     let git = helpers::git(Some(&config.src))
         .args(["rev-parse", "--git-common-dir"])
-        .command
+        .as_command_mut()
         .output()
         .map(|output| {
             assert!(output.status.success(), "failed to run `git`");

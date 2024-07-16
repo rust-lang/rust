@@ -8,8 +8,6 @@ https://doc.rust-lang.org/stable/rustc/platform-support/fuchsia.html#aarch64-unk
 """
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 import glob
 import io
 import json
@@ -20,6 +18,8 @@ import shlex
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, List, Optional
 
@@ -42,12 +42,8 @@ def check_call_with_logging(
                 for line in pipe:
                     handler(line.rstrip())
 
-            executor_out = executor.submit(
-                exhaust_pipe, stdout_handler, process.stdout
-            )
-            executor_err = executor.submit(
-                exhaust_pipe, stderr_handler, process.stderr
-            )
+            executor_out = executor.submit(exhaust_pipe, stdout_handler, process.stdout)
+            executor_err = executor.submit(exhaust_pipe, stderr_handler, process.stderr)
             executor_out.result()
             executor_err.result()
     retcode = process.poll()
@@ -203,9 +199,7 @@ class TestEnvironment:
             raise Exception(f"Unreadable build-id for binary {binary}")
         data = json.loads(process.stdout)
         if len(data) != 1:
-            raise Exception(
-                f"Unreadable output from llvm-readelf for binary {binary}"
-            )
+            raise Exception(f"Unreadable output from llvm-readelf for binary {binary}")
         notes = data[0]["Notes"]
         for note in notes:
             note_section = note["NoteSection"]
@@ -265,19 +259,10 @@ class TestEnvironment:
     def setup_logging(self, log_to_file=False):
         fs = logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s")
         if log_to_file:
-            logfile_handler = logging.FileHandler(
-                self.tmp_dir().joinpath("log")
-            )
+            logfile_handler = logging.FileHandler(self.tmp_dir().joinpath("log"))
             logfile_handler.setLevel(logging.DEBUG)
             logfile_handler.setFormatter(fs)
             logging.getLogger().addHandler(logfile_handler)
-        stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setFormatter(fs)
-        if self.verbose:
-            stream_handler.setLevel(logging.DEBUG)
-        else:
-            stream_handler.setLevel(logging.INFO)
-        logging.getLogger().addHandler(stream_handler)
         logging.getLogger().setLevel(logging.DEBUG)
 
     @property
@@ -454,9 +439,7 @@ class TestEnvironment:
         # Initialize temp directory
         os.makedirs(self.tmp_dir(), exist_ok=True)
         if len(os.listdir(self.tmp_dir())) != 0:
-            raise Exception(
-                f"Temp directory is not clean (in {self.tmp_dir()})"
-            )
+            raise Exception(f"Temp directory is not clean (in {self.tmp_dir()})")
         self.setup_logging(log_to_file=True)
         os.mkdir(self.output_dir)
 
@@ -493,9 +476,7 @@ class TestEnvironment:
             shutil.rmtree(self.local_pb_path, ignore_errors=True)
 
             # Look up the product bundle transfer manifest.
-            self.env_logger.info(
-                "Looking up the product bundle transfer manifest..."
-            )
+            self.env_logger.info("Looking up the product bundle transfer manifest...")
             product_name = "minimal." + self.triple_to_arch(self.target)
             sdk_version = self.read_sdk_version()
 
@@ -517,9 +498,7 @@ class TestEnvironment:
             )
 
             try:
-                transfer_manifest_url = json.loads(output)[
-                    "transfer_manifest_url"
-                ]
+                transfer_manifest_url = json.loads(output)["transfer_manifest_url"]
             except Exception as e:
                 print(e)
                 raise Exception("Unable to parse transfer manifest") from e
@@ -769,9 +748,7 @@ class TestEnvironment:
             # Use /tmp as the test temporary directory
             env_vars += '\n            "RUST_TEST_TMPDIR=/tmp",'
 
-            cml.write(
-                self.CML_TEMPLATE.format(env_vars=env_vars, exe_name=exe_name)
-            )
+            cml.write(self.CML_TEMPLATE.format(env_vars=env_vars, exe_name=exe_name))
 
         runner_logger.info("Compiling CML...")
 
@@ -922,20 +899,16 @@ class TestEnvironment:
 
         if stdout_path is not None:
             if not os.path.exists(stdout_path):
-                runner_logger.error(
-                    f"stdout file {stdout_path} does not exist."
-                )
+                runner_logger.error(f"stdout file {stdout_path} does not exist.")
             else:
                 with open(stdout_path, encoding="utf-8", errors="ignore") as f:
-                    runner_logger.info(f.read())
+                    sys.stdout.write(f.read())
         if stderr_path is not None:
             if not os.path.exists(stderr_path):
-                runner_logger.error(
-                    f"stderr file {stderr_path} does not exist."
-                )
+                runner_logger.error(f"stderr file {stderr_path} does not exist.")
             else:
                 with open(stderr_path, encoding="utf-8", errors="ignore") as f:
-                    runner_logger.error(f.read())
+                    sys.stderr.write(f.read())
 
         runner_logger.info("Done!")
         return return_code
@@ -1037,7 +1010,7 @@ class TestEnvironment:
                 f"--symbol-path={self.rust_dir}/lib/rustlib/{self.target}/lib",
             ]
 
-      # Add rust source if it's available
+        # Add rust source if it's available
         rust_src_map = None
         if args.rust_src is not None:
             # This matches the remapped prefix used by compiletest. There's no
@@ -1210,7 +1183,7 @@ def main():
     start_parser.add_argument(
         "--use-local-product-bundle-if-exists",
         help="if the product bundle already exists in the local path, use "
-            "it instead of downloading it again",
+        "it instead of downloading it again",
         action="store_true",
     )
     start_parser.set_defaults(func=start)
@@ -1246,9 +1219,7 @@ def main():
     )
     cleanup_parser.set_defaults(func=cleanup)
 
-    syslog_parser = subparsers.add_parser(
-        "syslog", help="prints the device syslog"
-    )
+    syslog_parser = subparsers.add_parser("syslog", help="prints the device syslog")
     syslog_parser.set_defaults(func=syslog)
 
     debug_parser = subparsers.add_parser(

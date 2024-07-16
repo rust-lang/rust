@@ -33,6 +33,7 @@ pub(crate) fn try_run_tests(
     stream: bool,
 ) -> bool {
     if builder.config.dry_run() {
+        cmd.mark_as_executed();
         return true;
     }
 
@@ -50,7 +51,7 @@ pub(crate) fn try_run_tests(
 }
 
 fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) -> bool {
-    let cmd = &mut cmd.command;
+    let cmd = cmd.as_command_mut();
     cmd.stdout(Stdio::piped());
 
     builder.verbose(|| println!("running: {cmd:?}"));

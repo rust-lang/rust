@@ -11,21 +11,25 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to await while holding a non-async-aware MutexGuard.
+    /// Checks for calls to `await` while holding a non-async-aware
+    /// `MutexGuard`.
     ///
     /// ### Why is this bad?
-    /// The Mutex types found in std::sync and parking_lot
-    /// are not designed to operate in an async context across await points.
+    /// The Mutex types found in [`std::sync`][https://doc.rust-lang.org/stable/std/sync/] and
+    /// [`parking_lot`](https://docs.rs/parking_lot/latest/parking_lot/) are
+    /// not designed to operate in an async context across await points.
     ///
-    /// There are two potential solutions. One is to use an async-aware Mutex
-    /// type. Many asynchronous foundation crates provide such a Mutex type. The
-    /// other solution is to ensure the mutex is unlocked before calling await,
-    /// either by introducing a scope or an explicit call to Drop::drop.
+    /// There are two potential solutions. One is to use an async-aware `Mutex`
+    /// type. Many asynchronous foundation crates provide such a `Mutex` type.
+    /// The other solution is to ensure the mutex is unlocked before calling
+    /// `await`, either by introducing a scope or an explicit call to
+    /// [`Drop::drop`](https://doc.rust-lang.org/std/ops/trait.Drop.html).
     ///
     /// ### Known problems
     /// Will report false positive for explicitly dropped guards
-    /// ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)). A workaround for this is
-    /// to wrap the `.lock()` call in a block instead of explicitly dropping the guard.
+    /// ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)). A
+    /// workaround for this is to wrap the `.lock()` call in a block instead of
+    /// explicitly dropping the guard.
     ///
     /// ### Example
     /// ```no_run
@@ -73,11 +77,11 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to await while holding a `RefCell` `Ref` or `RefMut`.
+    /// Checks for calls to `await` while holding a `RefCell`, `Ref`, or `RefMut`.
     ///
     /// ### Why is this bad?
     /// `RefCell` refs only check for exclusive mutable access
-    /// at runtime. Holding onto a `RefCell` ref across an `await` suspension point
+    /// at runtime. Holding a `RefCell` ref across an await suspension point
     /// risks panics from a mutable ref shared while other refs are outstanding.
     ///
     /// ### Known problems
@@ -131,13 +135,13 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Allows users to configure types which should not be held across `await`
+    /// Allows users to configure types which should not be held across await
     /// suspension points.
     ///
     /// ### Why is this bad?
-    /// There are some types which are perfectly "safe" to be used concurrently
-    /// from a memory access perspective but will cause bugs at runtime if they
-    /// are held in such a way.
+    /// There are some types which are perfectly safe to use concurrently from
+    /// a memory access perspective, but that will cause bugs at runtime if
+    /// they are held in such a way.
     ///
     /// ### Example
     ///
@@ -228,15 +232,15 @@ impl AwaitHolding {
                         cx,
                         AWAIT_HOLDING_LOCK,
                         ty_cause.source_info.span,
-                        "this `MutexGuard` is held across an `await` point",
+                        "this `MutexGuard` is held across an await point",
                         |diag| {
                             diag.help(
                                 "consider using an async-aware `Mutex` type or ensuring the \
-                                `MutexGuard` is dropped before calling await",
+                                `MutexGuard` is dropped before calling `await`",
                             );
                             diag.span_note(
                                 await_points(),
-                                "these are all the `await` points this lock is held through",
+                                "these are all the await points this lock is held through",
                             );
                         },
                     );
@@ -245,12 +249,12 @@ impl AwaitHolding {
                         cx,
                         AWAIT_HOLDING_REFCELL_REF,
                         ty_cause.source_info.span,
-                        "this `RefCell` reference is held across an `await` point",
+                        "this `RefCell` reference is held across an await point",
                         |diag| {
                             diag.help("ensure the reference is dropped before calling `await`");
                             diag.span_note(
                                 await_points(),
-                                "these are all the `await` points this reference is held through",
+                                "these are all the await points this reference is held through",
                             );
                         },
                     );
@@ -268,7 +272,7 @@ fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedPa
         AWAIT_HOLDING_INVALID_TYPE,
         span,
         format!(
-            "`{}` may not be held across an `await` point per `clippy.toml`",
+            "`{}` may not be held across an await point per `clippy.toml`",
             disallowed.path()
         ),
         |diag| {

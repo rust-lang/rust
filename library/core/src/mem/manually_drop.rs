@@ -62,6 +62,9 @@ impl<T> ManuallyDrop<T> {
     /// x.truncate(5); // You can still safely operate on the value
     /// assert_eq!(*x, "Hello");
     /// // But `Drop` will not be run here
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # let _ = ManuallyDrop::into_inner(x);
     /// ```
     #[must_use = "if you don't need the wrapper, you can use `mem::forget` instead"]
     #[stable(feature = "manually_drop", since = "1.20.0")]

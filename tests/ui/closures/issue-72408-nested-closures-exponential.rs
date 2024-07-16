@@ -1,4 +1,4 @@
-//@ build-fail
+//@ check-pass
 
 // Closures include captured types twice in a type tree.
 //
@@ -45,7 +45,6 @@ fn main() {
 
     let f = dup(f);
     let f = dup(f);
-    //~^ ERROR reached the type-length limit
     let f = dup(f);
     let f = dup(f);
     let f = dup(f);

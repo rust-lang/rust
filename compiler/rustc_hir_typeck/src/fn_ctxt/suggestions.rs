@@ -32,10 +32,10 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
-use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -466,21 +466,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     borrow_removal_span,
                 });
                 return true;
-            } else if let Some((deref_ty, _)) =
-                self.autoderef(expr.span, found_ty_inner).silence_errors().nth(1)
-                && self.can_eq(self.param_env, deref_ty, peeled)
-                && error_tys_equate_as_ref
-            {
-                let sugg = prefix_wrap(".as_deref()");
-                err.subdiagnostic(errors::SuggestConvertViaMethod {
-                    span: expr.span.shrink_to_hi(),
-                    sugg,
-                    expected,
-                    found,
-                    borrow_removal_span,
-                });
-                return true;
-            } else if let ty::Adt(adt, _) = found_ty_inner.peel_refs().kind()
+            } else if let ty::Ref(_, peeled_found_ty, _) = found_ty_inner.kind()
+                && let ty::Adt(adt, _) = peeled_found_ty.peel_refs().kind()
                 && self.tcx.is_lang_item(adt.did(), LangItem::String)
                 && peeled.is_str()
                 // `Result::map`, conversely, does not take ref of the error type.
@@ -496,12 +483,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
                 return true;
+            } else {
+                if !error_tys_equate_as_ref {
+                    return false;
+                }
+                let mut steps = self.autoderef(expr.span, found_ty_inner).silence_errors();
+                if let Some((deref_ty, _)) = steps.nth(1)
+                    && self.can_eq(self.param_env, deref_ty, peeled)
+                {
+                    let sugg = prefix_wrap(".as_deref()");
+                    err.subdiagnostic(errors::SuggestConvertViaMethod {
+                        span: expr.span.shrink_to_hi(),
+                        sugg,
+                        expected,
+                        found,
+                        borrow_removal_span,
+                    });
+                    return true;
+                }
+                for (deref_ty, n_step) in steps {
+                    if self.can_eq(self.param_env, deref_ty, peeled) {
+                        let explicit_deref = "*".repeat(n_step);
+                        let sugg = prefix_wrap(&format!(".map(|v| &{explicit_deref}v)"));
+                        err.subdiagnostic(errors::SuggestConvertViaMethod {
+                            span: expr.span.shrink_to_hi(),
+                            sugg,
+                            expected,
+                            found,
+                            borrow_removal_span,
+                        });
+                        return true;
+                    }
+                }
             }
         }
 
         false
     }
 
+    /// If `ty` is `Option<T>`, returns `T, T, None`.
+    /// If `ty` is `Result<T, E>`, returns `T, T, Some(E, E)`.
+    /// Otherwise, returns `None`.
     fn deconstruct_option_or_result(
         &self,
         found_ty: Ty<'tcx>,
@@ -1405,6 +1427,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Applicability::MachineApplicable,
         );
         true
+    }
+
+    // Suggest to change `Option<&Vec<T>>::unwrap_or(&[])` to `Option::map_or(&[], |v| v)`.
+    #[instrument(level = "trace", skip(self, err, provided_expr))]
+    pub(crate) fn suggest_deref_unwrap_or(
+        &self,
+        err: &mut Diag<'_>,
+        error_span: Span,
+        callee_ty: Option<Ty<'tcx>>,
+        call_ident: Option<Ident>,
+        expected_ty: Ty<'tcx>,
+        provided_ty: Ty<'tcx>,
+        provided_expr: &Expr<'tcx>,
+        is_method: bool,
+    ) {
+        if !is_method {
+            return;
+        }
+        let Some(callee_ty) = callee_ty else {
+            return;
+        };
+        let ty::Adt(callee_adt, _) = callee_ty.peel_refs().kind() else {
+            return;
+        };
+        let adt_name = if self.tcx.is_diagnostic_item(sym::Option, callee_adt.did()) {
+            "Option"
+        } else if self.tcx.is_diagnostic_item(sym::Result, callee_adt.did()) {
+            "Result"
+        } else {
+            return;
+        };
+
+        let Some(call_ident) = call_ident else {
+            return;
+        };
+        if call_ident.name != sym::unwrap_or {
+            return;
+        }
+
+        let ty::Ref(_, peeled, _mutability) = provided_ty.kind() else {
+            return;
+        };
+
+        // NOTE: Can we reuse `suggest_deref_or_ref`?
+
+        // Create an dummy type `&[_]` so that both &[] and `&Vec<T>` can coerce to it.
+        let dummy_ty = if let ty::Array(elem_ty, size) = peeled.kind()
+            && let ty::Infer(_) = elem_ty.kind()
+            && size.try_eval_target_usize(self.tcx, self.param_env) == Some(0)
+        {
+            let slice = Ty::new_slice(self.tcx, *elem_ty);
+            Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, slice)
+        } else {
+            provided_ty
+        };
+
+        if !self.can_coerce(expected_ty, dummy_ty) {
+            return;
+        }
+        let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
+        err.multipart_suggestion_verbose(
+            msg,
+            vec![
+                (call_ident.span, "map_or".to_owned()),
+                (provided_expr.span.shrink_to_hi(), ", |v| v".to_owned()),
+            ],
+            Applicability::MachineApplicable,
+        );
     }
 
     /// Suggest wrapping the block in square brackets instead of curly braces

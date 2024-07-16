@@ -9,7 +9,6 @@ run-make/c-unwind-abi-catch-lib-panic/Makefile
 run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
-run-make/cdylib-fewer-symbols/Makefile
 run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
@@ -24,11 +23,9 @@ run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
 run-make/emit-to-stdout/Makefile
-run-make/env-dep-info/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
-run-make/extern-flag-pathless/Makefile
 run-make/extern-fn-explicit-align/Makefile
 run-make/extern-fn-generic/Makefile
 run-make/extern-fn-mangle/Makefile
@@ -39,7 +36,6 @@ run-make/extern-fn-with-packed-struct/Makefile
 run-make/extern-fn-with-union/Makefile
 run-make/extern-multiple-copies/Makefile
 run-make/extern-multiple-copies2/Makefile
-run-make/extra-filename-with-temp-outputs/Makefile
 run-make/fmt-write-bloat/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
@@ -48,7 +44,6 @@ run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
 run-make/interdependent-c-libraries/Makefile
 run-make/issue-107094/Makefile
-run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
 run-make/issue-18943/Makefile
@@ -61,10 +56,7 @@ run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
-run-make/issue-83045/Makefile
-run-make/issue-83112-incr-test-moved-file/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
-run-make/issue-85019-moved-src-dir/Makefile
 run-make/issue-85401-static-mir/Makefile
 run-make/issue-88756-default-output/Makefile
 run-make/issue-97463-abi-param-passing/Makefile
@@ -86,7 +78,6 @@ run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
-run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
@@ -121,12 +112,10 @@ run-make/return-non-c-like-enum-from-c/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
-run-make/rustc-macro-dep-files/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile
 run-make/share-generics-dylib/Makefile
-run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile
 run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
@@ -137,12 +126,10 @@ run-make/staticlib-dylib-linkage/Makefile
 run-make/std-core-cycle/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
-run-make/symbols-include-type-name/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
 run-make/test-benches/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
 run-make/translation/Makefile
-run-make/type-mismatch-same-crate-name/Makefile
 run-make/unstable-flag-required/Makefile
 run-make/x86_64-fortanix-unknown-sgx-lvi/Makefile

@@ -197,9 +197,8 @@ fn main() {
         cfg.define("LLVM_RUSTLLVM", None);
     }
 
-    if tracked_env_var_os("LLVM_NDEBUG").is_some() {
+    if tracked_env_var_os("LLVM_ASSERTIONS").is_none() {
         cfg.define("NDEBUG", None);
-        cfg.debug(false);
     }
 
     rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));

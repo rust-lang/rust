@@ -205,6 +205,17 @@ impl Sub for i16 {
     }
 }
 
+#[track_caller]
+#[lang = "panic_const_add_overflow"]
+pub fn panic_const_add_overflow() -> ! {
+    panic("attempt to add with overflow");
+}
+
+#[track_caller]
+#[lang = "panic_const_sub_overflow"]
+pub fn panic_const_sub_overflow() -> ! {
+    panic("attempt to subtract with overflow");
+}
 
 /*
  * Code

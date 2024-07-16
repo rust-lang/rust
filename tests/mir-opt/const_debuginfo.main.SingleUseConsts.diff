@@ -119,11 +119,7 @@
       }
   }
   
-  ALLOC0 (size: 8, align: 4) {
-      20 00 00 00 20 00 00 00                         │  ... ...
-  }
+  ALLOC0 (size: 8, align: 4) { .. }
   
-  ALLOC1 (size: 4, align: 2) {
-      01 00 63 00                                     │ ..c.
-  }
+  ALLOC1 (size: 4, align: 2) { .. }
   

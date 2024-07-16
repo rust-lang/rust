@@ -77,17 +77,12 @@ impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        if in_external_macro(cx.tcx.sess, item.span) {
-            return;
-        }
-        if let ItemKind::Enum(ref def, _) = item.kind {
-            let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
-            let ty::Adt(adt, subst) = ty.kind() else {
-                panic!("already checked whether this is an enum")
-            };
-            if adt.variants().len() <= 1 {
-                return;
-            }
+        if let ItemKind::Enum(ref def, _) = item.kind
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty::Adt(adt, subst) = ty.kind()
+            && adt.variants().len() > 1
+            && !in_external_macro(cx.tcx.sess, item.span)
+        {
             let variants_size = AdtVariantInfo::new(cx, *adt, subst);
 
             let mut difference = variants_size[0].size - variants_size[1].size;

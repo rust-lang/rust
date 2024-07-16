@@ -1,3 +1,8 @@
+// 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
+//@ revisions: x86 other
+//@[x86] only-x86
+//@[other] ignore-x86
+
 // Verify that our intrinsics generate the correct LLVM calls for f16
 
 #![crate_type = "lib"]
@@ -140,14 +145,16 @@ pub fn f16_as_self(a: f16) -> f16 {
     a as f16
 }
 
-// CHECK-LABEL: float @f16_as_f32(
+// other-LABEL: float @f16_as_f32(
+// x86-LABEL: i32 @f16_as_f32(
 #[no_mangle]
 pub fn f16_as_f32(a: f16) -> f32 {
     // CHECK: fpext half %{{.+}} to float
     a as f32
 }
 
-// CHECK-LABEL: double @f16_as_f64(
+// other-LABEL: double @f16_as_f64(
+// x86-LABEL: void @f16_as_f64(
 #[no_mangle]
 pub fn f16_as_f64(a: f16) -> f64 {
     // CHECK: fpext half %{{.+}} to double

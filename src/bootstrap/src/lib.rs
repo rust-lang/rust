@@ -1,9 +1,9 @@
-//! Implementation of rustbuild, the Rust build system.
+//! Implementation of bootstrap, the Rust build system.
 //!
 //! This module, and its descendants, are the implementation of the Rust build
 //! system. Most of this build system is backed by Cargo but the outer layer
 //! here serves as the ability to orchestrate calling Cargo, sequencing Cargo
-//! builds, building artifacts like LLVM, etc. The goals of rustbuild are:
+//! builds, building artifacts like LLVM, etc. The goals of bootstrap are:
 //!
 //! * To be an easily understandable, easily extensible, and maintainable build
 //!   system.
@@ -30,7 +30,6 @@ use std::time::SystemTime;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
-use filetime::FileTime;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::channel::GitInfo;
@@ -493,11 +492,14 @@ impl Build {
         let submodule_git = || helpers::git(Some(&absolute_path));
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = output(&mut submodule_git().args(["rev-parse", "HEAD"]).command);
+        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]).as_command_mut());
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
         let recorded = output(
-            &mut helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path).command,
+            helpers::git(Some(&self.src))
+                .args(["ls-tree", "HEAD"])
+                .arg(relative_path)
+                .as_command_mut(),
         );
         let actual_hash = recorded
             .split_whitespace()
@@ -522,7 +524,7 @@ impl Build {
             let current_branch = {
                 let output = helpers::git(Some(&self.src))
                     .args(["symbolic-ref", "--short", "HEAD"])
-                    .command
+                    .as_command_mut()
                     .stderr(Stdio::inherit())
                     .output();
                 let output = t!(output);
@@ -548,7 +550,7 @@ impl Build {
             git
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
-        if !update(true).command.status().map_or(false, |status| status.success()) {
+        if !update(true).as_command_mut().status().map_or(false, |status| status.success()) {
             update(false).run(self);
         }
 
@@ -934,17 +936,26 @@ impl Build {
 
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
+    #[track_caller]
     fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
+        command.mark_as_executed();
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
 
-        self.verbose(|| println!("running: {command:?}"));
+        let created_at = command.get_created_location();
+        let executed_at = std::panic::Location::caller();
 
-        command.command.stdout(command.stdout.stdio());
-        command.command.stderr(command.stderr.stdio());
+        self.verbose(|| {
+            println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
+        });
 
-        let output = command.command.output();
+        let stdout = command.stdout.stdio();
+        command.as_command_mut().stdout(stdout);
+        let stderr = command.stderr.stdio();
+        command.as_command_mut().stderr(stderr);
+
+        let output = command.as_command_mut().output();
 
         use std::fmt::Write;
 
@@ -956,8 +967,11 @@ impl Build {
             Ok(output) => {
                 writeln!(
                     message,
-                    "\n\nCommand {command:?} did not execute successfully.\
-            \nExpected success, got: {}",
+                    r#"
+Command {command:?} did not execute successfully.
+Expected success, got {}
+Created at: {created_at}
+Executed at: {executed_at}"#,
                     output.status,
                 )
                 .unwrap();
@@ -1693,9 +1707,13 @@ impl Build {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
-            let atime = FileTime::from_last_access_time(&metadata);
-            let mtime = FileTime::from_last_modification_time(&metadata);
-            t!(filetime::set_file_times(dst, atime, mtime));
+
+            let file_times = fs::FileTimes::new()
+                .set_accessed(t!(metadata.accessed()))
+                .set_modified(t!(metadata.modified()));
+
+            let dst_file = t!(fs::File::open(dst));
+            t!(dst_file.set_times(file_times));
         }
     }
 
@@ -1931,7 +1949,7 @@ fn envify(s: &str) -> String {
 pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
     let diff = helpers::git(Some(dir))
         .arg("diff")
-        .command
+        .as_command_mut()
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();
@@ -1941,7 +1959,7 @@ pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
-        .command
+        .as_command_mut()
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();

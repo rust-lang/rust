@@ -705,15 +705,49 @@ impl MsvcBasicName for ty::UintTy {
 
 impl MsvcBasicName for ty::FloatTy {
     fn msvc_basic_name(self) -> &'static str {
-        // FIXME: f16 and f128 have no MSVC representation. We could improve the debuginfo.
-        // See: <https://github.com/rust-lang/rust/pull/114607/files#r1454683264>
+        // FIXME(f16_f128): `f16` and `f128` have no MSVC representation. We could improve the
+        // debuginfo. See: <https://github.com/rust-lang/rust/issues/121837>
         match self {
-            ty::FloatTy::F16 => "half",
+            ty::FloatTy::F16 => {
+                bug!("`f16` should have been handled in `build_basic_type_di_node`")
+            }
             ty::FloatTy::F32 => "float",
             ty::FloatTy::F64 => "double",
             ty::FloatTy::F128 => "fp128",
         }
     }
+}
+
+fn build_cpp_f16_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> DINodeCreationResult<'ll> {
+    // MSVC has no native support for `f16`. Instead, emit `struct f16 { bits: u16 }` to allow the
+    // `f16`'s value to be displayed using a Natvis visualiser in `intrinsic.natvis`.
+    let float_ty = cx.tcx.types.f16;
+    let bits_ty = cx.tcx.types.u16;
+    type_map::build_type_with_children(
+        cx,
+        type_map::stub(
+            cx,
+            Stub::Struct,
+            UniqueTypeId::for_ty(cx.tcx, float_ty),
+            "f16",
+            cx.size_and_align_of(float_ty),
+            NO_SCOPE_METADATA,
+            DIFlags::FlagZero,
+        ),
+        // Fields:
+        |cx, float_di_node| {
+            smallvec![build_field_di_node(
+                cx,
+                float_di_node,
+                "bits",
+                cx.size_and_align_of(bits_ty),
+                Size::ZERO,
+                DIFlags::FlagZero,
+                type_di_node(cx, bits_ty),
+            )]
+        },
+        NO_GENERICS,
+    )
 }
 
 fn build_basic_type_di_node<'ll, 'tcx>(
@@ -739,6 +773,9 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         ty::Char => ("char", DW_ATE_UTF),
         ty::Int(int_ty) if cpp_like_debuginfo => (int_ty.msvc_basic_name(), DW_ATE_signed),
         ty::Uint(uint_ty) if cpp_like_debuginfo => (uint_ty.msvc_basic_name(), DW_ATE_unsigned),
+        ty::Float(ty::FloatTy::F16) if cpp_like_debuginfo => {
+            return build_cpp_f16_di_node(cx);
+        }
         ty::Float(float_ty) if cpp_like_debuginfo => (float_ty.msvc_basic_name(), DW_ATE_float),
         ty::Int(int_ty) => (int_ty.name_str(), DW_ATE_signed),
         ty::Uint(uint_ty) => (uint_ty.name_str(), DW_ATE_unsigned),

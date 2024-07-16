@@ -56,6 +56,10 @@ pub(super) struct MCDCDecision {
 
 #[derive(Default)]
 pub(super) struct ExtractedMappings {
+    /// Store our own copy of [`CoverageGraph::num_nodes`], so that we don't
+    /// need access to the whole graph when allocating per-BCB data. This is
+    /// only public so that other code can still use exhaustive destructuring.
+    pub(super) num_bcbs: usize,
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
     pub(super) mcdc_bitmap_bytes: u32,
@@ -106,6 +110,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
     );
 
     ExtractedMappings {
+        num_bcbs: basic_coverage_blocks.num_nodes(),
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bytes,
@@ -115,12 +120,10 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
 }
 
 impl ExtractedMappings {
-    pub(super) fn all_bcbs_with_counter_mappings(
-        &self,
-        basic_coverage_blocks: &CoverageGraph, // Only used for allocating a correctly-sized set
-    ) -> BitSet<BasicCoverageBlock> {
+    pub(super) fn all_bcbs_with_counter_mappings(&self) -> BitSet<BasicCoverageBlock> {
         // Fully destructure self to make sure we don't miss any fields that have mappings.
         let Self {
+            num_bcbs,
             code_mappings,
             branch_pairs,
             mcdc_bitmap_bytes: _,
@@ -129,7 +132,7 @@ impl ExtractedMappings {
         } = self;
 
         // Identify which BCBs have one or more mappings.
-        let mut bcbs_with_counter_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
+        let mut bcbs_with_counter_mappings = BitSet::new_empty(*num_bcbs);
         let mut insert = |bcb| {
             bcbs_with_counter_mappings.insert(bcb);
         };
@@ -155,6 +158,15 @@ impl ExtractedMappings {
         }
 
         bcbs_with_counter_mappings
+    }
+
+    /// Returns the set of BCBs that have one or more `Code` mappings.
+    pub(super) fn bcbs_with_ordinary_code_mappings(&self) -> BitSet<BasicCoverageBlock> {
+        let mut bcbs = BitSet::new_empty(self.num_bcbs);
+        for &CodeMapping { span: _, bcb } in &self.code_mappings {
+            bcbs.insert(bcb);
+        }
+        bcbs
     }
 }
 

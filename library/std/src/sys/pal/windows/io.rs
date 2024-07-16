@@ -1,3 +1,4 @@
+#![allow(unsafe_op_in_unsafe_fn)]
 use crate::marker::PhantomData;
 use crate::mem::size_of;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
@@ -15,9 +16,9 @@ pub struct IoSlice<'a> {
 impl<'a> IoSlice<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
-        assert!(buf.len() <= c::ULONG::MAX as usize);
+        assert!(buf.len() <= u32::MAX as usize);
         IoSlice {
-            vec: c::WSABUF { len: buf.len() as c::ULONG, buf: buf.as_ptr() as *mut u8 },
+            vec: c::WSABUF { len: buf.len() as u32, buf: buf.as_ptr() as *mut u8 },
             _p: PhantomData,
         }
     }
@@ -29,7 +30,7 @@ impl<'a> IoSlice<'a> {
         }
 
         unsafe {
-            self.vec.len -= n as c::ULONG;
+            self.vec.len -= n as u32;
             self.vec.buf = self.vec.buf.add(n);
         }
     }
@@ -49,9 +50,9 @@ pub struct IoSliceMut<'a> {
 impl<'a> IoSliceMut<'a> {
     #[inline]
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
-        assert!(buf.len() <= c::ULONG::MAX as usize);
+        assert!(buf.len() <= u32::MAX as usize);
         IoSliceMut {
-            vec: c::WSABUF { len: buf.len() as c::ULONG, buf: buf.as_mut_ptr() },
+            vec: c::WSABUF { len: buf.len() as u32, buf: buf.as_mut_ptr() },
             _p: PhantomData,
         }
     }
@@ -63,7 +64,7 @@ impl<'a> IoSliceMut<'a> {
         }
 
         unsafe {
-            self.vec.len -= n as c::ULONG;
+            self.vec.len -= n as u32;
             self.vec.buf = self.vec.buf.add(n);
         }
     }

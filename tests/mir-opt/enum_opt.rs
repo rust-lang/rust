@@ -1,7 +1,7 @@
 // skip-filecheck
 //@ test-mir-pass: EnumSizeOpt
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-//@ compile-flags: -Zunsound-mir-opts
+//@ compile-flags: -Zunsound-mir-opts -Zdump-mir-exclude-alloc-bytes
 
 #![feature(arbitrary_enum_discriminant, repr128)]
 

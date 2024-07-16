@@ -6,7 +6,6 @@ pub mod auto_trait;
 pub(crate) mod coherence;
 pub mod const_evaluatable;
 mod engine;
-pub mod error_reporting;
 mod fulfill;
 pub mod misc;
 pub mod normalize;
@@ -24,10 +23,10 @@ mod util;
 pub mod vtable;
 pub mod wf;
 
+use crate::error_reporting::traits::TypeErrCtxtExt as _;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
-use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::query::Providers;
@@ -272,13 +271,14 @@ fn do_normalize_predicates<'tcx>(
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
     let infcx = tcx.infer_ctxt().ignoring_regions().build();
-    let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
-        Ok(predicates) => predicates,
-        Err(errors) => {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
-            return Err(reported);
-        }
-    };
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let predicates = ocx.normalize(&cause, elaborated_env, predicates);
+
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(reported);
+    }
 
     debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
 
@@ -464,37 +464,6 @@ pub fn normalize_param_env_or_error<'tcx>(
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal())
-}
-
-/// Normalize a type and process all resulting obligations, returning any errors.
-///
-/// FIXME(-Znext-solver): This should be replaced by `At::deeply_normalize`
-/// which has the same behavior with the new solver. Because using a separate
-/// fulfillment context worsens caching in the old solver, `At::deeply_normalize`
-/// is still lazy with the old solver as it otherwise negatively impacts perf.
-#[instrument(skip_all)]
-pub fn fully_normalize<'tcx, T>(
-    infcx: &InferCtxt<'tcx>,
-    cause: ObligationCause<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    value: T,
-) -> Result<T, Vec<FulfillmentError<'tcx>>>
-where
-    T: TypeFoldable<TyCtxt<'tcx>>,
-{
-    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
-    debug!(?value);
-    let normalized_value = ocx.normalize(&cause, param_env, value);
-    debug!(?normalized_value);
-    debug!("select_all_or_error start");
-    let errors = ocx.select_all_or_error();
-    if !errors.is_empty() {
-        return Err(errors);
-    }
-    debug!("select_all_or_error complete");
-    let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
-    debug!(?resolved_value);
-    Ok(resolved_value)
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this

@@ -1,6 +1,6 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt};
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, WasmCAbi};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
@@ -854,7 +854,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             return Ok(());
         }
 
-        match &cx.target_spec().arch[..] {
+        let spec = cx.target_spec();
+        match &spec.arch[..] {
             "x86" => {
                 let flavor = if let spec::abi::Abi::Fastcall { .. }
                 | spec::abi::Abi::Vectorcall { .. } = abi
@@ -901,9 +902,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic)
-                    == spec::abi::Abi::PtxKernel
-                {
+                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -912,13 +911,14 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "hexagon" => hexagon::compute_abi_info(self),
             "xtensa" => xtensa::compute_abi_info(cx, self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" | "wasm64" => {
-                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic) == spec::abi::Abi::Wasm {
+            "wasm32" => {
+                if spec.os == "unknown" && cx.wasm_c_abi_opt() == WasmCAbi::Legacy {
                     wasm::compute_wasm_abi_info(self)
                 } else {
                     wasm::compute_c_abi_info(cx, self)
                 }
             }
+            "wasm64" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
             arch => {
                 return Err(AdjustForForeignAbiError::Unsupported {

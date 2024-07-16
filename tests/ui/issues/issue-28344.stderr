@@ -16,7 +16,7 @@ error[E0191]: the value of the associated type `Output` in `BitXor` must be spec
   --> $DIR/issue-28344.rs:4:17
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-   |                 ^^^^^^ help: specify the associated type: `BitXor<Output = Type>`
+   |                 ^^^^^^ help: specify the associated type: `BitXor::<Output = Type>`
 
 error[E0599]: no function or associated item named `bitor` found for trait object `dyn BitXor<_>` in the current scope
   --> $DIR/issue-28344.rs:4:25
@@ -44,7 +44,7 @@ error[E0191]: the value of the associated type `Output` in `BitXor` must be spec
   --> $DIR/issue-28344.rs:10:13
    |
 LL |     let g = BitXor::bitor;
-   |             ^^^^^^ help: specify the associated type: `BitXor<Output = Type>`
+   |             ^^^^^^ help: specify the associated type: `BitXor::<Output = Type>`
 
 error[E0599]: no function or associated item named `bitor` found for trait object `dyn BitXor<_>` in the current scope
   --> $DIR/issue-28344.rs:10:21

@@ -49,17 +49,21 @@
 // gdbg-command:print 'basic_types_globals::U64'
 // gdbr-command:print U64
 // gdb-check:$12 = 64
+// gdbg-command:print 'basic_types_globals::F16'
+// gdbr-command:print F16
+// gdb-check:$13 = 1.5
 // gdbg-command:print 'basic_types_globals::F32'
 // gdbr-command:print F32
-// gdb-check:$13 = 2.5
+// gdb-check:$14 = 2.5
 // gdbg-command:print 'basic_types_globals::F64'
 // gdbr-command:print F64
-// gdb-check:$14 = 3.5
+// gdb-check:$15 = 3.5
 // gdb-command:continue
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
+#![feature(f16)]
 
 // N.B. These are `mut` only so they don't constant fold away.
 static mut B: bool = false;
@@ -74,13 +78,14 @@ static mut U8: u8 = 100;
 static mut U16: u16 = 16;
 static mut U32: u32 = 32;
 static mut U64: u64 = 64;
+static mut F16: f16 = 1.5;
 static mut F32: f32 = 2.5;
 static mut F64: f64 = 3.5;
 
 fn main() {
     _zzz(); // #break
 
-    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64) };
+    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F16, F32, F64) };
 }
 
 fn _zzz() {()}

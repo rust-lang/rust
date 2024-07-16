@@ -211,7 +211,29 @@ LL |     const fn union_access_can_be_const() {
    |     +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:155:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:149:9
+   |
+LL |         extern "C" fn c() {}
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |         const extern "C" fn c() {}
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:153:9
+   |
+LL |         extern fn implicit_c() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |         const extern fn implicit_c() {}
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:170:9
    |
 LL | /         pub fn new(strings: Vec<String>) -> Self {
 LL | |             Self { strings }
@@ -224,7 +246,7 @@ LL |         pub const fn new(strings: Vec<String>) -> Self {
    |             +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:160:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:175:9
    |
 LL | /         pub fn empty() -> Self {
 LL | |             Self { strings: Vec::new() }
@@ -237,7 +259,7 @@ LL |         pub const fn empty() -> Self {
    |             +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:171:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:186:9
    |
 LL | /         pub fn new(text: String) -> Self {
 LL | |             let vec = Vec::new();
@@ -250,5 +272,16 @@ help: make the function `const`
 LL |         pub const fn new(text: String) -> Self {
    |             +++++
 
-error: aborting due to 18 previous errors
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:205:5
+   |
+LL |     fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
+   |     +++++
+
+error: aborting due to 21 previous errors
 

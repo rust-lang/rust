@@ -109,7 +109,7 @@ impl Combiner {
                 .with_context(|| format!("failed to read components in '{}'", input_tarball))?;
             for component in pkg_components.split_whitespace() {
                 // All we need to do is copy the component directory. We could
-                // move it, but rustbuild wants to reuse the unpacked package
+                // move it, but bootstrap wants to reuse the unpacked package
                 // dir for OS-specific installers on macOS and Windows.
                 let component_dir = package_dir.join(component);
                 create_dir(&component_dir)?;

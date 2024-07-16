@@ -2,8 +2,8 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtOverflowExt;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalAliasGoal, NoSolution,
 };

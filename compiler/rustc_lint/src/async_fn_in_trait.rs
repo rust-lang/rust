@@ -3,7 +3,7 @@ use crate::LateContext;
 use crate::LateLintPass;
 use rustc_hir as hir;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_trait_selection::traits::error_reporting::suggestions::suggest_desugaring_async_fn_to_impl_future_in_trait;
+use rustc_trait_selection::error_reporting::traits::suggestions::suggest_desugaring_async_fn_to_impl_future_in_trait;
 
 declare_lint! {
     /// The `async_fn_in_trait` lint detects use of `async fn` in the

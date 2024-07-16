@@ -1178,21 +1178,41 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if let Some(span) = finalize {
                                 let (span, resolution_error) = match item {
                                     None if rib_ident.as_str() == "self" => (span, LowercaseSelf),
-                                    None => (
-                                        rib_ident.span,
-                                        AttemptToUseNonConstantValueInConstant(
-                                            original_rib_ident_def,
-                                            "const",
-                                            "let",
-                                        ),
-                                    ),
+                                    None => {
+                                        // If we have a `let name = expr;`, we have the span for
+                                        // `name` and use that to see if it is followed by a type
+                                        // specifier. If not, then we know we need to suggest
+                                        // `const name: Ty = expr;`. This is a heuristic, it will
+                                        // break down in the presence of macros.
+                                        let sm = self.tcx.sess.source_map();
+                                        let type_span = match sm.span_look_ahead(
+                                            original_rib_ident_def.span,
+                                            ":",
+                                            None,
+                                        ) {
+                                            None => {
+                                                Some(original_rib_ident_def.span.shrink_to_hi())
+                                            }
+                                            Some(_) => None,
+                                        };
+                                        (
+                                            rib_ident.span,
+                                            AttemptToUseNonConstantValueInConstant {
+                                                ident: original_rib_ident_def,
+                                                suggestion: "const",
+                                                current: "let",
+                                                type_span,
+                                            },
+                                        )
+                                    }
                                     Some((ident, kind)) => (
                                         span,
-                                        AttemptToUseNonConstantValueInConstant(
+                                        AttemptToUseNonConstantValueInConstant {
                                             ident,
-                                            "let",
-                                            kind.as_str(),
-                                        ),
+                                            suggestion: "let",
+                                            current: kind.as_str(),
+                                            type_span: None,
+                                        },
                                     ),
                                 };
                                 self.report_error(span, resolution_error);

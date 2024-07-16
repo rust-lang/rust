@@ -1,9 +1,9 @@
 //! Deeply normalize types using the old trait solver.
 
-use super::error_reporting::OverflowCause;
-use super::error_reporting::TypeErrCtxtExt;
 use super::SelectionContext;
 use super::{project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer};
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::traits::TypeErrCtxtOverflowExt;
 use crate::solve::NextSolverError;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
@@ -42,11 +42,9 @@ impl<'tcx> At<'_, 'tcx> {
     /// same goals in both a temporary and the shared context which negatively impacts
     /// performance as these don't share caching.
     ///
-    /// FIXME(-Znext-solver): This has the same behavior as `traits::fully_normalize`
-    /// in the new solver, but because of performance reasons, we currently reuse an
-    /// existing fulfillment context in the old solver. Once we also eagerly prove goals with
-    /// the old solver or have removed the old solver, remove `traits::fully_normalize` and
-    /// rename this function to `At::fully_normalize`.
+    /// FIXME(-Znext-solver): For performance reasons, we currently reuse an existing
+    /// fulfillment context in the old solver. Once we have removed the old solver, we
+    /// can remove the `fulfill_cx` parameter on this function.
     fn deeply_normalize<T, E>(
         self,
         value: T,
@@ -109,16 +107,13 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     value: &T,
     reveal: Reveal,
 ) -> bool {
-    // This mirrors `ty::TypeFlags::HAS_ALIASES` except that we take `Reveal` into account.
+    let mut flags = ty::TypeFlags::HAS_ALIAS;
 
-    let mut flags = ty::TypeFlags::HAS_TY_PROJECTION
-        | ty::TypeFlags::HAS_TY_WEAK
-        | ty::TypeFlags::HAS_TY_INHERENT
-        | ty::TypeFlags::HAS_CT_PROJECTION;
-
+    // Opaques are treated as rigid with `Reveal::UserFacing`,
+    // so we can ignore those.
     match reveal {
-        Reveal::UserFacing => {}
-        Reveal::All => flags |= ty::TypeFlags::HAS_TY_OPAQUE,
+        Reveal::UserFacing => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
+        Reveal::All => {}
     }
 
     value.has_type_flags(flags)

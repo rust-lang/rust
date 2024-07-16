@@ -1,4 +1,4 @@
-error: doc quote missing `>` marker
+error: doc quote line without `>` marker
   --> tests/ui/doc/doc_lazy_blockquote.rs:4:5
    |
 LL | /// lazy continuation
@@ -12,7 +12,7 @@ help: add markers to start of line
 LL | /// > lazy continuation
    |     +
 
-error: doc quote missing `>` marker
+error: doc quote line without `>` marker
   --> tests/ui/doc/doc_lazy_blockquote.rs:20:5
    |
 LL | /// > lazy continuation
@@ -24,7 +24,7 @@ help: add markers to start of line
 LL | /// > > lazy continuation
    |       +
 
-error: doc quote missing `>` marker
+error: doc quote line without `>` marker
   --> tests/ui/doc/doc_lazy_blockquote.rs:27:5
    |
 LL | /// lazy continuation
@@ -36,7 +36,7 @@ help: add markers to start of line
 LL | /// > > lazy continuation
    |     +++
 
-error: doc quote missing `>` marker
+error: doc quote line without `>` marker
   --> tests/ui/doc/doc_lazy_blockquote.rs:32:5
    |
 LL | /// lazy continuation
@@ -48,7 +48,7 @@ help: add markers to start of line
 LL | /// >     > lazy continuation
    |     +++++++
 
-error: doc quote missing `>` marker
+error: doc quote line without `>` marker
   --> tests/ui/doc/doc_lazy_blockquote.rs:37:5
    |
 LL | /// lazy continuation
@@ -60,7 +60,7 @@ help: add markers to start of line
 LL | /// >   > lazy continuation
    |     +++++
 
-error: doc quote missing `>` marker
+error: doc quote line without `>` marker
   --> tests/ui/doc/doc_lazy_blockquote.rs:45:5
    |
 LL | ///  lazy continuation (this results in strange indentation, but still works)

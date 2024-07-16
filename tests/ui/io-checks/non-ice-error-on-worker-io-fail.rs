@@ -19,10 +19,10 @@
 //@ error-pattern: error
 
 // On Mac OS X, we get an error like the below
-//@ normalize-stderr-test "failed to write bytecode to ./does-not-exist/output.non_ice_error_on_worker_io_fail.*" -> "io error modifying ./does-not-exist/"
+//@ normalize-stderr-test: "failed to write bytecode to ./does-not-exist/output.non_ice_error_on_worker_io_fail.*" -> "io error modifying ./does-not-exist/"
 
 // On Linux, we get an error like the below
-//@ normalize-stderr-test "couldn't create a temp dir.*" -> "io error modifying ./does-not-exist/"
+//@ normalize-stderr-test: "couldn't create a temp dir.*" -> "io error modifying ./does-not-exist/"
 
 //@ ignore-windows - this is a unix-specific test
 //@ ignore-emscripten - the file-system issues do not replicate here

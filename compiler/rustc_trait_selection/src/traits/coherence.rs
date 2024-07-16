@@ -30,8 +30,8 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use std::fmt::Debug;
 
-use super::error_reporting::suggest_new_overflow_limit;
 use super::ObligationCtxt;
+use crate::error_reporting::traits::suggest_new_overflow_limit;
 
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,

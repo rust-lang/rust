@@ -1,5 +1,6 @@
 use std::ptr;
 
+use crate::hashes::Hash128;
 use crate::stable_hasher::{HashStable, StableHasher};
 use crate::tagged_ptr::{CopyTaggedPtr, Pointer, Tag, Tag2};
 
@@ -31,14 +32,13 @@ fn stable_hash_hashes_as_tuple() {
     let hash_packed = {
         let mut hasher = StableHasher::new();
         tag_ptr(&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
-
-        hasher.finalize()
+        hasher.finish::<Hash128>()
     };
 
     let hash_tupled = {
         let mut hasher = StableHasher::new();
         (&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
-        hasher.finalize()
+        hasher.finish::<Hash128>()
     };
 
     assert_eq!(hash_packed, hash_tupled);

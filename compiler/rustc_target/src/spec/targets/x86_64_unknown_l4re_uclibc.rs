@@ -11,9 +11,9 @@ pub fn target() -> Target {
         llvm_target: "x86_64-unknown-l4re-uclibc".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            tier: Some(3),
+            host_tools: Some(false),
+            std: None, // ?
         },
         pointer_width: 64,
         data_layout:

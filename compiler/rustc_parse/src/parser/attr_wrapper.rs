@@ -103,11 +103,8 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens = iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
-            .chain(iter::repeat_with(|| {
-                let token = cursor_snapshot.next();
-                (FlatToken::Token(token.0), token.1)
-            }))
+        let tokens = iter::once(FlatToken::Token(self.start_token.clone()))
+            .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next())))
             .take(self.num_calls as usize);
 
         if self.replace_ranges.is_empty() {
@@ -156,11 +153,8 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                     (range.start as usize)..(range.end as usize),
                     target
                         .into_iter()
-                        .map(|target| (FlatToken::AttrsTarget(target), Spacing::Alone))
-                        .chain(
-                            iter::repeat((FlatToken::Empty, Spacing::Alone))
-                                .take(range.len() - target_len),
-                        ),
+                        .map(|target| FlatToken::AttrsTarget(target))
+                        .chain(iter::repeat(FlatToken::Empty).take(range.len() - target_len)),
                 );
             }
             make_attr_token_stream(tokens.into_iter(), self.break_last_token)
@@ -301,21 +295,22 @@ impl<'a> Parser<'a> {
 
         let num_calls = end_pos - start_pos;
 
-        // If we have no attributes, then we will never need to
-        // use any replace ranges.
-        let replace_ranges: Box<[ReplaceRange]> = if ret.attrs().is_empty() && !self.capture_cfg {
-            Box::new([])
-        } else {
-            // Grab any replace ranges that occur *inside* the current AST node.
-            // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
-            // to an `AttrTokenStream`.
-            self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
-                .iter()
-                .cloned()
-                .chain(inner_attr_replace_ranges.iter().cloned())
-                .map(|(range, data)| ((range.start - start_pos)..(range.end - start_pos), data))
-                .collect()
-        };
+        // This is hot enough for `deep-vector` that checking the conditions for an empty iterator
+        // is measurably faster than actually executing the iterator.
+        let replace_ranges: Box<[ReplaceRange]> =
+            if replace_ranges_start == replace_ranges_end && inner_attr_replace_ranges.is_empty() {
+                Box::new([])
+            } else {
+                // Grab any replace ranges that occur *inside* the current AST node.
+                // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
+                // to an `AttrTokenStream`.
+                self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
+                    .iter()
+                    .cloned()
+                    .chain(inner_attr_replace_ranges.iter().cloned())
+                    .map(|(range, data)| ((range.start - start_pos)..(range.end - start_pos), data))
+                    .collect()
+            };
 
         let tokens = LazyAttrTokenStream::new(LazyAttrTokenStreamImpl {
             start_token,
@@ -325,12 +320,9 @@ impl<'a> Parser<'a> {
             replace_ranges,
         });
 
-        // If we support tokens at all
-        if let Some(target_tokens) = ret.tokens_mut() {
-            if target_tokens.is_none() {
-                // Store our newly captured tokens into the AST node.
-                *target_tokens = Some(tokens.clone());
-            }
+        // If we support tokens and don't already have them, store the newly captured tokens.
+        if let Some(target_tokens @ None) = ret.tokens_mut() {
+            *target_tokens = Some(tokens.clone());
         }
 
         let final_attrs = ret.attrs();
@@ -352,15 +344,10 @@ impl<'a> Parser<'a> {
             let target = AttrsTarget { attrs: final_attrs.iter().cloned().collect(), tokens };
             self.capture_state.replace_ranges.push((start_pos..end_pos, Some(target)));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
-        }
-
-        // Only clear our `replace_ranges` when we're finished capturing entirely.
-        if matches!(self.capture_state.capturing, Capturing::No) {
+        } else if matches!(self.capture_state.capturing, Capturing::No) {
+            // Only clear the ranges once we've finished capturing entirely.
             self.capture_state.replace_ranges.clear();
-            // We don't clear `inner_attr_ranges`, as doing so repeatedly
-            // had a measurable performance impact. Most inner attributes that
-            // we insert will get removed - when we drop the parser, we'll free
-            // up the memory used by any attributes that we didn't remove from the map.
+            self.capture_state.inner_attr_ranges.clear();
         }
         Ok(ret)
     }
@@ -370,7 +357,7 @@ impl<'a> Parser<'a> {
 /// `AttrTokenStream`, creating an `AttrTokenTree::Delimited` for each matching pair of open and
 /// close delims.
 fn make_attr_token_stream(
-    mut iter: impl Iterator<Item = (FlatToken, Spacing)>,
+    iter: impl Iterator<Item = FlatToken>,
     break_last_token: bool,
 ) -> AttrTokenStream {
     #[derive(Debug)]
@@ -379,19 +366,19 @@ fn make_attr_token_stream(
         open_delim_sp: Option<(Delimiter, Span, Spacing)>,
         inner: Vec<AttrTokenTree>,
     }
-    let mut stack = vec![FrameData { open_delim_sp: None, inner: vec![] }];
-    let mut token_and_spacing = iter.next();
-    while let Some((token, spacing)) = token_and_spacing {
-        match token {
-            FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span }) => {
-                stack
-                    .push(FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] });
+    // The stack always has at least one element. Storing it separately makes for shorter code.
+    let mut stack_top = FrameData { open_delim_sp: None, inner: vec![] };
+    let mut stack_rest = vec![];
+    for flat_token in iter {
+        match flat_token {
+            FlatToken::Token((Token { kind: TokenKind::OpenDelim(delim), span }, spacing)) => {
+                stack_rest.push(mem::replace(
+                    &mut stack_top,
+                    FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
+                ));
             }
-            FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
-                let frame_data = stack
-                    .pop()
-                    .unwrap_or_else(|| panic!("Token stack was empty for token: {token:?}"));
-
+            FlatToken::Token((Token { kind: TokenKind::CloseDelim(delim), span }, spacing)) => {
+                let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
                 let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
                 assert_eq!(
                     open_delim, delim,
@@ -401,29 +388,20 @@ fn make_attr_token_stream(
                 let dspacing = DelimSpacing::new(open_spacing, spacing);
                 let stream = AttrTokenStream::new(frame_data.inner);
                 let delimited = AttrTokenTree::Delimited(dspan, dspacing, delim, stream);
-                stack
-                    .last_mut()
-                    .unwrap_or_else(|| panic!("Bottom token frame is missing for token: {token:?}"))
-                    .inner
-                    .push(delimited);
+                stack_top.inner.push(delimited);
             }
-            FlatToken::Token(token) => stack
-                .last_mut()
-                .expect("Bottom token frame is missing!")
-                .inner
-                .push(AttrTokenTree::Token(token, spacing)),
-            FlatToken::AttrsTarget(target) => stack
-                .last_mut()
-                .expect("Bottom token frame is missing!")
-                .inner
-                .push(AttrTokenTree::AttrsTarget(target)),
+            FlatToken::Token((token, spacing)) => {
+                stack_top.inner.push(AttrTokenTree::Token(token, spacing))
+            }
+            FlatToken::AttrsTarget(target) => {
+                stack_top.inner.push(AttrTokenTree::AttrsTarget(target))
+            }
             FlatToken::Empty => {}
         }
-        token_and_spacing = iter.next();
     }
-    let mut final_buf = stack.pop().expect("Missing final buf!");
+
     if break_last_token {
-        let last_token = final_buf.inner.pop().unwrap();
+        let last_token = stack_top.inner.pop().unwrap();
         if let AttrTokenTree::Token(last_token, spacing) = last_token {
             let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
 
@@ -431,14 +409,14 @@ fn make_attr_token_stream(
             let mut first_span = last_token.span.shrink_to_lo();
             first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
 
-            final_buf
+            stack_top
                 .inner
                 .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
         } else {
             panic!("Unexpected last token {last_token:?}")
         }
     }
-    AttrTokenStream::new(final_buf.inner)
+    AttrTokenStream::new(stack_top.inner)
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.

@@ -106,31 +106,31 @@ LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports.rs:236:17
+  --> tests/ui/wildcard_imports.rs:239:17
    |
 LL |             use super::*;
    |                 ^^^^^^^^ help: try: `super::insidefoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports.rs:244:13
+  --> tests/ui/wildcard_imports.rs:247:13
    |
 LL |         use crate::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::super_imports::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports.rs:253:17
+  --> tests/ui/wildcard_imports.rs:256:17
    |
 LL |             use super::super::*;
    |                 ^^^^^^^^^^^^^^^ help: try: `super::super::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports.rs:262:13
+  --> tests/ui/wildcard_imports.rs:265:13
    |
 LL |         use super::super::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super_imports::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports.rs:270:13
+  --> tests/ui/wildcard_imports.rs:273:13
    |
 LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`

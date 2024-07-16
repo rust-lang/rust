@@ -248,6 +248,8 @@ declare_features! (
     (unstable, auto_traits, "1.50.0", Some(13231)),
     /// Allows using `box` in patterns (RFC 469).
     (unstable, box_patterns, "1.0.0", Some(29641)),
+    /// Allows builtin # foo() syntax
+    (internal, builtin_syntax, "1.71.0", Some(110680)),
     /// Allows `#[doc(notable_trait)]`.
     /// Renamed from `doc_spotlight`.
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),
@@ -361,8 +363,6 @@ declare_features! (
     (unstable, async_fn_track_caller, "1.73.0", Some(110011)),
     /// Allows `for await` loops.
     (unstable, async_for_loop, "1.77.0", Some(118898)),
-    /// Allows builtin # foo() syntax
-    (unstable, builtin_syntax, "1.71.0", Some(110680)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
@@ -621,8 +621,6 @@ declare_features! (
     (unstable, try_blocks, "1.29.0", Some(31436)),
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (unstable, type_alias_impl_trait, "1.38.0", Some(63063)),
-    /// Allows the use of type ascription in expressions.
-    (unstable, type_ascription, "1.6.0", Some(23416)),
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
@@ -640,8 +638,10 @@ declare_features! (
     (unstable, unsized_tuple_coercion, "1.20.0", Some(42877)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
-    /// Allows `extern "wasm" fn`
-    (unstable, wasm_abi, "1.53.0", Some(83788)),
+    /// Allows use of x86 `AMX` target-feature attributes and intrinsics
+    (unstable, x86_amx_intrinsics, "CURRENT_RUSTC_VERSION", Some(126622)),
+    /// Allows use of the `xop` target-feature
+    (unstable, xop_target_feature, "CURRENT_RUSTC_VERSION", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

@@ -71,6 +71,8 @@ impl<'a> DiagnosticDerive<'a> {
         });
 
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
+        // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
+        #[allow(keyword_idents_2024)]
         let mut imp = structure.gen_impl(quote! {
             gen impl<'_sess, G> rustc_errors::Diagnostic<'_sess, G> for @Self
                 where G: rustc_errors::EmissionGuarantee
@@ -148,6 +150,8 @@ impl<'a> LintDiagnosticDerive<'a> {
             }
         });
 
+        // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
+        #[allow(keyword_idents_2024)]
         let mut imp = structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::LintDiagnostic<'__a, ()> for @Self {
                 #[track_caller]

@@ -16,6 +16,7 @@ clap = { version = "4.4", features = ["derive", "env"] }
 crossbeam-channel = "0.5.6"
 diff = "0.1.13"
 flate2 = "1.0"
+itertools = "0.12"
 rayon = "1.5.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.85"

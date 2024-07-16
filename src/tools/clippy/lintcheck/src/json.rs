@@ -1,37 +1,50 @@
-use std::collections::HashMap;
-use std::fmt::Write;
 use std::fs;
-use std::hash::Hash;
 use std::path::Path;
+
+use itertools::EitherOrBoth;
+use serde::{Deserialize, Serialize};
 
 use crate::ClippyWarning;
 
-/// Creates the log file output for [`crate::config::OutputFormat::Json`]
-pub(crate) fn output(clippy_warnings: &[ClippyWarning]) -> String {
-    serde_json::to_string(&clippy_warnings).unwrap()
+#[derive(Deserialize, Serialize)]
+struct LintJson {
+    lint: String,
+    file_name: String,
+    byte_pos: (u32, u32),
+    rendered: String,
 }
 
-fn load_warnings(path: &Path) -> Vec<ClippyWarning> {
+impl LintJson {
+    fn key(&self) -> impl Ord + '_ {
+        (self.file_name.as_str(), self.byte_pos, self.lint.as_str())
+    }
+}
+
+/// Creates the log file output for [`crate::config::OutputFormat::Json`]
+pub(crate) fn output(clippy_warnings: Vec<ClippyWarning>) -> String {
+    let mut lints: Vec<LintJson> = clippy_warnings
+        .into_iter()
+        .map(|warning| {
+            let span = warning.span();
+            LintJson {
+                file_name: span.file_name.clone(),
+                byte_pos: (span.byte_start, span.byte_end),
+                lint: warning.lint,
+                rendered: warning.diag.rendered.unwrap(),
+            }
+        })
+        .collect();
+    lints.sort_by(|a, b| a.key().cmp(&b.key()));
+    serde_json::to_string(&lints).unwrap()
+}
+
+fn load_warnings(path: &Path) -> Vec<LintJson> {
     let file = fs::read(path).unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
 
     serde_json::from_slice(&file).unwrap_or_else(|e| panic!("failed to deserialize {}: {e}", path.display()))
 }
 
-/// Group warnings by their primary span location + lint name
-fn create_map(warnings: &[ClippyWarning]) -> HashMap<impl Eq + Hash + '_, Vec<&ClippyWarning>> {
-    let mut map = HashMap::<_, Vec<_>>::with_capacity(warnings.len());
-
-    for warning in warnings {
-        let span = warning.span();
-        let key = (&warning.lint_type, &span.file_name, span.byte_start, span.byte_end);
-
-        map.entry(key).or_default().push(warning);
-    }
-
-    map
-}
-
-fn print_warnings(title: &str, warnings: &[&ClippyWarning]) {
+fn print_warnings(title: &str, warnings: &[LintJson]) {
     if warnings.is_empty() {
         return;
     }
@@ -39,31 +52,20 @@ fn print_warnings(title: &str, warnings: &[&ClippyWarning]) {
     println!("### {title}");
     println!("```");
     for warning in warnings {
-        print!("{}", warning.diag);
+        print!("{}", warning.rendered);
     }
     println!("```");
 }
 
-fn print_changed_diff(changed: &[(&[&ClippyWarning], &[&ClippyWarning])]) {
-    fn render(warnings: &[&ClippyWarning]) -> String {
-        let mut rendered = String::new();
-        for warning in warnings {
-            write!(&mut rendered, "{}", warning.diag).unwrap();
-        }
-        rendered
-    }
-
+fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
     if changed.is_empty() {
         return;
     }
 
     println!("### Changed");
     println!("```diff");
-    for &(old, new) in changed {
-        let old_rendered = render(old);
-        let new_rendered = render(new);
-
-        for change in diff::lines(&old_rendered, &new_rendered) {
+    for (old, new) in changed {
+        for change in diff::lines(&old.rendered, &new.rendered) {
             use diff::Result::{Both, Left, Right};
 
             match change {
@@ -86,26 +88,19 @@ pub(crate) fn diff(old_path: &Path, new_path: &Path) {
     let old_warnings = load_warnings(old_path);
     let new_warnings = load_warnings(new_path);
 
-    let old_map = create_map(&old_warnings);
-    let new_map = create_map(&new_warnings);
-
     let mut added = Vec::new();
     let mut removed = Vec::new();
     let mut changed = Vec::new();
 
-    for (key, new) in &new_map {
-        if let Some(old) = old_map.get(key) {
-            if old != new {
-                changed.push((old.as_slice(), new.as_slice()));
-            }
-        } else {
-            added.extend(new);
-        }
-    }
-
-    for (key, old) in &old_map {
-        if !new_map.contains_key(key) {
-            removed.extend(old);
+    for change in itertools::merge_join_by(old_warnings, new_warnings, |old, new| old.key().cmp(&new.key())) {
+        match change {
+            EitherOrBoth::Both(old, new) => {
+                if old.rendered != new.rendered {
+                    changed.push((old, new));
+                }
+            },
+            EitherOrBoth::Left(old) => removed.push(old),
+            EitherOrBoth::Right(new) => added.push(new),
         }
     }
 

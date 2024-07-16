@@ -1060,11 +1060,7 @@ impl Step for PlainSourceTarball {
                 cmd.arg("--sync").arg(manifest_path);
             }
 
-            let config = if !builder.config.dry_run() {
-                cmd.capture().run(builder).stdout()
-            } else {
-                String::new()
-            };
+            let config = cmd.capture().run(builder).stdout();
 
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
@@ -2072,11 +2068,7 @@ fn maybe_install_llvm(
         let mut cmd = command(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
-        let files = if builder.config.dry_run() {
-            "".into()
-        } else {
-            cmd.capture_stdout().run(builder).stdout()
-        };
+        let files = cmd.capture_stdout().run(builder).stdout();
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {
