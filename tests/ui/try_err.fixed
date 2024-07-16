@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-
+#![feature(try_blocks)]
 #![deny(clippy::try_err)]
 #![allow(
     clippy::unnecessary_wraps,
@@ -151,4 +151,12 @@ pub fn try_return(x: bool) -> Result<i32, i32> {
         return Err(42);
     }
     Ok(0)
+}
+
+// Test that the lint is suppressed in try block.
+pub fn try_block() -> Result<(), i32> {
+    let _: Result<_, i32> = try {
+        Err(1)?;
+    };
+    Ok(())
 }
