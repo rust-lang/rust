@@ -1752,6 +1752,14 @@ fn receiver_is_valid<'tcx>(
                 // We cannot proceed.
                 break;
             }
+
+            // Register the bound, in case it has any region side-effects.
+            wfcx.register_bound(
+                cause.clone(),
+                wfcx.param_env,
+                potential_self_ty,
+                receiver_trait_def_id,
+            );
         }
     }
 
