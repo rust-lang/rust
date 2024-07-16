@@ -29,7 +29,7 @@ KEEP_CHECKOUT=
 # Gerrit changes from https://fxrev.dev during development (click the "Download"
 # button on a changelist to see the cherry pick ref). Example:
 # PICK_REFS=(refs/changes/71/1054071/2 refs/changes/74/1054574/2)
-PICK_REFS=()
+PICK_REFS=(refs/changes/93/1082793/1)
 
 # The commit hash of Fuchsia's integration.git to check out. This controls the
 # commit hash of fuchsia.git and some other repos in the "monorepo" checkout, in
