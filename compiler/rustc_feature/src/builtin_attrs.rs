@@ -838,7 +838,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, INTERNAL_UNSTABLE
     ),
     rustc_attr!(
-        rustc_intrinsic_const_vector_arg, Normal, template!(List: "arg1_index, arg2_index, ..."), ErrorFollowing, INTERNAL_UNSTABLE
+        rustc_intrinsic_const_vector_arg, Normal, template!(List: "arg1_index, arg2_index, ..."), ErrorFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
 
     // ==========================================================================

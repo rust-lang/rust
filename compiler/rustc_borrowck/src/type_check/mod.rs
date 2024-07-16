@@ -52,7 +52,9 @@ use rustc_mir_dataflow::ResultsCursor;
 
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{
-    IntrinsicConstVectorArgNonConst, MoveUnsized, SimdShuffleLastConst,
+    IntrinsicConstVectorArgNonConst,
+    MoveUnsized,
+    SimdIntrinsicArgConst,
 };
 use crate::{
     borrow_set::BorrowSet,

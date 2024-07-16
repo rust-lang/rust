@@ -169,7 +169,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 if destination.is_some() {
                     let caller = with_no_trimmed_paths!(tcx.def_path_str(fx.instance.def_id()));
                     let callee = with_no_trimmed_paths!(tcx.def_path_str(instance.def_id()));
-                    tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
+                    tcx.dcx().emit_err(errors::CompilerBuiltinsCannotCall { caller, callee });
                 } else {
                     info!(
                         "compiler_builtins call to diverging function {:?} replaced with abort",

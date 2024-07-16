@@ -16,7 +16,6 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalModDefId};
 
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir};
 use rustc_hir::{
     self, FnSig, ForeignItem, HirId, Item, ItemKind, Path, PathSegment, QPath, TraitItem, TyKind,
     CRATE_HIR_ID, CRATE_OWNER_ID,
@@ -210,7 +209,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_safe_intrinsic] => {
                     self.check_rustc_safe_intrinsic(hir_id, attr, span, target)
                 }
-                sym::rustc_intrinsic_const_vector_arg => {
+                [sym::rustc_intrinsic_const_vector_arg] => {
                     self.check_rustc_intrinsic_const_vector_arg(hir_id, attr, span, target)
                 }
                 _ => true,
