@@ -372,7 +372,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
 
         let is_nested_alias = mem::replace(&mut self.in_alias, true);
         let result = match self.relate(alias, alias) {
-            Ok(alias) => Ok(alias.to_ty(self.tcx())),
+            Ok(alias) => Ok(alias.to_ty(self.cx())),
             Err(e) => {
                 if is_nested_alias {
                     return Err(e);
@@ -397,7 +397,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
 }
 
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -417,7 +417,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             // (e.g., #41849).
             relate::relate_args_invariantly(self, a_arg, b_arg)
         } else {
-            let tcx = self.tcx();
+            let tcx = self.cx();
             let opt_variances = tcx.variances_of(item_def_id);
             relate::relate_args_with_variances(
                 self,
@@ -525,7 +525,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             }
 
                             debug!("replacing original vid={:?} with new={:?}", vid, new_var_id);
-                            Ok(Ty::new_var(self.tcx(), new_var_id))
+                            Ok(Ty::new_var(self.cx(), new_var_id))
                         }
                     }
                 }
@@ -654,7 +654,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             {
                                 variable_table.union(vid, new_var_id);
                             }
-                            Ok(ty::Const::new_var(self.tcx(), new_var_id))
+                            Ok(ty::Const::new_var(self.cx(), new_var_id))
                         }
                     }
                 }
@@ -672,7 +672,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                     args,
                     args,
                 )?;
-                Ok(ty::Const::new_unevaluated(self.tcx(), ty::UnevaluatedConst { def, args }))
+                Ok(ty::Const::new_unevaluated(self.cx(), ty::UnevaluatedConst { def, args }))
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {
