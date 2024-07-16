@@ -11274,6 +11274,1811 @@ pub unsafe fn _mm512_permutexvar_ph(idx: __m512i, a: __m512h) -> __m512h {
     _mm512_castsi512_ph(_mm512_permutexvar_epi16(idx, _mm512_castph_si512(a)))
 }
 
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtepi16_ph(a: __m128i) -> __m128h {
+    vcvtw2ph_128(a.as_i16x8(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtepi16_ph(src: __m128h, k: __mmask8, a: __m128i) -> __m128h {
+    simd_select_bitmask(k, _mm_cvtepi16_ph(a), src)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtepi16_ph(k: __mmask8, a: __m128i) -> __m128h {
+    _mm_mask_cvtepi16_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtepi16_ph(a: __m256i) -> __m256h {
+    vcvtw2ph_256(a.as_i16x16(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtepi16_ph(src: __m256h, k: __mmask16, a: __m256i) -> __m256h {
+    simd_select_bitmask(k, _mm256_cvtepi16_ph(a), src)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtepi16_ph(k: __mmask16, a: __m256i) -> __m256h {
+    _mm256_mask_cvtepi16_ph(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtepi16_ph(a: __m512i) -> __m512h {
+    vcvtw2ph_512(a.as_i16x32(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtepi16_ph(src: __m512h, k: __mmask32, a: __m512i) -> __m512h {
+    simd_select_bitmask(k, _mm512_cvtepi16_ph(a), src)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtepi16_ph(k: __mmask32, a: __m512i) -> __m512h {
+    _mm512_mask_cvtepi16_ph(_mm512_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtw2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvt_roundepi16_ph<const ROUNDING: i32>(a: __m512i) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    vcvtw2ph_512(a.as_i16x32(), ROUNDING)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtw2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvt_roundepi16_ph<const ROUNDING: i32>(
+    src: __m512h,
+    k: __mmask32,
+    a: __m512i,
+) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_cvt_roundepi16_ph::<ROUNDING>(a), src)
+}
+
+/// Convert packed signed 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepi16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtw2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvt_roundepi16_ph<const ROUNDING: i32>(
+    k: __mmask32,
+    a: __m512i,
+) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundepi16_ph::<ROUNDING>(_mm512_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtepu16_ph(a: __m128i) -> __m128h {
+    vcvtuw2ph_128(a.as_u16x8(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtepu16_ph(src: __m128h, k: __mmask8, a: __m128i) -> __m128h {
+    simd_select_bitmask(k, _mm_cvtepu16_ph(a), src)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtepu16_ph(k: __mmask8, a: __m128i) -> __m128h {
+    _mm_mask_cvtepu16_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtepu16_ph(a: __m256i) -> __m256h {
+    vcvtuw2ph_256(a.as_u16x16(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtepu16_ph(src: __m256h, k: __mmask16, a: __m256i) -> __m256h {
+    simd_select_bitmask(k, _mm256_cvtepu16_ph(a), src)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtepu16_ph(k: __mmask16, a: __m256i) -> __m256h {
+    _mm256_mask_cvtepu16_ph(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtepu16_ph(a: __m512i) -> __m512h {
+    vcvtuw2ph_512(a.as_u16x32(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtepu16_ph(src: __m512h, k: __mmask32, a: __m512i) -> __m512h {
+    simd_select_bitmask(k, _mm512_cvtepu16_ph(a), src)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtepu16_ph(k: __mmask32, a: __m512i) -> __m512h {
+    _mm512_mask_cvtepu16_ph(_mm512_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvt_roundepu16_ph<const ROUNDING: i32>(a: __m512i) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    vcvtuw2ph_512(a.as_u16x32(), ROUNDING)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvt_roundepu16_ph<const ROUNDING: i32>(
+    src: __m512h,
+    k: __mmask32,
+    a: __m512i,
+) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_cvt_roundepu16_ph::<ROUNDING>(a), src)
+}
+
+/// Convert packed unsigned 16-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepu16_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuw2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvt_roundepu16_ph<const ROUNDING: i32>(
+    k: __mmask32,
+    a: __m512i,
+) -> __m512h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundepu16_ph::<ROUNDING>(_mm512_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst. The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtepi32_ph(a: __m128i) -> __m128h {
+    _mm_mask_cvtepi32_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtepi32_ph(src: __m128h, k: __mmask8, a: __m128i) -> __m128h {
+    vcvtdq2ph_128(a.as_i32x4(), src, k)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtepi32_ph(k: __mmask8, a: __m128i) -> __m128h {
+    _mm_mask_cvtepi32_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtepi32_ph(a: __m256i) -> __m128h {
+    vcvtdq2ph_256(a.as_i32x8(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtepi32_ph(src: __m128h, k: __mmask8, a: __m256i) -> __m128h {
+    simd_select_bitmask(k, _mm256_cvtepi32_ph(a), src)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtepi32_ph(k: __mmask8, a: __m256i) -> __m128h {
+    _mm256_mask_cvtepi32_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtepi32_ph(a: __m512i) -> __m256h {
+    vcvtdq2ph_512(a.as_i32x16(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtepi32_ph(src: __m256h, k: __mmask16, a: __m512i) -> __m256h {
+    simd_select_bitmask(k, _mm512_cvtepi32_ph(a), src)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtepi32_ph(k: __mmask16, a: __m512i) -> __m256h {
+    _mm512_mask_cvtepi32_ph(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvt_roundepi32_ph<const ROUNDING: i32>(a: __m512i) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    vcvtdq2ph_512(a.as_i32x16(), ROUNDING)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvt_roundepi32_ph<const ROUNDING: i32>(
+    src: __m256h,
+    k: __mmask16,
+    a: __m512i,
+) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_cvt_roundepi32_ph::<ROUNDING>(a), src)
+}
+
+/// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepi32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtdq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvt_roundepi32_ph<const ROUNDING: i32>(
+    k: __mmask16,
+    a: __m512i,
+) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundepi32_ph::<ROUNDING>(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert the signed 32-bit integer b to a half-precision (16-bit) floating-point element, store the
+/// result in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements
+/// of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvti32_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsi2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvti32_sh(a: __m128h, b: i32) -> __m128h {
+    vcvtsi2sh(a, b, _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert the signed 32-bit integer b to a half-precision (16-bit) floating-point element, store the
+/// result in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements
+/// of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundi32_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsi2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvt_roundi32_sh<const ROUNDING: i32>(a: __m128h, b: i32) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vcvtsi2sh(a, b, ROUNDING)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst. The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtepu32_ph(a: __m128i) -> __m128h {
+    _mm_mask_cvtepu32_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtepu32_ph(src: __m128h, k: __mmask8, a: __m128i) -> __m128h {
+    vcvtudq2ph_128(a.as_u32x4(), src, k)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtepu32_ph(k: __mmask8, a: __m128i) -> __m128h {
+    _mm_mask_cvtepu32_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtepu32_ph(a: __m256i) -> __m128h {
+    vcvtudq2ph_256(a.as_u32x8(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtepu32_ph(src: __m128h, k: __mmask8, a: __m256i) -> __m128h {
+    simd_select_bitmask(k, _mm256_cvtepu32_ph(a), src)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtepu32_ph(k: __mmask8, a: __m256i) -> __m128h {
+    _mm256_mask_cvtepu32_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtepu32_ph(a: __m512i) -> __m256h {
+    vcvtudq2ph_512(a.as_u32x16(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtepu32_ph(src: __m256h, k: __mmask16, a: __m512i) -> __m256h {
+    simd_select_bitmask(k, _mm512_cvtepu32_ph(a), src)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtepu32_ph(k: __mmask16, a: __m512i) -> __m256h {
+    _mm512_mask_cvtepu32_ph(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvt_roundepu32_ph<const ROUNDING: i32>(a: __m512i) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    vcvtudq2ph_512(a.as_u32x16(), ROUNDING)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvt_roundepu32_ph<const ROUNDING: i32>(
+    src: __m256h,
+    k: __mmask16,
+    a: __m512i,
+) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_cvt_roundepu32_ph::<ROUNDING>(a), src)
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepu32_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtudq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvt_roundepu32_ph<const ROUNDING: i32>(
+    k: __mmask16,
+    a: __m512i,
+) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundepu32_ph::<ROUNDING>(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert the unsigned 32-bit integer b to a half-precision (16-bit) floating-point element, store the
+/// result in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements
+/// of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtu32_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtusi2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtu32_sh(a: __m128h, b: u32) -> __m128h {
+    vcvtusi2sh(a, b, _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert the unsigned 32-bit integer b to a half-precision (16-bit) floating-point element, store the
+/// result in the lower element of dst, and copy the upper 7 packed elements from a to the upper elements
+/// of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundu32_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtusi2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvt_roundu32_sh<const ROUNDING: i32>(a: __m128h, b: u32) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vcvtusi2sh(a, b, ROUNDING)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst. The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtepi64_ph(a: __m128i) -> __m128h {
+    _mm_mask_cvtepi64_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set). The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtepi64_ph(src: __m128h, k: __mmask8, a: __m128i) -> __m128h {
+    vcvtqq2ph_128(a.as_i64x2(), src, k)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtepi64_ph(k: __mmask8, a: __m128i) -> __m128h {
+    _mm_mask_cvtepi64_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst. The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtepi64_ph(a: __m256i) -> __m128h {
+    _mm256_mask_cvtepi64_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtepi64_ph(src: __m128h, k: __mmask8, a: __m256i) -> __m128h {
+    vcvtqq2ph_256(a.as_i64x4(), src, k)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtepi64_ph(k: __mmask8, a: __m256i) -> __m128h {
+    _mm256_mask_cvtepi64_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtepi64_ph(a: __m512i) -> __m128h {
+    vcvtqq2ph_512(a.as_i64x8(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtepi64_ph(src: __m128h, k: __mmask8, a: __m512i) -> __m128h {
+    simd_select_bitmask(k, _mm512_cvtepi64_ph(a), src)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtepi64_ph(k: __mmask8, a: __m512i) -> __m128h {
+    _mm512_mask_cvtepi64_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvt_roundepi64_ph<const ROUNDING: i32>(a: __m512i) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vcvtqq2ph_512(a.as_i64x8(), ROUNDING)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvt_roundepi64_ph<const ROUNDING: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m512i,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_cvt_roundepi64_ph::<ROUNDING>(a), src)
+}
+
+/// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepi64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtqq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvt_roundepi64_ph<const ROUNDING: i32>(
+    k: __mmask8,
+    a: __m512i,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundepi64_ph::<ROUNDING>(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst. The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtepu64_ph(a: __m128i) -> __m128h {
+    _mm_mask_cvtepu64_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set). The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtepu64_ph(src: __m128h, k: __mmask8, a: __m128i) -> __m128h {
+    vcvtuqq2ph_128(a.as_u64x2(), src, k)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtepu64_ph(k: __mmask8, a: __m128i) -> __m128h {
+    _mm_mask_cvtepu64_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst. The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtepu64_ph(a: __m256i) -> __m128h {
+    _mm256_mask_cvtepu64_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtepu64_ph(src: __m128h, k: __mmask8, a: __m256i) -> __m128h {
+    vcvtuqq2ph_256(a.as_u64x4(), src, k)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtepu64_ph(k: __mmask8, a: __m256i) -> __m128h {
+    _mm256_mask_cvtepu64_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtepu64_ph(a: __m512i) -> __m128h {
+    vcvtuqq2ph_512(a.as_u64x8(), _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtepu64_ph(src: __m128h, k: __mmask8, a: __m512i) -> __m128h {
+    simd_select_bitmask(k, _mm512_cvtepu64_ph(a), src)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtepu64_ph(k: __mmask8, a: __m512i) -> __m128h {
+    _mm512_mask_cvtepu64_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvt_roundepu64_ph<const ROUNDING: i32>(a: __m512i) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vcvtuqq2ph_512(a.as_u64x8(), ROUNDING)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using writemask k (elements are copied from src to dst when the corresponding
+/// mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvt_roundepu64_ph<const ROUNDING: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m512i,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    simd_select_bitmask(k, _mm512_cvt_roundepu64_ph::<ROUNDING>(a), src)
+}
+
+/// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
+/// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundepu64_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtuqq2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvt_roundepu64_ph<const ROUNDING: i32>(
+    k: __mmask8,
+    a: __m512i,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundepu64_ph::<ROUNDING>(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtxps_ph(a: __m128) -> __m128h {
+    _mm_mask_cvtxps_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtxps_ph(src: __m128h, k: __mmask8, a: __m128) -> __m128h {
+    vcvtps2phx_128(a, src, k)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtxps_ph(k: __mmask8, a: __m128) -> __m128h {
+    _mm_mask_cvtxps_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtxps_ph(a: __m256) -> __m128h {
+    _mm256_mask_cvtxps_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtxps_ph(src: __m128h, k: __mmask8, a: __m256) -> __m128h {
+    vcvtps2phx_256(a, src, k)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtxps_ph(k: __mmask8, a: __m256) -> __m128h {
+    _mm256_mask_cvtxps_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtxps_ph(a: __m512) -> __m256h {
+    _mm512_mask_cvtxps_ph(_mm256_setzero_ph(), 0xffff, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtxps_ph(src: __m256h, k: __mmask16, a: __m512) -> __m256h {
+    vcvtps2phx_512(a, src, k, _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtxps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtps2phx))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtxps_ph(k: __mmask16, a: __m512) -> __m256h {
+    _mm512_mask_cvtxps_ph(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtx_roundps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtps2phx, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtx_roundps_ph<const ROUNDING: i32>(a: __m512) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvtx_roundps_ph::<ROUNDING>(_mm256_setzero_ph(), 0xffff, a)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtx_roundps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtps2phx, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtx_roundps_ph<const ROUNDING: i32>(
+    src: __m256h,
+    k: __mmask16,
+    a: __m512,
+) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    vcvtps2phx_512(a, src, k, ROUNDING)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtx_roundps_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtps2phx, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtx_roundps_ph<const ROUNDING: i32>(
+    k: __mmask16,
+    a: __m512,
+) -> __m256h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvtx_roundps_ph::<ROUNDING>(_mm256_setzero_ph(), k, a)
+}
+
+/// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst, and copy the upper 7 packed
+/// elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtss_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtss2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtss_sh(a: __m128h, b: __m128) -> __m128h {
+    _mm_mask_cvtss_sh(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using writemask k (the element
+/// if copied from src when mask bit 0 is not set), and copy the upper 7 packed elements from a to the
+/// upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtss_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtss2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtss_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128) -> __m128h {
+    vcvtss2sh(a, b, src, k, _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using zeromask k (the element
+/// is zeroed out when mask bit 0 is not set), and copy the upper 7 packed elements from a to the upper
+/// elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtss_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtss2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtss_sh(k: __mmask8, a: __m128h, b: __m128) -> __m128h {
+    _mm_mask_cvtss_sh(_mm_setzero_ph(), k, a, b)
+}
+
+/// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst, and copy the upper 7 packed
+/// elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundss_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtss2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvt_roundss_sh<const ROUNDING: i32>(a: __m128h, b: __m128) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm_mask_cvt_roundss_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using writemask k (the element
+/// if copied from src when mask bit 0 is not set), and copy the upper 7 packed elements from a to the
+/// upper elements of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvt_roundss_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtss2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvt_roundss_sh<const ROUNDING: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m128h,
+    b: __m128,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vcvtss2sh(a, b, src, k, ROUNDING)
+}
+
+/// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using zeromask k (the element
+/// is zeroed out when mask bit 0 is not set), and copy the upper 7 packed elements from a to the upper
+/// elements of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvt_roundss_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtss2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvt_roundss_sh<const ROUNDING: i32>(
+    k: __mmask8,
+    a: __m128h,
+    b: __m128,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm_mask_cvt_roundss_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst. The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtpd_ph(a: __m128d) -> __m128h {
+    _mm_mask_cvtpd_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set). The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtpd_ph(src: __m128h, k: __mmask8, a: __m128d) -> __m128h {
+    vcvtpd2ph_128(a, src, k)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set). The upper 96 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtpd_ph(k: __mmask8, a: __m128d) -> __m128h {
+    _mm_mask_cvtpd_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst. The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtpd_ph(a: __m256d) -> __m128h {
+    _mm256_mask_cvtpd_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_mask_cvtpd_ph(src: __m128h, k: __mmask8, a: __m256d) -> __m128h {
+    vcvtpd2ph_256(a, src, k)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set). The upper 64 bits of dst are zeroed out.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512vl")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_maskz_cvtpd_ph(k: __mmask8, a: __m256d) -> __m128h {
+    _mm256_mask_cvtpd_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtpd_ph(a: __m512d) -> __m128h {
+    _mm512_mask_cvtpd_ph(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvtpd_ph(src: __m128h, k: __mmask8, a: __m512d) -> __m128h {
+    vcvtpd2ph_512(a, src, k, _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvtpd_ph(k: __mmask8, a: __m512d) -> __m128h {
+    _mm512_mask_cvtpd_ph(_mm_setzero_ph(), k, a)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvt_roundpd_ph<const ROUNDING: i32>(a: __m512d) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundpd_ph::<ROUNDING>(_mm_setzero_ph(), 0xff, a)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied from src to dst
+/// when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cvt_roundpd_ph<const ROUNDING: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m512d,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vcvtpd2ph_512(a, src, k, ROUNDING)
+}
+
+/// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the
+/// corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundpd_ph)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtpd2ph, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_maskz_cvt_roundpd_ph<const ROUNDING: i32>(k: __mmask8, a: __m512d) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm512_mask_cvt_roundpd_ph::<ROUNDING>(_mm_setzero_ph(), k, a)
+}
+
+/// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst, and copy the upper 7 packed
+/// elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsd_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsd2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtsd_sh(a: __m128h, b: __m128d) -> __m128h {
+    _mm_mask_cvtsd_sh(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using writemask k (the element
+/// if copied from src when mask bit 0 is not set), and copy the upper 7 packed elements from a to the
+/// upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtsd_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsd2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvtsd_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128d) -> __m128h {
+    vcvtsd2sh(a, b, src, k, _MM_FROUND_CUR_DIRECTION)
+}
+
+/// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using zeromask k (the element
+/// is zeroed out when mask bit 0 is not set), and copy the upper 7 packed elements from a to the upper
+/// elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtsd_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsd2sh))]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvtsd_sh(k: __mmask8, a: __m128h, b: __m128d) -> __m128h {
+    _mm_mask_cvtsd_sh(_mm_setzero_ph(), k, a, b)
+}
+
+/// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst, and copy the upper 7 packed
+/// elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundsd_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsd2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvt_roundsd_sh<const ROUNDING: i32>(a: __m128h, b: __m128d) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm_mask_cvt_roundsd_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+}
+
+/// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using writemask k (the element
+/// if copied from src when mask bit 0 is not set), and copy the upper 7 packed elements from a to the
+/// upper elements of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvt_roundsd_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsd2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_mask_cvt_roundsd_sh<const ROUNDING: i32>(
+    src: __m128h,
+    k: __mmask8,
+    a: __m128h,
+    b: __m128d,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    vcvtsd2sh(a, b, src, k, ROUNDING)
+}
+
+/// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
+/// floating-point elements, store the result in the lower element of dst using zeromask k (the element
+/// is zeroed out when mask bit 0 is not set), and copy the upper 7 packed elements from a to the upper
+/// elements of dst.
+///
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+///     (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///     (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///     (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///     (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///     _MM_FROUND_CUR_DIRECTION
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvt_roundsd_sh)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[cfg_attr(test, assert_instr(vcvtsd2sh, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_maskz_cvt_roundsd_sh<const ROUNDING: i32>(
+    k: __mmask8,
+    a: __m128h,
+    b: __m128d,
+) -> __m128h {
+    static_assert_rounding!(ROUNDING);
+    _mm_mask_cvt_roundsd_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.sh"]
@@ -11470,6 +13275,68 @@ extern "C" {
 
     #[link_name = "llvm.x86.avx512fp16.mask.fpclass.sh"]
     fn vfpclasssh(a: __m128h, imm8: i32, k: __mmask8) -> __mmask8;
+
+    #[link_name = "llvm.x86.avx512.sitofp.round.v8f16.v8i16"]
+    fn vcvtw2ph_128(a: i16x8, rounding: i32) -> __m128h;
+    #[link_name = "llvm.x86.avx512.sitofp.round.v16f16.v16i16"]
+    fn vcvtw2ph_256(a: i16x16, rounding: i32) -> __m256h;
+    #[link_name = "llvm.x86.avx512.sitofp.round.v32f16.v32i16"]
+    fn vcvtw2ph_512(a: i16x32, rounding: i32) -> __m512h;
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8u16"]
+    fn vcvtuw2ph_128(a: u16x8, rounding: i32) -> __m128h;
+    #[link_name = "llvm.x86.avx512.uitofp.round.v16f16.v16u16"]
+    fn vcvtuw2ph_256(a: u16x16, rounding: i32) -> __m256h;
+    #[link_name = "llvm.x86.avx512.uitofp.round.v32f16.v32u16"]
+    fn vcvtuw2ph_512(a: u16x32, rounding: i32) -> __m512h;
+
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtdq2ph.128"]
+    fn vcvtdq2ph_128(a: i32x4, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512.sitofp.round.v8f16.v8i32"]
+    fn vcvtdq2ph_256(a: i32x8, rounding: i32) -> __m128h;
+    #[link_name = "llvm.x86.avx512.sitofp.round.v16f16.v16i32"]
+    fn vcvtdq2ph_512(a: i32x16, rounding: i32) -> __m256h;
+    #[link_name = "llvm.x86.avx512fp16.vcvtsi2sh"]
+    fn vcvtsi2sh(a: __m128h, b: i32, rounding: i32) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtudq2ph.128"]
+    fn vcvtudq2ph_128(a: u32x4, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8u32"]
+    fn vcvtudq2ph_256(a: u32x8, rounding: i32) -> __m128h;
+    #[link_name = "llvm.x86.avx512.uitofp.round.v16f16.v16u32"]
+    fn vcvtudq2ph_512(a: u32x16, rounding: i32) -> __m256h;
+    #[link_name = "llvm.x86.avx512fp16.vcvtusi2sh"]
+    fn vcvtusi2sh(a: __m128h, b: u32, rounding: i32) -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtqq2ph.128"]
+    fn vcvtqq2ph_128(a: i64x2, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtqq2ph.256"]
+    fn vcvtqq2ph_256(a: i64x4, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512.sitofp.round.v8f16.v8i64"]
+    fn vcvtqq2ph_512(a: i64x8, rounding: i32) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtuqq2ph.128"]
+    fn vcvtuqq2ph_128(a: u64x2, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtuqq2ph.256"]
+    fn vcvtuqq2ph_256(a: u64x4, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8u64"]
+    fn vcvtuqq2ph_512(a: u64x8, rounding: i32) -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtps2phx.128"]
+    fn vcvtps2phx_128(a: __m128, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtps2phx.256"]
+    fn vcvtps2phx_256(a: __m256, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtps2phx.512"]
+    fn vcvtps2phx_512(a: __m512, src: __m256h, k: __mmask16, rounding: i32) -> __m256h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtss2sh.round"]
+    fn vcvtss2sh(a: __m128h, b: __m128, src: __m128h, k: __mmask8, rounding: i32) -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtpd2ph.128"]
+    fn vcvtpd2ph_128(a: __m128d, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtpd2ph.256"]
+    fn vcvtpd2ph_256(a: __m256d, src: __m128h, k: __mmask8) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtpd2ph.512"]
+    fn vcvtpd2ph_512(a: __m512d, src: __m128h, k: __mmask8, rounding: i32) -> __m128h;
+    #[link_name = "llvm.x86.avx512fp16.mask.vcvtsd2sh.round"]
+    fn vcvtsd2sh(a: __m128h, b: __m128d, src: __m128h, k: __mmask8, rounding: i32) -> __m128h;
+
 }
 
 #[cfg(test)]
@@ -18879,5 +20746,1198 @@ mod tests {
             30.0, 32.0,
         );
         assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtepi16_ph() {
+        let a = _mm_set_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm_cvtepi16_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtepi16_ph() {
+        let a = _mm_set_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtepi16_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtepi16_ph() {
+        let a = _mm_set_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm_maskz_cvtepi16_ph(0b01010101, a);
+        let e = _mm_set_ph(0., 2., 0., 4., 0., 6., 0., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtepi16_ph() {
+        let a = _mm256_set_epi16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm256_cvtepi16_ph(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtepi16_ph() {
+        let a = _mm256_set_epi16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm256_mask_cvtepi16_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16.,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtepi16_ph() {
+        let a = _mm256_set_epi16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm256_maskz_cvtepi16_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0., 2., 0., 4., 0., 6., 0., 8., 0., 10., 0., 12., 0., 14., 0., 16.,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtepi16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_cvtepi16_ph(a);
+        let e = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtepi16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let src = _mm512_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26.,
+            27., 28., 29., 30., 31., 32., 33., 34., 35., 36., 37., 38., 39., 40., 41.,
+        );
+        let r = _mm512_mask_cvtepi16_ph(src, 0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16., 26., 18.,
+            28., 20., 30., 22., 32., 24., 34., 26., 36., 28., 38., 30., 40., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtepi16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_maskz_cvtepi16_ph(0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            0., 2., 0., 4., 0., 6., 0., 8., 0., 10., 0., 12., 0., 14., 0., 16., 0., 18., 0., 20.,
+            0., 22., 0., 24., 0., 26., 0., 28., 0., 30., 0., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvt_roundepi16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_cvt_roundepi16_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvt_roundepi16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let src = _mm512_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26.,
+            27., 28., 29., 30., 31., 32., 33., 34., 35., 36., 37., 38., 39., 40., 41.,
+        );
+        let r = _mm512_mask_cvt_roundepi16_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b01010101010101010101010101010101,
+            a,
+        );
+        let e = _mm512_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16., 26., 18.,
+            28., 20., 30., 22., 32., 24., 34., 26., 36., 28., 38., 30., 40., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvt_roundepi16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_maskz_cvt_roundepi16_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101010101010101010101010101,
+            a,
+        );
+        let e = _mm512_set_ph(
+            0., 2., 0., 4., 0., 6., 0., 8., 0., 10., 0., 12., 0., 14., 0., 16., 0., 18., 0., 20.,
+            0., 22., 0., 24., 0., 26., 0., 28., 0., 30., 0., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtepu16_ph() {
+        let a = _mm_set_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm_cvtepu16_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtepu16_ph() {
+        let a = _mm_set_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtepu16_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtepu16_ph() {
+        let a = _mm_set_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm_maskz_cvtepu16_ph(0b01010101, a);
+        let e = _mm_set_ph(0., 2., 0., 4., 0., 6., 0., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtepu16_ph() {
+        let a = _mm256_set_epi16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm256_cvtepu16_ph(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtepu16_ph() {
+        let a = _mm256_set_epi16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm256_mask_cvtepu16_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16.,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtepu16_ph() {
+        let a = _mm256_set_epi16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm256_maskz_cvtepu16_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0., 2., 0., 4., 0., 6., 0., 8., 0., 10., 0., 12., 0., 14., 0., 16.,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtepu16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_cvtepu16_ph(a);
+        let e = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtepu16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let src = _mm512_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26.,
+            27., 28., 29., 30., 31., 32., 33., 34., 35., 36., 37., 38., 39., 40., 41.,
+        );
+        let r = _mm512_mask_cvtepu16_ph(src, 0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16., 26., 18.,
+            28., 20., 30., 22., 32., 24., 34., 26., 36., 28., 38., 30., 40., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtepu16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_maskz_cvtepu16_ph(0b01010101010101010101010101010101, a);
+        let e = _mm512_set_ph(
+            0., 2., 0., 4., 0., 6., 0., 8., 0., 10., 0., 12., 0., 14., 0., 16., 0., 18., 0., 20.,
+            0., 22., 0., 24., 0., 26., 0., 28., 0., 30., 0., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvt_roundepu16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_cvt_roundepu16_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvt_roundepu16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let src = _mm512_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26.,
+            27., 28., 29., 30., 31., 32., 33., 34., 35., 36., 37., 38., 39., 40., 41.,
+        );
+        let r = _mm512_mask_cvt_roundepu16_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b01010101010101010101010101010101,
+            a,
+        );
+        let e = _mm512_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16., 26., 18.,
+            28., 20., 30., 22., 32., 24., 34., 26., 36., 28., 38., 30., 40., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvt_roundepu16_ph() {
+        let a = _mm512_set_epi16(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let r = _mm512_maskz_cvt_roundepu16_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101010101010101010101010101,
+            a,
+        );
+        let e = _mm512_set_ph(
+            0., 2., 0., 4., 0., 6., 0., 8., 0., 10., 0., 12., 0., 14., 0., 16., 0., 18., 0., 20.,
+            0., 22., 0., 24., 0., 26., 0., 28., 0., 30., 0., 32.,
+        );
+        assert_eq_m512h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtepi32_ph() {
+        let a = _mm_set_epi32(1, 2, 3, 4);
+        let r = _mm_cvtepi32_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtepi32_ph() {
+        let a = _mm_set_epi32(1, 2, 3, 4);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtepi32_ph(src, 0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 14., 2., 16., 4.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtepi32_ph() {
+        let a = _mm_set_epi32(1, 2, 3, 4);
+        let r = _mm_maskz_cvtepi32_ph(0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 2., 0.0, 4.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtepi32_ph() {
+        let a = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm256_cvtepi32_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtepi32_ph() {
+        let a = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm256_mask_cvtepi32_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtepi32_ph() {
+        let a = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm256_maskz_cvtepi32_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtepi32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_cvtepi32_ph(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtepi32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm512_mask_cvtepi32_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16.,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtepi32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_maskz_cvtepi32_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0, 0.0, 10.0, 0.0, 12.0, 0.0, 14.0, 0.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvt_roundepi32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_cvt_roundepi32_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvt_roundepi32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm512_mask_cvt_roundepi32_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b0101010101010101,
+            a,
+        );
+        let e = _mm256_set_ph(
+            10., 2., 12., 4., 14., 6., 16., 8., 18., 10., 20., 12., 22., 14., 24., 16.,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvt_roundepi32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_maskz_cvt_roundepi32_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b0101010101010101,
+            a,
+        );
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0, 0.0, 10.0, 0.0, 12.0, 0.0, 14.0, 0.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvti32_sh() {
+        let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_cvti32_sh(a, 10);
+        let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvt_roundi32_sh() {
+        let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_cvt_roundi32_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, 10);
+        let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtepu32_ph() {
+        let a = _mm_set_epi32(1, 2, 3, 4);
+        let r = _mm_cvtepu32_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtepu32_ph() {
+        let a = _mm_set_epi32(1, 2, 3, 4);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtepu32_ph(src, 0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 14., 2., 16., 4.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtepu32_ph() {
+        let a = _mm_set_epi32(1, 2, 3, 4);
+        let r = _mm_maskz_cvtepu32_ph(0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 2., 0.0, 4.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtepu32_ph() {
+        let a = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm256_cvtepu32_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtepu32_ph() {
+        let a = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm256_mask_cvtepu32_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtepu32_ph() {
+        let a = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm256_maskz_cvtepu32_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtepu32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_cvtepu32_ph(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtepu32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm512_mask_cvtepu32_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            10., 2.0, 12., 4.0, 14., 6.0, 16., 8.0, 18., 10.0, 20., 12.0, 22., 14.0, 24., 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtepu32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_maskz_cvtepu32_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0, 0.0, 10.0, 0.0, 12.0, 0.0, 14.0, 0.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvt_roundepu32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_cvt_roundepu32_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvt_roundepu32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm512_mask_cvt_roundepu32_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b0101010101010101,
+            a,
+        );
+        let e = _mm256_set_ph(
+            10.0, 2.0, 12.0, 4.0, 14.0, 6.0, 16.0, 8.0, 18.0, 10.0, 20.0, 12.0, 22.0, 14.0, 24.0,
+            16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvt_roundepu32_ph() {
+        let a = _mm512_set_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = _mm512_maskz_cvt_roundepu32_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b0101010101010101,
+            a,
+        );
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0, 0.0, 10.0, 0.0, 12.0, 0.0, 14.0, 0.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvtu32_sh() {
+        let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_cvtu32_sh(a, 10);
+        let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvt_roundu32_sh() {
+        let a = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_cvt_roundu32_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, 10);
+        let e = _mm_setr_ph(10.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtepi64_ph() {
+        let a = _mm_set_epi64x(1, 2);
+        let r = _mm_cvtepi64_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtepi64_ph() {
+        let a = _mm_set_epi64x(1, 2);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtepi64_ph(src, 0b01, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 16., 2.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtepi64_ph() {
+        let a = _mm_set_epi64x(1, 2);
+        let r = _mm_maskz_cvtepi64_ph(0b01, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtepi64_ph() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let r = _mm256_cvtepi64_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtepi64_ph() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm256_mask_cvtepi64_ph(src, 0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 14., 2.0, 16.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtepi64_ph() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let r = _mm256_maskz_cvtepi64_ph(0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtepi64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_cvtepi64_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtepi64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm512_mask_cvtepi64_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtepi64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_maskz_cvtepi64_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 2., 0.0, 4., 0.0, 6., 0.0, 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvt_roundepi64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_cvt_roundepi64_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvt_roundepi64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm512_mask_cvt_roundepi64_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0b01010101, a,
+        );
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvt_roundepi64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_maskz_cvt_roundepi64_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101, a,
+        );
+        let e = _mm_set_ph(0.0, 2., 0.0, 4., 0.0, 6., 0.0, 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtepu64_ph() {
+        let a = _mm_set_epi64x(1, 2);
+        let r = _mm_cvtepu64_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtepu64_ph() {
+        let a = _mm_set_epi64x(1, 2);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtepu64_ph(src, 0b01, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 16., 2.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtepu64_ph() {
+        let a = _mm_set_epi64x(1, 2);
+        let r = _mm_maskz_cvtepu64_ph(0b01, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtepu64_ph() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let r = _mm256_cvtepu64_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtepu64_ph() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm256_mask_cvtepu64_ph(src, 0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 14., 2.0, 16.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtepu64_ph() {
+        let a = _mm256_set_epi64x(1, 2, 3, 4);
+        let r = _mm256_maskz_cvtepu64_ph(0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtepu64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_cvtepu64_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtepu64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm512_mask_cvtepu64_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtepu64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_maskz_cvtepu64_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 2., 0.0, 4., 0.0, 6., 0.0, 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvt_roundepu64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_cvt_roundepu64_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvt_roundepu64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm512_mask_cvt_roundepu64_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0b01010101, a,
+        );
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvt_roundepu64_ph() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_maskz_cvt_roundepu64_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101, a,
+        );
+        let e = _mm_set_ph(0.0, 2., 0.0, 4., 0.0, 6., 0.0, 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtxps_ph() {
+        let a = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
+        let r = _mm_cvtxps_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtxps_ph() {
+        let a = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtxps_ph(src, 0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 14., 2.0, 16., 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtxps_ph() {
+        let a = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
+        let r = _mm_maskz_cvtxps_ph(0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtxps_ph() {
+        let a = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm256_cvtxps_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtxps_ph() {
+        let a = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm256_mask_cvtxps_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtxps_ph() {
+        let a = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm256_maskz_cvtxps_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtxps_ph() {
+        let a = _mm512_set_ps(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm512_cvtxps_ph(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtxps_ph() {
+        let a = _mm512_set_ps(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm512_mask_cvtxps_ph(src, 0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            10., 2.0, 12., 4.0, 14., 6.0, 16., 8.0, 18., 10.0, 20., 12.0, 22., 14.0, 24., 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtxps_ph() {
+        let a = _mm512_set_ps(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm512_maskz_cvtxps_ph(0b0101010101010101, a);
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0, 0.0, 10.0, 0.0, 12.0, 0.0, 14.0, 0.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtx_roundps_ph() {
+        let a = _mm512_set_ps(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm512_cvtx_roundps_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm256_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtx_roundps_ph() {
+        let a = _mm512_set_ps(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let src = _mm256_set_ph(
+            10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25.,
+        );
+        let r = _mm512_mask_cvtx_roundps_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src,
+            0b0101010101010101,
+            a,
+        );
+        let e = _mm256_set_ph(
+            10.0, 2.0, 12.0, 4.0, 14.0, 6.0, 16.0, 8.0, 18.0, 10.0, 20.0, 12.0, 22.0, 14.0, 24.0,
+            16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtx_roundps_ph() {
+        let a = _mm512_set_ps(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm512_maskz_cvtx_roundps_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b0101010101010101,
+            a,
+        );
+        let e = _mm256_set_ph(
+            0.0, 2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0, 0.0, 10.0, 0.0, 12.0, 0.0, 14.0, 0.0, 16.0,
+        );
+        assert_eq_m256h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvtss_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let r = _mm_cvtss_sh(a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_cvtss_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let src = _mm_setr_ph(20., 21., 22., 23., 24., 25., 26., 27.);
+        let r = _mm_mask_cvtss_sh(src, 0, a, b);
+        let e = _mm_setr_ph(20., 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_cvtss_sh(src, 1, a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_cvtss_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let r = _mm_maskz_cvtss_sh(0, a, b);
+        let e = _mm_setr_ph(0.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r = _mm_maskz_cvtss_sh(1, a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvt_roundss_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let r = _mm_cvt_roundss_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_cvt_roundss_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let src = _mm_setr_ph(20., 21., 22., 23., 24., 25., 26., 27.);
+        let r = _mm_mask_cvt_roundss_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0, a, b,
+        );
+        let e = _mm_setr_ph(20., 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_cvt_roundss_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 1, a, b,
+        );
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_cvt_roundss_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let r =
+            _mm_maskz_cvt_roundss_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
+        let e = _mm_setr_ph(0.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r =
+            _mm_maskz_cvt_roundss_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(1, a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_cvtpd_ph() {
+        let a = _mm_set_pd(1.0, 2.0);
+        let r = _mm_cvtpd_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_mask_cvtpd_ph() {
+        let a = _mm_set_pd(1.0, 2.0);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm_mask_cvtpd_ph(src, 0b01, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 16., 2.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtpd_ph() {
+        let a = _mm_set_pd(1.0, 2.0);
+        let r = _mm_maskz_cvtpd_ph(0b01, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_cvtpd_ph() {
+        let a = _mm256_set_pd(1.0, 2.0, 3.0, 4.0);
+        let r = _mm256_cvtpd_ph(a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_mask_cvtpd_ph() {
+        let a = _mm256_set_pd(1.0, 2.0, 3.0, 4.0);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm256_mask_cvtpd_ph(src, 0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 14., 2.0, 16.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16,avx512vl")]
+    unsafe fn test_mm256_maskz_cvtpd_ph() {
+        let a = _mm256_set_pd(1.0, 2.0, 3.0, 4.0);
+        let r = _mm256_maskz_cvtpd_ph(0b0101, a);
+        let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 4.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtpd_ph() {
+        let a = _mm512_set_pd(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm512_cvtpd_ph(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvtpd_ph() {
+        let a = _mm512_set_pd(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm512_mask_cvtpd_ph(src, 0b01010101, a);
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvtpd_ph() {
+        let a = _mm512_set_pd(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm512_maskz_cvtpd_ph(0b01010101, a);
+        let e = _mm_set_ph(0.0, 2., 0.0, 4., 0.0, 6., 0.0, 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvt_roundpd_ph() {
+        let a = _mm512_set_pd(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm512_cvt_roundpd_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
+        let e = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cvt_roundpd_ph() {
+        let a = _mm512_set_pd(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let src = _mm_set_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let r = _mm512_mask_cvt_roundpd_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0b01010101, a,
+        );
+        let e = _mm_set_ph(10., 2., 12., 4., 14., 6., 16., 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_maskz_cvt_roundpd_ph() {
+        let a = _mm512_set_pd(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm512_maskz_cvt_roundpd_ph::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0b01010101, a,
+        );
+        let e = _mm_set_ph(0.0, 2., 0.0, 4., 0.0, 6., 0.0, 8.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvtsd_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_pd(1.0, 2.0);
+        let r = _mm_cvtsd_sh(a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_cvtsd_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_pd(1.0, 2.0);
+        let src = _mm_setr_ph(20., 21., 22., 23., 24., 25., 26., 27.);
+        let r = _mm_mask_cvtsd_sh(src, 0, a, b);
+        let e = _mm_setr_ph(20., 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_cvtsd_sh(src, 1, a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_cvtsd_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_pd(1.0, 2.0);
+        let r = _mm_maskz_cvtsd_sh(0, a, b);
+        let e = _mm_setr_ph(0.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r = _mm_maskz_cvtsd_sh(1, a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvt_roundsd_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_pd(1.0, 2.0);
+        let r = _mm_cvt_roundsd_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_mask_cvt_roundsd_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_pd(1.0, 2.0);
+        let src = _mm_setr_ph(20., 21., 22., 23., 24., 25., 26., 27.);
+        let r = _mm_mask_cvt_roundsd_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 0, a, b,
+        );
+        let e = _mm_setr_ph(20., 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r = _mm_mask_cvt_roundsd_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            src, 1, a, b,
+        );
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_maskz_cvt_roundsd_sh() {
+        let a = _mm_setr_ph(10., 11., 12., 13., 14., 15., 16., 17.);
+        let b = _mm_setr_pd(1.0, 2.0);
+        let r =
+            _mm_maskz_cvt_roundsd_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
+        let e = _mm_setr_ph(0.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
+        let r =
+            _mm_maskz_cvt_roundsd_sh::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(1, a, b);
+        let e = _mm_setr_ph(1.0, 11., 12., 13., 14., 15., 16., 17.);
+        assert_eq_m128h(r, e);
     }
 }

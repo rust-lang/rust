@@ -73,3 +73,7 @@ pub use self::adx::*;
 mod bt;
 #[stable(feature = "simd_x86_bittest", since = "1.55.0")]
 pub use self::bt::*;
+
+mod avx512fp16;
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub use self::avx512fp16::*;
