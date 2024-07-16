@@ -2932,10 +2932,17 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
-        self.token.lifetime().map(|ident| {
+        if let Some(ident) = self.token.lifetime() {
+            // Disallow `'fn`, but with a better error message than `expect_lifetime`.
+            if ident.without_first_quote().is_reserved() {
+                self.dcx().emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
+            }
+
             self.bump();
-            Label { ident }
-        })
+            Some(Label { ident })
+        } else {
+            None
+        }
     }
 
     /// Parses a `match ... { ... }` expression (`match` token already eaten).

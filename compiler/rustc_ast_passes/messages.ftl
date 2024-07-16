@@ -159,9 +159,6 @@ ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
     .type = inherent impl for this type
     .only_trait = only trait implementations may be annotated with {$annotation}
 
-ast_passes_invalid_label =
-    invalid label name `{$name}`
-
 ast_passes_invalid_unnamed_field =
     unnamed fields are not allowed outside of structs or unions
     .label = unnamed field declared here
@@ -175,9 +172,6 @@ ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot
 
 ast_passes_item_underscore = `{$kind}` items in this context need a name
     .label = `_` is not a valid name for this `{$kind}` item
-
-ast_passes_keyword_lifetime =
-    lifetimes cannot use keyword names
 
 ast_passes_match_arm_with_no_body =
     `match` arm with no body
