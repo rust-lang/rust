@@ -1,0 +1,97 @@
+warning: `extern` fn uses type `u128`, which is not FFI-safe
+  --> $DIR/return-via-stack.rs:31:9
+   |
+LL |     f6: extern "C-cmse-nonsecure-call" fn() -> u128,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: 128-bit integers don't currently have a known stable ABI
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: `extern` fn uses type `i128`, which is not FFI-safe
+  --> $DIR/return-via-stack.rs:32:9
+   |
+LL |     f7: extern "C-cmse-nonsecure-call" fn() -> i128,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: 128-bit integers don't currently have a known stable ABI
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:34:5
+   |
+LL |     f1: extern "C-cmse-nonsecure-call" fn() -> ReprCU64,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f1();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:35:5
+   |
+LL |     f2: extern "C-cmse-nonsecure-call" fn() -> ReprCBytes,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f2();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:36:5
+   |
+LL |     f3: extern "C-cmse-nonsecure-call" fn() -> U64Compound,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f3();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:37:5
+   |
+LL |     f4: extern "C-cmse-nonsecure-call" fn() -> ReprCAlign16,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f4();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:38:5
+   |
+LL |     f5: extern "C-cmse-nonsecure-call" fn() -> [u8; 5],
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f5();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:39:5
+   |
+LL |     f6: extern "C-cmse-nonsecure-call" fn() -> u128,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f6();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:40:5
+   |
+LL |     f7: extern "C-cmse-nonsecure-call" fn() -> i128,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f7();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error: aborting due to 7 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0798`.
