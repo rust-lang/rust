@@ -792,7 +792,7 @@ impl<'a> Parser<'a> {
 
         let span = cast_expr.span;
 
-        let with_postfix = self.parse_expr_dot_or_call_with_(cast_expr, span)?;
+        let with_postfix = self.parse_expr_dot_or_call_with(AttrVec::new(), cast_expr, span)?;
 
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
@@ -883,16 +883,56 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_dot_or_call_with(
         &mut self,
         mut attrs: ast::AttrVec,
-        e0: P<Expr>,
+        mut e: P<Expr>,
         lo: Span,
     ) -> PResult<'a, P<Expr>> {
-        // Stitch the list of outer attributes onto the return value.
-        // A little bit ugly, but the best way given the current code
-        // structure
-        let res = ensure_sufficient_stack(
-            // this expr demonstrates the recursion it guards against
-            || self.parse_expr_dot_or_call_with_(e0, lo),
-        );
+        let res = ensure_sufficient_stack(|| {
+            loop {
+                let has_question =
+                    if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+                        // We are using noexpect here because we don't expect a `?` directly after
+                        // a `return` which could be suggested otherwise.
+                        self.eat_noexpect(&token::Question)
+                    } else {
+                        self.eat(&token::Question)
+                    };
+                if has_question {
+                    // `expr?`
+                    e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
+                    continue;
+                }
+                let has_dot =
+                    if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+                        // We are using noexpect here because we don't expect a `.` directly after
+                        // a `return` which could be suggested otherwise.
+                        self.eat_noexpect(&token::Dot)
+                    } else if self.token.kind == TokenKind::RArrow && self.may_recover() {
+                        // Recovery for `expr->suffix`.
+                        self.bump();
+                        let span = self.prev_token.span;
+                        self.dcx().emit_err(errors::ExprRArrowCall { span });
+                        true
+                    } else {
+                        self.eat(&token::Dot)
+                    };
+                if has_dot {
+                    // expr.f
+                    e = self.parse_dot_suffix_expr(lo, e)?;
+                    continue;
+                }
+                if self.expr_is_complete(&e) {
+                    return Ok(e);
+                }
+                e = match self.token.kind {
+                    token::OpenDelim(Delimiter::Parenthesis) => self.parse_expr_fn_call(lo, e),
+                    token::OpenDelim(Delimiter::Bracket) => self.parse_expr_index(lo, e)?,
+                    _ => return Ok(e),
+                }
+            }
+        });
+
+        // Stitch the list of outer attributes onto the return value. A little
+        // bit ugly, but the best way given the current code structure.
         if attrs.is_empty() {
             res
         } else {
@@ -903,50 +943,6 @@ impl<'a> Parser<'a> {
                     expr
                 })
             })
-        }
-    }
-
-    fn parse_expr_dot_or_call_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        loop {
-            let has_question =
-                if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
-                    // we are using noexpect here because we don't expect a `?` directly after a `return`
-                    // which could be suggested otherwise
-                    self.eat_noexpect(&token::Question)
-                } else {
-                    self.eat(&token::Question)
-                };
-            if has_question {
-                // `expr?`
-                e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
-                continue;
-            }
-            let has_dot = if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
-                // we are using noexpect here because we don't expect a `.` directly after a `return`
-                // which could be suggested otherwise
-                self.eat_noexpect(&token::Dot)
-            } else if self.token.kind == TokenKind::RArrow && self.may_recover() {
-                // Recovery for `expr->suffix`.
-                self.bump();
-                let span = self.prev_token.span;
-                self.dcx().emit_err(errors::ExprRArrowCall { span });
-                true
-            } else {
-                self.eat(&token::Dot)
-            };
-            if has_dot {
-                // expr.f
-                e = self.parse_dot_suffix_expr(lo, e)?;
-                continue;
-            }
-            if self.expr_is_complete(&e) {
-                return Ok(e);
-            }
-            e = match self.token.kind {
-                token::OpenDelim(Delimiter::Parenthesis) => self.parse_expr_fn_call(lo, e),
-                token::OpenDelim(Delimiter::Bracket) => self.parse_expr_index(lo, e)?,
-                _ => return Ok(e),
-            }
         }
     }
 
