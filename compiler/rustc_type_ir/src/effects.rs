@@ -10,38 +10,38 @@ pub enum EffectKind {
 }
 
 impl EffectKind {
-    pub fn try_from_def_id<I: Interner>(tcx: I, def_id: I::DefId) -> Option<EffectKind> {
-        if tcx.is_lang_item(def_id, EffectsMaybe) {
+    pub fn try_from_def_id<I: Interner>(cx: I, def_id: I::DefId) -> Option<EffectKind> {
+        if cx.is_lang_item(def_id, EffectsMaybe) {
             Some(EffectKind::Maybe)
-        } else if tcx.is_lang_item(def_id, EffectsRuntime) {
+        } else if cx.is_lang_item(def_id, EffectsRuntime) {
             Some(EffectKind::Runtime)
-        } else if tcx.is_lang_item(def_id, EffectsNoRuntime) {
+        } else if cx.is_lang_item(def_id, EffectsNoRuntime) {
             Some(EffectKind::NoRuntime)
         } else {
             None
         }
     }
 
-    pub fn to_def_id<I: Interner>(self, tcx: I) -> I::DefId {
+    pub fn to_def_id<I: Interner>(self, cx: I) -> I::DefId {
         let lang_item = match self {
             EffectKind::Maybe => EffectsMaybe,
             EffectKind::NoRuntime => EffectsNoRuntime,
             EffectKind::Runtime => EffectsRuntime,
         };
 
-        tcx.require_lang_item(lang_item)
+        cx.require_lang_item(lang_item)
     }
 
-    pub fn try_from_ty<I: Interner>(tcx: I, ty: I::Ty) -> Option<EffectKind> {
+    pub fn try_from_ty<I: Interner>(cx: I, ty: I::Ty) -> Option<EffectKind> {
         if let crate::Adt(def, _) = ty.kind() {
-            Self::try_from_def_id(tcx, def.def_id())
+            Self::try_from_def_id(cx, def.def_id())
         } else {
             None
         }
     }
 
-    pub fn to_ty<I: Interner>(self, tcx: I) -> I::Ty {
-        I::Ty::new_adt(tcx, tcx.adt_def(self.to_def_id(tcx)), Default::default())
+    pub fn to_ty<I: Interner>(self, cx: I) -> I::Ty {
+        I::Ty::new_adt(cx, cx.adt_def(self.to_def_id(cx)), Default::default())
     }
 
     /// Returns an intersection between two effect kinds. If one effect kind

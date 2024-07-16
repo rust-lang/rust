@@ -330,25 +330,25 @@ impl<I: Interner> CanonicalVarValues<I> {
 
     // Given a list of canonical variables, construct a set of values which are
     // the identity response.
-    pub fn make_identity(tcx: I, infos: I::CanonicalVars) -> CanonicalVarValues<I> {
+    pub fn make_identity(cx: I, infos: I::CanonicalVars) -> CanonicalVarValues<I> {
         CanonicalVarValues {
-            var_values: tcx.mk_args_from_iter(infos.iter().enumerate().map(
+            var_values: cx.mk_args_from_iter(infos.iter().enumerate().map(
                 |(i, info)| -> I::GenericArg {
                     match info.kind {
                         CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
-                            Ty::new_anon_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i))
+                            Ty::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
                                 .into()
                         }
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
-                            Region::new_anon_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i))
+                            Region::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
                                 .into()
                         }
                         CanonicalVarKind::Effect => {
-                            Const::new_anon_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i))
+                            Const::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
                                 .into()
                         }
                         CanonicalVarKind::Const(_) | CanonicalVarKind::PlaceholderConst(_) => {
-                            Const::new_anon_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i))
+                            Const::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
                                 .into()
                         }
                     }
