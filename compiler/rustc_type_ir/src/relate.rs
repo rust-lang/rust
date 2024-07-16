@@ -56,7 +56,7 @@ impl<I: Interner> VarianceDiagInfo<I> {
 }
 
 pub trait TypeRelation<I: Interner>: Sized {
-    fn tcx(&self) -> I;
+    fn cx(&self) -> I;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
@@ -80,8 +80,8 @@ pub trait TypeRelation<I: Interner>: Sized {
             item_def_id, a_arg, b_arg
         );
 
-        let tcx = self.tcx();
-        let opt_variances = tcx.variances_of(item_def_id);
+        let cx = self.cx();
+        let opt_variances = cx.variances_of(item_def_id);
         relate_args_with_variances(self, item_def_id, opt_variances, a_arg, b_arg, true)
     }
 
@@ -128,7 +128,7 @@ pub fn relate_args_invariantly<I: Interner, R: TypeRelation<I>>(
     a_arg: I::GenericArgs,
     b_arg: I::GenericArgs,
 ) -> RelateResult<I, I::GenericArgs> {
-    relation.tcx().mk_args_from_iter(iter::zip(a_arg.iter(), b_arg.iter()).map(|(a, b)| {
+    relation.cx().mk_args_from_iter(iter::zip(a_arg.iter(), b_arg.iter()).map(|(a, b)| {
         relation.relate_with_variance(ty::Invariant, VarianceDiagInfo::default(), a, b)
     }))
 }
@@ -141,14 +141,13 @@ pub fn relate_args_with_variances<I: Interner, R: TypeRelation<I>>(
     b_arg: I::GenericArgs,
     fetch_ty_for_diag: bool,
 ) -> RelateResult<I, I::GenericArgs> {
-    let tcx = relation.tcx();
+    let cx = relation.cx();
 
     let mut cached_ty = None;
     let params = iter::zip(a_arg.iter(), b_arg.iter()).enumerate().map(|(i, (a, b))| {
         let variance = variances.get(i).unwrap();
         let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
-            let ty =
-                *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).instantiate(tcx, a_arg));
+            let ty = *cached_ty.get_or_insert_with(|| cx.type_of(ty_def_id).instantiate(cx, a_arg));
             VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
         } else {
             VarianceDiagInfo::default()
@@ -156,7 +155,7 @@ pub fn relate_args_with_variances<I: Interner, R: TypeRelation<I>>(
         relation.relate_with_variance(variance, variance_info, a, b)
     });
 
-    tcx.mk_args_from_iter(params)
+    cx.mk_args_from_iter(params)
 }
 
 impl<I: Interner> Relate<I> for ty::FnSig<I> {
@@ -165,7 +164,7 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
         a: ty::FnSig<I>,
         b: ty::FnSig<I>,
     ) -> RelateResult<I, ty::FnSig<I>> {
-        let tcx = relation.tcx();
+        let cx = relation.cx();
 
         if a.c_variadic != b.c_variadic {
             return Err(TypeError::VariadicMismatch({
@@ -210,7 +209,7 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
                 r => r,
             });
         Ok(ty::FnSig {
-            inputs_and_output: tcx.mk_type_list_from_iter(inputs_and_output)?,
+            inputs_and_output: cx.mk_type_list_from_iter(inputs_and_output)?,
             c_variadic: a.c_variadic,
             safety,
             abi,
@@ -245,11 +244,11 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                 ExpectedFound::new(true, a, b)
             }))
         } else {
-            let args = match a.kind(relation.tcx()) {
+            let args = match a.kind(relation.cx()) {
                 ty::Opaque => relate_args_with_variances(
                     relation,
                     a.def_id,
-                    relation.tcx().variances_of(a.def_id),
+                    relation.cx().variances_of(a.def_id),
                     a.args,
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
@@ -258,7 +257,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTy::new_from_args(relation.tcx(), a.def_id, args))
+            Ok(ty::AliasTy::new_from_args(relation.cx(), a.def_id, args))
         }
     }
 }
@@ -276,11 +275,11 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 ExpectedFound::new(true, a, b)
             }))
         } else {
-            let args = match a.kind(relation.tcx()) {
+            let args = match a.kind(relation.cx()) {
                 ty::AliasTermKind::OpaqueTy => relate_args_with_variances(
                     relation,
                     a.def_id,
-                    relation.tcx().variances_of(a.def_id),
+                    relation.cx().variances_of(a.def_id),
                     a.args,
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
@@ -293,7 +292,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTerm::new_from_args(relation.tcx(), a.def_id, args))
+            Ok(ty::AliasTerm::new_from_args(relation.cx(), a.def_id, args))
         }
     }
 }
@@ -343,7 +342,7 @@ impl<I: Interner> Relate<I> for ty::TraitRef<I> {
             }))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
-            Ok(ty::TraitRef::new_from_args(relation.tcx(), a.def_id, args))
+            Ok(ty::TraitRef::new_from_args(relation.cx(), a.def_id, args))
         }
     }
 }
@@ -377,7 +376,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
     a: I::Ty,
     b: I::Ty,
 ) -> RelateResult<I, I::Ty> {
-    let tcx = relation.tcx();
+    let cx = relation.cx();
     match (a.kind(), b.kind()) {
         (ty::Infer(_), _) | (_, ty::Infer(_)) => {
             // The caller should handle these cases!
@@ -388,7 +387,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             panic!("bound types encountered in structurally_relate_tys")
         }
 
-        (ty::Error(guar), _) | (_, ty::Error(guar)) => Ok(Ty::new_error(tcx, guar)),
+        (ty::Error(guar), _) | (_, ty::Error(guar)) => Ok(Ty::new_error(cx, guar)),
 
         (ty::Never, _)
         | (ty::Char, _)
@@ -412,16 +411,16 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 
         (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args)) if a_def == b_def => {
             let args = relation.relate_item_args(a_def.def_id(), a_args, b_args)?;
-            Ok(Ty::new_adt(tcx, a_def, args))
+            Ok(Ty::new_adt(cx, a_def, args))
         }
 
-        (ty::Foreign(a_id), ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(tcx, a_id)),
+        (ty::Foreign(a_id), ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(cx, a_id)),
 
         (ty::Dynamic(a_obj, a_region, a_repr), ty::Dynamic(b_obj, b_region, b_repr))
             if a_repr == b_repr =>
         {
             Ok(Ty::new_dynamic(
-                tcx,
+                cx,
                 relation.relate(a_obj, b_obj)?,
                 relation.relate(a_region, b_region)?,
                 a_repr,
@@ -433,7 +432,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_coroutine(tcx, a_id, args))
+            Ok(Ty::new_coroutine(cx, a_id, args))
         }
 
         (ty::CoroutineWitness(a_id, a_args), ty::CoroutineWitness(b_id, b_args))
@@ -443,7 +442,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_coroutine_witness(tcx, a_id, args))
+            Ok(Ty::new_coroutine_witness(cx, a_id, args))
         }
 
         (ty::Closure(a_id, a_args), ty::Closure(b_id, b_args)) if a_id == b_id => {
@@ -451,14 +450,14 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_closure(tcx, a_id, args))
+            Ok(Ty::new_closure(cx, a_id, args))
         }
 
         (ty::CoroutineClosure(a_id, a_args), ty::CoroutineClosure(b_id, b_args))
             if a_id == b_id =>
         {
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_coroutine_closure(tcx, a_id, args))
+            Ok(Ty::new_coroutine_closure(cx, a_id, args))
         }
 
         (ty::RawPtr(a_ty, a_mutbl), ty::RawPtr(b_ty, b_mutbl)) => {
@@ -475,7 +474,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 
             let ty = relation.relate_with_variance(variance, info, a_ty, b_ty)?;
 
-            Ok(Ty::new_ptr(tcx, ty, a_mutbl))
+            Ok(Ty::new_ptr(cx, ty, a_mutbl))
         }
 
         (ty::Ref(a_r, a_ty, a_mutbl), ty::Ref(b_r, b_ty, b_mutbl)) => {
@@ -493,18 +492,18 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             let r = relation.relate(a_r, b_r)?;
             let ty = relation.relate_with_variance(variance, info, a_ty, b_ty)?;
 
-            Ok(Ty::new_ref(tcx, r, ty, a_mutbl))
+            Ok(Ty::new_ref(cx, r, ty, a_mutbl))
         }
 
         (ty::Array(a_t, sz_a), ty::Array(b_t, sz_b)) => {
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
-                Ok(sz) => Ok(Ty::new_array_with_const_len(tcx, t, sz)),
+                Ok(sz) => Ok(Ty::new_array_with_const_len(cx, t, sz)),
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
-                    let sz_a = sz_a.try_to_target_usize(tcx);
-                    let sz_b = sz_b.try_to_target_usize(tcx);
+                    let sz_a = sz_a.try_to_target_usize(cx);
+                    let sz_b = sz_b.try_to_target_usize(cx);
 
                     match (sz_a, sz_b) {
                         (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
@@ -518,13 +517,13 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 
         (ty::Slice(a_t), ty::Slice(b_t)) => {
             let t = relation.relate(a_t, b_t)?;
-            Ok(Ty::new_slice(tcx, t))
+            Ok(Ty::new_slice(cx, t))
         }
 
         (ty::Tuple(as_), ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
                 Ok(Ty::new_tup_from_iter(
-                    tcx,
+                    cx,
                     iter::zip(as_.iter(), bs.iter()).map(|(a, b)| relation.relate(a, b)),
                 )?)
             } else if !(as_.is_empty() || bs.is_empty()) {
@@ -536,25 +535,25 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 
         (ty::FnDef(a_def_id, a_args), ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
             let args = relation.relate_item_args(a_def_id, a_args, b_args)?;
-            Ok(Ty::new_fn_def(tcx, a_def_id, args))
+            Ok(Ty::new_fn_def(cx, a_def_id, args))
         }
 
         (ty::FnPtr(a_fty), ty::FnPtr(b_fty)) => {
             let fty = relation.relate(a_fty, b_fty)?;
-            Ok(Ty::new_fn_ptr(tcx, fty))
+            Ok(Ty::new_fn_ptr(cx, fty))
         }
 
         // Alias tend to mostly already be handled downstream due to normalization.
         (ty::Alias(a_kind, a_data), ty::Alias(b_kind, b_data)) => {
             let alias_ty = relation.relate(a_data, b_data)?;
             assert_eq!(a_kind, b_kind);
-            Ok(Ty::new_alias(tcx, a_kind, alias_ty))
+            Ok(Ty::new_alias(cx, a_kind, alias_ty))
         }
 
         (ty::Pat(a_ty, a_pat), ty::Pat(b_ty, b_pat)) => {
             let ty = relation.relate(a_ty, b_ty)?;
             let pat = relation.relate(a_pat, b_pat)?;
-            Ok(Ty::new_pat(tcx, ty, pat))
+            Ok(Ty::new_pat(cx, ty, pat))
         }
 
         _ => Err(TypeError::Sorts(ExpectedFound::new(true, a, b))),
@@ -573,11 +572,11 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
     mut b: I::Const,
 ) -> RelateResult<I, I::Const> {
     debug!("{}.structurally_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
-    let tcx = relation.tcx();
+    let cx = relation.cx();
 
-    if tcx.features().generic_const_exprs() {
-        a = tcx.expand_abstract_consts(a);
-        b = tcx.expand_abstract_consts(b);
+    if cx.features().generic_const_exprs() {
+        a = cx.expand_abstract_consts(a);
+        b = cx.expand_abstract_consts(b);
     }
 
     debug!("{}.structurally_relate_consts(normed_a = {:?}, normed_b = {:?})", relation.tag(), a, b);
@@ -607,8 +606,8 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
             if cfg!(debug_assertions) {
-                let a_ty = tcx.type_of(au.def).instantiate(tcx, au.args);
-                let b_ty = tcx.type_of(bu.def).instantiate(tcx, bu.args);
+                let a_ty = cx.type_of(au.def).instantiate(cx, au.args);
+                let b_ty = cx.type_of(bu.def).instantiate(cx, bu.args);
                 assert_eq!(a_ty, b_ty);
             }
 
@@ -618,11 +617,11 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
                 au.args,
                 bu.args,
             )?;
-            return Ok(Const::new_unevaluated(tcx, ty::UnevaluatedConst { def: au.def, args }));
+            return Ok(Const::new_unevaluated(cx, ty::UnevaluatedConst { def: au.def, args }));
         }
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             let expr = relation.relate(ae, be)?;
-            return Ok(Const::new_expr(tcx, expr));
+            return Ok(Const::new_expr(cx, expr));
         }
         _ => false,
     };

@@ -17,5 +17,5 @@
 /// e.g., `()` or `u8`, was interned in a different context.
 pub trait Lift<I>: std::fmt::Debug {
     type Lifted: std::fmt::Debug;
-    fn lift_to_tcx(self, tcx: I) -> Option<Self::Lifted>;
+    fn lift_to_interner(self, cx: I) -> Option<Self::Lifted>;
 }
