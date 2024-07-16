@@ -1989,7 +1989,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             };
             debug!(?constraint, ?p);
-            let ConstraintCategory::Predicate(span) = constraint.category else {
+            let ConstraintCategory::Predicate(_, span) = constraint.category else {
                 continue;
             };
             extra_info.push(ExtraConstraintInfo::PlaceholderFromPredicate(span));
@@ -2004,11 +2004,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let cause_code = path
             .iter()
             .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                if let ConstraintCategory::Predicate(source_def_id, predicate_span) =
+                    constraint.category
+                {
                     // We currently do not store the `DefId` in the `ConstraintCategory`
                     // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
+                    Some(ObligationCauseCode::WhereClause(source_def_id, predicate_span))
                 } else {
                     None
                 }
@@ -2102,7 +2104,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal
-                    | ConstraintCategory::Predicate(_) => false,
+                    | ConstraintCategory::Predicate(..) => false,
                     ConstraintCategory::TypeAnnotation
                     | ConstraintCategory::Return(_)
                     | ConstraintCategory::Yield => true,
@@ -2115,7 +2117,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         | ConstraintCategory::Boring
                         | ConstraintCategory::BoringNoLocation
                         | ConstraintCategory::Internal
-                        | ConstraintCategory::Predicate(_)
+                        | ConstraintCategory::Predicate(..)
                 )
             }
         };

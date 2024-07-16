@@ -10,7 +10,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
@@ -240,21 +240,17 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     ) -> Diag<'tcx> {
         let span = cause.span();
 
-        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
-            if let ObligationCauseCode::WhereClause(def_id, span)
-            | ObligationCauseCode::WhereClauseInExpr(def_id, span, ..) = *cause.code()
-                && def_id != CRATE_DEF_ID.to_def_id()
-            {
-                (
-                    true,
-                    Some(span),
-                    Some(self.tcx().def_span(def_id)),
-                    None,
-                    self.tcx().def_path_str(def_id),
-                )
-            } else {
-                (false, None, None, Some(span), String::new())
-            };
+        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) = match *cause.code() {
+            ObligationCauseCode::WhereClause(def_id, pred_span)
+            | ObligationCauseCode::WhereClauseInExpr(def_id, pred_span, ..) => (
+                true,
+                Some(span),
+                if pred_span.is_dummy() { Some(span) } else { Some(pred_span) },
+                None,
+                self.tcx().def_path_str(def_id),
+            ),
+            _ => (false, None, None, Some(span), String::new()),
+        };
 
         let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new_from_args(
             self.cx.tcx,
