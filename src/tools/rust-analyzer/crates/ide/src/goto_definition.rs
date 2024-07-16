@@ -1,20 +1,23 @@
 use std::{iter, mem::discriminant};
 
 use crate::{
-    doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
-    RangeInfo, TryToNav,
+    doc_links::token_as_doc_comment,
+    navigation_target::{self, ToNav},
+    FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
 use hir::{
-    AsAssocItem, AssocItem, DescendPreference, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics
+    AsAssocItem, AssocItem, DescendPreference, FileRange, InFile, MacroFileIdExt, ModuleDef,
+    Semantics,
 };
 use ide_db::{
     base_db::{AnchoredPath, FileLoader},
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
-    FileId, RootDatabase,
+    RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 
+use span::FileId;
 use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode, AstToken,
@@ -299,19 +302,19 @@ fn nav_for_exit_points(
                     ast::ClosureExpr(c) => {
                         let pipe_tok = c.param_list().and_then(|it| it.pipe_token())?.text_range();
                         let closure_in_file = InFile::new(file_id, c.into());
-                        Some(NavigationTarget::from_expr(db, closure_in_file, Some(pipe_tok)))
+                        Some(expr_to_nav(db, closure_in_file, Some(pipe_tok)))
                     },
                     ast::BlockExpr(blk) => {
                         match blk.modifier() {
                             Some(ast::BlockModifier::Async(_)) => {
                                 let async_tok = blk.async_token()?.text_range();
                                 let blk_in_file = InFile::new(file_id, blk.into());
-                                Some(NavigationTarget::from_expr(db, blk_in_file, Some(async_tok)))
+                                Some(expr_to_nav(db, blk_in_file, Some(async_tok)))
                             },
                             Some(ast::BlockModifier::Try(_)) if token_kind != T![return] => {
                                 let try_tok = blk.try_token()?.text_range();
                                 let blk_in_file = InFile::new(file_id, blk.into());
-                                Some(NavigationTarget::from_expr(db, blk_in_file, Some(try_tok)))
+                                Some(expr_to_nav(db, blk_in_file, Some(try_tok)))
                             },
                             _ => None,
                         }
@@ -390,7 +393,7 @@ fn nav_for_break_points(
                 ast::Expr::BlockExpr(blk) => blk.label().unwrap().syntax().text_range(),
                 _ => return None,
             };
-            let nav = NavigationTarget::from_expr(db, expr_in_file, Some(focus_range));
+            let nav = expr_to_nav(db, expr_in_file, Some(focus_range));
             Some(nav)
         })
         .flatten()
@@ -401,6 +404,20 @@ fn nav_for_break_points(
 
 fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {
     def.try_to_nav(db).map(|it| it.collect()).unwrap_or_default()
+}
+
+fn expr_to_nav(
+    db: &RootDatabase,
+    InFile { file_id, value }: InFile<ast::Expr>,
+    focus_range: Option<TextRange>,
+) -> UpmappingResult<NavigationTarget> {
+    let kind = SymbolKind::Label;
+
+    let value_range = value.syntax().text_range();
+    let navs = navigation_target::orig_range_with_focus_r(db, file_id, value_range, focus_range);
+    navs.map(|(hir::FileRangeWrapper { file_id, range }, focus_range)| {
+        NavigationTarget::from_syntax(file_id, "<expr>".into(), focus_range, range, kind)
+    })
 }
 
 #[cfg(test)]

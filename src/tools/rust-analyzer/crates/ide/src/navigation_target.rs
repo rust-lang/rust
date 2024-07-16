@@ -152,22 +152,7 @@ impl NavigationTarget {
         )
     }
 
-    pub(crate) fn from_expr(
-        db: &RootDatabase,
-        InFile { file_id, value }: InFile<ast::Expr>,
-        focus_range: Option<TextRange>,
-    ) -> UpmappingResult<NavigationTarget> {
-        let name: SmolStr = "<expr>".into();
-        let kind = SymbolKind::Label;
-
-        orig_range_with_focus_r(db, file_id, value.syntax().text_range(), focus_range).map(
-            |(FileRange { file_id, range: full_range }, focus_range)| {
-                NavigationTarget::from_syntax(file_id, name.clone(), focus_range, full_range, kind)
-            },
-        )
-    }
-
-    fn from_syntax(
+    pub(crate) fn from_syntax(
         file_id: FileId,
         name: SmolStr,
         focus_range: Option<TextRange>,
@@ -747,7 +732,7 @@ fn orig_range_with_focus(
     )
 }
 
-fn orig_range_with_focus_r(
+pub(crate) fn orig_range_with_focus_r(
     db: &RootDatabase,
     hir_file: HirFileId,
     value: TextRange,
