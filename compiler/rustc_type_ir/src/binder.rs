@@ -49,10 +49,10 @@ where
 {
     type Lifted = Binder<U, T::Lifted>;
 
-    fn lift_to_tcx(self, tcx: U) -> Option<Self::Lifted> {
+    fn lift_to_interner(self, tcx: U) -> Option<Self::Lifted> {
         Some(Binder {
-            value: self.value.lift_to_tcx(tcx)?,
-            bound_vars: self.bound_vars.lift_to_tcx(tcx)?,
+            value: self.value.lift_to_interner(tcx)?,
+            bound_vars: self.bound_vars.lift_to_interner(tcx)?,
         })
     }
 }
