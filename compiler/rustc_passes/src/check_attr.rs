@@ -2091,7 +2091,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            Target::Fn | Target::Static => true,
+            Target::Fn | Target::Static | Target::ForeignFn | Target::ForeignStatic => true,
             _ => {
                 self.tcx
                     .dcx()
