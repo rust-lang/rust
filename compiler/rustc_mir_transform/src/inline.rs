@@ -12,7 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -205,7 +205,7 @@ impl<'tcx> Inliner<'tcx> {
             }
         }
 
-        let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
+        let callee_body = self.tcx.instance_mir(callsite.callee.def);
         self.check_mir_body(callsite, callee_body, callee_attrs, cross_crate_inlinable)?;
 
         if !self.tcx.consider_optimizing(|| {
@@ -1087,26 +1087,6 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             }
         }
     }
-}
-
-#[instrument(skip(tcx), level = "debug")]
-fn try_instance_mir<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: InstanceKind<'tcx>,
-) -> Result<&'tcx Body<'tcx>, &'static str> {
-    if let ty::InstanceKind::DropGlue(_, Some(ty))
-    | ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)) = instance
-        && let ty::Adt(def, args) = ty.kind()
-    {
-        let fields = def.all_fields();
-        for field in fields {
-            let field_ty = field.ty(tcx, args);
-            if field_ty.has_param() && field_ty.has_aliases() {
-                return Err("cannot build drop shim for polymorphic type");
-            }
-        }
-    }
-    Ok(tcx.instance_mir(instance))
 }
 
 fn body_is_forwarder(body: &Body<'_>) -> bool {
