@@ -242,6 +242,19 @@ impl Rustc {
         self
     }
 
+    /// Add a directory to the library search path with a restriction, where `kind` is a dependency
+    /// type. Equivalent to `-L KIND=PATH` in rustc.
+    pub fn specific_library_search_path<P: AsRef<Path>>(
+        &mut self,
+        kind: &str,
+        path: P,
+    ) -> &mut Self {
+        assert!(["dependency", "native", "all", "framework", "crate"].contains(&kind));
+        let path = path.as_ref().to_string_lossy();
+        self.cmd.arg(format!("-L{kind}={path}"));
+        self
+    }
+
     /// Override the system root. Equivalent to `--sysroot` in rustc.
     pub fn sysroot<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--sysroot");
