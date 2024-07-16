@@ -309,7 +309,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
 }
 
 impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.type_checker.infcx.tcx
     }
 
@@ -370,7 +370,7 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
                     // shouldn't ever fail. Instead, it unconditionally emits an
                     // alias-relate goal.
                     assert!(!self.type_checker.infcx.next_trait_solver());
-                    self.tcx().dcx().span_delayed_bug(
+                    self.cx().dcx().span_delayed_bug(
                         self.span(),
                         "failure to relate an opaque to itself should result in an error later on",
                     );
@@ -540,7 +540,7 @@ impl<'bccx, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating
         &mut self,
         obligations: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
-        let tcx = self.tcx();
+        let tcx = self.cx();
         let param_env = self.param_env();
         self.register_goals(
             obligations.into_iter().map(|to_pred| Goal::new(tcx, param_env, to_pred)),
@@ -559,7 +559,7 @@ impl<'bccx, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating
                     .into_iter()
                     .map(|goal| {
                         Obligation::new(
-                            self.tcx(),
+                            self.cx(),
                             ObligationCause::dummy_with_span(self.span()),
                             goal.param_env,
                             goal.predicate,

@@ -1933,7 +1933,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'tcx>);
 
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
 
