@@ -2,8 +2,6 @@
 //@ revisions: normal rpitit
 //@[normal] check-pass
 
-#![feature(precise_capturing)]
-
 fn hello<'a>() -> impl Sized + use<'a> {}
 //[normal]~^ WARN all possible in-scope parameters are already captured
 

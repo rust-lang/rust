@@ -9,10 +9,10 @@ LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> im
 LL |     if condition() { a } else { b }
    |                                 ^
    |
-help: to declare that `impl Trait<'d, 'e>` captures `'b`, you can add an explicit `'b` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'b`
    |
-LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e> + 'b
-   |                                                                                             ++++
+LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e> + use<'d, 'e, 'b>
+   |                                                                                             +++++++++++++++++
 
 error: aborting due to 1 previous error
 

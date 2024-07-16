@@ -1,5 +1,4 @@
 #![crate_name = "foo"]
-#![feature(precise_capturing)]
 
 //@ has foo/fn.two.html '//section[@id="main-content"]//pre' "-> impl Sized + use<'b, 'a>"
 pub fn two<'a, 'b, 'c>() -> impl Sized + use<'b, 'a /* no 'c */> {}

@@ -28,8 +28,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #![feature(precise_capturing)]
-    /// # #![allow(incomplete_features)]
     /// # #![deny(impl_trait_overcaptures)]
     /// # use std::fmt::Display;
     /// let mut x = vec![];
@@ -57,7 +55,6 @@ declare_lint! {
     pub IMPL_TRAIT_OVERCAPTURES,
     Allow,
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
-    @feature_gate = precise_capturing;
     //@future_incompatible = FutureIncompatibleInfo {
     //    reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
     //    reference: "<FIXME>",
@@ -76,8 +73,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #![feature(precise_capturing, lifetime_capture_rules_2024)]
-    /// # #![allow(incomplete_features)]
+    /// # #![feature(lifetime_capture_rules_2024)]
     /// # #![deny(impl_trait_redundant_captures)]
     /// fn test<'a>(x: &'a i32) -> impl Sized + use<'a> { x }
     /// ```
@@ -91,7 +87,6 @@ declare_lint! {
     pub IMPL_TRAIT_REDUNDANT_CAPTURES,
     Warn,
     "redundant precise-capturing `use<...>` syntax on an `impl Trait`",
-    @feature_gate = precise_capturing;
 }
 
 declare_lint_pass!(

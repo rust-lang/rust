@@ -9,11 +9,6 @@ LL | fn get_one<'a>(a: *mut &'a str) -> impl IntoIterator<Item = Opaque<'a>> {
 ...
 LL |         None::<Opaque<'static>>
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: to declare that `impl IntoIterator<Item = Opaque<'a>>` captures `'a`, you can add an explicit `'a` lifetime bound
-   |
-LL | fn get_one<'a>(a: *mut &'a str) -> impl IntoIterator<Item = Opaque<'a>> + 'a {
-   |                                                                         ++++
 
 error: aborting due to 1 previous error
 

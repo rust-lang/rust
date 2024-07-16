@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![feature(precise_capturing)]
-
 fn polarity() -> impl Sized + ?use<> {}
 //~^ ERROR expected identifier, found keyword `use`
 //~| ERROR cannot find trait `r#use` in this scope

@@ -8,10 +8,10 @@ LL | fn foo(x: &Vec<i32>) -> impl Sized {
 LL |     x
    |     ^
    |
-help: to declare that `impl Sized` captures `'_`, you can add an explicit `'_` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'_`
    |
-LL | fn foo(x: &Vec<i32>) -> impl Sized + '_ {
-   |                                    ++++
+LL | fn foo(x: &Vec<i32>) -> impl Sized + use<'_> {
+   |                                    +++++++++
 
 error: aborting due to 1 previous error
 
