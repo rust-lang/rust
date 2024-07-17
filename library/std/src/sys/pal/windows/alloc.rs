@@ -1,5 +1,3 @@
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ffi::c_void;
 use crate::ptr;
