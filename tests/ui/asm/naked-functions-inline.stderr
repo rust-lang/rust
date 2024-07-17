@@ -1,4 +1,4 @@
-error[E0736]: cannot use additional code generation attributes with `#[naked]`
+error[E0736]: attribute incompatible with `#[naked]`
   --> $DIR/naked-functions-inline.rs:13:1
    |
 LL | #[naked]
@@ -6,7 +6,7 @@ LL | #[naked]
 LL | #[inline]
    | ^^^^^^^^^ this attribute is incompatible with `#[naked]`
 
-error[E0736]: cannot use additional code generation attributes with `#[naked]`
+error[E0736]: attribute incompatible with `#[naked]`
   --> $DIR/naked-functions-inline.rs:20:1
    |
 LL | #[naked]
@@ -14,7 +14,7 @@ LL | #[naked]
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^ this attribute is incompatible with `#[naked]`
 
-error[E0736]: cannot use additional code generation attributes with `#[naked]`
+error[E0736]: attribute incompatible with `#[naked]`
   --> $DIR/naked-functions-inline.rs:27:1
    |
 LL | #[naked]

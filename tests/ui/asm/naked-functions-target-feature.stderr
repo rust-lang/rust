@@ -1,4 +1,4 @@
-error[E0736]: cannot use additional code generation attributes with `#[naked]`
+error[E0736]: attribute incompatible with `#[naked]`
   --> $DIR/naked-functions-target-feature.rs:8:1
    |
 LL | #[target_feature(enable = "sse2")]

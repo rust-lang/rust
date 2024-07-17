@@ -418,15 +418,47 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         attrs: &[Attribute],
     ) -> bool {
-        const FORBIDDEN: [rustc_span::Symbol; 3] =
-            [sym::track_caller, sym::inline, sym::target_feature];
+        // many attributes don't make sense in combination with #[naked].
+        // Notable attributes that are incompatible with `#[naked]` are:
+        //
+        // * `#[inline]`
+        // * `#[track_caller]`
+        // * `#[target_feature]`
+        // * `#[test]`, `#[ignore]`, `#[should_panic]`
+        //
+        // NOTE: when making changes to this list, check that `error_codes/E0736.md` remains accurate
+        const ALLOW_LIST: &[rustc_span::Symbol] = &[
+            // conditional compilation
+            sym::cfg,
+            sym::cfg_attr,
+            // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
+            sym::test,
+            sym::ignore,
+            sym::should_panic,
+            // diagnostics
+            sym::allow,
+            sym::warn,
+            sym::deny,
+            sym::forbid,
+            sym::deprecated,
+            sym::must_use,
+            // abi, linking and FFI
+            sym::export_name,
+            sym::link_section,
+            sym::no_mangle,
+            sym::naked,
+            // code generation
+            sym::cold,
+            // documentation
+            sym::doc,
+        ];
 
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
                 for other_attr in attrs {
-                    if FORBIDDEN.into_iter().any(|name| other_attr.has_name(name)) {
-                        self.dcx().emit_err(errors::NakedFunctionCodegenAttribute {
+                    if !ALLOW_LIST.iter().any(|name| other_attr.has_name(*name)) {
+                        self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
                             span: other_attr.span,
                             naked_span: attr.span,
                         });
