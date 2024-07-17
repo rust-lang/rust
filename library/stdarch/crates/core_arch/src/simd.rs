@@ -3,10 +3,9 @@
 #![allow(non_camel_case_types)]
 
 macro_rules! simd_ty {
-    ($(#[$stability:meta])? $id:ident [$ety:ident]: $($elem_name:ident),*) => {
+    ($id:ident [$ety:ident]: $($elem_name:ident),*) => {
         #[repr(simd)]
         #[derive(Copy, Clone, Debug, PartialEq)]
-        $(#[$stability])?
         pub(crate) struct $id { $(pub $elem_name: $ety),* }
 
         #[allow(clippy::use_self)]
@@ -188,7 +187,6 @@ simd_ty!(i32x4[i32]: x0, x1, x2, x3);
 simd_ty!(i64x2[i64]: x0, x1);
 
 simd_ty!(
-    #[unstable(feature = "f16", issue = "116909")]
     f16x8[f16]:
     x0,
     x1,
@@ -372,7 +370,6 @@ simd_ty!(
 simd_ty!(i64x4[i64]: x0, x1, x2, x3);
 
 simd_ty!(
-    #[unstable(feature = "f16", issue = "116909")]
     f16x16[f16]:
     x0,
     x1,
@@ -722,7 +719,6 @@ simd_ty!(
 );
 
 simd_ty!(
-    #[unstable(feature = "f16", issue = "116909")]
     f16x32[f16]:
     x0,
     x1,

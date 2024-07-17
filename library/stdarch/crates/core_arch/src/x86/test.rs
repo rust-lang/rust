@@ -38,10 +38,8 @@ pub unsafe fn get_m128(a: __m128, idx: usize) -> f32 {
 
 #[track_caller]
 #[target_feature(enable = "avx512fp16")]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn assert_eq_m128h(a: __m128h, b: __m128h) {
-    // FIXME: use `_mm_cmp_ph_mask::<_CMP_EQ_OQ>` when it's implemented
-    let r = _mm_cmpeq_epi16_mask(transmute(a), transmute(b));
+    let r = _mm_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
     if r != 0b1111_1111 {
         panic!("{:?} != {:?}", a, b);
     }
@@ -90,10 +88,8 @@ pub unsafe fn get_m256(a: __m256, idx: usize) -> f32 {
 
 #[track_caller]
 #[target_feature(enable = "avx512fp16")]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn assert_eq_m256h(a: __m256h, b: __m256h) {
-    // FIXME: use `_mm256_cmp_ph_mask::<_CMP_EQ_OQ>` when it's implemented
-    let r = _mm256_cmpeq_epi16_mask(transmute(a), transmute(b));
+    let r = _mm256_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
     if r != 0b11111111_11111111 {
         panic!("{:?} != {:?}", a, b);
     }
@@ -164,10 +160,8 @@ pub unsafe fn assert_eq_m512d(a: __m512d, b: __m512d) {
 
 #[track_caller]
 #[target_feature(enable = "avx512fp16")]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn assert_eq_m512h(a: __m512h, b: __m512h) {
-    // FIXME: use `_mm512_cmp_ph_mask::<_CMP_EQ_OQ>` when it's implemented
-    let r = _mm512_cmpeq_epi16_mask(transmute(a), transmute(b));
+    let r = _mm512_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
     if r != 0b11111111_11111111_11111111_11111111 {
         panic!("{:?} != {:?}", a, b);
     }

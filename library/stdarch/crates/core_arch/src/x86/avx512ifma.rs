@@ -27,6 +27,7 @@ pub unsafe fn _mm512_madd52hi_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m51
 /// from `k` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm512_mask_madd52hi_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
@@ -47,6 +48,7 @@ pub unsafe fn _mm512_mask_madd52hi_epu64(
 /// out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm512_maskz_madd52hi_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
@@ -82,6 +84,7 @@ pub unsafe fn _mm512_madd52lo_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m51
 /// from `k` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm512_mask_madd52lo_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
@@ -102,6 +105,7 @@ pub unsafe fn _mm512_mask_madd52lo_epu64(
 /// out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm512_maskz_madd52lo_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
@@ -155,6 +159,7 @@ pub unsafe fn _mm256_madd52hi_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m25
 /// from `k` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm256_mask_madd52hi_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
@@ -175,6 +180,7 @@ pub unsafe fn _mm256_mask_madd52hi_epu64(
 /// out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm256_maskz_madd52hi_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
@@ -228,6 +234,7 @@ pub unsafe fn _mm256_madd52lo_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m25
 /// from `k` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm256_mask_madd52lo_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
@@ -248,6 +255,7 @@ pub unsafe fn _mm256_mask_madd52lo_epu64(
 /// out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm256_maskz_madd52lo_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
@@ -301,6 +309,7 @@ pub unsafe fn _mm_madd52hi_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i 
 /// from `k` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm_mask_madd52hi_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
@@ -316,6 +325,7 @@ pub unsafe fn _mm_mask_madd52hi_epu64(a: __m128i, k: __mmask8, b: __m128i, c: __
 /// out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm_maskz_madd52hi_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
@@ -364,6 +374,7 @@ pub unsafe fn _mm_madd52lo_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i 
 /// from `k` when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm_mask_madd52lo_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
@@ -379,6 +390,7 @@ pub unsafe fn _mm_mask_madd52lo_epu64(a: __m128i, k: __mmask8, b: __m128i, c: __
 /// out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avx512techs=AVX512IFMA52&text=_mm_maskz_madd52lo_epu64)
+#[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]

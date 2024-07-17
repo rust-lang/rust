@@ -161,7 +161,7 @@ fn verify_all_signatures() {
     //   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#
     //
     // Open up the network console and you'll see an xml file was downloaded
-    // (currently called data-3.6.8.xml). That's the file we downloaded
+    // (currently called data-3.6.9.xml). That's the file we downloaded
     // here.
     let xml = include_bytes!("../x86-intel.xml");
 
