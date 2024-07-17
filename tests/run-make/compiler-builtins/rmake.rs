@@ -14,7 +14,7 @@
 
 #![deny(warnings)]
 
-use run_make_support::fs_wrapper::{read, read_dir};
+use run_make_support::fs::{read, read_dir};
 use run_make_support::object::read::archive::ArchiveFile;
 use run_make_support::object::read::Object;
 use run_make_support::object::ObjectSection;
