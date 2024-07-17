@@ -6,15 +6,15 @@
 // Reason: the compiled binary is executed
 
 use run_make_support::{
-    build_native_static_lib, dynamic_lib_name, fs_wrapper, run, run_fail, rustc, static_lib_name,
+    build_native_static_lib, dynamic_lib_name, rfs, run, run_fail, rustc, static_lib_name,
 };
 
 fn main() {
     build_native_static_lib("cfoo");
     rustc().input("foo.rs").arg("-Cprefer-dynamic").run();
     rustc().input("bar.rs").run();
-    fs_wrapper::remove_file(static_lib_name("cfoo"));
+    rfs::remove_file(static_lib_name("cfoo"));
     run("bar");
-    fs_wrapper::remove_file(dynamic_lib_name("foo"));
+    rfs::remove_file(dynamic_lib_name("foo"));
     run_fail("bar");
 }
