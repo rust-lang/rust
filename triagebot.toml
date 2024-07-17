@@ -928,6 +928,7 @@ compiler-team-contributors = [
     "@fee1-dead",
     "@jieyouxu",
     "@BoxyUwU",
+    "@chenyukang",
 ]
 compiler = [
     "compiler-team",
@@ -976,6 +977,7 @@ diagnostics = [
     "@estebank",
     "@oli-obk",
     "@TaKO8Ki",
+    "@chenyukang",
 ]
 parser = [
     "@compiler-errors",
@@ -989,6 +991,7 @@ lexer = [
     "@nnethercote",
     "@petrochenkov",
     "@estebank",
+    "@chenyukang",
 ]
 arena = [
     "@nnethercote",
