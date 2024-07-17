@@ -7,7 +7,6 @@ mod command;
 mod macros;
 mod util;
 
-pub mod ar;
 pub mod artifact_names;
 pub mod assertion_helpers;
 pub mod diff;
@@ -28,9 +27,10 @@ pub use regex;
 pub use wasmparser;
 
 // Re-exports of external dependencies.
-pub use external_deps::{cc, clang, htmldocck, llvm, python, rustc, rustdoc};
+pub use external_deps::{c_build, cc, clang, htmldocck, llvm, python, rustc, rustdoc};
 
 // These rely on external dependencies.
+pub use c_build::build_native_static_lib;
 pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
@@ -41,12 +41,6 @@ pub use llvm::{
 pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
-
-/// [`ar`][mod@ar] currently uses the [ar][rust-ar] rust library, but that is subject to changes, we
-/// may switch to `llvm-ar` subject to experimentation.
-///
-/// [rust-ar]: https://github.com/mdsteele/rust-ar
-pub use ar::ar;
 
 /// [`diff`][mod@diff] is implemented in terms of the [similar] library.
 ///
@@ -82,23 +76,3 @@ pub use assertion_helpers::{
     has_prefix, has_suffix, invalid_utf8_contains, invalid_utf8_not_contains, not_contains,
     shallow_find_files,
 };
-
-/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
-#[track_caller]
-pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
-    let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
-    let src = format!("{lib_name}.c");
-    let lib_path = static_lib_name(lib_name);
-    if is_msvc() {
-        cc().arg("-c").out_exe(&obj_file).input(src).run();
-    } else {
-        cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
-    };
-    let obj_file = if is_msvc() {
-        PathBuf::from(format!("{lib_name}.obj"))
-    } else {
-        PathBuf::from(format!("{lib_name}.o"))
-    };
-    llvm_ar().obj_to_ar().output_input(&lib_path, &obj_file).run();
-    path(lib_path)
-}
