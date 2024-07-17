@@ -4,6 +4,7 @@ use crate::errors;
 use rustc_ast::attr::mk_attr;
 use rustc_ast::token;
 use rustc_ast::{self as ast, AttrItem, AttrStyle};
+use rustc_parse::parser::ForceCollect;
 use rustc_parse::{new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::FileName;
@@ -17,13 +18,14 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
         ));
 
         let start_span = parser.token.span;
-        let AttrItem { unsafety, path, args, tokens: _ } = match parser.parse_attr_item(false) {
-            Ok(ai) => ai,
-            Err(err) => {
-                err.emit();
-                continue;
-            }
-        };
+        let AttrItem { unsafety, path, args, tokens: _ } =
+            match parser.parse_attr_item(ForceCollect::No) {
+                Ok(ai) => ai,
+                Err(err) => {
+                    err.emit();
+                    continue;
+                }
+            };
         let end_span = parser.token.span;
         if parser.token != token::Eof {
             psess.dcx().emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });

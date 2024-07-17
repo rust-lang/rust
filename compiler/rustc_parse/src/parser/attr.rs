@@ -124,7 +124,7 @@ impl<'a> Parser<'a> {
                 if this.eat(&token::Not) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
 
             this.expect(&token::OpenDelim(Delimiter::Bracket))?;
-            let item = this.parse_attr_item(false)?;
+            let item = this.parse_attr_item(ForceCollect::No)?;
             this.expect(&token::CloseDelim(Delimiter::Bracket))?;
             let attr_sp = lo.to(this.prev_token.span);
 
@@ -248,7 +248,7 @@ impl<'a> Parser<'a> {
     ///     PATH
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
-    pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
+    pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
         maybe_whole!(self, NtMeta, |attr| attr.into_inner());
 
         let do_parse = |this: &mut Self| {
@@ -271,7 +271,10 @@ impl<'a> Parser<'a> {
             Ok(ast::AttrItem { unsafety, path, args, tokens: None })
         };
         // Attr items don't have attributes
-        if capture_tokens { self.collect_tokens_no_attrs(do_parse) } else { do_parse(self) }
+        match force_collect {
+            ForceCollect::Yes => self.collect_tokens_no_attrs(do_parse),
+            ForceCollect::No => do_parse(self),
+        }
     }
 
     /// Parses attributes that appear after the opening of an item. These should
@@ -344,7 +347,7 @@ impl<'a> Parser<'a> {
         let mut expanded_attrs = Vec::with_capacity(1);
         while self.token.kind != token::Eof {
             let lo = self.token.span;
-            let item = self.parse_attr_item(true)?;
+            let item = self.parse_attr_item(ForceCollect::Yes)?;
             expanded_attrs.push((item, lo.to(self.prev_token.span)));
             if !self.eat(&token::Comma) {
                 break;
