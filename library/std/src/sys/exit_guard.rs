@@ -1,14 +1,8 @@
 cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {
-        /// pthread_t is a pointer on some platforms,
-        /// so we wrap it in this to impl Send + Sync.
-        #[derive(Clone, Copy)]
-        #[repr(transparent)]
-        struct PThread(libc::pthread_t);
-        // Safety: pthread_t is safe to send between threads
-        unsafe impl Send for PThread {}
-        // Safety: pthread_t is safe to share between threads
-        unsafe impl Sync for PThread {}
+        use crate::mem;
+        use crate::sync::atomic::{AtomicUsize, Ordering};
+
         /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
         /// On glibc, `libc::exit` has been observed to not always be thread-safe.
@@ -31,27 +25,29 @@ cfg_if::cfg_if! {
         #[cfg_attr(any(test, doctest), allow(dead_code))]
         pub(crate) fn unique_thread_exit() {
             let this_thread_id = unsafe { libc::pthread_self() };
-            use crate::sync::{Mutex, PoisonError};
-            static EXITING_THREAD_ID: Mutex<Option<PThread>> = Mutex::new(None);
-            let mut exiting_thread_id =
-                EXITING_THREAD_ID.lock().unwrap_or_else(PoisonError::into_inner);
-            match *exiting_thread_id {
-                None => {
+
+            const _: () = assert!(mem::size_of::<libc::pthread_t>() <= mem::size_of::<usize>());
+
+            const NONE: usize = 0;
+            static EXITING_THREAD_ID: AtomicUsize = AtomicUsize::new(NONE);
+            match EXITING_THREAD_ID.compare_exchange(NONE, this_thread_id as usize, Ordering::Relaxed, Ordering::Relaxed).unwrap_or_else(|id| id) {
+                NONE => {
                     // This is the first thread to call `unique_thread_exit`,
                     // and this is the first time it is called.
-                    // Set EXITING_THREAD_ID to this thread's ID and return.
-                    *exiting_thread_id = Some(PThread(this_thread_id));
-                },
-                Some(exiting_thread_id) if exiting_thread_id.0 == this_thread_id => {
+                    //
+                    // We set `EXITING_THREAD_ID` to this thread's ID already
+                    // and will return.
+                }
+                id if id == this_thread_id as usize => {
                     // This is the first thread to call `unique_thread_exit`,
                     // but this is the second time it is called.
+                    //
                     // Abort the process.
                     core::panicking::panic_nounwind("std::process::exit called re-entrantly")
                 }
-                Some(_) => {
+                _ => {
                     // This is not the first thread to call `unique_thread_exit`.
                     // Pause until the process exits.
-                    drop(exiting_thread_id);
                     loop {
                         // Safety: libc::pause is safe to call.
                         unsafe { libc::pause(); }
