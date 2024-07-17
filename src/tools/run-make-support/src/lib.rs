@@ -61,14 +61,15 @@ pub use artifact_names::{
 };
 
 /// Path-related helpers.
-pub use path_helpers::{cwd, path, source_root};
+pub use path_helpers::{
+    cwd, filename_not_in_denylist, has_extension, has_prefix, has_suffix, not_contains, path,
+    shallow_find_files, source_root,
+};
 
 /// Helpers for scoped test execution where certain properties are attempted to be maintained.
 pub use scoped_run::{run_in_tmpdir, test_while_readonly};
 
 pub use assertion_helpers::{
     assert_contains, assert_equals, assert_not_contains, assert_recursive_eq,
-    count_regex_matches_in_files_with_extension, filename_not_in_denylist, has_extension,
-    has_prefix, has_suffix, invalid_utf8_contains, invalid_utf8_not_contains, not_contains,
-    shallow_find_files,
+    count_regex_matches_in_files_with_extension, invalid_utf8_contains, invalid_utf8_not_contains,
 };

@@ -1,57 +1,9 @@
 //! Collection of assertions and assertion-related helpers.
 
 use std::panic;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::fs as rfs;
-use crate::path_helpers::cwd;
-
-/// Browse the directory `path` non-recursively and return all files which respect the parameters
-/// outlined by `closure`.
-#[track_caller]
-pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
-    path: P,
-    filter: F,
-) -> Vec<PathBuf> {
-    let mut matching_files = Vec::new();
-    for entry in rfs::read_dir(path) {
-        let entry = entry.expect("failed to read directory entry.");
-        let path = entry.path();
-
-        if path.is_file() && filter(&path) {
-            matching_files.push(path);
-        }
-    }
-    matching_files
-}
-
-/// Returns true if the filename at `path` starts with `prefix`.
-pub fn has_prefix<P: AsRef<Path>>(path: P, prefix: &str) -> bool {
-    path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().starts_with(prefix))
-}
-
-/// Returns true if the filename at `path` has the extension `extension`.
-pub fn has_extension<P: AsRef<Path>>(path: P, extension: &str) -> bool {
-    path.as_ref().extension().is_some_and(|ext| ext == extension)
-}
-
-/// Returns true if the filename at `path` does not contain `expected`.
-pub fn not_contains<P: AsRef<Path>>(path: P, expected: &str) -> bool {
-    !path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().contains(expected))
-}
-
-/// Returns true if the filename at `path` is not in `expected`.
-pub fn filename_not_in_denylist<P: AsRef<Path>, V: AsRef<[String]>>(path: P, expected: V) -> bool {
-    let expected = expected.as_ref();
-    path.as_ref()
-        .file_name()
-        .is_some_and(|name| !expected.contains(&name.to_str().unwrap().to_owned()))
-}
-
-/// Returns true if the filename at `path` ends with `suffix`.
-pub fn has_suffix<P: AsRef<Path>>(path: P, suffix: &str) -> bool {
-    path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().ends_with(suffix))
-}
 
 /// Gathers all files in the current working directory that have the extension `ext`, and counts
 /// the number of lines within that contain a match with the regex pattern `re`.
