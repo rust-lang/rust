@@ -8,11 +8,10 @@ use std::{iter, ops::Not};
 use either::Either;
 use hir::{db::DefDatabase, DescendPreference, HasCrate, HasSource, LangItem, Semantics};
 use ide_db::{
-    base_db::FileRange,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
-    FxIndexSet, RootDatabase,
+    FileRange, FxIndexSet, RootDatabase,
 };
 use itertools::{multizip, Itertools};
 use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
@@ -110,7 +109,7 @@ pub(crate) fn hover(
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = &hir::Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
     let mut res = if range.is_empty() {
         hover_simple(sema, FilePosition { file_id, offset: range.start() }, file, config)
     } else {
@@ -454,7 +453,7 @@ fn runnable_action(
         Definition::Module(it) => runnable_mod(sema, it).map(HoverAction::Runnable),
         Definition::Function(func) => {
             let src = func.source(sema.db)?;
-            if src.file_id != file_id.into() {
+            if src.file_id != file_id {
                 cov_mark::hit!(hover_macro_generated_struct_fn_doc_comment);
                 cov_mark::hit!(hover_macro_generated_struct_fn_doc_attr);
                 return None;

@@ -105,7 +105,7 @@ fn replace_usages(
     target_module: &hir::Module,
 ) {
     for (file_id, references) in usages.iter() {
-        edit.edit_file(*file_id);
+        edit.edit_file(file_id.file_id());
 
         let refs_with_imports =
             augment_references_with_imports(edit, ctx, references, struct_name, target_module);

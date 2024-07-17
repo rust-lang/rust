@@ -3,10 +3,9 @@ use std::iter;
 use expect_test::{expect, Expect};
 use hir::Semantics;
 use ide_db::{
-    base_db::{FilePosition, FileRange},
     defs::Definition,
     documentation::{Documentation, HasDocs},
-    RootDatabase,
+    FilePosition, FileRange, RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{ast, match_ast, AstNode, SyntaxNode};
@@ -80,7 +79,7 @@ fn def_under_cursor(
     position: &FilePosition,
 ) -> (Definition, Documentation) {
     let (docs, def) = sema
-        .parse(position.file_id)
+        .parse_guess_edition(position.file_id)
         .syntax()
         .token_at_offset(position.offset)
         .left_biased()

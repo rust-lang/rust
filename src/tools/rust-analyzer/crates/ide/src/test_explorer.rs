@@ -2,8 +2,8 @@
 
 use hir::{Crate, Module, ModuleDef, Semantics};
 use ide_db::{
-    base_db::{CrateGraph, CrateId, FileId, SourceDatabase},
-    RootDatabase,
+    base_db::{CrateGraph, CrateId, SourceDatabase},
+    FileId, RootDatabase,
 };
 use syntax::TextRange;
 

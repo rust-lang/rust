@@ -70,6 +70,7 @@ use ide_db::{
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
+use span::EditionedFileId;
 use syntax::SourceFile;
 use triomphe::Arc;
 use view_memory_layout::{view_memory_layout, RecursiveMemoryLayout};
@@ -120,10 +121,7 @@ pub use ide_completion::{
     Snippet, SnippetScope,
 };
 pub use ide_db::{
-    base_db::{
-        Cancelled, CrateGraph, CrateId, FileChange, FileId, FilePosition, FileRange, SourceRoot,
-        SourceRootId,
-    },
+    base_db::{Cancelled, CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
     label::Label,
     line_index::{LineCol, LineIndex},
@@ -131,7 +129,7 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
-    RootDatabase, SymbolKind,
+    FileId, FilePosition, FileRange, RootDatabase, SymbolKind,
 };
 pub use ide_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
@@ -298,7 +296,8 @@ impl Analysis {
 
     /// Gets the syntax tree of the file.
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
-        self.with_db(|db| db.parse(file_id).tree())
+        // FIXME editiojn
+        self.with_db(|db| db.parse(EditionedFileId::current_edition(file_id)).tree())
     }
 
     /// Returns true if this file belongs to an immutable library.
@@ -321,7 +320,7 @@ impl Analysis {
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Cancellable<Option<TextSize>> {
         self.with_db(|db| {
-            let parse = db.parse(position.file_id);
+            let parse = db.parse(EditionedFileId::current_edition(position.file_id));
             let file = parse.tree();
             matching_brace::matching_brace(&file, position.offset)
         })
@@ -386,7 +385,7 @@ impl Analysis {
     /// stuff like trailing commas.
     pub fn join_lines(&self, config: &JoinLinesConfig, frange: FileRange) -> Cancellable<TextEdit> {
         self.with_db(|db| {
-            let parse = db.parse(frange.file_id);
+            let parse = db.parse(EditionedFileId::current_edition(frange.file_id));
             join_lines::join_lines(config, &parse.tree(), frange.range)
         })
     }
@@ -422,7 +421,12 @@ impl Analysis {
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Cancellable<Vec<StructureNode>> {
-        self.with_db(|db| file_structure::file_structure(&db.parse(file_id).tree()))
+        // FIXME: Edition
+        self.with_db(|db| {
+            file_structure::file_structure(
+                &db.parse(EditionedFileId::current_edition(file_id)).tree(),
+            )
+        })
     }
 
     /// Returns a list of the places in the file where type hints can be displayed.
@@ -449,7 +453,11 @@ impl Analysis {
 
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<Fold>> {
-        self.with_db(|db| folding_ranges::folding_ranges(&db.parse(file_id).tree()))
+        self.with_db(|db| {
+            folding_ranges::folding_ranges(
+                &db.parse(EditionedFileId::current_edition(file_id)).tree(),
+            )
+        })
     }
 
     /// Fuzzy searches for a symbol.
@@ -751,7 +759,7 @@ impl Analysis {
                 ide_ssr::MatchFinder::in_context(db, resolve_context, selections)?;
             match_finder.add_rule(rule)?;
             let edits = if parse_only { Default::default() } else { match_finder.edits() };
-            Ok(SourceChange::from(edits))
+            Ok(SourceChange::from_iter(edits))
         })
     }
 

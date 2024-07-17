@@ -1,5 +1,5 @@
 use expect_test::{expect, Expect};
-use ide_db::base_db::{FileLoader, FileRange};
+use ide_db::{base_db::FileLoader, FileRange};
 use syntax::TextRange;
 
 use crate::{

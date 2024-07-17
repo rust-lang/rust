@@ -2,7 +2,7 @@
 
 use expect_test::Expect;
 use proc_macro_api::msg::TokenId;
-use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
 use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
@@ -68,7 +68,7 @@ fn assert_expand_impl(
     let def_site = Span {
         range: TextRange::new(0.into(), 150.into()),
         anchor: SpanAnchor {
-            file_id: FileId::from_raw(41),
+            file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ErasedFileAstId::from_raw(From::from(1)),
         },
         ctx: SyntaxContextId::ROOT,
@@ -76,7 +76,7 @@ fn assert_expand_impl(
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
-            file_id: FileId::from_raw(42),
+            file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ErasedFileAstId::from_raw(From::from(2)),
         },
         ctx: SyntaxContextId::ROOT,

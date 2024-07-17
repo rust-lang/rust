@@ -1,11 +1,11 @@
 //! Builtin macro
 
-use base_db::{AnchoredPath, FileId};
+use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
 use intern::{sym, Symbol};
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
-use span::{Edition, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, EditionedFileId, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{
     format_smolstr,
@@ -228,7 +228,7 @@ fn assert_expand(
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
     let call_site_span = span_with_call_site_ctxt(db, span, id);
-    let args = parse_exprs_with_sep(tt, ',', call_site_span, Edition::CURRENT);
+    let args = parse_exprs_with_sep(tt, ',', call_site_span, Edition::CURRENT_FIXME);
     let dollar_crate = dollar_crate(span);
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
@@ -686,8 +686,9 @@ fn relative_file(
     call_id: MacroCallId,
     path_str: &str,
     allow_recursion: bool,
-) -> Result<FileId, ExpandError> {
-    let call_site = call_id.as_macro_file().parent(db).original_file_respecting_includes(db);
+) -> Result<EditionedFileId, ExpandError> {
+    let call_site =
+        call_id.as_macro_file().parent(db).original_file_respecting_includes(db).file_id();
     let path = AnchoredPath { anchor: call_site, path: path_str };
     let res = db
         .resolve_path(path)
@@ -696,7 +697,7 @@ fn relative_file(
     if res == call_site && !allow_recursion {
         Err(ExpandError::other(format!("recursive inclusion of `{path_str}`")))
     } else {
-        Ok(res)
+        Ok(EditionedFileId::new(res, Edition::CURRENT_FIXME))
     }
 }
 
@@ -728,11 +729,10 @@ fn include_expand(
         }
     };
     match parse_to_token_tree(
-        // FIXME
-        Edition::CURRENT,
+        file_id.edition(),
         SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
         SyntaxContextId::ROOT,
-        &db.file_text(file_id),
+        &db.file_text(file_id.file_id()),
     ) {
         Some(it) => ExpandResult::ok(it),
         None => ExpandResult::new(
@@ -746,7 +746,7 @@ pub fn include_input_to_file_id(
     db: &dyn ExpandDatabase,
     arg_id: MacroCallId,
     arg: &tt::Subtree,
-) -> Result<FileId, ExpandError> {
+) -> Result<EditionedFileId, ExpandError> {
     relative_file(db, arg_id, parse_string(arg)?.0.as_str(), false)
 }
 
@@ -793,7 +793,7 @@ fn include_str_expand(
         }
     };
 
-    let text = db.file_text(file_id);
+    let text = db.file_text(file_id.file_id());
     let text = &*text;
 
     ExpandResult::ok(quote!(span =>#text))

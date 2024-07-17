@@ -1,11 +1,12 @@
 //! Implementation of "chaining" inlay hints.
 use ide_db::famous_defs::FamousDefs;
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode},
     Direction, NodeOrToken, SyntaxKind, T,
 };
 
-use crate::{FileId, InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 use super::label_of_ty;
 
@@ -13,7 +14,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: FileId,
+    _file_id: EditionedFileId,
     expr: &ast::Expr,
 ) -> Option<()> {
     if !config.chaining_hints {

@@ -7,12 +7,11 @@ use hir::{
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
-    base_db::{FilePosition, FileRange},
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FxHashMap, FxHashSet, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxHashSet, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use span::TextSize;
@@ -229,7 +228,7 @@ pub(crate) fn related_tests(
 ) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let mut res: FxHashSet<Runnable> = FxHashSet::default();
-    let syntax = sema.parse(position.file_id).syntax().clone();
+    let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
 
     find_related_tests(&sema, &syntax, position, search_scope, &mut res);
 
@@ -290,8 +289,9 @@ fn find_related_tests_in_module(
     let mod_source = parent_module.definition_source_range(sema.db);
 
     let file_id = mod_source.file_id.original_file(sema.db);
-    let mod_scope = SearchScope::file_range(FileRange { file_id, range: mod_source.value });
-    let fn_pos = FilePosition { file_id, offset: fn_name.syntax().text_range().start() };
+    let mod_scope = SearchScope::file_range(hir::FileRange { file_id, range: mod_source.value });
+    let fn_pos =
+        FilePosition { file_id: file_id.into(), offset: fn_name.syntax().text_range().start() };
     find_related_tests(sema, syntax, fn_pos, Some(mod_scope), tests)
 }
 

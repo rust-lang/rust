@@ -1,8 +1,9 @@
 //! This module resolves `mod foo;` declaration to file.
 use arrayvec::ArrayVec;
-use base_db::{AnchoredPath, FileId};
+use base_db::AnchoredPath;
 use hir_expand::{name::Name, HirFileIdExt, MacroFileIdExt};
 use limit::Limit;
+use span::EditionedFileId;
 use syntax::ToSmolStr as _;
 
 use crate::{db::DefDatabase, HirFileId};
@@ -64,7 +65,7 @@ impl ModDir {
         file_id: HirFileId,
         name: &Name,
         attr_path: Option<&str>,
-    ) -> Result<(FileId, bool, ModDir), Box<[String]>> {
+    ) -> Result<(EditionedFileId, bool, ModDir), Box<[String]>> {
         let name = name.unescaped();
 
         let mut candidate_files = ArrayVec::<_, 2>::new();
@@ -92,7 +93,7 @@ impl ModDir {
 
         let orig_file_id = file_id.original_file_respecting_includes(db.upcast());
         for candidate in candidate_files.iter() {
-            let path = AnchoredPath { anchor: orig_file_id, path: candidate.as_str() };
+            let path = AnchoredPath { anchor: orig_file_id.file_id(), path: candidate.as_str() };
             if let Some(file_id) = db.resolve_path(path) {
                 let is_mod_rs = candidate.ends_with("/mod.rs");
 
@@ -103,7 +104,12 @@ impl ModDir {
                     DirPath::new(format!("{}/", name.display(db.upcast())))
                 };
                 if let Some(mod_dir) = self.child(dir_path, !root_dir_owner) {
-                    return Ok((file_id, is_mod_rs, mod_dir));
+                    return Ok((
+                        // FIXME: Edition, is this rightr?
+                        EditionedFileId::new(file_id, orig_file_id.edition()),
+                        is_mod_rs,
+                        mod_dir,
+                    ));
                 }
             }
         }

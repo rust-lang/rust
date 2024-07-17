@@ -65,7 +65,7 @@ mod tests;
 pub mod utils;
 
 use hir::Semantics;
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::{EditionedFileId, RootDatabase};
 use syntax::TextRange;
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
@@ -83,10 +83,13 @@ pub fn assists(
     db: &RootDatabase,
     config: &AssistConfig,
     resolve: AssistResolveStrategy,
-    range: FileRange,
+    range: ide_db::FileRange,
 ) -> Vec<Assist> {
     let sema = Semantics::new(db);
-    let ctx = AssistContext::new(sema, config, range);
+    let file_id = sema
+        .attach_first_edition(range.file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(range.file_id));
+    let ctx = AssistContext::new(sema, config, hir::FileRange { file_id, range: range.range });
     let mut acc = Assists::new(&ctx, resolve);
     handlers::all().iter().for_each(|handler| {
         handler(&mut acc, &ctx);

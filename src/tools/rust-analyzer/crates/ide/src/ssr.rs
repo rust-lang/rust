@@ -3,7 +3,7 @@
 //! depend on the ide_ssr crate.
 
 use ide_assists::{Assist, AssistId, AssistKind, AssistResolveStrategy, GroupLabel};
-use ide_db::{base_db::FileRange, label::Label, source_change::SourceChange, RootDatabase};
+use ide_db::{label::Label, source_change::SourceChange, FileRange, RootDatabase};
 
 pub(crate) fn ssr_assists(
     db: &RootDatabase,
@@ -26,7 +26,7 @@ pub(crate) fn ssr_assists(
             SourceChange::from_text_edit(frange.file_id, text_edit_for_file)
         };
 
-        let source_change_for_workspace = SourceChange::from(match_finder.edits());
+        let source_change_for_workspace = SourceChange::from_iter(match_finder.edits());
 
         (Some(source_change_for_file), Some(source_change_for_workspace))
     } else {
@@ -59,9 +59,8 @@ mod tests {
     use expect_test::expect;
     use ide_assists::{Assist, AssistResolveStrategy};
     use ide_db::{
-        base_db::{salsa::Durability, FileRange},
-        symbol_index::SymbolsDatabase,
-        FxHashSet, RootDatabase,
+        base_db::salsa::Durability, symbol_index::SymbolsDatabase, FileRange, FxHashSet,
+        RootDatabase,
     };
     use test_fixture::WithFixture;
     use triomphe::Arc;
@@ -73,7 +72,11 @@ mod tests {
         let mut local_roots = FxHashSet::default();
         local_roots.insert(test_fixture::WORKSPACE);
         db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
-        ssr_assists(&db, &resolve, FileRange { file_id, range: range_or_offset.into() })
+        ssr_assists(
+            &db,
+            &resolve,
+            FileRange { file_id: file_id.into(), range: range_or_offset.into() },
+        )
     }
 
     #[test]

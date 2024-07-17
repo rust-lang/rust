@@ -10,9 +10,8 @@ use hir::{
 };
 use ide_db::{
     active_parameter::{callable_for_node, generic_def_for_node},
-    base_db::FilePosition,
     documentation::{Documentation, HasDocs},
-    FxIndexMap,
+    FilePosition, FxIndexMap,
 };
 use stdx::format_to;
 use syntax::{
@@ -74,7 +73,7 @@ pub(crate) fn signature_help(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<SignatureHelp> {
     let sema = Semantics::new(db);
-    let file = sema.parse(file_id);
+    let file = sema.parse_guess_edition(file_id);
     let file = file.syntax();
     let token = file
         .token_at_offset(offset)
@@ -660,7 +659,7 @@ mod tests {
     use std::iter;
 
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FilePosition;
+    use ide_db::FilePosition;
     use stdx::format_to;
     use test_fixture::ChangeFixture;
 
@@ -674,7 +673,7 @@ mod tests {
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ($0)");
         let offset = range_or_offset.expect_offset();
-        (database, FilePosition { file_id, offset })
+        (database, FilePosition { file_id: file_id.into(), offset })
     }
 
     #[track_caller]

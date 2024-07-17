@@ -6,10 +6,10 @@ use crate::{
 };
 use hir::{AsAssocItem, AssocItem, DescendPreference, MacroFileIdExt, ModuleDef, Semantics};
 use ide_db::{
-    base_db::{AnchoredPath, FileId, FileLoader},
+    base_db::{AnchoredPath, FileLoader},
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
-    RootDatabase,
+    FileId, RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
@@ -32,7 +32,7 @@ pub(crate) fn goto_definition(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = &Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
         | INT_NUMBER
@@ -196,7 +196,7 @@ fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use ide_db::FileRange;
     use itertools::Itertools;
 
     use crate::fixture;

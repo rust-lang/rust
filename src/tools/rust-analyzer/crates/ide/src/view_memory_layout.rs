@@ -84,7 +84,7 @@ pub(crate) fn view_memory_layout(
     position: FilePosition,
 ) -> Option<RecursiveMemoryLayout> {
     let sema = Semantics::new(db);
-    let file = sema.parse(position.file_id);
+    let file = sema.parse_guess_edition(position.file_id);
     let token =
         pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
             SyntaxKind::IDENT => 3,

@@ -657,11 +657,12 @@ mod tests {
     //! Currently, it tests `#[doc(hidden)]` and `#[doc(alias)]`.
 
     use intern::Symbol;
+    use span::EditionedFileId;
     use triomphe::Arc;
 
-    use base_db::FileId;
     use hir_expand::span_map::{RealSpanMap, SpanMap};
     use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode};
+    use span::FileId;
     use syntax::{ast, AstNode, TextRange};
 
     use crate::attr::{DocAtom, DocExpr};
@@ -669,7 +670,9 @@ mod tests {
     fn assert_parse_result(input: &str, expected: DocExpr) {
         let source_file = ast::SourceFile::parse(input, span::Edition::CURRENT).ok().unwrap();
         let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        let map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
+        let map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(
+            EditionedFileId::current_edition(FileId::from_raw(0)),
+        )));
         let tt = syntax_node_to_token_tree(
             tt.syntax(),
             map.as_ref(),

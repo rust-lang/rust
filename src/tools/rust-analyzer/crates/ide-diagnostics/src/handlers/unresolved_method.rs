@@ -1,7 +1,6 @@
-use hir::{db::ExpandDatabase, AssocItem, HirDisplay, InFile};
+use hir::{db::ExpandDatabase, AssocItem, FileRange, HirDisplay, InFile};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
-    base_db::FileRange,
     label::Label,
     source_change::SourceChange,
 };
@@ -105,8 +104,8 @@ fn field_fix(
         group: None,
         target: range,
         source_change: Some(SourceChange::from_iter([
-            (file_id, TextEdit::insert(range.start(), "(".to_owned())),
-            (file_id, TextEdit::insert(range.end(), ")".to_owned())),
+            (file_id.into(), TextEdit::insert(range.start(), "(".to_owned())),
+            (file_id.into(), TextEdit::insert(range.end(), ")".to_owned())),
         ])),
         command: None,
     })

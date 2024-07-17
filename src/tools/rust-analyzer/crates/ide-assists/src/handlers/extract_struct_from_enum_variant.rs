@@ -72,7 +72,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     def_file_references = Some(references);
                     continue;
                 }
-                builder.edit_file(file_id);
+                builder.edit_file(file_id.file_id());
                 let processed = process_references(
                     ctx,
                     builder,

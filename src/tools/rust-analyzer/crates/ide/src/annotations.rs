@@ -1,9 +1,7 @@
 use hir::{HasSource, InFile, InRealFile, Semantics};
 use ide_db::{
-    base_db::{FileId, FilePosition, FileRange},
-    defs::Definition,
-    helpers::visit_file_defs,
-    FxHashSet, RootDatabase,
+    defs::Definition, helpers::visit_file_defs, FileId, FilePosition, FileRange, FxHashSet,
+    RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{ast::HasName, AstNode, TextRange};

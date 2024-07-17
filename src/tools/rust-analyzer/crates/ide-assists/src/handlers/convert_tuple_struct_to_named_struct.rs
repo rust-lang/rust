@@ -188,7 +188,7 @@ fn edit_struct_references(
     };
 
     for (file_id, refs) in usages {
-        edit.edit_file(file_id);
+        edit.edit_file(file_id.file_id());
         for r in refs {
             for node in r.name.syntax().ancestors() {
                 if edit_node(edit, node).is_some() {
@@ -213,7 +213,7 @@ fn edit_field_references(
         let def = Definition::Field(field);
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
-            edit.edit_file(file_id);
+            edit.edit_file(file_id.file_id());
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
                     edit.replace(ctx.sema.original_range(name_ref.syntax()).range, name.text());

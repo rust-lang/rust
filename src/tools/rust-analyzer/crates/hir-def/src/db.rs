@@ -1,10 +1,10 @@
 //! Defines database & queries for name resolution.
-use base_db::{salsa, CrateId, FileId, SourceDatabase, Upcast};
+use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::ExpandDatabase, HirFileId, MacroDefId};
 use intern::{sym, Interned};
 use la_arena::ArenaMap;
-use span::MacroCallId;
+use span::{EditionedFileId, MacroCallId};
 use syntax::{ast, AstPtr};
 use triomphe::Arc;
 
@@ -239,11 +239,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
 
-    fn include_macro_invoc(&self, crate_id: CrateId) -> Vec<(MacroCallId, FileId)>;
+    fn include_macro_invoc(&self, crate_id: CrateId) -> Vec<(MacroCallId, EditionedFileId)>;
 }
 
 // return: macro call id and include file id
-fn include_macro_invoc(db: &dyn DefDatabase, krate: CrateId) -> Vec<(MacroCallId, FileId)> {
+fn include_macro_invoc(
+    db: &dyn DefDatabase,
+    krate: CrateId,
+) -> Vec<(MacroCallId, EditionedFileId)> {
     db.crate_def_map(krate)
         .modules
         .values()
@@ -257,7 +260,7 @@ fn include_macro_invoc(db: &dyn DefDatabase, krate: CrateId) -> Vec<(MacroCallId
 }
 
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
-    let file = db.crate_graph()[crate_id].root_file_id;
+    let file = db.crate_graph()[crate_id].root_file_id();
     let item_tree = db.file_item_tree(file.into());
     let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
     for attr in &**attrs {

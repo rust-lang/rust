@@ -5,7 +5,8 @@
 //! }
 //! ```
 use hir::Semantics;
-use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
+use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use span::EditionedFileId;
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
@@ -17,7 +18,7 @@ pub(super) fn enum_hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _: FileId,
+    _: EditionedFileId,
     enum_: ast::Enum,
 ) -> Option<()> {
     if let DiscriminantHints::Never = config.discriminant_hints {

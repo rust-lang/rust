@@ -9,10 +9,9 @@ use hir::{
     HirDisplay, HirFileId, InFile, LocalSource, ModuleSource,
 };
 use ide_db::{
-    base_db::{FileId, FileRange},
     defs::Definition,
     documentation::{Documentation, HasDocs},
-    RootDatabase, SymbolKind,
+    FileId, FileRange, RootDatabase, SymbolKind,
 };
 use stdx::never;
 use syntax::{
@@ -824,8 +823,8 @@ fn orig_range_with_focus_r(
 
     UpmappingResult {
         call_site: (
-            call_site_range,
-            call_site_focus.and_then(|FileRange { file_id, range }| {
+            call_site_range.into(),
+            call_site_focus.and_then(|hir::FileRange { file_id, range }| {
                 if call_site_range.file_id == file_id && call_site_range.range.contains_range(range)
                 {
                     Some(range)
@@ -836,8 +835,8 @@ fn orig_range_with_focus_r(
         ),
         def_site: def_site.map(|(def_site_range, def_site_focus)| {
             (
-                def_site_range,
-                def_site_focus.and_then(|FileRange { file_id, range }| {
+                def_site_range.into(),
+                def_site_focus.and_then(|hir::FileRange { file_id, range }| {
                     if def_site_range.file_id == file_id
                         && def_site_range.range.contains_range(range)
                     {
@@ -857,7 +856,7 @@ fn orig_range(
     value: &SyntaxNode,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_file_range_rooted(db), None),
+        call_site: (InFile::new(hir_file, value).original_file_range_rooted(db).into(), None),
         def_site: None,
     }
 }
@@ -868,7 +867,7 @@ fn orig_range_r(
     value: TextRange,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_node_file_range(db).0, None),
+        call_site: (InFile::new(hir_file, value).original_node_file_range(db).0.into(), None),
         def_site: None,
     }
 }

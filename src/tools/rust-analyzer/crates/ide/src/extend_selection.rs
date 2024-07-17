@@ -26,7 +26,7 @@ use crate::FileRange;
 // image::https://user-images.githubusercontent.com/48062697/113020651-b42fc800-917a-11eb-8a4f-cf1a07859fac.gif[]
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let sema = Semantics::new(db);
-    let src = sema.parse(frange.file_id);
+    let src = sema.parse_guess_edition(frange.file_id);
     try_extend_selection(&sema, src.syntax(), frange).unwrap_or(frange.range)
 }
 

@@ -1,5 +1,5 @@
-use base_db::FileId;
 use hir_def::db::DefDatabase;
+use span::EditionedFileId;
 use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
@@ -7,7 +7,7 @@ use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
 
 use super::{interpret_mir, MirEvalError};
 
-fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalError> {
+fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError> {
     let module_id = db.module_for_file(file_id);
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id.local_id].scope;

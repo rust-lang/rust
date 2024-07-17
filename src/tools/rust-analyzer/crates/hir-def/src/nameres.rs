@@ -59,7 +59,7 @@ mod tests;
 
 use std::ops::Deref;
 
-use base_db::{CrateId, FileId};
+use base_db::CrateId;
 use hir_expand::{
     name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
 };
@@ -67,7 +67,7 @@ use intern::Symbol;
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, FileAstId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, EditionedFileId, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
@@ -244,14 +244,14 @@ impl std::ops::Index<LocalModuleId> for DefMap {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ModuleOrigin {
     CrateRoot {
-        definition: FileId,
+        definition: EditionedFileId,
     },
     /// Note that non-inline modules, by definition, live inside non-macro file.
     File {
         is_mod_rs: bool,
         declaration: FileAstId<ast::Module>,
         declaration_tree_id: ItemTreeId<Mod>,
-        definition: FileId,
+        definition: EditionedFileId,
     },
     Inline {
         definition_tree_id: ItemTreeId<Mod>,
@@ -277,7 +277,7 @@ impl ModuleOrigin {
         }
     }
 
-    pub fn file_id(&self) -> Option<FileId> {
+    pub fn file_id(&self) -> Option<EditionedFileId> {
         match self {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
                 Some(*definition)
@@ -339,7 +339,7 @@ impl DefMap {
         let _p = tracing::info_span!("crate_def_map_query", ?name).entered();
 
         let module_data = ModuleData::new(
-            ModuleOrigin::CrateRoot { definition: krate.root_file_id },
+            ModuleOrigin::CrateRoot { definition: krate.root_file_id() },
             Visibility::Public,
         );
 
@@ -350,7 +350,7 @@ impl DefMap {
             None,
         );
         let def_map =
-            collector::collect_defs(db, def_map, TreeId::new(krate.root_file_id.into(), None));
+            collector::collect_defs(db, def_map, TreeId::new(krate.root_file_id().into(), None));
 
         Arc::new(def_map)
     }
@@ -433,7 +433,9 @@ impl DefMap {
     pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules
             .iter()
-            .filter(move |(_id, data)| data.origin.file_id() == Some(file_id))
+            .filter(move |(_id, data)| {
+                data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id)
+            })
             .map(|(id, _data)| id)
     }
 

@@ -3,11 +3,12 @@
 use std::mem;
 
 use either::Either;
-use hir::{sym, InFile, Semantics};
+use hir::{sym, HirFileId, InFile, Semantics};
 use ide_db::{
-    active_parameter::ActiveParameter, base_db::FileId, defs::Definition,
-    documentation::docs_with_rangemap, rust_doc::is_rust_fence, SymbolKind,
+    active_parameter::ActiveParameter, defs::Definition, documentation::docs_with_rangemap,
+    rust_doc::is_rust_fence, SymbolKind,
 };
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode, IsString, QuoteOffsets},
     AstToken, NodeOrToken, SyntaxNode, TextRange, TextSize,
@@ -108,14 +109,14 @@ pub(super) fn doc_comment(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightConfig,
-    src_file_id: FileId,
+    src_file_id: EditionedFileId,
     node: &SyntaxNode,
 ) {
     let (attributes, def) = match doc_attributes(sema, node) {
         Some(it) => it,
         None => return,
     };
-    let src_file_id = src_file_id.into();
+    let src_file_id: HirFileId = src_file_id.into();
 
     // Extract intra-doc links and emit highlights for them.
     if let Some((docs, doc_mapping)) = docs_with_rangemap(sema.db, &attributes) {

@@ -9,13 +9,15 @@ use cfg::CfgOptions;
 use hir_expand::{
     change::ChangeWithProcMacros,
     db::ExpandDatabase,
+    files::FilePosition,
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacros,
     },
+    FileRange,
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use span::{Edition, FileId, FilePosition, FileRange, Span};
+use span::{Edition, EditionedFileId, FileId, Span};
 use test_utils::{
     extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
     ESCAPED_CURSOR_MARKER,
@@ -26,7 +28,7 @@ pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 
 pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
     #[track_caller]
-    fn with_single_file(ra_fixture: &str) -> (Self, FileId) {
+    fn with_single_file(ra_fixture: &str) -> (Self, EditionedFileId) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
@@ -35,7 +37,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
     }
 
     #[track_caller]
-    fn with_many_files(ra_fixture: &str) -> (Self, Vec<FileId>) {
+    fn with_many_files(ra_fixture: &str) -> (Self, Vec<EditionedFileId>) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
@@ -79,7 +81,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
     }
 
     #[track_caller]
-    fn with_range_or_offset(ra_fixture: &str) -> (Self, FileId, RangeOrOffset) {
+    fn with_range_or_offset(ra_fixture: &str) -> (Self, EditionedFileId, RangeOrOffset) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
@@ -102,8 +104,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
 impl<DB: ExpandDatabase + SourceDatabaseExt + Default + 'static> WithFixture for DB {}
 
 pub struct ChangeFixture {
-    pub file_position: Option<(FileId, RangeOrOffset)>,
-    pub files: Vec<FileId>,
+    pub file_position: Option<(EditionedFileId, RangeOrOffset)>,
+    pub files: Vec<EditionedFileId>,
     pub change: ChangeWithProcMacros,
 }
 
@@ -151,13 +153,14 @@ impl ChangeFixture {
         let mut file_position = None;
 
         for entry in fixture {
+            let mut range_or_offset = None;
             let text = if entry.text.contains(CURSOR_MARKER) {
                 if entry.text.contains(ESCAPED_CURSOR_MARKER) {
                     entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER)
                 } else {
-                    let (range_or_offset, text) = extract_range_or_offset(&entry.text);
+                    let (roo, text) = extract_range_or_offset(&entry.text);
                     assert!(file_position.is_none());
-                    file_position = Some((file_id, range_or_offset));
+                    range_or_offset = Some(roo);
                     text
                 }
             } else {
@@ -165,6 +168,11 @@ impl ChangeFixture {
             };
 
             let meta = FileMeta::from_fixture(entry, current_source_root_kind);
+            if let Some(range_or_offset) = range_or_offset {
+                file_position =
+                    Some((EditionedFileId::new(file_id, meta.edition), range_or_offset));
+            }
+
             assert!(meta.path.starts_with(SOURCE_ROOT_PREFIX));
             if !meta.deps.is_empty() {
                 assert!(meta.krate.is_some(), "can't specify deps without naming the crate")
@@ -216,7 +224,7 @@ impl ChangeFixture {
             source_change.change_file(file_id, Some(text));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
-            files.push(file_id);
+            files.push(EditionedFileId::new(file_id, meta.edition));
             file_id = FileId::from_raw(file_id.index() + 1);
         }
 

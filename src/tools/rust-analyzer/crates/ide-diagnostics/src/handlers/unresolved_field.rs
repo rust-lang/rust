@@ -1,9 +1,8 @@
 use std::iter;
 
-use hir::{db::ExpandDatabase, Adt, HasSource, HirDisplay, InFile, Struct, Union};
+use hir::{db::ExpandDatabase, Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
-    base_db::FileRange,
     helpers::is_editable_crate,
     label::Label,
     source_change::{SourceChange, SourceChangeBuilder},

@@ -2,8 +2,9 @@ use crate::assist_context::{AssistContext, Assists};
 use hir::{HasVisibility, HirDisplay, HirFileIdExt, Module};
 use ide_db::{
     assists::{AssistId, AssistKind},
-    base_db::{FileId, Upcast},
+    base_db::Upcast,
     defs::{Definition, NameRefClass},
+    FileId,
 };
 use syntax::{
     ast::{self, edit::IndentLevel, NameRef},
@@ -139,9 +140,9 @@ fn target_data_for_generate_constant(
                 .any(|it| it.kind() == SyntaxKind::WHITESPACE && it.to_string().contains('\n'));
             let post_string =
                 if siblings_has_newline { format!("{indent}") } else { format!("\n{indent}") };
-            Some((offset, indent + 1, Some(file_id), post_string))
+            Some((offset, indent + 1, Some(file_id.file_id()), post_string))
         }
-        _ => Some((TextSize::from(0), 0.into(), Some(file_id), "\n".into())),
+        _ => Some((TextSize::from(0), 0.into(), Some(file_id.file_id()), "\n".into())),
     }
 }
 

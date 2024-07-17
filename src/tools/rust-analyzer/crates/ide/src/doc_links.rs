@@ -137,7 +137,7 @@ pub(crate) fn external_docs(
     sysroot: Option<&str>,
 ) -> Option<DocumentationLinks> {
     let sema = &Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
     let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT | INT_NUMBER | T![self] => 3,
         T!['('] | T![')'] => 2,

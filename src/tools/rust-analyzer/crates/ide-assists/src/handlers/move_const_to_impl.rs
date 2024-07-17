@@ -1,5 +1,5 @@
-use hir::{AsAssocItem, AssocItemContainer, HasCrate, HasSource};
-use ide_db::{assists::AssistId, base_db::FileRange, defs::Definition, search::SearchScope};
+use hir::{AsAssocItem, AssocItemContainer, FileRange, HasCrate, HasSource};
+use ide_db::{assists::AssistId, defs::Definition, search::SearchScope};
 use syntax::{
     ast::{self, edit::IndentLevel, edit_in_place::Indent, AstNode},
     SyntaxKind,

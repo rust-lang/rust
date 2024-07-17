@@ -48,7 +48,7 @@ impl flags::Diagnostics {
 
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id);
+            let source_root = db.file_source_root(file_id.into());
             let source_root = db.source_root(source_root);
             !source_root.is_library
         });
@@ -58,12 +58,15 @@ impl flags::Diagnostics {
             if !visited_files.contains(&file_id) {
                 let crate_name =
                     module.krate().display_name(db).as_deref().unwrap_or("unknown").to_owned();
-                println!("processing crate: {crate_name}, module: {}", _vfs.file_path(file_id));
+                println!(
+                    "processing crate: {crate_name}, module: {}",
+                    _vfs.file_path(file_id.into())
+                );
                 for diagnostic in analysis
                     .diagnostics(
                         &DiagnosticsConfig::test_sample(),
                         AssistResolveStrategy::None,
-                        file_id,
+                        file_id.into(),
                     )
                     .unwrap()
                 {
