@@ -82,7 +82,7 @@ By default, a cargo invocation will be constructed for the configured
 targets and features, with the following base command line:
 
 ```bash
-cargo check --quiet --workspace --message-format=json --all-targets
+cargo check --quiet --workspace --message-format=json --all-targets --keep-going
 ```
 .
 --
