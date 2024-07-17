@@ -1609,3 +1609,25 @@ pub enum AddPreciseCapturing {
         post: &'static str,
     },
 }
+
+pub struct AddPreciseCapturingAndParams {
+    pub suggs: Vec<(Span, String)>,
+    pub new_lifetime: Symbol,
+    pub apit_spans: Vec<Span>,
+}
+
+impl Subdiagnostic for AddPreciseCapturingAndParams {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: &F,
+    ) {
+        diag.arg("new_lifetime", self.new_lifetime);
+        diag.multipart_suggestion_verbose(
+            fluent::infer_precise_capturing_new_but_apit,
+            self.suggs,
+            Applicability::MaybeIncorrect,
+        );
+        diag.span_note(self.apit_spans, fluent::infer_warn_removing_apit_params);
+    }
+}
