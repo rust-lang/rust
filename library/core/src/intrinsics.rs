@@ -85,6 +85,93 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
+/// Turn function signatures into an intrinsic implementation in the Rust ABI, with an
+/// `unimplemented!` body.
+///
+/// This applies an `unstable` attribute, so don't use it with functions that are stable.
+/// Due to macro limitations, functions with keyword qualifiers `const` or `unsafe` cannot be
+/// combined with functions that do not have them, or have a different combination, and as such
+/// must be placed in separate `intrinsics!` blocks.
+///
+/// Const intrinsics do not get `rustc_const_{stable, unstable}`.
+macro_rules! intrinsics {
+    // Default: non-const, safe
+    ( $(
+        $(#[$meta:meta])*
+        pub fn $name:ident
+        $(<$( $gen:ident $(: $bound:ident $(+ $bound2:ident)* $(+ $bound_lt:lifetime)*)? ),* >)?
+        ($($args:tt)*) $(-> $ret:ty)?;
+
+    )* ) => { $(
+        #[rustc_nounwind]
+        #[rustc_intrinsic]
+        #[rustc_intrinsic_must_be_overridden]
+        #[unstable(feature = "core_intrinsics", issue = "none")]
+        $(#[$meta])*
+        pub fn $name $(<$( $gen $(: $bound $(+ $bound2)* $(+ $bound_lt)*)? ),* >)?
+            ($($args)*) $(-> $ret)? {
+            unreachable!();
+        }
+    )+ };
+
+    // non-const, unsafe
+    ( $(
+        $(#[$meta:meta])*
+        pub unsafe fn $name:ident
+        $(<$( $gen:ident $(: $bound:ident $(+ $bound2:ident)* $(+ $bound_lt:lifetime)*)? ),* >)?
+        ($($args:tt)*) $(-> $ret:ty)?;
+
+    )* ) => { $(
+        #[rustc_nounwind]
+        #[rustc_intrinsic]
+        #[rustc_intrinsic_must_be_overridden]
+        #[unstable(feature = "core_intrinsics", issue = "none")]
+        $(#[$meta])*
+        pub unsafe fn $name $(<$( $gen $(: $bound $(+ $bound2)* $(+ $bound_lt)*)? ),* >)?
+            ($($args)*) $(-> $ret)? {
+            unreachable!();
+        }
+    )+ };
+
+    // const, safe
+    ( $(
+        $(#[$meta:meta])*
+        pub const fn $name:ident
+        $(<$( $gen:ident $(: $bound:ident $(+ $bound2:ident)* $(+ $bound_lt:lifetime)*)? ),* >)?
+        ($($args:tt)*) $(-> $ret:ty)?;
+
+    )* ) => { $(
+        #[rustc_nounwind]
+        #[rustc_intrinsic]
+        #[rustc_intrinsic_must_be_overridden]
+        #[unstable(feature = "core_intrinsics", issue = "none")]
+        $(#[$meta])*
+        pub const fn $name $(<$( $gen $(: $bound $(+ $bound2)* $(+ $bound_lt)*)? ),* >)?
+            ($($args)*) $(-> $ret)? {
+            unreachable!();
+        }
+    )+ };
+
+    // const, unsafe
+    ( $(
+        $(#[$meta:meta])*
+        pub const unsafe fn $name:ident
+        $(<$( $gen:ident $(: $bound:ident $(+ $bound2:ident)* $(+ $bound_lt:lifetime)*)? ),* >)?
+        ($($args:tt)*) $(-> $ret:ty)?;
+
+    )* ) => { $(
+        #[rustc_nounwind]
+        #[rustc_intrinsic]
+        #[rustc_intrinsic_must_be_overridden]
+        #[unstable(feature = "core_intrinsics", issue = "none")]
+        $(#[$meta])*
+        pub const unsafe fn $name $(<$( $gen $(: $bound $(+ $bound2)* $(+ $bound_lt)*)? ),* >)?
+            ($($args)*) $(-> $ret)? {
+            unreachable!();
+        }
+    )+ };
+}
+
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
