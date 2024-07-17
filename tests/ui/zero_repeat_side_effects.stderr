@@ -73,5 +73,17 @@ error: function or method calls as the initial value in zero-sized array initial
 LL |     [f(); N];
    |     ^^^^^^^^ help: consider using: `{ f(); [] as [i32; 0] }`
 
-error: aborting due to 12 previous errors
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:67:5
+   |
+LL |     let _data = [f(); LEN!()];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f(); let _data: [i32; 0] = [];`
+
+error: function or method calls as the initial value in zero-sized array initializers may cause side effects
+  --> tests/ui/zero_repeat_side_effects.rs:69:5
+   |
+LL |     let _data = [f(); LENGTH];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f(); let _data: [i32; 0] = [];`
+
+error: aborting due to 14 previous errors
 

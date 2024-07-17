@@ -58,3 +58,13 @@ fn main() {
     // as function param
     drop(vec![f(); 1]);
 }
+
+macro_rules! LEN {
+    () => {0};
+}
+
+fn issue_13110() {
+    let _data = [f(); LEN!()];
+    const LENGTH: usize = LEN!();
+    let _data = [f(); LENGTH];
+}
