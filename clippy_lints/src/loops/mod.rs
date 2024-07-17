@@ -23,6 +23,7 @@ mod while_let_loop;
 mod while_let_on_iterator;
 
 use clippy_config::msrvs::Msrv;
+use clippy_config::Conf;
 use clippy_utils::higher;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
@@ -717,10 +718,10 @@ pub struct Loops {
     enforce_iter_loop_reborrow: bool,
 }
 impl Loops {
-    pub fn new(msrv: Msrv, enforce_iter_loop_reborrow: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv,
-            enforce_iter_loop_reborrow,
+            msrv: conf.msrv.clone(),
+            enforce_iter_loop_reborrow: conf.enforce_iter_loop_reborrow,
         }
     }
 }

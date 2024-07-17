@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{get_parent_as_impl, has_repr_attr, is_bool};
 use rustc_hir::intravisit::FnKind;
@@ -94,11 +95,10 @@ enum Kind {
 }
 
 impl ExcessiveBools {
-    #[must_use]
-    pub fn new(max_struct_bools: u64, max_fn_params_bools: u64) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            max_struct_bools,
-            max_fn_params_bools,
+            max_struct_bools: conf.max_struct_bools,
+            max_fn_params_bools: conf.max_fn_params_bools,
         }
     }
 

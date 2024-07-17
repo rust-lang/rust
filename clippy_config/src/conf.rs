@@ -238,7 +238,7 @@ define_Conf! {
     ///
     /// A type, say `SomeType`, listed in this configuration has the same behavior of
     /// `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
-    (arithmetic_side_effects_allowed: FxHashSet<String> = <_>::default()),
+    (arithmetic_side_effects_allowed: Vec<String> = <_>::default()),
     /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///
     /// Suppress checking of the passed type pair names in binary operations like addition or
@@ -265,7 +265,7 @@ define_Conf! {
     /// ```toml
     /// arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
     /// ```
-    (arithmetic_side_effects_allowed_unary: FxHashSet<String> = <_>::default()),
+    (arithmetic_side_effects_allowed_unary: Vec<String> = <_>::default()),
     /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX, UNNECESSARY_BOX_RETURNS, SINGLE_CALL_FN, NEEDLESS_PASS_BY_REF_MUT.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
@@ -314,7 +314,7 @@ define_Conf! {
     /// default configuration of Clippy. By default, any configuration will replace the default value. For example:
     /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
-    (doc_valid_idents: Vec<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
+    (doc_valid_idents: FxHashSet<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
     /// Lint: TOO_MANY_ARGUMENTS.
     ///
     /// The maximum number of argument a function or method can have
@@ -550,7 +550,7 @@ define_Conf! {
     /// Lint: PATH_ENDS_WITH_EXT.
     ///
     /// Additional dotfiles (files or directories starting with a dot) to allow
-    (allowed_dotfiles: FxHashSet<String> = FxHashSet::default()),
+    (allowed_dotfiles: Vec<String> = Vec::default()),
     /// Lint: MULTIPLE_CRATE_VERSIONS.
     ///
     /// A list of crate names to allow duplicates of
@@ -703,7 +703,6 @@ pub fn lookup_conf_file() -> io::Result<(Option<PathBuf>, Vec<String>)> {
 fn deserialize(file: &SourceFile) -> TryConf {
     match toml::de::Deserializer::new(file.src.as_ref().unwrap()).deserialize_map(ConfVisitor(file)) {
         Ok(mut conf) => {
-            extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
             extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
             extend_vec_if_indicator_present(&mut conf.conf.allowed_prefixes, DEFAULT_ALLOWED_PREFIXES);
             extend_vec_if_indicator_present(
@@ -715,6 +714,11 @@ fn deserialize(file: &SourceFile) -> TryConf {
                 conf.conf
                     .allowed_idents_below_min_chars
                     .extend(DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string));
+            }
+            if conf.conf.doc_valid_idents.contains("..") {
+                conf.conf
+                    .doc_valid_idents
+                    .extend(DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string));
             }
 
             conf

@@ -1,6 +1,4 @@
-use std::collections::btree_map::Entry;
-use std::collections::BTreeMap;
-
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_lint_allowed;
 use itertools::Itertools;
@@ -10,6 +8,8 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{sym, Span, SyntaxContext};
+use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -90,9 +90,8 @@ pub enum MetavarState {
     ReferencedInSafe,
 }
 
-#[derive(Default)]
 pub struct ExprMetavarsInUnsafe {
-    pub warn_unsafe_macro_metavars_in_private_macros: bool,
+    warn_unsafe_macro_metavars_in_private_macros: bool,
     /// A metavariable can be expanded more than once, potentially across multiple bodies, so it
     /// requires some state kept across HIR nodes to make it possible to delay a warning
     /// and later undo:
@@ -106,7 +105,16 @@ pub struct ExprMetavarsInUnsafe {
     ///     }
     /// }
     /// ```
-    pub metavar_expns: BTreeMap<Span, MetavarState>,
+    metavar_expns: BTreeMap<Span, MetavarState>,
+}
+
+impl ExprMetavarsInUnsafe {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            warn_unsafe_macro_metavars_in_private_macros: conf.warn_unsafe_macro_metavars_in_private_macros,
+            metavar_expns: BTreeMap::new(),
+        }
+    }
 }
 
 struct BodyVisitor<'a, 'tcx> {

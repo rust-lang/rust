@@ -1,6 +1,4 @@
-use std::iter::once;
-use std::ops::ControlFlow;
-
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::{Expr, ExprKind};
@@ -10,6 +8,8 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, Span};
+use std::iter::once;
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -59,6 +59,14 @@ impl_lint_pass!(RawStrings => [NEEDLESS_RAW_STRINGS, NEEDLESS_RAW_STRING_HASHES]
 
 pub struct RawStrings {
     pub allow_one_hash_in_raw_strings: bool,
+}
+
+impl RawStrings {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            allow_one_hash_in_raw_strings: conf.allow_one_hash_in_raw_strings,
+        }
+    }
 }
 
 impl EarlyLintPass for RawStrings {

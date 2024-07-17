@@ -21,7 +21,7 @@ pub(super) fn check(
     path: &Expr<'_>,
     expr: &Expr<'_>,
     msrv: &Msrv,
-    allowed_dotfiles: &FxHashSet<String>,
+    allowed_dotfiles: &FxHashSet<&'static str>,
 ) {
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv).peel_refs(), sym::Path)
         && !path.span.from_expansion()

@@ -20,6 +20,7 @@ mod utils;
 mod wrong_transmute;
 
 use clippy_config::msrvs::Msrv;
+use clippy_config::Conf;
 use clippy_utils::in_constant;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -577,9 +578,10 @@ impl_lint_pass!(Transmute => [
     MISSING_TRANSMUTE_ANNOTATIONS,
 ]);
 impl Transmute {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 impl<'tcx> LateLintPass<'tcx> for Transmute {

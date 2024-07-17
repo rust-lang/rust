@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::macros::root_macro_call_first_node;
 use rustc_ast::LitKind;
@@ -41,9 +42,10 @@ pub struct LargeIncludeFile {
 }
 
 impl LargeIncludeFile {
-    #[must_use]
-    pub fn new(max_file_size: u64) -> Self {
-        Self { max_file_size }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            max_file_size: conf.max_include_file_size,
+        }
     }
 }
 

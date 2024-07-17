@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::macros::macro_backtrace;
@@ -27,15 +28,14 @@ declare_clippy_lint! {
 }
 
 pub struct LargeStackArrays {
-    maximum_allowed_size: u128,
+    maximum_allowed_size: u64,
     prev_vec_macro_callsite: Option<Span>,
 }
 
 impl LargeStackArrays {
-    #[must_use]
-    pub fn new(maximum_allowed_size: u128) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            maximum_allowed_size,
+            maximum_allowed_size: conf.array_size_threshold,
             prev_vec_macro_callsite: None,
         }
     }
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
                     })
                 )
             })
-            && self.maximum_allowed_size < u128::from(element_count) * u128::from(element_size)
+            && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
         {
             span_lint_and_then(
                 cx,
