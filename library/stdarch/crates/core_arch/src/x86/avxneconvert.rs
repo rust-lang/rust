@@ -36,6 +36,38 @@ pub unsafe fn _mm256_bcstnebf16_ps(a: *const bf16) -> __m256 {
     bcstnebf162ps_256(a)
 }
 
+/// Convert scalar half-precision (16-bit) floating-point element stored at memory locations starting
+/// at location a to a single-precision (32-bit) floating-point, broadcast it to packed single-precision
+/// (32-bit) floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_bcstnesh_ps)
+#[inline]
+#[target_feature(enable = "avxneconvert")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vbcstnesh2ps)
+)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_bcstnesh_ps(a: *const f16) -> __m128 {
+    bcstnesh2ps_128(a)
+}
+
+/// Convert scalar half-precision (16-bit) floating-point element stored at memory locations starting
+/// at location a to a single-precision (32-bit) floating-point, broadcast it to packed single-precision
+/// (32-bit) floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bcstnesh_ps)
+#[inline]
+#[target_feature(enable = "avxneconvert")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vbcstnesh2ps)
+)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_bcstnesh_ps(a: *const f16) -> __m256 {
+    bcstnesh2ps_256(a)
+}
+
 /// Convert packed BF16 (16-bit) floating-point even-indexed elements stored at memory locations starting at
 /// location a to single precision (32-bit) floating-point elements, and store the results in dst.
 ///
@@ -66,6 +98,36 @@ pub unsafe fn _mm256_cvtneebf16_ps(a: *const __m256bh) -> __m256 {
     transmute(cvtneebf162ps_256(a))
 }
 
+/// Convert packed half-precision (16-bit) floating-point even-indexed elements stored at memory locations starting at
+/// location a to single precision (32-bit) floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneeph_ps)
+#[inline]
+#[target_feature(enable = "avxneconvert")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vcvtneeph2ps)
+)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtneeph_ps(a: *const __m128h) -> __m128 {
+    transmute(cvtneeph2ps_128(a))
+}
+
+/// Convert packed half-precision (16-bit) floating-point even-indexed elements stored at memory locations starting at
+/// location a to single precision (32-bit) floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneeph_ps)
+#[inline]
+#[target_feature(enable = "avxneconvert")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vcvtneeph2ps)
+)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtneeph_ps(a: *const __m256h) -> __m256 {
+    transmute(cvtneeph2ps_256(a))
+}
+
 /// Convert packed BF16 (16-bit) floating-point odd-indexed elements stored at memory locations starting at
 /// location a to single precision (32-bit) floating-point elements, and store the results in dst.
 ///
@@ -94,6 +156,36 @@ pub unsafe fn _mm_cvtneobf16_ps(a: *const __m128bh) -> __m128 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvtneobf16_ps(a: *const __m256bh) -> __m256 {
     transmute(cvtneobf162ps_256(a))
+}
+
+/// Convert packed half-precision (16-bit) floating-point odd-indexed elements stored at memory locations starting at
+/// location a to single precision (32-bit) floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneoph_ps)
+#[inline]
+#[target_feature(enable = "avxneconvert")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vcvtneoph2ps)
+)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtneoph_ps(a: *const __m128h) -> __m128 {
+    transmute(cvtneoph2ps_128(a))
+}
+
+/// Convert packed half-precision (16-bit) floating-point odd-indexed elements stored at memory locations starting at
+/// location a to single precision (32-bit) floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneoph_ps)
+#[inline]
+#[target_feature(enable = "avxneconvert")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vcvtneoph2ps)
+)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
+    transmute(cvtneoph2ps_256(a))
 }
 
 /// Convert packed single precision (32-bit) floating-point elements in a to packed BF16 (16-bit) floating-point
@@ -146,16 +238,28 @@ extern "C" {
     fn bcstnebf162ps_128(a: *const bf16) -> __m128;
     #[link_name = "llvm.x86.vbcstnebf162ps256"]
     fn bcstnebf162ps_256(a: *const bf16) -> __m256;
+    #[link_name = "llvm.x86.vbcstnesh2ps128"]
+    fn bcstnesh2ps_128(a: *const f16) -> __m128;
+    #[link_name = "llvm.x86.vbcstnesh2ps256"]
+    fn bcstnesh2ps_256(a: *const f16) -> __m256;
 
     #[link_name = "llvm.x86.vcvtneebf162ps128"]
     fn cvtneebf162ps_128(a: *const __m128bh) -> __m128;
     #[link_name = "llvm.x86.vcvtneebf162ps256"]
     fn cvtneebf162ps_256(a: *const __m256bh) -> __m256;
+    #[link_name = "llvm.x86.vcvtneeph2ps128"]
+    fn cvtneeph2ps_128(a: *const __m128h) -> __m128;
+    #[link_name = "llvm.x86.vcvtneeph2ps256"]
+    fn cvtneeph2ps_256(a: *const __m256h) -> __m256;
 
     #[link_name = "llvm.x86.vcvtneobf162ps128"]
     fn cvtneobf162ps_128(a: *const __m128bh) -> __m128;
     #[link_name = "llvm.x86.vcvtneobf162ps256"]
     fn cvtneobf162ps_256(a: *const __m256bh) -> __m256;
+    #[link_name = "llvm.x86.vcvtneoph2ps128"]
+    fn cvtneoph2ps_128(a: *const __m128h) -> __m128;
+    #[link_name = "llvm.x86.vcvtneoph2ps256"]
+    fn cvtneoph2ps_256(a: *const __m256h) -> __m256;
 }
 
 #[cfg(test)]
@@ -192,6 +296,22 @@ mod tests {
     }
 
     #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm_bcstnesh_ps() {
+        let a = 1.0_f16;
+        let r = _mm_bcstnesh_ps(addr_of!(a));
+        let e = _mm_set_ps(1., 1., 1., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm256_bcstnesh_ps() {
+        let a = 1.0_f16;
+        let r = _mm256_bcstnesh_ps(addr_of!(a));
+        let e = _mm256_set_ps(1., 1., 1., 1., 1., 1., 1., 1.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
     unsafe fn test_mm_cvtneebf16_ps() {
         let a = __m128bh(
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
@@ -213,6 +333,24 @@ mod tests {
     }
 
     #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm_cvtneeph_ps() {
+        let a = __m128h(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_cvtneeph_ps(addr_of!(a));
+        let e = _mm_setr_ps(1., 3., 5., 7.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm256_cvtneeph_ps() {
+        let a = __m256h(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm256_cvtneeph_ps(addr_of!(a));
+        let e = _mm256_setr_ps(1., 3., 5., 7., 9., 11., 13., 15.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
     unsafe fn test_mm_cvtneobf16_ps() {
         let a = __m128bh(
             BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
@@ -230,6 +368,24 @@ mod tests {
         );
         let r = _mm256_cvtneobf16_ps(addr_of!(a));
         let e = _mm256_setr_ps(2., 4., 6., 8., 2., 4., 6., 8.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm_cvtneoph_ps() {
+        let a = __m128h(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_cvtneoph_ps(addr_of!(a));
+        let e = _mm_setr_ps(2., 4., 6., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm256_cvtneoph_ps() {
+        let a = __m256h(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm256_cvtneoph_ps(addr_of!(a));
+        let e = _mm256_setr_ps(2., 4., 6., 8., 10., 12., 14., 16.);
         assert_eq_m256(r, e);
     }
 

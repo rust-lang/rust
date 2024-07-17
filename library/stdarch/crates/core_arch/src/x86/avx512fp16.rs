@@ -596,6 +596,25 @@ pub unsafe fn _mm256_zextph128_ph256(a: __m128h) -> __m256h {
     )
 }
 
+/// Cast vector of type `__m256h` to type `__m512h`. The upper 16 elements of the result are zeroed.
+/// This intrinsic can generate the `vzeroupper` instruction, but most of the time it does not generate
+/// any instructions.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextph256_ph512)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_zextph256_ph512(a: __m256h) -> __m512h {
+    simd_shuffle!(
+        a,
+        _mm256_setzero_ph(),
+        [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16,
+            16, 16, 16, 16, 16, 16, 16, 16
+        ]
+    )
+}
+
 /// Cast vector of type `__m128h` to type `__m512h`. The upper 24 elements of the result are zeroed.
 /// This intrinsic can generate the `vzeroupper` instruction, but most of the time it does not generate
 /// any instructions.
@@ -615,10 +634,10 @@ pub unsafe fn _mm512_zextph128_ph512(a: __m128h) -> __m512h {
     )
 }
 
-macro_rules! cmp_asm {
+macro_rules! cmp_asm { // FIXME: use LLVM intrinsics
     ($mask_type: ty, $reg: ident, $a: expr, $b: expr) => {{
         let dst: $mask_type;
-        crate::arch::asm!(
+        asm!(
             "vcmpph {k}, {a}, {b}, {imm8}",
             k = lateout(kreg) dst,
             a = in($reg) $a,
@@ -630,7 +649,7 @@ macro_rules! cmp_asm {
     }};
     ($mask_type: ty, $mask: expr, $reg: ident, $a: expr, $b: expr) => {{
         let dst: $mask_type;
-        crate::arch::asm!(
+        asm!(
             "vcmpph {k} {{ {mask} }}, {a}, {b}, {imm8}",
             k = lateout(kreg) dst,
             mask = in(kreg) $mask,
@@ -736,6 +755,73 @@ pub unsafe fn _mm512_mask_cmp_ph_mask<const IMM5: i32>(
     cmp_asm!(__mmask32, k1, zmm_reg, a, b)
 }
 
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k.
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cmp_round_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512bw,avx512f")]
+#[rustc_legacy_const_generics(2, 3)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
+    a: __m512h,
+    b: __m512h,
+) -> __mmask32 {
+    static_assert_uimm_bits!(IMM5, 5);
+    static_assert_sae!(SAE);
+    if SAE == _MM_FROUND_NO_EXC {
+        let dst: __mmask32;
+        asm!(
+            "vcmpph {k}, {a}, {b}, {{sae}}, {imm8}",
+            k = lateout(kreg) dst,
+            a = in(zmm_reg) a,
+            b = in(zmm_reg) b,
+            imm8 = const IMM5,
+            options(pure, nomem, nostack)
+        );
+        dst
+    } else {
+        cmp_asm!(__mmask32, zmm_reg, a, b)
+    }
+}
+
+/// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
+/// operand specified by imm8, and store the results in mask vector k using zeromask k (elements are
+/// zeroed out when the corresponding mask bit is not set).
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cmp_round_ph_mask)
+#[inline]
+#[target_feature(enable = "avx512fp16,avx512bw,avx512f")]
+#[rustc_legacy_const_generics(3, 4)]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_mask_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
+    k1: __mmask32,
+    a: __m512h,
+    b: __m512h,
+) -> __mmask32 {
+    static_assert_uimm_bits!(IMM5, 5);
+    static_assert_sae!(SAE);
+    if SAE == _MM_FROUND_NO_EXC {
+        let dst: __mmask32;
+        asm!(
+            "vcmpph {k} {{{k1}}}, {a}, {b}, {{sae}}, {imm8}",
+            k = lateout(kreg) dst,
+            k1 = in(kreg) k1,
+            a = in(zmm_reg) a,
+            b = in(zmm_reg) b,
+            imm8 = const IMM5,
+            options(pure, nomem, nostack)
+        );
+        dst
+    } else {
+        cmp_asm!(__mmask32, k1, zmm_reg, a, b)
+    }
+}
+
 /// Compare the lower half-precision (16-bit) floating-point elements in a and b based on the comparison
 /// operand specified by imm8, and store the result in mask vector k. Exceptions can be suppressed by
 /// passing _MM_FROUND_NO_EXC in the sae parameter.
@@ -801,25 +887,6 @@ pub unsafe fn _mm_mask_cmp_sh_mask<const IMM5: i32>(
 ) -> __mmask8 {
     static_assert_uimm_bits!(IMM5, 5);
     _mm_mask_cmp_round_sh_mask::<IMM5, _MM_FROUND_CUR_DIRECTION>(k1, a, b)
-}
-
-/// Cast vector of type `__m256h` to type `__m512h`. The upper 16 elements of the result are zeroed.
-/// This intrinsic can generate the `vzeroupper` instruction, but most of the time it does not generate
-/// any instructions.
-///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_zextph256_ph512)
-#[inline]
-#[target_feature(enable = "avx512fp16")]
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm512_zextph256_ph512(a: __m256h) -> __m512h {
-    simd_shuffle!(
-        a,
-        _mm256_setzero_ph(),
-        [
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16,
-            16, 16, 16, 16, 16, 16, 16, 16
-        ]
-    )
 }
 
 /// Compare the lower half-precision (16-bit) floating-point elements in a and b based on the comparison
@@ -10942,10 +11009,10 @@ pub unsafe fn _mm512_reduce_max_ph(a: __m512h) -> f16 {
     _mm256_reduce_max_ph(_mm256_max_ph(p, q))
 }
 
-macro_rules! fpclass_asm {
+macro_rules! fpclass_asm { // FIXME: use LLVM intrinsics
     ($mask_type: ty, $reg: ident, $a: expr) => {{
         let dst: $mask_type;
-        crate::arch::asm!(
+        asm!(
             "vfpclassph {k}, {src}, {imm8}",
             k = lateout(kreg) dst,
             src = in($reg) $a,
@@ -10956,7 +11023,7 @@ macro_rules! fpclass_asm {
     }};
     ($mask_type: ty, $mask: expr, $reg: ident, $a: expr) => {{
         let dst: $mask_type;
-        crate::arch::asm!(
+        asm!(
             "vfpclassph {k} {{ {mask} }}, {src}, {imm8}",
             k = lateout(kreg) dst,
             mask = in(kreg) $mask,
@@ -15873,6 +15940,56 @@ pub unsafe fn _mm_maskz_cvt_roundsh_sd<const SAE: i32>(
     _mm_mask_cvt_roundsh_sd::<SAE>(_mm_setzero_pd(), k, a, b)
 }
 
+/// Copy the lower half-precision (16-bit) floating-point element from `a` to `dst`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsh_h)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtsh_h(a: __m128h) -> f16 {
+    simd_extract!(a, 0)
+}
+
+/// Copy the lower half-precision (16-bit) floating-point element from `a` to `dst`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtsh_h)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm256_cvtsh_h(a: __m256h) -> f16 {
+    simd_extract!(a, 0)
+}
+
+/// Copy the lower half-precision (16-bit) floating-point element from `a` to `dst`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtsh_h)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm512_cvtsh_h(a: __m512h) -> f16 {
+    simd_extract!(a, 0)
+}
+
+/// Copy the lower 16-bit integer in a to dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi128_si16)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtsi128_si16(a: __m128i) -> i16 {
+    simd_extract!(a.as_i16x8(), 0)
+}
+
+/// Copy 16-bit integer a to the lower elements of dst, and zero the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi16_si128)
+#[inline]
+#[target_feature(enable = "avx512fp16")]
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub unsafe fn _mm_cvtsi16_si128(a: i16) -> __m128i {
+    transmute(simd_insert!(i16x8::splat(0), 0, a))
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.sh"]
@@ -16690,6 +16807,42 @@ mod tests {
             -29.0, -30.0, -31.0, -32.0,
         );
         let r = _mm512_mask_cmp_ph_mask::<_CMP_EQ_OQ>(0b01010101010101010101010101010101, a, b);
+        assert_eq!(r, 0b01010000010100000101000001010000);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cmp_round_ph_mask() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let b = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0, 9.0, 10.0, 11.0, 12.0, -13.0, -14.0, -15.0,
+            -16.0, 17.0, 18.0, 19.0, 20.0, -21.0, -22.0, -23.0, -24.0, 25.0, 26.0, 27.0, 28.0,
+            -29.0, -30.0, -31.0, -32.0,
+        );
+        let r = _mm512_cmp_round_ph_mask::<_CMP_EQ_OQ, _MM_FROUND_NO_EXC>(a, b);
+        assert_eq!(r, 0b11110000111100001111000011110000);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_mask_cmp_round_ph_mask() {
+        let a = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let b = _mm512_set_ph(
+            1.0, 2.0, 3.0, 4.0, -5.0, -6.0, -7.0, -8.0, 9.0, 10.0, 11.0, 12.0, -13.0, -14.0, -15.0,
+            -16.0, 17.0, 18.0, 19.0, 20.0, -21.0, -22.0, -23.0, -24.0, 25.0, 26.0, 27.0, 28.0,
+            -29.0, -30.0, -31.0, -32.0,
+        );
+        let r = _mm512_mask_cmp_round_ph_mask::<_CMP_EQ_OQ, _MM_FROUND_NO_EXC>(
+            0b01010101010101010101010101010101,
+            a,
+            b,
+        );
         assert_eq!(r, 0b01010000010100000101000001010000);
     }
 
@@ -26799,5 +26952,47 @@ mod tests {
         let r = _mm_maskz_cvt_roundsh_sd::<_MM_FROUND_NO_EXC>(1, a, b);
         let e = _mm_setr_pd(1.0, 20.0);
         assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvtsh_h() {
+        let a = _mm_setr_ph(1.0, 2.0, 3.0, 42.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm_cvtsh_h(a);
+        assert_eq!(r, 1.0);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm256_cvtsh_h() {
+        let a = _mm256_setr_ph(
+            1.0, 2.0, 3.0, 42.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let r = _mm256_cvtsh_h(a);
+        assert_eq!(r, 1.0);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm512_cvtsh_h() {
+        let a = _mm512_setr_ph(
+            1.0, 2.0, 3.0, 42.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+            17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
+            31.0, 32.0,
+        );
+        let r = _mm512_cvtsh_h(a);
+        assert_eq!(r, 1.0);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvtsi128_si16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm_cvtsi128_si16(a);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512fp16")]
+    unsafe fn test_mm_cvtsi16_si128() {
+        let a = 1;
+        let r = _mm_cvtsi16_si128(a);
+        let e = _mm_setr_epi16(1, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq_m128i(r, e);
     }
 }

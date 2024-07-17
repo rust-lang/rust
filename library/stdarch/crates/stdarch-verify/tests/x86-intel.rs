@@ -808,6 +808,7 @@ fn equate(
         (&Type::ConstPtr(&Type::M256BH), "__m256bh const*") => {}
         (&Type::ConstPtr(&Type::M256I), "__m256i const*") => {}
         (&Type::ConstPtr(&Type::M256D), "__m256d const*") => {}
+        (&Type::ConstPtr(&Type::M256H), "__m256h const*") => {}
         (&Type::ConstPtr(&Type::M512), "__m512 const*") => {}
         (&Type::ConstPtr(&Type::M512BH), "__m512bh const*") => {}
         (&Type::ConstPtr(&Type::M512I), "__m512i const*") => {}
