@@ -4,7 +4,7 @@ use std::panic;
 use std::path::{Path, PathBuf};
 
 use crate::command::Command;
-use crate::env_checked::env_var;
+use crate::env::env_var;
 use crate::util::handle_failed_output;
 
 /// Return the current working directory.

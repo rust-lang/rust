@@ -1,5 +1,5 @@
 use crate::command::Command;
-use crate::env_checked::env_var;
+use crate::env::env_var;
 
 /// Obtain path of python as provided by the `PYTHON` environment variable. It is up to the caller
 /// to document and check if the python version is compatible with its intended usage.

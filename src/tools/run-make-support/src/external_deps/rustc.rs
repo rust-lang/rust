@@ -2,7 +2,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
 use crate::command::Command;
-use crate::env_checked::env_var;
+use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_rpath;
 

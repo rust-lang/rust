@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::command::{Command, CompletedProcess};
-use crate::env_checked::env_var;
+use crate::env::env_var;
 use crate::path_helpers::cwd;
 
 /// If a given [`Command`] failed (as indicated by its [`CompletedProcess`]), verbose print the

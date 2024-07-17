@@ -10,7 +10,7 @@ mod util;
 pub mod artifact_names;
 pub mod assertion_helpers;
 pub mod diff;
-pub mod env_checked;
+pub mod env;
 pub mod external_deps;
 pub mod fs_helpers;
 pub mod fs_wrapper;
@@ -48,7 +48,7 @@ pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 pub use diff::{diff, Diff};
 
 /// Panic-on-fail [`std::env::var`] and [`std::env::var_os`] wrappers.
-pub use env_checked::{env_var, env_var_os};
+pub use env::{env_var, env_var_os};
 
 /// Convenience helpers for running binaries and other commands.
 pub use run::{cmd, run, run_fail, run_with_args};

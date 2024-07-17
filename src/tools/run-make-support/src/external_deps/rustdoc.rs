@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::path::Path;
 
 use crate::command::Command;
-use crate::env_checked::{env_var, env_var_os};
+use crate::env::{env_var, env_var_os};
 use crate::util::set_host_rpath;
 
 /// Construct a plain `rustdoc` invocation with no flags set.
