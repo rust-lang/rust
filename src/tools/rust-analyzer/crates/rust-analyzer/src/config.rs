@@ -511,9 +511,9 @@ config_data! {
         /// Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
         inlayHints_expressionAdjustmentHints_mode: AdjustmentHintsModeDef = AdjustmentHintsModeDef::Prefix,
         /// Whether to show const generic parameter name inlay hints.
-        inlayHints_genericParameterHints_const_enable: bool= false,
+        inlayHints_genericParameterHints_const_enable: bool= true,
         /// Whether to show generic lifetime parameter name inlay hints.
-        inlayHints_genericParameterHints_lifetime_enable: bool = true,
+        inlayHints_genericParameterHints_lifetime_enable: bool = false,
         /// Whether to show generic type parameter name inlay hints.
         inlayHints_genericParameterHints_type_enable: bool = false,
         /// Whether to show implicit drop hints.
