@@ -20,7 +20,7 @@ macro_rules! wrong_concat_declarations {
         //~^ ERROR `concat` must have at least two elements
 
         ${concat($ex, aaaa)}
-        //~^ ERROR `${concat(..)}` currently only accepts identifiers
+        //~^ ERROR metavariables of `${concat(..)}` must be of type
 
         ${concat($ex, aaaa 123)}
         //~^ ERROR expected comma
@@ -98,6 +98,39 @@ macro_rules! unsupported_literals {
     }};
 }
 
+macro_rules! bad_literal_string {
+    ($literal:literal) => {
+        const ${concat(_foo, $literal)}: () = ();
+        //~^ ERROR `${concat(..)}` is not generating a valid identifier
+        //~| ERROR `${concat(..)}` is not generating a valid identifier
+        //~| ERROR `${concat(..)}` is not generating a valid identifier
+        //~| ERROR `${concat(..)}` is not generating a valid identifier
+        //~| ERROR `${concat(..)}` is not generating a valid identifier
+        //~| ERROR `${concat(..)}` is not generating a valid identifier
+        //~| ERROR `${concat(..)}` is not generating a valid identifier
+    }
+}
+
+macro_rules! bad_literal_non_string {
+    ($literal:literal) => {
+        const ${concat(_foo, $literal)}: () = ();
+        //~^ ERROR metavariables of `${concat(..)}` must be of type
+        //~| ERROR metavariables of `${concat(..)}` must be of type
+        //~| ERROR metavariables of `${concat(..)}` must be of type
+        //~| ERROR metavariables of `${concat(..)}` must be of type
+        //~| ERROR metavariables of `${concat(..)}` must be of type
+    }
+}
+
+macro_rules! bad_tt_literal {
+    ($tt:tt) => {
+        const ${concat(_foo, $tt)}: () = ();
+        //~^ ERROR metavariables of `${concat(..)}` must be of type
+        //~| ERROR metavariables of `${concat(..)}` must be of type
+        //~| ERROR metavariables of `${concat(..)}` must be of type
+    }
+}
+
 fn main() {
     wrong_concat_declarations!(1);
 
@@ -113,4 +146,23 @@ fn main() {
     unsupported_literals!(_abc);
 
     empty!();
+
+    bad_literal_string!("\u{00BD}");
+    bad_literal_string!("\x41");
+    bad_literal_string!("🤷");
+    bad_literal_string!("d[-_-]b");
+
+    bad_literal_string!("-1");
+    bad_literal_string!("1.0");
+    bad_literal_string!("'1'");
+
+    bad_literal_non_string!(1);
+    bad_literal_non_string!(-1);
+    bad_literal_non_string!(1.0);
+    bad_literal_non_string!('1');
+    bad_literal_non_string!(false);
+
+    bad_tt_literal!(1);
+    bad_tt_literal!(1.0);
+    bad_tt_literal!('1');
 }
