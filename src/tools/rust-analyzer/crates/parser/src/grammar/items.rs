@@ -112,8 +112,19 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
 
     // test_err async_without_semicolon
     // fn foo() { let _ = async {} }
-    if p.at(T![async]) && !matches!(p.nth(1), T!['{'] | T![move] | T![|]) {
+    if p.at(T![async])
+        && (!matches!(p.nth(1), T!['{'] | T![gen] | T![move] | T![|])
+            || matches!((p.nth(1), p.nth(2)), (T![gen], T![fn])))
+    {
         p.eat(T![async]);
+        has_mods = true;
+    }
+
+    // test_err gen_fn
+    // gen fn gen_fn() {}
+    // async gen fn async_gen_fn() {}
+    if p.at(T![gen]) && p.nth(1) == T![fn] {
+        p.eat(T![gen]);
         has_mods = true;
     }
 
@@ -173,13 +184,6 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         }
     }
 
-    // test existential_type
-    // existential type Foo: Fn() -> usize;
-    if p.at_contextual_kw(T![existential]) && p.nth(1) == T![type] {
-        p.bump_remap(T![existential]);
-        has_mods = true;
-    }
-
     // items
     match p.current() {
         T![fn] => fn_(p, m),
@@ -201,7 +205,7 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
 
         _ if has_visibility || has_mods => {
             if has_mods {
-                p.error("expected existential, fn, trait or impl");
+                p.error("expected fn, trait or impl");
             } else {
                 p.error("expected an item");
             }

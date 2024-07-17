@@ -25,7 +25,7 @@ use std::fmt;
 use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
 use hir::{FieldSource, HirFileIdExt, InFile, ModuleSource, Semantics};
-use span::SyntaxContextId;
+use span::{Edition, SyntaxContextId};
 use stdx::{never, TupleExt};
 use syntax::{
     ast::{self, HasName},
@@ -227,7 +227,8 @@ fn rename_mod(
     module: hir::Module,
     new_name: &str,
 ) -> Result<SourceChange> {
-    if IdentifierKind::classify(new_name)? != IdentifierKind::Ident {
+    if IdentifierKind::classify(module.krate().edition(sema.db), new_name)? != IdentifierKind::Ident
+    {
         bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
 
@@ -313,7 +314,12 @@ fn rename_reference(
     def: Definition,
     new_name: &str,
 ) -> Result<SourceChange> {
-    let ident_kind = IdentifierKind::classify(new_name)?;
+    let ident_kind = IdentifierKind::classify(
+        def.krate(sema.db)
+            .ok_or_else(|| RenameError("definition has no krate?".into()))?
+            .edition(sema.db),
+        new_name,
+    )?;
 
     if matches!(
         def,
@@ -605,8 +611,8 @@ pub enum IdentifierKind {
 }
 
 impl IdentifierKind {
-    pub fn classify(new_name: &str) -> Result<IdentifierKind> {
-        match parser::LexedStr::single_token(new_name) {
+    pub fn classify(edition: Edition, new_name: &str) -> Result<IdentifierKind> {
+        match parser::LexedStr::single_token(edition, new_name) {
             Some(res) => match res {
                 (SyntaxKind::IDENT, _) => {
                     if let Some(inner) = new_name.strip_prefix("r#") {

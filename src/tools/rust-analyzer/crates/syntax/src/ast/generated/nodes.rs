@@ -14,6 +14,8 @@ pub struct Abi {
 impl Abi {
     #[inline]
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
+    #[inline]
+    pub fn string_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![string]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -182,6 +184,10 @@ impl BlockExpr {
     #[inline]
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     #[inline]
+    pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
+    #[inline]
+    pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
+    #[inline]
     pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
@@ -238,13 +244,24 @@ impl CastExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ClosureBinder {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ClosureBinder {
+    #[inline]
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    #[inline]
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
     #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    pub fn closure_binder(&self) -> Option<ClosureBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     #[inline]
@@ -254,7 +271,7 @@ impl ClosureExpr {
     #[inline]
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+    pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
     #[inline]
     pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
     #[inline]
@@ -834,27 +851,6 @@ impl MacroDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroEagerInput {
-    pub(crate) syntax: SyntaxNode,
-}
-impl MacroEagerInput {
-    #[inline]
-    pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
-    #[inline]
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    #[inline]
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    #[inline]
-    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    #[inline]
-    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
-    #[inline]
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    #[inline]
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1049,6 +1045,10 @@ impl NameRef {
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
     #[inline]
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+    #[inline]
+    pub fn int_number_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![int_number])
+    }
     #[inline]
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     #[inline]
@@ -2461,6 +2461,20 @@ impl AstNode for CastExpr {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for ClosureBinder {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_BINDER }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for ClosureExpr {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_EXPR }
@@ -3010,20 +3024,6 @@ impl AstNode for MacroCall {
 impl AstNode for MacroDef {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_DEF }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for MacroEagerInput {
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_EAGER_INPUT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -5541,6 +5541,11 @@ impl std::fmt::Display for CastExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for ClosureBinder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for ClosureExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -5737,11 +5742,6 @@ impl std::fmt::Display for MacroCall {
     }
 }
 impl std::fmt::Display for MacroDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for MacroEagerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

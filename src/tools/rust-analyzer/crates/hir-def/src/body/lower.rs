@@ -301,7 +301,10 @@ impl ExprCollector<'_> {
                         result_expr_id
                     })
                 }
-                None => self.collect_block(e),
+                // FIXME
+                Some(ast::BlockModifier::AsyncGen(_)) | Some(ast::BlockModifier::Gen(_)) | None => {
+                    self.collect_block(e)
+                }
             },
             ast::Expr::LoopExpr(e) => {
                 let label = e.label().map(|label| self.collect_label(label));

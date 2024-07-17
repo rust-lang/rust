@@ -51,6 +51,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T![const],
         T![continue],
         T![do],
+        T![gen],
         T![for],
         T![if],
         T![let],
@@ -138,15 +139,37 @@ pub(super) fn atom_expr(
         // fn f() { const { } }
         // fn f() { async { } }
         // fn f() { async move { } }
-        T![const] | T![unsafe] | T![async] if la == T!['{'] => {
+        T![const] | T![unsafe] | T![async] | T![gen] if la == T!['{'] => {
             let m = p.start();
             p.bump_any();
             stmt_list(p);
             m.complete(p, BLOCK_EXPR)
         }
-        T![async] if la == T![move] && p.nth(2) == T!['{'] => {
+        // test_err gen_blocks
+        // pub fn main() {
+        //     gen { yield ""; };
+        //     async gen { yield ""; };
+        //     gen move { yield ""; };
+        //     async gen move { yield ""; };
+        // }
+        T![async] if la == T![gen] && p.nth(2) == T!['{'] => {
             let m = p.start();
             p.bump(T![async]);
+            p.eat(T![gen]);
+            stmt_list(p);
+            m.complete(p, BLOCK_EXPR)
+        }
+        T![async] | T![gen] if la == T![move] && p.nth(2) == T!['{'] => {
+            let m = p.start();
+            p.bump_any();
+            p.bump(T![move]);
+            stmt_list(p);
+            m.complete(p, BLOCK_EXPR)
+        }
+        T![async] if la == T![gen] && p.nth(2) == T![move] && p.nth(3) == T!['{'] => {
+            let m = p.start();
+            p.bump(T![async]);
+            p.bump(T![gen]);
             p.bump(T![move]);
             stmt_list(p);
             m.complete(p, BLOCK_EXPR)
@@ -355,6 +378,7 @@ fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
     p.eat(T![const]);
     p.eat(T![static]);
     p.eat(T![async]);
+    p.eat(T![gen]);
     p.eat(T![move]);
 
     if !p.at(T![|]) {

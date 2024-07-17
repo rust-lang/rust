@@ -9,6 +9,7 @@ pub enum SyntaxKind {
     TOMBSTONE,
     #[doc(hidden)]
     EOF,
+    DOLLAR,
     SEMICOLON,
     COMMA,
     L_PAREN,
@@ -23,7 +24,6 @@ pub enum SyntaxKind {
     POUND,
     TILDE,
     QUESTION,
-    DOLLAR,
     AMP,
     PIPE,
     PLUS,
@@ -61,6 +61,7 @@ pub enum SyntaxKind {
     SHR,
     SHLEQ,
     SHREQ,
+    SELF_TYPE_KW,
     ABSTRACT_KW,
     AS_KW,
     ASYNC_KW,
@@ -80,6 +81,7 @@ pub enum SyntaxKind {
     FINAL_KW,
     FN_KW,
     FOR_KW,
+    GEN_KW,
     IF_KW,
     IMPL_KW,
     IN_KW,
@@ -96,7 +98,6 @@ pub enum SyntaxKind {
     REF_KW,
     RETURN_KW,
     SELF_KW,
-    SELF_TYPE_KW,
     STATIC_KW,
     STRUCT_KW,
     SUPER_KW,
@@ -112,173 +113,184 @@ pub enum SyntaxKind {
     WHERE_KW,
     WHILE_KW,
     YIELD_KW,
+    ASM_KW,
     AUTO_KW,
     BUILTIN_KW,
     DEFAULT_KW,
-    EXISTENTIAL_KW,
-    UNION_KW,
-    RAW_KW,
-    MACRO_RULES_KW,
-    YEET_KW,
-    OFFSET_OF_KW,
-    ASM_KW,
     FORMAT_ARGS_KW,
-    INT_NUMBER,
-    FLOAT_NUMBER,
-    CHAR,
+    MACRO_RULES_KW,
+    OFFSET_OF_KW,
+    RAW_KW,
+    UNION_KW,
+    YEET_KW,
     BYTE,
-    STRING,
     BYTE_STRING,
+    CHAR,
     C_STRING,
+    FLOAT_NUMBER,
+    INT_NUMBER,
+    RAW_BYTE_STRING,
+    RAW_C_STRING,
+    RAW_STRING,
+    STRING,
+    COMMENT,
     ERROR,
     IDENT,
-    WHITESPACE,
     LIFETIME_IDENT,
-    COMMENT,
+    NEWLINE,
     SHEBANG,
-    SOURCE_FILE,
-    STRUCT,
-    UNION,
-    ENUM,
-    FN,
-    RET_TYPE,
-    EXTERN_CRATE,
-    MODULE,
-    USE,
-    STATIC,
+    WHITESPACE,
+    ABI,
+    ADT,
+    ARG_LIST,
+    ARRAY_EXPR,
+    ARRAY_TYPE,
+    ASM_EXPR,
+    ASSOC_ITEM,
+    ASSOC_ITEM_LIST,
+    ASSOC_TYPE_ARG,
+    ATTR,
+    AWAIT_EXPR,
+    BECOME_EXPR,
+    BIN_EXPR,
+    BLOCK_EXPR,
+    BOX_PAT,
+    BREAK_EXPR,
+    CALL_EXPR,
+    CAST_EXPR,
+    CLOSURE_BINDER,
+    CLOSURE_EXPR,
     CONST,
+    CONST_ARG,
+    CONST_BLOCK_PAT,
+    CONST_PARAM,
+    CONTINUE_EXPR,
+    DYN_TRAIT_TYPE,
+    ENUM,
+    EXPR,
+    EXPR_STMT,
+    EXTERN_BLOCK,
+    EXTERN_CRATE,
+    EXTERN_ITEM,
+    EXTERN_ITEM_LIST,
+    FIELD_EXPR,
+    FIELD_LIST,
+    FN,
+    FN_PTR_TYPE,
+    FORMAT_ARGS_ARG,
+    FORMAT_ARGS_EXPR,
+    FOR_EXPR,
+    FOR_TYPE,
+    GENERIC_ARG,
+    GENERIC_ARG_LIST,
+    GENERIC_PARAM,
+    GENERIC_PARAM_LIST,
+    IDENT_PAT,
+    IF_EXPR,
+    IMPL,
+    IMPL_TRAIT_TYPE,
+    INDEX_EXPR,
+    INFER_TYPE,
+    ITEM,
+    ITEM_LIST,
+    LABEL,
+    LET_ELSE,
+    LET_EXPR,
+    LET_STMT,
+    LIFETIME,
+    LIFETIME_ARG,
+    LIFETIME_PARAM,
+    LITERAL,
+    LITERAL_PAT,
+    LOOP_EXPR,
+    MACRO_CALL,
+    MACRO_DEF,
+    MACRO_EXPR,
+    MACRO_ITEMS,
+    MACRO_PAT,
+    MACRO_RULES,
+    MACRO_STMTS,
+    MACRO_TYPE,
+    MATCH_ARM,
+    MATCH_ARM_LIST,
+    MATCH_EXPR,
+    MATCH_GUARD,
+    META,
+    METHOD_CALL_EXPR,
+    MODULE,
+    NAME,
+    NAME_REF,
+    NEVER_TYPE,
+    OFFSET_OF_EXPR,
+    OR_PAT,
+    PARAM,
+    PARAM_LIST,
+    PAREN_EXPR,
+    PAREN_PAT,
+    PAREN_TYPE,
+    PAT,
+    PATH,
+    PATH_EXPR,
+    PATH_PAT,
+    PATH_SEGMENT,
+    PATH_TYPE,
+    PREFIX_EXPR,
+    PTR_TYPE,
+    RANGE_EXPR,
+    RANGE_PAT,
+    RECORD_EXPR,
+    RECORD_EXPR_FIELD,
+    RECORD_EXPR_FIELD_LIST,
+    RECORD_FIELD,
+    RECORD_FIELD_LIST,
+    RECORD_PAT,
+    RECORD_PAT_FIELD,
+    RECORD_PAT_FIELD_LIST,
+    REF_EXPR,
+    REF_PAT,
+    REF_TYPE,
+    RENAME,
+    REST_PAT,
+    RETURN_EXPR,
+    RET_TYPE,
+    SELF_PARAM,
+    SLICE_PAT,
+    SLICE_TYPE,
+    SOURCE_FILE,
+    STATIC,
+    STMT,
+    STMT_LIST,
+    STRUCT,
+    TOKEN_TREE,
     TRAIT,
     TRAIT_ALIAS,
-    IMPL,
-    TYPE_ALIAS,
-    MACRO_CALL,
-    MACRO_RULES,
-    MACRO_ARM,
-    TOKEN_TREE,
-    MACRO_DEF,
-    PAREN_TYPE,
-    TUPLE_TYPE,
-    MACRO_TYPE,
-    NEVER_TYPE,
-    PATH_TYPE,
-    PTR_TYPE,
-    ARRAY_TYPE,
-    SLICE_TYPE,
-    REF_TYPE,
-    INFER_TYPE,
-    FN_PTR_TYPE,
-    FOR_TYPE,
-    IMPL_TRAIT_TYPE,
-    DYN_TRAIT_TYPE,
-    OR_PAT,
-    PAREN_PAT,
-    REF_PAT,
-    BOX_PAT,
-    IDENT_PAT,
-    WILDCARD_PAT,
-    REST_PAT,
-    PATH_PAT,
-    RECORD_PAT,
-    RECORD_PAT_FIELD_LIST,
-    RECORD_PAT_FIELD,
-    TUPLE_STRUCT_PAT,
-    TUPLE_PAT,
-    SLICE_PAT,
-    RANGE_PAT,
-    LITERAL_PAT,
-    MACRO_PAT,
-    CONST_BLOCK_PAT,
-    TUPLE_EXPR,
-    ARRAY_EXPR,
-    PAREN_EXPR,
-    PATH_EXPR,
-    CLOSURE_EXPR,
-    IF_EXPR,
-    WHILE_EXPR,
-    LOOP_EXPR,
-    FOR_EXPR,
-    CONTINUE_EXPR,
-    BREAK_EXPR,
-    LABEL,
-    BLOCK_EXPR,
-    STMT_LIST,
-    RETURN_EXPR,
-    BECOME_EXPR,
-    YIELD_EXPR,
-    YEET_EXPR,
-    LET_EXPR,
-    UNDERSCORE_EXPR,
-    MACRO_EXPR,
-    MATCH_EXPR,
-    MATCH_ARM_LIST,
-    MATCH_ARM,
-    MATCH_GUARD,
-    RECORD_EXPR,
-    RECORD_EXPR_FIELD_LIST,
-    RECORD_EXPR_FIELD,
-    OFFSET_OF_EXPR,
-    ASM_EXPR,
-    FORMAT_ARGS_EXPR,
-    FORMAT_ARGS_ARG,
-    CALL_EXPR,
-    INDEX_EXPR,
-    METHOD_CALL_EXPR,
-    FIELD_EXPR,
-    AWAIT_EXPR,
     TRY_EXPR,
-    CAST_EXPR,
-    REF_EXPR,
-    PREFIX_EXPR,
-    RANGE_EXPR,
-    BIN_EXPR,
-    EXTERN_BLOCK,
-    EXTERN_ITEM_LIST,
-    VARIANT,
-    RECORD_FIELD_LIST,
-    RECORD_FIELD,
-    TUPLE_FIELD_LIST,
+    TUPLE_EXPR,
     TUPLE_FIELD,
-    VARIANT_LIST,
-    ITEM_LIST,
-    ASSOC_ITEM_LIST,
-    ATTR,
-    META,
+    TUPLE_FIELD_LIST,
+    TUPLE_PAT,
+    TUPLE_STRUCT_PAT,
+    TUPLE_TYPE,
+    TYPE,
+    TYPE_ALIAS,
+    TYPE_ARG,
+    TYPE_BOUND,
+    TYPE_BOUND_LIST,
+    TYPE_PARAM,
+    UNDERSCORE_EXPR,
+    UNION,
+    USE,
     USE_TREE,
     USE_TREE_LIST,
-    PATH,
-    PATH_SEGMENT,
-    LITERAL,
-    RENAME,
+    VARIANT,
+    VARIANT_LIST,
     VISIBILITY,
     WHERE_CLAUSE,
     WHERE_PRED,
-    ABI,
-    NAME,
-    NAME_REF,
-    LET_STMT,
-    LET_ELSE,
-    EXPR_STMT,
-    GENERIC_PARAM_LIST,
-    GENERIC_PARAM,
-    LIFETIME_PARAM,
-    TYPE_PARAM,
-    RETURN_TYPE_ARG,
-    CONST_PARAM,
-    GENERIC_ARG_LIST,
-    LIFETIME,
-    LIFETIME_ARG,
-    TYPE_ARG,
-    ASSOC_TYPE_ARG,
-    CONST_ARG,
-    PARAM_LIST,
-    PARAM,
-    SELF_PARAM,
-    ARG_LIST,
-    TYPE_BOUND,
-    TYPE_BOUND_LIST,
-    MACRO_ITEMS,
-    MACRO_STMTS,
-    MACRO_EAGER_INPUT,
+    WHILE_EXPR,
+    WILDCARD_PAT,
+    YEET_EXPR,
+    YIELD_EXPR,
     #[doc(hidden)]
     __LAST,
 }
@@ -287,7 +299,8 @@ impl SyntaxKind {
     pub fn is_keyword(self) -> bool {
         matches!(
             self,
-            ABSTRACT_KW
+            SELF_TYPE_KW
+                | ABSTRACT_KW
                 | AS_KW
                 | ASYNC_KW
                 | AWAIT_KW
@@ -306,6 +319,7 @@ impl SyntaxKind {
                 | FINAL_KW
                 | FN_KW
                 | FOR_KW
+                | GEN_KW
                 | IF_KW
                 | IMPL_KW
                 | IN_KW
@@ -322,7 +336,6 @@ impl SyntaxKind {
                 | REF_KW
                 | RETURN_KW
                 | SELF_KW
-                | SELF_TYPE_KW
                 | STATIC_KW
                 | STRUCT_KW
                 | SUPER_KW
@@ -338,23 +351,23 @@ impl SyntaxKind {
                 | WHERE_KW
                 | WHILE_KW
                 | YIELD_KW
+                | ASM_KW
                 | AUTO_KW
                 | BUILTIN_KW
                 | DEFAULT_KW
-                | EXISTENTIAL_KW
-                | UNION_KW
-                | RAW_KW
-                | MACRO_RULES_KW
-                | YEET_KW
-                | OFFSET_OF_KW
-                | ASM_KW
                 | FORMAT_ARGS_KW
+                | MACRO_RULES_KW
+                | OFFSET_OF_KW
+                | RAW_KW
+                | UNION_KW
+                | YEET_KW
         )
     }
     pub fn is_punct(self) -> bool {
         matches!(
             self,
-            SEMICOLON
+            DOLLAR
+                | SEMICOLON
                 | COMMA
                 | L_PAREN
                 | R_PAREN
@@ -368,7 +381,6 @@ impl SyntaxKind {
                 | POUND
                 | TILDE
                 | QUESTION
-                | DOLLAR
                 | AMP
                 | PIPE
                 | PLUS
@@ -409,10 +421,22 @@ impl SyntaxKind {
         )
     }
     pub fn is_literal(self) -> bool {
-        matches!(self, INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE | STRING | BYTE_STRING | C_STRING)
+        matches!(
+            self,
+            BYTE | BYTE_STRING
+                | CHAR
+                | C_STRING
+                | FLOAT_NUMBER
+                | INT_NUMBER
+                | RAW_BYTE_STRING
+                | RAW_C_STRING
+                | RAW_STRING
+                | STRING
+        )
     }
     pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
         let kw = match ident {
+            "Self" => SELF_TYPE_KW,
             "abstract" => ABSTRACT_KW,
             "as" => AS_KW,
             "async" => ASYNC_KW,
@@ -432,6 +456,7 @@ impl SyntaxKind {
             "final" => FINAL_KW,
             "fn" => FN_KW,
             "for" => FOR_KW,
+            "gen" => GEN_KW,
             "if" => IF_KW,
             "impl" => IMPL_KW,
             "in" => IN_KW,
@@ -448,7 +473,6 @@ impl SyntaxKind {
             "ref" => REF_KW,
             "return" => RETURN_KW,
             "self" => SELF_KW,
-            "Self" => SELF_TYPE_KW,
             "static" => STATIC_KW,
             "struct" => STRUCT_KW,
             "super" => SUPER_KW,
@@ -470,23 +494,23 @@ impl SyntaxKind {
     }
     pub fn from_contextual_keyword(ident: &str) -> Option<SyntaxKind> {
         let kw = match ident {
+            "asm" => ASM_KW,
             "auto" => AUTO_KW,
             "builtin" => BUILTIN_KW,
             "default" => DEFAULT_KW,
-            "existential" => EXISTENTIAL_KW,
-            "union" => UNION_KW,
-            "raw" => RAW_KW,
-            "macro_rules" => MACRO_RULES_KW,
-            "yeet" => YEET_KW,
-            "offset_of" => OFFSET_OF_KW,
-            "asm" => ASM_KW,
             "format_args" => FORMAT_ARGS_KW,
+            "macro_rules" => MACRO_RULES_KW,
+            "offset_of" => OFFSET_OF_KW,
+            "raw" => RAW_KW,
+            "union" => UNION_KW,
+            "yeet" => YEET_KW,
             _ => return None,
         };
         Some(kw)
     }
     pub fn from_char(c: char) -> Option<SyntaxKind> {
         let tok = match c {
+            '$' => DOLLAR,
             ';' => SEMICOLON,
             ',' => COMMA,
             '(' => L_PAREN,
@@ -501,7 +525,6 @@ impl SyntaxKind {
             '#' => POUND,
             '~' => TILDE,
             '?' => QUESTION,
-            '$' => DOLLAR,
             '&' => AMP,
             '|' => PIPE,
             '+' => PLUS,
@@ -521,4 +544,4 @@ impl SyntaxKind {
     }
 }
 #[macro_export]
-macro_rules ! T { [;] => { $ crate :: SyntaxKind :: SEMICOLON } ; [,] => { $ crate :: SyntaxKind :: COMMA } ; ['('] => { $ crate :: SyntaxKind :: L_PAREN } ; [')'] => { $ crate :: SyntaxKind :: R_PAREN } ; ['{'] => { $ crate :: SyntaxKind :: L_CURLY } ; ['}'] => { $ crate :: SyntaxKind :: R_CURLY } ; ['['] => { $ crate :: SyntaxKind :: L_BRACK } ; [']'] => { $ crate :: SyntaxKind :: R_BRACK } ; [<] => { $ crate :: SyntaxKind :: L_ANGLE } ; [>] => { $ crate :: SyntaxKind :: R_ANGLE } ; [@] => { $ crate :: SyntaxKind :: AT } ; [#] => { $ crate :: SyntaxKind :: POUND } ; [~] => { $ crate :: SyntaxKind :: TILDE } ; [?] => { $ crate :: SyntaxKind :: QUESTION } ; [$] => { $ crate :: SyntaxKind :: DOLLAR } ; [&] => { $ crate :: SyntaxKind :: AMP } ; [|] => { $ crate :: SyntaxKind :: PIPE } ; [+] => { $ crate :: SyntaxKind :: PLUS } ; [*] => { $ crate :: SyntaxKind :: STAR } ; [/] => { $ crate :: SyntaxKind :: SLASH } ; [^] => { $ crate :: SyntaxKind :: CARET } ; [%] => { $ crate :: SyntaxKind :: PERCENT } ; [_] => { $ crate :: SyntaxKind :: UNDERSCORE } ; [.] => { $ crate :: SyntaxKind :: DOT } ; [..] => { $ crate :: SyntaxKind :: DOT2 } ; [...] => { $ crate :: SyntaxKind :: DOT3 } ; [..=] => { $ crate :: SyntaxKind :: DOT2EQ } ; [:] => { $ crate :: SyntaxKind :: COLON } ; [::] => { $ crate :: SyntaxKind :: COLON2 } ; [=] => { $ crate :: SyntaxKind :: EQ } ; [==] => { $ crate :: SyntaxKind :: EQ2 } ; [=>] => { $ crate :: SyntaxKind :: FAT_ARROW } ; [!] => { $ crate :: SyntaxKind :: BANG } ; [!=] => { $ crate :: SyntaxKind :: NEQ } ; [-] => { $ crate :: SyntaxKind :: MINUS } ; [->] => { $ crate :: SyntaxKind :: THIN_ARROW } ; [<=] => { $ crate :: SyntaxKind :: LTEQ } ; [>=] => { $ crate :: SyntaxKind :: GTEQ } ; [+=] => { $ crate :: SyntaxKind :: PLUSEQ } ; [-=] => { $ crate :: SyntaxKind :: MINUSEQ } ; [|=] => { $ crate :: SyntaxKind :: PIPEEQ } ; [&=] => { $ crate :: SyntaxKind :: AMPEQ } ; [^=] => { $ crate :: SyntaxKind :: CARETEQ } ; [/=] => { $ crate :: SyntaxKind :: SLASHEQ } ; [*=] => { $ crate :: SyntaxKind :: STAREQ } ; [%=] => { $ crate :: SyntaxKind :: PERCENTEQ } ; [&&] => { $ crate :: SyntaxKind :: AMP2 } ; [||] => { $ crate :: SyntaxKind :: PIPE2 } ; [<<] => { $ crate :: SyntaxKind :: SHL } ; [>>] => { $ crate :: SyntaxKind :: SHR } ; [<<=] => { $ crate :: SyntaxKind :: SHLEQ } ; [>>=] => { $ crate :: SyntaxKind :: SHREQ } ; [abstract] => { $ crate :: SyntaxKind :: ABSTRACT_KW } ; [as] => { $ crate :: SyntaxKind :: AS_KW } ; [async] => { $ crate :: SyntaxKind :: ASYNC_KW } ; [await] => { $ crate :: SyntaxKind :: AWAIT_KW } ; [become] => { $ crate :: SyntaxKind :: BECOME_KW } ; [box] => { $ crate :: SyntaxKind :: BOX_KW } ; [break] => { $ crate :: SyntaxKind :: BREAK_KW } ; [const] => { $ crate :: SyntaxKind :: CONST_KW } ; [continue] => { $ crate :: SyntaxKind :: CONTINUE_KW } ; [crate] => { $ crate :: SyntaxKind :: CRATE_KW } ; [do] => { $ crate :: SyntaxKind :: DO_KW } ; [dyn] => { $ crate :: SyntaxKind :: DYN_KW } ; [else] => { $ crate :: SyntaxKind :: ELSE_KW } ; [enum] => { $ crate :: SyntaxKind :: ENUM_KW } ; [extern] => { $ crate :: SyntaxKind :: EXTERN_KW } ; [false] => { $ crate :: SyntaxKind :: FALSE_KW } ; [final] => { $ crate :: SyntaxKind :: FINAL_KW } ; [fn] => { $ crate :: SyntaxKind :: FN_KW } ; [for] => { $ crate :: SyntaxKind :: FOR_KW } ; [if] => { $ crate :: SyntaxKind :: IF_KW } ; [impl] => { $ crate :: SyntaxKind :: IMPL_KW } ; [in] => { $ crate :: SyntaxKind :: IN_KW } ; [let] => { $ crate :: SyntaxKind :: LET_KW } ; [loop] => { $ crate :: SyntaxKind :: LOOP_KW } ; [macro] => { $ crate :: SyntaxKind :: MACRO_KW } ; [match] => { $ crate :: SyntaxKind :: MATCH_KW } ; [mod] => { $ crate :: SyntaxKind :: MOD_KW } ; [move] => { $ crate :: SyntaxKind :: MOVE_KW } ; [mut] => { $ crate :: SyntaxKind :: MUT_KW } ; [override] => { $ crate :: SyntaxKind :: OVERRIDE_KW } ; [priv] => { $ crate :: SyntaxKind :: PRIV_KW } ; [pub] => { $ crate :: SyntaxKind :: PUB_KW } ; [ref] => { $ crate :: SyntaxKind :: REF_KW } ; [return] => { $ crate :: SyntaxKind :: RETURN_KW } ; [self] => { $ crate :: SyntaxKind :: SELF_KW } ; [Self] => { $ crate :: SyntaxKind :: SELF_TYPE_KW } ; [static] => { $ crate :: SyntaxKind :: STATIC_KW } ; [struct] => { $ crate :: SyntaxKind :: STRUCT_KW } ; [super] => { $ crate :: SyntaxKind :: SUPER_KW } ; [trait] => { $ crate :: SyntaxKind :: TRAIT_KW } ; [true] => { $ crate :: SyntaxKind :: TRUE_KW } ; [try] => { $ crate :: SyntaxKind :: TRY_KW } ; [type] => { $ crate :: SyntaxKind :: TYPE_KW } ; [typeof] => { $ crate :: SyntaxKind :: TYPEOF_KW } ; [unsafe] => { $ crate :: SyntaxKind :: UNSAFE_KW } ; [unsized] => { $ crate :: SyntaxKind :: UNSIZED_KW } ; [use] => { $ crate :: SyntaxKind :: USE_KW } ; [virtual] => { $ crate :: SyntaxKind :: VIRTUAL_KW } ; [where] => { $ crate :: SyntaxKind :: WHERE_KW } ; [while] => { $ crate :: SyntaxKind :: WHILE_KW } ; [yield] => { $ crate :: SyntaxKind :: YIELD_KW } ; [auto] => { $ crate :: SyntaxKind :: AUTO_KW } ; [builtin] => { $ crate :: SyntaxKind :: BUILTIN_KW } ; [default] => { $ crate :: SyntaxKind :: DEFAULT_KW } ; [existential] => { $ crate :: SyntaxKind :: EXISTENTIAL_KW } ; [union] => { $ crate :: SyntaxKind :: UNION_KW } ; [raw] => { $ crate :: SyntaxKind :: RAW_KW } ; [macro_rules] => { $ crate :: SyntaxKind :: MACRO_RULES_KW } ; [yeet] => { $ crate :: SyntaxKind :: YEET_KW } ; [offset_of] => { $ crate :: SyntaxKind :: OFFSET_OF_KW } ; [asm] => { $ crate :: SyntaxKind :: ASM_KW } ; [format_args] => { $ crate :: SyntaxKind :: FORMAT_ARGS_KW } ; [lifetime_ident] => { $ crate :: SyntaxKind :: LIFETIME_IDENT } ; [ident] => { $ crate :: SyntaxKind :: IDENT } ; [shebang] => { $ crate :: SyntaxKind :: SHEBANG } ; }
+macro_rules ! T { [$] => { $ crate :: SyntaxKind :: DOLLAR } ; [;] => { $ crate :: SyntaxKind :: SEMICOLON } ; [,] => { $ crate :: SyntaxKind :: COMMA } ; ['('] => { $ crate :: SyntaxKind :: L_PAREN } ; [')'] => { $ crate :: SyntaxKind :: R_PAREN } ; ['{'] => { $ crate :: SyntaxKind :: L_CURLY } ; ['}'] => { $ crate :: SyntaxKind :: R_CURLY } ; ['['] => { $ crate :: SyntaxKind :: L_BRACK } ; [']'] => { $ crate :: SyntaxKind :: R_BRACK } ; [<] => { $ crate :: SyntaxKind :: L_ANGLE } ; [>] => { $ crate :: SyntaxKind :: R_ANGLE } ; [@] => { $ crate :: SyntaxKind :: AT } ; [#] => { $ crate :: SyntaxKind :: POUND } ; [~] => { $ crate :: SyntaxKind :: TILDE } ; [?] => { $ crate :: SyntaxKind :: QUESTION } ; [&] => { $ crate :: SyntaxKind :: AMP } ; [|] => { $ crate :: SyntaxKind :: PIPE } ; [+] => { $ crate :: SyntaxKind :: PLUS } ; [*] => { $ crate :: SyntaxKind :: STAR } ; [/] => { $ crate :: SyntaxKind :: SLASH } ; [^] => { $ crate :: SyntaxKind :: CARET } ; [%] => { $ crate :: SyntaxKind :: PERCENT } ; [_] => { $ crate :: SyntaxKind :: UNDERSCORE } ; [.] => { $ crate :: SyntaxKind :: DOT } ; [..] => { $ crate :: SyntaxKind :: DOT2 } ; [...] => { $ crate :: SyntaxKind :: DOT3 } ; [..=] => { $ crate :: SyntaxKind :: DOT2EQ } ; [:] => { $ crate :: SyntaxKind :: COLON } ; [::] => { $ crate :: SyntaxKind :: COLON2 } ; [=] => { $ crate :: SyntaxKind :: EQ } ; [==] => { $ crate :: SyntaxKind :: EQ2 } ; [=>] => { $ crate :: SyntaxKind :: FAT_ARROW } ; [!] => { $ crate :: SyntaxKind :: BANG } ; [!=] => { $ crate :: SyntaxKind :: NEQ } ; [-] => { $ crate :: SyntaxKind :: MINUS } ; [->] => { $ crate :: SyntaxKind :: THIN_ARROW } ; [<=] => { $ crate :: SyntaxKind :: LTEQ } ; [>=] => { $ crate :: SyntaxKind :: GTEQ } ; [+=] => { $ crate :: SyntaxKind :: PLUSEQ } ; [-=] => { $ crate :: SyntaxKind :: MINUSEQ } ; [|=] => { $ crate :: SyntaxKind :: PIPEEQ } ; [&=] => { $ crate :: SyntaxKind :: AMPEQ } ; [^=] => { $ crate :: SyntaxKind :: CARETEQ } ; [/=] => { $ crate :: SyntaxKind :: SLASHEQ } ; [*=] => { $ crate :: SyntaxKind :: STAREQ } ; [%=] => { $ crate :: SyntaxKind :: PERCENTEQ } ; [&&] => { $ crate :: SyntaxKind :: AMP2 } ; [||] => { $ crate :: SyntaxKind :: PIPE2 } ; [<<] => { $ crate :: SyntaxKind :: SHL } ; [>>] => { $ crate :: SyntaxKind :: SHR } ; [<<=] => { $ crate :: SyntaxKind :: SHLEQ } ; [>>=] => { $ crate :: SyntaxKind :: SHREQ } ; [Self] => { $ crate :: SyntaxKind :: SELF_TYPE_KW } ; [abstract] => { $ crate :: SyntaxKind :: ABSTRACT_KW } ; [as] => { $ crate :: SyntaxKind :: AS_KW } ; [async] => { $ crate :: SyntaxKind :: ASYNC_KW } ; [await] => { $ crate :: SyntaxKind :: AWAIT_KW } ; [become] => { $ crate :: SyntaxKind :: BECOME_KW } ; [box] => { $ crate :: SyntaxKind :: BOX_KW } ; [break] => { $ crate :: SyntaxKind :: BREAK_KW } ; [const] => { $ crate :: SyntaxKind :: CONST_KW } ; [continue] => { $ crate :: SyntaxKind :: CONTINUE_KW } ; [crate] => { $ crate :: SyntaxKind :: CRATE_KW } ; [do] => { $ crate :: SyntaxKind :: DO_KW } ; [dyn] => { $ crate :: SyntaxKind :: DYN_KW } ; [else] => { $ crate :: SyntaxKind :: ELSE_KW } ; [enum] => { $ crate :: SyntaxKind :: ENUM_KW } ; [extern] => { $ crate :: SyntaxKind :: EXTERN_KW } ; [false] => { $ crate :: SyntaxKind :: FALSE_KW } ; [final] => { $ crate :: SyntaxKind :: FINAL_KW } ; [fn] => { $ crate :: SyntaxKind :: FN_KW } ; [for] => { $ crate :: SyntaxKind :: FOR_KW } ; [gen] => { $ crate :: SyntaxKind :: GEN_KW } ; [if] => { $ crate :: SyntaxKind :: IF_KW } ; [impl] => { $ crate :: SyntaxKind :: IMPL_KW } ; [in] => { $ crate :: SyntaxKind :: IN_KW } ; [let] => { $ crate :: SyntaxKind :: LET_KW } ; [loop] => { $ crate :: SyntaxKind :: LOOP_KW } ; [macro] => { $ crate :: SyntaxKind :: MACRO_KW } ; [match] => { $ crate :: SyntaxKind :: MATCH_KW } ; [mod] => { $ crate :: SyntaxKind :: MOD_KW } ; [move] => { $ crate :: SyntaxKind :: MOVE_KW } ; [mut] => { $ crate :: SyntaxKind :: MUT_KW } ; [override] => { $ crate :: SyntaxKind :: OVERRIDE_KW } ; [priv] => { $ crate :: SyntaxKind :: PRIV_KW } ; [pub] => { $ crate :: SyntaxKind :: PUB_KW } ; [ref] => { $ crate :: SyntaxKind :: REF_KW } ; [return] => { $ crate :: SyntaxKind :: RETURN_KW } ; [self] => { $ crate :: SyntaxKind :: SELF_KW } ; [static] => { $ crate :: SyntaxKind :: STATIC_KW } ; [struct] => { $ crate :: SyntaxKind :: STRUCT_KW } ; [super] => { $ crate :: SyntaxKind :: SUPER_KW } ; [trait] => { $ crate :: SyntaxKind :: TRAIT_KW } ; [true] => { $ crate :: SyntaxKind :: TRUE_KW } ; [try] => { $ crate :: SyntaxKind :: TRY_KW } ; [type] => { $ crate :: SyntaxKind :: TYPE_KW } ; [typeof] => { $ crate :: SyntaxKind :: TYPEOF_KW } ; [unsafe] => { $ crate :: SyntaxKind :: UNSAFE_KW } ; [unsized] => { $ crate :: SyntaxKind :: UNSIZED_KW } ; [use] => { $ crate :: SyntaxKind :: USE_KW } ; [virtual] => { $ crate :: SyntaxKind :: VIRTUAL_KW } ; [where] => { $ crate :: SyntaxKind :: WHERE_KW } ; [while] => { $ crate :: SyntaxKind :: WHILE_KW } ; [yield] => { $ crate :: SyntaxKind :: YIELD_KW } ; [asm] => { $ crate :: SyntaxKind :: ASM_KW } ; [auto] => { $ crate :: SyntaxKind :: AUTO_KW } ; [builtin] => { $ crate :: SyntaxKind :: BUILTIN_KW } ; [default] => { $ crate :: SyntaxKind :: DEFAULT_KW } ; [format_args] => { $ crate :: SyntaxKind :: FORMAT_ARGS_KW } ; [macro_rules] => { $ crate :: SyntaxKind :: MACRO_RULES_KW } ; [offset_of] => { $ crate :: SyntaxKind :: OFFSET_OF_KW } ; [raw] => { $ crate :: SyntaxKind :: RAW_KW } ; [union] => { $ crate :: SyntaxKind :: UNION_KW } ; [yeet] => { $ crate :: SyntaxKind :: YEET_KW } ; [lifetime_ident] => { $ crate :: SyntaxKind :: LIFETIME_IDENT } ; [int_number] => { $ crate :: SyntaxKind :: INT_NUMBER } ; [ident] => { $ crate :: SyntaxKind :: IDENT } ; [string] => { $ crate :: SyntaxKind :: STRING } ; [shebang] => { $ crate :: SyntaxKind :: SHEBANG } ; }

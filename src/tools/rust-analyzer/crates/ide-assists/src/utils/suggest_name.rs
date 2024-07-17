@@ -184,7 +184,7 @@ fn normalize(name: &str) -> Option<String> {
 
 fn is_valid_name(name: &str) -> bool {
     matches!(
-        ide_db::syntax_helpers::LexedStr::single_token(name),
+        ide_db::syntax_helpers::LexedStr::single_token(syntax::Edition::CURRENT, name),
         Some((syntax::SyntaxKind::IDENT, _error))
     )
 }

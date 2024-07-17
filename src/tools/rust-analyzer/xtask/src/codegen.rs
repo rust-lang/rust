@@ -163,8 +163,9 @@ fn add_preamble(cg: CodegenType, mut text: String) -> String {
 /// case, updates the file and then fails the test.
 #[allow(clippy::print_stderr)]
 fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: bool) {
+    let contents = normalize_newlines(contents);
     if let Ok(old_contents) = fs::read_to_string(file) {
-        if normalize_newlines(&old_contents) == normalize_newlines(contents) {
+        if normalize_newlines(&old_contents) == contents {
             // File is already up to date.
             return;
         }

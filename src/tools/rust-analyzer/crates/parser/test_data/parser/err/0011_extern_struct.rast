@@ -10,4 +10,4 @@ SOURCE_FILE
       IDENT "Foo"
     SEMICOLON ";"
   WHITESPACE "\n"
-error 6: expected existential, fn, trait or impl
+error 6: expected fn, trait or impl
