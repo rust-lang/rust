@@ -86,13 +86,18 @@ mod imp {
     // out many large systems and all implementations allow returning from a
     // signal handler to work. For a more detailed explanation see the
     // comments on #26458.
+    /// SIGSEGV/SIGBUS entry point
+    /// # Safety
+    /// Rust doesn't call this, it *gets called*.
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe extern "C" fn signal_handler(
         signum: libc::c_int,
         info: *mut libc::siginfo_t,
         _data: *mut libc::c_void,
     ) {
         let (start, end) = GUARD.get();
-        let addr = (*info).si_addr() as usize;
+        // SAFETY: this pointer is provided by the system and will always point to a valid `siginfo_t`.
+        let addr = unsafe { (*info).si_addr().addr() };
 
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
@@ -104,9 +109,11 @@ mod imp {
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
-            let mut action: sigaction = mem::zeroed();
+            // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
+            let mut action: sigaction = unsafe { mem::zeroed() };
             action.sa_sigaction = SIG_DFL;
-            sigaction(signum, &action, ptr::null_mut());
+            // SAFETY: pray this is a well-behaved POSIX implementation of fn sigaction
+            unsafe { sigaction(signum, &action, ptr::null_mut()) };
 
             // See comment above for why this function returns.
         }
