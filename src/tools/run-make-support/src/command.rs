@@ -24,18 +24,50 @@ use build_helper::drop_bomb::DropBomb;
 /// [`run`]: Self::run
 /// [`run_fail`]: Self::run_fail
 /// [`run_unchecked`]: Self::run_unchecked
-#[derive(Debug)]
 pub struct Command {
     cmd: StdCommand,
     stdin: Option<Box<[u8]>>,
+    completed_process_checks: Vec<(String, Box<dyn Fn(&CompletedProcess)>)>,
     drop_bomb: DropBomb,
+}
+
+impl std::fmt::Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Command")
+            .field("cmd", &self.cmd)
+            .field("stdin", &self.stdin)
+            .field(
+                "completed_process_checks",
+                &self
+                    .completed_process_checks
+                    .iter()
+                    .map(|(name, _check)| name)
+                    .collect::<Vec<_>>(),
+            )
+            .field("drop_bomb", &self.drop_bomb)
+            .finish()
+    }
 }
 
 impl Command {
     #[track_caller]
     pub fn new<P: AsRef<OsStr>>(program: P) -> Self {
         let program = program.as_ref();
-        Self { cmd: StdCommand::new(program), stdin: None, drop_bomb: DropBomb::arm(program) }
+        Self {
+            cmd: StdCommand::new(program),
+            stdin: None,
+            completed_process_checks: vec![],
+            drop_bomb: DropBomb::arm(program),
+        }
+    }
+
+    /// Adds a `check` to be completed once the `Command` is run.
+    pub(crate) fn add_completed_process_check<F>(&mut self, name: &str, check: F) -> &mut Self
+    where
+        F: Fn(&CompletedProcess) + 'static,
+    {
+        self.completed_process_checks.push((name.to_string(), Box::new(check)));
+        self
     }
 
     /// Specify a stdin input
@@ -151,7 +183,15 @@ impl Command {
         } else {
             self.cmd.output().expect("failed to get output of finished process")
         };
-        output.into()
+
+        let completed_process = CompletedProcess::from(output);
+
+        for (name, check) in self.completed_process_checks.iter() {
+            eprintln!("checking: {name}");
+            check(&completed_process);
+        }
+
+        completed_process
     }
 }
 
