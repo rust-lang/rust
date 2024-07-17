@@ -289,6 +289,9 @@ pub(crate) fn clean_const<'tcx>(
     _cx: &mut DocContext<'tcx>,
 ) -> Constant {
     match &constant.kind {
+        ConstArgKind::Path(qpath) => {
+            Constant { kind: ConstantKind::Path { path: qpath_to_string(&qpath).into() } }
+        }
         ConstArgKind::Anon(anon) => Constant { kind: ConstantKind::Anonymous { body: anon.body } },
     }
 }
@@ -1832,7 +1835,6 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     // results in an ICE while manually constructing the constant and using `eval`
                     // does nothing for `ConstKind::Param`.
                     let ct = ty::Const::from_const_arg(cx.tcx, const_arg, ty::FeedConstTy::No);
-                    #[allow(irrefutable_let_patterns)] // FIXME
                     let ct = if let hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) =
                         const_arg.kind
                     {

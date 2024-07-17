@@ -202,7 +202,6 @@ pub enum FeedConstTy {
 impl<'tcx> Const<'tcx> {
     /// Convert a [`hir::ConstArg`] to a [`ty::Const`](Self).
     #[instrument(skip(tcx), level = "debug")]
-    #[allow(irrefutable_let_patterns)]
     pub fn from_const_arg(
         tcx: TyCtxt<'tcx>,
         const_arg: &'tcx hir::ConstArg<'tcx>,
@@ -215,6 +214,10 @@ impl<'tcx> Const<'tcx> {
         }
 
         match const_arg.kind {
+            hir::ConstArgKind::Path(qpath) => {
+                // FIXME(min_generic_const_args): for now only params are lowered to ConstArgKind::Path
+                Self::from_param(tcx, qpath, const_arg.hir_id)
+            }
             hir::ConstArgKind::Anon(anon) => Self::from_anon_const(tcx, anon.def_id),
         }
     }
@@ -310,16 +313,12 @@ impl<'tcx> Const<'tcx> {
             }
         }
 
-        if let hir::ExprKind::Path(
-            qpath @ hir::QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
-            ),
-        ) = expr.kind
+        if let hir::ExprKind::Path(hir::QPath::Resolved(
+            _,
+            &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
+        )) = expr.kind
         {
-            // FIXME: once ConstArgKind::Path added, uncomment span_bug and delete return
-            // span_bug!(expr.span, "try_from_lit: received const param which shouldn't be possible")
-            return Some(Self::from_param(tcx, qpath, expr.hir_id));
+            span_bug!(expr.span, "try_from_lit: received const param which shouldn't be possible")
         }
 
         None

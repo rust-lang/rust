@@ -228,34 +228,51 @@ impl<'hir> PathSegment<'hir> {
     }
 }
 
+/// A constant that enters the type system, e.g. through const generics or even
+/// array lengths.
+///
+/// These are distinct from [`AnonConst`] in part because with the  plan for
+/// `min_generic_const_args`, arbitrary anonymous constants (like `Foo<{N + 1}>`)
+/// will *not* be allowed to use generic parameters. Instead, it will be necessary
+/// to add indirection using a free constant that itself has const parameters.
+///
+/// So, `ConstArg` (specifically, [`ConstArgKind`]) distinguishes between const args
+/// that are [just paths](ConstArgKind::Path) (currently just bare const params)
+/// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3}`).
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct ConstArg<'hir> {
+    #[stable_hasher(ignore)]
+    pub hir_id: HirId,
     pub kind: ConstArgKind<'hir>,
     /// Indicates whether this comes from a `~const` desugaring.
     pub is_desugared_from_effects: bool,
 }
 
 impl<'hir> ConstArg<'hir> {
-    pub fn span(&self) -> Span {
+    pub fn anon_const_hir_id(&self) -> Option<HirId> {
         match self.kind {
-            ConstArgKind::Anon(anon) => anon.span,
+            ConstArgKind::Anon(ac) => Some(ac.hir_id),
+            _ => None,
         }
     }
 
-    // FIXME: convert to field, where ConstArg has its own HirId
-    pub fn hir_id(&self) -> HirId {
-        self.anon_const_hir_id()
-    }
-
-    pub fn anon_const_hir_id(&self) -> HirId {
+    pub fn span(&self) -> Span {
         match self.kind {
-            ConstArgKind::Anon(anon) => anon.hir_id,
+            ConstArgKind::Path(path) => path.span(),
+            ConstArgKind::Anon(anon) => anon.span,
         }
     }
 }
 
+/// See [`ConstArg`].
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub enum ConstArgKind<'hir> {
+    /// **Note:** Currently this is only used for bare const params
+    /// (`N` where `fn foo<const N: usize>(...)`),
+    /// not paths to any const (`N` where `const N: usize = ...`).
+    ///
+    /// However, in the future, we'll be using it for all of those.
+    Path(QPath<'hir>),
     Anon(&'hir AnonConst),
 }
 
@@ -293,7 +310,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.hir_id(),
+            GenericArg::Const(c) => c.hir_id,
             GenericArg::Infer(i) => i.hir_id,
         }
     }
@@ -1628,8 +1645,9 @@ pub enum ArrayLen<'hir> {
 impl ArrayLen<'_> {
     pub fn hir_id(&self) -> HirId {
         match self {
-            ArrayLen::Infer(InferArg { hir_id, .. }) => *hir_id,
-            ArrayLen::Body(ct) => ct.hir_id(),
+            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(ConstArg { hir_id, .. }) => {
+                *hir_id
+            }
         }
     }
 }
@@ -3712,6 +3730,7 @@ pub enum Node<'hir> {
     Field(&'hir FieldDef<'hir>),
     AnonConst(&'hir AnonConst),
     ConstBlock(&'hir ConstBlock),
+    ConstArg(&'hir ConstArg<'hir>),
     Expr(&'hir Expr<'hir>),
     ExprField(&'hir ExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
@@ -3773,6 +3792,7 @@ impl<'hir> Node<'hir> {
             Node::Param(..)
             | Node::AnonConst(..)
             | Node::ConstBlock(..)
+            | Node::ConstArg(..)
             | Node::Expr(..)
             | Node::Stmt(..)
             | Node::Block(..)

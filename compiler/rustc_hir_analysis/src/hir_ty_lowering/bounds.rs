@@ -414,7 +414,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             // Provide the resolved type of the associated constant to `type_of(AnonConst)`.
             if let Some(const_arg) = constraint.ct() {
-                #[allow(irrefutable_let_patterns)] // FIXME
                 if let hir::ConstArgKind::Anon(anon_const) = const_arg.kind {
                     let ty = alias_term
                         .map_bound(|alias| tcx.type_of(alias.def_id).instantiate(tcx, alias.args));

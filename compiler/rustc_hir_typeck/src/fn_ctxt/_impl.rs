@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, ConstArg, ConstArgKind};
+use rustc_hir::{self as hir};
 use rustc_hir::{ExprKind, GenericArg, HirId, Node, QPath};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
@@ -468,22 +468,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn lower_const_arg(
         &self,
-        const_arg: &ConstArg<'tcx>,
+        const_arg: &'tcx hir::ConstArg<'tcx>,
         param_def_id: DefId,
     ) -> ty::Const<'tcx> {
-        match &const_arg.kind {
-            ConstArgKind::Anon(anon) => {
-                let did = anon.def_id;
-                self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
-                let ct = ty::Const::from_anon_const(self.tcx, did);
-                self.register_wf_obligation(
-                    ct.into(),
-                    self.tcx.hir().span(anon.hir_id),
-                    ObligationCauseCode::WellFormed(None),
-                );
-                ct
-            }
-        }
+        let ct =
+            ty::Const::from_const_arg(self.tcx, const_arg, ty::FeedConstTy::Param(param_def_id));
+        self.register_wf_obligation(
+            ct.into(),
+            self.tcx.hir().span(const_arg.hir_id),
+            ObligationCauseCode::WellFormed(None),
+        );
+        ct
     }
 
     // If the type given by the user has free regions, save it for later, since

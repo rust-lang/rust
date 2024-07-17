@@ -474,7 +474,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::Param(param.def_id))
                             .into()
                     }
-                    (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
+                    (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
                     }
                     (kind, arg) => span_bug!(

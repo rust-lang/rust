@@ -61,7 +61,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 
         for (def_id, info) in lctx.children {
             let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-            debug_assert!(matches!(owner, hir::MaybeOwner::Phantom));
+            debug_assert!(
+                matches!(owner, hir::MaybeOwner::Phantom),
+                "duplicate copy of {def_id:?} in lctx.children"
+            );
             *owner = info;
         }
     }
@@ -1631,8 +1634,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
             });
             let default_ct = self.arena.alloc(hir::ConstArg {
+                hir_id: self.next_id(),
                 kind: hir::ConstArgKind::Anon(default_ac),
-                is_desugared_from_effects: true,
+                is_desugared_from_effects: false,
             });
             let param = hir::GenericParam {
                 def_id,
@@ -1657,6 +1661,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }),
                         )),
                     )),
+                    // FIXME(effects) we might not need a default.
                     default: Some(default_ct),
                     is_host_effect: true,
                     synthetic: true,
