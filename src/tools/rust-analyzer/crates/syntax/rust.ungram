@@ -193,7 +193,7 @@ Fn =
  (body:BlockExpr | ';')
 
 Abi =
-  'extern' 'string'?
+  'extern' '@string'?
 
 ParamList =
   '('(

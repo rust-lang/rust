@@ -484,6 +484,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
             [int_number] => { $crate::SyntaxKind::INT_NUMBER };
             [ident] => { $crate::SyntaxKind::IDENT };
+            [string] => { $crate::SyntaxKind::STRING };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
         }
     };

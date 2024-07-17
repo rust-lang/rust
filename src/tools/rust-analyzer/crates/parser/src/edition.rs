@@ -19,6 +19,10 @@ impl Edition {
     pub fn at_least_2024(self) -> bool {
         self >= Edition::Edition2024
     }
+
+    pub fn at_least_2018(self) -> bool {
+        self >= Edition::Edition2018
+    }
 }
 
 #[derive(Debug)]

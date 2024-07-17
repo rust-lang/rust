@@ -179,6 +179,12 @@ impl<'a> Converter<'a> {
 
                 rustc_lexer::TokenKind::Ident if token_text == "_" => UNDERSCORE,
                 rustc_lexer::TokenKind::Ident
+                    if ["async", "await", "dyn", "try"].contains(&token_text)
+                        && !self.edition.at_least_2018() =>
+                {
+                    IDENT
+                }
+                rustc_lexer::TokenKind::Ident
                     if token_text == "gen" && !self.edition.at_least_2024() =>
                 {
                     IDENT
