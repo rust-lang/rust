@@ -167,10 +167,13 @@ extern "C" {
 }
 
 impl<Dyn: ?Sized> DynMetadata<Dyn> {
-    /// One of the things that rustc_middle does with this being a lang item is
-    /// give it `FieldsShape::Primitive`, which means that as far as codegen can
-    /// tell, it *is* a reference, and thus doesn't have any fields.
-    /// That means we can't use field access, and have to transmute it instead.
+    /// When `DynMetadata` appears as the metadata field of a wide pointer, the rustc_middle layout
+    /// computation does magic and the resulting layout is *not* a `FieldsShape::Aggregate`, instead
+    /// it is a `FieldsShape::Primitive`. This means that the same type can have different layout
+    /// depending on whether it appears as the metadata field of a wide pointer or as a stand-alone
+    /// type, which understandably confuses codegen and leads to ICEs when trying to project to a
+    /// field of `DynMetadata`. To work around that issue, we use `transmute` instead of using a
+    /// field projection.
     #[inline]
     fn vtable_ptr(self) -> *const VTable {
         // SAFETY: this layout assumption is hard-coded into the compiler.
