@@ -239,6 +239,18 @@ impl CompletedProcess {
         self
     }
 
+    /// Checks that `stdout` ends with a newline if it is not empty.
+    #[track_caller]
+    pub fn assert_stdout_ends_with_newline(&self) -> &Self {
+        if !self.stdout_utf8().is_empty() {
+            assert!(
+                self.stdout_utf8().ends_with(['\r', '\n'].as_slice()),
+                "stdout does not end with newline"
+            );
+        }
+        self
+    }
+
     /// Checks that trimmed `stderr` matches trimmed `expected`.
     #[track_caller]
     pub fn assert_stderr_equals<S: AsRef<str>>(&self, expected: S) -> &Self {
