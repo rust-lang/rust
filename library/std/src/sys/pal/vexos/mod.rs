@@ -24,17 +24,28 @@ pub mod thread_local_key;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
-use crate::arch::asm;
+use crate::{arch::asm, ptr::{self, addr_of_mut}};
 
 #[cfg(not(test))]
 #[no_mangle]
 #[link_section = ".text.boot"]
 pub unsafe extern "C" fn _start() -> ! {
     extern "C" {
+        static mut __bss_start: u8;
+        static mut __bss_end: u8;
+
         fn main() -> i32;
     }
 
     asm!("ldr sp, =__stack_top", options(nostack));
+
+    ptr::slice_from_raw_parts_mut(
+        addr_of_mut!(__bss_start),
+        addr_of_mut!(__bss_end).offset_from(addr_of_mut!(__bss_start)) as usize,
+    )
+    .as_mut()
+    .unwrap_unchecked()
+    .fill(0);
 
     main();
 
