@@ -1,6 +1,5 @@
 //! The underlying OsString/OsStr implementation on Windows is a
 //! wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
-
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
 use crate::fmt;
@@ -71,7 +70,7 @@ impl Buf {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
-        Self { inner: Wtf8Buf::from_bytes_unchecked(s) }
+        unsafe { Self { inner: Wtf8Buf::from_bytes_unchecked(s) } }
     }
 
     pub fn with_capacity(capacity: usize) -> Buf {
@@ -190,7 +189,7 @@ impl Slice {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
-        mem::transmute(Wtf8::from_bytes_unchecked(s))
+        unsafe { mem::transmute(Wtf8::from_bytes_unchecked(s)) }
     }
 
     #[track_caller]
