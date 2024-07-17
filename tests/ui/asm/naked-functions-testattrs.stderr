@@ -1,4 +1,4 @@
-error[E0798]: cannot use `#[naked]` with testing attributes
+error[E0736]: cannot use `#[naked]` with testing attributes
   --> $DIR/naked-functions-testattrs.rs:12:1
    |
 LL | #[test]
@@ -6,7 +6,7 @@ LL | #[test]
 LL | #[naked]
    | ^^^^^^^^ `#[naked]` is incompatible with testing attributes
 
-error[E0798]: cannot use `#[naked]` with testing attributes
+error[E0736]: cannot use `#[naked]` with testing attributes
   --> $DIR/naked-functions-testattrs.rs:20:1
    |
 LL | #[test]
@@ -14,7 +14,7 @@ LL | #[test]
 LL | #[naked]
    | ^^^^^^^^ `#[naked]` is incompatible with testing attributes
 
-error[E0798]: cannot use `#[naked]` with testing attributes
+error[E0736]: cannot use `#[naked]` with testing attributes
   --> $DIR/naked-functions-testattrs.rs:28:1
    |
 LL | #[test]
@@ -22,7 +22,7 @@ LL | #[test]
 LL | #[naked]
    | ^^^^^^^^ `#[naked]` is incompatible with testing attributes
 
-error[E0798]: cannot use `#[naked]` with testing attributes
+error[E0736]: cannot use `#[naked]` with testing attributes
   --> $DIR/naked-functions-testattrs.rs:35:1
    |
 LL | #[bench]
@@ -32,4 +32,4 @@ LL | #[naked]
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0798`.
+For more information about this error, try `rustc --explain E0736`.

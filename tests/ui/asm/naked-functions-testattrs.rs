@@ -10,7 +10,7 @@ use std::arch::asm;
 
 #[test]
 #[naked]
-//~^ ERROR [E0798]
+//~^ ERROR [E0736]
 fn test_naked() {
     unsafe { asm!("", options(noreturn)) };
 }
@@ -18,7 +18,7 @@ fn test_naked() {
 #[should_panic]
 #[test]
 #[naked]
-//~^ ERROR [E0798]
+//~^ ERROR [E0736]
 fn test_naked_should_panic() {
     unsafe { asm!("", options(noreturn)) };
 }
@@ -26,14 +26,14 @@ fn test_naked_should_panic() {
 #[ignore]
 #[test]
 #[naked]
-//~^ ERROR [E0798]
+//~^ ERROR [E0736]
 fn test_naked_ignore() {
     unsafe { asm!("", options(noreturn)) };
 }
 
 #[bench]
 #[naked]
-//~^ ERROR [E0798]
+//~^ ERROR [E0736]
 fn bench_naked() {
     unsafe { asm!("", options(noreturn)) };
 }
