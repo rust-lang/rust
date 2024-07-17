@@ -108,7 +108,7 @@ config_data! {
         /// targets and features, with the following base command line:
         ///
         /// ```bash
-        /// cargo check --quiet --workspace --message-format=json --all-targets
+        /// cargo check --quiet --workspace --message-format=json --all-targets --keep-going
         /// ```
         /// .
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = None,
