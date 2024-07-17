@@ -1914,7 +1914,7 @@
                 "properties": {
                     "rust-analyzer.inlayHints.genericParameterHints.const.enable": {
                         "markdownDescription": "Whether to show const generic parameter name inlay hints.",
-                        "default": false,
+                        "default": true,
                         "type": "boolean"
                     }
                 }
@@ -1924,7 +1924,7 @@
                 "properties": {
                     "rust-analyzer.inlayHints.genericParameterHints.lifetime.enable": {
                         "markdownDescription": "Whether to show generic lifetime parameter name inlay hints.",
-                        "default": true,
+                        "default": false,
                         "type": "boolean"
                     }
                 }
