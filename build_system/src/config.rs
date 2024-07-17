@@ -54,7 +54,7 @@ impl ConfigFile {
                     config.gcc_path = Some(value.as_str().to_string())
                 }
                 ("gcc-path", _) => {
-                    return failed_config_parsing(config_file, "Expected a string for `gcc-path`")
+                    return failed_config_parsing(config_file, "Expected a string for `gcc-path`");
                 }
                 ("download-gccjit", TomlValue::Boolean(value)) => {
                     config.download_gccjit = Some(*value)
@@ -63,7 +63,7 @@ impl ConfigFile {
                     return failed_config_parsing(
                         config_file,
                         "Expected a boolean for `download-gccjit`",
-                    )
+                    );
                 }
                 _ => return failed_config_parsing(config_file, &format!("Unknown key `{}`", key)),
             }
@@ -73,7 +73,7 @@ impl ConfigFile {
                 return failed_config_parsing(
                     config_file,
                     "At least one of `gcc-path` or `download-gccjit` value must be set",
-                )
+                );
             }
             (Some(_), Some(true)) => {
                 println!(
@@ -144,7 +144,7 @@ impl ConfigInfo {
                 _ => {
                     return Err(
                         "Expected a value after `--target-triple`, found nothing".to_string()
-                    )
+                    );
                 }
             },
             "--out-dir" => match args.next() {
@@ -158,7 +158,7 @@ impl ConfigInfo {
                     self.config_file = Some(arg.to_string());
                 }
                 _ => {
-                    return Err("Expected a value after `--config-file`, found nothing".to_string())
+                    return Err("Expected a value after `--config-file`, found nothing".to_string());
                 }
             },
             "--release-sysroot" => self.sysroot_release_channel = true,
@@ -169,7 +169,7 @@ impl ConfigInfo {
                     self.cg_gcc_path = Some(arg.into());
                 }
                 _ => {
-                    return Err("Expected a value after `--cg_gcc-path`, found nothing".to_string())
+                    return Err("Expected a value after `--cg_gcc-path`, found nothing".to_string());
                 }
             },
             "--use-backend" => match args.next() {
@@ -277,7 +277,7 @@ impl ConfigInfo {
         self.gcc_path = match gcc_path {
             Some(path) => path,
             None => {
-                return Err(format!("missing `gcc-path` value from `{}`", config_file.display(),))
+                return Err(format!("missing `gcc-path` value from `{}`", config_file.display(),));
             }
         };
         Ok(())

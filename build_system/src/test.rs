@@ -109,7 +109,7 @@ impl TestArg {
                         test_arg.flags.extend_from_slice(&["--features".into(), feature]);
                     }
                     _ => {
-                        return Err("Expected an argument after `--features`, found nothing".into())
+                        return Err("Expected an argument after `--features`, found nothing".into());
                     }
                 },
                 "--use-system-gcc" => {
@@ -458,11 +458,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     .map_err(|error| format!("Failed to retrieve cargo path: {:?}", error))
     .and_then(|cargo| {
         let cargo = cargo.trim().to_owned();
-        if cargo.is_empty() {
-            Err(format!("`cargo` path is empty"))
-        } else {
-            Ok(cargo)
-        }
+        if cargo.is_empty() { Err(format!("`cargo` path is empty")) } else { Ok(cargo) }
     })?;
     let rustc = String::from_utf8(
         run_command_with_env(&[&"rustup", &toolchain, &"which", &"rustc"], rust_dir, Some(env))?
@@ -471,11 +467,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     .map_err(|error| format!("Failed to retrieve rustc path: {:?}", error))
     .and_then(|rustc| {
         let rustc = rustc.trim().to_owned();
-        if rustc.is_empty() {
-            Err(format!("`rustc` path is empty"))
-        } else {
-            Ok(rustc)
-        }
+        if rustc.is_empty() { Err(format!("`rustc` path is empty")) } else { Ok(rustc) }
     })?;
     let llvm_filecheck = match run_command_with_env(
         &[
