@@ -5,6 +5,7 @@ use crate::hash::{Hash, Hasher};
 use crate::intrinsics::aggregate_raw_ptr;
 use crate::intrinsics::ptr_metadata;
 use crate::marker::Freeze;
+use crate::ptr::NonNull;
 
 /// Provides the pointer metadata type of any pointed-to type.
 ///
@@ -153,7 +154,7 @@ pub const fn from_raw_parts_mut<T: ?Sized>(
 /// compare equal (since identical vtables can be deduplicated within a codegen unit).
 #[lang = "dyn_metadata"]
 pub struct DynMetadata<Dyn: ?Sized> {
-    _vtable_ptr: &'static VTable,
+    _vtable_ptr: NonNull<VTable>,
     _phantom: crate::marker::PhantomData<Dyn>,
 }
 
@@ -174,7 +175,7 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
     fn vtable_ptr(self) -> *const VTable {
         // SAFETY: this layout assumption is hard-coded into the compiler.
         // If it's somehow not a size match, the transmute will error.
-        unsafe { crate::mem::transmute::<Self, &'static VTable>(self) }
+        unsafe { crate::mem::transmute::<Self, *const VTable>(self) }
     }
 
     /// Returns the size of the type associated with this vtable.
