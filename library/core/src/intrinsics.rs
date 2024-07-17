@@ -947,7 +947,6 @@ extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
     #[rustc_nounwind]
     pub fn unreachable() -> !;
-
 }
 
 /// Informs the optimizer that a condition is always true.
@@ -1018,78 +1017,40 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn breakpoint();
 
-    /// The size of a type in bytes.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// More specifically, this is the offset in bytes between successive
-    /// items of the same type, including alignment padding.
-    ///
-    /// The stabilized version of this intrinsic is [`core::mem::size_of`].
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn size_of<T>() -> usize;
 
-    /// The minimum alignment of a type.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is [`core::mem::align_of`].
+    #[cfg(bootstrap)]
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn min_align_of<T>() -> usize;
-    /// The preferred alignment of a type.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    /// It's "tracking issue" is [#91971](https://github.com/rust-lang/rust/issues/91971).
+
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_pref_align_of", issue = "91971")]
     #[rustc_nounwind]
     pub fn pref_align_of<T>() -> usize;
 
-    /// The size of the referenced value in bytes.
-    ///
-    /// The stabilized version of this intrinsic is [`crate::mem::size_of_val`].
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
     #[rustc_nounwind]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-    /// The required alignment of the referenced value.
-    ///
-    /// The stabilized version of this intrinsic is [`core::mem::align_of_val`].
+
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
     #[rustc_nounwind]
     pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
-    /// Gets a static string slice containing the name of a type.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is [`core::any::type_name`].
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
-    /// Gets an identifier which is globally unique to the specified type. This
-    /// function will return the same value for a type regardless of whichever
-    /// crate it is invoked in.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2424,15 +2385,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
-    /// Returns the number of variants of the type `T` cast to a `usize`;
-    /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
@@ -2773,8 +2726,11 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
-/// `ptr` must point to a vtable.
 /// The intrinsic will return the size stored in that vtable.
+///
+/// # Safety
+///
+/// `ptr` must point to a vtable.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
@@ -2783,13 +2739,160 @@ pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
     unreachable!()
 }
 
-/// `ptr` must point to a vtable.
 /// The intrinsic will return the alignment stored in that vtable.
+///
+/// # Safety
+///
+/// `ptr` must point to a vtable.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
+    unreachable!()
+}
+
+/// The size of a type in bytes.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// More specifically, this is the offset in bytes between successive
+/// items of the same type, including alignment padding.
+///
+/// The stabilized version of this intrinsic is [`core::mem::size_of`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const fn size_of<T>() -> usize {
+    unreachable!()
+}
+
+/// The minimum alignment of a type.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is [`core::mem::align_of`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const fn min_align_of<T>() -> usize {
+    unreachable!()
+}
+
+/// The preferred alignment of a type.
+///
+/// This intrinsic does not have a stable counterpart.
+/// It's "tracking issue" is [#91971](https://github.com/rust-lang/rust/issues/91971).
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_pref_align_of", issue = "91971")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const unsafe fn pref_align_of<T>() -> usize {
+    unreachable!()
+}
+
+/// Returns the number of variants of the type `T` cast to a `usize`;
+/// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const fn variant_count<T>() -> usize {
+    unreachable!()
+}
+
+/// The size of the referenced value in bytes.
+///
+/// The stabilized version of this intrinsic is [`crate::mem::size_of_val`].
+///
+/// # Safety
+///
+/// See [`crate::mem::size_of_val_raw`] for safety conditions.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
+    unreachable!()
+}
+
+/// The required alignment of the referenced value.
+///
+/// The stabilized version of this intrinsic is [`core::mem::align_of_val`].
+///
+/// # Safety
+///
+/// See [`crate::mem::align_of_val_raw`] for safety conditions.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const unsafe fn min_align_of_val<T: ?Sized>(_ptr: *const T) -> usize {
+    unreachable!()
+}
+
+/// Gets a static string slice containing the name of a type.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is [`core::any::type_name`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const fn type_name<T: ?Sized>() -> &'static str {
+    unreachable!()
+}
+
+/// Gets an identifier which is globally unique to the specified type. This
+/// function will return the same value for a type regardless of whichever
+/// crate it is invoked in.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[cfg(not(bootstrap))]
+pub const fn type_id<T: ?Sized + 'static>() -> u128 {
     unreachable!()
 }
 
