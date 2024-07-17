@@ -1,7 +1,5 @@
 //! The underlying OsString/OsStr implementation on Windows is a
 //! wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
 use crate::fmt;
