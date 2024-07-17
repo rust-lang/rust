@@ -1,4 +1,3 @@
-#![allow(unsafe_op_in_unsafe_fn)]
 use core::ptr::addr_of;
 
 use crate::os::windows::prelude::*;
@@ -795,10 +794,12 @@ impl<'a> Iterator for DirBuffIter<'a> {
 }
 
 unsafe fn from_maybe_unaligned<'a>(p: *const u16, len: usize) -> Cow<'a, [u16]> {
-    if p.is_aligned() {
-        Cow::Borrowed(crate::slice::from_raw_parts(p, len))
-    } else {
-        Cow::Owned((0..len).map(|i| p.add(i).read_unaligned()).collect())
+    unsafe {
+        if p.is_aligned() {
+            Cow::Borrowed(crate::slice::from_raw_parts(p, len))
+        } else {
+            Cow::Owned((0..len).map(|i| p.add(i).read_unaligned()).collect())
+        }
     }
 }
 
@@ -897,7 +898,9 @@ impl IntoRawHandle for File {
 
 impl FromRawHandle for File {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        Self { handle: FromInner::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        unsafe {
+            Self { handle: FromInner::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        }
     }
 }
 
@@ -1427,10 +1430,12 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         _hDestinationFile: c::HANDLE,
         lpData: *const c_void,
     ) -> u32 {
-        if dwStreamNumber == 1 {
-            *(lpData as *mut i64) = StreamBytesTransferred;
+        unsafe {
+            if dwStreamNumber == 1 {
+                *(lpData as *mut i64) = StreamBytesTransferred;
+            }
+            c::PROGRESS_CONTINUE
         }
-        c::PROGRESS_CONTINUE
     }
     let pfrom = maybe_verbatim(from)?;
     let pto = maybe_verbatim(to)?;
