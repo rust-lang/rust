@@ -9,10 +9,6 @@ note: required by a bound in `<() as Actor>::on_mount`
    |
 LL |     async fn on_mount(self, _: impl Inbox<&'a ()>) {}
    |                                     ^^^^^^^^^^^^^ required by this bound in `<() as Actor>::on_mount`
-help: consider further restricting this bound
-   |
-LL |     async fn on_mount(self, _: impl Inbox<&'a ()> + Inbox<&'a ()>) {}
-   |                                                   +++++++++++++++
 
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
   --> $DIR/unconstrained-impl-region.rs:13:6
