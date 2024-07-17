@@ -10,6 +10,11 @@ use core::sync::atomic::{
 };
 use core::time::Duration;
 
+/// An atomic for use as a futex that is at least 8-bits but may be larger.
+pub type SmallAtomic = AtomicU8;
+/// Must be the underlying type of SmallAtomic
+pub type SmallPrimitive = u8;
+
 pub unsafe trait Waitable {
     type Atomic;
 }
