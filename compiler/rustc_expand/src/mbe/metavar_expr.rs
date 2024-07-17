@@ -119,6 +119,8 @@ impl MetaVarExpr {
     }
 }
 
+/// Indicates what is placed in a `concat` parameter. For example, literals
+/// (`${concat("foo", "bar")}`) or adhoc identifiers (`${concat(foo, bar)}`).
 #[derive(Debug, Decodable, Encodable, PartialEq)]
 pub(crate) enum MetaVarExprConcatElem {
     /// Identifier WITHOUT a preceding dollar sign, which means that this identifier should be
