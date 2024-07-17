@@ -11,8 +11,8 @@ enum SomeEnum<A> { Nothing }
 
 // Here T might *appear* used, but in fact it isn't.
 enum ListCell<T> {
-//~^ ERROR parameter `T` is never used
     Cons(Box<ListCell<T>>),
+    //~^ ERROR parameter `T` is only used recursively
     Nil
 }
 

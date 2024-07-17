@@ -4,12 +4,12 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 use crate::errors;
 use crate::fluent_generated as fluent;
 
-use hir::intravisit::Visitor;
+use hir::intravisit::{self, Visitor};
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
@@ -1799,7 +1799,7 @@ fn receiver_is_implemented<'tcx>(
 
 fn check_variances_for_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &hir::Item<'tcx>,
+    item: &'tcx hir::Item<'tcx>,
     hir_generics: &hir::Generics<'tcx>,
 ) {
     let identity_args = ty::GenericArgs::identity_for_item(tcx, item.owner_id);
@@ -1886,21 +1886,21 @@ fn check_variances_for_type_defn<'tcx>(
             hir::ParamName::Error => {}
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
-                report_bivariance(tcx, hir_param, has_explicit_bounds, item.kind);
+                report_bivariance(tcx, hir_param, has_explicit_bounds, item);
             }
         }
     }
 }
 
-fn report_bivariance(
-    tcx: TyCtxt<'_>,
-    param: &rustc_hir::GenericParam<'_>,
+fn report_bivariance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param: &'tcx hir::GenericParam<'tcx>,
     has_explicit_bounds: bool,
-    item_kind: ItemKind<'_>,
+    item: &'tcx hir::Item<'tcx>,
 ) -> ErrorGuaranteed {
     let param_name = param.name.ident();
 
-    let help = match item_kind {
+    let help = match item.kind {
         ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
             if let Some(def_id) = tcx.lang_items().phantom_data() {
                 errors::UnusedGenericParameterHelp::Adt {
@@ -1915,19 +1915,60 @@ fn report_bivariance(
         item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
     };
 
-    let const_param_help =
-        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
-            .then_some(());
+    let mut usage_spans = vec![];
+    intravisit::walk_item(
+        &mut CollectUsageSpans { spans: &mut usage_spans, param_def_id: param.def_id.to_def_id() },
+        item,
+    );
 
-    let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
-        span: param.span,
-        param_name,
-        param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
-        help,
-        const_param_help,
-    });
-    diag.code(E0392);
-    diag.emit()
+    if usage_spans.is_empty() {
+        let const_param_help =
+            matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
+                .then_some(());
+
+        let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
+            span: param.span,
+            param_name,
+            param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
+            help,
+            const_param_help,
+        });
+        diag.code(E0392);
+        diag.emit()
+    } else {
+        let diag = tcx.dcx().create_err(errors::RecursiveGenericParameter {
+            spans: usage_spans,
+            param_span: param.span,
+            param_name,
+            param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
+            help,
+            note: (),
+        });
+        diag.emit()
+    }
+}
+
+struct CollectUsageSpans<'a> {
+    spans: &'a mut Vec<Span>,
+    param_def_id: DefId,
+}
+
+impl<'tcx> Visitor<'tcx> for CollectUsageSpans<'_> {
+    type Result = ();
+
+    fn visit_generics(&mut self, _g: &'tcx rustc_hir::Generics<'tcx>) -> Self::Result {
+        // Skip the generics. We only care about fields, not where clause/param bounds.
+    }
+
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        if let hir::TyKind::Path(hir::QPath::Resolved(None, qpath)) = t.kind
+            && let Res::Def(DefKind::TyParam, def_id) = qpath.res
+            && def_id == self.param_def_id
+        {
+            self.spans.push(t.span);
+        }
+        intravisit::walk_ty(self, t);
+    }
 }
 
 impl<'tcx> WfCheckingCtxt<'_, 'tcx> {

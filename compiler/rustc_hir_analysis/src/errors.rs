@@ -1603,6 +1603,21 @@ pub(crate) struct UnusedGenericParameter {
     pub const_param_help: Option<()>,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_recursive_generic_parameter)]
+pub(crate) struct RecursiveGenericParameter {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[label]
+    pub param_span: Span,
+    pub param_name: Ident,
+    pub param_def_kind: &'static str,
+    #[subdiagnostic]
+    pub help: UnusedGenericParameterHelp,
+    #[note]
+    pub note: (),
+}
+
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedGenericParameterHelp {
     #[help(hir_analysis_unused_generic_parameter_adt_help)]
