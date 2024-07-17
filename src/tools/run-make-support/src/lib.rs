@@ -62,7 +62,7 @@ pub use artifact_names::{
 };
 
 /// Path-related helpers.
-pub use path_helpers::{cwd, cygpath_windows, path, source_root};
+pub use path_helpers::{cwd, path, source_root};
 
 /// Helpers for common fs operations.
 pub use fs_helpers::{copy_dir_all, create_symlink, read_dir};
