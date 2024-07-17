@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options
+//@ compile-flags: -Z unstable-options
 #![feature(abi_unadjusted)]
 #![feature(inline_const)]
 #![feature(intrinsics)]
