@@ -1897,6 +1897,7 @@ symbols! {
         to_string,
         to_string_method,
         to_vec,
+        todo,
         todo_macro,
         tool_attributes,
         tool_lints,
