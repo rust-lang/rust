@@ -60,11 +60,13 @@ fn main() {
 }
 
 macro_rules! LEN {
-    () => {0};
+    () => {
+        0
+    };
 }
 
 fn issue_13110() {
-    f(); let _data: [i32; 0] = [];
+    let _data = [f(); LEN!()];
     const LENGTH: usize = LEN!();
-    f(); let _data: [i32; 0] = [];
+    let _data = [f(); LENGTH];
 }

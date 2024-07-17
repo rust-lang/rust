@@ -60,7 +60,9 @@ fn main() {
 }
 
 macro_rules! LEN {
-    () => {0};
+    () => {
+        0
+    };
 }
 
 fn issue_13110() {

@@ -4,7 +4,8 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{ExprKind, Node};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{ArrayLen, ExprKind, ItemKind, Node, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, ConstKind, Ty};
 use rustc_session::declare_lint_pass;
@@ -45,7 +46,8 @@ declare_clippy_lint! {
 declare_lint_pass!(ZeroRepeatSideEffects => [ZERO_REPEAT_SIDE_EFFECTS]);
 
 impl LateLintPass<'_> for ZeroRepeatSideEffects {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &rustc_hir::Expr<'_>) {
+        let hir_map = cx.tcx.hir();
         if let Some(args) = VecArgs::hir(cx, expr)
             && let VecArgs::Repeat(inner_expr, len) = args
             && let ExprKind::Lit(l) = len.kind
@@ -53,12 +55,35 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
             && i.0 == 0
         {
             inner_check(cx, expr, inner_expr, true);
-        } else if let ExprKind::Repeat(inner_expr, _) = expr.kind
-            && let ty::Array(_, cst) = cx.typeck_results().expr_ty(expr).kind()
-            && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
-            && element_count.to_target_usize(cx.tcx) == 0
-        {
-            inner_check(cx, expr, inner_expr, false);
+        } else {
+            let ExprKind::Repeat(inner_expr, length) = expr.kind else {
+                return;
+            };
+            // Skip if the length is from a macro.
+            if let ArrayLen::Body(anon_const) = length {
+                let length_expr = hir_map.body(anon_const.body).value;
+                if !length_expr.span.eq_ctxt(expr.span) {
+                    return;
+                }
+
+                // Get the initialization span of a const item and compare it with the span at use-site.
+                if let ExprKind::Path(QPath::Resolved(None, path)) = length_expr.kind
+                    && let Res::Def(DefKind::Const, def_id) = path.res
+                    && let Some(def_id) = def_id.as_local()
+                    && let Node::Item(item) = cx.tcx.hir_node_by_def_id(def_id)
+                    && let ItemKind::Const(_ty, _, body_id) = item.kind
+                    && let init_span = hir_map.span_with_body(body_id.hir_id)
+                    && !init_span.eq_ctxt(length_expr.span)
+                {
+                    return;
+                }
+            }
+            if let ty::Array(_, cst) = cx.typeck_results().expr_ty(expr).kind()
+                && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
+                && element_count.to_target_usize(cx.tcx) == 0
+            {
+                inner_check(cx, expr, inner_expr, false);
+            }
         }
     }
 }
