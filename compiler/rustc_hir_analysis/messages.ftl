@@ -384,7 +384,7 @@ hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>`
 
 hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is only used recursively
     .label = {$param_def_kind} must be used non-recursively in the definition
-    .note = all type parameters must be used in a non-recursive way in order to constrain its variance
+    .note = all type parameters must be used in a non-recursive way in order to constrain their variance
 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`

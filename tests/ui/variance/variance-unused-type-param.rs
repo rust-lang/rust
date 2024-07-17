@@ -16,6 +16,9 @@ enum ListCell<T> {
     Nil
 }
 
+struct SelfTyAlias<T>(Box<Self>);
+//~^ ERROR parameter `T` is only used recursively
+
 struct WithBounds<T: Sized> {}
 //~^ ERROR parameter `T` is never used
 

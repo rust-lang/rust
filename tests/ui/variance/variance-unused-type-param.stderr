@@ -25,10 +25,21 @@ LL |     Cons(Box<ListCell<T>>),
    |                       ^
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = note: all type parameters must be used in a non-recursive way in order to constrain its variance
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error: type parameter `T` is only used recursively
+  --> $DIR/variance-unused-type-param.rs:19:27
+   |
+LL | struct SelfTyAlias<T>(Box<Self>);
+   |                    -      ^^^^
+   |                    |
+   |                    type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/variance-unused-type-param.rs:19:19
+  --> $DIR/variance-unused-type-param.rs:22:19
    |
 LL | struct WithBounds<T: Sized> {}
    |                   ^ unused type parameter
@@ -36,7 +47,7 @@ LL | struct WithBounds<T: Sized> {}
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/variance-unused-type-param.rs:22:24
+  --> $DIR/variance-unused-type-param.rs:25:24
    |
 LL | struct WithWhereBounds<T> where T: Sized {}
    |                        ^ unused type parameter
@@ -44,13 +55,13 @@ LL | struct WithWhereBounds<T> where T: Sized {}
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/variance-unused-type-param.rs:25:27
+  --> $DIR/variance-unused-type-param.rs:28:27
    |
 LL | struct WithOutlivesBounds<T: 'static> {}
    |                           ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0392`.
