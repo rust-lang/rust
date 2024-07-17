@@ -1,6 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::fs as rfs;
+use run_make_support::rfs;
 use run_make_support::{assert_contains, run, rustc};
 
 fn main() {

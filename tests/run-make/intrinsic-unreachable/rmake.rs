@@ -8,7 +8,7 @@
 //@ ignore-windows
 // Reason: Because of Windows exception handling, the code is not necessarily any shorter.
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rustc().opt().emit("asm").input("exit-ret.rs").run();

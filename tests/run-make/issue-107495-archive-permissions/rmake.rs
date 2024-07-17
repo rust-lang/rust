@@ -3,7 +3,7 @@
 #[cfg(unix)]
 extern crate libc;
 
-use run_make_support::{aux_build, fs as rfs};
+use run_make_support::{aux_build, rfs};
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;

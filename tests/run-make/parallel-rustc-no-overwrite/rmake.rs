@@ -5,7 +5,7 @@
 // conflicts. This test uses this flag and checks for successful compilation.
 // See https://github.com/rust-lang/rust/pull/83846
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 use std::sync::{Arc, Barrier};
 use std::thread;
 

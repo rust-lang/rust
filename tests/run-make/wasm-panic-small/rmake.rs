@@ -1,7 +1,7 @@
 //@ only-wasm32-wasip1
 #![deny(warnings)]
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     test("a");

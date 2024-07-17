@@ -4,7 +4,7 @@
 // what should be done to fix the issue.
 // See https://github.com/rust-lang/rust/issues/13266
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rfs::create_dir("a1");

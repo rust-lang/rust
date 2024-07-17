@@ -13,7 +13,7 @@
 //@ ignore-nvptx64-nvidia-cuda
 // FIXME: can't find crate for `std`
 
-use run_make_support::fs as rfs;
+use run_make_support::rfs;
 use run_make_support::rustc;
 
 fn main() {

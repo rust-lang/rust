@@ -6,7 +6,7 @@
 // adding a new output type (in this test, metadata).
 // See https://github.com/rust-lang/rust/issues/86044
 
-use run_make_support::{diff, fs as rfs, rustc};
+use run_make_support::{diff, rfs, rustc};
 
 fn main() {
     rfs::create_dir("emit");

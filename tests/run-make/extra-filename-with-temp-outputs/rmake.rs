@@ -6,9 +6,7 @@
 // are named as expected.
 // See https://github.com/rust-lang/rust/pull/15686
 
-use run_make_support::{
-    bin_name, cwd, fs as rfs, has_prefix, has_suffix, rustc, shallow_find_files,
-};
+use run_make_support::{bin_name, cwd, has_prefix, has_suffix, rfs, rustc, shallow_find_files};
 
 fn main() {
     rustc().extra_filename("bar").input("foo.rs").arg("-Csave-temps").run();

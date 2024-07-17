@@ -1,6 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::{dynamic_lib_name, fs as rfs, run, run_fail, rustc};
+use run_make_support::{dynamic_lib_name, rfs, run, run_fail, rustc};
 
 fn main() {
     rustc().input("bar.rs").crate_type("dylib").crate_type("rlib").arg("-Cprefer-dynamic").run();

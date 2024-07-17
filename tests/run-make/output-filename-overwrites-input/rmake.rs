@@ -4,7 +4,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rfs::copy("foo.rs", "foo");

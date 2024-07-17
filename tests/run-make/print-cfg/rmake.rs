@@ -10,7 +10,7 @@ use std::ffi::OsString;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 
 struct PrintCfg {
     target: &'static str,

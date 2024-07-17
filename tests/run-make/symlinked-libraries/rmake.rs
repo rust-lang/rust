@@ -8,7 +8,7 @@
 //@ ignore-cross-compile
 //@ needs-symlink
 
-use run_make_support::{dynamic_lib_name, fs as rfs, rustc};
+use run_make_support::{dynamic_lib_name, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").arg("-Cprefer-dynamic").run();

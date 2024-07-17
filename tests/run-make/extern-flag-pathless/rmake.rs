@@ -8,7 +8,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{dynamic_lib_name, fs as rfs, run, run_fail, rust_lib_name, rustc};
+use run_make_support::{dynamic_lib_name, rfs, run, run_fail, rust_lib_name, rustc};
 
 fn main() {
     rustc().input("bar.rs").crate_type("rlib").crate_type("dylib").arg("-Cprefer-dynamic").run();

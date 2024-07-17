@@ -4,7 +4,7 @@
 // a specific expected string.
 // See https://github.com/rust-lang/rust/pull/105481
 
-use run_make_support::{cwd, fs as rfs, rustc};
+use run_make_support::{cwd, rfs, rustc};
 
 fn main() {
     rustc()

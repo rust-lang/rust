@@ -9,8 +9,8 @@
 
 use std::path::PathBuf;
 
-use run_make_support::fs as rfs;
 use run_make_support::llvm_readobj;
+use run_make_support::rfs;
 use run_make_support::rustc;
 use run_make_support::{cwd, env_var, run_in_tmpdir};
 

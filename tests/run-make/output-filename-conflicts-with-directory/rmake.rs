@@ -4,7 +4,7 @@
 // potentially-confusing linker error.
 // See https://github.com/rust-lang/rust/pull/47203
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rfs::create_dir("foo");

@@ -9,7 +9,7 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    cwd, fs as rfs, has_extension, has_prefix, llvm_filecheck, llvm_profdata, run_with_args, rustc,
+    cwd, has_extension, has_prefix, llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc,
     shallow_find_files,
 };
 

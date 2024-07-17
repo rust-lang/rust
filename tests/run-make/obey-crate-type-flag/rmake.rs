@@ -6,7 +6,7 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    cwd, dynamic_lib_name, fs as rfs, has_extension, rust_lib_name, rustc, shallow_find_files,
+    cwd, dynamic_lib_name, has_extension, rfs, rust_lib_name, rustc, shallow_find_files,
 };
 use std::path::Path;
 

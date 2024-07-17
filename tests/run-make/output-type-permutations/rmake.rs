@@ -5,7 +5,7 @@
 // See https://github.com/rust-lang/rust/pull/12020
 
 use run_make_support::{
-    bin_name, dynamic_lib_name, filename_not_in_denylist, fs as rfs, rust_lib_name, rustc,
+    bin_name, dynamic_lib_name, filename_not_in_denylist, rfs, rust_lib_name, rustc,
     shallow_find_files, static_lib_name,
 };
 use std::path::PathBuf;

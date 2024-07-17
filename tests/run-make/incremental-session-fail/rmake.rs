@@ -4,7 +4,7 @@
 // the ensuing compilation failure is not an ICE.
 // See https://github.com/rust-lang/rust/pull/85698
 
-use run_make_support::{fs as rfs, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rfs::create_file("session");

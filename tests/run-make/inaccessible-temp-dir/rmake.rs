@@ -24,7 +24,7 @@
 // Reason: `set_readonly` has no effect on directories
 // and does not prevent modification.
 
-use run_make_support::{fs as rfs, rustc, test_while_readonly};
+use run_make_support::{rfs, rustc, test_while_readonly};
 
 fn main() {
     // Create an inaccessible directory.

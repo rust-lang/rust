@@ -5,7 +5,7 @@
 // using them correctly, or fails with the right error message when using them improperly.
 // See https://github.com/rust-lang/rust/pull/16156
 
-use run_make_support::{diff, fs as rfs, rustc};
+use run_make_support::{diff, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").target("my-awesome-platform.json").crate_type("lib").emit("asm").run();

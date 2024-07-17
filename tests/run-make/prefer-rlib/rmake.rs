@@ -3,7 +3,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{dynamic_lib_name, fs as rfs, path, run, rust_lib_name, rustc};
+use run_make_support::{dynamic_lib_name, path, rfs, run, rust_lib_name, rustc};
 
 fn main() {
     rustc().input("bar.rs").crate_type("dylib").crate_type("rlib").run();

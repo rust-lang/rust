@@ -1,4 +1,4 @@
-use run_make_support::fs as rfs;
+use run_make_support::rfs;
 use std::path::{Path, PathBuf};
 
 use run_make_support::{assert_dirs_are_equal, rustdoc};

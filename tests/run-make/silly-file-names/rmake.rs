@@ -11,7 +11,7 @@
 //@ ignore-windows
 // Reason: Windows refuses files with < and > in their names
 
-use run_make_support::{diff, fs as rfs, run, rustc};
+use run_make_support::{diff, rfs, run, rustc};
 
 fn main() {
     rfs::create_file("<leading-lt");

@@ -4,7 +4,7 @@
 // and the compiler flags, and checks that the flag is favoured each time.
 // See https://github.com/rust-lang/rust/pull/15518
 
-use run_make_support::{bin_name, fs as rfs, rustc};
+use run_make_support::{bin_name, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();

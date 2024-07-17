@@ -1,5 +1,5 @@
-use run_make_support::fs as rfs;
 use run_make_support::regex::Regex;
+use run_make_support::rfs;
 use run_make_support::rustc;
 
 use std::ffi::OsStr;

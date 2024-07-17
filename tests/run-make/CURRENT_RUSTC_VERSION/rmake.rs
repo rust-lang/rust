@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use run_make_support::{aux_build, fs as rfs, rustc, source_root};
+use run_make_support::{aux_build, rfs, rustc, source_root};
 
 fn main() {
     aux_build().input("stable.rs").emit("metadata").run();

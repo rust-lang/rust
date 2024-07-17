@@ -8,7 +8,7 @@
 // Reason: the binary is executed
 //@ needs-profiler-support
 
-use run_make_support::{fs as rfs, llvm_profdata, run, rustc};
+use run_make_support::{llvm_profdata, rfs, run, rustc};
 
 fn main() {
     // Generate the profile-guided-optimization (PGO) profiles

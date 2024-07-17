@@ -1,4 +1,4 @@
-use run_make_support::{fs as rfs, rustdoc};
+use run_make_support::{rfs, rustdoc};
 use std::iter;
 use std::path::Path;
 

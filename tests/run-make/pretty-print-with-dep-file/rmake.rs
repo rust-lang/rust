@@ -5,7 +5,7 @@
 // does not get an unexpected dep-info file.
 // See https://github.com/rust-lang/rust/issues/112898
 
-use run_make_support::{fs as rfs, invalid_utf8_contains, rustc};
+use run_make_support::{invalid_utf8_contains, rfs, rustc};
 use std::path::Path;
 
 fn main() {

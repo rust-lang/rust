@@ -1,4 +1,4 @@
-use run_make_support::{fs as rfs, htmldocck, rustc, rustdoc, source_root};
+use run_make_support::{htmldocck, rfs, rustc, rustdoc, source_root};
 use std::path::Path;
 
 pub fn scrape(extra_args: &[&str]) {

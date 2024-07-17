@@ -10,7 +10,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, cwd, dynamic_lib_name, fs as rfs, is_msvc, run, rustc};
+use run_make_support::{cc, cwd, dynamic_lib_name, is_msvc, rfs, run, rustc};
 
 fn main() {
     rustc().input("bar.rs").run();

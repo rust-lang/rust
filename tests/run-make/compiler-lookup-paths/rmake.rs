@@ -9,7 +9,7 @@
 //@ ignore-wasm64
 // Reason: a C compiler is required for build_native_static_lib
 
-use run_make_support::{build_native_static_lib, fs as rfs, rustc, static_lib_name};
+use run_make_support::{build_native_static_lib, rfs, rustc, static_lib_name};
 
 fn main() {
     build_native_static_lib("native");

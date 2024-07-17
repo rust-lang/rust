@@ -17,7 +17,7 @@
 //@ ignore-nvptx64-nvidia-cuda
 // FIXME: can't find crate for 'std'
 
-use run_make_support::{fs as rfs, rust_lib_name, rustc};
+use run_make_support::{rfs, rust_lib_name, rustc};
 
 fn main() {
     rfs::create_dir("incr");

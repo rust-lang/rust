@@ -4,7 +4,7 @@
 // an internal compiler error (ICE).
 // See https://github.com/rust-lang/rust/pull/28673
 
-use run_make_support::{fs as rfs, rustc, static_lib_name};
+use run_make_support::{rfs, rustc, static_lib_name};
 
 fn main() {
     rfs::create_file(static_lib_name("foo"));

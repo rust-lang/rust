@@ -8,7 +8,7 @@
 //@ ignore-cross-compile
 //@ needs-symlink
 
-use run_make_support::{cwd, fs as rfs, rustc};
+use run_make_support::{cwd, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").crate_type("rlib").output("foo.xxx").run();

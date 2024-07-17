@@ -3,7 +3,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, cwd, dynamic_lib_extension, fs as rfs, is_msvc, run, run_fail, rustc};
+use run_make_support::{cc, cwd, dynamic_lib_extension, is_msvc, rfs, run, run_fail, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();

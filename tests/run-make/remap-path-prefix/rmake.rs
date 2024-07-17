@@ -4,7 +4,7 @@
 // See https://github.com/rust-lang/rust/pull/85344
 
 use run_make_support::bstr::ByteSlice;
-use run_make_support::{bstr, fs as rfs, is_darwin, rustc};
+use run_make_support::{bstr, is_darwin, rfs, rustc};
 
 fn main() {
     let mut out_simple = rustc();

@@ -10,7 +10,7 @@
 //@ needs-profiler-support
 //@ ignore-cross-compile
 
-use run_make_support::{fs as rfs, llvm_filecheck, llvm_profdata, run_with_args, rustc};
+use run_make_support::{llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc};
 use std::path::Path;
 
 fn main() {

@@ -4,7 +4,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use run_make_support::{fs as rfs, rustc, target};
+use run_make_support::{rfs, rustc, target};
 
 struct Option<'a> {
     target: &'a str,
