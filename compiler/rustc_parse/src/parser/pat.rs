@@ -810,7 +810,7 @@ impl<'a> Parser<'a> {
                     self.0 = true;
                     *m = Mutability::Mut;
                 }
-                walk_pat(pat, self);
+                walk_pat(self, pat);
             }
         }
 

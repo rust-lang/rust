@@ -209,7 +209,7 @@ impl MutVisitor for PlaceholderExpander {
         if arm.is_placeholder {
             self.remove(arm.id).make_arms()
         } else {
-            walk_flat_map_arm(arm, self)
+            walk_flat_map_arm(self, arm)
         }
     }
 
@@ -217,7 +217,7 @@ impl MutVisitor for PlaceholderExpander {
         if field.is_placeholder {
             self.remove(field.id).make_expr_fields()
         } else {
-            walk_flat_map_expr_field(field, self)
+            walk_flat_map_expr_field(self, field)
         }
     }
 
@@ -225,7 +225,7 @@ impl MutVisitor for PlaceholderExpander {
         if fp.is_placeholder {
             self.remove(fp.id).make_pat_fields()
         } else {
-            walk_flat_map_pat_field(fp, self)
+            walk_flat_map_pat_field(self, fp)
         }
     }
 
@@ -236,7 +236,7 @@ impl MutVisitor for PlaceholderExpander {
         if param.is_placeholder {
             self.remove(param.id).make_generic_params()
         } else {
-            walk_flat_map_generic_param(param, self)
+            walk_flat_map_generic_param(self, param)
         }
     }
 
@@ -244,7 +244,7 @@ impl MutVisitor for PlaceholderExpander {
         if p.is_placeholder {
             self.remove(p.id).make_params()
         } else {
-            walk_flat_map_param(p, self)
+            walk_flat_map_param(self, p)
         }
     }
 
@@ -252,7 +252,7 @@ impl MutVisitor for PlaceholderExpander {
         if sf.is_placeholder {
             self.remove(sf.id).make_field_defs()
         } else {
-            walk_flat_map_field_def(sf, self)
+            walk_flat_map_field_def(self, sf)
         }
     }
 
@@ -260,14 +260,14 @@ impl MutVisitor for PlaceholderExpander {
         if variant.is_placeholder {
             self.remove(variant.id).make_variants()
         } else {
-            walk_flat_map_variant(variant, self)
+            walk_flat_map_variant(self, variant)
         }
     }
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         match item.kind {
             ast::ItemKind::MacCall(_) => self.remove(item.id).make_items(),
-            _ => walk_flat_map_item(item, None, self),
+            _ => walk_flat_map_item(self, item, None),
         }
     }
 
@@ -284,7 +284,7 @@ impl MutVisitor for PlaceholderExpander {
                     AssocCtxt::Impl => it.make_impl_items(),
                 }
             }
-            _ => walk_flat_map_item(item, Some(ctxt), self),
+            _ => walk_flat_map_item(self, item, Some(ctxt)),
         }
     }
 
@@ -294,35 +294,35 @@ impl MutVisitor for PlaceholderExpander {
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
         match item.kind {
             ast::ForeignItemKind::MacCall(_) => self.remove(item.id).make_foreign_items(),
-            _ => walk_flat_map_item(item, None, self),
+            _ => walk_flat_map_item(self, item, None),
         }
     }
 
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         match expr.kind {
             ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_expr(),
-            _ => walk_expr(expr, self),
+            _ => walk_expr(self, expr),
         }
     }
 
     fn visit_method_receiver_expr(&mut self, expr: &mut P<ast::Expr>) {
         match expr.kind {
             ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_method_receiver_expr(),
-            _ => walk_expr(expr, self),
+            _ => walk_expr(self, expr),
         }
     }
 
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         match expr.kind {
             ast::ExprKind::MacCall(_) => self.remove(expr.id).make_opt_expr(),
-            _ => noop_filter_map_expr(expr, self),
+            _ => noop_filter_map_expr(self, expr),
         }
     }
 
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         let (style, mut stmts) = match stmt.kind {
             ast::StmtKind::MacCall(mac) => (mac.style, self.remove(stmt.id).make_stmts()),
-            _ => return walk_flat_map_stmt(stmt, self),
+            _ => return walk_flat_map_stmt(self, stmt),
         };
 
         if style == ast::MacStmtStyle::Semicolon {
@@ -368,14 +368,14 @@ impl MutVisitor for PlaceholderExpander {
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         match pat.kind {
             ast::PatKind::MacCall(_) => *pat = self.remove(pat.id).make_pat(),
-            _ => walk_pat(pat, self),
+            _ => walk_pat(self, pat),
         }
     }
 
     fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
         match ty.kind {
             ast::TyKind::MacCall(_) => *ty = self.remove(ty.id).make_ty(),
-            _ => walk_ty(ty, self),
+            _ => walk_ty(self, ty),
         }
     }
 
@@ -383,7 +383,7 @@ impl MutVisitor for PlaceholderExpander {
         if krate.is_placeholder {
             *krate = self.remove(krate.id).make_crate();
         } else {
-            walk_crate(krate, self)
+            walk_crate(self, krate)
         }
     }
 }

@@ -1149,7 +1149,7 @@ impl InvocationCollectorNode for P<ast::Item> {
         fragment.make_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(self, None, visitor)
+        walk_flat_map_item(visitor, self, None)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ItemKind::MacCall(..))
@@ -1293,7 +1293,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
         fragment.make_trait_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(self.wrapped, Some(AssocCtxt::Trait), visitor)
+        walk_flat_map_item(visitor, self.wrapped, Some(AssocCtxt::Trait))
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1334,7 +1334,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
         fragment.make_impl_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(self.wrapped, Some(AssocCtxt::Impl), visitor)
+        walk_flat_map_item(visitor, self.wrapped, Some(AssocCtxt::Impl))
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1372,7 +1372,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         fragment.make_foreign_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(self, None, visitor)
+        walk_flat_map_item(visitor, self, None)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))
@@ -1395,7 +1395,7 @@ impl InvocationCollectorNode for ast::Variant {
         fragment.make_variants()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_variant(self, visitor)
+        walk_flat_map_variant(visitor, self)
     }
 }
 
@@ -1408,7 +1408,7 @@ impl InvocationCollectorNode for ast::FieldDef {
         fragment.make_field_defs()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_field_def(self, visitor)
+        walk_flat_map_field_def(visitor, self)
     }
 }
 
@@ -1421,7 +1421,7 @@ impl InvocationCollectorNode for ast::PatField {
         fragment.make_pat_fields()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_pat_field(self, visitor)
+        walk_flat_map_pat_field(visitor, self)
     }
 }
 
@@ -1434,7 +1434,7 @@ impl InvocationCollectorNode for ast::ExprField {
         fragment.make_expr_fields()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_expr_field(self, visitor)
+        walk_flat_map_expr_field(visitor, self)
     }
 }
 
@@ -1447,7 +1447,7 @@ impl InvocationCollectorNode for ast::Param {
         fragment.make_params()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_param(self, visitor)
+        walk_flat_map_param(visitor, self)
     }
 }
 
@@ -1460,7 +1460,7 @@ impl InvocationCollectorNode for ast::GenericParam {
         fragment.make_generic_params()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_generic_param(self, visitor)
+        walk_flat_map_generic_param(visitor, self)
     }
 }
 
@@ -1473,7 +1473,7 @@ impl InvocationCollectorNode for ast::Arm {
         fragment.make_arms()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_arm(self, visitor)
+        walk_flat_map_arm(visitor, self)
     }
 }
 
@@ -1487,7 +1487,7 @@ impl InvocationCollectorNode for ast::Stmt {
         fragment.make_stmts()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_stmt(self, visitor)
+        walk_flat_map_stmt(visitor, self)
     }
     fn is_mac_call(&self) -> bool {
         match &self.kind {
@@ -1561,7 +1561,7 @@ impl InvocationCollectorNode for ast::Crate {
         fragment.make_crate()
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
-        walk_crate(self, visitor)
+        walk_crate(visitor, self)
     }
     fn expand_cfg_false(
         &mut self,
@@ -1587,7 +1587,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
         fragment.make_ty()
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
-        walk_ty(self, visitor)
+        walk_ty(visitor, self)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ast::TyKind::MacCall(..))
@@ -1611,7 +1611,7 @@ impl InvocationCollectorNode for P<ast::Pat> {
         fragment.make_pat()
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
-        walk_pat(self, visitor)
+        walk_pat(visitor, self)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, PatKind::MacCall(..))
@@ -1639,7 +1639,7 @@ impl InvocationCollectorNode for P<ast::Expr> {
         "an expression"
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
-        walk_expr(self, visitor)
+        walk_expr(visitor, self)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ExprKind::MacCall(..))
@@ -1665,7 +1665,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
         fragment.make_opt_expr()
     }
     fn walk_flat_map<V: MutVisitor>(mut self, visitor: &mut V) -> Self::OutputTy {
-        walk_expr(&mut self.wrapped, visitor);
+        walk_expr(visitor, &mut self.wrapped);
         Some(self.wrapped)
     }
     fn is_mac_call(&self) -> bool {
@@ -1705,7 +1705,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag>
         AstNodeWrapper::new(fragment.make_method_receiver_expr(), MethodReceiverTag)
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
-        walk_expr(&mut self.wrapped, visitor)
+        walk_expr(visitor, &mut self.wrapped)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
@@ -2147,11 +2147,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.is_trailing_mac = true;
                     // Don't use `assign_id` for this statement - it may get removed
                     // entirely due to a `#[cfg]` on the contained expression
-                    let res = walk_flat_map_stmt(node, self);
+                    let res = walk_flat_map_stmt(self, node);
                     self.cx.current_expansion.is_trailing_mac = false;
                     res
                 }
-                _ => walk_flat_map_stmt(node, self),
+                _ => walk_flat_map_stmt(self, node),
             };
         }
 
@@ -2195,7 +2195,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             &mut self.cx.current_expansion.dir_ownership,
             DirOwnership::UnownedViaBlock,
         );
-        walk_block(node, self);
+        walk_block(self, node);
         self.cx.current_expansion.dir_ownership = orig_dir_ownership;
     }
 
