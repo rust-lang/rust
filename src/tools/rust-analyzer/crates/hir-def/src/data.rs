@@ -223,6 +223,7 @@ pub struct TraitData {
     pub is_unsafe: bool,
     pub rustc_has_incoherent_inherent_impls: bool,
     pub skip_array_during_method_dispatch: bool,
+    pub skip_boxed_slice_during_method_dispatch: bool,
     pub fundamental: bool,
     pub visibility: RawVisibility,
     /// Whether the trait has `#[rust_skip_array_during_method_dispatch]`. `hir_ty` will ignore
@@ -250,8 +251,17 @@ impl TraitData {
         let is_unsafe = tr_def.is_unsafe;
         let visibility = item_tree[tr_def.visibility].clone();
         let attrs = item_tree.attrs(db, module_id.krate(), ModItem::from(tree_id.value).into());
-        let skip_array_during_method_dispatch =
+        let mut skip_array_during_method_dispatch =
             attrs.by_key(&sym::rustc_skip_array_during_method_dispatch).exists();
+        let mut skip_boxed_slice_during_method_dispatch = false;
+        for tt in attrs.by_key(&sym::rustc_skip_during_method_dispatch).tt_values() {
+            for tt in tt.token_trees.iter() {
+                if let crate::tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {
+                    skip_array_during_method_dispatch |= ident.sym == sym::array;
+                    skip_boxed_slice_during_method_dispatch |= ident.sym == sym::boxed_slice;
+                }
+            }
+        }
         let rustc_has_incoherent_inherent_impls =
             attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
         let fundamental = attrs.by_key(&sym::fundamental).exists();
@@ -269,6 +279,7 @@ impl TraitData {
                 is_unsafe,
                 visibility,
                 skip_array_during_method_dispatch,
+                skip_boxed_slice_during_method_dispatch,
                 rustc_has_incoherent_inherent_impls,
                 fundamental,
             }),

@@ -400,6 +400,7 @@ define_symbols! {
     rustc_reservation_impl,
     rustc_safe_intrinsic,
     rustc_skip_array_during_method_dispatch,
+    rustc_skip_during_method_dispatch,
     semitransparent,
     shl_assign,
     shl,
@@ -455,4 +456,6 @@ define_symbols! {
     vectorcall,
     wasm,
     win64,
+    array,
+    boxed_slice,
 }
