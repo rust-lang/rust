@@ -128,56 +128,41 @@ impl<'a> Parser<'a> {
             Some(item.into_inner())
         });
 
-        let item =
-            self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
-                let item =
-                    this.parse_item_common_(attrs, mac_allowed, attrs_allowed, fn_parse_mode);
-                Ok((item?, TrailingToken::None))
-            })?;
+        self.collect_tokens_trailing_token(attrs, force_collect, |this, mut attrs| {
+            let lo = this.token.span;
+            let vis = this.parse_visibility(FollowedByType::No)?;
+            let mut def = this.parse_defaultness();
+            let kind = this.parse_item_kind(
+                &mut attrs,
+                mac_allowed,
+                lo,
+                &vis,
+                &mut def,
+                fn_parse_mode,
+                Case::Sensitive,
+            )?;
+            if let Some((ident, kind)) = kind {
+                this.error_on_unconsumed_default(def, &kind);
+                let span = lo.to(this.prev_token.span);
+                let id = DUMMY_NODE_ID;
+                let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
+                return Ok((Some(item), TrailingToken::None));
+            }
 
-        Ok(item)
-    }
+            // At this point, we have failed to parse an item.
+            if !matches!(vis.kind, VisibilityKind::Inherited) {
+                this.dcx().emit_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
+            }
 
-    fn parse_item_common_(
-        &mut self,
-        mut attrs: AttrVec,
-        mac_allowed: bool,
-        attrs_allowed: bool,
-        fn_parse_mode: FnParseMode,
-    ) -> PResult<'a, Option<Item>> {
-        let lo = self.token.span;
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        let mut def = self.parse_defaultness();
-        let kind = self.parse_item_kind(
-            &mut attrs,
-            mac_allowed,
-            lo,
-            &vis,
-            &mut def,
-            fn_parse_mode,
-            Case::Sensitive,
-        )?;
-        if let Some((ident, kind)) = kind {
-            self.error_on_unconsumed_default(def, &kind);
-            let span = lo.to(self.prev_token.span);
-            let id = DUMMY_NODE_ID;
-            let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
-            return Ok(Some(item));
-        }
+            if let Defaultness::Default(span) = def {
+                this.dcx().emit_err(errors::DefaultNotFollowedByItem { span });
+            }
 
-        // At this point, we have failed to parse an item.
-        if !matches!(vis.kind, VisibilityKind::Inherited) {
-            self.dcx().emit_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
-        }
-
-        if let Defaultness::Default(span) = def {
-            self.dcx().emit_err(errors::DefaultNotFollowedByItem { span });
-        }
-
-        if !attrs_allowed {
-            self.recover_attrs_no_item(&attrs)?;
-        }
-        Ok(None)
+            if !attrs_allowed {
+                this.recover_attrs_no_item(&attrs)?;
+            }
+            Ok((None, TrailingToken::None))
+        })
     }
 
     /// Error in-case `default` was parsed in an in-appropriate context.
