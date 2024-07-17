@@ -62,6 +62,18 @@ LL | struct WithOutlivesBounds<T: 'static> {}
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
-error: aborting due to 7 previous errors
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:31:22
+   |
+LL | struct DoubleNothing<T> {
+   |                      ^ unused type parameter
+LL |
+LL |     s: SomeStruct<T>,
+   |                   - `T` is named here, but is likely unused in the containing type
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0392`.

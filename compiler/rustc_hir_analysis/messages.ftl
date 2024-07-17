@@ -553,6 +553,7 @@ hir_analysis_unused_generic_parameter =
     {$param_def_kind} `{$param_name}` is never used
     .label = unused {$param_def_kind}
     .const_param_help = if you intended `{$param_name}` to be a const parameter, use `const {$param_name}: /* Type */` instead
+    .usage_spans = `{$param_name}` is named here, but is likely unused in the containing type
 
 hir_analysis_unused_generic_parameter_adt_help =
     consider removing `{$param_name}`, referring to it in a field, or using a marker such as `{$phantom_data}`

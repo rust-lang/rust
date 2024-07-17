@@ -1572,6 +1572,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
                 param_name,
                 param_def_kind: tcx.def_descr(param.def_id),
                 help: errors::UnusedGenericParameterHelp::TyAlias { param_name },
+                usage_spans: vec![],
                 const_param_help,
             });
             diag.code(E0091);

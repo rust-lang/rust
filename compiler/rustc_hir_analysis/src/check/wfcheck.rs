@@ -1921,33 +1921,102 @@ fn report_bivariance<'tcx>(
         item,
     );
 
-    if usage_spans.is_empty() {
-        let const_param_help =
-            matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
-                .then_some(());
+    if !usage_spans.is_empty() {
+        // First, check if the ADT is (probably) cyclical. We say probably here, since
+        // we're not actually looking into substitutions, just walking through fields.
+        // And we only recurse into the fields of ADTs, and not the hidden types of
+        // opaques or anything else fancy.
+        let item_def_id = item.owner_id.to_def_id();
+        let is_probably_cyclical = if matches!(
+            tcx.def_kind(item_def_id),
+            DefKind::Struct | DefKind::Union | DefKind::Enum
+        ) {
+            IsProbablyCyclical { tcx, adt_def_id: item_def_id, seen: Default::default() }
+                .visit_all_fields(tcx.adt_def(item_def_id))
+                .is_break()
+        } else {
+            false
+        };
+        // If the ADT is cyclical, then if at least one usage of the type parameter or
+        // the `Self` alias is present in the, then it's probably a cyclical struct, and
+        // we should call those parameter usages recursive rather than just saying they're
+        // unused...
+        //
+        // We currently report *all* of the parameter usages, since computing the exact
+        // subset is very involved, and the fact we're mentioning recursion at all is
+        // likely to guide the user in the right direction.
+        if is_probably_cyclical {
+            let diag = tcx.dcx().create_err(errors::RecursiveGenericParameter {
+                spans: usage_spans,
+                param_span: param.span,
+                param_name,
+                param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
+                help,
+                note: (),
+            });
+            return diag.emit();
+        }
+    }
 
-        let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
-            span: param.span,
-            param_name,
-            param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
-            help,
-            const_param_help,
-        });
-        diag.code(E0392);
-        diag.emit()
-    } else {
-        let diag = tcx.dcx().create_err(errors::RecursiveGenericParameter {
-            spans: usage_spans,
-            param_span: param.span,
-            param_name,
-            param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
-            help,
-            note: (),
-        });
-        diag.emit()
+    let const_param_help =
+        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
+            .then_some(());
+
+    let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
+        span: param.span,
+        param_name,
+        param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
+        usage_spans,
+        help,
+        const_param_help,
+    });
+    diag.code(E0392);
+    diag.emit()
+}
+
+/// Detects cases where an ADT is trivially cyclical -- we want to detect this so
+/// /we only mention that its parameters are used cyclically if the ADT is truly
+/// cyclical.
+///
+/// Notably, we don't consider substitutions here, so this may have false positives.
+struct IsProbablyCyclical<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    adt_def_id: DefId,
+    seen: FxHashSet<DefId>,
+}
+
+impl<'tcx> IsProbablyCyclical<'tcx> {
+    fn visit_all_fields(&mut self, adt_def: ty::AdtDef<'tcx>) -> ControlFlow<(), ()> {
+        for field in adt_def.all_fields() {
+            self.tcx.type_of(field.did).instantiate_identity().visit_with(self)?;
+        }
+
+        ControlFlow::Continue(())
     }
 }
 
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
+    type Result = ControlFlow<(), ()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<(), ()> {
+        if let Some(adt_def) = t.ty_adt_def() {
+            if adt_def.did() == self.adt_def_id {
+                return ControlFlow::Break(());
+            }
+
+            if self.seen.insert(adt_def.did()) {
+                self.visit_all_fields(adt_def)?;
+            }
+        }
+
+        t.super_visit_with(self)
+    }
+}
+
+/// Collect usages of the `param_def_id` and `Res::SelfTyAlias` in the HIR.
+///
+/// This is used to report places where the user has used parameters in a
+/// non-variance-constraining way for better bivariance errors.
 struct CollectUsageSpans<'a> {
     spans: &'a mut Vec<Span>,
     param_def_id: DefId,

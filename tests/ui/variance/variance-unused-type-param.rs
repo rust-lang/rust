@@ -28,4 +28,9 @@ struct WithWhereBounds<T> where T: Sized {}
 struct WithOutlivesBounds<T: 'static> {}
 //~^ ERROR parameter `T` is never used
 
+struct DoubleNothing<T> {
+//~^ ERROR parameter `T` is never used
+    s: SomeStruct<T>,
+}
+
 fn main() {}
