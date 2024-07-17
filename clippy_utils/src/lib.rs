@@ -904,7 +904,6 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
         ExprKind::Repeat(x, ArrayLen::Body(len)) => {
-            #[allow(irrefutable_let_patterns)] // FIXME
             if let ConstArgKind::Anon(anon_const) = len.kind
                 && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                 && let LitKind::Int(v, _) = const_lit.node
@@ -935,7 +934,6 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
             ExprKind::Repeat(_, ArrayLen::Body(len)) => {
-                #[allow(irrefutable_let_patterns)] // FIXME
                 if let ConstArgKind::Anon(anon_const) = len.kind
                     && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                     && let LitKind::Int(v, _) = const_lit.node

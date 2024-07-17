@@ -271,15 +271,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
     fn const_arg(&self, const_arg: &Binding<&ConstArg<'_>>) {
         match const_arg.value.kind {
-            // FIXME: uncomment for ConstArgKind::Path
-            // ConstArgKind::Path(ref qpath) => {
-            //     bind!(self, qpath);
-            //     chain!(self, "let ConstArgKind::Path(ref {qpath}) = {const_arg}.kind");
-            //     self.qpath(qpath);
-            // },
+            ConstArgKind::Path(ref qpath) => {
+                bind!(self, qpath);
+                chain!(self, "let ConstArgKind::Path(ref {qpath}) = {const_arg}.kind");
+                self.qpath(qpath);
+            },
             ConstArgKind::Anon(anon_const) => {
                 bind!(self, anon_const);
-                chain!(self, "let ConstArgKind::({anon_const}) = {const_arg}.kind");
+                chain!(self, "let ConstArgKind::Anon({anon_const}) = {const_arg}.kind");
                 self.body(field!(anon_const.body));
             },
         }

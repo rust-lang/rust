@@ -421,7 +421,12 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_const_arg(&mut self, left: &ConstArg<'_>, right: &ConstArg<'_>) -> bool {
         match (&left.kind, &right.kind) {
+            (ConstArgKind::Path(l_p), ConstArgKind::Path(r_p)) => self.eq_qpath(l_p, r_p),
             (ConstArgKind::Anon(l_an), ConstArgKind::Anon(r_an)) => self.eq_body(l_an.body, r_an.body),
+            // Use explicit match for now since ConstArg is undergoing flux.
+            (ConstArgKind::Path(..), ConstArgKind::Anon(..)) | (ConstArgKind::Anon(..), ConstArgKind::Path(..)) => {
+                false
+            },
         }
     }
 
@@ -1142,6 +1147,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     fn hash_const_arg(&mut self, const_arg: &ConstArg<'_>) {
         match &const_arg.kind {
+            ConstArgKind::Path(path) => self.hash_qpath(path),
             ConstArgKind::Anon(anon) => self.hash_body(anon.body),
         }
     }
