@@ -143,7 +143,7 @@ impl Handle {
     ) -> io::Result<Option<usize>> {
         // SAFETY: We have exclusive access to the buffer and it's up to the caller to
         // ensure the OVERLAPPED pointer is valid for the lifetime of this function.
-        unsafe {
+        let (res, amt) = unsafe {
             let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
             let mut amt = 0;
             let res = cvt(c::ReadFile(
@@ -153,16 +153,17 @@ impl Handle {
                 &mut amt,
                 overlapped,
             ));
-            match res {
-                Ok(_) => Ok(Some(amt as usize)),
-                Err(e) => {
-                    if e.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
-                        Ok(None)
-                    } else if e.raw_os_error() == Some(c::ERROR_BROKEN_PIPE as i32) {
-                        Ok(Some(0))
-                    } else {
-                        Err(e)
-                    }
+            (res, amt)
+        };
+        match res {
+            Ok(_) => Ok(Some(amt as usize)),
+            Err(e) => {
+                if e.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
+                    Ok(None)
+                } else if e.raw_os_error() == Some(c::ERROR_BROKEN_PIPE as i32) {
+                    Ok(Some(0))
+                } else {
+                    Err(e)
                 }
             }
         }
