@@ -1,7 +1,7 @@
 use run_make_support::fs as rfs;
 use std::path::{Path, PathBuf};
 
-use run_make_support::{assert_recursive_eq, rustdoc};
+use run_make_support::{assert_dirs_are_equal, rustdoc};
 
 #[derive(PartialEq)]
 enum JsonOutput {
@@ -45,5 +45,5 @@ fn main() {
 
     // Check if all docs(including both json and html formats) are still the same after multiple
     // compilations.
-    assert_recursive_eq(&out_dir, &tmp_out_dir);
+    assert_dirs_are_equal(&out_dir, &tmp_out_dir);
 }
