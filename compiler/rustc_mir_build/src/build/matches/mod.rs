@@ -1809,8 +1809,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Range`]: TestKind::Range
     fn pick_test(&mut self, candidates: &[&mut Candidate<'_, 'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
-        let match_pair = &candidates.first().unwrap().match_pairs[0];
-        let test = self.test(match_pair);
+        let match_pair = &candidates[0].match_pairs[0];
+        let test = self.pick_test_for_match_pair(match_pair);
         // Unwrap is ok after simplification.
         let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);

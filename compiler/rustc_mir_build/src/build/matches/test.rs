@@ -26,7 +26,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a not-fully-simplified pattern.
-    pub(super) fn test<'pat>(&mut self, match_pair: &MatchPairTree<'pat, 'tcx>) -> Test<'tcx> {
+    pub(super) fn pick_test_for_match_pair<'pat>(
+        &mut self,
+        match_pair: &MatchPairTree<'pat, 'tcx>,
+    ) -> Test<'tcx> {
         let kind = match match_pair.test_case {
             TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
