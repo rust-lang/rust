@@ -39,3 +39,22 @@ pub fn test(
     f6(); //~ ERROR [E0798]
     f7(); //~ ERROR [E0798]
 }
+
+#[repr(C)]
+pub union ReprCUnionU64 {
+    _unused: u64,
+}
+
+#[repr(Rust)]
+pub union ReprRustUnionU64 {
+    _unused: u64,
+}
+
+#[no_mangle]
+pub fn test_union(
+    f1: extern "C-cmse-nonsecure-call" fn() -> ReprRustUnionU64, //~ WARNING [improper_ctypes_definitions]
+    f2: extern "C-cmse-nonsecure-call" fn() -> ReprCUnionU64,
+) {
+    f1(); //~ ERROR [E0798]
+    f2(); //~ ERROR [E0798]
+}

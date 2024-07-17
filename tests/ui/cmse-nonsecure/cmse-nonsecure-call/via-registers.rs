@@ -10,7 +10,12 @@ pub trait Copy {}
 impl Copy for u32 {}
 
 #[repr(transparent)]
-pub struct ReprTransparentStructU64(u64);
+pub struct ReprTransparentStructU64 {
+    _marker1: (),
+    _marker2: (),
+    field: u64,
+    _marker3: (),
+}
 
 #[repr(transparent)]
 pub enum ReprTransparentEnumU64 {
@@ -36,7 +41,10 @@ pub fn params(
     f3(1, 2);
     f4(1);
     f5(1.0, 2.0, 3.0);
-    f6(ReprTransparentStructU64(1), U32Compound(2, 3));
+    f6(
+        ReprTransparentStructU64 { _marker1: (), _marker2: (), field: 1, _marker3: () },
+        U32Compound(2, 3),
+    );
     f7([0xDEADBEEF; 4]);
 }
 

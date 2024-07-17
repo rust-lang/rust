@@ -15,6 +15,20 @@ LL |     f7: extern "C-cmse-nonsecure-call" fn() -> i128,
    |
    = note: 128-bit integers don't currently have a known stable ABI
 
+warning: `extern` fn uses type `ReprRustUnionU64`, which is not FFI-safe
+  --> $DIR/return-via-stack.rs:55:9
+   |
+LL |     f1: extern "C-cmse-nonsecure-call" fn() -> ReprRustUnionU64,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
+   = note: this union has unspecified layout
+note: the type is defined here
+  --> $DIR/return-via-stack.rs:49:1
+   |
+LL | pub union ReprRustUnionU64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
   --> $DIR/return-via-stack.rs:34:5
    |
@@ -92,6 +106,28 @@ LL |     f7();
    |
    = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
 
-error: aborting due to 7 previous errors; 2 warnings emitted
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:58:5
+   |
+LL |     f1: extern "C-cmse-nonsecure-call" fn() -> ReprRustUnionU64,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f1();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:59:5
+   |
+LL |     f2: extern "C-cmse-nonsecure-call" fn() -> ReprCUnionU64,
+   |     -- this function uses the `C-cmse-nonsecure-call` ABI
+...
+LL |     f2();
+   |     ^^^^ but its return value doesn't fit in the available registers
+   |
+   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+
+error: aborting due to 9 previous errors; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0798`.
