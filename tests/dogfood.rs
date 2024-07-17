@@ -7,23 +7,41 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use itertools::Itertools;
+use std::fs::File;
+use std::io::{self, IsTerminal};
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::SystemTime;
 use test_utils::IS_RUSTC_TEST_SUITE;
+use ui_test::Args;
 
 mod test_utils;
 
-#[test]
-fn dogfood_clippy() {
+fn main() {
     if IS_RUSTC_TEST_SUITE {
         return;
     }
 
+    let args = Args::test().unwrap();
+
+    if args.list {
+        if !args.ignored {
+            println!("dogfood: test");
+        }
+    } else if !args.skip.iter().any(|arg| arg == "dogfood") {
+        if args.filters.iter().any(|arg| arg == "collect_metadata") {
+            collect_metadata();
+        } else {
+            dogfood();
+        }
+    }
+}
+
+fn dogfood() {
     let mut failed_packages = Vec::new();
 
-    // "" is the root package
     for package in [
-        "",
+        "./",
         "clippy_dev",
         "clippy_lints",
         "clippy_utils",
@@ -31,6 +49,7 @@ fn dogfood_clippy() {
         "lintcheck",
         "rustc_tools_util",
     ] {
+        println!("linting {package}");
         if !run_clippy_for_package(package, &["-D", "clippy::all", "-D", "clippy::pedantic"]) {
             failed_packages.push(if package.is_empty() { "root" } else { package });
         }
@@ -43,12 +62,8 @@ fn dogfood_clippy() {
     );
 }
 
-#[test]
-#[ignore]
-#[cfg(feature = "internal")]
-fn run_metadata_collection_lint() {
-    use std::fs::File;
-    use std::time::SystemTime;
+fn collect_metadata() {
+    assert!(cfg!(feature = "internal"));
 
     // Setup for validation
     let metadata_output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("util/gh-pages/lints.json");
@@ -101,6 +116,10 @@ fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
         .arg("--all-targets")
         .arg("--all-features");
 
+    if !io::stdout().is_terminal() {
+        command.arg("-q");
+    }
+
     if let Ok(dogfood_args) = std::env::var("__CLIPPY_DOGFOOD_ARGS") {
         for arg in dogfood_args.split_whitespace() {
             command.arg(arg);
@@ -119,11 +138,5 @@ fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
         command.args(["-A", "unknown_lints"]);
     }
 
-    let output = command.output().unwrap();
-
-    println!("status: {}", output.status);
-    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-
-    output.status.success()
+    command.status().unwrap().success()
 }
