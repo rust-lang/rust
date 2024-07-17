@@ -12,12 +12,19 @@ pub mod assertion_helpers;
 pub mod diff;
 pub mod env;
 pub mod external_deps;
-pub mod fs;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
 pub mod string;
 pub mod targets;
+
+mod fs;
+
+/// [`std::fs`] wrappers and assorted filesystem-related helpers. Public to tests as `rfs` to not be
+/// confused with [`std::fs`].
+pub mod rfs {
+    pub use crate::fs::*;
+}
 
 // Re-exports of third-party library crates.
 pub use bstr;

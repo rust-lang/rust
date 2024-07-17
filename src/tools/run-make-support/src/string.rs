@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::fs as rfs;
+use crate::fs;
 use crate::path_helpers::{cwd, has_extension, shallow_find_files};
 
 /// Gathers all files in the current working directory that have the extension `ext`, and counts
@@ -10,7 +10,7 @@ pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str)
 
     let mut count = 0;
     for file in fetched_files {
-        let content = rfs::read_to_string(file);
+        let content = fs::read_to_string(file);
         count += content.lines().filter(|line| re.is_match(&line)).count();
     }
 
@@ -22,7 +22,7 @@ pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str)
 /// that it contains `expected`.
 #[track_caller]
 pub fn invalid_utf8_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S) {
-    let buffer = rfs::read(path.as_ref());
+    let buffer = fs::read(path.as_ref());
     let expected = expected.as_ref();
     if !String::from_utf8_lossy(&buffer).contains(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");
@@ -38,7 +38,7 @@ pub fn invalid_utf8_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S
 /// that it does not contain `expected`.
 #[track_caller]
 pub fn invalid_utf8_not_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S) {
-    let buffer = rfs::read(path.as_ref());
+    let buffer = fs::read(path.as_ref());
     let expected = expected.as_ref();
     if String::from_utf8_lossy(&buffer).contains(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");

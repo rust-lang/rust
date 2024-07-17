@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::fs as rfs;
+use crate::fs;
 use crate::path_helpers::cwd;
 use crate::targets::is_windows;
 
@@ -34,16 +34,16 @@ where
         );
         panic!("`test_while_readonly` on directory detected while on Windows.");
     }
-    let metadata = rfs::metadata(&path);
+    let metadata = fs::metadata(&path);
     let original_perms = metadata.permissions();
 
     let mut new_perms = original_perms.clone();
     new_perms.set_readonly(true);
-    rfs::set_permissions(&path, new_perms);
+    fs::set_permissions(&path, new_perms);
 
     let success = std::panic::catch_unwind(closure);
 
-    rfs::set_permissions(&path, original_perms);
+    fs::set_permissions(&path, original_perms);
     success.unwrap();
 }
 
@@ -60,10 +60,10 @@ where
 pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
     let original_dir = cwd();
     let tmpdir = original_dir.join("../temporary-directory");
-    rfs::copy_dir_all(".", &tmpdir);
+    fs::copy_dir_all(".", &tmpdir);
 
     std::env::set_current_dir(&tmpdir).unwrap();
     callback();
     std::env::set_current_dir(original_dir).unwrap();
-    rfs::remove_dir_all(tmpdir);
+    fs::remove_dir_all(tmpdir);
 }

@@ -3,7 +3,7 @@
 use std::panic;
 use std::path::Path;
 
-use crate::fs as rfs;
+use crate::fs;
 
 /// Assert that `actual` is equal to `expected`.
 #[track_caller]
@@ -50,14 +50,14 @@ pub fn assert_not_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N)
 /// Assert that all files in `dir1` exist and have the same content in `dir2`
 pub fn assert_dirs_are_equal(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     let dir2 = dir2.as_ref();
-    rfs::read_dir_entries(dir1, |entry_path| {
+    fs::read_dir_entries(dir1, |entry_path| {
         let entry_name = entry_path.file_name().unwrap();
         if entry_path.is_dir() {
             assert_dirs_are_equal(&entry_path, &dir2.join(entry_name));
         } else {
             let path2 = dir2.join(entry_name);
-            let file1 = rfs::read(&entry_path);
-            let file2 = rfs::read(&path2);
+            let file1 = fs::read(&entry_path);
+            let file2 = fs::read(&path2);
 
             // We don't use `assert_eq!` because they are `Vec<u8>`, so not great for display.
             // Why not using String? Because there might be minified files or even potentially
