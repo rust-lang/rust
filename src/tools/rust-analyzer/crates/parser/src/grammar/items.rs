@@ -173,13 +173,6 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         }
     }
 
-    // test existential_type
-    // existential type Foo: Fn() -> usize;
-    if p.at_contextual_kw(T![existential]) && p.nth(1) == T![type] {
-        p.bump_remap(T![existential]);
-        has_mods = true;
-    }
-
     // items
     match p.current() {
         T![fn] => fn_(p, m),
@@ -201,7 +194,7 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
 
         _ if has_visibility || has_mods => {
             if has_mods {
-                p.error("expected existential, fn, trait or impl");
+                p.error("expected fn, trait or impl");
             } else {
                 p.error("expected an item");
             }

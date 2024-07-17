@@ -14,6 +14,8 @@ pub struct Abi {
 impl Abi {
     #[inline]
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
+    #[inline]
+    pub fn string_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![string]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -834,27 +836,6 @@ impl MacroDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroEagerInput {
-    pub(crate) syntax: SyntaxNode,
-}
-impl MacroEagerInput {
-    #[inline]
-    pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
-    #[inline]
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    #[inline]
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    #[inline]
-    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    #[inline]
-    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
-    #[inline]
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    #[inline]
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1049,6 +1030,10 @@ impl NameRef {
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
     #[inline]
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+    #[inline]
+    pub fn int_number_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![int_number])
+    }
     #[inline]
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     #[inline]
@@ -3010,20 +2995,6 @@ impl AstNode for MacroCall {
 impl AstNode for MacroDef {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_DEF }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for MacroEagerInput {
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_EAGER_INPUT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -5737,11 +5708,6 @@ impl std::fmt::Display for MacroCall {
     }
 }
 impl std::fmt::Display for MacroDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for MacroEagerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
