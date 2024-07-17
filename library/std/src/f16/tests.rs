@@ -57,7 +57,33 @@ fn test_num_f16() {
     test_num(10f16, 2f16);
 }
 
-// FIXME(f16_f128): add min and max tests when available
+#[test]
+#[cfg(reliable_f16_math)]
+fn test_min_nan() {
+    assert_eq!(f16::NAN.min(2.0), 2.0);
+    assert_eq!(2.0f16.min(f16::NAN), 2.0);
+}
+
+#[test]
+#[cfg(reliable_f16_math)]
+fn test_max_nan() {
+    assert_eq!(f16::NAN.max(2.0), 2.0);
+    assert_eq!(2.0f16.max(f16::NAN), 2.0);
+}
+
+#[test]
+#[cfg(reliable_f16_math)]
+fn test_minimum() {
+    assert!(f16::NAN.minimum(2.0).is_nan());
+    assert!(2.0f16.minimum(f16::NAN).is_nan());
+}
+
+#[test]
+#[cfg(reliable_f16_math)]
+fn test_maximum() {
+    assert!(f16::NAN.maximum(2.0).is_nan());
+    assert!(2.0f16.maximum(f16::NAN).is_nan());
+}
 
 #[test]
 fn test_nan() {
