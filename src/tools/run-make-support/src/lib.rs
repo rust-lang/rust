@@ -16,6 +16,7 @@ pub mod fs;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
+pub mod string;
 pub mod targets;
 
 // Re-exports of third-party library crates.
@@ -71,5 +72,8 @@ pub use scoped_run::{run_in_tmpdir, test_while_readonly};
 
 pub use assertion_helpers::{
     assert_contains, assert_equals, assert_not_contains, assert_recursive_eq,
+};
+
+pub use string::{
     count_regex_matches_in_files_with_extension, invalid_utf8_contains, invalid_utf8_not_contains,
 };
