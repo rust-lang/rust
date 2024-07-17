@@ -29,3 +29,10 @@ pub unsafe extern "C" fn inline_always() {
 pub unsafe extern "C" fn inline_never() {
     asm!("", options(noreturn));
 }
+
+#[naked]
+#[cfg_attr(all(), inline(never))]
+//~^ ERROR [E0736]
+pub unsafe extern "C" fn conditional_inline_never() {
+    asm!("", options(noreturn));
+}

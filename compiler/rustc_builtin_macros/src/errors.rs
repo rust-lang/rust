@@ -914,7 +914,7 @@ pub(crate) struct ExpectedItem<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_naked_functions_testing_attribute, code = E0798)]
+#[diag(builtin_macros_naked_functions_testing_attribute, code = E0736)]
 pub struct NakedFunctionTestingAttribute {
     #[primary_span]
     #[label(builtin_macros_naked_attribute)]

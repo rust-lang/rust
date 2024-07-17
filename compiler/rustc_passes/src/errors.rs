@@ -1183,13 +1183,14 @@ pub struct NakedFunctionsMustUseNoreturn {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_codegen_attribute, code = E0736)]
-pub struct NakedFunctionCodegenAttribute {
+#[diag(passes_naked_functions_incompatible_attribute, code = E0736)]
+pub struct NakedFunctionIncompatibleAttribute {
     #[primary_span]
     #[label]
     pub span: Span,
     #[label(passes_naked_attribute)]
     pub naked_span: Span,
+    pub attr: Symbol,
 }
 
 #[derive(Diagnostic)]

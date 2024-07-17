@@ -3,7 +3,7 @@
 //@ ignore-spirv
 
 #![feature(naked_functions)]
-#![feature(asm_const, asm_unwind)]
+#![feature(asm_const, asm_unwind, linkage)]
 #![crate_type = "lib"]
 
 use std::arch::asm;
@@ -163,11 +163,6 @@ pub unsafe extern "C" fn valid_att_syntax() {
 }
 
 #[naked]
-pub unsafe extern "C" fn inline_none() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
 #[naked]
 pub unsafe extern "C" fn allow_compile_error(a: u32) -> u32 {
     compile_error!("this is a user specified error")
@@ -185,4 +180,65 @@ pub unsafe extern "C" fn allow_compile_error_and_asm(a: u32) -> u32 {
 pub unsafe extern "C" fn invalid_asm_syntax(a: u32) -> u32 {
     asm!(invalid_syntax)
     //~^ ERROR asm template must be a string literal
+}
+
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(target_pointer_width = "64", no_mangle)]
+#[naked]
+pub unsafe extern "C" fn compatible_cfg_attributes() {
+    asm!("", options(noreturn, att_syntax));
+}
+
+#[allow(dead_code)]
+#[warn(dead_code)]
+#[deny(dead_code)]
+#[forbid(dead_code)]
+#[naked]
+pub unsafe extern "C" fn compatible_diagnostic_attributes() {
+    asm!("", options(noreturn, att_syntax));
+}
+
+#[deprecated = "test"]
+#[naked]
+pub unsafe extern "C" fn compatible_deprecated_attributes() {
+    asm!("", options(noreturn, att_syntax));
+}
+
+#[cfg(target_arch = "x86_64")]
+#[must_use]
+#[naked]
+pub unsafe extern "C" fn compatible_must_use_attributes() -> u64 {
+    asm!(
+        "
+        mov rax, 42
+        ret
+        ",
+        options(noreturn)
+    )
+}
+
+#[export_name = "exported_function_name"]
+#[link_section = ".custom_section"]
+#[no_mangle]
+#[naked]
+pub unsafe extern "C" fn compatible_ffi_attributes_1() {
+    asm!("", options(noreturn, att_syntax));
+}
+
+#[cold]
+#[naked]
+pub unsafe extern "C" fn compatible_codegen_attributes() {
+    asm!("", options(noreturn, att_syntax));
+}
+
+#[doc = "foo bar baz"]
+#[naked]
+pub unsafe extern "C" fn compatible_doc_attributes() {
+    asm!("", options(noreturn, att_syntax));
+}
+
+#[linkage = "external"]
+#[naked]
+pub unsafe extern "C" fn compatible_linkage() {
+    asm!("", options(noreturn, att_syntax));
 }

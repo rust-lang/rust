@@ -482,9 +482,9 @@ passes_naked_functions_asm_block =
 passes_naked_functions_asm_options =
     asm options unsupported in naked functions: {$unsupported_options}
 
-passes_naked_functions_codegen_attribute =
-    cannot use additional code generation attributes with `#[naked]`
-    .label = this attribute is incompatible with `#[naked]`
+passes_naked_functions_incompatible_attribute =
+    attribute incompatible with `#[naked]`
+    .label = the `{$attr}` attribute is incompatible with `#[naked]`
     .naked_attribute = function marked with `#[naked]` here
 
 passes_naked_functions_must_use_noreturn =
