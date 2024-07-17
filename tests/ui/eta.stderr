@@ -203,22 +203,10 @@ LL |         let x = Box::new(|| None.map(|x| f(x)));
    |                                      ^^^^^^^^ help: replace the closure with the function itself: `f`
 
 error: redundant closure
-  --> tests/ui/eta.rs:495:46
-   |
-LL |         let _field = bind.as_deref().or_else(|| get_default()).unwrap();
-   |                                              ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `get_default`
-
-error: redundant closure
-  --> tests/ui/eta.rs:497:46
-   |
-LL |         let _field = bind.as_deref().or_else(|| get_default()).unwrap();
-   |                                              ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `get_default`
-
-error: redundant closure
   --> tests/ui/eta.rs:499:35
    |
 LL |         let _field = bind.or_else(|| get_default()).unwrap();
    |                                   ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `get_default`
 
-error: aborting due to 36 previous errors
+error: aborting due to 34 previous errors
 

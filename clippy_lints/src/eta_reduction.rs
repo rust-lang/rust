@@ -9,8 +9,7 @@ use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, Saf
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
-    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, RegionKind, Ty, TypeVisitableExt,
-    TypeckResults,
+    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -176,6 +175,17 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
                     }
                 },
             };
+            if let Some(outer) = outer_receiver
+                && ty_has_static(sig.output())
+                && let generic_args = typeck.node_args(outer.hir_id)
+                // HACK: Given a closure in `T.method(|| f())`, where `fn f() -> U where U: 'static`, `T.method(f)`
+                // will succeed iff `T: 'static`. But the region of `T` is always erased by `typeck.expr_ty()` when
+                // T is a generic type. For example, return type of `Option<String>::as_deref()` is a generic.
+                // So we have a hack like this.
+                && generic_args.len() > 0
+            {
+                return;
+            }
             if check_sig(closure_sig, sig)
                 && let generic_args = typeck.node_args(callee.hir_id)
                 // Given some trait fn `fn f() -> ()` and some type `T: Trait`, `T::f` is not
@@ -275,7 +285,7 @@ fn check_sig<'tcx>(closure_sig: FnSig<'tcx>, call_sig: FnSig<'tcx>) -> bool {
 /// This is needed because rustc is unable to late bind early-bound regions in a function signature.
 fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'_>) -> bool {
     fn check_region(from_region: Region<'_>, to_region: Region<'_>) -> bool {
-        matches!(from_region.kind(), RegionKind::ReBound(..)) && !matches!(to_region.kind(), RegionKind::ReBound(..))
+        from_region.is_bound() && !to_region.is_bound()
     }
 
     fn check_subs(from_subs: &[GenericArg<'_>], to_subs: &[GenericArg<'_>]) -> bool {
@@ -327,4 +337,9 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
         .iter()
         .zip(to_sig.inputs_and_output)
         .any(|(from_ty, to_ty)| check_ty(from_ty, to_ty))
+}
+
+fn ty_has_static(ty: Ty<'_>) -> bool {
+    ty.walk()
+        .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if re.is_static()))
 }

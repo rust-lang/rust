@@ -492,9 +492,9 @@ mod issue_13073 {
     pub fn foo() {
         // shouldn't lint
         let bind: Option<String> = None;
-        let _field = bind.as_deref().or_else(get_default).unwrap();
+        let _field = bind.as_deref().or_else(|| get_default()).unwrap();
         let bind: Option<&'static str> = None;
-        let _field = bind.as_deref().or_else(get_default).unwrap();
+        let _field = bind.as_deref().or_else(|| get_default()).unwrap();
         // should lint
         let _field = bind.or_else(get_default).unwrap();
     }
