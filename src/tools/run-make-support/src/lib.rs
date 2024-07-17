@@ -30,8 +30,8 @@ pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use diff::{diff, Diff};
 pub use llvm::{
-    llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmFilecheck, LlvmObjdump,
-    LlvmProfdata, LlvmReadobj,
+    llvm_ar, llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmFilecheck,
+    LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
 pub use run::{cmd, run, run_fail, run_with_args};
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
@@ -59,19 +59,6 @@ pub fn env_var_os(name: &str) -> OsString {
 #[must_use]
 pub fn target() -> String {
     env_var("TARGET")
-}
-
-/// `AR`
-#[track_caller]
-pub fn ar(inputs: &[impl AsRef<Path>], output_path: impl AsRef<Path>) {
-    let output = fs::File::create(&output_path).expect(&format!(
-        "the file in path \"{}\" could not be created",
-        output_path.as_ref().display()
-    ));
-    let mut builder = ar::Builder::new(output);
-    for input in inputs {
-        builder.append_path(input).unwrap();
-    }
 }
 
 /// Check if target is windows-like.
@@ -292,6 +279,26 @@ pub fn has_extension<P: AsRef<Path>>(path: P, extension: &str) -> bool {
 /// Returns true if the filename at `path` does not contain `expected`.
 pub fn not_contains<P: AsRef<Path>>(path: P, expected: &str) -> bool {
     !path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().contains(expected))
+}
+
+/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
+#[track_caller]
+pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
+    let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
+    let src = format!("{lib_name}.c");
+    let lib_path = static_lib_name(lib_name);
+    if is_msvc() {
+        cc().arg("-c").out_exe(&obj_file).input(src).run();
+    } else {
+        cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
+    };
+    let obj_file = if is_msvc() {
+        PathBuf::from(format!("{lib_name}.obj"))
+    } else {
+        PathBuf::from(format!("{lib_name}.o"))
+    };
+    llvm_ar().obj_to_ar().output_input(&lib_path, &obj_file).run();
+    path(lib_path)
 }
 
 /// Returns true if the filename at `path` is not in `expected`.
