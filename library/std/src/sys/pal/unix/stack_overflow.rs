@@ -44,6 +44,7 @@ mod imp {
     use crate::ops::Range;
     use crate::ptr;
     use crate::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
+    use crate::sync::OnceLock;
     use crate::sys::pal::unix::os;
     use crate::thread;
 
@@ -370,6 +371,7 @@ mod imp {
         None
     }
 
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
         // FreeBSD's stack autogrows, and optionally includes a guard page
         // at the bottom. If we try to remap the bottom of the stack
@@ -381,25 +383,22 @@ mod imp {
         // by the security.bsd.stack_guard_page sysctl.
         // By default it is 1, checking once is enough since it is
         // a boot time config value.
-        static PAGES: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
+        static PAGES: OnceLock<usize> = OnceLock::new();
 
         let pages = PAGES.get_or_init(|| {
             use crate::sys::weak::dlsym;
             dlsym!(fn sysctlbyname(*const libc::c_char, *mut libc::c_void, *mut libc::size_t, *const libc::c_void, libc::size_t) -> libc::c_int);
             let mut guard: usize = 0;
-            let mut size = crate::mem::size_of_val(&guard);
-            let oid = crate::ffi::CStr::from_bytes_with_nul(
-                b"security.bsd.stack_guard_page\0",
-            )
-            .unwrap();
+            let mut size = mem::size_of_val(&guard);
+            let oid = c"security.bsd.stack_guard_page";
             match sysctlbyname.get() {
-                Some(fcn) => {
-                    if fcn(oid.as_ptr(), core::ptr::addr_of_mut!(guard) as *mut _, core::ptr::addr_of_mut!(size) as *mut _, crate::ptr::null_mut(), 0) == 0 {
-                        guard
-                    } else {
-                        1
-                    }
-                },
+                Some(fcn) if unsafe {
+                    fcn(oid.as_ptr(),
+                        ptr::addr_of_mut!(guard).cast(),
+                        ptr::addr_of_mut!(size),
+                        ptr::null_mut(),
+                        0) == 0
+                } => guard,
                 _ => 1,
             }
         });
