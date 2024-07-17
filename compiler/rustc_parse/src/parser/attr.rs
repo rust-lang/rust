@@ -251,13 +251,12 @@ impl<'a> Parser<'a> {
     pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
         maybe_whole!(self, NtMeta, |attr| attr.into_inner());
 
-        let do_parse = |this: &mut Self| {
+        let do_parse = |this: &mut Self, _empty_attrs| {
             let is_unsafe = this.eat_keyword(kw::Unsafe);
             let unsafety = if is_unsafe {
                 let unsafe_span = this.prev_token.span;
                 this.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
                 this.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
-
                 ast::Safety::Unsafe(unsafe_span)
             } else {
                 ast::Safety::Default
@@ -268,13 +267,10 @@ impl<'a> Parser<'a> {
             if is_unsafe {
                 this.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }
-            Ok(ast::AttrItem { unsafety, path, args, tokens: None })
+            Ok((ast::AttrItem { unsafety, path, args, tokens: None }, false))
         };
-        // Attr items don't have attributes
-        match force_collect {
-            ForceCollect::Yes => self.collect_tokens_no_attrs(do_parse),
-            ForceCollect::No => do_parse(self),
-        }
+        // Attr items don't have attributes.
+        self.collect_tokens_trailing_token(AttrWrapper::empty(), force_collect, do_parse)
     }
 
     /// Parses attributes that appear after the opening of an item. These should
