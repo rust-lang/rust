@@ -306,9 +306,8 @@ mod imp {
         ret
     }
 
-    unsafe fn get_stack_start_aligned() -> Option<*mut libc::c_void> {
-        let page_size = PAGE_SIZE.load(Ordering::Relaxed);
-        let stackptr = get_stack_start()?;
+    fn stack_start_aligned(page_size: usize) -> Option<*mut libc::c_void> {
+        let stackptr = unsafe { get_stack_start()? };
         let stackaddr = stackptr.addr();
 
         // Ensure stackaddr is page aligned! A parent process might
@@ -345,6 +344,7 @@ mod imp {
         }
     }
 
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard_linux(page_size: usize) -> Option<Range<usize>> {
         // Linux doesn't allocate the whole stack right away, and
         // the kernel has its own stack-guard mechanism to fault
@@ -356,11 +356,12 @@ mod imp {
         // Instead, we'll just note where we expect rlimit to start
         // faulting, so our handler can report "stack overflow", and
         // trust that the kernel's own stack guard will work.
-        let stackptr = get_stack_start_aligned()?;
+        let stackptr = stack_start_aligned(page_size)?;
         let stackaddr = stackptr.addr();
         Some(stackaddr - page_size..stackaddr)
     }
 
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard_linux_musl(_page_size: usize) -> Option<Range<usize>> {
         // For the main thread, the musl's pthread_attr_getstack
         // returns the current stack size, rather than maximum size
@@ -374,7 +375,7 @@ mod imp {
         // at the bottom. If we try to remap the bottom of the stack
         // ourselves, FreeBSD's guard page moves upwards. So we'll just use
         // the builtin guard page.
-        let stackptr = get_stack_start_aligned()?;
+        let stackptr = stack_start_aligned(page_size)?;
         let guardaddr = stackptr.addr();
         // Technically the number of guard pages is tunable and controlled
         // by the security.bsd.stack_guard_page sysctl.
@@ -405,6 +406,7 @@ mod imp {
         Some(guardaddr..guardaddr + pages * page_size)
     }
 
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard_bsds(page_size: usize) -> Option<Range<usize>> {
         // OpenBSD stack already includes a guard page, and stack is
         // immutable.
@@ -413,7 +415,7 @@ mod imp {
         // We'll just note where we expect rlimit to start
         // faulting, so our handler can report "stack overflow", and
         // trust that the kernel's own stack guard will work.
-        let stackptr = get_stack_start_aligned()?;
+        let stackptr = stack_start_aligned(page_size)?;
         let stackaddr = stackptr.addr();
         Some(stackaddr - page_size..stackaddr)
     }
@@ -427,7 +429,7 @@ mod imp {
         // than the initial mmap() used, so we mmap() here with
         // read/write permissions and only then mprotect() it to
         // no permissions at all. See issue #50313.
-        let stackptr = get_stack_start_aligned()?;
+        let stackptr = stack_start_aligned(page_size)?;
         let result = mmap64(
             stackptr,
             page_size,
