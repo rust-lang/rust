@@ -157,6 +157,7 @@ static TARGETS: &[&str] = &[
     "wasm32-wasi",
     "wasm32-wasip1",
     "wasm32-wasip1-threads",
+    "wasm32-wasip2",
     "x86_64-apple-darwin",
     "x86_64-apple-ios",
     "x86_64-fortanix-unknown-sgx",
