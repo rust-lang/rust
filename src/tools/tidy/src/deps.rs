@@ -21,6 +21,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
+    "CC0-1.0 OR MIT-0 OR Apache-2.0",                      // contant_time_eq
     "ISC",
     "MIT / Apache-2.0",
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
@@ -83,6 +84,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)
 const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
+    ("arrayref", "BSD-2-Clause"),                            // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
@@ -94,7 +96,6 @@ const EXCEPTIONS: ExceptionList = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
-    ("subtle", "BSD-3-Clause"),                              // rustc blake2 deps
     ("wasm-encoder", "Apache-2.0 WITH LLVM-exception"),      // rustc
     ("wasmparser", "Apache-2.0 WITH LLVM-exception"),        // rustc
     // tidy-alphabetical-end
@@ -233,16 +234,18 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "annotate-snippets",
     "anstyle",
     "ar_archive_writer",
+    "arrayref",
     "arrayvec",
     "autocfg",
     "bitflags",
-    "blake2",
+    "blake2s_simd",
     "block-buffer",
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
     "cfg_aliases",
     "compiler_builtins",
+    "constant_time_eq",
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",
@@ -378,7 +381,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "stacker",
     "static_assertions",
     "strsim",
-    "subtle",
     "syn",
     "synstructure",
     "tempfile",

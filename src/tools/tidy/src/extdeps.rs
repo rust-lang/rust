@@ -10,7 +10,7 @@ const ALLOWED_SOURCES: &[&str] = &[
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
     // WIP Blake2 in rustc-stable-hash
-    r#""git+https://github.com/Urgau/rustc-stable-hash.git?rev=5dbe93b#5dbe93b5959372a64f6f7ea60382fe35be55dcb3""#,
+    r#""git+https://github.com/Urgau/rustc-stable-hash.git?rev=4f8c5a9#4f8c5a993536388a22fba12d0be76837dcd52017""#,
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
