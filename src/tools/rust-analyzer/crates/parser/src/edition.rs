@@ -12,8 +12,13 @@ pub enum Edition {
 }
 
 impl Edition {
+    /// The current latest stable edition, note this is usually not the right choice in code.
     pub const CURRENT: Edition = Edition::Edition2021;
     pub const DEFAULT: Edition = Edition::Edition2015;
+
+    pub fn at_least_2024(self) -> bool {
+        self >= Edition::Edition2024
+    }
 }
 
 #[derive(Debug)]

@@ -77,6 +77,7 @@ const RESERVED: &[&str] = &[
     "abstract", "become", "box", "do", "final", "macro", "override", "priv", "typeof", "unsized",
     "virtual", "yield", "try",
 ];
+const CONTEXTUAL_RESERVED: &[&str] = &[];
 
 pub(crate) fn generate_kind_src(
     nodes: &[AstNodeSrc],
@@ -123,6 +124,9 @@ pub(crate) fn generate_kind_src(
     keywords.extend(RESERVED.iter().copied());
     keywords.sort();
     keywords.dedup();
+    contextual_keywords.extend(CONTEXTUAL_RESERVED.iter().copied());
+    contextual_keywords.sort();
+    contextual_keywords.dedup();
 
     // we leak things here for simplicity, that way we don't have to deal with lifetimes
     // The execution is a one shot job so thats fine
@@ -137,9 +141,7 @@ pub(crate) fn generate_kind_src(
     let nodes = Vec::leak(nodes);
     nodes.sort();
     let keywords = Vec::leak(keywords);
-    keywords.sort();
     let contextual_keywords = Vec::leak(contextual_keywords);
-    contextual_keywords.sort();
     let literals = Vec::leak(literals);
     literals.sort();
     let tokens = Vec::leak(tokens);

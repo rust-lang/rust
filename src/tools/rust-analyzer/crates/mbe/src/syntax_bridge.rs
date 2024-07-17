@@ -169,6 +169,7 @@ where
 /// Convert a string to a `TokenTree`. The spans of the subtree will be anchored to the provided
 /// anchor with the given context.
 pub fn parse_to_token_tree<Ctx>(
+    edition: Edition,
     anchor: SpanAnchor,
     ctx: Ctx,
     text: &str,
@@ -177,7 +178,7 @@ where
     SpanData<Ctx>: Copy + fmt::Debug,
     Ctx: Copy,
 {
-    let lexed = parser::LexedStr::new(text);
+    let lexed = parser::LexedStr::new(edition, text);
     if lexed.errors().next().is_some() {
         return None;
     }
@@ -187,11 +188,15 @@ where
 }
 
 /// Convert a string to a `TokenTree`. The passed span will be used for all spans of the produced subtree.
-pub fn parse_to_token_tree_static_span<S>(span: S, text: &str) -> Option<tt::Subtree<S>>
+pub fn parse_to_token_tree_static_span<S>(
+    edition: Edition,
+    span: S,
+    text: &str,
+) -> Option<tt::Subtree<S>>
 where
     S: Copy + fmt::Debug,
 {
-    let lexed = parser::LexedStr::new(text);
+    let lexed = parser::LexedStr::new(edition, text);
     if lexed.errors().next().is_some() {
         return None;
     }

@@ -13,6 +13,7 @@ use ide_db::{
     RootDatabase,
 };
 use itertools::Itertools;
+use span::Edition;
 use stdx::{always, never};
 use syntax::{
     ast, utils::is_raw_identifier, AstNode, SmolStr, SyntaxKind, SyntaxNode, TextRange, TextSize,
@@ -99,7 +100,7 @@ pub(crate) fn rename(
             // FIXME: This can use the `ide_db::rename_reference` (or def.rename) method once we can
             // properly find "direct" usages/references.
             .map(|(.., def)| {
-                match IdentifierKind::classify(new_name)? {
+                match IdentifierKind::classify(Edition::CURRENT, new_name)? {
                     IdentifierKind::Ident => (),
                     IdentifierKind::Lifetime => {
                         bail!("Cannot alias reference to a lifetime identifier")
@@ -391,7 +392,7 @@ fn rename_self_to_param(
         return Ok(SourceChange::default());
     }
 
-    let identifier_kind = IdentifierKind::classify(new_name)?;
+    let identifier_kind = IdentifierKind::classify(Edition::CURRENT, new_name)?;
 
     let InFile { file_id, value: self_param } =
         sema.source(self_param).ok_or_else(|| format_err!("cannot find function source"))?;

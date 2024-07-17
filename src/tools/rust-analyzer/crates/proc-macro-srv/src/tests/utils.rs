@@ -9,7 +9,7 @@ use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
 
 fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
     crate::server_impl::TokenStream::with_subtree(
-        mbe::parse_to_token_tree_static_span(call_site, src).unwrap(),
+        mbe::parse_to_token_tree_static_span(span::Edition::CURRENT, call_site, src).unwrap(),
     )
 }
 
@@ -19,7 +19,7 @@ fn parse_string_spanned(
     src: &str,
 ) -> crate::server_impl::TokenStream<Span> {
     crate::server_impl::TokenStream::with_subtree(
-        mbe::parse_to_token_tree(anchor, call_site, src).unwrap(),
+        mbe::parse_to_token_tree(span::Edition::CURRENT, anchor, call_site, src).unwrap(),
     )
 }
 

@@ -9,7 +9,7 @@ use std::{
 
 use expect_test::expect_file;
 
-use crate::{LexedStr, TopEntryPoint};
+use crate::{Edition, LexedStr, TopEntryPoint};
 
 #[test]
 fn lex_ok() {
@@ -30,7 +30,7 @@ fn lex_err() {
 }
 
 fn lex(text: &str) -> String {
-    let lexed = LexedStr::new(text);
+    let lexed = LexedStr::new(Edition::CURRENT, text);
 
     let mut res = String::new();
     for i in 0..lexed.len() {
@@ -85,9 +85,9 @@ fn parse_inline_err() {
 }
 
 fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
-    let lexed = LexedStr::new(text);
+    let lexed = LexedStr::new(Edition::CURRENT, text);
     let input = lexed.to_input();
-    let output = entry.parse(&input, crate::Edition::CURRENT);
+    let output = entry.parse(&input, Edition::CURRENT);
 
     let mut buf = String::new();
     let mut errors = Vec::new();

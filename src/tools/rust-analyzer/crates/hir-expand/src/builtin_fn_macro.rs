@@ -728,6 +728,8 @@ fn include_expand(
         }
     };
     match parse_to_token_tree(
+        // FIXME
+        Edition::CURRENT,
         SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
         SyntaxContextId::ROOT,
         &db.file_text(file_id),

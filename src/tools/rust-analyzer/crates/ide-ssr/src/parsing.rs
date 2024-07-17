@@ -255,7 +255,7 @@ fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
 }
 
 fn tokenize(source: &str) -> Result<Vec<Token>, SsrError> {
-    let lexed = parser::LexedStr::new(source);
+    let lexed = parser::LexedStr::new(parser::Edition::CURRENT, source);
     if let Some((_, first_error)) = lexed.errors().next() {
         bail!("Failed to parse pattern: {}", first_error);
     }
