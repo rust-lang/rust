@@ -123,28 +123,36 @@ mod imp {
     static MAIN_ALTSTACK: AtomicPtr<libc::c_void> = AtomicPtr::new(ptr::null_mut());
     static NEED_ALTSTACK: AtomicBool = AtomicBool::new(false);
 
+    /// # Safety
+    /// Must be called only once
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn init() {
         PAGE_SIZE.store(os::page_size(), Ordering::Relaxed);
 
         // Always write to GUARD to ensure the TLS variable is allocated.
-        let guard = install_main_guard().unwrap_or(0..0);
+        let guard = unsafe { install_main_guard().unwrap_or(0..0) };
         GUARD.set((guard.start, guard.end));
 
-        let mut action: sigaction = mem::zeroed();
+        // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
+        let mut action: sigaction = unsafe { mem::zeroed() };
         for &signal in &[SIGSEGV, SIGBUS] {
-            sigaction(signal, ptr::null_mut(), &mut action);
+            // SAFETY: just fetches the current signal handler into action
+            unsafe { sigaction(signal, ptr::null_mut(), &mut action) };
             // Configure our signal handler if one is not already set.
             if action.sa_sigaction == SIG_DFL {
+                if !NEED_ALTSTACK.load(Ordering::Relaxed) {
+                    // haven't set up our sigaltstack yet
+                    NEED_ALTSTACK.store(true, Ordering::Release);
+                    let handler = unsafe { make_handler(true) };
+                    MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
+                    mem::forget(handler);
+                }
                 action.sa_flags = SA_SIGINFO | SA_ONSTACK;
                 action.sa_sigaction = signal_handler as sighandler_t;
-                sigaction(signal, &action, ptr::null_mut());
-                NEED_ALTSTACK.store(true, Ordering::Relaxed);
+                // SAFETY: only overriding signals if the default is set
+                unsafe { sigaction(signal, &action, ptr::null_mut()) };
             }
         }
-
-        let handler = make_handler(true);
-        MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
-        mem::forget(handler);
     }
 
     pub unsafe fn cleanup() {
