@@ -11,7 +11,11 @@ MEMORY {
 }
 
 __stack_length = 0x400000;
-__heap_end = __user_ram_end - __stack_length - 64;
+/*
+It's currently unclear why subtracting anything is necessary, but it fixes memory permission errors.
+0x100 is an arbitrary number that works.
+*/
+__heap_end = __user_ram_end - __stack_length - 0x1000;
 
 SECTIONS {
     .code_signature __user_ram_start : {
@@ -25,10 +29,12 @@ SECTIONS {
 
     .rodata : {
         *(.rodata .rodata.*)
+        *(.rodata1 .rodata1.*)
     } > USER_RAM
 
     .data : {
         *(.data .data.*)
+        *(.data1 .data1.*)
     } > USER_RAM
 
     .bss : {

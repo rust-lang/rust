@@ -40,7 +40,7 @@ unsafe impl dlmalloc::Allocator for Vexos {
     }
 
     fn free(&self, _ptr: *mut u8, _size: usize) -> bool {
-        return false;
+        false
     }
 
     fn can_release_part(&self, _flags: u32) -> bool {
