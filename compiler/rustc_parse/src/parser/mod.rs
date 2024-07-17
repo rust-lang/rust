@@ -425,6 +425,11 @@ impl<'a> Parser<'a> {
         // Make parser point to the first token.
         parser.bump();
 
+        // Change this from 1 back to 0 after the bump. This eases debugging of
+        // `Parser::collect_tokens_trailing_token` nicer because it makes the
+        // token positions 0-indexed which is nicer than 1-indexed.
+        parser.num_bump_calls = 0;
+
         parser
     }
 
