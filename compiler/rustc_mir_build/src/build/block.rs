@@ -71,11 +71,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
                     let si = (*scope, source_info);
-                    unpack!(
-                        block = this.in_scope(si, LintLevel::Inherited, |this| {
+                    block = this
+                        .in_scope(si, LintLevel::Inherited, |this| {
                             this.stmt_expr(block, *expr, Some(*scope))
                         })
-                    );
+                        .into_block();
                 }
                 StmtKind::Let {
                     remainder_scope,
@@ -166,14 +166,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let dummy_place = this.temp(this.tcx.types.never, else_block_span);
                     let failure_entry = this.cfg.start_new_block();
                     let failure_block;
-                    unpack!(
-                        failure_block = this.ast_block(
+                    failure_block = this
+                        .ast_block(
                             dummy_place,
                             failure_entry,
                             *else_block,
                             this.source_info(else_block_span),
                         )
-                    );
+                        .into_block();
                     this.cfg.terminate(
                         failure_block,
                         this.source_info(else_block_span),
@@ -267,8 +267,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let initializer_span = this.thir[init].span;
                         let scope = (*init_scope, source_info);
 
-                        unpack!(
-                            block = this.in_scope(scope, *lint_level, |this| {
+                        block = this
+                            .in_scope(scope, *lint_level, |this| {
                                 this.declare_bindings(
                                     visibility_scope,
                                     remainder_span,
@@ -279,10 +279,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 this.expr_into_pattern(block, &pattern, init)
                                 // irrefutable pattern
                             })
-                        )
+                            .into_block();
                     } else {
                         let scope = (*init_scope, source_info);
-                        unpack!(this.in_scope(scope, *lint_level, |this| {
+                        let _: BlockAnd<()> = this.in_scope(scope, *lint_level, |this| {
                             this.declare_bindings(
                                 visibility_scope,
                                 remainder_span,
@@ -291,7 +291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 None,
                             );
                             block.unit()
-                        }));
+                        });
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_primary_bindings(
@@ -333,7 +333,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             this.block_context
                 .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
 
-            unpack!(block = this.expr_into_dest(destination, block, expr_id));
+            block = this.expr_into_dest(destination, block, expr_id).into_block();
             let popped = this.block_context.pop();
 
             assert!(popped.is_some_and(|bf| bf.is_tail_expr()));
@@ -355,7 +355,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Finally, we pop all the let scopes before exiting out from the scope of block
         // itself.
         for scope in let_scope_stack.into_iter().rev() {
-            unpack!(block = this.pop_scope((*scope, source_info), block));
+            block = this.pop_scope((*scope, source_info), block).into_block();
         }
         // Restore the original source scope.
         this.source_scope = outer_source_scope;

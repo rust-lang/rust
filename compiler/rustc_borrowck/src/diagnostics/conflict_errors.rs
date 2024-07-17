@@ -205,9 +205,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     is_loop_move = true;
                 }
 
+                let mut has_suggest_reborrow = false;
                 if !seen_spans.contains(&move_span) {
                     if !closure {
-                        self.suggest_ref_or_clone(mpi, &mut err, &mut in_pattern, move_spans);
+                        self.suggest_ref_or_clone(
+                            mpi,
+                            &mut err,
+                            &mut in_pattern,
+                            move_spans,
+                            moved_place.as_ref(),
+                            &mut has_suggest_reborrow,
+                        );
                     }
 
                     let msg_opt = CapturedMessageOpt {
@@ -215,6 +223,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         is_loop_message,
                         is_move_msg,
                         is_loop_move,
+                        has_suggest_reborrow,
                         maybe_reinitialized_locations_is_empty: maybe_reinitialized_locations
                             .is_empty(),
                     };
@@ -259,17 +268,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             if is_loop_move & !in_pattern && !matches!(use_spans, UseSpans::ClosureUse { .. }) {
                 if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
-                    err.span_suggestion_verbose(
-                        span.shrink_to_lo(),
-                        format!(
-                            "consider creating a fresh reborrow of {} here",
-                            self.describe_place(moved_place)
-                                .map(|n| format!("`{n}`"))
-                                .unwrap_or_else(|| "the mutable reference".to_string()),
-                        ),
-                        "&mut *",
-                        Applicability::MachineApplicable,
-                    );
+                    self.suggest_reborrow(&mut err, span, moved_place);
                 }
             }
 
@@ -346,6 +345,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         err: &mut Diag<'infcx>,
         in_pattern: &mut bool,
         move_spans: UseSpans<'tcx>,
+        moved_place: PlaceRef<'tcx>,
+        has_suggest_reborrow: &mut bool,
     ) {
         let move_span = match move_spans {
             UseSpans::ClosureUse { capture_kind_span, .. } => capture_kind_span,
@@ -435,20 +436,44 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 let parent = self.infcx.tcx.parent_hir_node(expr.hir_id);
                 let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
-                    && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
                 {
-                    (def_id.as_local(), args, 1)
+                    (typeck.type_dependent_def_id(parent_expr.hir_id), args, 1)
                 } else if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call, args) = parent_expr.kind
                     && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
                 {
-                    (def_id.as_local(), args, 0)
+                    (Some(*def_id), args, 0)
                 } else {
                     (None, &[][..], 0)
                 };
+
+                // If the moved value is a mut reference, it is used in a
+                // generic function and it's type is a generic param, it can be
+                // reborrowed to avoid moving.
+                // for example:
+                // struct Y(u32);
+                // x's type is '& mut Y' and it is used in `fn generic<T>(x: T) {}`.
+                if let Some(def_id) = def_id
+                    && self.infcx.tcx.def_kind(def_id).is_fn_like()
+                    && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
+                    && let ty::Param(_) =
+                        self.infcx.tcx.fn_sig(def_id).skip_binder().skip_binder().inputs()
+                            [pos + offset]
+                            .kind()
+                {
+                    let place = &self.move_data.move_paths[mpi].place;
+                    let ty = place.ty(self.body, self.infcx.tcx).ty;
+                    if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
+                        *has_suggest_reborrow = true;
+                        self.suggest_reborrow(err, expr.span, moved_place);
+                        return;
+                    }
+                }
+
                 let mut can_suggest_clone = true;
                 if let Some(def_id) = def_id
-                    && let node = self.infcx.tcx.hir_node_by_def_id(def_id)
+                    && let Some(local_def_id) = def_id.as_local()
+                    && let node = self.infcx.tcx.hir_node_by_def_id(local_def_id)
                     && let Some(fn_sig) = node.fn_sig()
                     && let Some(ident) = node.ident()
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
@@ -620,6 +645,25 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
+    }
+
+    pub fn suggest_reborrow(
+        &self,
+        err: &mut Diag<'infcx>,
+        span: Span,
+        moved_place: PlaceRef<'tcx>,
+    ) {
+        err.span_suggestion_verbose(
+            span.shrink_to_lo(),
+            format!(
+                "consider creating a fresh reborrow of {} here",
+                self.describe_place(moved_place)
+                    .map(|n| format!("`{n}`"))
+                    .unwrap_or_else(|| "the mutable reference".to_string()),
+            ),
+            "&mut *",
+            Applicability::MachineApplicable,
+        );
     }
 
     fn report_use_of_uninitialized(

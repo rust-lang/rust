@@ -1105,7 +1105,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         "".to_string()
                     };
-                    labels.push((provided_span, format!("unexpected argument{provided_ty_name}")));
+                    let idx = if provided_arg_tys.len() == 1 {
+                        "".to_string()
+                    } else {
+                        format!(" #{}", arg_idx.as_usize() + 1)
+                    };
+                    labels.push((
+                        provided_span,
+                        format!("unexpected argument{idx}{provided_ty_name}"),
+                    ));
                     let mut span = provided_span;
                     if span.can_be_used_for_suggestions()
                         && error_span.can_be_used_for_suggestions()
@@ -1186,7 +1194,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 "".to_string()
                             };
-                            labels.push((span, format!("an argument{rendered} is missing")));
+                            labels.push((
+                                span,
+                                format!(
+                                    "argument #{}{rendered} is missing",
+                                    expected_idx.as_usize() + 1
+                                ),
+                            ));
+
                             suggestion_text = match suggestion_text {
                                 SuggestionText::None => SuggestionText::Provide(false),
                                 SuggestionText::Provide(_) => SuggestionText::Provide(true),

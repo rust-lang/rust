@@ -24,7 +24,7 @@ error[E0060]: this function takes at least 2 arguments but 1 argument was suppli
   --> $DIR/variadic-ffi-1.rs:23:9
    |
 LL |         foo(1);
-   |         ^^^--- an argument of type `u8` is missing
+   |         ^^^--- argument #2 of type `u8` is missing
    |
 note: function defined here
   --> $DIR/variadic-ffi-1.rs:15:8

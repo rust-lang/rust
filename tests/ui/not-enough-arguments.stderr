@@ -2,7 +2,7 @@ error[E0061]: this function takes 4 arguments but 3 arguments were supplied
   --> $DIR/not-enough-arguments.rs:27:3
    |
 LL |   foo(1, 2, 3);
-   |   ^^^--------- an argument of type `isize` is missing
+   |   ^^^--------- argument #4 of type `isize` is missing
    |
 note: function defined here
   --> $DIR/not-enough-arguments.rs:5:4

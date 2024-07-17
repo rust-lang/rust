@@ -50,7 +50,7 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/issue-26638.rs:4:47
    |
 LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
-   |                                               ^^^^-- an argument of type `&u8` is missing
+   |                                               ^^^^-- argument #1 of type `&u8` is missing
    |
 help: provide the argument
    |

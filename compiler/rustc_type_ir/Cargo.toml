@@ -22,12 +22,12 @@ tracing = "0.1"
 [features]
 default = ["nightly"]
 nightly = [
+    "dep:rustc_serialize",
+    "dep:rustc_span",
+    "dep:rustc_data_structures",
+    "dep:rustc_macros",
     "smallvec/may_dangle",
     "smallvec/union",
     "rustc_index/nightly",
-    "rustc_serialize",
-    "rustc_span",
-    "rustc_data_structures",
-    "rustc_macros",
     "rustc_ast_ir/nightly"
 ]

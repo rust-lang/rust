@@ -29,7 +29,7 @@ error[E0061]: this function takes 3 arguments but 4 arguments were supplied
   --> $DIR/issue-109831.rs:7:5
    |
 LL |     f(A, A, B, C);
-   |     ^ -  -     - unexpected argument
+   |     ^ -  -     - unexpected argument #4
    |       |  |
    |       |  expected `B`, found `A`
    |       expected `B`, found `A`
