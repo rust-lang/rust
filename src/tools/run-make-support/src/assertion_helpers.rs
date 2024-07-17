@@ -3,8 +3,7 @@
 use std::panic;
 use std::path::{Path, PathBuf};
 
-use crate::fs_helpers;
-use crate::fs_wrapper;
+use crate::fs as rfs;
 use crate::path_helpers::cwd;
 
 /// Browse the directory `path` non-recursively and return all files which respect the parameters
@@ -15,7 +14,7 @@ pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
     filter: F,
 ) -> Vec<PathBuf> {
     let mut matching_files = Vec::new();
-    for entry in fs_wrapper::read_dir(path) {
+    for entry in rfs::read_dir(path) {
         let entry = entry.expect("failed to read directory entry.");
         let path = entry.path();
 
@@ -61,7 +60,7 @@ pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str)
 
     let mut count = 0;
     for file in fetched_files {
-        let content = fs_wrapper::read_to_string(file);
+        let content = rfs::read_to_string(file);
         count += content.lines().filter(|line| re.is_match(&line)).count();
     }
 
@@ -69,11 +68,11 @@ pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str)
 }
 
 /// Read the contents of a file that cannot simply be read by
-/// [`read_to_string`][crate::fs_wrapper::read_to_string], due to invalid UTF-8 data, then assert
+/// [`read_to_string`][crate::fs::read_to_string], due to invalid UTF-8 data, then assert
 /// that it contains `expected`.
 #[track_caller]
 pub fn invalid_utf8_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S) {
-    let buffer = fs_wrapper::read(path.as_ref());
+    let buffer = rfs::read(path.as_ref());
     let expected = expected.as_ref();
     if !String::from_utf8_lossy(&buffer).contains(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");
@@ -85,11 +84,11 @@ pub fn invalid_utf8_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S
 }
 
 /// Read the contents of a file that cannot simply be read by
-/// [`read_to_string`][crate::fs_wrapper::read_to_string], due to invalid UTF-8 data, then assert
+/// [`read_to_string`][crate::fs::read_to_string], due to invalid UTF-8 data, then assert
 /// that it does not contain `expected`.
 #[track_caller]
 pub fn invalid_utf8_not_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S) {
-    let buffer = fs_wrapper::read(path.as_ref());
+    let buffer = rfs::read(path.as_ref());
     let expected = expected.as_ref();
     if String::from_utf8_lossy(&buffer).contains(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");
@@ -145,14 +144,14 @@ pub fn assert_not_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N)
 /// Assert that all files in `dir1` exist and have the same content in `dir2`
 pub fn assert_recursive_eq(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     let dir2 = dir2.as_ref();
-    fs_helpers::read_dir(dir1, |entry_path| {
+    rfs::read_dir_entries(dir1, |entry_path| {
         let entry_name = entry_path.file_name().unwrap();
         if entry_path.is_dir() {
             assert_recursive_eq(&entry_path, &dir2.join(entry_name));
         } else {
             let path2 = dir2.join(entry_name);
-            let file1 = fs_wrapper::read(&entry_path);
-            let file2 = fs_wrapper::read(&path2);
+            let file1 = rfs::read(&entry_path);
+            let file2 = rfs::read(&path2);
 
             // We don't use `assert_eq!` because they are `Vec<u8>`, so not great for display.
             // Why not using String? Because there might be minified files or even potentially

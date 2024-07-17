@@ -1,10 +1,8 @@
 //! Collection of helpers that try to maintain certain properties while running a test closure.
 
-use std::fs;
 use std::path::Path;
 
-use crate::fs_helpers::copy_dir_all;
-use crate::fs_wrapper;
+use crate::fs as rfs;
 use crate::path_helpers::cwd;
 use crate::targets::is_windows;
 
@@ -36,16 +34,16 @@ where
         );
         panic!("`test_while_readonly` on directory detected while on Windows.");
     }
-    let metadata = fs_wrapper::metadata(&path);
+    let metadata = rfs::metadata(&path);
     let original_perms = metadata.permissions();
 
     let mut new_perms = original_perms.clone();
     new_perms.set_readonly(true);
-    fs_wrapper::set_permissions(&path, new_perms);
+    rfs::set_permissions(&path, new_perms);
 
     let success = std::panic::catch_unwind(closure);
 
-    fs_wrapper::set_permissions(&path, original_perms);
+    rfs::set_permissions(&path, original_perms);
     success.unwrap();
 }
 
@@ -62,10 +60,10 @@ where
 pub fn run_in_tmpdir<F: FnOnce()>(callback: F) {
     let original_dir = cwd();
     let tmpdir = original_dir.join("../temporary-directory");
-    copy_dir_all(".", &tmpdir);
+    rfs::copy_dir_all(".", &tmpdir);
 
     std::env::set_current_dir(&tmpdir).unwrap();
     callback();
     std::env::set_current_dir(original_dir).unwrap();
-    fs::remove_dir_all(tmpdir).unwrap();
+    rfs::remove_dir_all(tmpdir);
 }

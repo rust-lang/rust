@@ -12,8 +12,7 @@ pub mod assertion_helpers;
 pub mod diff;
 pub mod env;
 pub mod external_deps;
-pub mod fs_helpers;
-pub mod fs_wrapper;
+pub mod fs;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
@@ -63,9 +62,6 @@ pub use artifact_names::{
 
 /// Path-related helpers.
 pub use path_helpers::{cwd, path, source_root};
-
-/// Helpers for common fs operations.
-pub use fs_helpers::{copy_dir_all, create_symlink, read_dir};
 
 /// Helpers for scoped test execution where certain properties are attempted to be maintained.
 pub use scoped_run::{run_in_tmpdir, test_while_readonly};
