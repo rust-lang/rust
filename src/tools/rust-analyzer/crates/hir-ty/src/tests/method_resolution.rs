@@ -1641,6 +1641,55 @@ impl<'a, T> IntoIterator for &'a [T] {
 }
 
 #[test]
+fn skip_during_method_dispatch() {
+    check_types(
+        r#"
+//- /main2018.rs crate:main2018 deps:core edition:2018
+use core::IntoIterator;
+
+fn f() {
+    let v = [4].into_iter();
+    v;
+  //^ &'? i32
+
+    let a = [0, 1].into_iter();
+    a;
+  //^ &'? i32
+}
+
+//- /main2021.rs crate:main2021 deps:core edition:2021
+use core::IntoIterator;
+
+fn f() {
+    let v = [4].into_iter();
+    v;
+  //^ i32
+
+    let a = [0, 1].into_iter();
+    a;
+  //^ &'? i32
+}
+
+//- /core.rs crate:core
+#[rustc_skip_during_method_dispatch(array, boxed_slice)]
+pub trait IntoIterator {
+    type Out;
+    fn into_iter(self) -> Self::Out;
+}
+
+impl<T> IntoIterator for [T; 1] {
+    type Out = T;
+    fn into_iter(self) -> Self::Out { loop {} }
+}
+impl<'a, T> IntoIterator for &'a [T] {
+    type Out = &'a T;
+    fn into_iter(self) -> Self::Out { loop {} }
+}
+    "#,
+    );
+}
+
+#[test]
 fn sized_blanket_impl() {
     check_infer(
         r#"

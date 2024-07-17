@@ -5,7 +5,7 @@
 use std::ops::ControlFlow;
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
+use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
     data::{adt::StructFlags, ImplData},
     nameres::DefMap,
@@ -16,7 +16,6 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::Edition;
 use stdx::never;
 use triomphe::Arc;
 
@@ -25,12 +24,14 @@ use crate::{
     db::HirDatabase,
     error_lifetime, from_chalk_trait_id, from_foreign_def_id,
     infer::{unify::InferenceTable, Adjust, Adjustment, OverloadedDeref, PointerCast},
+    lang_items::is_box,
     primitive::{FloatTy, IntTy, UintTy},
     to_chalk_trait_id,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, Goal, Guidance,
-    InEnvironment, Interner, Scalar, Solution, Substitution, TraitEnvironment, TraitRef,
-    TraitRefExt, Ty, TyBuilder, TyExt,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
+    Goal, Guidance, InEnvironment, Interner, Mutability, Scalar, Solution, Substitution,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    WhereClause,
 };
 
 /// This is used as a key for indexing impls.
@@ -1146,17 +1147,30 @@ fn iterate_trait_method_candidates(
     'traits: for &t in traits_in_scope {
         let data = db.trait_data(t);
 
-        // Traits annotated with `#[rustc_skip_array_during_method_dispatch]` are skipped during
+        // Traits annotated with `#[rustc_skip_during_method_dispatch]` are skipped during
         // method resolution, if the receiver is an array, and we're compiling for editions before
         // 2021.
         // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
         // arrays.
         if data.skip_array_during_method_dispatch
-            && matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..))
+            && matches!(self_ty.kind(Interner), TyKind::Array(..))
         {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
-            if db.crate_graph()[krate].edition < Edition::Edition2021 {
+            if !db.crate_graph()[krate].edition.at_least_2021() {
+                continue;
+            }
+        }
+        if data.skip_boxed_slice_during_method_dispatch
+            && matches!(
+                self_ty.kind(Interner), TyKind::Adt(AdtId(def), subst)
+                if is_box(table.db, *def)
+                    && matches!(subst.at(Interner, 0).assert_ty_ref(Interner).kind(Interner), TyKind::Slice(..))
+            )
+        {
+            // FIXME: this should really be using the edition of the method name's span, in case it
+            // comes from a macro
+            if !db.crate_graph()[krate].edition.at_least_2024() {
                 continue;
             }
         }
@@ -1619,15 +1633,11 @@ fn generic_implements_goal(
     let kinds =
         binders.iter().cloned().chain(trait_ref.substitution.iter(Interner).skip(1).map(|it| {
             let vk = match it.data(Interner) {
-                chalk_ir::GenericArgData::Ty(_) => {
-                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
-                }
-                chalk_ir::GenericArgData::Lifetime(_) => chalk_ir::VariableKind::Lifetime,
-                chalk_ir::GenericArgData::Const(c) => {
-                    chalk_ir::VariableKind::Const(c.data(Interner).ty.clone())
-                }
+                GenericArgData::Ty(_) => VariableKind::Ty(chalk_ir::TyVariableKind::General),
+                GenericArgData::Lifetime(_) => VariableKind::Lifetime,
+                GenericArgData::Const(c) => VariableKind::Const(c.data(Interner).ty.clone()),
             };
-            chalk_ir::WithKind::new(vk, UniverseIndex::ROOT)
+            WithKind::new(vk, UniverseIndex::ROOT)
         }));
     let binders = CanonicalVarKinds::from_iter(Interner, kinds);
 
