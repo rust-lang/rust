@@ -15,6 +15,7 @@ mod aesni;
 mod avx;
 mod avx2;
 mod bmi;
+mod sha;
 mod sse;
 mod sse2;
 mod sse3;
@@ -102,6 +103,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             name if name.starts_with("bmi.") => {
                 return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("sha") => {
+                return sha::EvalContextExt::emulate_x86_sha_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
