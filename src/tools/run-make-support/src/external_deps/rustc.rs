@@ -1,8 +1,10 @@
-use command::Command;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-use crate::{command, cwd, env_var, set_host_rpath};
+use crate::command::Command;
+use crate::env::env_var;
+use crate::path_helpers::cwd;
+use crate::util::set_host_rpath;
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -31,7 +33,7 @@ pub struct Rustc {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(Rustc);
+crate::macros::impl_common_helpers!(Rustc);
 
 #[track_caller]
 fn setup_common() -> Command {

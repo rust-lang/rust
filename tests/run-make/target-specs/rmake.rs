@@ -5,11 +5,11 @@
 // using them correctly, or fails with the right error message when using them improperly.
 // See https://github.com/rust-lang/rust/pull/16156
 
-use run_make_support::{diff, fs_wrapper, rustc};
+use run_make_support::{diff, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").target("my-awesome-platform.json").crate_type("lib").emit("asm").run();
-    assert!(!fs_wrapper::read_to_string("foo.s").contains("morestack"));
+    assert!(!rfs::read_to_string("foo.s").contains("morestack"));
     rustc()
         .input("foo.rs")
         .target("my-invalid-platform.json")
@@ -40,8 +40,8 @@ fn main() {
         .print("target-spec-json")
         .run()
         .stdout_utf8();
-    fs_wrapper::create_file("test-platform.json");
-    fs_wrapper::write("test-platform.json", test_platform.as_bytes());
+    rfs::create_file("test-platform.json");
+    rfs::write("test-platform.json", test_platform.as_bytes());
     let test_platform_2 = rustc()
         .arg("-Zunstable-options")
         .target("test-platform.json")

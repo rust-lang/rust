@@ -11,13 +11,13 @@
 //@ ignore-windows
 // Reason: Windows refuses files with < and > in their names
 
-use run_make_support::{diff, fs_wrapper, run, rustc};
+use run_make_support::{diff, rfs, run, rustc};
 
 fn main() {
-    fs_wrapper::create_file("<leading-lt");
-    fs_wrapper::write("<leading-lt", r#""comes from a file with a name that begins with <""#);
-    fs_wrapper::create_file("trailing-gt>");
-    fs_wrapper::write("trailing-gt>", r#""comes from a file with a name that ends with >""#);
+    rfs::create_file("<leading-lt");
+    rfs::write("<leading-lt", r#""comes from a file with a name that begins with <""#);
+    rfs::create_file("trailing-gt>");
+    rfs::write("trailing-gt>", r#""comes from a file with a name that ends with >""#);
     rustc().input("silly-file-names.rs").output("silly-file-names").run();
     let out = run("silly-file-names").stdout_utf8();
     diff().expected_file("silly-file-names.run.stdout").actual_text("actual-stdout", out).run();

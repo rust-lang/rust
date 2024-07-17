@@ -2,7 +2,8 @@ use std::ffi::OsStr;
 use std::path::Path;
 
 use crate::command::Command;
-use crate::{env_var, env_var_os, set_host_rpath};
+use crate::env::{env_var, env_var_os};
+use crate::util::set_host_rpath;
 
 /// Construct a plain `rustdoc` invocation with no flags set.
 #[track_caller]
@@ -22,7 +23,7 @@ pub struct Rustdoc {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(Rustdoc);
+crate::macros::impl_common_helpers!(Rustdoc);
 
 #[track_caller]
 fn setup_common() -> Command {

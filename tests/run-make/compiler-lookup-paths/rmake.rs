@@ -9,16 +9,16 @@
 //@ ignore-wasm64
 // Reason: a C compiler is required for build_native_static_lib
 
-use run_make_support::{build_native_static_lib, fs_wrapper, rustc, static_lib_name};
+use run_make_support::{build_native_static_lib, rfs, rustc, static_lib_name};
 
 fn main() {
     build_native_static_lib("native");
     let lib_native = static_lib_name("native");
-    fs_wrapper::create_dir_all("crate");
-    fs_wrapper::create_dir_all("native");
-    fs_wrapper::rename(&lib_native, format!("native/{}", &lib_native));
+    rfs::create_dir_all("crate");
+    rfs::create_dir_all("native");
+    rfs::rename(&lib_native, format!("native/{}", &lib_native));
     rustc().input("a.rs").run();
-    fs_wrapper::rename("liba.rlib", "crate/liba.rlib");
+    rfs::rename("liba.rlib", "crate/liba.rlib");
     rustc().input("b.rs").specific_library_search_path("native", "crate").run_fail();
     rustc().input("b.rs").specific_library_search_path("dependency", "crate").run_fail();
     rustc().input("b.rs").specific_library_search_path("crate", "crate").run();
@@ -35,8 +35,8 @@ fn main() {
     rustc().input("d.rs").specific_library_search_path("all", "native").run();
 
     // Deduplication tests.
-    fs_wrapper::create_dir_all("e1");
-    fs_wrapper::create_dir_all("e2");
+    rfs::create_dir_all("e1");
+    rfs::create_dir_all("e2");
 
     rustc().input("e.rs").output("e1/libe.rlib").run();
     rustc().input("e.rs").output("e2/libe.rlib").run();

@@ -1,7 +1,10 @@
 use std::path::Path;
 
 use crate::command::Command;
-use crate::{cygpath_windows, env_var, is_msvc, is_windows, uname};
+use crate::{env_var, is_msvc, is_windows, uname};
+
+// FIXME(jieyouxu): can we get rid of the `cygpath` external dependency?
+use super::cygpath::get_windows_path;
 
 /// Construct a new platform-specific C compiler invocation.
 ///
@@ -20,7 +23,7 @@ pub struct Cc {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(Cc);
+crate::macros::impl_common_helpers!(Cc);
 
 impl Cc {
     /// Construct a new platform-specific C compiler invocation.
@@ -72,10 +75,10 @@ impl Cc {
 
         if is_msvc() {
             path.set_extension("exe");
-            let fe_path = cygpath_windows(&path);
+            let fe_path = get_windows_path(&path);
             path.set_extension("");
             path.set_extension("obj");
-            let fo_path = cygpath_windows(path);
+            let fo_path = get_windows_path(path);
             self.cmd.arg(format!("-Fe:{fe_path}"));
             self.cmd.arg(format!("-Fo:{fo_path}"));
         } else {

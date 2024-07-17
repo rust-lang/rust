@@ -4,15 +4,15 @@
 // and the compiler flags, and checks that the flag is favoured each time.
 // See https://github.com/rust-lang/rust/pull/15518
 
-use run_make_support::{bin_name, fs_wrapper, rustc};
+use run_make_support::{bin_name, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();
-    fs_wrapper::remove_file(bin_name("foo"));
+    rfs::remove_file(bin_name("foo"));
     rustc().input("foo.rs").crate_name("bar").run();
-    fs_wrapper::remove_file(bin_name("bar"));
+    rfs::remove_file(bin_name("bar"));
     rustc().input("foo1.rs").run();
-    fs_wrapper::remove_file(bin_name("foo"));
+    rfs::remove_file(bin_name("foo"));
     rustc().input("foo1.rs").output(bin_name("bar1")).run();
-    fs_wrapper::remove_file(bin_name("bar1"));
+    rfs::remove_file(bin_name("bar1"));
 }

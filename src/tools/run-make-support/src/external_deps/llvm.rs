@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::{env_var, Command};
+use crate::command::Command;
+use crate::env::env_var;
 
 /// Construct a new `llvm-readobj` invocation with the `GNU` output style.
 /// This assumes that `llvm-readobj` is available at `$LLVM_BIN_DIR/llvm-readobj`.
@@ -70,11 +71,11 @@ pub struct LlvmAr {
     cmd: Command,
 }
 
-crate::impl_common_helpers!(LlvmReadobj);
-crate::impl_common_helpers!(LlvmProfdata);
-crate::impl_common_helpers!(LlvmFilecheck);
-crate::impl_common_helpers!(LlvmObjdump);
-crate::impl_common_helpers!(LlvmAr);
+crate::macros::impl_common_helpers!(LlvmReadobj);
+crate::macros::impl_common_helpers!(LlvmProfdata);
+crate::macros::impl_common_helpers!(LlvmFilecheck);
+crate::macros::impl_common_helpers!(LlvmObjdump);
+crate::macros::impl_common_helpers!(LlvmAr);
 
 /// Generate the path to the bin directory of LLVM.
 #[must_use]

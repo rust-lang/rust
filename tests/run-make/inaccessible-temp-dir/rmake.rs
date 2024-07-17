@@ -24,11 +24,11 @@
 // Reason: `set_readonly` has no effect on directories
 // and does not prevent modification.
 
-use run_make_support::{fs_wrapper, rustc, test_while_readonly};
+use run_make_support::{rfs, rustc, test_while_readonly};
 
 fn main() {
     // Create an inaccessible directory.
-    fs_wrapper::create_dir("inaccessible");
+    rfs::create_dir("inaccessible");
     test_while_readonly("inaccessible", || {
         // Run rustc with `-Z temps-dir` set to a directory *inside* the inaccessible one,
         // so that it can't create `tmp`.

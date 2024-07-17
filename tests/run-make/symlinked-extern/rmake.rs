@@ -11,12 +11,12 @@
 //@ ignore-cross-compile
 //@ needs-symlink
 
-use run_make_support::{create_symlink, cwd, fs_wrapper, rustc};
+use run_make_support::{cwd, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();
-    fs_wrapper::create_dir_all("other");
-    create_symlink("libfoo.rlib", "other");
+    rfs::create_dir_all("other");
+    rfs::create_symlink("libfoo.rlib", "other");
     rustc().input("bar.rs").library_search_path(cwd()).run();
     rustc().input("baz.rs").extern_("foo", "other").library_search_path(cwd()).run();
 }

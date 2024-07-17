@@ -4,7 +4,7 @@
 // a specific expected string.
 // See https://github.com/rust-lang/rust/pull/105481
 
-use run_make_support::{cwd, fs_wrapper, rustc};
+use run_make_support::{cwd, rfs, rustc};
 
 fn main() {
     rustc()
@@ -13,5 +13,5 @@ fn main() {
         .arg(format!("-Zdump-mono-stats={}", cwd().display()))
         .arg("-Zdump-mono-stats-format=json")
         .run();
-    assert!(fs_wrapper::read_to_string("foo.mono_items.json").contains(r#""name":"bar""#));
+    assert!(rfs::read_to_string("foo.mono_items.json").contains(r#""name":"bar""#));
 }

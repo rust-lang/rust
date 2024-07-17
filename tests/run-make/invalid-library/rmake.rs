@@ -4,11 +4,11 @@
 // one appearing in stderr in this scenario.
 // See https://github.com/rust-lang/rust/pull/12645
 
-use run_make_support::fs_wrapper::create_file;
+use run_make_support::rfs;
 use run_make_support::{llvm_ar, rustc};
 
 fn main() {
-    create_file("lib.rmeta");
+    rfs::create_file("lib.rmeta");
     llvm_ar().obj_to_ar().output_input("libfoo-ffffffff-1.0.rlib", "lib.rmeta").run();
     rustc().input("foo.rs").run_fail().assert_stderr_contains("found invalid metadata");
 }

@@ -6,13 +6,13 @@
 // adding a new output type (in this test, metadata).
 // See https://github.com/rust-lang/rust/issues/86044
 
-use run_make_support::{diff, fs_wrapper, rustc};
+use run_make_support::{diff, rfs, rustc};
 
 fn main() {
-    fs_wrapper::create_dir("emit");
-    fs_wrapper::create_dir("emit/a");
-    fs_wrapper::create_dir("emit/b");
-    fs_wrapper::create_dir("emit/c");
+    rfs::create_dir("emit");
+    rfs::create_dir("emit/a");
+    rfs::create_dir("emit/b");
+    rfs::create_dir("emit/c");
     // The default output name.
     rustc().emit("link").input("foo.rs").run();
     // The output is named with the output flag.

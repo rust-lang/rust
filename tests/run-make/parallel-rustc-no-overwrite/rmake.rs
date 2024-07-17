@@ -5,12 +5,12 @@
 // conflicts. This test uses this flag and checks for successful compilation.
 // See https://github.com/rust-lang/rust/pull/83846
 
-use run_make_support::{fs_wrapper, rustc};
+use run_make_support::{rfs, rustc};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
 fn main() {
-    fs_wrapper::create_file("lib.rs");
+    rfs::create_file("lib.rs");
     let barrier = Arc::new(Barrier::new(2));
     let handle = {
         let barrier = Arc::clone(&barrier);
