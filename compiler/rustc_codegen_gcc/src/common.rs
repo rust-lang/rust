@@ -58,11 +58,7 @@ pub fn type_is_pointer(typ: Type<'_>) -> bool {
 
 impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn const_null(&self, typ: Type<'gcc>) -> RValue<'gcc> {
-        if type_is_pointer(typ) {
-            self.context.new_null(typ)
-        } else {
-            self.const_int(typ, 0)
-        }
+        if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
 
     fn const_undef(&self, typ: Type<'gcc>) -> RValue<'gcc> {
