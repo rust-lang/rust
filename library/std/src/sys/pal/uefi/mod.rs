@@ -11,6 +11,7 @@
 //!
 //! [`OsStr`]: crate::ffi::OsStr
 //! [`OsString`]: crate::ffi::OsString
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 pub mod alloc;
 pub mod args;
