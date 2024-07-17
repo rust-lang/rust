@@ -7,7 +7,7 @@ pub struct GitConfig<'a> {
 }
 
 /// Runs a command and returns the output
-fn output_result(cmd: &mut Command) -> Result<String, String> {
+pub fn output_result(cmd: &mut Command) -> Result<String, String> {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
         Err(e) => return Err(format!("failed to run command: {:?}: {}", cmd, e)),
