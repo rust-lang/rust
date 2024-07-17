@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::build::expr::as_place::PlaceBase;
-use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
+use crate::build::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
 use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::*;
@@ -152,7 +152,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_match_pair(&mut self, match_pair: &MatchPair<'_, 'tcx>) {
+    fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'_, 'tcx>) {
         if let TestCase::Or { pats, .. } = &match_pair.test_case {
             for flat_pat in pats.iter() {
                 self.visit_flat_pat(flat_pat)
@@ -260,7 +260,7 @@ where
         }
     }
 
-    fn visit_match_pair(&mut self, match_pair: &MatchPair<'_, 'tcx>) {
+    fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'_, 'tcx>) {
         if let TestCase::Or { pats, .. } = &match_pair.test_case {
             // All the or-alternatives should bind the same locals, so we only visit the first one.
             self.visit_flat_pat(&pats[0])
