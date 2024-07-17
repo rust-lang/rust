@@ -155,8 +155,13 @@ mod imp {
         }
     }
 
+    /// # Safety
+    /// Must be called only once
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn cleanup() {
-        drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed));
+        // FIXME: I probably cause more bugs than I'm worth!
+        // see https://github.com/rust-lang/rust/issues/111272
+        unsafe { drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed)) };
     }
 
     unsafe fn get_stack() -> libc::stack_t {
