@@ -2,11 +2,14 @@
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::matches::DeclareLetBindings;
+use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_index::IndexVec;
+use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
@@ -15,6 +18,8 @@ use rustc_span::source_map::Spanned;
 use std::iter;
 use tracing::{debug, instrument};
 
+use std::slice;
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
@@ -22,6 +27,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn expr_into_dest(
         &mut self,
         destination: Place<'tcx>,
+        scope: Option<region::Scope>,
         mut block: BasicBlock,
         expr_id: ExprId,
     ) -> BlockAnd<()> {
@@ -36,6 +42,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_is_block_or_scope =
             matches!(expr.kind, ExprKind::Block { .. } | ExprKind::Scope { .. });
 
+        let schedule_drop = move |this: &mut Self| {
+            if let Some(drop_scope) = scope {
+                let local =
+                    destination.as_local().expect("cannot schedule drop of non-Local place");
+                this.schedule_drop(expr_span, drop_scope, local, DropKind::Value);
+            }
+        };
+
         if !expr_is_block_or_scope {
             this.block_context.push(BlockFrame::SubExpr);
         }
@@ -45,15 +59,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let region_scope = (region_scope, source_info);
                 ensure_sufficient_stack(|| {
                     this.in_scope(region_scope, lint_level, |this| {
-                        this.expr_into_dest(destination, block, value)
+                        this.expr_into_dest(destination, scope, block, value)
                     })
                 })
             }
             ExprKind::Block { block: ast_block } => {
-                this.ast_block(destination, block, ast_block, source_info)
+                this.ast_block(destination, scope, block, ast_block, source_info)
             }
             ExprKind::Match { scrutinee, ref arms, .. } => this.match_expr(
                 destination,
+                scope,
                 block,
                 scrutinee,
                 arms,
@@ -91,7 +106,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 ));
 
                                 // Lower the `then` arm into its block.
-                                this.expr_into_dest(destination, then_blk, then)
+                                let then_blk =
+                                    this.expr_into_dest(destination, scope, then_blk, then);
+                                if let Some(drop_scope) = scope {
+                                    let local = destination
+                                        .as_local()
+                                        .expect("cannot unschedule drop of non-Local place");
+                                    this.unschedule_drop(drop_scope, local);
+                                }
+                                then_blk
                             });
 
                         // Pack `(then_block, else_block)` into `BlockAnd<BasicBlock>`.
@@ -105,7 +128,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // If there is an `else` arm, lower it into `else_blk`.
                 if let Some(else_expr) = else_opt {
-                    unpack!(else_blk = this.expr_into_dest(destination, else_blk, else_expr));
+                    unpack!(
+                        else_blk = this.expr_into_dest(destination, scope, else_blk, else_expr)
+                    );
                 } else {
                     // There is no `else` arm, so we know both arms have type `()`.
                     // Generate the implicit `else {}` by assigning unit.
@@ -140,6 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
+                schedule_drop(this);
                 if is_call {
                     block.unit()
                 } else {
@@ -187,7 +213,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         const_: Const::from_bool(this.tcx, constant),
                     },
                 );
-                let mut rhs_block = unpack!(this.expr_into_dest(destination, continuation, rhs));
+                let mut rhs_block =
+                    unpack!(this.expr_into_dest(destination, scope, continuation, rhs));
                 // Instrument the lowered RHS's value for condition coverage.
                 // (Does nothing if condition coverage is not enabled.)
                 this.visit_coverage_standalone_condition(rhs, destination, &mut rhs_block);
@@ -213,33 +240,41 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Start the loop.
                 this.cfg.goto(block, source_info, loop_block);
 
-                this.in_breakable_scope(Some(loop_block), destination, expr_span, move |this| {
-                    // conduct the test, if necessary
-                    let body_block = this.cfg.start_new_block();
-                    this.cfg.terminate(
-                        loop_block,
-                        source_info,
-                        TerminatorKind::FalseUnwind {
-                            real_target: body_block,
-                            unwind: UnwindAction::Continue,
-                        },
-                    );
-                    this.diverge_from(loop_block);
+                this.in_breakable_scope(
+                    Some(loop_block),
+                    destination,
+                    scope,
+                    expr_span,
+                    move |this| {
+                        // conduct the test, if necessary
+                        let body_block = this.cfg.start_new_block();
+                        this.cfg.terminate(
+                            loop_block,
+                            source_info,
+                            TerminatorKind::FalseUnwind {
+                                real_target: body_block,
+                                unwind: UnwindAction::Continue,
+                            },
+                        );
+                        this.diverge_from(loop_block);
 
-                    // The “return” value of the loop body must always be a unit. We therefore
-                    // introduce a unit temporary as the destination for the loop body.
-                    let tmp = this.get_unit_temp();
-                    // Execute the body, branching back to the test.
-                    let body_block_end = unpack!(this.expr_into_dest(tmp, body_block, body));
-                    this.cfg.goto(body_block_end, source_info, loop_block);
+                        // The “return” value of the loop body must always be a unit. We therefore
+                        // introduce a unit temporary as the destination for the loop body.
+                        let tmp = this.get_unit_temp();
+                        // Execute the body, branching back to the test.
+                        let body_block_end =
+                            unpack!(this.expr_into_dest(tmp, scope, body_block, body));
+                        this.cfg.goto(body_block_end, source_info, loop_block);
+                        schedule_drop(this);
 
-                    // Loops are only exited by `break` expressions.
-                    None
-                })
+                        // Loops are only exited by `break` expressions.
+                        None
+                    },
+                )
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                let args: Box<[_]> = args
+                let spanned_args: Box<[_]> = args
                     .into_iter()
                     .copied()
                     .map(|arg| Spanned {
@@ -247,10 +282,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         span: this.thir.exprs[arg].span,
                     })
                     .collect();
+                let args: Vec<_> = spanned_args.iter().map(|arg| arg.node.clone()).collect();
 
                 let success = this.cfg.start_new_block();
-
-                this.record_operands_moved(&args);
 
                 debug!("expr_into_dest: fn_span={:?}", fn_span);
 
@@ -259,7 +293,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info,
                     TerminatorKind::Call {
                         func: fun,
-                        args,
+                        args: spanned_args,
                         unwind: UnwindAction::Continue,
                         destination,
                         // The presence or absence of a return edge affects control-flow sensitive
@@ -279,9 +313,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
                 this.diverge_from(block);
+
+                // This is here and not before `diverge_from` to avoid breaking
+                // the example in #80949.
+                // FIXME(matthewjasper): Look at this again if Polonius is
+                // stabilized.
+                this.record_operands_moved(&args);
+                schedule_drop(this);
                 success.unit()
             }
-            ExprKind::Use { source } => this.expr_into_dest(destination, block, source),
+            ExprKind::Use { source } => this.expr_into_dest(destination, scope, block, source),
             ExprKind::Borrow { arg, borrow_kind } => {
                 // We don't do this in `as_rvalue` because we use `as_place`
                 // for borrow expressions, so we cannot create an `RValue` that
@@ -344,7 +385,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let field_names = adt_def.variant(variant_index).fields.indices();
 
-                let fields = if let Some(FruInfo { base, field_types }) = base {
+                let fields: IndexVec<_, _> = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder = unpack!(block = this.as_place_builder(block, *base));
 
                     // MIR does not natively support FRU, so for each
@@ -378,12 +419,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty,
                     active_field_index,
                 ));
+                this.record_operands_moved(&fields.raw);
                 this.cfg.push_assign(
                     block,
                     source_info,
                     destination,
                     Rvalue::Aggregate(adt, fields),
                 );
+                schedule_drop(this);
                 block.unit()
             }
             ExprKind::InlineAsm(box InlineAsmExpr {
@@ -462,7 +505,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             targets.push(target);
 
                             let tmp = this.get_unit_temp();
-                            let target = unpack!(this.ast_block(tmp, target, block, source_info));
+                            let target =
+                                unpack!(this.ast_block(tmp, scope, target, block, source_info));
                             this.cfg.terminate(
                                 target,
                                 source_info,
@@ -526,6 +570,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let place = unpack!(block = this.as_place(block, expr_id));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
+                schedule_drop(this);
                 block.unit()
             }
             ExprKind::Index { .. } | ExprKind::Deref { .. } | ExprKind::Field { .. } => {
@@ -541,6 +586,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let place = unpack!(block = this.as_place(block, expr_id));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
+                schedule_drop(this);
                 block.unit()
             }
 
@@ -556,12 +602,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     )
                 );
                 let resume = this.cfg.start_new_block();
+                this.record_operands_moved(slice::from_ref(&value));
                 this.cfg.terminate(
                     block,
                     source_info,
                     TerminatorKind::Yield { value, resume, resume_arg: destination, drop: None },
                 );
                 this.coroutine_drop_cleanup(block);
+                schedule_drop(this);
                 resume.unit()
             }
 
@@ -598,6 +646,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr_id));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
+                schedule_drop(this);
                 block.unit()
             }
         };

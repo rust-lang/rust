@@ -84,15 +84,15 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
-use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
 
@@ -127,8 +127,6 @@ struct Scope {
     /// building process. This is a stack, so we always drop from the
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData>,
-
-    moved_locals: Vec<Local>,
 
     /// The drop index that will drop everything in and below this scope on an
     /// unwind path.
@@ -165,6 +163,8 @@ struct BreakableScope<'tcx> {
     /// The destination of the loop/block expression itself (i.e., where to put
     /// the result of a `break` or `return` expression)
     break_destination: Place<'tcx>,
+    /// The scope that the destination should have its drop scheduled in.
+    destination_scope: Option<region::Scope>,
     /// Drops that happen on the `break`/`return` path.
     break_drops: DropTree,
     /// Drops that happen on the `continue` path.
@@ -445,7 +445,6 @@ impl<'tcx> Scopes<'tcx> {
             source_scope: vis_scope,
             region_scope: region_scope.0,
             drops: vec![],
-            moved_locals: vec![],
             cached_unwind_block: None,
             cached_coroutine_drop_block: None,
         });
@@ -481,6 +480,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         loop_block: Option<BasicBlock>,
         break_destination: Place<'tcx>,
+        destination_scope: Option<region::Scope>,
         span: Span,
         f: F,
     ) -> BlockAnd<()>
@@ -491,9 +491,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scope = BreakableScope {
             region_scope,
             break_destination,
+            destination_scope,
             break_drops: DropTree::new(),
             continue_drops: loop_block.map(|_| DropTree::new()),
         };
+        let continue_block = loop_block.map(|block| (block, self.diverge_cleanup()));
         self.scopes.breakable_scopes.push(scope);
         let normal_exit_block = f(self);
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
@@ -501,7 +503,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let break_block =
             self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None);
         if let Some(drops) = breakable_scope.continue_drops {
-            self.build_exit_tree(drops, region_scope, span, loop_block);
+            self.build_exit_tree(drops, region_scope, span, continue_block);
         }
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
@@ -634,22 +636,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .rposition(|breakable_scope| breakable_scope.region_scope == scope)
                 .unwrap_or_else(|| span_bug!(span, "no enclosing breakable scope found"))
         };
-        let (break_index, destination) = match target {
+        let (break_index, destination, dest_scope) = match target {
             BreakableTarget::Return => {
                 let scope = &self.scopes.breakable_scopes[0];
                 if scope.break_destination != Place::return_place() {
                     span_bug!(span, "`return` in item with no return scope");
                 }
-                (0, Some(scope.break_destination))
+                (0, Some(scope.break_destination), scope.destination_scope)
             }
             BreakableTarget::Break(scope) => {
                 let break_index = get_scope_index(scope);
                 let scope = &self.scopes.breakable_scopes[break_index];
-                (break_index, Some(scope.break_destination))
+                (break_index, Some(scope.break_destination), scope.destination_scope)
             }
             BreakableTarget::Continue(scope) => {
                 let break_index = get_scope_index(scope);
-                (break_index, None)
+                (break_index, None, None)
             }
         };
 
@@ -657,7 +659,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some(destination), Some(value)) => {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.expr_into_dest(destination, block, value));
+                unpack!(block = self.expr_into_dest(destination, dest_scope, block, value));
+                if let Some(scope) = dest_scope {
+                    // Most of the actual breaking is generated by `build_exit_tree`, so the drop
+                    // scheduled in `expr_into_dest` above is only to handle cases like
+                    // break {
+                    //      let x = ...; // panics in destructor
+                    //      y
+                    // };
+                    // We unschedule now because we're continuing to the rest of the loop.
+                    self.unschedule_drop(scope, destination.as_local().unwrap())
+                };
                 self.block_context.pop();
             }
             (Some(destination), None) => {
@@ -752,13 +764,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn break_for_tail_call(
         &mut self,
         mut block: BasicBlock,
-        args: &[Spanned<Operand<'tcx>>],
+        args: &[Operand<'tcx>],
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let arg_drops: Vec<_> = args
             .iter()
             .rev()
-            .filter_map(|arg| match &arg.node {
+            .filter_map(|arg| match arg {
                 Operand::Copy(_) => bug!("copy op in tail call args"),
                 Operand::Move(place) => {
                     let local =
@@ -1099,17 +1111,59 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
+        span_bug!(
+            span,
+            "region scope {:?} not in scope to drop {:?}\n{:#?}",
+            region_scope,
+            local,
+            self.scopes.scopes
+        );
     }
 
-    /// Indicates that the "local operand" stored in `local` is
+    /// Unschedule a drop. Used for `break`, `return` and `match` expressions,
+    /// where `record_operands_moved` is not powerful enough.
+    ///
+    /// The given local is expected to have a value drop scheduled in the given
+    /// scope and for that drop to be the most recent thing scheduled in that
+    /// scope.
+    pub(crate) fn unschedule_drop(&mut self, region_scope: region::Scope, local: Local) {
+        if !self.local_decls[local].ty.needs_drop(self.tcx, self.param_env) {
+            return;
+        }
+        for scope in self.scopes.scopes.iter_mut().rev() {
+            scope.invalidate_cache();
+
+            if scope.region_scope == region_scope {
+                let drop = scope.drops.pop();
+
+                match drop {
+                    Some(DropData { local: removed_local, kind: DropKind::Value, .. })
+                        if removed_local == local =>
+                    {
+                        return;
+                    }
+                    // Opaque type may not have been scheduled if its underlying
+                    // type does not need drop.
+                    None if self.local_decls[local].ty.has_opaque_types() => return,
+                    _ => bug!(
+                        "found wrong drop, expected value drop of {:?}, found {:?}",
+                        local,
+                        drop,
+                    ),
+                }
+            }
+        }
+
+        bug!("region scope {:?} not in scope to unschedule drop of {:?}", region_scope, local);
+    }
+
+    /// Indicates that the "local operands" stored in `local` are
     /// *moved* at some point during execution (see `local_scope` for
     /// more information about what a "local operand" is -- in short,
     /// it's an intermediate operand created as part of preparing some
     /// MIR instruction). We use this information to suppress
-    /// redundant drops on the non-unwind paths. This results in less
-    /// MIR, but also avoids spurious borrow check errors
-    /// (c.f. #64391).
+    /// redundant drops. This results in less MIR, but also avoids spurious
+    /// borrow check errors (c.f. #64391).
     ///
     /// Example: when compiling the call to `foo` here:
     ///
@@ -1138,27 +1192,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    pub(crate) fn record_operands_moved(&mut self, operands: &[Spanned<Operand<'tcx>>]) {
+    pub(crate) fn record_operands_moved(&mut self, operands: &[Operand<'tcx>]) {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
 
         assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand.node {
-            Operand::Copy(_) | Operand::Constant(_) => None,
-            Operand::Move(place) => place.as_local(),
-        });
+        let locals_moved: FxHashSet<Local> = operands
+            .iter()
+            .flat_map(|operand| match operand {
+                Operand::Copy(_) | Operand::Constant(_) => None,
+                Operand::Move(place) => place.as_local(),
+            })
+            .collect();
 
-        for local in locals_moved {
-            // check if we have a Drop for this operand and -- if so
-            // -- add it to the list of moved operands. Note that this
-            // local might not have been an operand created for this
-            // call, it could come from other places too.
-            if scope.drops.iter().any(|drop| drop.local == local && drop.kind == DropKind::Value) {
-                scope.moved_locals.push(local);
-            }
-        }
+        // Unschedule drops from the scope.
+        scope
+            .drops
+            .retain(|drop| drop.kind != DropKind::Value || !locals_moved.contains(&drop.local));
+        scope.invalidate_cache();
     }
 
     // Other
@@ -1336,6 +1389,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         top_scope.drops.clear();
         top_scope.invalidate_cache();
     }
+
+    /// Unschedules the drop of the return place.
+    ///
+    /// If the return type of a function requires drop, then we schedule it
+    /// in the outermost scope so that it's dropped if there's a panic while
+    /// we drop any local variables. But we don't want to drop it if we
+    /// return normally.
+    pub(crate) fn unschedule_return_place_drop(&mut self) {
+        assert_eq!(self.scopes.scopes.len(), 1);
+        assert!(
+            self.scopes.scopes[0].drops.len() <= 1,
+            "Found too many drops: {:?}",
+            self.scopes.scopes[0].drops
+        );
+        self.scopes.scopes[0].drops.clear();
+    }
 }
 
 /// Builds drops for `pop_scope` and `leave_top_scope`.
@@ -1382,14 +1451,6 @@ fn build_scope_drops<'tcx>(
                 debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
                 unwind_to = unwind_drops.drops[unwind_to].next;
 
-                // If the operand has been moved, and we are not on an unwind
-                // path, then don't generate the drop. (We only take this into
-                // account for non-unwind paths so as not to disturb the
-                // caching mechanism.)
-                if scope.moved_locals.iter().any(|&o| o == local) {
-                    continue;
-                }
-
                 unwind_drops.add_entry_point(block, unwind_to);
 
                 let next = cfg.start_new_block();
@@ -1424,23 +1485,29 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     /// Build a drop tree for a breakable scope.
     ///
     /// If `continue_block` is `Some`, then the tree is for `continue` inside a
-    /// loop. Otherwise this is for `break` or `return`.
+    /// loop. Otherwise this is for `break` or `return`. The `DropIdx` is the
+    /// next drop in the case that the drop tree unwinds. This is needed
+    /// because the drop of the break destination has already been scheduled
+    /// but it hasn't been initialized on the `continue` paths.
     fn build_exit_tree(
         &mut self,
         mut drops: DropTree,
         else_scope: region::Scope,
         span: Span,
-        continue_block: Option<BasicBlock>,
+        continue_block: Option<(BasicBlock, DropIdx)>,
     ) -> Option<BlockAnd<()>> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        blocks[ROOT_NODE] = continue_block;
+        blocks[ROOT_NODE] = continue_block.map(|(block, _)| block);
 
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
         let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
         if drops.drops.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
-            let unwind_target = self.diverge_cleanup_target(else_scope, span);
+            let unwind_target = continue_block.map_or_else(
+                || self.diverge_cleanup_target(else_scope, span),
+                |(_, unwind_target)| unwind_target,
+            );
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
             for (drop_idx, drop_node) in drops.drops.iter_enumerated().skip(1) {
                 match drop_node.data.kind {

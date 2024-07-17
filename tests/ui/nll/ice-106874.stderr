@@ -72,19 +72,5 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: closure with signature `fn(&'2 mut V)` must implement `FnOnce<(&'1 mut V,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 mut V,)>`, for some specific lifetime `'2`
 
-error: higher-ranked subtype error
-  --> $DIR/ice-106874.rs:8:41
-   |
-LL |     A(B(C::new(D::new(move |st| f(st)))))
-   |                                         ^
-
-error: higher-ranked subtype error
-  --> $DIR/ice-106874.rs:8:41
-   |
-LL |     A(B(C::new(D::new(move |st| f(st)))))
-   |                                         ^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 10 previous errors
+error: aborting due to 8 previous errors
 

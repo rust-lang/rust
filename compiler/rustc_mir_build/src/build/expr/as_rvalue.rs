@@ -20,6 +20,8 @@ use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
 
+use std::slice;
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
     /// scope expression.
@@ -184,15 +186,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let box_ = Rvalue::ShallowInitBox(Operand::Move(storage), value_ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
-                // initialize the box contents:
+                // Initialize the box contents. No scope is needed since the
+                // `Box` is already scheduled to be dropped.
                 unpack!(
                     block = this.expr_into_dest(
                         this.tcx.mk_place_deref(Place::from(result)),
+                        None,
                         block,
                         value,
                     )
                 );
-                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
+                let result_operand = Operand::Move(Place::from(result));
+                this.record_operands_moved(slice::from_ref(&result_operand));
+                block.and(Rvalue::Use(result_operand))
             }
             ExprKind::Cast { source } => {
                 let source_expr = &this.thir[source];
@@ -360,6 +366,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
+                this.record_operands_moved(&fields.raw);
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(el_ty)), fields))
             }
             ExprKind::Tuple { ref fields } => {
@@ -381,6 +388,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
+                this.record_operands_moved(&fields.raw);
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
             }
             ExprKind::Closure(box ClosureExpr {
@@ -483,6 +491,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Box::new(AggregateKind::CoroutineClosure(closure_id.to_def_id(), args))
                     }
                 };
+                this.record_operands_moved(&operands.raw);
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
@@ -738,7 +747,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.diverge_from(block);
                 block = success;
             }
-            this.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
+            this.record_operands_moved(&[value_operand]);
         }
         block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }

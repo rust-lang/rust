@@ -29,6 +29,9 @@ mod default {
 #[lang = "sized"]
 trait Sized {}
 
+#[lang = "copy"]
+trait Copy: Sized {}
+
 #[derive(Default)]
 enum S {
     #[default] // OK
