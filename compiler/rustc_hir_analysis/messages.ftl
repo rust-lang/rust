@@ -58,6 +58,19 @@ hir_analysis_cannot_capture_late_bound_ty =
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
+hir_analysis_cmse_call_generic =
+    function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+
+hir_analysis_cmse_call_inputs_stack_spill =
+    arguments for `"C-cmse-nonsecure-call"` function too large to pass via registers
+    .label = these arguments don't fit in the available registers
+    .note = functions with the `"C-cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+
+hir_analysis_cmse_call_output_stack_spill =
+    return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+    .label = this type doesn't fit in the available registers
+    .note = functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
 
 hir_analysis_coerce_unsized_multi = implementing the trait `CoerceUnsized` requires multiple coercions

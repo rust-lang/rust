@@ -1682,3 +1682,28 @@ pub struct InvalidReceiverTy<'tcx> {
 #[note]
 #[help]
 pub struct EffectsWithoutNextSolver;
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_inputs_stack_spill, code = E0798)]
+#[note]
+pub struct CmseCallInputsStackSpill {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_output_stack_spill, code = E0798)]
+#[note]
+pub struct CmseCallOutputStackSpill {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_generic, code = E0798)]
+pub struct CmseCallGeneric {
+    #[primary_span]
+    pub span: Span,
+}

@@ -10,10 +10,10 @@ pub trait Copy {}
 impl Copy for u32 {}
 
 #[repr(transparent)]
-pub struct ReprTransparentStructU64 {
+pub struct ReprTransparentStruct<T> {
     _marker1: (),
     _marker2: (),
-    field: u64,
+    field: T,
     _marker3: (),
 }
 
@@ -33,19 +33,9 @@ pub fn params(
     f3: extern "C-cmse-nonsecure-call" fn(u64, u64),
     f4: extern "C-cmse-nonsecure-call" fn(u128),
     f5: extern "C-cmse-nonsecure-call" fn(f64, f32, f32),
-    f6: extern "C-cmse-nonsecure-call" fn(ReprTransparentStructU64, U32Compound),
+    f6: extern "C-cmse-nonsecure-call" fn(ReprTransparentStruct<u64>, U32Compound),
     f7: extern "C-cmse-nonsecure-call" fn([u32; 4]),
 ) {
-    f1();
-    f2(1, 2, 3, 4);
-    f3(1, 2);
-    f4(1);
-    f5(1.0, 2.0, 3.0);
-    f6(
-        ReprTransparentStructU64 { _marker1: (), _marker2: (), field: 1, _marker3: () },
-        U32Compound(2, 3),
-    );
-    f7([0xDEADBEEF; 4]);
 }
 
 #[no_mangle]
@@ -55,16 +45,9 @@ pub fn returns(
     f3: extern "C-cmse-nonsecure-call" fn() -> i64,
     f4: extern "C-cmse-nonsecure-call" fn() -> f64,
     f5: extern "C-cmse-nonsecure-call" fn() -> [u8; 4],
-    f6: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentStructU64,
-    f7: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentEnumU64,
-    f8: extern "C-cmse-nonsecure-call" fn() -> U32Compound,
+    f6: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentStruct<u64>,
+    f7: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentStruct<ReprTransparentStruct<u64>>,
+    f8: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentEnumU64,
+    f9: extern "C-cmse-nonsecure-call" fn() -> U32Compound,
 ) {
-    f1();
-    f2();
-    f3();
-    f4();
-    f5();
-    f6();
-    f7();
-    f8();
 }

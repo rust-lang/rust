@@ -1287,9 +1287,10 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         (span, trivial, check_non_exhaustive(tcx, ty).break_value())
     });
 
-    let non_trivial_fields = field_infos
-        .clone()
-        .filter_map(|(span, trivial, _non_exhaustive)| if !trivial { Some(span) } else { None });
+    let non_trivial_fields =
+        field_infos.clone().filter_map(
+            |(span, trivial, _non_exhaustive)| if !trivial { Some(span) } else { None },
+        );
     let non_trivial_count = non_trivial_fields.clone().count();
     if non_trivial_count >= 2 {
         bad_non_zero_sized_fields(

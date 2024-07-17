@@ -1,133 +1,75 @@
-warning: `extern` fn uses type `u128`, which is not FFI-safe
-  --> $DIR/return-via-stack.rs:31:9
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:35:50
    |
-LL |     f6: extern "C-cmse-nonsecure-call" fn() -> u128,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+LL |     u128: extern "C-cmse-nonsecure-call" fn() -> u128,
+   |                                                  ^^^^ this type doesn't fit in the available registers
    |
-   = note: 128-bit integers don't currently have a known stable ABI
-   = note: `#[warn(improper_ctypes_definitions)]` on by default
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-warning: `extern` fn uses type `i128`, which is not FFI-safe
-  --> $DIR/return-via-stack.rs:32:9
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:36:50
    |
-LL |     f7: extern "C-cmse-nonsecure-call" fn() -> i128,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+LL |     i128: extern "C-cmse-nonsecure-call" fn() -> i128,
+   |                                                  ^^^^ this type doesn't fit in the available registers
    |
-   = note: 128-bit integers don't currently have a known stable ABI
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-warning: `extern` fn uses type `ReprRustUnionU64`, which is not FFI-safe
-  --> $DIR/return-via-stack.rs:55:9
-   |
-LL |     f1: extern "C-cmse-nonsecure-call" fn() -> ReprRustUnionU64,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
-   = note: this union has unspecified layout
-note: the type is defined here
-  --> $DIR/return-via-stack.rs:49:1
-   |
-LL | pub union ReprRustUnionU64 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:34:5
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:25:48
    |
 LL |     f1: extern "C-cmse-nonsecure-call" fn() -> ReprCU64,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f1();
-   |     ^^^^ but its return value doesn't fit in the available registers
+   |                                                ^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:35:5
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:26:48
    |
 LL |     f2: extern "C-cmse-nonsecure-call" fn() -> ReprCBytes,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f2();
-   |     ^^^^ but its return value doesn't fit in the available registers
+   |                                                ^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:36:5
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:27:48
    |
 LL |     f3: extern "C-cmse-nonsecure-call" fn() -> U64Compound,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f3();
-   |     ^^^^ but its return value doesn't fit in the available registers
+   |                                                ^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:37:5
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:28:48
    |
 LL |     f4: extern "C-cmse-nonsecure-call" fn() -> ReprCAlign16,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f4();
-   |     ^^^^ but its return value doesn't fit in the available registers
+   |                                                ^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:38:5
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:29:48
    |
 LL |     f5: extern "C-cmse-nonsecure-call" fn() -> [u8; 5],
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f5();
-   |     ^^^^ but its return value doesn't fit in the available registers
+   |                                                ^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:39:5
-   |
-LL |     f6: extern "C-cmse-nonsecure-call" fn() -> u128,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f6();
-   |     ^^^^ but its return value doesn't fit in the available registers
-   |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
-
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:40:5
-   |
-LL |     f7: extern "C-cmse-nonsecure-call" fn() -> i128,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f7();
-   |     ^^^^ but its return value doesn't fit in the available registers
-   |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
-
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:58:5
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:51:48
    |
 LL |     f1: extern "C-cmse-nonsecure-call" fn() -> ReprRustUnionU64,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f1();
-   |     ^^^^ but its return value doesn't fit in the available registers
+   |                                                ^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-error[E0798]: return value of `C-cmse-nonsecure-call` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:59:5
+error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/return-via-stack.rs:52:48
    |
 LL |     f2: extern "C-cmse-nonsecure-call" fn() -> ReprCUnionU64,
-   |     -- this function uses the `C-cmse-nonsecure-call` ABI
-...
-LL |     f2();
-   |     ^^^^ but its return value doesn't fit in the available registers
+   |                                                ^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `C-cmse-nonsecure-call` ABI must pass their result via the available return registers
+   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
 
-error: aborting due to 9 previous errors; 3 warnings emitted
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0798`.

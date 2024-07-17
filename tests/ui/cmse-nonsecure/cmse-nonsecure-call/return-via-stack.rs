@@ -1,7 +1,6 @@
-//@ build-fail
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
-#![feature(abi_c_cmse_nonsecure_call, no_core, lang_items, intrinsics)]
+#![feature(abi_c_cmse_nonsecure_call, no_core, lang_items)]
 #![no_core]
 #[lang = "sized"]
 pub trait Sized {}
@@ -23,21 +22,18 @@ pub struct ReprCAlign16(u16);
 
 #[no_mangle]
 pub fn test(
-    f1: extern "C-cmse-nonsecure-call" fn() -> ReprCU64,
-    f2: extern "C-cmse-nonsecure-call" fn() -> ReprCBytes,
-    f3: extern "C-cmse-nonsecure-call" fn() -> U64Compound,
-    f4: extern "C-cmse-nonsecure-call" fn() -> ReprCAlign16,
-    f5: extern "C-cmse-nonsecure-call" fn() -> [u8; 5],
-    f6: extern "C-cmse-nonsecure-call" fn() -> u128, //~ WARNING [improper_ctypes_definitions]
-    f7: extern "C-cmse-nonsecure-call" fn() -> i128, //~ WARNING [improper_ctypes_definitions]
+    f1: extern "C-cmse-nonsecure-call" fn() -> ReprCU64, //~ ERROR [E0798]
+    f2: extern "C-cmse-nonsecure-call" fn() -> ReprCBytes, //~ ERROR [E0798]
+    f3: extern "C-cmse-nonsecure-call" fn() -> U64Compound, //~ ERROR [E0798]
+    f4: extern "C-cmse-nonsecure-call" fn() -> ReprCAlign16, //~ ERROR [E0798]
+    f5: extern "C-cmse-nonsecure-call" fn() -> [u8; 5],  //~ ERROR [E0798]
 ) {
-    f1(); //~ ERROR [E0798]
-    f2(); //~ ERROR [E0798]
-    f3(); //~ ERROR [E0798]
-    f4(); //~ ERROR [E0798]
-    f5(); //~ ERROR [E0798]
-    f6(); //~ ERROR [E0798]
-    f7(); //~ ERROR [E0798]
+}
+
+#[allow(improper_ctypes_definitions)]
+struct Test {
+    u128: extern "C-cmse-nonsecure-call" fn() -> u128, //~ ERROR [E0798]
+    i128: extern "C-cmse-nonsecure-call" fn() -> i128, //~ ERROR [E0798]
 }
 
 #[repr(C)]
@@ -52,9 +48,7 @@ pub union ReprRustUnionU64 {
 
 #[no_mangle]
 pub fn test_union(
-    f1: extern "C-cmse-nonsecure-call" fn() -> ReprRustUnionU64, //~ WARNING [improper_ctypes_definitions]
-    f2: extern "C-cmse-nonsecure-call" fn() -> ReprCUnionU64,
+    f1: extern "C-cmse-nonsecure-call" fn() -> ReprRustUnionU64, //~ ERROR [E0798]
+    f2: extern "C-cmse-nonsecure-call" fn() -> ReprCUnionU64,    //~ ERROR [E0798]
 ) {
-    f1(); //~ ERROR [E0798]
-    f2(); //~ ERROR [E0798]
 }
