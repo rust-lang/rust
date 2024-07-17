@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{expr_block, snippet, SpanRangeExt};
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, peel_mid_ty_refs};
-use clippy_utils::{is_lint_allowed, is_unit_expr, is_wild, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{
+    is_lint_allowed, is_unit_expr, is_wild, peel_blocks, peel_hir_pat_refs, peel_middle_ty_refs, peel_n_hir_expr_refs,
+};
 use core::cmp::max;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BindingMode, Block, Expr, ExprKind, Pat, PatKind};
@@ -82,7 +84,7 @@ fn report_single_pattern(
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
     let (msg, sugg) = if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind
-        && let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex))
+        && let (ty, ty_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
         && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
         && (ty.is_integral()
