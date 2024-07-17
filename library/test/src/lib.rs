@@ -25,7 +25,6 @@
 #![feature(test)]
 #![allow(internal_features)]
 
-// Public reexports
 pub use self::bench::{black_box, Bencher};
 pub use self::console::run_tests_console;
 pub use self::options::{ColorConfig, Options, OutputFormat, RunIgnored, ShouldPanic};

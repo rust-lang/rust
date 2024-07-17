@@ -470,7 +470,6 @@ pub mod rt;
 // The Rust prelude
 pub mod prelude;
 
-// Public module declarations and re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::borrow;
 #[stable(feature = "rust1", since = "1.0.0")]
