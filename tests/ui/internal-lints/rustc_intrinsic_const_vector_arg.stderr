@@ -1,17 +1,17 @@
 error: malformed `rustc_intrinsic_const_vector_arg` attribute input
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:19:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:18:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_intrinsic_const_vector_arg(arg1_index, arg2_index, ...)]`
 
 error: malformed `rustc_intrinsic_const_vector_arg` attribute input
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:24:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:23:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg = "1"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_intrinsic_const_vector_arg(arg1_index, arg2_index, ...)]`
 
 error: attribute should be applied to functions in `extern "unadjusted"` modules
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:28:1
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:27:1
    |
 LL | #[rustc_intrinsic_const_vector_arg(0)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | pub struct foo3(i8x2);
    | ---------------------- not a function in an `extern "unadjusted"` module
 
 error: attribute should be applied to functions in `extern "unadjusted"` modules
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:32:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:31:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     fn foo4(a: i8x2);
    |     ----------------- not a function in an `extern "unadjusted"` module
 
 error: function does not have a parameter at index 0
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:37:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:36:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     fn foo5();
    |     ---------- function has 0 arguments
 
 error: function does not have a parameter at index 1
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:42:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:41:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(1)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,13 +43,13 @@ LL |     fn foo6(a: i8x2);
    |     ----------------- function has 1 arguments
 
 error: attribute requires a parameter index
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:47:40
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:46:40
    |
 LL |     #[rustc_intrinsic_const_vector_arg("bar")]
    |                                        ^^^^^
 
 error: function does not have a parameter at index 2
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:52:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:51:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0, 2)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ LL |     fn foo8(a: i8x2, b: i8);
    |     ------------------------ function has 2 arguments
 
 error: parameter at index 0 must be a simd type defined in the local crate
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:57:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:56:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |     fn foo9(a: i8);
    |                -- parameter is a non-simd type or is not defined locally
 
 error: parameter at index 0 must be a simd type defined in the local crate
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:62:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:61:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

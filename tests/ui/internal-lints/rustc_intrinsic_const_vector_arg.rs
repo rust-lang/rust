@@ -1,6 +1,5 @@
 //@ compile-flags: -Z unstable-options
 #![feature(abi_unadjusted)]
-#![feature(inline_const)]
 #![feature(intrinsics)]
 #![allow(non_camel_case_types)]
 #![feature(portable_simd)]

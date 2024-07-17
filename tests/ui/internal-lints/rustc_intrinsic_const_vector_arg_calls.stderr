@@ -1,35 +1,35 @@
 error: argument at index 0 must be a constant
-  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:54:9
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:53:9
    |
 LL |         foo1(i8x2(0, 1));
    |         ^^^^^^^^^^^^^^^^
 
 error: argument at index 0 must be a constant
-  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:55:9
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:54:9
    |
 LL |         foo1({ i8x2(0, 1) });
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: argument at index 1 must be a constant
-  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:58:9
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:57:9
    |
 LL |         foo2(const { i8x2(0, 1) }, { i8x2(2, 3) });
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: argument at index 0 must be a constant
-  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:61:9
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:60:9
    |
 LL |         foo3(i8x2_arr([0, 1]));
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: argument at index 0 must be a constant
-  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:64:9
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:63:9
    |
 LL |         foo4(f32x2(0.0, 1.0));
    |         ^^^^^^^^^^^^^^^^^^^^^
 
 error: argument at index 0 must be a constant
-  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:67:9
+  --> $DIR/rustc_intrinsic_const_vector_arg_calls.rs:66:9
    |
 LL |         foo5(f32x2_arr([0.0, 1.0]));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
