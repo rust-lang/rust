@@ -271,6 +271,19 @@ pub fn suggest_constraining_type_params<'a>(
             }
         }
 
+        // in the scenario like impl has stricter requirements than trait,
+        // we should not suggest restrict bound on the impl, here we double check
+        // the whether the param already has the constraint by checking `def_id`
+        let bound_trait_defs: Vec<DefId> = generics
+            .bounds_for_param(param.def_id)
+            .flat_map(|bound| {
+                bound.bounds.iter().flat_map(|b| b.trait_ref().and_then(|t| t.trait_def_id()))
+            })
+            .collect();
+
+        constraints
+            .retain(|(_, def_id)| def_id.map_or(true, |def| !bound_trait_defs.contains(&def)));
+
         if constraints.is_empty() {
             continue;
         }
@@ -332,6 +345,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          --
         //          |
         //          replace with: `T: Bar +`
+
         if let Some((span, open_paren_sp)) = generics.bounds_span_for_suggestions(param.def_id) {
             suggest_restrict(span, true, open_paren_sp);
             continue;
