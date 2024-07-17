@@ -27,8 +27,11 @@ do
   shift
 done
 
+# MacOS reports "arm64" while Linux reports "aarch64". Commonize this.
+machine="$(uname -m | sed 's/arm64/aarch64/')"
+
 script_dir="`dirname $script`"
-docker_dir="${script_dir}/host-$(uname -m)"
+docker_dir="${script_dir}/host-${machine}"
 ci_dir="`dirname $script_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
@@ -68,7 +71,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
     # Include the architecture in the hash key, since our Linux CI does not
     # only run in x86_64 machines.
-    uname -m >> $hash_key
+    echo "$machine" >> $hash_key
 
     # Include cache version. Can be used to manually bust the Docker cache.
     echo "2" >> $hash_key
@@ -178,7 +181,7 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
       build \
       --rm \
       -t rust-ci \
-      -f "host-$(uname -m)/$image/Dockerfile" \
+      -f "host-${machine}/$image/Dockerfile" \
       -
 else
     echo Invalid image: $image
@@ -201,7 +204,7 @@ else
         else
             continue
         fi
-        echo "Note: the current host architecture is $(uname -m)"
+        echo "Note: the current host architecture is $machine"
     done
 
     exit 1
