@@ -1613,7 +1613,7 @@ fn exec_linker(
     // will read all its options out of there instead of looking at the command line.
     if !cmd.very_likely_to_exceed_some_spawn_limit() {
         match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
-            Ok(child) => {
+            Ok(mut child) => {
                 let output = child.wait_with_output();
                 flush_linked_file(&output, out_filename)?;
                 return output;

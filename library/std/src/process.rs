@@ -2238,7 +2238,7 @@ impl Child {
     /// ```should_panic
     /// use std::process::{Command, Stdio};
     ///
-    /// let child = Command::new("/bin/cat")
+    /// let mut child = Command::new("/bin/cat")
     ///     .arg("file.txt")
     ///     .stdout(Stdio::piped())
     ///     .spawn()
@@ -2252,7 +2252,7 @@ impl Child {
     /// ```
     ///
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn wait_with_output(mut self) -> io::Result<Output> {
+    pub fn wait_with_output(&mut self) -> io::Result<Output> {
         drop(self.stdin.take());
 
         let (mut stdout, mut stderr) = (Vec::new(), Vec::new());

@@ -233,7 +233,7 @@ fn test_finish_twice() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_wait_with_output_once() {
-    let prog = if cfg!(target_os = "windows") {
+    let mut prog = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
     } else {
         shell_cmd().arg("-c").arg("echo hello").stdout(Stdio::piped()).spawn().unwrap()
