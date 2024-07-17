@@ -419,6 +419,7 @@ mod imp {
         Some(stackaddr - page_size..stackaddr)
     }
 
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard_default(page_size: usize) -> Option<Range<usize>> {
         // Reallocate the last page of the stack.
         // This ensures SIGBUS will be raised on
@@ -429,19 +430,21 @@ mod imp {
         // read/write permissions and only then mprotect() it to
         // no permissions at all. See issue #50313.
         let stackptr = stack_start_aligned(page_size)?;
-        let result = mmap64(
-            stackptr,
-            page_size,
-            PROT_READ | PROT_WRITE,
-            MAP_PRIVATE | MAP_ANON | MAP_FIXED,
-            -1,
-            0,
-        );
+        let result = unsafe {
+            mmap64(
+                stackptr,
+                page_size,
+                PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANON | MAP_FIXED,
+                -1,
+                0,
+            )
+        };
         if result != stackptr || result == MAP_FAILED {
             panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
         }
 
-        let result = mprotect(stackptr, page_size, PROT_NONE);
+        let result = unsafe { mprotect(stackptr, page_size, PROT_NONE) };
         if result != 0 {
             panic!("failed to protect the guard page: {}", io::Error::last_os_error());
         }
