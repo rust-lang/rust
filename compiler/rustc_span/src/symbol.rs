@@ -1926,6 +1926,7 @@ symbols! {
         type_ascription,
         type_changing_struct_update,
         type_id,
+        type_ir_inherent,
         type_length_limit,
         type_macros,
         type_name,

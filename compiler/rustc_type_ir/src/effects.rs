@@ -1,4 +1,4 @@
-use crate::inherent::{AdtDef, IntoKind, Ty};
+use crate::inherent::*;
 use crate::lang_items::TraitSolverLangItem::{EffectsMaybe, EffectsNoRuntime, EffectsRuntime};
 use crate::Interner;
 
