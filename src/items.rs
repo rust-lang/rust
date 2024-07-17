@@ -629,7 +629,10 @@ impl<'a> FmtVisitor<'a> {
                     }
                 },
                 |f| f.span.hi(),
-                |f| self.format_variant(f, one_line_width, pad_discrim_ident_to),
+                |f| {
+                    self.format_variant(f, one_line_width, pad_discrim_ident_to)
+                        .unknown_error()
+                },
                 body_lo,
                 body_hi,
                 false,
@@ -2777,8 +2780,8 @@ fn rewrite_params(
         |param| param.ty.span.hi(),
         |param| {
             param
-                .rewrite(context, Shape::legacy(multi_line_budget, param_indent))
-                .or_else(|| Some(context.snippet(param.span()).to_owned()))
+                .rewrite_result(context, Shape::legacy(multi_line_budget, param_indent))
+                .or_else(|_| Ok(context.snippet(param.span()).to_owned()))
         },
         span.lo(),
         span.hi(),
@@ -3048,7 +3051,7 @@ fn rewrite_bounds_on_where_clause(
         ",",
         |pred| pred.span().lo(),
         |pred| pred.span().hi(),
-        |pred| pred.rewrite(context, shape),
+        |pred| pred.rewrite_result(context, shape),
         span_start,
         span_end,
         false,
@@ -3129,7 +3132,7 @@ fn rewrite_where_clause(
         ",",
         |pred| pred.span().lo(),
         |pred| pred.span().hi(),
-        |pred| pred.rewrite(context, Shape::legacy(budget, offset)),
+        |pred| pred.rewrite_result(context, Shape::legacy(budget, offset)),
         span_start,
         span_end,
         false,

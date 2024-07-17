@@ -99,7 +99,7 @@ fn format_derive(
                 ",",
                 |span| span.lo(),
                 |span| span.hi(),
-                |span| Some(context.snippet(*span).to_owned()),
+                |span| Ok(context.snippet(*span).to_owned()),
                 // We update derive attribute spans to start after the opening '('
                 // This helps us focus parsing to just what's inside #[derive(...)]
                 context.snippet_provider.span_after(attr.span, "("),

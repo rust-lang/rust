@@ -31,7 +31,7 @@ use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
 use crate::parse::macros::lazy_static::parse_lazy_static;
 use crate::parse::macros::{parse_expr, parse_macro_args, ParsedMacroArgs};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError};
 use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -452,13 +452,13 @@ pub(crate) fn rewrite_macro_def(
         |branch| branch.span.lo(),
         |branch| branch.span.hi(),
         |branch| match branch.rewrite(context, arm_shape, multi_branch_style) {
-            Some(v) => Some(v),
+            Some(v) => Ok(v),
             // if the rewrite returned None because a macro could not be rewritten, then return the
             // original body
             None if context.macro_rewrite_failure.get() => {
-                Some(context.snippet(branch.body).trim().to_string())
+                Ok(context.snippet(branch.body).trim().to_string())
             }
-            None => None,
+            None => Err(RewriteError::Unknown),
         },
         context.snippet_provider.span_after(span, "{"),
         span.hi(),

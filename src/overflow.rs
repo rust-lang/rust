@@ -623,7 +623,7 @@ impl<'a> Context<'a> {
             ",",
             |item| item.span().lo(),
             |item| item.span().hi(),
-            |item| item.rewrite(self.context, self.nested_shape),
+            |item| item.rewrite_result(self.context, self.nested_shape),
             span.lo(),
             span.hi(),
             true,

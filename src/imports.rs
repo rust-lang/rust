@@ -470,7 +470,7 @@ impl UseTree {
                     ",",
                     |tree| tree.span.lo(),
                     |tree| tree.span.hi(),
-                    |_| Some("".to_owned()), // We only need comments for now.
+                    |_| Ok("".to_owned()), // We only need comments for now.
                     context.snippet_provider.span_after(a.span, "{"),
                     a.span.hi(),
                     false,

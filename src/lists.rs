@@ -8,7 +8,7 @@ use rustc_span::BytePos;
 use crate::comment::{find_comment_end, rewrite_comment, FindUncommented};
 use crate::config::lists::*;
 use crate::config::{Config, IndentStyle};
-use crate::rewrite::RewriteContext;
+use crate::rewrite::{RewriteContext, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::utils::{
     count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline,
@@ -281,6 +281,7 @@ where
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
     while let Some((i, item)) = iter.next() {
         let item = item.as_ref();
+        // TODO here Is it possible to 실제로 list item이 없으면..
         let inner_item = item.item.as_ref()?;
         let first = i == 0;
         let last = iter.peek().is_none();
@@ -741,7 +742,7 @@ where
     I: Iterator<Item = T>,
     F1: Fn(&T) -> BytePos,
     F2: Fn(&T) -> BytePos,
-    F3: Fn(&T) -> Option<String>,
+    F3: Fn(&T) -> RewriteResult,
 {
     type Item = ListItem;
 
@@ -778,7 +779,7 @@ where
                 item: if self.inner.peek().is_none() && self.leave_last {
                     None
                 } else {
-                    (self.get_item_string)(&item)
+                    (self.get_item_string)(&item).ok()
                 },
                 post_comment,
                 new_lines,
@@ -805,7 +806,7 @@ where
     I: Iterator<Item = T>,
     F1: Fn(&T) -> BytePos,
     F2: Fn(&T) -> BytePos,
-    F3: Fn(&T) -> Option<String>,
+    F3: Fn(&T) -> RewriteResult,
 {
     ListItems {
         snippet_provider,

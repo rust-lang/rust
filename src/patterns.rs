@@ -343,7 +343,7 @@ fn rewrite_struct_pat(
             }
         },
         |f| f.span.hi(),
-        |f| f.rewrite(context, v_shape),
+        |f| f.rewrite_result(context, v_shape),
         context.snippet_provider.span_after(span, "{"),
         span.hi(),
         false,
@@ -551,7 +551,7 @@ fn count_wildcard_suffix_len(
         ",",
         |item| item.span().lo(),
         |item| item.span().hi(),
-        |item| item.rewrite(context, shape),
+        |item| item.rewrite_result(context, shape),
         context.snippet_provider.span_after(span, "("),
         span.hi() - BytePos(1),
         false,

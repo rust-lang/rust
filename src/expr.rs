@@ -1671,15 +1671,25 @@ fn rewrite_struct_lit<'a>(
         let rewrite = |item: &StructLitField<'_>| match *item {
             StructLitField::Regular(field) => {
                 // The 1 taken from the v_budget is for the comma.
-                let v_shape = v_shape.sub_width(1)?;
-                rewrite_field(context, field, v_shape, 0).ok()
+                rewrite_field(
+                    context,
+                    field,
+                    v_shape.sub_width(1).max_width_error(v_shape.width, span)?,
+                    0,
+                )
+                .unknown_error()
             }
             StructLitField::Base(expr) => {
                 // 2 = ..
-                let v_shape = v_shape.sub_width(2)?;
-                expr.rewrite(context, v_shape).map(|s| format!("..{}", s))
+                expr.rewrite_result(
+                    context,
+                    v_shape
+                        .offset_left(2)
+                        .max_width_error(v_shape.width, span)?,
+                )
+                .map(|s| format!("..{}", s))
             }
-            StructLitField::Rest(_) => Some("..".to_owned()),
+            StructLitField::Rest(_) => Ok("..".to_owned()),
         };
 
         let items = itemize_list(
@@ -1843,7 +1853,7 @@ fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
         ",",
         |item| item.span().lo(),
         |item| item.span().hi(),
-        |item| item.rewrite(context, nested_shape),
+        |item| item.rewrite_result(context, nested_shape),
         list_lo,
         span.hi() - BytePos(1),
         false,

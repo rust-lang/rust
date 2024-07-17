@@ -15,7 +15,7 @@ use crate::config::{Config, GroupImportsTactic};
 use crate::imports::{normalize_use_trees_with_granularity, UseSegmentKind, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
-use crate::rewrite::RewriteContext;
+use crate::rewrite::{RewriteContext, RewriteErrorExt};
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;
 use crate::spanned::Spanned;
@@ -99,7 +99,7 @@ fn rewrite_reorderable_or_regroupable_items(
                 ";",
                 |item| item.span().lo(),
                 |item| item.span().hi(),
-                |_item| Some("".to_owned()),
+                |_item| Ok("".to_owned()),
                 span.lo(),
                 span.hi(),
                 false,
@@ -151,7 +151,7 @@ fn rewrite_reorderable_or_regroupable_items(
                 ";",
                 |item| item.span().lo(),
                 |item| item.span().hi(),
-                |item| rewrite_reorderable_item(context, item, shape),
+                |item| rewrite_reorderable_item(context, item, shape).unknown_error(),
                 span.lo(),
                 span.hi(),
                 false,

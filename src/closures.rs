@@ -312,7 +312,7 @@ fn rewrite_closure_fn_decl(
         ",",
         |param| span_lo_for_param(param),
         |param| span_hi_for_param(context, param),
-        |param| param.rewrite(context, param_shape),
+        |param| param.rewrite_result(context, param_shape),
         context.snippet_provider.span_after(span, "|"),
         body.span.lo(),
         false,

@@ -225,7 +225,7 @@ fn rewrite_match_arms(
         "|",
         |arm| arm.span().lo(),
         |arm| arm.span().hi(),
-        |arm| arm.rewrite(context, arm_shape),
+        |arm| arm.rewrite_result(context, arm_shape),
         open_brace_pos,
         span.hi(),
         false,

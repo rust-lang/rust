@@ -388,7 +388,7 @@ where
             ",",
             |arg| arg.span().lo(),
             |arg| arg.span().hi(),
-            |arg| arg.rewrite(context, list_shape),
+            |arg| arg.rewrite_result(context, list_shape),
             list_lo,
             span.hi(),
             false,
