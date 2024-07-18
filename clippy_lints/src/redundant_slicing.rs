@@ -113,8 +113,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                         a.kind,
                         Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. }))
                     )
-                }) {
-                    // The slice was used to make a temporary reference.
+                }) || (matches!(
+                    cx.typeck_results().expr_ty(indexed).ref_mutability(),
+                    Some(Mutability::Mut)
+                ) && mutability == Mutability::Not)
+                {
                     (DEREF_BY_SLICING_LINT, "&*", "reborrow the original value instead")
                 } else if deref_count != 0 {
                     (DEREF_BY_SLICING_LINT, "", "dereference the original value instead")
