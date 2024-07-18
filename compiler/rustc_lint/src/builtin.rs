@@ -66,6 +66,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::Abi;
+use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
@@ -2908,16 +2909,22 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                                 InvalidAsmLabel::FormatArg { missing_precise_span },
                             );
                         }
-                        AsmLabelKind::Binary => {
-                            // the binary asm issue only occurs when using intel syntax
-                            if !options.contains(InlineAsmOptions::ATT_SYNTAX) {
-                                cx.emit_span_lint(
-                                    BINARY_ASM_LABELS,
-                                    span,
-                                    InvalidAsmLabel::Binary { missing_precise_span, span },
-                                )
-                            }
+                        // the binary asm issue only occurs when using intel syntax on x86 targets
+                        AsmLabelKind::Binary
+                            if !options.contains(InlineAsmOptions::ATT_SYNTAX)
+                                && matches!(
+                                    cx.tcx.sess.asm_arch,
+                                    Some(InlineAsmArch::X86 | InlineAsmArch::X86_64) | None
+                                ) =>
+                        {
+                            cx.emit_span_lint(
+                                BINARY_ASM_LABELS,
+                                span,
+                                InvalidAsmLabel::Binary { missing_precise_span, span },
+                            )
                         }
+                        // No lint on anything other than x86
+                        AsmLabelKind::Binary => (),
                     };
                 }
             }
