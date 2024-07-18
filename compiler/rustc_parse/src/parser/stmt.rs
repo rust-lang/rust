@@ -3,7 +3,6 @@ use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
 use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
-use super::TrailingToken;
 use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
 };
@@ -149,11 +148,7 @@ impl<'a> Parser<'a> {
 
             if this.eat(&token::Not) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
-                if this.token == token::Semi {
-                    return Ok((stmt_mac, TrailingToken::Semi));
-                } else {
-                    return Ok((stmt_mac, TrailingToken::None));
-                }
+                return Ok((stmt_mac, this.token == token::Semi));
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
@@ -167,7 +162,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_dot_or_call_with(attrs, expr, lo)
             })?;
             // `DUMMY_SP` will get overwritten later in this function
-            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), TrailingToken::None))
+            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), false))
         })?;
 
         if let StmtKind::Expr(expr) = stmt.kind {
@@ -241,10 +236,7 @@ impl<'a> Parser<'a> {
             self.collect_tokens_trailing_token(attrs, ForceCollect::Yes, |this, attrs| {
                 let local = this.parse_local(attrs)?;
                 // FIXME - maybe capture semicolon in recovery?
-                Ok((
-                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
-                    TrailingToken::None,
-                ))
+                Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
             })?;
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
@@ -261,11 +253,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             this.expect_keyword(kw::Let)?;
             let local = this.parse_local(attrs)?;
-            let trailing = if capture_semi && this.token.kind == token::Semi {
-                TrailingToken::Semi
-            } else {
-                TrailingToken::None
-            };
+            let trailing = capture_semi && this.token.kind == token::Semi;
             Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
         })
     }

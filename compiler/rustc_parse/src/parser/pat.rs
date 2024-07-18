@@ -1,4 +1,4 @@
-use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, TrailingToken};
+use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing};
 use crate::errors::{
     self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
@@ -1315,9 +1315,8 @@ impl<'a> Parser<'a> {
 
                     last_non_comma_dotdot_span = Some(this.prev_token.span);
 
-                    // We just ate a comma, so there's no need to use
-                    // `TrailingToken::Comma`
-                    Ok((field, TrailingToken::None))
+                    // We just ate a comma, so there's no need to capture a trailing token.
+                    Ok((field, false))
                 })?;
 
             fields.push(field)
