@@ -54,13 +54,11 @@ run-make/libtest-junit/Makefile
 run-make/libtest-thread-limit/Makefile
 run-make/link-cfg/Makefile
 run-make/link-framework/Makefile
-run-make/link-path-order/Makefile
 run-make/linkage-attr-on-static/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
-run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
