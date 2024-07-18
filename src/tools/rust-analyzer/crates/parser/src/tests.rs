@@ -51,7 +51,7 @@ fn lex(text: &str) -> String {
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text, Edition::CURRENT);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
     }
@@ -61,16 +61,16 @@ fn parse_ok() {
 fn parse_err() {
     for case in TestCase::list("parser/err") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text, Edition::CURRENT);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
     }
 }
 
-fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
-    let lexed = LexedStr::new(Edition::CURRENT, text);
+fn parse(entry: TopEntryPoint, text: &str, edition: Edition) -> (String, bool) {
+    let lexed = LexedStr::new(edition, text);
     let input = lexed.to_input();
-    let output = entry.parse(&input, Edition::CURRENT);
+    let output = entry.parse(&input, edition);
 
     let mut buf = String::new();
     let mut errors = Vec::new();
@@ -153,9 +153,19 @@ impl TestCase {
 
 #[track_caller]
 fn run_and_expect_no_errors(path: &str) {
+    run_and_expect_no_errors_with_edition(path, Edition::CURRENT)
+}
+
+#[track_caller]
+fn run_and_expect_errors(path: &str) {
+    run_and_expect_errors_with_edition(path, Edition::CURRENT)
+}
+
+#[track_caller]
+fn run_and_expect_no_errors_with_edition(path: &str, edition: Edition) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
-    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text);
+    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text, edition);
     assert!(!errors, "errors in an OK file {}:\n{actual}", path.display());
     let mut p = PathBuf::from("..");
     p.push(path);
@@ -164,10 +174,10 @@ fn run_and_expect_no_errors(path: &str) {
 }
 
 #[track_caller]
-fn run_and_expect_errors(path: &str) {
+fn run_and_expect_errors_with_edition(path: &str, edition: Edition) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
-    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text);
+    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text, edition);
     assert!(errors, "no errors in an ERR file {}:\n{actual}", path.display());
     let mut p = PathBuf::from("..");
     p.push(path);

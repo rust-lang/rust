@@ -145,7 +145,7 @@ pub(super) fn atom_expr(
             stmt_list(p);
             m.complete(p, BLOCK_EXPR)
         }
-        // test_err gen_blocks
+        // test gen_blocks 2024
         // pub fn main() {
         //     gen { yield ""; };
         //     async gen { yield ""; };

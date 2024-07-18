@@ -34,38 +34,60 @@ pub(crate) fn generate(check: bool) {
         install_tests(&tests.err, &format!("{PARSER_TEST_DATA_INLINE}/err"), check).unwrap();
 
     if some_file_was_updated {
-        let _ = fs::File::open(&format!("{PARSER_CRATE_ROOT}/src/tests.rs"))
+        let _ = fs::File::open(format!("{PARSER_CRATE_ROOT}/src/tests.rs"))
             .unwrap()
             .set_modified(SystemTime::now());
 
-        let ok_tests = tests.ok.keys().sorted().map(|k| {
-            let test_name = quote::format_ident!("{}", k);
+        let ok_tests = tests.ok.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
+            let test_name = quote::format_ident!("{}", test.name);
             let test_file = format!("test_data/parser/inline/ok/{test_name}.rs");
+            let (test_func, args) = match &test.edition {
+                Some(edition) => {
+                    let edition = quote::format_ident!("Edition{edition}");
+                    (
+                        quote::format_ident!("run_and_expect_no_errors_with_edition"),
+                        quote::quote! {#test_file, crate::Edition::#edition},
+                    )
+                }
+                None => {
+                    (quote::format_ident!("run_and_expect_no_errors"), quote::quote! {#test_file})
+                }
+            };
             quote::quote! {
                 #[test]
                 fn #test_name() {
-                    run_and_expect_no_errors(#test_file);
+                    #test_func(#args);
                 }
             }
         });
-        let err_tests = tests.err.keys().sorted().map(|k| {
-            let test_name = quote::format_ident!("{}", k);
+        let err_tests = tests.err.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
+            let test_name = quote::format_ident!("{}", test.name);
             let test_file = format!("test_data/parser/inline/err/{test_name}.rs");
+            let (test_func, args) = match &test.edition {
+                Some(edition) => {
+                    let edition = quote::format_ident!("Edition{edition}");
+                    (
+                        quote::format_ident!("run_and_expect_errors_with_edition"),
+                        quote::quote! {#test_file, crate::Edition::#edition},
+                    )
+                }
+                None => (quote::format_ident!("run_and_expect_errors"), quote::quote! {#test_file}),
+            };
             quote::quote! {
                 #[test]
                 fn #test_name() {
-                    run_and_expect_errors(#test_file);
+                    #test_func(#args);
                 }
             }
         });
 
         let output = quote::quote! {
             mod ok {
-                use crate::tests::run_and_expect_no_errors;
+                use crate::tests::*;
                 #(#ok_tests)*
             }
             mod err {
-                use crate::tests::run_and_expect_errors;
+                use crate::tests::*;
                 #(#err_tests)*
             }
         };
@@ -107,9 +129,10 @@ fn install_tests(tests: &HashMap<String, Test>, into: &str, check: bool) -> Resu
 
 #[derive(Debug)]
 struct Test {
-    pub name: String,
-    pub text: String,
-    pub kind: TestKind,
+    name: String,
+    text: String,
+    kind: TestKind,
+    edition: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -120,8 +143,8 @@ enum TestKind {
 
 #[derive(Default, Debug)]
 struct Tests {
-    pub ok: HashMap<String, Test>,
-    pub err: HashMap<String, Test>,
+    ok: HashMap<String, Test>,
+    err: HashMap<String, Test>,
 }
 
 fn collect_tests(s: &str) -> Vec<Test> {
@@ -135,14 +158,24 @@ fn collect_tests(s: &str) -> Vec<Test> {
         } else {
             continue;
         };
-        let text: String = comment_block.contents[1..]
-            .iter()
-            .cloned()
+        let (name, edition) = match *name.split(' ').collect_vec().as_slice() {
+            [name, edition] => {
+                assert!(!edition.contains(' '));
+                (name.to_owned(), Some(edition.to_owned()))
+            }
+            [name] => (name.to_owned(), None),
+            _ => panic!("invalid test name: {:?}", name),
+        };
+        let text: String = edition
+            .as_ref()
+            .map(|edition| format!("// {edition}"))
+            .into_iter()
+            .chain(comment_block.contents[1..].iter().cloned())
             .chain(iter::once(String::new()))
             .collect::<Vec<_>>()
             .join("\n");
         assert!(!text.trim().is_empty() && text.ends_with('\n'));
-        res.push(Test { name, text, kind })
+        res.push(Test { name, edition, text, kind })
     }
     res
 }
@@ -180,7 +213,9 @@ fn existing_tests(dir: &Path, ok: TestKind) -> Result<HashMap<String, (PathBuf, 
         if rust_file {
             let name = path.file_stem().map(|x| x.to_string_lossy().to_string()).unwrap();
             let text = fs::read_to_string(&path)?;
-            let test = Test { name: name.clone(), text, kind: ok };
+            let edition =
+                text.lines().next().and_then(|it| it.strip_prefix("// ")).map(ToOwned::to_owned);
+            let test = Test { name: name.clone(), text, kind: ok, edition };
             if let Some(old) = res.insert(name, (path, test)) {
                 println!("Duplicate test: {:?}", old);
             }

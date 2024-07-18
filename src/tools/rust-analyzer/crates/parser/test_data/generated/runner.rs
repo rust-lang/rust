@@ -1,5 +1,5 @@
 mod ok {
-    use crate::tests::run_and_expect_no_errors;
+    use crate::tests::*;
     #[test]
     fn anonymous_const() {
         run_and_expect_no_errors("test_data/parser/inline/ok/anonymous_const.rs");
@@ -265,6 +265,13 @@ mod ok {
     #[test]
     fn function_where_clause() {
         run_and_expect_no_errors("test_data/parser/inline/ok/function_where_clause.rs");
+    }
+    #[test]
+    fn gen_blocks() {
+        run_and_expect_no_errors_with_edition(
+            "test_data/parser/inline/ok/gen_blocks.rs",
+            crate::Edition::Edition2024,
+        );
     }
     #[test]
     fn generic_arg() { run_and_expect_no_errors("test_data/parser/inline/ok/generic_arg.rs"); }
@@ -666,7 +673,7 @@ mod ok {
     fn yield_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/yield_expr.rs"); }
 }
 mod err {
-    use crate::tests::run_and_expect_errors;
+    use crate::tests::*;
     #[test]
     fn angled_path_without_qual() {
         run_and_expect_errors("test_data/parser/inline/err/angled_path_without_qual.rs");
@@ -707,8 +714,6 @@ mod err {
     fn fn_pointer_type_missing_fn() {
         run_and_expect_errors("test_data/parser/inline/err/fn_pointer_type_missing_fn.rs");
     }
-    #[test]
-    fn gen_blocks() { run_and_expect_errors("test_data/parser/inline/err/gen_blocks.rs"); }
     #[test]
     fn gen_fn() { run_and_expect_errors("test_data/parser/inline/err/gen_fn.rs"); }
     #[test]
