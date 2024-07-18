@@ -927,6 +927,14 @@ pub struct TyQualified {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_non_glob_import_type_ir_inherent)]
+pub struct NonGlobImportTypeIrInherent {
+    #[suggestion(code = "{snippet}", applicability = "maybe-incorrect")]
+    pub suggestion: Option<Span>,
+    pub snippet: &'static str,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_lintpass_by_hand)]
 #[help]
 pub struct LintPassByHand;
