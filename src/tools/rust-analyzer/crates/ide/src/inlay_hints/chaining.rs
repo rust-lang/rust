@@ -143,7 +143,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -162,7 +162,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "A",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -226,7 +226,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "C",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -245,7 +245,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -293,7 +293,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "C",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -312,7 +312,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -361,7 +361,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "B",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -374,7 +374,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "X",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -393,7 +393,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "A",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -406,7 +406,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "X",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -457,7 +457,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Iterator",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             1,
                                         ),
@@ -470,7 +470,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Item",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             1,
                                         ),
@@ -489,7 +489,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Iterator",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             1,
                                         ),
@@ -502,7 +502,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Item",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             1,
                                         ),
@@ -521,7 +521,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Iterator",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             1,
                                         ),
@@ -534,7 +534,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Item",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             1,
                                         ),
@@ -553,7 +553,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "MyIter",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -601,7 +601,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -620,7 +620,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -639,7 +639,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -657,7 +657,7 @@ fn main() {
                             InlayHintLabelPart {
                                 text: "self",
                                 linked_location: Some(
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),

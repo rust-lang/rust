@@ -20,8 +20,11 @@
                     ),
                 ),
                 loc: DeclarationLocation {
-                    hir_file_id: FileId(
-                        0,
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            0,
+                        ),
+                        Edition2021,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -50,8 +53,11 @@
                     ),
                 ),
                 loc: DeclarationLocation {
-                    hir_file_id: FileId(
-                        0,
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            0,
+                        ),
+                        Edition2021,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -80,8 +86,11 @@
                     ),
                 ),
                 loc: DeclarationLocation {
-                    hir_file_id: FileId(
-                        0,
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            0,
+                        ),
+                        Edition2021,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -110,8 +119,11 @@
                     ),
                 ),
                 loc: DeclarationLocation {
-                    hir_file_id: FileId(
-                        0,
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            0,
+                        ),
+                        Edition2021,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -140,8 +152,11 @@
                     ),
                 ),
                 loc: DeclarationLocation {
-                    hir_file_id: FileId(
-                        0,
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            0,
+                        ),
+                        Edition2021,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -170,8 +185,11 @@
                     ),
                 ),
                 loc: DeclarationLocation {
-                    hir_file_id: FileId(
-                        0,
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            0,
+                        ),
+                        Edition2021,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -200,8 +218,11 @@
                     ),
                 ),
                 loc: DeclarationLocation {
-                    hir_file_id: FileId(
-                        0,
+                    hir_file_id: EditionedFileId(
+                        FileId(
+                            0,
+                        ),
+                        Edition2021,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
