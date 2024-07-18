@@ -3,6 +3,7 @@ name = "testcrate"
 version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 edition = "2021"
+publish = false
 
 [lib]
 test = false
