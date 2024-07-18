@@ -2,11 +2,11 @@
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
 | Act |    └─┬──<TAG=root of the allocation>
-| RsM |      └─┬──<TAG=base>
-| RsM |        ├─┬──<TAG=x>
-| RsM |        │ └─┬──<TAG=caller:x>
-| Rs  |        │   └────<TAG=callee:x> Strongly protected
-| RsM |        └────<TAG=y, callee:y, caller:y>
+| ReIM|      └─┬──<TAG=base>
+| ReIM|        ├─┬──<TAG=x>
+| ReIM|        │ └─┬──<TAG=caller:x>
+| Res |        │   └────<TAG=callee:x> Strongly protected
+| ReIM|        └────<TAG=y, callee:y, caller:y>
 ──────────────────────────────────────────────────
 error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) at ALLOC[0x0] is forbidden
   --> $DIR/cell-protected-write.rs:LL:CC
