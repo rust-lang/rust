@@ -410,13 +410,16 @@ See also the [`no-prepopulate-passes`](#no-prepopulate-passes) flag.
 
 By default, `rustc` prefers to statically link dependencies. This option will
 indicate that dynamic linking should be used if possible if both a static and
-dynamic versions of a library are available. There is an internal algorithm
-for determining whether or not it is possible to statically or dynamically
-link with a dependency. For example, `cdylib` crate types may only use static
-linkage. This flag takes one of the following values:
+dynamic versions of a library are available.
 
-* `y`, `yes`, `on`, `true` or no value: use dynamic linking.
-* `n`, `no`, `off` or `false`: use static linking (the default).
+There is [an internal algorithm](https://github.com/rust-lang/rust/blob/master/compiler/rustc_metadata/src/dependency_format.rs)
+for determining whether or not it is possible to statically or dynamically link
+with a dependency.
+
+This flag takes one of the following values:
+
+* `y`, `yes`, `on`, `true` or no value: prefer dynamic linking.
+* `n`, `no`, `off` or `false`: prefer static linking (the default).
 
 ## profile-generate
 
