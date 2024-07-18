@@ -1598,6 +1598,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subcandidate in candidate.subcandidates.iter_mut() {
                     expanded_candidates.push(subcandidate);
                 }
+                // Note that the subcandidates have been added to `expanded_candidates`,
+                // but `candidate` itself has not. If the last candidate has more match pairs,
+                // they are handled separately by `test_remaining_match_pairs_after_or`.
             } else {
                 // A candidate that doesn't start with an or-pattern has nothing to
                 // expand, so it is included in the post-expansion list as-is.
@@ -1613,11 +1616,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expanded_candidates.as_mut_slice(),
         );
 
-        // Simplify subcandidates and process any leftover match pairs.
-        for candidate in candidates_to_expand {
+        // Postprocess subcandidates, and process any leftover match pairs.
+        // (Only the last candidate can possibly have more match pairs.)
+        debug_assert!({
+            let mut all_except_last = candidates_to_expand.iter().rev().skip(1);
+            all_except_last.all(|candidate| candidate.match_pairs.is_empty())
+        });
+        for candidate in candidates_to_expand.iter_mut() {
             if !candidate.subcandidates.is_empty() {
-                self.finalize_or_candidate(span, scrutinee_span, candidate);
+                self.finalize_or_candidate(candidate);
             }
+        }
+        if let Some(last_candidate) = candidates_to_expand.last_mut() {
+            self.test_remaining_match_pairs_after_or(span, scrutinee_span, last_candidate);
         }
 
         remainder_start.and(remaining_candidates)
@@ -1642,8 +1653,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
     }
 
-    /// Simplify subcandidates and process any leftover match pairs. The candidate should have been
-    /// expanded with `create_or_subcandidates`.
+    /// Simplify subcandidates and remove `is_never` subcandidates.
+    /// The candidate should have been expanded with `create_or_subcandidates`.
     ///
     /// Given a pattern `(P | Q, R | S)` we (in principle) generate a CFG like
     /// so:
@@ -1695,50 +1706,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///      |
     ///     ...
     /// ```
-    fn finalize_or_candidate(
-        &mut self,
-        span: Span,
-        scrutinee_span: Span,
-        candidate: &mut Candidate<'_, 'tcx>,
-    ) {
+    fn finalize_or_candidate(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
         if candidate.subcandidates.is_empty() {
             return;
         }
 
         self.merge_trivial_subcandidates(candidate);
         self.remove_never_subcandidates(candidate);
-
-        if !candidate.match_pairs.is_empty() {
-            let or_span = candidate.or_span.unwrap_or(candidate.extra_data.span);
-            let source_info = self.source_info(or_span);
-            // If more match pairs remain, test them after each subcandidate.
-            // We could add them to the or-candidates before the call to `test_or_pattern` but this
-            // would make it impossible to detect simplifiable or-patterns. That would guarantee
-            // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
-            let mut last_otherwise = None;
-            candidate.visit_leaves(|leaf_candidate| {
-                last_otherwise = leaf_candidate.otherwise_block;
-            });
-            let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
-            candidate.visit_leaves(|leaf_candidate| {
-                assert!(leaf_candidate.match_pairs.is_empty());
-                leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
-                let or_start = leaf_candidate.pre_binding_block.unwrap();
-                let otherwise =
-                    self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
-                // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
-                // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
-                // directly to `last_otherwise`. If there is a guard,
-                // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
-                // can't skip `Q`.
-                let or_otherwise = if leaf_candidate.has_guard {
-                    leaf_candidate.otherwise_block.unwrap()
-                } else {
-                    last_otherwise.unwrap()
-                };
-                self.cfg.goto(otherwise, source_info, or_otherwise);
-            });
-        }
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
@@ -1812,6 +1786,47 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
             candidate.pre_binding_block = Some(self.cfg.start_new_block());
         }
+    }
+
+    /// If more match pairs remain, test them after each subcandidate.
+    /// We could have added them to the or-candidates during or-pattern expansion, but that
+    /// would make it impossible to detect simplifiable or-patterns. That would guarantee
+    /// exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
+    fn test_remaining_match_pairs_after_or(
+        &mut self,
+        span: Span,
+        scrutinee_span: Span,
+        candidate: &mut Candidate<'_, 'tcx>,
+    ) {
+        if candidate.match_pairs.is_empty() {
+            return;
+        }
+
+        let or_span = candidate.or_span.unwrap_or(candidate.extra_data.span);
+        let source_info = self.source_info(or_span);
+        let mut last_otherwise = None;
+        candidate.visit_leaves(|leaf_candidate| {
+            last_otherwise = leaf_candidate.otherwise_block;
+        });
+        let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
+        candidate.visit_leaves(|leaf_candidate| {
+            assert!(leaf_candidate.match_pairs.is_empty());
+            leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
+            let or_start = leaf_candidate.pre_binding_block.unwrap();
+            let otherwise =
+                self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
+            // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
+            // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
+            // directly to `last_otherwise`. If there is a guard,
+            // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
+            // can't skip `Q`.
+            let or_otherwise = if leaf_candidate.has_guard {
+                leaf_candidate.otherwise_block.unwrap()
+            } else {
+                last_otherwise.unwrap()
+            };
+            self.cfg.goto(otherwise, source_info, or_otherwise);
+        });
     }
 
     /// Pick a test to run. Which test doesn't matter as long as it is guaranteed to fully match at
