@@ -61,9 +61,7 @@ pub extern "C" fn __rust_abort() -> ! {
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
-pub unsafe fn cleanup() {
-    stdio::
-}
+pub unsafe fn cleanup() {}
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
