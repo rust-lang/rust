@@ -13,8 +13,8 @@ fn main() {
     cc().input("bar.c")
         .arg(static_lib_name("foo"))
         .out_exe("bar")
-        .args(&extra_c_flags())
-        .args(&extra_cxx_flags())
+        .args(extra_c_flags())
+        .args(extra_cxx_flags())
         .run();
     run("bar");
 }
