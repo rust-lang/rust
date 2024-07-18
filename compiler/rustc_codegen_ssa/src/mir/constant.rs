@@ -37,13 +37,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_unevaluated_mir_constant_to_valtree(
         &self,
         constant: &mir::ConstOperand<'tcx>,
-    ) -> Result<Option<ty::ValTree<'tcx>>, ErrorHandled> {
+    ) -> Result<Result<ty::ValTree<'tcx>, Ty<'tcx>>, ErrorHandled> {
         let uv = match self.monomorphize(constant.const_) {
             mir::Const::Unevaluated(uv, _) => uv.shrink(),
             mir::Const::Ty(_, c) => match c.kind() {
                 // A constant that came from a const generic but was then used as an argument to old-style
                 // simd_shuffle (passing as argument instead of as a generic param).
-                rustc_type_ir::ConstKind::Value(_, valtree) => return Ok(Some(valtree)),
+                rustc_type_ir::ConstKind::Value(_, valtree) => return Ok(Ok(valtree)),
                 other => span_bug!(constant.span, "{other:#?}"),
             },
             // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
@@ -70,6 +70,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let val = self
             .eval_unevaluated_mir_constant_to_valtree(constant)
             .ok()
+            .map(|x| x.ok())
             .flatten()
             .map(|val| {
                 let field_ty = ty.builtin_index().unwrap();

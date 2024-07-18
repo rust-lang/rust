@@ -783,16 +783,13 @@ pub enum PatKind<'tcx> {
     },
 
     /// One of the following:
-    /// * `&str` (represented as a valtree), which will be handled as a string pattern and thus
-    ///   exhaustiveness checking will detect if you use the same string twice in different
-    ///   patterns.
+    /// * `&str`/`&[u8]` (represented as a valtree), which will be handled as a string/slice pattern
+    ///   and thus exhaustiveness checking will detect if you use the same string/slice twice in
+    ///   different patterns.
     /// * integer, bool, char or float (represented as a valtree), which will be handled by
     ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
     ///   much simpler.
-    /// * Opaque constants (represented as `mir::ConstValue`), that must not be matched
-    ///   structurally. So anything that does not derive `PartialEq` and `Eq`.
-    ///
-    /// These are always compared with the matched place using (the semantics of) `PartialEq`.
+    /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
         value: mir::Const<'tcx>,
     },

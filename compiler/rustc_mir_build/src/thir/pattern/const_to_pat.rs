@@ -1,42 +1,45 @@
+use either::Either;
 use rustc_apfloat::Float;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir;
-use rustc_middle::span_bug;
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::{self, ObligationCause};
+use rustc_trait_selection::traits::ObligationCause;
 use tracing::{debug, instrument, trace};
-
-use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    InvalidPattern, NaNPattern, PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern,
-    UnsizedPattern,
+    ConstPatternDependsOnGenericParameter, CouldNotEvalConstPattern, InvalidPattern, NaNPattern,
+    PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
-    /// Converts an evaluated constant to a pattern (if possible).
+    /// Converts a constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
     ///
-    /// `cv` must be a valtree or a `mir::ConstValue`.
+    /// Only type system constants are supported, as we are using valtrees
+    /// as an intermediate step. Unfortunately those don't carry a type
+    /// so we have to carry one ourselves.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
         &self,
-        cv: mir::Const<'tcx>,
+        c: ty::Const<'tcx>,
+        ty: Ty<'tcx>,
         id: hir::HirId,
         span: Span,
     ) -> Box<Pat<'tcx>> {
         let infcx = self.tcx.infer_ctxt().build();
         let mut convert = ConstToPat::new(self, id, span, infcx);
-        convert.to_pat(cv)
+        convert.to_pat(c, ty)
     }
 }
 
@@ -45,22 +48,11 @@ struct ConstToPat<'tcx> {
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 
-    // This tracks if we emitted some hard error for a given const value, so that
-    // we will not subsequently issue an irrelevant lint for the same const
-    // value.
-    saw_const_match_error: Cell<Option<ErrorGuaranteed>>,
-
     // inference context used for checking `T: Structural` bounds.
     infcx: InferCtxt<'tcx>,
 
     treat_byte_string_as_slice: bool,
 }
-
-/// This error type signals that we encountered a non-struct-eq situation.
-/// We will fall back to calling `PartialEq::eq` on such patterns,
-/// and exhaustiveness checking will consider them as matching nothing.
-#[derive(Debug)]
-struct FallbackToOpaqueConst;
 
 impl<'tcx> ConstToPat<'tcx> {
     fn new(
@@ -75,7 +67,6 @@ impl<'tcx> ConstToPat<'tcx> {
             span,
             infcx,
             param_env: pat_ctxt.param_env,
-            saw_const_match_error: Cell::new(None),
             treat_byte_string_as_slice: pat_ctxt
                 .typeck_results
                 .treat_byte_string_as_slice
@@ -91,116 +82,55 @@ impl<'tcx> ConstToPat<'tcx> {
         ty.is_structural_eq_shallow(self.infcx.tcx)
     }
 
-    fn to_pat(&mut self, cv: mir::Const<'tcx>) -> Box<Pat<'tcx>> {
+    fn to_pat(&mut self, c: ty::Const<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
-        // This method is just a wrapper handling a validity check; the heavy lifting is
-        // performed by the recursive `recur` method, which is not meant to be
-        // invoked except by this method.
-        //
-        // once indirect_structural_match is a full fledged error, this
-        // level of indirection can be eliminated
+        let pat_from_kind = |kind| Box::new(Pat { span: self.span, ty, kind });
 
-        let have_valtree =
-            matches!(cv, mir::Const::Ty(_, c) if matches!(c.kind(), ty::ConstKind::Value(_, _)));
-        let inlined_const_as_pat = match cv {
-            mir::Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Param(_)
-                | ty::ConstKind::Infer(_)
-                | ty::ConstKind::Bound(_, _)
-                | ty::ConstKind::Placeholder(_)
-                | ty::ConstKind::Unevaluated(_)
-                | ty::ConstKind::Error(_)
-                | ty::ConstKind::Expr(_) => {
-                    span_bug!(self.span, "unexpected const in `to_pat`: {:?}", c.kind())
-                }
-                ty::ConstKind::Value(ty, valtree) => {
-                    self.recur(valtree, ty).unwrap_or_else(|_: FallbackToOpaqueConst| {
-                        Box::new(Pat {
-                            span: self.span,
-                            ty: cv.ty(),
-                            kind: PatKind::Constant { value: cv },
-                        })
-                    })
-                }
-            },
-            mir::Const::Unevaluated(_, _) => {
-                span_bug!(self.span, "unevaluated const in `to_pat`: {cv:?}")
+        // Get a valtree. If that fails, this const is definitely not valid for use as a pattern.
+        let valtree = match c.eval_valtree(self.tcx(), self.param_env, self.span) {
+            Ok((_, valtree)) => valtree,
+            Err(Either::Right(e)) => {
+                let err = match e {
+                    ErrorHandled::Reported(..) => {
+                        // Let's tell the use where this failing const occurs.
+                        self.tcx().dcx().emit_err(CouldNotEvalConstPattern { span: self.span })
+                    }
+                    ErrorHandled::TooGeneric(_) => self
+                        .tcx()
+                        .dcx()
+                        .emit_err(ConstPatternDependsOnGenericParameter { span: self.span }),
+                };
+                return pat_from_kind(PatKind::Error(err));
             }
-            mir::Const::Val(_, _) => Box::new(Pat {
-                span: self.span,
-                ty: cv.ty(),
-                kind: PatKind::Constant { value: cv },
-            }),
+            Err(Either::Left(bad_ty)) => {
+                // The pattern cannot be turned into a valtree.
+                let e = match bad_ty.kind() {
+                    ty::Adt(def, ..) => {
+                        assert!(def.is_union());
+                        self.tcx().dcx().emit_err(UnionPattern { span: self.span })
+                    }
+                    ty::FnPtr(..) | ty::RawPtr(..) => {
+                        self.tcx().dcx().emit_err(PointerPattern { span: self.span })
+                    }
+                    _ => self
+                        .tcx()
+                        .dcx()
+                        .emit_err(InvalidPattern { span: self.span, non_sm_ty: bad_ty }),
+                };
+                return pat_from_kind(PatKind::Error(e));
+            }
         };
 
-        if self.saw_const_match_error.get().is_none() {
-            // If we were able to successfully convert the const to some pat (possibly with some
-            // lints, but no errors), double-check that all types in the const implement
-            // `PartialEq`. Even if we have a valtree, we may have found something
-            // in there with non-structural-equality, meaning we match using `PartialEq`
-            // and we hence have to check if that impl exists.
-            // This is all messy but not worth cleaning up: at some point we'll emit
-            // a hard error when we don't have a valtree or when we find something in
-            // the valtree that is not structural; then this can all be made a lot simpler.
+        // Convert the valtree to a const.
+        let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
 
-            let structural = traits::search_for_structural_match_violation(self.tcx(), cv.ty());
-            debug!(
-                "search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
-                cv.ty(),
-                structural
-            );
-
-            if let Some(non_sm_ty) = structural {
-                if !self.type_has_partial_eq_impl(cv.ty()) {
-                    // This is reachable and important even if we have a valtree: there might be
-                    // non-structural things in a valtree, in which case we fall back to `PartialEq`
-                    // comparison, in which case we better make sure the trait is implemented for
-                    // each inner type (and not just for the surrounding type).
-                    let e = if let ty::Adt(def, ..) = non_sm_ty.kind() {
-                        if def.is_union() {
-                            let err = UnionPattern { span: self.span };
-                            self.tcx().dcx().emit_err(err)
-                        } else {
-                            // fatal avoids ICE from resolution of nonexistent method (rare case).
-                            self.tcx()
-                                .dcx()
-                                .emit_fatal(TypeNotStructural { span: self.span, non_sm_ty })
-                        }
-                    } else {
-                        let err = InvalidPattern { span: self.span, non_sm_ty };
-                        self.tcx().dcx().emit_err(err)
-                    };
-                    // All branches above emitted an error. Don't print any more lints.
-                    // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                    let kind = PatKind::Error(e);
-                    return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
-                } else if !have_valtree {
-                    // Not being structural prevented us from constructing a valtree,
-                    // so this is definitely a case we want to reject.
-                    let err = TypeNotStructural { span: self.span, non_sm_ty };
-                    let e = self.tcx().dcx().emit_err(err);
-                    let kind = PatKind::Error(e);
-                    return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
-                } else {
-                    // This could be a violation in an inactive enum variant.
-                    // Since we have a valtree, we trust that we have traversed the full valtree and
-                    // complained about structural match violations there, so we don't
-                    // have to check anything any more.
-                }
-            } else if !have_valtree {
-                // The only way valtree construction can fail without the structural match
-                // checker finding a violation is if there is a pointer somewhere.
-                let e = self.tcx().dcx().emit_err(PointerPattern { span: self.span });
-                let kind = PatKind::Error(e);
-                return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
-            }
-
+        if !inlined_const_as_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
-            if !self.type_has_partial_eq_impl(cv.ty()) {
-                let err = TypeNotPartialEq { span: self.span, non_peq_ty: cv.ty() };
+            if !self.type_has_partial_eq_impl(ty) {
+                let err = TypeNotPartialEq { span: self.span, non_peq_ty: ty };
                 let e = self.tcx().dcx().emit_err(err);
                 let kind = PatKind::Error(e);
-                return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
+                return Box::new(Pat { span: self.span, ty: ty, kind });
             }
         }
 
@@ -243,40 +173,31 @@ impl<'tcx> ConstToPat<'tcx> {
     fn field_pats(
         &self,
         vals: impl Iterator<Item = (ValTree<'tcx>, Ty<'tcx>)>,
-    ) -> Result<Vec<FieldPat<'tcx>>, FallbackToOpaqueConst> {
+    ) -> Vec<FieldPat<'tcx>> {
         vals.enumerate()
             .map(|(idx, (val, ty))| {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx().normalize_erasing_regions(self.param_env, ty);
-                Ok(FieldPat { field, pattern: self.recur(val, ty)? })
+                FieldPat { field, pattern: self.valtree_to_pat(val, ty) }
             })
             .collect()
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     #[instrument(skip(self), level = "debug")]
-    fn recur(
-        &self,
-        cv: ValTree<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Result<Box<Pat<'tcx>>, FallbackToOpaqueConst> {
+    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         let span = self.span;
         let tcx = self.tcx();
         let param_env = self.param_env;
 
         let kind = match ty.kind() {
-            ty::FnDef(..) => {
-                let e = tcx.dcx().emit_err(InvalidPattern { span, non_sm_ty: ty });
-                self.saw_const_match_error.set(Some(e));
-                // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                PatKind::Error(e)
-            }
             ty::Adt(adt_def, _) if !self.type_marked_structural(ty) => {
+                // Extremely important check for all ADTs! Make sure they opted-in to be used in
+                // patterns.
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty,);
                 let err = TypeNotStructural { span, non_sm_ty: ty };
                 let e = tcx.dcx().emit_err(err);
-                self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                 PatKind::Error(e)
             }
@@ -294,13 +215,9 @@ impl<'tcx> ConstToPat<'tcx> {
                                 .iter()
                                 .map(|field| field.ty(self.tcx(), args)),
                         ),
-                    )?,
+                    ),
                 }
             }
-            ty::Tuple(fields) => PatKind::Leaf {
-                subpatterns: self
-                    .field_pats(cv.unwrap_branch().iter().copied().zip(fields.iter()))?,
-            },
             ty::Adt(def, args) => {
                 assert!(!def.is_union()); // Valtree construction would never succeed for unions.
                 PatKind::Leaf {
@@ -311,15 +228,18 @@ impl<'tcx> ConstToPat<'tcx> {
                                 .iter()
                                 .map(|field| field.ty(self.tcx(), args)),
                         ),
-                    )?,
+                    ),
                 }
             }
+            ty::Tuple(fields) => PatKind::Leaf {
+                subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(fields.iter())),
+            },
             ty::Slice(elem_ty) => PatKind::Slice {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.recur(*val, *elem_ty))
-                    .collect::<Result<_, _>>()?,
+                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .collect(),
                 slice: None,
                 suffix: Box::new([]),
             },
@@ -327,8 +247,8 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.recur(*val, *elem_ty))
-                    .collect::<Result<_, _>>()?,
+                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .collect(),
                 slice: None,
                 suffix: Box::new([]),
             },
@@ -361,7 +281,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             _ => *pointee_ty,
                         };
                         // References have the same valtree representation as their pointee.
-                        let subpattern = self.recur(cv, pointee_ty)?;
+                        let subpattern = self.valtree_to_pat(cv, pointee_ty);
                         PatKind::Deref { subpattern }
                     }
                 }
@@ -378,8 +298,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     // NaNs are not ever equal to anything so they make no sense as patterns.
                     // Also see <https://github.com/rust-lang/rfcs/pull/3535>.
                     let e = tcx.dcx().emit_err(NaNPattern { span });
-                    self.saw_const_match_error.set(Some(e));
-                    return Err(FallbackToOpaqueConst);
+                    PatKind::Error(e)
                 } else {
                     PatKind::Constant {
                         value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
@@ -399,12 +318,11 @@ impl<'tcx> ConstToPat<'tcx> {
             _ => {
                 let err = InvalidPattern { span, non_sm_ty: ty };
                 let e = tcx.dcx().emit_err(err);
-                self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                 PatKind::Error(e)
             }
         };
 
-        Ok(Box::new(Pat { span, ty, kind }))
+        Box::new(Pat { span, ty, kind })
     }
 }

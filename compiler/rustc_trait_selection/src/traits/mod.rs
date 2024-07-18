@@ -16,7 +16,6 @@ pub mod query;
 #[allow(hidden_glob_reexports)]
 mod select;
 mod specialize;
-mod structural_match;
 mod structural_normalize;
 #[allow(hidden_glob_reexports)]
 mod util;
@@ -60,7 +59,6 @@ pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{
     specialization_graph, translate_args, translate_args_with_cause, OverlapError,
 };
-pub use self::structural_match::search_for_structural_match_violation;
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::elaborate;
 pub use self::util::{expand_trait_aliases, TraitAliasExpander, TraitAliasExpansionInfo};

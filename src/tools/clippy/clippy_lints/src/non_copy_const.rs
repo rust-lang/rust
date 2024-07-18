@@ -235,7 +235,7 @@ impl<'tcx> NonCopyConst<'tcx> {
 
     fn is_value_unfrozen_raw(
         cx: &LateContext<'tcx>,
-        result: Result<Option<ty::ValTree<'tcx>>, ErrorHandled>,
+        result: Result<Result<ty::ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>,
         ty: Ty<'tcx>,
     ) -> bool {
         result.map_or_else(
