@@ -11,7 +11,7 @@ LL |         let sfoo: *mut Foo = &mut SFOO;
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |         let sfoo: *mut Foo = addr_of_mut!(SFOO);
-   |                              ~~~~~~~~~~~~~~~~~~
+   |                              ~~~~~~~~~~~~~    +
 
 warning: 1 warning emitted
 

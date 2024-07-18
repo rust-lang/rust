@@ -1500,33 +1500,33 @@ pub struct StaticMutRef<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: StaticMutRefSugg,
+    pub sugg: MutRefSugg,
     pub shared: &'a str,
 }
 
 #[derive(Subdiagnostic)]
-pub enum StaticMutRefSugg {
-    #[suggestion(
+pub enum MutRefSugg {
+    #[multipart_suggestion(
         hir_analysis_suggestion,
         style = "verbose",
-        code = "addr_of!({var})",
         applicability = "maybe-incorrect"
     )]
     Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
+        #[suggestion_part(code = "addr_of!(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
     },
-    #[suggestion(
+    #[multipart_suggestion(
         hir_analysis_suggestion_mut,
         style = "verbose",
-        code = "addr_of_mut!({var})",
         applicability = "maybe-incorrect"
     )]
     Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
+        #[suggestion_part(code = "addr_of_mut!(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
     },
 }
 
@@ -1539,34 +1539,8 @@ pub struct RefOfMutStatic<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: RefOfMutStaticSugg,
+    pub sugg: MutRefSugg,
     pub shared: &'a str,
-}
-
-#[derive(Subdiagnostic)]
-pub enum RefOfMutStaticSugg {
-    #[suggestion(
-        hir_analysis_suggestion,
-        style = "verbose",
-        code = "addr_of!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
-    #[suggestion(
-        hir_analysis_suggestion_mut,
-        style = "verbose",
-        code = "addr_of_mut!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
 }
 
 #[derive(Diagnostic)]
