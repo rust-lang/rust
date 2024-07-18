@@ -298,7 +298,7 @@ fn lintcheck(config: LintcheckConfig) {
                 true
             }
         })
-        .map(|krate| krate.download_and_extract())
+        .map(|krate| krate.download_and_prepare())
         .collect();
 
     if crates.is_empty() {

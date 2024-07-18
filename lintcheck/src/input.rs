@@ -159,11 +159,25 @@ pub fn read_crates(toml_path: &Path) -> (Vec<CrateWithSource>, RecursiveOptions)
 }
 
 impl CrateWithSource {
+    pub fn download_and_prepare(&self) -> Crate {
+        let krate = self.download_and_extract();
+
+        // Downloaded crates might contain a `rust-toolchain` file. This file
+        // seems to be accessed when `build.rs` files are present. This access
+        // results in build errors since lintcheck and clippy will most certainly
+        // use a different toolchain.
+        // Lintcheck simply removes these files and assumes that our toolchain
+        // is more up to date.
+        let _ = fs::remove_file(krate.path.join("rust-toolchain"));
+        let _ = fs::remove_file(krate.path.join("rust-toolchain.toml"));
+
+        krate
+    }
     /// Makes the sources available on the disk for clippy to check.
     /// Clones a git repo and checks out the specified commit or downloads a crate from crates.io or
     /// copies a local folder
     #[expect(clippy::too_many_lines)]
-    pub fn download_and_extract(&self) -> Crate {
+    fn download_and_extract(&self) -> Crate {
         #[allow(clippy::result_large_err)]
         fn get(path: &str) -> Result<ureq::Response, ureq::Error> {
             const MAX_RETRIES: u8 = 4;
