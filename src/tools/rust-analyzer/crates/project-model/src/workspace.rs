@@ -31,6 +31,7 @@ use crate::{
     utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath, Package,
     ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
 };
+use tracing::{debug, error, info};
 
 pub type FileLoader<'a> = &'a mut dyn for<'b> FnMut(&'b AbsPath) -> Option<FileId>;
 
@@ -250,7 +251,7 @@ impl ProjectWorkspace {
                 };
 
                 let rustc =  rustc_dir.and_then(|rustc_dir| {
-                    tracing::info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
+                    info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
                     match CargoWorkspace::fetch_metadata(
                         &rustc_dir,
                         cargo_toml.parent(),
@@ -767,9 +768,9 @@ impl ProjectWorkspace {
         };
 
         if matches!(sysroot.mode(), SysrootMode::Stitched(_)) && crate_graph.patch_cfg_if() {
-            tracing::debug!("Patched std to depend on cfg-if")
+            debug!("Patched std to depend on cfg-if")
         } else {
-            tracing::debug!("Did not patch std to depend on cfg-if")
+            debug!("Did not patch std to depend on cfg-if")
         }
         (crate_graph, proc_macros)
     }
@@ -917,6 +918,11 @@ fn project_json_to_crate_graph(
                         CrateOrigin::Local { repo: None, name: None }
                     },
                 );
+                debug!(
+                    ?crate_graph_crate_id,
+                    crate = display_name.as_ref().map(|name| name.canonical_name().as_str()),
+                    "added root to crate graph"
+                );
                 if *is_proc_macro {
                     if let Some(path) = proc_macro_dylib_path.clone() {
                         let node = Ok((
@@ -931,6 +937,7 @@ fn project_json_to_crate_graph(
         )
         .collect();
 
+    debug!(map = ?idx_to_crate_id);
     for (from_idx, krate) in project.crates() {
         if let Some(&from) = idx_to_crate_id.get(&from_idx) {
             public_deps.add_to_crate_graph(crate_graph, from);
@@ -1156,7 +1163,7 @@ fn detached_file_to_crate_graph(
     let file_id = match load(detached_file) {
         Some(file_id) => file_id,
         None => {
-            tracing::error!("Failed to load detached file {:?}", detached_file);
+            error!("Failed to load detached file {:?}", detached_file);
             return (crate_graph, FxHashMap::default());
         }
     };
@@ -1351,7 +1358,7 @@ fn add_target_crate_root(
     crate_id
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct SysrootPublicDeps {
     deps: Vec<(CrateName, CrateId, bool)>,
 }

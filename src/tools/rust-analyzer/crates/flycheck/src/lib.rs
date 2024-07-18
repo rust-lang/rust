@@ -20,6 +20,7 @@ pub use cargo_metadata::diagnostic::{
 use toolchain::Tool;
 
 mod command;
+pub mod project_json;
 mod test_runner;
 
 use command::{CommandHandle, ParseFromLine};
@@ -240,7 +241,7 @@ enum FlycheckStatus {
     Finished,
 }
 
-const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
+pub const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
 
 impl FlycheckActor {
     fn new(

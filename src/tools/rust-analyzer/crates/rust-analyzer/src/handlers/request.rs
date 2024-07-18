@@ -37,7 +37,7 @@ use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 use crate::{
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diff::diff,
-    global_state::{GlobalState, GlobalStateSnapshot},
+    global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
@@ -57,7 +57,8 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow:
     state.proc_macro_clients = Arc::from_iter([]);
     state.build_deps_changed = false;
 
-    state.fetch_workspaces_queue.request_op("reload workspace request".to_owned(), false);
+    let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+    state.fetch_workspaces_queue.request_op("reload workspace request".to_owned(), req);
     Ok(())
 }
 

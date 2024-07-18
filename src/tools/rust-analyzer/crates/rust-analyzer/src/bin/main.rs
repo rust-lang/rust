@@ -175,6 +175,7 @@ fn run_server() -> anyhow::Result<()> {
             return Err(e.into());
         }
     };
+
     tracing::info!("InitializeParams: {}", initialize_params);
     let lsp_types::InitializeParams {
         root_uri,
@@ -264,7 +265,10 @@ fn run_server() -> anyhow::Result<()> {
         return Err(e.into());
     }
 
-    if !config.has_linked_projects() && config.detached_files().is_empty() {
+    if config.discover_workspace_config().is_none()
+        && !config.has_linked_projects()
+        && config.detached_files().is_empty()
+    {
         config.rediscover_workspaces();
     }
 

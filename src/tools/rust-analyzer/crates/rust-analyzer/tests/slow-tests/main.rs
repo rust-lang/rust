@@ -27,7 +27,6 @@ use lsp_types::{
     InlayHint, InlayHintLabel, InlayHintParams, PartialResultParams, Position, Range,
     RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, WorkDoneProgressParams,
 };
-
 use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
 use serde_json::json;
 use stdx::format_to_acc;
