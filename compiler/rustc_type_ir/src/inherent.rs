@@ -475,7 +475,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
     /// poly-trait-ref to supertraits that must hold if that
     /// poly-trait-ref holds. This is slightly different from a normal
     /// instantiation in terms of what happens with bound regions.
-    fn instantiate_supertrait(self, tcx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
+    fn instantiate_supertrait(self, cx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
 }
 
 /// Common capabilities of placeholder kinds

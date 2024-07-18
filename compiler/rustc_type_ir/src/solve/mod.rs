@@ -106,13 +106,13 @@ pub struct Goal<I: Interner, P> {
 }
 
 impl<I: Interner, P> Goal<I, P> {
-    pub fn new(tcx: I, param_env: I::ParamEnv, predicate: impl Upcast<I, P>) -> Goal<I, P> {
-        Goal { param_env, predicate: predicate.upcast(tcx) }
+    pub fn new(cx: I, param_env: I::ParamEnv, predicate: impl Upcast<I, P>) -> Goal<I, P> {
+        Goal { param_env, predicate: predicate.upcast(cx) }
     }
 
     /// Updates the goal to one with a different `predicate` but the same `param_env`.
-    pub fn with<Q>(self, tcx: I, predicate: impl Upcast<I, Q>) -> Goal<I, Q> {
-        Goal { param_env: self.param_env, predicate: predicate.upcast(tcx) }
+    pub fn with<Q>(self, cx: I, predicate: impl Upcast<I, Q>) -> Goal<I, Q> {
+        Goal { param_env: self.param_env, predicate: predicate.upcast(cx) }
     }
 }
 

@@ -1257,14 +1257,12 @@ pub fn prohibit_assoc_item_constraint(
             };
 
             // Now emit the suggestion
-            if let Ok(suggestion) = tcx.sess.source_map().span_to_snippet(removal_span) {
-                e.span_suggestion_verbose(
-                    removal_span,
-                    format!("consider removing this associated item {}", constraint.kind.descr()),
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            e.span_suggestion_verbose(
+                removal_span,
+                format!("consider removing this associated item {}", constraint.kind.descr()),
+                "",
+                Applicability::MaybeIncorrect,
+            );
         };
 
         // Suggest replacing the associated item binding with a generic argument.
@@ -1340,11 +1338,13 @@ pub fn prohibit_assoc_item_constraint(
                                 format!("<{lifetimes}{type_with_constraints}>"),
                             )
                         };
-                        let suggestions =
-                            vec![param_decl, (constraint.span, format!("{}", matching_param.name))];
+                        let suggestions = vec![
+                            param_decl,
+                            (constraint.span.with_lo(constraint.ident.span.hi()), String::new()),
+                        ];
 
                         err.multipart_suggestion_verbose(
-                            format!("declare the type parameter right after the `impl` keyword"),
+                            "declare the type parameter right after the `impl` keyword",
                             suggestions,
                             Applicability::MaybeIncorrect,
                         );

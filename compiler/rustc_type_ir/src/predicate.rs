@@ -34,8 +34,8 @@ where
 {
     type Lifted = OutlivesPredicate<U, A::Lifted>;
 
-    fn lift_to_tcx(self, tcx: U) -> Option<Self::Lifted> {
-        Some(OutlivesPredicate(self.0.lift_to_tcx(tcx)?, self.1.lift_to_tcx(tcx)?))
+    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
+        Some(OutlivesPredicate(self.0.lift_to_interner(cx)?, self.1.lift_to_interner(cx)?))
     }
 }
 
@@ -267,25 +267,23 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
     /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
     /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
     /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
-    pub fn with_self_ty(&self, tcx: I, self_ty: I::Ty) -> I::Clause {
+    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> I::Clause {
         match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => {
-                self.rebind(tr).with_self_ty(tcx, self_ty).upcast(tcx)
-            }
+            ExistentialPredicate::Trait(tr) => self.rebind(tr).with_self_ty(cx, self_ty).upcast(cx),
             ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(tcx, self_ty)).upcast(tcx)
+                self.rebind(p.with_self_ty(cx, self_ty)).upcast(cx)
             }
             ExistentialPredicate::AutoTrait(did) => {
-                let generics = tcx.generics_of(did);
+                let generics = cx.generics_of(did);
                 let trait_ref = if generics.count() == 1 {
-                    ty::TraitRef::new(tcx, did, [self_ty])
+                    ty::TraitRef::new(cx, did, [self_ty])
                 } else {
                     // If this is an ill-formed auto trait, then synthesize
                     // new error args for the missing generics.
-                    let err_args = GenericArgs::extend_with_error(tcx, did, &[self_ty.into()]);
-                    ty::TraitRef::new_from_args(tcx, did, err_args)
+                    let err_args = GenericArgs::extend_with_error(cx, did, &[self_ty.into()]);
+                    ty::TraitRef::new_from_args(cx, did, err_args)
                 };
-                self.rebind(trait_ref).upcast(tcx)
+                self.rebind(trait_ref).upcast(cx)
             }
         }
     }
@@ -345,8 +343,8 @@ impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self type. A common choice is `mk_err()`
     /// or some placeholder type.
-    pub fn with_self_ty(&self, tcx: I, self_ty: I::Ty) -> ty::Binder<I, TraitRef<I>> {
-        self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
+    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> ty::Binder<I, TraitRef<I>> {
+        self.map_bound(|trait_ref| trait_ref.with_self_ty(cx, self_ty))
     }
 }
 
@@ -406,8 +404,8 @@ impl<I: Interner> ExistentialProjection<I> {
 }
 
 impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
-    pub fn with_self_ty(&self, tcx: I, self_ty: I::Ty) -> ty::Binder<I, ProjectionPredicate<I>> {
-        self.map_bound(|p| p.with_self_ty(tcx, self_ty))
+    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> ty::Binder<I, ProjectionPredicate<I>> {
+        self.map_bound(|p| p.with_self_ty(cx, self_ty))
     }
 
     pub fn item_def_id(&self) -> I::DefId {
@@ -669,21 +667,21 @@ impl<I: Interner> ProjectionPredicate<I> {
 impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
     /// Returns the `DefId` of the trait of the associated item being projected.
     #[inline]
-    pub fn trait_def_id(&self, tcx: I) -> I::DefId {
-        self.skip_binder().projection_term.trait_def_id(tcx)
+    pub fn trait_def_id(&self, cx: I) -> I::DefId {
+        self.skip_binder().projection_term.trait_def_id(cx)
     }
 
     /// Get the trait ref required for this projection to be well formed.
     /// Note that for generic associated types the predicates of the associated
     /// type also need to be checked.
     #[inline]
-    pub fn required_poly_trait_ref(&self, tcx: I) -> ty::Binder<I, TraitRef<I>> {
+    pub fn required_poly_trait_ref(&self, cx: I) -> ty::Binder<I, TraitRef<I>> {
         // Note: unlike with `TraitRef::to_poly_trait_ref()`,
         // `self.0.trait_ref` is permitted to have escaping regions.
         // This is because here `self` has a `Binder` and so does our
         // return value, so we are preserving the number of binding
         // levels.
-        self.map_bound(|predicate| predicate.projection_term.trait_ref(tcx))
+        self.map_bound(|predicate| predicate.projection_term.trait_ref(cx))
     }
 
     pub fn term(&self) -> ty::Binder<I, I::Term> {

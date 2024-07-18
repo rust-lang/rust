@@ -345,20 +345,20 @@ impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, 
 // `rustc_middle/src/ty/generic_args.rs` for more details.
 
 struct Shifter<I: Interner> {
-    tcx: I,
+    cx: I,
     current_index: ty::DebruijnIndex,
     amount: u32,
 }
 
 impl<I: Interner> Shifter<I> {
-    pub fn new(tcx: I, amount: u32) -> Self {
-        Shifter { tcx, current_index: ty::INNERMOST, amount }
+    pub fn new(cx: I, amount: u32) -> Self {
+        Shifter { cx, current_index: ty::INNERMOST, amount }
     }
 }
 
 impl<I: Interner> TypeFolder<I> for Shifter<I> {
     fn cx(&self) -> I {
-        self.tcx
+        self.cx
     }
 
     fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
@@ -372,7 +372,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         match r.kind() {
             ty::ReBound(debruijn, br) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                Region::new_bound(self.tcx, debruijn, br)
+                Region::new_bound(self.cx, debruijn, br)
             }
             _ => r,
         }
@@ -382,7 +382,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         match ty.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                Ty::new_bound(self.tcx, debruijn, bound_ty)
+                Ty::new_bound(self.cx, debruijn, bound_ty)
             }
 
             _ if ty.has_vars_bound_at_or_above(self.current_index) => ty.super_fold_with(self),
@@ -394,7 +394,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         match ct.kind() {
             ty::ConstKind::Bound(debruijn, bound_ct) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                Const::new_bound(self.tcx, debruijn, bound_ct)
+                Const::new_bound(self.cx, debruijn, bound_ct)
             }
             _ => ct.super_fold_with(self),
         }
@@ -405,16 +405,16 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
     }
 }
 
-pub fn shift_region<I: Interner>(tcx: I, region: I::Region, amount: u32) -> I::Region {
+pub fn shift_region<I: Interner>(cx: I, region: I::Region, amount: u32) -> I::Region {
     match region.kind() {
         ty::ReBound(debruijn, br) if amount > 0 => {
-            Region::new_bound(tcx, debruijn.shifted_in(amount), br)
+            Region::new_bound(cx, debruijn.shifted_in(amount), br)
         }
         _ => region,
     }
 }
 
-pub fn shift_vars<I: Interner, T>(tcx: I, value: T, amount: u32) -> T
+pub fn shift_vars<I: Interner, T>(cx: I, value: T, amount: u32) -> T
 where
     T: TypeFoldable<I>,
 {
@@ -424,5 +424,5 @@ where
         return value;
     }
 
-    value.fold_with(&mut Shifter::new(tcx, amount))
+    value.fold_with(&mut Shifter::new(cx, amount))
 }

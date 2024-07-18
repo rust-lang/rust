@@ -2240,11 +2240,11 @@ impl<'a> Parser<'a> {
                     }
                     _ => {
                         // Otherwise, try to get a type and emit a suggestion.
-                        if let Some(ty) = pat.to_ty() {
+                        if let Some(_) = pat.to_ty() {
                             err.span_suggestion_verbose(
-                                pat.span,
+                                pat.span.shrink_to_lo(),
                                 "explicitly ignore the parameter name",
-                                format!("_: {}", pprust::ty_to_string(&ty)),
+                                "_: ".to_string(),
                                 Applicability::MachineApplicable,
                             );
                             err.note(rfc_note);
@@ -2256,7 +2256,7 @@ impl<'a> Parser<'a> {
 
             // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
             if first_param {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     self_span,
                     "if this is a `self` type, give it a parameter name",
                     self_sugg,
@@ -2266,14 +2266,14 @@ impl<'a> Parser<'a> {
             // Avoid suggesting that `fn foo(HashMap<u32>)` is fixed with a change to
             // `fn foo(HashMap: TypeName<u32>)`.
             if self.token != token::Lt {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     param_span,
                     "if this is a parameter name, give it a type",
                     param_sugg,
                     Applicability::HasPlaceholders,
                 );
             }
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 type_span,
                 "if this is a type, explicitly ignore the parameter name",
                 type_sugg,
