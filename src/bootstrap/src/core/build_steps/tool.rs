@@ -872,6 +872,9 @@ impl Step for LlvmBitcodeLinker {
         let tool_out = builder
             .cargo_out(self.compiler, Mode::ToolRustc, self.target)
             .join(exe(bin_name, self.compiler.host));
+        if !builder.config.dry_run() {
+            panic!("foo");
+        }
 
         if self.compiler.stage > 0 {
             let bindir_self_contained = builder
