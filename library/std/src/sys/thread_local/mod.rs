@@ -31,12 +31,15 @@ cfg_if::cfg_if! {
     ))] {
         mod statik;
         pub use statik::{EagerStorage, LazyStorage, thread_local_inner};
+        pub(crate) use statik::{LocalPointer, local_pointer};
     } else if #[cfg(target_thread_local)] {
         mod native;
         pub use native::{EagerStorage, LazyStorage, thread_local_inner};
+        pub(crate) use native::{LocalPointer, local_pointer};
     } else {
         mod os;
         pub use os::{Storage, thread_local_inner};
+        pub(crate) use os::{LocalPointer, local_pointer};
     }
 }
 
@@ -72,36 +75,47 @@ pub(crate) mod destructors {
 }
 
 /// This module provides a way to schedule the execution of the destructor list
-/// on systems without a per-variable destructor system.
-mod guard {
+/// and the [runtime cleanup](crate::rt::thread_cleanup) function. Calling `enable`
+/// should ensure that these functions are called at the right times.
+pub(crate) mod guard {
     cfg_if::cfg_if! {
         if #[cfg(all(target_thread_local, target_vendor = "apple"))] {
             mod apple;
-            pub(super) use apple::enable;
+            pub(crate) use apple::enable;
         } else if #[cfg(target_os = "windows")] {
             mod windows;
-            pub(super) use windows::enable;
+            pub(crate) use windows::enable;
         } else if #[cfg(any(
-            all(target_family = "wasm", target_feature = "atomics"),
+            target_family = "wasm",
+            target_os = "uefi",
+            target_os = "zkvm",
         ))] {
-            pub(super) fn enable() {
-                // FIXME: Right now there is no concept of "thread exit", but
-                // this is likely going to show up at some point in the form of
-                // an exported symbol that the wasm runtime is going to be
-                // expected to call. For now we just leak everything, but if
-                // such a function starts to exist it will probably need to
-                // iterate the destructor list with this function:
+            pub(crate) fn enable() {
+                // FIXME: Right now there is no concept of "thread exit" on
+                // wasm, but this is likely going to show up at some point in
+                // the form of an exported symbol that the wasm runtime is going
+                // to be expected to call. For now we just leak everything, but
+                // if such a function starts to exist it will probably need to
+                // iterate the destructor list with these functions:
+                #[cfg(all(target_family = "wasm", target_feature = "atomics"))]
                 #[allow(unused)]
                 use super::destructors::run;
+                #[allow(unused)]
+                use crate::rt::thread_cleanup;
             }
-        } else if #[cfg(target_os = "hermit")] {
-            pub(super) fn enable() {}
+        } else if #[cfg(any(
+            target_os = "hermit",
+            target_os = "xous",
+        ))] {
+            // `std` is the only runtime, so it just calls the destructor functions
+            // itself when the time comes.
+            pub(crate) fn enable() {}
         } else if #[cfg(target_os = "solid_asp3")] {
             mod solid;
-            pub(super) use solid::enable;
-        } else if #[cfg(all(target_thread_local, not(target_family = "wasm")))] {
+            pub(crate) use solid::enable;
+        } else {
             mod key;
-            pub(super) use key::enable;
+            pub(crate) use key::enable;
         }
     }
 }

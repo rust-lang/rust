@@ -1,8 +1,8 @@
-use super::abort_on_dtor_unwind;
+use super::key::{Key, LazyKey, get, set};
+use super::{abort_on_dtor_unwind, guard};
 use crate::cell::Cell;
 use crate::marker::PhantomData;
 use crate::ptr;
-use crate::sys::thread_local::key::{Key, LazyKey, get, set};
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -138,5 +138,35 @@ unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
         drop(ptr);
         // SAFETY: `key` is the TLS key `ptr` was stored under.
         unsafe { set(key, ptr::null_mut()) };
+        // Make sure that the runtime cleanup will be performed
+        // after the next round of TLS destruction.
+        guard::enable();
     });
+}
+
+#[rustc_macro_transparency = "semitransparent"]
+pub(crate) macro local_pointer {
+    () => {},
+    ($vis:vis static $name:ident; $($rest:tt)*) => {
+        $vis static $name: $crate::sys::thread_local::LocalPointer = $crate::sys::thread_local::LocalPointer::__new();
+        $crate::sys::thread_local::local_pointer! { $($rest)* }
+    },
+}
+
+pub(crate) struct LocalPointer {
+    key: LazyKey,
+}
+
+impl LocalPointer {
+    pub const fn __new() -> LocalPointer {
+        LocalPointer { key: LazyKey::new(None) }
+    }
+
+    pub fn get(&'static self) -> *mut () {
+        unsafe { get(self.key.force()) as *mut () }
+    }
+
+    pub fn set(&'static self, p: *mut ()) {
+        unsafe { set(self.key.force(), p as *mut u8) }
+    }
 }

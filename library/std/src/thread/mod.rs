@@ -141,7 +141,7 @@
 //! [`Result`]: crate::result::Result
 //! [`Ok`]: crate::result::Result::Ok
 //! [`Err`]: crate::result::Result::Err
-//! [`thread::current`]: current
+//! [`thread::current`]: current::current
 //! [`thread::Result`]: Result
 //! [`unpark`]: Thread::unpark
 //! [`thread::park_timeout`]: park_timeout
@@ -159,7 +159,7 @@
 mod tests;
 
 use crate::any::Any;
-use crate::cell::{Cell, OnceCell, UnsafeCell};
+use crate::cell::UnsafeCell;
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
 use crate::mem::{self, ManuallyDrop, forget};
@@ -178,6 +178,12 @@ mod scoped;
 
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 pub use scoped::{Scope, ScopedJoinHandle, scope};
+
+mod current;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use current::current;
+pub(crate) use current::{current_id, drop_current, set_current, try_current};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
@@ -471,7 +477,11 @@ impl Builder {
             amt
         });
 
-        let my_thread = name.map_or_else(Thread::new_unnamed, Thread::new);
+        let id = ThreadId::new();
+        let my_thread = match name {
+            Some(name) => Thread::new(id, name.into()),
+            None => Thread::new_unnamed(id),
+        };
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -509,6 +519,9 @@ impl Builder {
 
         let f = MaybeDangling::new(f);
         let main = move || {
+            // Immediately store the thread handle to avoid setting it or its ID
+            // twice, which would cause an abort.
+            set_current(their_thread.clone());
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
@@ -516,7 +529,6 @@ impl Builder {
             crate::io::set_output_capture(output_capture);
 
             let f = f.into_inner();
-            set_current(their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys::backtrace::__rust_begin_short_backtrace(f)
             }));
@@ -688,84 +700,6 @@ where
     T: Send + 'static,
 {
     Builder::new().spawn(f).expect("failed to spawn thread")
-}
-
-thread_local! {
-    // Invariant: `CURRENT` and `CURRENT_ID` will always be initialized together.
-    // If `CURRENT` is initialized, then `CURRENT_ID` will hold the same value
-    // as `CURRENT.id()`.
-    static CURRENT: OnceCell<Thread> = const { OnceCell::new() };
-    static CURRENT_ID: Cell<Option<ThreadId>> = const { Cell::new(None) };
-}
-
-/// Sets the thread handle for the current thread.
-///
-/// Aborts if the handle has been set already to reduce code size.
-pub(crate) fn set_current(thread: Thread) {
-    let tid = thread.id();
-    // Using `unwrap` here can add ~3kB to the binary size. We have complete
-    // control over where this is called, so just abort if there is a bug.
-    CURRENT.with(|current| match current.set(thread) {
-        Ok(()) => CURRENT_ID.set(Some(tid)),
-        Err(_) => rtabort!("thread::set_current should only be called once per thread"),
-    });
-}
-
-/// Gets a handle to the thread that invokes it.
-///
-/// In contrast to the public `current` function, this will not panic if called
-/// from inside a TLS destructor.
-pub(crate) fn try_current() -> Option<Thread> {
-    CURRENT
-        .try_with(|current| {
-            current
-                .get_or_init(|| {
-                    let thread = Thread::new_unnamed();
-                    CURRENT_ID.set(Some(thread.id()));
-                    thread
-                })
-                .clone()
-        })
-        .ok()
-}
-
-/// Gets the id of the thread that invokes it.
-#[inline]
-pub(crate) fn current_id() -> ThreadId {
-    CURRENT_ID.get().unwrap_or_else(|| {
-        // If `CURRENT_ID` isn't initialized yet, then `CURRENT` must also not be initialized.
-        // `current()` will initialize both `CURRENT` and `CURRENT_ID` so subsequent calls to
-        // `current_id()` will succeed immediately.
-        current().id()
-    })
-}
-
-/// Gets a handle to the thread that invokes it.
-///
-/// # Examples
-///
-/// Getting a handle to the current thread with `thread::current()`:
-///
-/// ```
-/// use std::thread;
-///
-/// let handler = thread::Builder::new()
-///     .name("named thread".into())
-///     .spawn(|| {
-///         let handle = thread::current();
-///         assert_eq!(handle.name(), Some("named thread"));
-///     })
-///     .unwrap();
-///
-/// handler.join().unwrap();
-/// ```
-#[must_use]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub fn current() -> Thread {
-    try_current().expect(
-        "use of std::thread::current() is not possible \
-         after the thread's local data has been destroyed",
-    )
 }
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
@@ -1225,8 +1159,11 @@ pub fn park_timeout(dur: Duration) {
 pub struct ThreadId(NonZero<u64>);
 
 impl ThreadId {
+    // DO NOT rely on this value.
+    const MAIN_THREAD: ThreadId = ThreadId(unsafe { NonZero::new_unchecked(1) });
+
     // Generate a new unique thread ID.
-    fn new() -> ThreadId {
+    pub(crate) fn new() -> ThreadId {
         #[cold]
         fn exhausted() -> ! {
             panic!("failed to generate unique thread ID: bitspace exhausted")
@@ -1236,7 +1173,7 @@ impl ThreadId {
             if #[cfg(target_has_atomic = "64")] {
                 use crate::sync::atomic::AtomicU64;
 
-                static COUNTER: AtomicU64 = AtomicU64::new(0);
+                static COUNTER: AtomicU64 = AtomicU64::new(1);
 
                 let mut last = COUNTER.load(Ordering::Relaxed);
                 loop {
@@ -1252,7 +1189,7 @@ impl ThreadId {
             } else {
                 use crate::sync::{Mutex, PoisonError};
 
-                static COUNTER: Mutex<u64> = Mutex::new(0);
+                static COUNTER: Mutex<u64> = Mutex::new(1);
 
                 let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
                 let Some(id) = counter.checked_add(1) else {
@@ -1267,6 +1204,11 @@ impl ThreadId {
                 ThreadId(NonZero::new(id).unwrap())
             }
         }
+    }
+
+    #[cfg(not(target_thread_local))]
+    fn from_u64(v: u64) -> Option<ThreadId> {
+        NonZero::new(v).map(ThreadId)
     }
 
     /// This returns a numeric identifier for the thread identified by this
@@ -1369,27 +1311,27 @@ impl Inner {
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
-/// [`thread::current`]: current
+/// [`thread::current`]: current::current
 pub struct Thread {
     inner: Pin<Arc<Inner>>,
 }
 
 impl Thread {
     /// Used only internally to construct a thread object without spawning.
-    pub(crate) fn new(name: String) -> Thread {
-        Self::new_inner(ThreadName::Other(name.into()))
+    pub(crate) fn new(id: ThreadId, name: String) -> Thread {
+        Self::new_inner(id, ThreadName::Other(name.into()))
     }
 
-    pub(crate) fn new_unnamed() -> Thread {
-        Self::new_inner(ThreadName::Unnamed)
+    pub(crate) fn new_unnamed(id: ThreadId) -> Thread {
+        Self::new_inner(id, ThreadName::Unnamed)
     }
 
     // Used in runtime to construct main thread
     pub(crate) fn new_main() -> Thread {
-        Self::new_inner(ThreadName::Main)
+        Self::new_inner(ThreadId::MAIN_THREAD, ThreadName::Main)
     }
 
-    fn new_inner(name: ThreadName) -> Thread {
+    fn new_inner(id: ThreadId, name: ThreadName) -> Thread {
         // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
@@ -1399,7 +1341,7 @@ impl Thread {
             let mut arc = Arc::<Inner>::new_uninit();
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             (&raw mut (*ptr).name).write(name);
-            (&raw mut (*ptr).id).write(ThreadId::new());
+            (&raw mut (*ptr).id).write(id);
             Parker::new_in_place(&raw mut (*ptr).parker);
             Pin::new_unchecked(arc.assume_init())
         };
