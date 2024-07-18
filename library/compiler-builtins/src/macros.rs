@@ -449,14 +449,14 @@ macro_rules! intrinsics {
     // input we were given.
     (
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+        pub $(unsafe $(@ $empty:tt)?)? extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
         $($rest:tt)*
     ) => (
         $(#[$($attr)*])*
-        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+        pub $(unsafe $($empty)?)? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             $($body)*
         }
 
@@ -465,34 +465,7 @@ macro_rules! intrinsics {
             $(#[$($attr)*])*
             #[no_mangle]
             #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
-            extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                super::$name($($argname),*)
-            }
-        }
-
-        intrinsics!($($rest)*);
-    );
-
-    // Same as the above for unsafe functions.
-    (
-        $(#[$($attr:tt)*])*
-        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
-            $($body:tt)*
-        }
-
-        $($rest:tt)*
-    ) => (
-        $(#[$($attr)*])*
-        pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-            $($body)*
-        }
-
-        #[cfg(not(feature = "mangled-names"))]
-        mod $name {
-            $(#[$($attr)*])*
-            #[no_mangle]
-            #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
-            unsafe fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            $(unsafe $($empty)?)? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
