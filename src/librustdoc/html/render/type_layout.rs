@@ -1,4 +1,4 @@
-use askama::Template;
+use rinja::Template;
 
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;

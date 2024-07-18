@@ -6,7 +6,7 @@ use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
 
-use askama::Template;
+use rinja::Template;
 
 use super::static_files::{StaticFiles, STATIC_FILES};
 

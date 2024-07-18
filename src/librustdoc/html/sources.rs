@@ -8,7 +8,7 @@ use crate::html::layout;
 use crate::html::render::Context;
 use crate::visit::DocVisitor;
 
-use askama::Template;
+use rinja::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;

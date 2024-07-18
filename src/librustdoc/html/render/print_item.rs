@@ -36,10 +36,10 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
-use askama::Template;
 use itertools::Itertools;
+use rinja::Template;
 
-/// Generates an Askama template struct for rendering items with common methods.
+/// Generates a Rinja template struct for rendering items with common methods.
 ///
 /// Usage:
 /// ```ignore (illustrative)
@@ -309,7 +309,7 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
+trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + fmt::Display {
     fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
 }
 
