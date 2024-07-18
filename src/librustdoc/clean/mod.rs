@@ -36,10 +36,10 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::{codes::*, struct_span_code_err, FatalError};
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
-use rustc_hir::{self as hir, ConstArgKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -289,10 +289,12 @@ pub(crate) fn clean_const<'tcx>(
     _cx: &mut DocContext<'tcx>,
 ) -> Constant {
     match &constant.kind {
-        ConstArgKind::Path(qpath) => {
+        hir::ConstArgKind::Path(qpath) => {
             Constant { kind: ConstantKind::Path { path: qpath_to_string(&qpath).into() } }
         }
-        ConstArgKind::Anon(anon) => Constant { kind: ConstantKind::Anonymous { body: anon.body } },
+        hir::ConstArgKind::Anon(anon) => {
+            Constant { kind: ConstantKind::Anonymous { body: anon.body } }
+        }
     }
 }
 
