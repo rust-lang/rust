@@ -87,9 +87,9 @@ where
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
-            // We currently elaborate all supertrait obligations from impls. This
-            // can be removed when we actually do coinduction correctly and just
-            // register that the impl header must be WF.
+            // We currently elaborate all supertrait outlives obligations from impls.
+            // This can be removed when we actually do coinduction correctly, and prove
+            // all supertrait obligations unconditionally.
             let goal_clause: I::Clause = goal.predicate.upcast(cx);
             for clause in elaborate::elaborate(cx, [goal_clause]) {
                 if matches!(

@@ -2800,6 +2800,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             });
         }
 
+        // Register any outlives obligations from the trait here, cc #124336.
         if matches!(self.tcx().def_kind(def_id), DefKind::Impl { of_trait: true })
             && let Some(header) = self.tcx().impl_trait_header(def_id)
         {
