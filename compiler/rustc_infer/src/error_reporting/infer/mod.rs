@@ -1934,10 +1934,6 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn tag(&self) -> &'static str {
-        "SameTypeModuloInfer"
-    }
-
     fn relate_with_variance<T: relate::Relate<TyCtxt<'tcx>>>(
         &mut self,
         _variance: ty::Variance,
