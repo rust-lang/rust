@@ -2074,7 +2074,9 @@ pub enum InvalidAsmLabel {
         missing_precise_span: bool,
     },
     #[diag(lint_invalid_asm_label_binary)]
-    #[note]
+    #[help]
+    #[note(lint_note1)]
+    #[note(lint_note2)]
     Binary {
         #[note(lint_invalid_asm_label_no_span)]
         missing_precise_span: bool,
