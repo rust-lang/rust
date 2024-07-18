@@ -23,13 +23,8 @@ run-make/emit-to-stdout/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
-run-make/extern-fn-explicit-align/Makefile
 run-make/extern-fn-generic/Makefile
-run-make/extern-fn-mangle/Makefile
 run-make/extern-fn-reachable/Makefile
-run-make/extern-fn-struct-passing-abi/Makefile
-run-make/extern-fn-with-extern-types/Makefile
-run-make/extern-fn-with-packed-struct/Makefile
 run-make/extern-fn-with-union/Makefile
 run-make/extern-multiple-copies/Makefile
 run-make/extern-multiple-copies2/Makefile
@@ -44,7 +39,6 @@ run-make/issue-107094/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
 run-make/issue-22131/Makefile
-run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
 run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
@@ -67,7 +61,6 @@ run-make/link-path-order/Makefile
 run-make/linkage-attr-on-static/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
-run-make/longjmp-across-rust/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
 run-make/lto-smoke-c/Makefile
@@ -111,7 +104,6 @@ run-make/simd-ffi/Makefile
 run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
 run-make/static-dylib-by-default/Makefile
-run-make/static-extern-type/Makefile
 run-make/staticlib-blank-lib/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/symbol-mangling-hashed/Makefile
