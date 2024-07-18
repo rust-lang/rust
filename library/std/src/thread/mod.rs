@@ -1275,7 +1275,9 @@ enum ThreadName {
 
 // This module ensures private fields are kept private, which is necessary to enforce the safety requirements.
 mod thread_name_string {
+    use super::ThreadName;
     use crate::ffi::{CStr, CString};
+    use core::str;
 
     /// Like a `String` it's guaranteed UTF-8 and like a `CString` it's null terminated.
     pub(crate) struct ThreadNameString {
@@ -1292,6 +1294,21 @@ mod thread_name_string {
             Self {
                 inner: CString::new(s).expect("thread name may not contain interior null bytes"),
             }
+        }
+    }
+    impl ThreadName {
+        pub fn as_cstr(&self) -> Option<&CStr> {
+            match self {
+                ThreadName::Main => Some(c"main"),
+                ThreadName::Other(other) => Some(other),
+                ThreadName::Unnamed => None,
+            }
+        }
+
+        pub fn as_str(&self) -> Option<&str> {
+            // SAFETY: `as_cstr` can only return `Some` for a fixed CStr or a `ThreadNameString`,
+            // which is guaranteed to be UTF-8.
+            self.as_cstr().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
         }
     }
 }
@@ -1472,15 +1489,11 @@ impl Thread {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn name(&self) -> Option<&str> {
-        self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
+        self.inner.name.as_str()
     }
 
     fn cname(&self) -> Option<&CStr> {
-        match &self.inner.name {
-            ThreadName::Main => Some(c"main"),
-            ThreadName::Other(other) => Some(&other),
-            ThreadName::Unnamed => None,
-        }
+        self.inner.name.as_cstr()
     }
 }
 
