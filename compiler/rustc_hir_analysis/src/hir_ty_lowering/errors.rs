@@ -1338,11 +1338,13 @@ pub fn prohibit_assoc_item_constraint(
                                 format!("<{lifetimes}{type_with_constraints}>"),
                             )
                         };
-                        let suggestions =
-                            vec![param_decl, (constraint.span, format!("{}", matching_param.name))];
+                        let suggestions = vec![
+                            param_decl,
+                            (constraint.span.with_lo(constraint.ident.span.hi()), String::new()),
+                        ];
 
                         err.multipart_suggestion_verbose(
-                            format!("declare the type parameter right after the `impl` keyword"),
+                            "declare the type parameter right after the `impl` keyword",
                             suggestions,
                             Applicability::MaybeIncorrect,
                         );
