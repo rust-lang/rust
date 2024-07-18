@@ -16,10 +16,8 @@ fn main() {
 
     // on arrays
     let a = [f(); 0];
-    let a = [f(); N];
     let mut b;
     b = [f(); 0];
-    b = [f(); N];
 
     // on vecs
     // vecs dont support infering value of consts
@@ -39,9 +37,11 @@ fn main() {
     // when singled out/not part of assignment/local
     vec![f(); 0];
     [f(); 0];
-    [f(); N];
 
     // should not trigger
+    let a = [f(); N];
+    b = [f(); N];
+    [f(); N];
 
     // on arrays with > 0 repeat
     let a = [f(); 1];

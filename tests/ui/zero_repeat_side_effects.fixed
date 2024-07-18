@@ -16,9 +16,7 @@ fn main() {
 
     // on arrays
     f(); let a: [i32; 0] = [];
-    f(); let a: [i32; 0] = [];
     let mut b;
-    f(); b = [] as [i32; 0];
     f(); b = [] as [i32; 0];
 
     // on vecs
@@ -39,9 +37,11 @@ fn main() {
     // when singled out/not part of assignment/local
     { f(); vec![] as std::vec::Vec<i32> };
     { f(); [] as [i32; 0] };
-    { f(); [] as [i32; 0] };
 
     // should not trigger
+    let a = [f(); N];
+    b = [f(); N];
+    [f(); N];
 
     // on arrays with > 0 repeat
     let a = [f(); 1];
