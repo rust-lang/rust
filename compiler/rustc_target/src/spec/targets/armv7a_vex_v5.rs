@@ -4,7 +4,7 @@ const LINK_SCRIPT: &str = include_str!("./armv7a_vex_v5_linker_script.ld");
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv7a-none-eabi".into(),
+        llvm_target: "armv7a-none-eabihf".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,
