@@ -200,4 +200,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`llvm.lld` is enabled by default for the dist profile. If set to false, `lld` will not be included in the dist build.",
     },
+    ChangeInfo {
+        change_id: 127913,
+        severity: ChangeSeverity::Warning,
+        summary: "`debug-logging` option has been removed from the default `tools` profile.",
+    },
 ];
