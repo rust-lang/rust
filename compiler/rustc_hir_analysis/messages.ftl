@@ -382,6 +382,10 @@ hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is no
 hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
     .label = `Self` is not a generic argument, but an alias to the type of the {$what}
 
+hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is only used recursively
+    .label = {$param_def_kind} must be used non-recursively in the definition
+    .note = all type parameters must be used in a non-recursive way in order to constrain their variance
+
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
@@ -549,6 +553,8 @@ hir_analysis_unused_generic_parameter =
     {$param_def_kind} `{$param_name}` is never used
     .label = unused {$param_def_kind}
     .const_param_help = if you intended `{$param_name}` to be a const parameter, use `const {$param_name}: /* Type */` instead
+    .usage_spans = `{$param_name}` is named here, but is likely unused in the containing type
+
 hir_analysis_unused_generic_parameter_adt_help =
     consider removing `{$param_name}`, referring to it in a field, or using a marker such as `{$phantom_data}`
 hir_analysis_unused_generic_parameter_adt_no_phantom_data_help =

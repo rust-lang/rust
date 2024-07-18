@@ -4,12 +4,12 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 use crate::errors;
 use crate::fluent_generated as fluent;
 
-use hir::intravisit::Visitor;
+use hir::intravisit::{self, Visitor};
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
@@ -1799,7 +1799,7 @@ fn receiver_is_implemented<'tcx>(
 
 fn check_variances_for_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &hir::Item<'tcx>,
+    item: &'tcx hir::Item<'tcx>,
     hir_generics: &hir::Generics<'tcx>,
 ) {
     let identity_args = ty::GenericArgs::identity_for_item(tcx, item.owner_id);
@@ -1886,21 +1886,21 @@ fn check_variances_for_type_defn<'tcx>(
             hir::ParamName::Error => {}
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
-                report_bivariance(tcx, hir_param, has_explicit_bounds, item.kind);
+                report_bivariance(tcx, hir_param, has_explicit_bounds, item);
             }
         }
     }
 }
 
-fn report_bivariance(
-    tcx: TyCtxt<'_>,
-    param: &rustc_hir::GenericParam<'_>,
+fn report_bivariance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param: &'tcx hir::GenericParam<'tcx>,
     has_explicit_bounds: bool,
-    item_kind: ItemKind<'_>,
+    item: &'tcx hir::Item<'tcx>,
 ) -> ErrorGuaranteed {
     let param_name = param.name.ident();
 
-    let help = match item_kind {
+    let help = match item.kind {
         ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
             if let Some(def_id) = tcx.lang_items().phantom_data() {
                 errors::UnusedGenericParameterHelp::Adt {
@@ -1915,6 +1915,49 @@ fn report_bivariance(
         item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
     };
 
+    let mut usage_spans = vec![];
+    intravisit::walk_item(
+        &mut CollectUsageSpans { spans: &mut usage_spans, param_def_id: param.def_id.to_def_id() },
+        item,
+    );
+
+    if !usage_spans.is_empty() {
+        // First, check if the ADT is (probably) cyclical. We say probably here, since
+        // we're not actually looking into substitutions, just walking through fields.
+        // And we only recurse into the fields of ADTs, and not the hidden types of
+        // opaques or anything else fancy.
+        let item_def_id = item.owner_id.to_def_id();
+        let is_probably_cyclical = if matches!(
+            tcx.def_kind(item_def_id),
+            DefKind::Struct | DefKind::Union | DefKind::Enum
+        ) {
+            IsProbablyCyclical { tcx, adt_def_id: item_def_id, seen: Default::default() }
+                .visit_all_fields(tcx.adt_def(item_def_id))
+                .is_break()
+        } else {
+            false
+        };
+        // If the ADT is cyclical, then if at least one usage of the type parameter or
+        // the `Self` alias is present in the, then it's probably a cyclical struct, and
+        // we should call those parameter usages recursive rather than just saying they're
+        // unused...
+        //
+        // We currently report *all* of the parameter usages, since computing the exact
+        // subset is very involved, and the fact we're mentioning recursion at all is
+        // likely to guide the user in the right direction.
+        if is_probably_cyclical {
+            let diag = tcx.dcx().create_err(errors::RecursiveGenericParameter {
+                spans: usage_spans,
+                param_span: param.span,
+                param_name,
+                param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
+                help,
+                note: (),
+            });
+            return diag.emit();
+        }
+    }
+
     let const_param_help =
         matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
             .then_some(());
@@ -1923,11 +1966,83 @@ fn report_bivariance(
         span: param.span,
         param_name,
         param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
+        usage_spans,
         help,
         const_param_help,
     });
     diag.code(E0392);
     diag.emit()
+}
+
+/// Detects cases where an ADT is trivially cyclical -- we want to detect this so
+/// /we only mention that its parameters are used cyclically if the ADT is truly
+/// cyclical.
+///
+/// Notably, we don't consider substitutions here, so this may have false positives.
+struct IsProbablyCyclical<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    adt_def_id: DefId,
+    seen: FxHashSet<DefId>,
+}
+
+impl<'tcx> IsProbablyCyclical<'tcx> {
+    fn visit_all_fields(&mut self, adt_def: ty::AdtDef<'tcx>) -> ControlFlow<(), ()> {
+        for field in adt_def.all_fields() {
+            self.tcx.type_of(field.did).instantiate_identity().visit_with(self)?;
+        }
+
+        ControlFlow::Continue(())
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
+    type Result = ControlFlow<(), ()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<(), ()> {
+        if let Some(adt_def) = t.ty_adt_def() {
+            if adt_def.did() == self.adt_def_id {
+                return ControlFlow::Break(());
+            }
+
+            if self.seen.insert(adt_def.did()) {
+                self.visit_all_fields(adt_def)?;
+            }
+        }
+
+        t.super_visit_with(self)
+    }
+}
+
+/// Collect usages of the `param_def_id` and `Res::SelfTyAlias` in the HIR.
+///
+/// This is used to report places where the user has used parameters in a
+/// non-variance-constraining way for better bivariance errors.
+struct CollectUsageSpans<'a> {
+    spans: &'a mut Vec<Span>,
+    param_def_id: DefId,
+}
+
+impl<'tcx> Visitor<'tcx> for CollectUsageSpans<'_> {
+    type Result = ();
+
+    fn visit_generics(&mut self, _g: &'tcx rustc_hir::Generics<'tcx>) -> Self::Result {
+        // Skip the generics. We only care about fields, not where clause/param bounds.
+    }
+
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        if let hir::TyKind::Path(hir::QPath::Resolved(None, qpath)) = t.kind {
+            if let Res::Def(DefKind::TyParam, def_id) = qpath.res
+                && def_id == self.param_def_id
+            {
+                self.spans.push(t.span);
+                return;
+            } else if let Res::SelfTyAlias { .. } = qpath.res {
+                self.spans.push(t.span);
+                return;
+            }
+        }
+        intravisit::walk_ty(self, t);
+    }
 }
 
 impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
