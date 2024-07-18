@@ -28,13 +28,9 @@ fn main() {
     // Also cover range patterns
     match x {
         NAN..=1.0 => {}, //~ ERROR cannot use NaN in patterns
-        //~^ ERROR lower range bound must be less than or equal to upper
         -1.0..=NAN => {}, //~ ERROR cannot use NaN in patterns
-        //~^ ERROR lower range bound must be less than or equal to upper
         NAN.. => {}, //~ ERROR cannot use NaN in patterns
-        //~^ ERROR lower range bound must be less than or equal to upper
         ..NAN => {}, //~ ERROR cannot use NaN in patterns
-        //~^ ERROR lower range bound must be less than upper
         _ => {},
     };
 }

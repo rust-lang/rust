@@ -567,13 +567,6 @@ pub(crate) struct StaticInPattern {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_assoc_const_in_pattern, code = E0158)]
-pub(crate) struct AssocConstInPattern {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(mir_build_const_param_in_pattern, code = E0158)]
 pub(crate) struct ConstParamInPattern {
     #[primary_span]
@@ -597,7 +590,7 @@ pub(crate) struct UnreachablePattern {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_const_pattern_depends_on_generic_parameter)]
+#[diag(mir_build_const_pattern_depends_on_generic_parameter, code = E0158)]
 pub(crate) struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
     pub(crate) span: Span,

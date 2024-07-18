@@ -91,16 +91,6 @@ pub enum ForceCollect {
     No,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum TrailingToken {
-    None,
-    Semi,
-    Gt,
-    /// If the trailing token is a comma, then capture it
-    /// Otherwise, ignore the trailing token
-    MaybeComma,
-}
-
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
@@ -1508,7 +1498,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(
             AttrWrapper::empty(),
             ForceCollect::Yes,
-            |this, _attrs| Ok((f(this)?, TrailingToken::None)),
+            |this, _attrs| Ok((f(this)?, false)),
         )
     }
 

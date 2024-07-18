@@ -462,7 +462,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     // This is a box pattern.
                     ty::Adt(adt, ..) if adt.is_box() => Struct,
                     ty::Ref(..) => Ref,
-                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
+                    _ => span_bug!(
+                        pat.span,
+                        "pattern has unexpected type: pat: {:?}, ty: {:?}",
+                        pat.kind,
+                        ty.inner()
+                    ),
                 };
             }
             PatKind::DerefPattern { .. } => {
@@ -518,7 +523,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))
                             .collect();
                     }
-                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
+                    _ => span_bug!(
+                        pat.span,
+                        "pattern has unexpected type: pat: {:?}, ty: {}",
+                        pat.kind,
+                        ty.inner()
+                    ),
                 }
             }
             PatKind::Constant { value } => {
@@ -663,7 +673,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             }
                         }
                     }
-                    _ => bug!("invalid type for range pattern: {}", ty.inner()),
+                    _ => span_bug!(pat.span, "invalid type for range pattern: {}", ty.inner()),
                 };
                 fields = vec![];
                 arity = 0;
@@ -674,7 +684,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         Some(length.eval_target_usize(cx.tcx, cx.param_env) as usize)
                     }
                     ty::Slice(_) => None,
-                    _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", ty),
+                    _ => span_bug!(pat.span, "bad ty {} for slice pattern", ty.inner()),
                 };
                 let kind = if slice.is_some() {
                     SliceKind::VarLen(prefix.len(), suffix.len())

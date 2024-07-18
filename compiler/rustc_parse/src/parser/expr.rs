@@ -5,7 +5,7 @@ use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
-    SemiColonMode, SeqSep, TokenType, Trailing, TrailingToken,
+    SemiColonMode, SeqSep, TokenType, Trailing,
 };
 
 use crate::errors;
@@ -2474,7 +2474,7 @@ impl<'a> Parser<'a> {
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
-                TrailingToken::MaybeComma,
+                this.token == token::Comma,
             ))
         })
     }
@@ -3257,7 +3257,7 @@ impl<'a> Parser<'a> {
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
-                TrailingToken::None,
+                false,
             ))
         })
     }
@@ -3766,7 +3766,7 @@ impl<'a> Parser<'a> {
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
-                TrailingToken::MaybeComma,
+                this.token == token::Comma,
             ))
         })
     }
@@ -3862,18 +3862,12 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;
-            let trailing = if this.restrictions.contains(Restrictions::STMT_EXPR)
-                && this.token.kind == token::Semi
-            {
-                TrailingToken::Semi
-            } else if this.token.kind == token::Gt {
-                TrailingToken::Gt
-            } else {
-                // FIXME - pass this through from the place where we know
-                // we need a comma, rather than assuming that `#[attr] expr,`
-                // always captures a trailing comma
-                TrailingToken::MaybeComma
-            };
+            let trailing = (this.restrictions.contains(Restrictions::STMT_EXPR)
+                 && this.token.kind == token::Semi)
+            // FIXME: pass an additional condition through from the place
+            // where we know we need a comma, rather than assuming that
+            // `#[attr] expr,` always captures a trailing comma.
+            || this.token.kind == token::Comma;
             Ok((res, trailing))
         })
     }

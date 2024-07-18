@@ -3449,7 +3449,6 @@ ui/pattern/issue-6449.rs
 ui/pattern/issue-66270-pat-struct-parser-recovery.rs
 ui/pattern/issue-67037-pat-tup-scrut-ty-diff-less-fields.rs
 ui/pattern/issue-67776-match-same-name-enum-variant-refs.rs
-ui/pattern/issue-68393-let-pat-assoc-constant.rs
 ui/pattern/issue-72565.rs
 ui/pattern/issue-72574-1.rs
 ui/pattern/issue-72574-2.rs

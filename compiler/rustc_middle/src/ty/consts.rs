@@ -1,6 +1,7 @@
 use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::{ErrorHandled, LitToConstInput, Scalar};
 use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
+use either::Either;
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
 use rustc_hir as hir;
@@ -312,14 +313,16 @@ impl<'tcx> Const<'tcx> {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 
-    /// Returns the evaluated constant
+    /// Returns the evaluated constant as a valtree;
+    /// if that fails due to a valtree-incompatible type, indicate which type that is
+    /// by returning `Err(Left(bad_type))`.
     #[inline]
-    pub fn eval(
+    pub fn eval_valtree(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         span: Span,
-    ) -> Result<(Ty<'tcx>, ValTree<'tcx>), ErrorHandled> {
+    ) -> Result<(Ty<'tcx>, ValTree<'tcx>), Either<Ty<'tcx>, ErrorHandled>> {
         assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
         match self.kind() {
             ConstKind::Unevaluated(unevaluated) => {
@@ -328,25 +331,45 @@ impl<'tcx> Const<'tcx> {
                 let (param_env, unevaluated) = unevaluated.prepare_for_eval(tcx, param_env);
                 // try to resolve e.g. associated constants to their definition on an impl, and then
                 // evaluate the const.
-                let Some(c) = tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)?
-                else {
+                match tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span) {
+                    Ok(Ok(c)) => {
+                        Ok((tcx.type_of(unevaluated.def).instantiate(tcx, unevaluated.args), c))
+                    }
+                    Ok(Err(bad_ty)) => Err(Either::Left(bad_ty)),
+                    Err(err) => Err(Either::Right(err.into())),
+                }
+            }
+            ConstKind::Value(ty, val) => Ok((ty, val)),
+            ConstKind::Error(g) => Err(Either::Right(g.into())),
+            ConstKind::Param(_)
+            | ConstKind::Infer(_)
+            | ConstKind::Bound(_, _)
+            | ConstKind::Placeholder(_)
+            | ConstKind::Expr(_) => Err(Either::Right(ErrorHandled::TooGeneric(span))),
+        }
+    }
+
+    /// Returns the evaluated constant
+    #[inline]
+    pub fn eval(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        span: Span,
+    ) -> Result<(Ty<'tcx>, ValTree<'tcx>), ErrorHandled> {
+        self.eval_valtree(tcx, param_env, span).map_err(|err| {
+            match err {
+                Either::Right(err) => err,
+                Either::Left(_bad_ty) => {
                     // This can happen when we run on ill-typed code.
                     let e = tcx.dcx().span_delayed_bug(
                         span,
                         "`ty::Const::eval` called on a non-valtree-compatible type",
                     );
-                    return Err(e.into());
-                };
-                Ok((tcx.type_of(unevaluated.def).instantiate(tcx, unevaluated.args), c))
+                    e.into()
+                }
             }
-            ConstKind::Value(ty, val) => Ok((ty, val)),
-            ConstKind::Error(g) => Err(g.into()),
-            ConstKind::Param(_)
-            | ConstKind::Infer(_)
-            | ConstKind::Bound(_, _)
-            | ConstKind::Placeholder(_)
-            | ConstKind::Expr(_) => Err(ErrorHandled::TooGeneric(span)),
-        }
+        })
     }
 
     /// Normalizes the constant to a value or an error if possible.
