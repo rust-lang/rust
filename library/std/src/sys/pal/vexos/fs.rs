@@ -45,7 +45,7 @@ impl FileAttr {
     }
 
     pub fn perm(&self) -> FilePermissions {
-        todo!()
+        FilePermissions
     }
 
     pub fn file_type(&self) -> FileType {
@@ -149,6 +149,13 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+        let fs_status = unsafe { vex_sdk::vexFileMountSD() };
+        match fs_status {
+            vex_sdk::FRESULT::FR_OK => (),
+            //TODO: cover more results
+            _ => return Err(io::Error::new(io::ErrorKind::NotFound, "SD card cannot be written or read from")),
+        }
+
         let path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
             io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
         })?;
@@ -205,7 +212,7 @@ impl File {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        crate::io::default_read_vectored(|buf| self.read(buf), bufs)
+        crate::io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
@@ -217,12 +224,22 @@ impl File {
         crate::io::default_read_buf(|b| self.read(b), cursor)
     }
 
-    pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
-        todo!()
+    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        let len = buf.len();
+        let buf_ptr = buf.as_ptr();
+        let written = unsafe { vex_sdk::vexFileWrite(buf_ptr.cast_mut().cast(), 1, len as _, self.0.0) };
+        if written < 0 {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Could not write to file",
+            ))
+        } else {
+            Ok(written as usize)
+        }
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        crate::io::default_write_vectored(|buf| self.write(buf), bufs)
+        crate::io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     #[inline]
@@ -267,6 +284,11 @@ impl DirBuilder {
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("File").finish_non_exhaustive()
+    }
+}
+impl Drop for File {
+    fn drop(&mut self) {
+        unsafe { vex_sdk::vexFileClose(self.0.0) };
     }
 }
 
