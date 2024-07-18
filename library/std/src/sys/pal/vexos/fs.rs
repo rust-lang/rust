@@ -6,9 +6,9 @@ use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
-struct Fd(*mut vex_sdk::FIL);
+struct FileDesc(*mut vex_sdk::FIL);
 
-pub struct File(Fd);
+pub struct File(FileDesc);
 
 //TODO: We may be able to get some of this info
 #[derive(Clone)]
@@ -173,7 +173,7 @@ impl File {
         if file.is_null() {
             Err(io::Error::new(io::ErrorKind::NotFound, "Could not open file"))
         } else {
-            Ok(Self(Fd(file)))
+            Ok(Self(FileDesc(file)))
         }
     }
 
@@ -182,15 +182,15 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        todo!()
+        self.flush()
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        todo!()
+        self.flush()
     }
 
     pub fn truncate(&self, _size: u64) -> io::Result<()> {
-        todo!()
+        unsupported()
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -198,57 +198,59 @@ impl File {
         let buf_ptr = buf.as_mut_ptr();
         let read = unsafe { vex_sdk::vexFileRead(buf_ptr.cast(), 1, len, self.0.0) };
         if read < 0 {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Could not read from file",
-            ))
+            Err(io::Error::new(io::ErrorKind::Other, "Could not read from file"))
         } else {
             Ok(read as usize)
         }
     }
 
-    pub fn read_vectored(&self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        todo!()
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        crate::io::default_read_vectored(|buf| self.read(buf), bufs)
     }
 
+    #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        todo!()
+        false
     }
 
-    pub fn read_buf(&self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
-        todo!()
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|b| self.read(b), cursor)
     }
 
     pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
         todo!()
     }
 
-    pub fn write_vectored(&self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        todo!()
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        crate::io::default_write_vectored(|buf| self.write(buf), bufs)
     }
 
+    #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        todo!()
+        false
     }
 
     pub fn flush(&self) -> io::Result<()> {
-        todo!()
+        unsafe {
+            vex_sdk::vexFileSync(self.0.0);
+        }
+        Ok(())
     }
 
     pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
-        todo!()
+        todo!();
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        todo!()
+        unsupported!()
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
-        todo!()
+        unsupported()
     }
 
     pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
-        todo!()
+        unsupported()
     }
 }
 
