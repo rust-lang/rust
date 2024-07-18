@@ -1,0 +1,8 @@
+error: static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
+  --> $DIR/safe-outside-extern.rs:6:1
+   |
+LL | unsafe static LOL: u8 = 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

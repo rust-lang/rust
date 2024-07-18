@@ -1161,11 +1161,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
             }
-            ItemKind::Static(box StaticItem { expr: None, .. }) => {
-                self.dcx().emit_err(errors::StaticWithoutBody {
-                    span: item.span,
-                    replace_span: self.ending_semi_or_hi(item.span),
-                });
+            ItemKind::Static(box StaticItem { expr, safety, .. }) => {
+                if matches!(safety, Safety::Unsafe(_)) {
+                    self.dcx().emit_err(errors::UnsafeStatic { span: item.span });
+                }
+
+                if expr.is_none() {
+                    self.dcx().emit_err(errors::StaticWithoutBody {
+                        span: item.span,
+                        replace_span: self.ending_semi_or_hi(item.span),
+                    });
+                }
             }
             ItemKind::TyAlias(
                 ty_alias @ box TyAlias { defaultness, bounds, where_clauses, ty, .. },
