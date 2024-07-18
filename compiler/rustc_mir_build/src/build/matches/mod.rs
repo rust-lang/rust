@@ -1808,10 +1808,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.visit_leaves(|leaf_candidate| {
             last_otherwise = leaf_candidate.otherwise_block;
         });
+
         let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
+        // We're testing match pairs that remained after an `Or`, so the remaining
+        // pairs should all be `Or` too, due to the sorting invariant.
+        debug_assert!(
+            remaining_match_pairs
+                .iter()
+                .all(|match_pair| matches!(match_pair.test_case, TestCase::Or { .. }))
+        );
+
         candidate.visit_leaves(|leaf_candidate| {
+            // At this point the leaf's own match pairs have all been lowered
+            // and removed, so `extend` and assignment are equivalent,
+            // but extending can also recycle any existing vector capacity.
             assert!(leaf_candidate.match_pairs.is_empty());
             leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
+
             let or_start = leaf_candidate.pre_binding_block.unwrap();
             let otherwise =
                 self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
