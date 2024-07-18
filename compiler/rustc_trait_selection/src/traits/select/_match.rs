@@ -3,7 +3,7 @@ use rustc_infer::infer::relate::{
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// instantiated with values so as to make it equal to A. Matching is
@@ -32,10 +32,6 @@ impl<'tcx> MatchAgainstFreshVars<'tcx> {
 }
 
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
-    fn tag(&self) -> &'static str {
-        "MatchAgainstFreshVars"
-    }
-
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -50,7 +46,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
         self.relate(a, b)
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn regions(
         &mut self,
         a: ty::Region<'tcx>,
@@ -59,7 +55,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
         Ok(a)
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         if a == b {
             return Ok(a);
@@ -83,12 +79,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn consts(
         &mut self,
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
         if a == b {
             return Ok(a);
         }

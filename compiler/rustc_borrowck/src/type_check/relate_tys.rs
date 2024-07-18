@@ -313,10 +313,6 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
         self.type_checker.infcx.tcx
     }
 
-    fn tag(&self) -> &'static str {
-        "nll::subtype"
-    }
-
     #[instrument(skip(self, info), level = "trace", ret)]
     fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,

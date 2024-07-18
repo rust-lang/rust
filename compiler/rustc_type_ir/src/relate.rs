@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_ast_ir::Mutability;
-use tracing::{debug, instrument};
+use tracing::{instrument, trace};
 
 use crate::error::{ExpectedFound, TypeError};
 use crate::fold::TypeFoldable;
@@ -58,9 +58,6 @@ impl<I: Interner> VarianceDiagInfo<I> {
 pub trait TypeRelation<I: Interner>: Sized {
     fn cx(&self) -> I;
 
-    /// Returns a static string we can use for printouts.
-    fn tag(&self) -> &'static str;
-
     /// Generic relation routine suitable for most anything.
     fn relate<T: Relate<I>>(&mut self, a: T, b: T) -> RelateResult<I, T> {
         Relate::relate(self, a, b)
@@ -69,17 +66,13 @@ pub trait TypeRelation<I: Interner>: Sized {
     /// Relate the two args for the given item. The default
     /// is to look up the variance for the item and proceed
     /// accordingly.
+    #[instrument(skip(self), level = "trace")]
     fn relate_item_args(
         &mut self,
         item_def_id: I::DefId,
         a_arg: I::GenericArgs,
         b_arg: I::GenericArgs,
     ) -> RelateResult<I, I::GenericArgs> {
-        debug!(
-            "relate_item_args(item_def_id={:?}, a_arg={:?}, b_arg={:?})",
-            item_def_id, a_arg, b_arg
-        );
-
         let cx = self.cx();
         let opt_variances = cx.variances_of(item_def_id);
         relate_args_with_variances(self, item_def_id, opt_variances, a_arg, b_arg, true)
@@ -571,7 +564,12 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
     mut a: I::Const,
     mut b: I::Const,
 ) -> RelateResult<I, I::Const> {
-    debug!("{}.structurally_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
+    trace!(
+        "structurally_relate_consts::<{}>(a = {:?}, b = {:?})",
+        std::any::type_name::<R>(),
+        a,
+        b
+    );
     let cx = relation.cx();
 
     if cx.features().generic_const_exprs() {
@@ -579,7 +577,12 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         b = cx.expand_abstract_consts(b);
     }
 
-    debug!("{}.structurally_relate_consts(normed_a = {:?}, normed_b = {:?})", relation.tag(), a, b);
+    trace!(
+        "structurally_relate_consts::<{}>(normed_a = {:?}, normed_b = {:?})",
+        std::any::type_name::<R>(),
+        a,
+        b
+    );
 
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding

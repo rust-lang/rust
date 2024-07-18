@@ -28,10 +28,6 @@ impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
 }
 
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
-    fn tag(&self) -> &'static str {
-        "TypeRelating"
-    }
-
     fn cx(&self) -> TyCtxt<'tcx> {
         self.fields.infcx.tcx
     }
@@ -71,7 +67,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         r
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         if a == b {
             return Ok(a);
@@ -166,12 +162,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         Ok(a)
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn regions(
         &mut self,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
         let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
 
         match self.ambient_variance {
@@ -209,6 +205,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         Ok(a)
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn consts(
         &mut self,
         a: ty::Const<'tcx>,
