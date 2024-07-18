@@ -1706,6 +1706,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         self.merge_trivial_subcandidates(candidate);
+        self.remove_never_subcandidates(candidate);
 
         if !candidate.match_pairs.is_empty() {
             let or_span = candidate.or_span.unwrap_or(candidate.extra_data.span);
@@ -1753,44 +1754,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let can_merge = candidate.subcandidates.iter().all(|subcandidate| {
             subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty()
         });
-        if can_merge {
-            let mut last_otherwise = None;
-            let any_matches = self.cfg.start_new_block();
-            let or_span = candidate.or_span.take().unwrap();
-            let source_info = self.source_info(or_span);
-            if candidate.false_edge_start_block.is_none() {
-                candidate.false_edge_start_block =
-                    candidate.subcandidates[0].false_edge_start_block;
+        if !can_merge {
+            return;
+        }
+
+        let mut last_otherwise = None;
+        let any_matches = self.cfg.start_new_block();
+        let or_span = candidate.or_span.take().unwrap();
+        let source_info = self.source_info(or_span);
+
+        if candidate.false_edge_start_block.is_none() {
+            candidate.false_edge_start_block = candidate.subcandidates[0].false_edge_start_block;
+        }
+
+        for subcandidate in mem::take(&mut candidate.subcandidates) {
+            let or_block = subcandidate.pre_binding_block.unwrap();
+            self.cfg.goto(or_block, source_info, any_matches);
+            last_otherwise = subcandidate.otherwise_block;
+        }
+        candidate.pre_binding_block = Some(any_matches);
+        assert!(last_otherwise.is_some());
+        candidate.otherwise_block = last_otherwise;
+    }
+
+    /// Never subcandidates may have a set of bindings inconsistent with their siblings,
+    /// which would break later code. So we filter them out. Note that we can't filter out
+    /// top-level candidates this way.
+    fn remove_never_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
+        if candidate.subcandidates.is_empty() {
+            return;
+        }
+
+        candidate.subcandidates.retain_mut(|candidate| {
+            if candidate.extra_data.is_never {
+                candidate.visit_leaves(|subcandidate| {
+                    let block = subcandidate.pre_binding_block.unwrap();
+                    // That block is already unreachable but needs a terminator to make the MIR well-formed.
+                    let source_info = self.source_info(subcandidate.extra_data.span);
+                    self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                });
+                false
+            } else {
+                true
             }
-            for subcandidate in mem::take(&mut candidate.subcandidates) {
-                let or_block = subcandidate.pre_binding_block.unwrap();
-                self.cfg.goto(or_block, source_info, any_matches);
-                last_otherwise = subcandidate.otherwise_block;
-            }
-            candidate.pre_binding_block = Some(any_matches);
-            assert!(last_otherwise.is_some());
-            candidate.otherwise_block = last_otherwise;
-        } else {
-            // Never subcandidates may have a set of bindings inconsistent with their siblings,
-            // which would break later code. So we filter them out. Note that we can't filter out
-            // top-level candidates this way.
-            candidate.subcandidates.retain_mut(|candidate| {
-                if candidate.extra_data.is_never {
-                    candidate.visit_leaves(|subcandidate| {
-                        let block = subcandidate.pre_binding_block.unwrap();
-                        // That block is already unreachable but needs a terminator to make the MIR well-formed.
-                        let source_info = self.source_info(subcandidate.extra_data.span);
-                        self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
-                    });
-                    false
-                } else {
-                    true
-                }
-            });
-            if candidate.subcandidates.is_empty() {
-                // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
-                candidate.pre_binding_block = Some(self.cfg.start_new_block());
-            }
+        });
+        if candidate.subcandidates.is_empty() {
+            // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
+            candidate.pre_binding_block = Some(self.cfg.start_new_block());
         }
     }
 
