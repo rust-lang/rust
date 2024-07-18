@@ -5,6 +5,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_rpath;
+use crate::{is_msvc, is_windows, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -312,6 +313,48 @@ impl Rustc {
     /// Specify the linker flavor
     pub fn linker_flavor(&mut self, linker_flavor: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker-flavor={linker_flavor}"));
+        self
+    }
+
+    /// `EXTRARSCXXFLAGS`
+    pub fn extra_rs_cxx_flags(&mut self) -> &mut Self {
+        // Adapted from tools.mk (trimmed):
+        //
+        // ```makefile
+        // ifdef IS_WINDOWS
+        //     ifdef IS_MSVC
+        //     else
+        //         EXTRARSCXXFLAGS := -lstatic:-bundle=stdc++
+        //     endif
+        // else
+        //     ifeq ($(UNAME),Darwin)
+        //         EXTRARSCXXFLAGS := -lc++
+        //     else
+        //         ifeq ($(UNAME),FreeBSD)
+        //         else
+        //             ifeq ($(UNAME),SunOS)
+        //             else
+        //                 ifeq ($(UNAME),OpenBSD)
+        //                 else
+        //                     EXTRARSCXXFLAGS := -lstdc++
+        //                 endif
+        //             endif
+        //         endif
+        //     endif
+        // endif
+        // ```
+        let flag = if is_windows() {
+            if is_msvc() { None } else { Some("-lstatic:-bundle=stdc++") }
+        } else {
+            match &uname()[..] {
+                "Darwin" => Some("-lc++"),
+                "FreeBSD" | "SunOS" | "OpenBSD" => None,
+                _ => Some("-lstdc++"),
+            }
+        };
+        if let Some(flag) = flag {
+            self.cmd.arg(flag);
+        }
         self
     }
 }
