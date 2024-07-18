@@ -101,7 +101,6 @@ pub enum TrailingToken {
     MaybeComma,
 }
 
-/// Like `maybe_whole_expr`, but for things other than expressions.
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
