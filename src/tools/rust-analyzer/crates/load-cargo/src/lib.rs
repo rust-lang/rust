@@ -17,7 +17,6 @@ use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
-use tracing::instrument;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -51,7 +50,6 @@ pub fn load_workspace_at(
     load_workspace(workspace, &cargo_config.extra_env, load_config)
 }
 
-#[instrument(skip_all)]
 pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,

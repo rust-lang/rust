@@ -48,7 +48,10 @@ where
 
         let writer = self.writer;
 
-        let ra_fmt_layer = tracing_subscriber::fmt::layer().with_writer(writer).with_filter(filter);
+        let ra_fmt_layer = tracing_subscriber::fmt::layer()
+            .with_target(false)
+            .with_writer(writer)
+            .with_filter(filter);
 
         let mut chalk_layer = None;
         if let Some(chalk_filter) = self.chalk_filter {
