@@ -1203,16 +1203,16 @@ declare_lint! {
     /// This was historically allowed, but is not the intended behavior
     /// according to the visibility rules. This is a [future-incompatible]
     /// lint to transition this to a hard error in the future. See [issue
-    /// #34537] for more details.
+    /// #127909] for more details.
     ///
-    /// [issue #34537]: https://github.com/rust-lang/rust/issues/34537
+    /// [issue #127909]: https://github.com/rust-lang/rust/issues/127909
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
     "detect public re-exports of private extern crates",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #127909 <https://github.com/rust-lang/rust/issues/127909>",
     };
 }
 
