@@ -69,7 +69,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
                 if inc_a != inc_b {
                     todo!()
                 }
-                Ok(relation.tcx().mk_pat(ty::PatternKind::Range { start, end, include_end: inc_a }))
+                Ok(relation.cx().mk_pat(ty::PatternKind::Range { start, end, include_end: inc_a }))
             }
         }
     }
@@ -81,7 +81,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
         a: Self,
         b: Self,
     ) -> RelateResult<'tcx, Self> {
-        let tcx = relation.tcx();
+        let tcx = relation.cx();
 
         // FIXME: this is wasteful, but want to do a perf run to see how slow it is.
         // We need to perform this deduplication as we sometimes generate duplicate projections
