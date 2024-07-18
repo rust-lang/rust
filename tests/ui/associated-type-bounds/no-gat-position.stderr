@@ -6,8 +6,9 @@ LL |     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
    |
 help: consider removing this associated item constraint
    |
-LL |     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
-   |                                                      ~~~~~~~~~~~
+LL -     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
+LL +     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+   |
 
 error: aborting due to 1 previous error
 
