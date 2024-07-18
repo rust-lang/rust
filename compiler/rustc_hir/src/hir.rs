@@ -228,17 +228,16 @@ impl<'hir> PathSegment<'hir> {
     }
 }
 
-/// A constant that enters the type system, e.g. through const generics or even
-/// array lengths.
+/// A constant that enters the type system, used for arguments to const generics (e.g. array lengths).
 ///
-/// These are distinct from [`AnonConst`] in part because with the  plan for
-/// `min_generic_const_args`, arbitrary anonymous constants (like `Foo<{N + 1}>`)
-/// will *not* be allowed to use generic parameters. Instead, it will be necessary
-/// to add indirection using a free constant that itself has const parameters.
+/// These are distinct from [`AnonConst`] as anon consts in the type system are not allowed
+/// to use any generic parameters, therefore we must represent `N` differently. Additionally
+/// future designs for supporting generic parameters in const arguments will likely not use
+/// an anon const based design.
 ///
 /// So, `ConstArg` (specifically, [`ConstArgKind`]) distinguishes between const args
 /// that are [just paths](ConstArgKind::Path) (currently just bare const params)
-/// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3}`).
+/// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3 }`).
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct ConstArg<'hir> {
     #[stable_hasher(ignore)]
