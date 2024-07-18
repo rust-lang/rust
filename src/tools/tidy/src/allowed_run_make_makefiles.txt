@@ -38,8 +38,6 @@ run-make/interdependent-c-libraries/Makefile
 run-make/issue-107094/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
-run-make/issue-22131/Makefile
-run-make/issue-26006/Makefile
 run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
