@@ -58,4 +58,4 @@ check-cfg = [
 ]
 
 [patch.crates-io]
-compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", rev = "ae00838dc9deefec686f282024acbaee8f289735" }
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", rev = "e7fd5be54ae5b636d16de041e6700c80624131bf" }
