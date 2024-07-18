@@ -1,13 +1,8 @@
 use std::path::PathBuf;
 
-<<<<<<< HEAD
 use super::cygpath::get_windows_path;
 use crate::artifact_names::{dynamic_lib_name, static_lib_name};
-use crate::external_deps::cc::cc;
-=======
-use crate::artifact_names::static_lib_name;
 use crate::external_deps::cc::{cc, cxx};
->>>>>>> e3cf7e53339 (rewrite foreign-double-unwind to rmake)
 use crate::external_deps::llvm::llvm_ar;
 use crate::path_helpers::path;
 use crate::targets::{is_darwin, is_msvc, is_windows};

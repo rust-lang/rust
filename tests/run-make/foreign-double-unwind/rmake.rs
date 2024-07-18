@@ -12,10 +12,10 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{build_native_static_lib_cxx, run, rustc};
+use run_make_support::{build_native_static_lib_cxx, run_fail, rustc};
 
 fn main() {
     build_native_static_lib_cxx("foo");
     rustc().input("foo.rs").arg("-lfoo").extra_rs_cxx_flags().run();
-    run("foo").assert_stdout_not_contains("unreachable");
+    run_fail("foo").assert_stdout_not_contains("unreachable");
 }
