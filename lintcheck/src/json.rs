@@ -11,6 +11,7 @@ struct LintJson {
     lint: String,
     file_name: String,
     byte_pos: (u32, u32),
+    file_link: String,
     rendered: String,
 }
 
@@ -29,6 +30,7 @@ pub(crate) fn output(clippy_warnings: Vec<ClippyWarning>) -> String {
             LintJson {
                 file_name: span.file_name.clone(),
                 byte_pos: (span.byte_start, span.byte_end),
+                file_link: warning.url,
                 lint: warning.lint,
                 rendered: warning.diag.rendered.unwrap(),
             }
@@ -50,11 +52,12 @@ fn print_warnings(title: &str, warnings: &[LintJson]) {
     }
 
     println!("### {title}");
-    println!("```");
     for warning in warnings {
+        println!("{title} `{}` at {}", warning.lint, warning.file_link);
+        println!("```");
         print!("{}", warning.rendered);
+        println!("```");
     }
-    println!("```");
 }
 
 fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
@@ -63,8 +66,9 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
     }
 
     println!("### Changed");
-    println!("```diff");
     for (old, new) in changed {
+        println!("Changed `{}` at {}", new.lint, new.file_link);
+        println!("```diff");
         for change in diff::lines(&old.rendered, &new.rendered) {
             use diff::Result::{Both, Left, Right};
 
@@ -80,8 +84,8 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
                 },
             }
         }
+        println!("```");
     }
-    println!("```");
 }
 
 pub(crate) fn diff(old_path: &Path, new_path: &Path) {
