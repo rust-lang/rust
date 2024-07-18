@@ -210,7 +210,7 @@ mod imp {
     /// Mutates the alternate signal stack
     #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn make_handler(main_thread: bool) -> Handler {
-        if !NEED_ALTSTACK.load(Ordering::Relaxed) {
+        if !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
