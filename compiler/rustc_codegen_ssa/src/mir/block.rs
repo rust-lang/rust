@@ -7,7 +7,6 @@ use crate::base;
 use crate::common::{self, IntPredicate};
 use crate::errors::CompilerBuiltinsCannotCall;
 use crate::meth;
-use crate::mir::cmse;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -869,9 +868,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // and figuring out how many extra args were passed to a C-variadic `fn`.
         let sig = callee.layout.ty.fn_sig(bx.tcx());
         let abi = sig.abi();
-
-        // emit errors if cmse ABI conditions are violated
-        cmse::validate_cmse_abi(bx, &sig.skip_binder(), span, func.span(self.mir));
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {

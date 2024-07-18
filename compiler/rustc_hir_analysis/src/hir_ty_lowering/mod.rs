@@ -1749,11 +1749,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
                 let _ = self.prohibit_generic_args(
                     path.segments.iter().enumerate().filter_map(|(index, seg)| {
-                        if !indices.contains(&index) {
-                            Some(seg)
-                        } else {
-                            None
-                        }
+                        if !indices.contains(&index) { Some(seg) } else { None }
                     }),
                     GenericsArgsErrExtend::DefVariant,
                 );
