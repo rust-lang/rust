@@ -32,7 +32,9 @@ fn parent() {
     let bat2 = String::from(bat.to_str().unwrap());
     bat.set_file_name("windows-bat-args3.bat");
     let bat3 = String::from(bat.to_str().unwrap());
-    let bat = [bat1.as_str(), bat2.as_str(), bat3.as_str()];
+    bat.set_file_name("windows-bat-args1.bat .. ");
+    let bat4 = String::from(bat.to_str().unwrap());
+    let bat = [bat1.as_str(), bat2.as_str(), bat3.as_str(), bat4.as_str()];
 
     check_args(&bat, &["a", "b"]).unwrap();
     check_args(&bat, &["c is for cat", "d is for dog"]).unwrap();
