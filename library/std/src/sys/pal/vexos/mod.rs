@@ -26,7 +26,7 @@ use crate::{arch::asm, ptr::{self, addr_of_mut}};
 
 #[cfg(not(test))]
 #[no_mangle]
-#[link_section = ".text.boot"]
+#[link_section = ".boot"]
 pub unsafe extern "C" fn _start() -> ! {
     extern "C" {
         static mut __bss_start: u8;

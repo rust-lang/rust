@@ -18,19 +18,15 @@ It's currently unclear why subtracting anything is necessary, but it fixes memor
 __heap_end = __user_ram_end - __stack_length - 0x100;
 
 SECTIONS {
-    .code_signature __user_ram_start : {
-        __code_signature_start = .;
+    .text : {
+        __text_start = .;
         KEEP(*(.code_signature))
-        . = __code_signature_start + 0x20;
+        . = __text_start + 0x20;
+        *(.boot)
+        *(.text .text.*)
     } > USER_RAM = 0
 
-    .text __user_ram_start + 0x20 : {
-        *(.text.boot)
-        *(.text .text.*)
-    } > USER_RAM
-
-    .rodata : {
-        *(.rodata .rodata.*)
+    .rodata1 : {
         *(.rodata1 .rodata1.*)
     } > USER_RAM
 
