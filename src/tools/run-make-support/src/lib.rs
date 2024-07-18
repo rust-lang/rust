@@ -61,7 +61,7 @@ pub use env::{env_var, env_var_os};
 pub use run::{cmd, run, run_fail, run_with_args};
 
 /// Helpers for checking target information.
-pub use targets::{is_darwin, is_msvc, is_windows, target, uname};
+pub use targets::{is_darwin, is_msvc, is_windows, llvm_components_contain, target, uname};
 
 /// Helpers for building names of output artifacts that are potentially target-specific.
 pub use artifact_names::{
