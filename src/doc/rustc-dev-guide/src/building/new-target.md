@@ -141,6 +141,13 @@ to the `deny-warnings` setting in `config.toml`, the build may suddenly start
 to fail. To work around the warnings, you may want to disable `deny-warnings`
 in the config, or modify the dependency to remove the warnings.
 
+```toml
+# /config.toml
+[rust]
+deny-warnings = false
+```
+
+
 [`libc`]: https://crates.io/crates/libc
 [`cc`]: https://crates.io/crates/cc
 [patch]: https://doc.rust-lang.org/stable/cargo/reference/overriding-dependencies.html#the-patch-section
