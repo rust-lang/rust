@@ -11,6 +11,9 @@ use expect_test::expect_file;
 
 use crate::{Edition, LexedStr, TopEntryPoint};
 
+#[path = "../test_data/generated/runner.rs"]
+mod runner;
+
 #[test]
 fn lex_ok() {
     for case in TestCase::list("lexer/ok") {
@@ -55,28 +58,8 @@ fn parse_ok() {
 }
 
 #[test]
-fn parse_inline_ok() {
-    for case in TestCase::list("parser/inline/ok") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual);
-    }
-}
-
-#[test]
 fn parse_err() {
     for case in TestCase::list("parser/err") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual)
-    }
-}
-
-#[test]
-fn parse_inline_err() {
-    for case in TestCase::list("parser/inline/err") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
@@ -166,4 +149,28 @@ impl TestCase {
         res.sort();
         res
     }
+}
+
+#[track_caller]
+fn run_and_expect_no_errors(path: &str) {
+    let path = PathBuf::from(path);
+    let text = std::fs::read_to_string(&path).unwrap();
+    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text);
+    assert!(!errors, "errors in an OK file {}:\n{actual}", path.display());
+    let mut p = PathBuf::from("..");
+    p.push(path);
+    p.set_extension("rast");
+    expect_file![p].assert_eq(&actual)
+}
+
+#[track_caller]
+fn run_and_expect_errors(path: &str) {
+    let path = PathBuf::from(path);
+    let text = std::fs::read_to_string(&path).unwrap();
+    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text);
+    assert!(errors, "no errors in an ERR file {}:\n{actual}", path.display());
+    let mut p = PathBuf::from("..");
+    p.push(path);
+    p.set_extension("rast");
+    expect_file![p].assert_eq(&actual)
 }

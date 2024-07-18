@@ -169,7 +169,7 @@ fn array_or_slice_type(p: &mut Parser<'_>) {
     m.complete(p, kind);
 }
 
-// test reference_type;
+// test reference_type
 // type A = &();
 // type B = &'static ();
 // type C = &mut ();

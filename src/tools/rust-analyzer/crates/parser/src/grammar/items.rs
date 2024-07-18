@@ -388,7 +388,7 @@ fn macro_def(p: &mut Parser<'_>, m: Marker) {
     m.complete(p, MACRO_DEF);
 }
 
-// test fn
+// test fn_
 // fn foo() {}
 fn fn_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![fn]);
