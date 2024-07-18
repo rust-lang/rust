@@ -1497,12 +1497,18 @@ fn print_native_static_libs(
                 | NativeLibKind::Dylib { .. }
                 | NativeLibKind::Unspecified => {
                     let verbatim = lib.verbatim;
-                    if sess.target.is_like_msvc {
-                        Some(format!("{}{}", name, if verbatim { "" } else { ".lib" }))
-                    } else if sess.target.linker_flavor.is_gnu() {
-                        Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))
-                    } else {
-                        Some(format!("-l{name}"))
+                    match sess.target.linker_flavor {
+                        LinkerFlavor::Gnu(Cc::Yes, Lld::No) if verbatim => {
+                            Some(format!("-Wl,{}", name))
+                        }
+                        LinkerFlavor::Gnu(Cc::No, Lld::No) if verbatim => Some(name.to_string()),
+                        LinkerFlavor::Gnu(..) => {
+                            Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))
+                        }
+                        _ if sess.target.is_like_msvc => {
+                            Some(format!("{}{}", name, if verbatim { "" } else { ".lib" }))
+                        }
+                        _ => Some(format!("-l{name}")),
                     }
                 }
                 NativeLibKind::Framework { .. } => {
