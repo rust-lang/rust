@@ -20,7 +20,6 @@ pub mod stdio;
 pub mod thread;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
-#[path = "../unsupported/time.rs"]
 pub mod time;
 
 use crate::{arch::asm, ptr::{self, addr_of_mut}};
