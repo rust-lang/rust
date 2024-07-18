@@ -13,7 +13,7 @@ use crate::errors;
 /// conditions, but by checking them here rustc can emit nicer error messages.
 pub fn validate_cmse_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
-    dcx: &DiagCtxtHandle<'_>,
+    dcx: DiagCtxtHandle<'_>,
     hir_id: HirId,
     abi: abi::Abi,
     fn_sig: ty::PolyFnSig<'tcx>,
@@ -30,25 +30,20 @@ pub fn validate_cmse_abi<'tcx>(
             return;
         };
 
-        // fn(u32, u32, u32, u16, u16) -> u32,
-        //    ^^^^^^^^^^^^^^^^^^^^^^^     ^^^
-        let output_span = bare_fn_ty.decl.output.span();
-        let inputs_span = match (
-            bare_fn_ty.param_names.first(),
-            bare_fn_ty.decl.inputs.first(),
-            bare_fn_ty.decl.inputs.last(),
-        ) {
-            (Some(ident), Some(ty1), Some(ty2)) => ident.span.to(ty1.span).to(ty2.span),
-            _ => *bare_fn_span,
-        };
-
         match is_valid_cmse_inputs(tcx, fn_sig) {
-            Ok(true) => {}
-            Ok(false) => {
-                dcx.emit_err(errors::CmseCallInputsStackSpill { span: inputs_span });
+            Ok(Ok(())) => {}
+            Ok(Err(index)) => {
+                // fn(x: u32, u32, u32, u16, y: u16) -> u32,
+                //                           ^^^^^^
+                let span = bare_fn_ty.param_names[index]
+                    .span
+                    .to(bare_fn_ty.decl.inputs[index].span)
+                    .to(bare_fn_ty.decl.inputs.last().unwrap().span);
+                let plural = bare_fn_ty.param_names.len() - index != 1;
+                dcx.emit_err(errors::CmseCallInputsStackSpill { span, plural });
             }
             Err(layout_err) => {
-                if let Some(err) = cmse_layout_err(layout_err, inputs_span) {
+                if let Some(err) = cmse_layout_err(layout_err, *bare_fn_span) {
                     dcx.emit_err(err);
                 }
             }
@@ -57,10 +52,11 @@ pub fn validate_cmse_abi<'tcx>(
         match is_valid_cmse_output(tcx, fn_sig) {
             Ok(true) => {}
             Ok(false) => {
-                dcx.emit_err(errors::CmseCallOutputStackSpill { span: output_span });
+                let span = bare_fn_ty.decl.output.span();
+                dcx.emit_err(errors::CmseCallOutputStackSpill { span });
             }
             Err(layout_err) => {
-                if let Some(err) = cmse_layout_err(layout_err, output_span) {
+                if let Some(err) = cmse_layout_err(layout_err, *bare_fn_span) {
                     dcx.emit_err(err);
                 }
             }
@@ -72,10 +68,11 @@ pub fn validate_cmse_abi<'tcx>(
 fn is_valid_cmse_inputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_sig: ty::PolyFnSig<'tcx>,
-) -> Result<bool, &'tcx LayoutError<'tcx>> {
+) -> Result<Result<(), usize>, &'tcx LayoutError<'tcx>> {
+    let mut span = None;
     let mut accum = 0u64;
 
-    for arg_def in fn_sig.inputs().iter() {
+    for (index, arg_def) in fn_sig.inputs().iter().enumerate() {
         let layout = tcx.layout_of(ParamEnv::reveal_all().and(*arg_def.skip_binder()))?;
 
         let align = layout.layout.align().abi.bytes();
@@ -83,10 +80,17 @@ fn is_valid_cmse_inputs<'tcx>(
 
         accum += size;
         accum = accum.next_multiple_of(Ord::max(4, align));
+
+        // i.e. exceeds 4 32-bit registers
+        if accum > 16 {
+            span = span.or(Some(index));
+        }
     }
 
-    // i.e. 4 32-bit registers
-    Ok(accum <= 16)
+    match span {
+        None => Ok(Ok(())),
+        Some(span) => Ok(Err(span)),
+    }
 }
 
 /// Returns whether the output will fit into the available registers

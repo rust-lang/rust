@@ -2326,7 +2326,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
         // reject function types that violate cmse ABI requirements
-        cmse::validate_cmse_abi(self.tcx(), &self.dcx(), hir_id, abi, bare_fn_ty);
+        cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);
 
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.

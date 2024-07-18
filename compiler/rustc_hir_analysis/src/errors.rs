@@ -1690,11 +1690,13 @@ pub struct CmseCallInputsStackSpill {
     #[primary_span]
     #[label]
     pub span: Span,
+    pub plural: bool,
 }
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_cmse_call_output_stack_spill, code = E0798)]
-#[note]
+#[note(hir_analysis_note1)]
+#[note(hir_analysis_note2)]
 pub struct CmseCallOutputStackSpill {
     #[primary_span]
     #[label]
