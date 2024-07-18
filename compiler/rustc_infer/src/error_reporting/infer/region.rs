@@ -1269,8 +1269,12 @@ fn suggest_precise_capturing<'tcx>(
     captured_lifetime: ty::Region<'tcx>,
     diag: &mut Diag<'_>,
 ) {
-    let hir::OpaqueTy { bounds, .. } =
+    let hir::OpaqueTy { bounds, origin, .. } =
         tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
+
+    let hir::OpaqueTyOrigin::FnReturn(fn_def_id) = *origin else {
+        return;
+    };
 
     let new_lifetime = Symbol::intern(&captured_lifetime.to_string());
 
@@ -1306,6 +1310,7 @@ fn suggest_precise_capturing<'tcx>(
 
         let variances = tcx.variances_of(opaque_def_id);
         let mut generics = tcx.generics_of(opaque_def_id);
+        let mut synthetics = vec![];
         loop {
             for param in &generics.own_params {
                 if variances[param.index as usize] == ty::Bivariant {
@@ -1317,9 +1322,7 @@ fn suggest_precise_capturing<'tcx>(
                         captured_lifetimes.insert(param.name);
                     }
                     ty::GenericParamDefKind::Type { synthetic: true, .. } => {
-                        // FIXME: We can't provide a good suggestion for
-                        // `use<...>` if we have an APIT. Bail for now.
-                        return;
+                        synthetics.push((tcx.def_span(param.def_id), param.name));
                     }
                     ty::GenericParamDefKind::Type { .. }
                     | ty::GenericParamDefKind::Const { .. } => {
@@ -1340,17 +1343,86 @@ fn suggest_precise_capturing<'tcx>(
             return;
         }
 
-        let concatenated_bounds = captured_lifetimes
-            .into_iter()
-            .chain(captured_non_lifetimes)
-            .map(|sym| sym.to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
+        if synthetics.is_empty() {
+            let concatenated_bounds = captured_lifetimes
+                .into_iter()
+                .chain(captured_non_lifetimes)
+                .map(|sym| sym.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
 
-        diag.subdiagnostic(errors::AddPreciseCapturing::New {
-            span: tcx.def_span(opaque_def_id).shrink_to_hi(),
-            new_lifetime,
-            concatenated_bounds,
-        });
+            diag.subdiagnostic(errors::AddPreciseCapturing::New {
+                span: tcx.def_span(opaque_def_id).shrink_to_hi(),
+                new_lifetime,
+                concatenated_bounds,
+            });
+        } else {
+            let mut next_fresh_param = || {
+                ["T", "U", "V", "W", "X", "Y", "A", "B", "C"]
+                    .into_iter()
+                    .map(Symbol::intern)
+                    .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
+                    .find(|s| captured_non_lifetimes.insert(*s))
+                    .unwrap()
+            };
+
+            let mut new_params = String::new();
+            let mut suggs = vec![];
+            let mut apit_spans = vec![];
+
+            for (i, (span, name)) in synthetics.into_iter().enumerate() {
+                apit_spans.push(span);
+
+                let fresh_param = next_fresh_param();
+
+                // Suggest renaming.
+                suggs.push((span, fresh_param.to_string()));
+
+                // Super jank. Turn `impl Trait` into `T: Trait`.
+                //
+                // This currently involves stripping the `impl` from the name of
+                // the parameter, since APITs are always named after how they are
+                // rendered in the AST. This sucks! But to recreate the bound list
+                // from the APIT itself would be miserable, so we're stuck with
+                // this for now!
+                if i > 0 {
+                    new_params += ", ";
+                }
+                let name_as_bounds = name.as_str().trim_start_matches("impl").trim_start();
+                new_params += fresh_param.as_str();
+                new_params += ": ";
+                new_params += name_as_bounds;
+            }
+
+            let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
+                // This shouldn't happen, but don't ICE.
+                return;
+            };
+
+            // Add generics or concatenate to the end of the list.
+            suggs.push(if let Some(params_span) = generics.span_for_param_suggestion() {
+                (params_span, format!(", {new_params}"))
+            } else {
+                (generics.span, format!("<{new_params}>"))
+            });
+
+            let concatenated_bounds = captured_lifetimes
+                .into_iter()
+                .chain(captured_non_lifetimes)
+                .map(|sym| sym.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            suggs.push((
+                tcx.def_span(opaque_def_id).shrink_to_hi(),
+                format!(" + use<{concatenated_bounds}>"),
+            ));
+
+            diag.subdiagnostic(errors::AddPreciseCapturingAndParams {
+                suggs,
+                new_lifetime,
+                apit_spans,
+            });
+        }
     }
 }
