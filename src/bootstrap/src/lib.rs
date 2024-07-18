@@ -535,6 +535,7 @@ impl Build {
             // even though that has no relation to the upstream for the submodule.
             let current_branch = helpers::git(Some(&self.src))
                 .capture_stdout()
+                .allow_failure()
                 .run_always()
                 .args(["symbolic-ref", "--short", "HEAD"])
                 .run(self)
