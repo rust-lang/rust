@@ -1744,8 +1744,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
     /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
     /// expanded with `create_or_subcandidates`.
+    ///
+    /// Note that this takes place _after_ the subcandidates have participated
+    /// in match tree lowering.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
-        if candidate.subcandidates.is_empty() || candidate.has_guard {
+        assert!(!candidate.subcandidates.is_empty());
+        if candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
         }
@@ -1759,7 +1763,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let mut last_otherwise = None;
-        let any_matches = self.cfg.start_new_block();
+        let shared_pre_binding_block = self.cfg.start_new_block();
+        // This candidate is about to become a leaf, so unset `or_span`.
         let or_span = candidate.or_span.take().unwrap();
         let source_info = self.source_info(or_span);
 
@@ -1767,12 +1772,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             candidate.false_edge_start_block = candidate.subcandidates[0].false_edge_start_block;
         }
 
+        // Remove the (known-trivial) subcandidates from the candidate tree,
+        // so that they aren't visible after match tree lowering, and wire them
+        // all to join up at a single shared pre-binding block.
+        // (Note that the subcandidates have already had their part of the match
+        // tree lowered by this point, which is why we can add a goto to them.)
         for subcandidate in mem::take(&mut candidate.subcandidates) {
-            let or_block = subcandidate.pre_binding_block.unwrap();
-            self.cfg.goto(or_block, source_info, any_matches);
+            let subcandidate_block = subcandidate.pre_binding_block.unwrap();
+            self.cfg.goto(subcandidate_block, source_info, shared_pre_binding_block);
             last_otherwise = subcandidate.otherwise_block;
         }
-        candidate.pre_binding_block = Some(any_matches);
+        candidate.pre_binding_block = Some(shared_pre_binding_block);
         assert!(last_otherwise.is_some());
         candidate.otherwise_block = last_otherwise;
     }
