@@ -1624,7 +1624,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         });
         for candidate in candidates_to_expand.iter_mut() {
             if !candidate.subcandidates.is_empty() {
-                self.finalize_or_candidate(candidate);
+                self.merge_trivial_subcandidates(candidate);
+                self.remove_never_subcandidates(candidate);
             }
         }
         if let Some(last_candidate) = candidates_to_expand.last_mut() {
@@ -1635,8 +1636,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
-    /// subcandidate. Any candidate that has been expanded that way should be passed to
-    /// `finalize_or_candidate` after its subcandidates have been processed.
+    /// subcandidate. Any candidate that has been expanded this way should also be postprocessed
+    /// at the end of [`Self::expand_and_match_or_candidates`].
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
@@ -1653,8 +1654,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
     }
 
-    /// Simplify subcandidates and remove `is_never` subcandidates.
-    /// The candidate should have been expanded with `create_or_subcandidates`.
+    /// Try to merge all of the subcandidates of the given candidate into one. This avoids
+    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
+    /// expanded with `create_or_subcandidates`.
     ///
     /// Given a pattern `(P | Q, R | S)` we (in principle) generate a CFG like
     /// so:
@@ -1706,18 +1708,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///      |
     ///     ...
     /// ```
-    fn finalize_or_candidate(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
-        if candidate.subcandidates.is_empty() {
-            return;
-        }
-
-        self.merge_trivial_subcandidates(candidate);
-        self.remove_never_subcandidates(candidate);
-    }
-
-    /// Try to merge all of the subcandidates of the given candidate into one. This avoids
-    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
-    /// expanded with `create_or_subcandidates`.
     ///
     /// Note that this takes place _after_ the subcandidates have participated
     /// in match tree lowering.
