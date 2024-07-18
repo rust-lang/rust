@@ -15,7 +15,6 @@ pub mod os;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-#[path = "../unsupported/stdio.rs"]
 pub mod stdio;
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
@@ -63,7 +62,9 @@ pub extern "C" fn __rust_abort() -> ! {
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
-pub unsafe fn cleanup() {}
+pub unsafe fn cleanup() {
+    stdio::
+}
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())

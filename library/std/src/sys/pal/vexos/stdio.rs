@@ -52,7 +52,9 @@ impl io::Write for Stdout {
 
     fn flush(&mut self) -> io::Result<()> {
         unsafe {
-            vex_sdk::vexTasksRun();
+            while (vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize) != STDOUT_BUF_SIZE {
+                vex_sdk::vexTasksRun();
+            }
         }
 
         Ok(())
@@ -75,7 +77,8 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = 0;
+pub const STDIN_BUF_SIZE: usize = 4096;
+const STDOUT_BUF_SIZE: usize = 2048;
 
 pub fn is_ebadf(_err: &io::Error) -> bool {
     true
