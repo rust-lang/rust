@@ -532,7 +532,6 @@ fn rewrite_generic_args(
                 .collect::<Vec<_>>();
 
             overflow::rewrite_with_angle_brackets(context, "", args.iter(), shape, span)
-                .unknown_error()
         }
         ast::GenericArgs::Parenthesized(ref data) => format_function_type(
             data.inputs.iter().map(|x| &**x),
@@ -617,7 +616,6 @@ impl Rewrite for ast::GenericBound {
             }
             ast::GenericBound::Use(ref args, span) => {
                 overflow::rewrite_with_angle_brackets(context, "use", args.iter(), shape, span)
-                    .unknown_error()
             }
             ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite_result(context, shape),
         }
@@ -933,7 +931,6 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Tup(ref items) => {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
-                    .unknown_error()
             }
             ast::TyKind::AnonStruct(..) => Ok(context.snippet(self.span).to_owned()),
             ast::TyKind::AnonUnion(..) => Ok(context.snippet(self.span).to_owned()),
@@ -947,8 +944,7 @@ impl Rewrite for ast::Ty {
                 context,
                 shape,
                 SeparatorPlace::Back,
-            )
-            .unknown_error(),
+            ),
             ast::TyKind::Infer => {
                 if shape.width >= 1 {
                     Ok("_".to_owned())
@@ -988,8 +984,7 @@ impl Rewrite for ast::Ty {
                 &[anon_const.value.clone()],
                 self.span,
                 shape,
-            )
-            .unknown_error(),
+            ),
             ast::TyKind::Pat(ref ty, ref pat) => {
                 let ty = ty.rewrite_result(context, shape)?;
                 let pat = pat.rewrite_result(context, shape)?;

@@ -11,7 +11,7 @@ use crate::config::IndentStyle;
 use crate::expr::rewrite_literal;
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::overflow;
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::types::{rewrite_path, PathContext};
@@ -274,20 +274,27 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
 
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        Some(match self.kind {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(
+        &self,
+        context: &RewriteContext<'_>,
+        shape: Shape,
+    ) -> crate::rewrite::RewriteResult {
+        Ok(match self.kind {
             ast::MetaItemKind::Word => {
-                rewrite_path(context, PathContext::Type, &None, &self.path, shape).ok()?
+                rewrite_path(context, PathContext::Type, &None, &self.path, shape)?
             }
             ast::MetaItemKind::List(ref list) => {
-                let path =
-                    rewrite_path(context, PathContext::Type, &None, &self.path, shape).ok()?;
+                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
                 let has_trailing_comma = crate::expr::span_ends_with_comma(context, self.span);
                 overflow::rewrite_with_parens(
                     context,
                     &path,
                     list.iter(),
                     // 1 = "]"
-                    shape.sub_width(1)?,
+                    shape.sub_width(1).max_width_error(shape.width, self.span)?,
                     self.span,
                     context.config.attr_fn_like_width(),
                     Some(if has_trailing_comma {
@@ -298,10 +305,11 @@ impl Rewrite for ast::MetaItem {
                 )?
             }
             ast::MetaItemKind::NameValue(ref lit) => {
-                let path =
-                    rewrite_path(context, PathContext::Type, &None, &self.path, shape).ok()?;
+                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
                 // 3 = ` = `
-                let lit_shape = shape.shrink_left(path.len() + 3)?;
+                let lit_shape = shape
+                    .shrink_left(path.len() + 3)
+                    .max_width_error(shape.width, self.span)?;
                 // `rewrite_literal` returns `None` when `lit` exceeds max
                 // width. Since a literal is basically unformattable unless it
                 // is a string literal (and only if `format_strings` is set),

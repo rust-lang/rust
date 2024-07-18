@@ -1646,7 +1646,8 @@ fn format_tuple_struct(
             mk_sp(lo, span.hi()),
             context.config.fn_call_width(),
             None,
-        )?;
+        )
+        .ok()?;
     }
 
     if !where_clause_str.is_empty()
@@ -2912,7 +2913,7 @@ fn rewrite_generics(
     }
 
     let params = generics.params.iter();
-    overflow::rewrite_with_angle_brackets(context, ident, params, shape, generics.span)
+    overflow::rewrite_with_angle_brackets(context, ident, params, shape, generics.span).ok()
 }
 
 fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) -> Option<Shape> {

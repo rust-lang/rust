@@ -4,6 +4,7 @@ use rustc_ast::{ast, ptr};
 use rustc_span::{source_map, Span};
 
 use crate::macros::MacroArg;
+use crate::patterns::RangeOperand;
 use crate::utils::{mk_sp, outer_attributes};
 
 /// Spanned returns a span including attributes, if available.
@@ -210,5 +211,11 @@ impl Spanned for ast::PreciseCapturingArg {
             ast::PreciseCapturingArg::Lifetime(lt) => lt.ident.span,
             ast::PreciseCapturingArg::Arg(path, _) => path.span,
         }
+    }
+}
+
+impl<'a> Spanned for RangeOperand<'a> {
+    fn span(&self) -> Span {
+        self.span
     }
 }

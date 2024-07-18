@@ -19,7 +19,7 @@ use crate::lists::{
 };
 use crate::macros::MacroArg;
 use crate::patterns::{can_be_overflowed_pat, TuplePatField};
-use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -277,7 +277,7 @@ pub(crate) fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
     span: Span,
     item_max_width: usize,
     force_separator_tactic: Option<SeparatorTactic>,
-) -> Option<String> {
+) -> RewriteResult {
     Context::new(
         context,
         items,
@@ -299,7 +299,7 @@ pub(crate) fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
     items: impl Iterator<Item = &'a T>,
     shape: Shape,
     span: Span,
-) -> Option<String> {
+) -> RewriteResult {
     Context::new(
         context,
         items,
@@ -323,7 +323,7 @@ pub(crate) fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>
     span: Span,
     force_separator_tactic: Option<SeparatorTactic>,
     delim_token: Option<Delimiter>,
-) -> Option<String> {
+) -> RewriteResult {
     let (lhs, rhs) = match delim_token {
         Some(Delimiter::Parenthesis) => ("(", ")"),
         Some(Delimiter::Brace) => ("{", "}"),
@@ -712,8 +712,8 @@ impl<'a> Context<'a> {
         result
     }
 
-    fn rewrite(&self, shape: Shape) -> Option<String> {
-        let (extendable, items_str) = self.rewrite_items()?;
+    fn rewrite(&self, shape: Shape) -> RewriteResult {
+        let (extendable, items_str) = self.rewrite_items().unknown_error()?;
 
         // If we are using visual indent style and failed to format, retry with block indent.
         if !self.context.use_block_indent()
@@ -726,7 +726,7 @@ impl<'a> Context<'a> {
             return result;
         }
 
-        Some(self.wrap_items(&items_str, shape, extendable))
+        Ok(self.wrap_items(&items_str, shape, extendable))
     }
 }
 

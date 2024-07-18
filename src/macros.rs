@@ -283,6 +283,7 @@ fn rewrite_macro_inner(
                         Some(SeparatorTactic::Never)
                     },
                 )
+                .ok()
                 .map(|rw| match position {
                     MacroPosition::Item => format!("{};", rw),
                     _ => rw,
@@ -316,7 +317,8 @@ fn rewrite_macro_inner(
                     shape,
                     force_trailing_comma,
                     Some(original_style),
-                )?;
+                )
+                .ok()?;
                 let comma = match position {
                     MacroPosition::Item => ";",
                     _ => "",

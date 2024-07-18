@@ -66,7 +66,7 @@ use crate::config::{IndentStyle, Version};
 use crate::expr::rewrite_call;
 use crate::lists::extract_pre_comment;
 use crate::macros::convert_try_mac;
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::utils::{
@@ -279,7 +279,8 @@ impl Rewrite for ChainItem {
                 parens: false,
             } => expr.rewrite(context, shape)?,
             ChainItemKind::MethodCall(ref segment, ref types, ref exprs) => {
-                Self::rewrite_method_call(segment.ident, types, exprs, self.span, context, shape)?
+                Self::rewrite_method_call(segment.ident, types, exprs, self.span, context, shape)
+                    .ok()?
             }
             ChainItemKind::StructField(ident) => format!(".{}", rewrite_ident(context, ident)),
             ChainItemKind::TupleField(ident, nested) => format!(
@@ -326,14 +327,14 @@ impl ChainItem {
         span: Span,
         context: &RewriteContext<'_>,
         shape: Shape,
-    ) -> Option<String> {
+    ) -> RewriteResult {
         let type_str = if types.is_empty() {
             String::new()
         } else {
             let type_list = types
                 .iter()
-                .map(|ty| ty.rewrite(context, shape))
-                .collect::<Option<Vec<_>>>()?;
+                .map(|ty| ty.rewrite_result(context, shape))
+                .collect::<Result<Vec<_>, RewriteError>>()?;
 
             format!("::<{}>", type_list.join(", "))
         };

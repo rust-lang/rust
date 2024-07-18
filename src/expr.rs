@@ -79,7 +79,8 @@ pub(crate) fn format_expr(
             shape,
             choose_separator_tactic(context, expr.span),
             None,
-        ),
+        )
+        .ok(),
         ast::ExprKind::Lit(token_lit) => {
             if let Some(expr_rw) = rewrite_literal(context, token_lit, expr.span, shape) {
                 Some(expr_rw)
@@ -94,21 +95,23 @@ pub(crate) fn format_expr(
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
             let callee_str = callee.rewrite(context, shape)?;
-            rewrite_call(context, &callee_str, args, inner_span, shape)
+            rewrite_call(context, &callee_str, args, inner_span, shape).ok()
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
         ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
-            rewrite_all_pairs(expr, shape, context).or_else(|| {
-                rewrite_pair(
-                    &**lhs,
-                    &**rhs,
-                    PairParts::infix(&format!(" {} ", context.snippet(op.span))),
-                    context,
-                    shape,
-                    context.config.binop_separator(),
-                )
-            })
+            rewrite_all_pairs(expr, shape, context)
+                .or_else(|_| {
+                    rewrite_pair(
+                        &**lhs,
+                        &**rhs,
+                        PairParts::infix(&format!(" {} ", context.snippet(op.span))),
+                        context,
+                        shape,
+                        context.config.binop_separator(),
+                    )
+                })
+                .ok()
         }
         ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
         ast::ExprKind::Struct(ref struct_expr) => {
@@ -131,7 +134,7 @@ pub(crate) fn format_expr(
             .ok()
         }
         ast::ExprKind::Tup(ref items) => {
-            rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
+            rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1).ok()
         }
         ast::ExprKind::Let(ref pat, ref expr, _span, _) => rewrite_let(context, shape, pat, expr),
         ast::ExprKind::If(..)
@@ -265,7 +268,8 @@ pub(crate) fn format_expr(
             context,
             shape,
             SeparatorPlace::Front,
-        ),
+        )
+        .ok(),
         ast::ExprKind::Index(ref expr, ref index, _) => {
             rewrite_index(&**expr, &**index, context, shape)
         }
@@ -276,7 +280,8 @@ pub(crate) fn format_expr(
             context,
             shape,
             SeparatorPlace::Back,
-        ),
+        )
+        .ok(),
         ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
             let delim = match limits {
                 ast::RangeLimits::HalfOpen => "..",
@@ -329,6 +334,7 @@ pub(crate) fn format_expr(
                         shape,
                         context.config.binop_separator(),
                     )
+                    .ok()
                 }
                 (None, Some(rhs)) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
@@ -442,7 +448,7 @@ pub(crate) fn rewrite_array<'a, T: 'a + IntoOverflowableItem<'a>>(
     shape: Shape,
     force_separator_tactic: Option<SeparatorTactic>,
     delim_token: Option<Delimiter>,
-) -> Option<String> {
+) -> RewriteResult {
     overflow::rewrite_with_square_brackets(
         context,
         name,
@@ -1346,7 +1352,7 @@ pub(crate) fn rewrite_call(
     args: &[ptr::P<ast::Expr>],
     span: Span,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     overflow::rewrite_with_parens(
         context,
         callee,
@@ -1830,21 +1836,27 @@ fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
     span: Span,
     shape: Shape,
     is_singleton_tuple: bool,
-) -> Option<String> {
+) -> RewriteResult {
     // In case of length 1, need a trailing comma
     debug!("rewrite_tuple_in_visual_indent_style {:?}", shape);
     if is_singleton_tuple {
         // 3 = "(" + ",)"
-        let nested_shape = shape.sub_width(3)?.visual_indent(1);
+        let nested_shape = shape
+            .sub_width(3)
+            .max_width_error(shape.width, span)?
+            .visual_indent(1);
         return items
             .next()
             .unwrap()
-            .rewrite(context, nested_shape)
+            .rewrite_result(context, nested_shape)
             .map(|s| format!("({},)", s));
     }
 
     let list_lo = context.snippet_provider.span_after(span, "(");
-    let nested_shape = shape.sub_width(2)?.visual_indent(1);
+    let nested_shape = shape
+        .sub_width(2)
+        .max_width_error(shape.width, span)?
+        .visual_indent(1);
     let items = itemize_list(
         context.snippet_provider,
         items,
@@ -1867,9 +1879,9 @@ fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
     let fmt = ListFormatting::new(nested_shape, context.config)
         .tactic(tactic)
         .ends_with_newline(false);
-    let list_str = write_list(&item_vec, &fmt).ok()?;
+    let list_str = write_list(&item_vec, &fmt)?;
 
-    Some(format!("({list_str})"))
+    Ok(format!("({list_str})"))
 }
 
 fn rewrite_let(
@@ -1912,7 +1924,7 @@ pub(crate) fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
     span: Span,
     shape: Shape,
     is_singleton_tuple: bool,
-) -> Option<String> {
+) -> RewriteResult {
     debug!("rewrite_tuple {:?}", shape);
     if context.use_block_indent() {
         // We use the same rule as function calls for rewriting tuples.

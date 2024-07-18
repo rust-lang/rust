@@ -61,13 +61,20 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
     }
 }
 
-struct RangeOperand<'a>(&'a Option<ptr::P<ast::Expr>>);
+pub(crate) struct RangeOperand<'a> {
+    operand: &'a Option<ptr::P<ast::Expr>>,
+    pub(crate) span: Span,
+}
 
 impl<'a> Rewrite for RangeOperand<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        match &self.0 {
-            None => Some("".to_owned()),
-            Some(ref exp) => exp.rewrite(context, shape),
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        match &self.operand {
+            None => Ok("".to_owned()),
+            Some(ref exp) => exp.rewrite_result(context, shape),
         }
     }
 }
@@ -239,27 +246,38 @@ impl Rewrite for Pat {
                 } else {
                     infix.to_owned()
                 };
+                let lspan = self.span.with_hi(end_kind.span.lo());
+                let rspan = self.span.with_lo(end_kind.span.hi());
                 rewrite_pair(
-                    &RangeOperand(lhs),
-                    &RangeOperand(rhs),
+                    &RangeOperand {
+                        operand: lhs,
+                        span: lspan,
+                    },
+                    &RangeOperand {
+                        operand: rhs,
+                        span: rspan,
+                    },
                     PairParts::infix(&infix),
                     context,
                     shape,
                     SeparatorPlace::Front,
                 )
+                .ok()
             }
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, shape)
             }
-            PatKind::Tuple(ref items) => rewrite_tuple_pat(items, None, self.span, context, shape),
+            PatKind::Tuple(ref items) => {
+                rewrite_tuple_pat(items, None, self.span, context, shape).ok()
+            }
             PatKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Expr, q_self, path, shape).ok()
             }
             PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
                 let path_str =
                     rewrite_path(context, PathContext::Expr, q_self, path, shape).ok()?;
-                rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
+                rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape).ok()
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
             PatKind::Slice(ref slice_pat) if context.config.version() == Version::One => {
@@ -283,7 +301,8 @@ impl Rewrite for Pat {
                 self.span,
                 None,
                 None,
-            ),
+            )
+            .ok(),
             PatKind::Struct(ref qself, ref path, ref fields, rest) => rewrite_struct_pat(
                 qself,
                 path,
@@ -495,9 +514,9 @@ fn rewrite_tuple_pat(
     span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     if pats.is_empty() {
-        return Some(format!("{}()", path_str.unwrap_or_default()));
+        return Ok(format!("{}()", path_str.unwrap_or_default()));
     }
     let mut pat_vec: Vec<_> = pats.iter().map(TuplePatField::Pat).collect();
 
