@@ -21,4 +21,4 @@ compiler_builtins = "0.1.0"
 libc = { version = "0.2", default-features = false }
 
 [patch.crates-io]
-compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", branch = "android-testing"}
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", ref = "ae00838dc9deefec686f282024acbaee8f289735" }
