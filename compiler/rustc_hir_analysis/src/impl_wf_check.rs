@@ -74,20 +74,7 @@ fn enforce_impl_params_are_constrained(
 ) -> Result<(), ErrorGuaranteed> {
     // Every lifetime used in an associated type must be constrained.
     let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
-    if impl_self_ty.references_error() {
-        // Don't complain about unconstrained type params when self ty isn't known due to errors.
-        // (#36836)
-        tcx.dcx().span_delayed_bug(
-            tcx.def_span(impl_def_id),
-            format!(
-                "potentially unconstrained type parameters weren't evaluated: {impl_self_ty:?}",
-            ),
-        );
-        // This is super fishy, but our current `rustc_hir_analysis::check_crate` pipeline depends on
-        // `type_of` having been called much earlier, and thus this value being read from cache.
-        // Compilation must continue in order for other important diagnostics to keep showing up.
-        return Ok(());
-    }
+    impl_self_ty.error_reported()?;
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
