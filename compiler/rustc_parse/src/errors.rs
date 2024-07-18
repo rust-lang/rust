@@ -660,9 +660,8 @@ pub(crate) struct RemoveLet {
 #[diag(parse_use_eq_instead)]
 pub(crate) struct UseEqInstead {
     #[primary_span]
+    #[suggestion(style = "verbose", applicability = "machine-applicable", code = "=")]
     pub span: Span,
-    #[suggestion(style = "verbose", applicability = "machine-applicable", code = "")]
-    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
