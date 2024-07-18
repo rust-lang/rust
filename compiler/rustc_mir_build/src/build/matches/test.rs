@@ -5,7 +5,7 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use crate::build::matches::{Candidate, MatchPair, Test, TestBranch, TestCase, TestKind};
+use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
 use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
@@ -26,7 +26,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a not-fully-simplified pattern.
-    pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+    pub(super) fn pick_test_for_match_pair<'pat>(
+        &mut self,
+        match_pair: &MatchPairTree<'pat, 'tcx>,
+    ) -> Test<'tcx> {
         let kind = match match_pair.test_case {
             TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
