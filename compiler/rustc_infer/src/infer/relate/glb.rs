@@ -27,7 +27,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Glb<'_, '_, 'tcx> {
         "Glb"
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.fields.tcx()
     }
 
@@ -61,7 +61,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Glb<'_, '_, 'tcx> {
         let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
         // GLB(&'static u8, &'a u8) == &RegionLUB('static, 'a) u8 == &'static u8
         Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().lub_regions(
-            self.tcx(),
+            self.cx(),
             origin,
             a,
             b,

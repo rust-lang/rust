@@ -258,17 +258,17 @@ pub fn supertrait_def_ids<I: Interner>(
 }
 
 pub fn supertraits<I: Interner>(
-    tcx: I,
+    cx: I,
     trait_ref: ty::Binder<I, ty::TraitRef<I>>,
 ) -> FilterToTraits<I, Elaborator<I, I::Clause>> {
-    elaborate(tcx, [trait_ref.upcast(tcx)]).filter_only_self().filter_to_traits()
+    elaborate(cx, [trait_ref.upcast(cx)]).filter_only_self().filter_to_traits()
 }
 
 pub fn transitive_bounds<I: Interner>(
-    tcx: I,
+    cx: I,
     trait_refs: impl Iterator<Item = ty::Binder<I, ty::TraitRef<I>>>,
 ) -> FilterToTraits<I, Elaborator<I, I::Clause>> {
-    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.upcast(tcx)))
+    elaborate(cx, trait_refs.map(|trait_ref| trait_ref.upcast(cx)))
         .filter_only_self()
         .filter_to_traits()
 }

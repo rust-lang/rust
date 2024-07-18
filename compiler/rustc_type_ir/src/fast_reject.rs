@@ -105,7 +105,7 @@ pub enum TreatParams {
 ///
 /// ¹ meaning that if the outermost layers are different, then the whole types are also different.
 pub fn simplify_type<I: Interner>(
-    tcx: I,
+    cx: I,
     ty: I::Ty,
     treat_params: TreatParams,
 ) -> Option<SimplifiedType<I::DefId>> {
@@ -119,10 +119,10 @@ pub fn simplify_type<I: Interner>(
         ty::Str => Some(SimplifiedType::Str),
         ty::Array(..) => Some(SimplifiedType::Array),
         ty::Slice(..) => Some(SimplifiedType::Slice),
-        ty::Pat(ty, ..) => simplify_type(tcx, ty, treat_params),
+        ty::Pat(ty, ..) => simplify_type(cx, ty, treat_params),
         ty::RawPtr(_, mutbl) => Some(SimplifiedType::Ptr(mutbl)),
         ty::Dynamic(trait_info, ..) => match trait_info.principal_def_id() {
-            Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
+            Some(principal_def_id) if !cx.trait_is_auto(principal_def_id) => {
                 Some(SimplifiedType::Trait(principal_def_id))
             }
             _ => Some(SimplifiedType::MarkerTraitObject),
