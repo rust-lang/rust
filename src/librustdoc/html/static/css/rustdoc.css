@@ -2174,6 +2174,14 @@ in src-script.js and main.js
 		padding: 2px 4px;
 		box-shadow: 0 0 4px var(--main-background-color);
 	}
+
+	.item-table > li > .item-name {
+		width: 33%;
+	}
+	.item-table > li > div {
+		padding-bottom: 5px;
+		word-break: break-all;
+	}
 }
 
 @media print {
