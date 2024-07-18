@@ -6,9 +6,10 @@ use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
 use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::IdentIsRaw;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{IdentIsRaw, Lit, LitKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::ExprKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::lexer::nfc_normalize;
@@ -17,7 +18,7 @@ use rustc_session::parse::ParseSess;
 use rustc_session::parse::SymbolGallery;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{with_metavar_spans, Span, SyntaxContext};
+use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 use std::mem;
 
@@ -691,12 +692,12 @@ fn transcribe_metavar_expr<'a>(
         MetaVarExpr::Concat(ref elements) => {
             let mut concatenated = String::new();
             for element in elements.into_iter() {
-                let string = match element {
-                    MetaVarExprConcatElem::Ident(elem) => elem.to_string(),
-                    MetaVarExprConcatElem::Literal(elem) => elem.as_str().into(),
-                    MetaVarExprConcatElem::Var(elem) => extract_ident(dcx, *elem, interp)?,
+                let symbol = match element {
+                    MetaVarExprConcatElem::Ident(elem) => elem.name,
+                    MetaVarExprConcatElem::Literal(elem) => *elem,
+                    MetaVarExprConcatElem::Var(elem) => extract_var_symbol(dcx, *elem, interp)?,
                 };
-                concatenated.push_str(&string);
+                concatenated.push_str(symbol.as_str());
             }
             let symbol = nfc_normalize(&concatenated);
             let concatenated_span = visited_span();
@@ -750,32 +751,42 @@ fn transcribe_metavar_expr<'a>(
     Ok(())
 }
 
-/// Extracts an identifier that can be originated from a `$var:ident` variable or from a token tree.
-fn extract_ident<'a>(
+/// Extracts an metavariable symbol that can be an identifier, a token tree or a literal.
+fn extract_var_symbol<'a>(
     dcx: DiagCtxtHandle<'a>,
     ident: Ident,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
-) -> PResult<'a, String> {
+) -> PResult<'a, Symbol> {
     if let NamedMatch::MatchedSingle(pnr) = matched_from_ident(dcx, ident, interp)? {
         if let ParseNtResult::Ident(nt_ident, is_raw) = pnr {
             if let IdentIsRaw::Yes = is_raw {
                 return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
             }
-            return Ok(nt_ident.to_string());
+            return Ok(nt_ident.name);
         }
-        if let ParseNtResult::Tt(TokenTree::Token(
-            Token { kind: TokenKind::Ident(token_ident, is_raw), .. },
-            _,
-        )) = pnr
-        {
-            if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
+
+        if let ParseNtResult::Tt(TokenTree::Token(Token { kind, .. }, _)) = pnr {
+            if let TokenKind::Ident(symbol, is_raw) = kind {
+                if let IdentIsRaw::Yes = is_raw {
+                    return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
+                }
+                return Ok(*symbol);
             }
-            return Ok(token_ident.to_string());
+
+            if let TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }) = kind {
+                return Ok(*symbol);
+            }
+        }
+
+        if let ParseNtResult::Nt(nt) = pnr
+            && let Nonterminal::NtLiteral(expr) = &**nt
+            && let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind
+        {
+            return Ok(*symbol);
         }
     }
-    Err(dcx.struct_span_err(
-        ident.span,
-        "`${concat(..)}` currently only accepts identifiers or meta-variables as parameters",
-    ))
+    Err(dcx
+        .struct_err("metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`")
+        .with_note("currently only string literals are supported")
+        .with_span(ident.span))
 }
