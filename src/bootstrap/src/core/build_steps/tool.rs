@@ -858,6 +858,15 @@ impl Step for LlvmBitcodeLinker {
             &self.extra_features,
         );
 
+        let _guard = builder.msg_tool(
+            Kind::Build,
+            Mode::ToolRustc,
+            bin_name,
+            self.compiler.stage,
+            &self.compiler.host,
+            &self.target,
+        );
+
         cargo.into_cmd().run(builder);
 
         let tool_out = builder
