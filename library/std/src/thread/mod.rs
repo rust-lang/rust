@@ -487,7 +487,7 @@ impl Builder {
             amt
         });
 
-        let my_thread = name.map_or_else(Thread::new_unnamed, |name| Thread::new(name.into()));
+        let my_thread = name.map_or_else(Thread::new_unnamed, Thread::new);
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -1336,8 +1336,8 @@ pub struct Thread {
 
 impl Thread {
     /// Used only internally to construct a thread object without spawning.
-    pub(crate) fn new(name: ThreadNameString) -> Thread {
-        Self::new_inner(ThreadName::Other(name))
+    pub(crate) fn new(name: String) -> Thread {
+        Self::new_inner(ThreadName::Other(name.into()))
     }
 
     pub(crate) fn new_unnamed() -> Thread {
