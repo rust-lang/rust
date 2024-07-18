@@ -2558,18 +2558,19 @@ fn num_decimal_digits(num: usize) -> usize {
 }
 
 // We replace some characters so the CLI output is always consistent and underlines aligned.
+// Keep the following list in sync with `rustc_span::char_width`.
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
-    ('\t', "    "),   // We do our own tab replacement
+    ('\t', "    "),    // We do our own tab replacement
     ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
-    ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
-    ('\u{202B}', ""), // supported across CLIs and can cause confusion due to the bytes on disk
-    ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.
-    ('\u{202E}', ""),
-    ('\u{2066}', ""),
-    ('\u{2067}', ""),
-    ('\u{2068}', ""),
-    ('\u{202C}', ""),
-    ('\u{2069}', ""),
+    ('\u{202A}', "�"), // The following unicode text flow control characters are inconsistently
+    ('\u{202B}', "�"), // supported across CLIs and can cause confusion due to the bytes on disk
+    ('\u{202D}', "�"), // not corresponding to the visible source code, so we replace them always.
+    ('\u{202E}', "�"),
+    ('\u{2066}', "�"),
+    ('\u{2067}', "�"),
+    ('\u{2068}', "�"),
+    ('\u{202C}', "�"),
+    ('\u{2069}', "�"),
     // In terminals without Unicode support the following will be garbled, but in *all* terminals
     // the underlying codepoint will be as well. We could gate this replacement behind a "unicode
     // support" gate.
