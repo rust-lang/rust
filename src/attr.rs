@@ -147,7 +147,7 @@ fn format_derive(
         .tactic(tactic)
         .trailing_separator(trailing_separator)
         .ends_with_newline(false);
-    let item_str = write_list(&all_items, &fmt)?;
+    let item_str = write_list(&all_items, &fmt).ok()?;
 
     debug!("item_str: '{}'", item_str);
 

@@ -336,7 +336,7 @@ fn rewrite_closure_fn_decl(
     let fmt = ListFormatting::new(param_shape, context.config)
         .tactic(tactic)
         .preserve_newline(true);
-    let list_str = write_list(&item_vec, &fmt).unknown_error()?;
+    let list_str = write_list(&item_vec, &fmt)?;
     let mut prefix = format!("{binder}{const_}{immovable}{coro}{mover}|{list_str}|");
 
     if !ret_str.is_empty() {

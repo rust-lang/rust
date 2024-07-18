@@ -477,8 +477,8 @@ pub(crate) fn rewrite_macro_def(
     }
 
     match write_list(&branch_items, &fmt) {
-        Some(ref s) => result += s,
-        None => return snippet,
+        Ok(ref s) => result += s,
+        Err(_) => return snippet,
     }
 
     if multi_branch_style {

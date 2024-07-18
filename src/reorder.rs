@@ -59,7 +59,7 @@ fn wrap_reorderable_items(
     let fmt = ListFormatting::new(shape, context.config)
         .separator("")
         .align_comments(false);
-    write_list(list_items, &fmt)
+    write_list(list_items, &fmt).ok()
 }
 
 fn rewrite_reorderable_item(
@@ -131,9 +131,18 @@ fn rewrite_reorderable_or_regroupable_items(
                 .map(|use_group| {
                     let item_vec: Vec<_> = use_group
                         .into_iter()
-                        .map(|use_tree| ListItem {
-                            item: use_tree.rewrite_top_level(context, nested_shape),
-                            ..use_tree.list_item.unwrap_or_else(ListItem::empty)
+                        .map(|use_tree| {
+                            let item = use_tree
+                                .rewrite_top_level(context, nested_shape)
+                                .unknown_error();
+                            if let Some(list_item) = use_tree.list_item {
+                                ListItem {
+                                    item: item,
+                                    ..list_item
+                                }
+                            } else {
+                                ListItem::from_item(item)
+                            }
                         })
                         .collect();
                     wrap_reorderable_items(context, &item_vec, nested_shape)

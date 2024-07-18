@@ -407,7 +407,7 @@ where
             .trailing_separator(trailing_separator)
             .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
             .preserve_newline(true);
-        (write_list(&item_vec, &fmt).unknown_error()?, tactic)
+        (write_list(&item_vec, &fmt)?, tactic)
     };
 
     let args = if tactic == DefinitiveListTactic::Horizontal

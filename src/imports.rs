@@ -993,7 +993,7 @@ fn rewrite_nested_use_tree(
     };
     for use_tree in use_tree_list {
         if let Some(mut list_item) = use_tree.list_item.clone() {
-            list_item.item = use_tree.rewrite(context, nested_shape);
+            list_item.item = use_tree.rewrite_result(context, nested_shape);
             list_items.push(list_item);
         } else {
             list_items.push(ListItem::from_str(use_tree.rewrite(context, nested_shape)?));
@@ -1032,7 +1032,7 @@ fn rewrite_nested_use_tree(
         .preserve_newline(true)
         .nested(has_nested_list);
 
-    let list_str = write_list(&list_items, &fmt)?;
+    let list_str = write_list(&list_items, &fmt).ok()?;
 
     let result = if (list_str.contains('\n')
         || list_str.len() > remaining_width

@@ -19,7 +19,7 @@ use crate::lists::{
 };
 use crate::macros::MacroArg;
 use crate::patterns::{can_be_overflowed_pat, TuplePatField};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -456,7 +456,7 @@ impl<'a> Context<'a> {
 
         if let Some(rewrite) = rewrite {
             // splitn(2, *).next().unwrap() is always safe.
-            let rewrite_first_line = Some(rewrite.splitn(2, '\n').next().unwrap().to_owned());
+            let rewrite_first_line = Ok(rewrite.splitn(2, '\n').next().unwrap().to_owned());
             last_list_item.item = rewrite_first_line;
             Some(rewrite)
         } else {
@@ -544,22 +544,23 @@ impl<'a> Context<'a> {
                         .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
                     let no_newline = rw.as_ref().map_or(false, |s| !s.contains('\n'));
                     if no_newline {
-                        list_items[self.items.len() - 1].item = rw;
+                        list_items[self.items.len() - 1].item = rw.unknown_error();
                     } else {
-                        list_items[self.items.len() - 1].item = Some(overflowed.to_owned());
+                        list_items[self.items.len() - 1].item = Ok(overflowed.to_owned());
                     }
                 } else {
-                    list_items[self.items.len() - 1].item = Some(overflowed.to_owned());
+                    list_items[self.items.len() - 1].item = Ok(overflowed.to_owned());
                 }
             }
             (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
-                list_items[self.items.len() - 1].item = placeholder;
+                list_items[self.items.len() - 1].item = placeholder.unknown_error();
             }
             _ if !self.items.is_empty() => {
                 list_items[self.items.len() - 1].item = self
                     .items
                     .last()
-                    .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
+                    .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape))
+                    .unknown_error();
 
                 // Use horizontal layout for a function with a single argument as long as
                 // everything fits in a single line.
@@ -656,6 +657,7 @@ impl<'a> Context<'a> {
             .ends_with_newline(ends_with_newline);
 
         write_list(&list_items, &fmt)
+            .ok()
             .map(|items_str| (tactic == DefinitiveListTactic::Horizontal, items_str))
     }
 

@@ -30,7 +30,7 @@ impl<T: Rewrite> Rewrite for ptr::P<T> {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Clone, Error, Debug)]
 pub(crate) enum RewriteError {
     #[error("Formatting was skipped due to skip attribute or out of file range.")]
     SkipFormatting,

@@ -8,7 +8,7 @@ use rustc_span::BytePos;
 use crate::comment::{find_comment_end, rewrite_comment, FindUncommented};
 use crate::config::lists::*;
 use crate::config::{Config, IndentStyle};
-use crate::rewrite::{RewriteContext, RewriteResult};
+use crate::rewrite::{RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::utils::{
     count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline,
@@ -125,18 +125,18 @@ pub(crate) struct ListItem {
     pub(crate) pre_comment_style: ListItemCommentStyle,
     // Item should include attributes and doc comments. None indicates a failed
     // rewrite.
-    pub(crate) item: Option<String>,
+    pub(crate) item: RewriteResult,
     pub(crate) post_comment: Option<String>,
     // Whether there is extra whitespace before this item.
     pub(crate) new_lines: bool,
 }
 
 impl ListItem {
-    pub(crate) fn empty() -> ListItem {
+    pub(crate) fn from_item(item: RewriteResult) -> ListItem {
         ListItem {
             pre_comment: None,
             pre_comment_style: ListItemCommentStyle::None,
-            item: None,
+            item: item,
             post_comment: None,
             new_lines: false,
         }
@@ -185,7 +185,7 @@ impl ListItem {
         ListItem {
             pre_comment: None,
             pre_comment_style: ListItemCommentStyle::None,
-            item: Some(s.into()),
+            item: Ok(s.into()),
             post_comment: None,
             new_lines: false,
         }
@@ -197,7 +197,11 @@ impl ListItem {
             !matches!(*s, Some(ref s) if !s.is_empty())
         }
 
-        !(empty(&self.pre_comment) && empty(&self.item) && empty(&self.post_comment))
+        fn empty_result(s: &RewriteResult) -> bool {
+            !matches!(*s, Ok(ref s) if !s.is_empty())
+        }
+
+        !(empty(&self.pre_comment) && empty_result(&self.item) && empty(&self.post_comment))
     }
 }
 
@@ -257,7 +261,7 @@ where
 }
 
 // Format a list of commented items into a string.
-pub(crate) fn write_list<I, T>(items: I, formatting: &ListFormatting<'_>) -> Option<String>
+pub(crate) fn write_list<I, T>(items: I, formatting: &ListFormatting<'_>) -> RewriteResult
 where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
@@ -281,8 +285,7 @@ where
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
     while let Some((i, item)) = iter.next() {
         let item = item.as_ref();
-        // TODO here Is it possible to 실제로 list item이 없으면..
-        let inner_item = item.item.as_ref()?;
+        let inner_item = item.item.as_ref().or_else(|err| Err(err.clone()))?;
         let first = i == 0;
         let last = iter.peek().is_none();
         let mut separate = match sep_place {
@@ -363,8 +366,8 @@ where
             // Block style in non-vertical mode.
             let block_mode = tactic == DefinitiveListTactic::Horizontal;
             // Width restriction is only relevant in vertical mode.
-            let comment =
-                rewrite_comment(comment, block_mode, formatting.shape, formatting.config)?;
+            let comment = rewrite_comment(comment, block_mode, formatting.shape, formatting.config)
+                .unknown_error()?;
             result.push_str(&comment);
 
             if !inner_item.is_empty() {
@@ -410,7 +413,8 @@ where
                 true,
                 Shape::legacy(formatting.shape.width, Indent::empty()),
                 formatting.config,
-            )?;
+            )
+            .unknown_error()?;
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -461,7 +465,8 @@ where
                 )
             };
 
-            let mut formatted_comment = rewrite_post_comment(&mut item_max_width)?;
+            let mut formatted_comment =
+                rewrite_post_comment(&mut item_max_width).unknown_error()?;
 
             if !starts_with_newline(comment) {
                 if formatting.align_comments {
@@ -474,7 +479,8 @@ where
                         > formatting.config.max_width()
                     {
                         item_max_width = None;
-                        formatted_comment = rewrite_post_comment(&mut item_max_width)?;
+                        formatted_comment =
+                            rewrite_post_comment(&mut item_max_width).unknown_error()?;
                         comment_alignment =
                             post_comment_alignment(item_max_width, unicode_str_width(inner_item));
                     }
@@ -517,7 +523,7 @@ where
         prev_item_is_nested_import = inner_item.contains("::");
     }
 
-    Some(result)
+    Ok(result)
 }
 
 fn max_width_of_item_with_post_comment<I, T>(
@@ -776,10 +782,11 @@ where
             ListItem {
                 pre_comment,
                 pre_comment_style,
+                // leave_last is set to true only for rewrite_items
                 item: if self.inner.peek().is_none() && self.leave_last {
-                    None
+                    Err(RewriteError::SkipFormatting)
                 } else {
-                    (self.get_item_string)(&item).ok()
+                    (self.get_item_string)(&item)
                 },
                 post_comment,
                 new_lines,

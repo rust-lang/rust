@@ -236,7 +236,7 @@ fn rewrite_match_arms(
         .separator("")
         .preserve_newline(true);
 
-    write_list(&arms_vec, &fmt).unknown_error()
+    write_list(&arms_vec, &fmt)
 }
 
 fn rewrite_match_arm(

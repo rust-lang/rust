@@ -1677,7 +1677,6 @@ fn rewrite_struct_lit<'a>(
                     v_shape.sub_width(1).max_width_error(v_shape.width, span)?,
                     0,
                 )
-                .unknown_error()
             }
             StructLitField::Base(expr) => {
                 // 2 = ..
@@ -1719,7 +1718,7 @@ fn rewrite_struct_lit<'a>(
             force_no_trailing_comma || has_base_or_rest || !context.use_block_indent(),
         );
 
-        write_list(&item_vec, &fmt).unknown_error()?
+        write_list(&item_vec, &fmt)?
     };
 
     let fields_str =
@@ -1868,7 +1867,7 @@ fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
     let fmt = ListFormatting::new(nested_shape, context.config)
         .tactic(tactic)
         .ends_with_newline(false);
-    let list_str = write_list(&item_vec, &fmt)?;
+    let list_str = write_list(&item_vec, &fmt).ok()?;
 
     Some(format!("({list_str})"))
 }

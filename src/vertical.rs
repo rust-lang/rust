@@ -228,10 +228,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         ",",
         |field| field.get_span().lo(),
         |field| field.get_span().hi(),
-        |field| {
-            field
-                .rewrite_aligned_item(context, item_shape, field_prefix_max_width)
-        },
+        |field| field.rewrite_aligned_item(context, item_shape, field_prefix_max_width),
         span.lo(),
         span.hi(),
         false,
@@ -247,14 +244,13 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
 
     if tactic == DefinitiveListTactic::Horizontal {
         // since the items fits on a line, there is no need to align them
-        let do_rewrite = |field: &T| -> Option<String> {
-            field.rewrite_aligned_item(context, item_shape, 0).ok()
-        };
+        let do_rewrite =
+            |field: &T| -> RewriteResult { field.rewrite_aligned_item(context, item_shape, 0) };
         fields
             .iter()
             .zip(items.iter_mut())
             .for_each(|(field, list_item): (&T, &mut ListItem)| {
-                if list_item.item.is_some() {
+                if list_item.item.is_ok() {
                     list_item.item = do_rewrite(field);
                 }
             });
@@ -270,7 +266,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         .tactic(tactic)
         .trailing_separator(separator_tactic)
         .preserve_newline(true);
-    write_list(&items, &fmt)
+    write_list(&items, &fmt).ok()
 }
 
 /// Returns the index in `fields` up to which a field belongs to the current group.
