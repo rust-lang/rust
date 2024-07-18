@@ -1,4 +1,3 @@
-#![feature(unsafe_extern_blocks)]
 #![deny(unsafe_code)]
 
 #[allow(unsafe_code)]
