@@ -3611,24 +3611,23 @@ impl<'test> TestCx<'test> {
         // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc
+            // Specify output path
             .arg("-o")
             .arg(&recipe_bin)
+            // Specify library search paths for `run_make_support`.
             .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap().to_string_lossy()))
             .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
             .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
+            // Provide `run_make_support` as extern prelude, so test writers don't need to write
+            // `extern run_make_support;`.
             .arg("--extern")
             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+            // Default to Edition 2021.
             .arg("--edition=2021")
+            // The recipe file itself.
             .arg(&self.testpaths.file.join("rmake.rs"))
-            .env("TARGET", &self.config.target)
-            .env("PYTHON", &self.config.python)
-            .env("RUST_BUILD_STAGE", &self.config.stage_id)
-            .env("RUSTC", &self.config.rustc_path)
-            .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap())
-            .env("HOST_RPATH_DIR", &self.config.compile_lib_path)
-            .env("TARGET_RPATH_DIR", &self.config.run_lib_path)
-            .env("LLVM_COMPONENTS", &self.config.llvm_components);
+            // Provide necessary library search paths for rustc.
+            .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
         // In test code we want to be very pedantic about values being silently discarded that are
         // annotated with `#[must_use]`.
