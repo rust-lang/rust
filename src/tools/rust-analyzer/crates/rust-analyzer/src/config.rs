@@ -2751,7 +2751,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "FxHashMap<String, String>" => set! {
             "type": "object",
         },
-        "FxHashMap<Box<str>, usize>" => set! {
+        "FxHashMap<Box<str>, u16>" => set! {
             "type": "object",
         },
         "FxHashMap<String, Option<String>>" => set! {
@@ -2760,6 +2760,11 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "Option<usize>" => set! {
             "type": ["null", "integer"],
             "minimum": 0,
+        },
+        "Option<u16>" => set! {
+            "type": ["null", "integer"],
+            "minimum": 0,
+            "maximum": 65535,
         },
         "Option<String>" => set! {
             "type": ["null", "string"],
