@@ -943,11 +943,10 @@ impl<'a> Parser<'a> {
         let initial_semicolon = self.token.span;
 
         while self.eat(&TokenKind::Semi) {
-            let _ =
-                self.parse_stmt_without_recovery(false, ForceCollect::Yes).unwrap_or_else(|e| {
-                    e.cancel();
-                    None
-                });
+            let _ = self.parse_stmt_without_recovery(false, ForceCollect::No).unwrap_or_else(|e| {
+                e.cancel();
+                None
+            });
         }
 
         expect_err

@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Path => {
                 NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
             }
-            NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(true)?)),
+            NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(ForceCollect::Yes)?)),
             NonterminalKind::Vis => {
                 NtVis(P(self
                     .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?))
