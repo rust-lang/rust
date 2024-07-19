@@ -3583,13 +3583,18 @@ impl<'test> TestCx<'test> {
         debug!(?support_lib_deps_deps);
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let orig_dylib_env_paths =
+
+        // This is the base dynamic library search paths that was made available to compiletest.
+        let base_dylib_search_paths =
             Vec::from_iter(env::split_paths(&env::var(dylib_env_var()).unwrap()));
 
-        let mut host_dylib_env_paths = Vec::new();
-        host_dylib_env_paths.push(self.config.compile_lib_path.clone());
-        host_dylib_env_paths.extend(orig_dylib_env_paths.iter().cloned());
-        let host_dylib_env_paths = env::join_paths(host_dylib_env_paths).unwrap();
+        // We add in `self.config.compile_lib_path` which are the libraries needed to run the
+        // host compiler.
+        let host_dylib_search_paths = {
+            let mut paths = vec![self.config.compile_lib_path.clone()];
+            paths.extend(base_dylib_search_paths.iter().cloned());
+            paths
+        };
 
         // Finally, we need to run the recipe binary to build and run the actual tests.
         // FIXME(jieyouxu): use `std::env::consts::EXE_EXTENSION`.
@@ -3617,7 +3622,7 @@ impl<'test> TestCx<'test> {
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", &self.config.rustc_path)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env(dylib_env_var(), &host_dylib_env_paths)
+            .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap())
             .env("HOST_RPATH_DIR", &self.config.compile_lib_path)
             .env("TARGET_RPATH_DIR", &self.config.run_lib_path)
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
@@ -3648,16 +3653,19 @@ impl<'test> TestCx<'test> {
         stage_std_path.push("lib");
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let mut dylib_env_paths = orig_dylib_env_paths.clone();
-        dylib_env_paths.push(support_lib_path.parent().unwrap().to_path_buf());
-        dylib_env_paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
-        let dylib_env_paths = env::join_paths(dylib_env_paths).unwrap();
+        let recipe_dylib_search_paths = {
+            let mut paths = base_dylib_search_paths.clone();
+            paths.push(support_lib_path.parent().unwrap().to_path_buf());
+            paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
+            paths
+        };
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let mut target_rpath_env_path = Vec::new();
-        target_rpath_env_path.push(&rmake_out_dir);
-        target_rpath_env_path.extend(&orig_dylib_env_paths);
-        let target_rpath_env_path = env::join_paths(target_rpath_env_path).unwrap();
+        let target_rpaths = {
+            let mut paths = vec![rmake_out_dir.clone()];
+            paths.extend(base_dylib_search_paths.iter().cloned());
+            paths
+        };
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
         // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
@@ -3666,8 +3674,8 @@ impl<'test> TestCx<'test> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env("TARGET_RPATH_ENV", &target_rpath_env_path)
-            .env(dylib_env_var(), &dylib_env_paths)
+            .env("TARGET_RPATH_ENV", &env::join_paths(target_rpaths).unwrap())
+            .env(dylib_env_var(), &env::join_paths(recipe_dylib_search_paths).unwrap())
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
             .env("SOURCE_ROOT", &source_root)
