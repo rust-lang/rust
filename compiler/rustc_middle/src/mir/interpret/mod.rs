@@ -206,9 +206,21 @@ impl<'s> AllocDecodingSession<'s> {
             (alloc_kind, decoder.position())
         });
 
+        // We are going to hold this lock during the entire decoding of this allocation, which may
+        // require that we decode other allocations. This cannot deadlock for two reasons:
+        //
+        // At the time of writing, it is only possible to create an allocation that contains a pointer
+        // to itself using the const_allocate intrinsic (which is for testing only), and even attempting
+        // to evaluate such consts blows the stack. If we ever grow a mechanism for producing
+        // cyclic allocations, we will need a new strategy for decoding that doesn't bring back
+        // https://github.com/rust-lang/rust/issues/126741.
+        //
+        // It is also impossible to create two allocations (call them A and B) where A is a pointer to B, and B
+        // is a pointer to A, because attempting to evaluate either of those consts will produce a
+        // query cycle, failing compilation.
+        let mut entry = self.state.decoding_state[idx].lock();
         // Check the decoding state to see if it's already decoded or if we should
         // decode it here.
-        let mut entry = self.state.decoding_state[idx].lock();
         if let State::Done(alloc_id) = *entry {
             return alloc_id;
         }
