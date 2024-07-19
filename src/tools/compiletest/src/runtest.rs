@@ -3440,17 +3440,8 @@ impl<'test> TestCx<'test> {
         //    library.
         // 2. We need to run the recipe binary.
 
-        // FIXME(jieyouxu): path examples
-        // source_root="/home/gh-jieyouxu/rust"
-        // src_root="/home/gh-jieyouxu/rust"
-        // build_root="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu"
-        // self.config.build_base="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/test/run-make"
-        // support_lib_deps="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/stage1-tools/aarch64-unknown-linux-gnu/release/deps"
-        // support_lib_deps_deps="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/stage1-tools/release/deps"
-        // recipe_bin="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/test/run-make/a-b-a-linker-guard/a-b-a-linker-guard/rmake"
-
-        // So we assume the rust-lang/rust project setup looks like (our `.` is the top-level
-        // directory, irrelevant entries to our purposes omitted):
+        // So we assume the rust-lang/rust project setup looks like the following (our `.` is the
+        // top-level directory, irrelevant entries to our purposes omitted):
         //
         // ```
         // .                               // <- `source_root`
@@ -3467,15 +3458,12 @@ impl<'test> TestCx<'test> {
         // `source_root` is the top-level directory containing the rust-lang/rust checkout.
         let source_root =
             self.config.find_rust_src_root().expect("could not determine rust source root");
-        debug!(?source_root);
         // `self.config.build_base` is actually the build base folder + "test" + test suite name, it
-        // looks like `build/<host_tuplet>/test/run-make`. But we want `build/<host_tuplet>/`. Note
+        // looks like `build/<host_triple>/test/run-make`. But we want `build/<host_triple>/`. Note
         // that the `build` directory does not need to be called `build`, nor does it need to be
         // under `source_root`, so we must compute it based off of `self.config.build_base`.
-        debug!(?self.config.build_base);
         let build_root =
             self.config.build_base.parent().and_then(Path::parent).unwrap().to_path_buf();
-        debug!(?build_root);
 
         // We construct the following directory tree for each rmake.rs test:
         // ```
@@ -3511,12 +3499,12 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        // `self.config.stage_id` looks like `stage1-<target_tuplet>`, but we only want
+        // `self.config.stage_id` looks like `stage1-<target_triple>`, but we only want
         // the `stage1` part as that is what the output directories of bootstrap are prefixed with.
         // Note that this *assumes* build layout from bootstrap is produced as:
         //
         // ```
-        // build/<target_tuplet>/          // <- this is `build_root`
+        // build/<target_triple>/          // <- this is `build_root`
         // ├── stage0
         // ├── stage0-bootstrap-tools
         // ├── stage0-codegen
@@ -3533,7 +3521,6 @@ impl<'test> TestCx<'test> {
         // ```
         // FIXME(jieyouxu): improve the communication between bootstrap and compiletest here so
         // we don't have to hack out a `stageN`.
-        debug!(?self.config.stage_id);
         let stage = self.config.stage_id.split('-').next().unwrap();
 
         // In order to link in the support library as a rlib when compiling recipes, we need three
@@ -3545,12 +3532,12 @@ impl<'test> TestCx<'test> {
         // The paths look like
         //
         // ```
-        // build/<target_tuplet>/
+        // build/<target_triple>/
         // ├── stageN-tools-bin/
         // │   └── librun_make_support.rlib       // <- support rlib itself
         // ├── stageN-tools/
         // │   ├── release/deps/                  // <- deps of deps
-        // │   └── <host_tuplet>/release/deps/    // <- deps
+        // │   └── <host_triple>/release/deps/    // <- deps
         // ```
         //
         // There almost certainly is a better way to do this, but this seems to work for now.
@@ -3561,7 +3548,6 @@ impl<'test> TestCx<'test> {
             p.push("librun_make_support.rlib");
             p
         };
-        debug!(?support_lib_path);
 
         let support_lib_deps = {
             let mut p = build_root.clone();
@@ -3571,7 +3557,6 @@ impl<'test> TestCx<'test> {
             p.push("deps");
             p
         };
-        debug!(?support_lib_deps);
 
         let support_lib_deps_deps = {
             let mut p = build_root.clone();
@@ -3580,7 +3565,6 @@ impl<'test> TestCx<'test> {
             p.push("deps");
             p
         };
-        debug!(?support_lib_deps_deps);
 
         // To compile the recipe with rustc, we need to provide suitable dynamic library search
         // paths to rustc. This includes both:
@@ -3605,10 +3589,7 @@ impl<'test> TestCx<'test> {
             p.set_extension(env::consts::EXE_EXTENSION);
             p
         };
-        debug!(?recipe_bin);
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
-        // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc
             .arg("-o")
@@ -3673,7 +3654,6 @@ impl<'test> TestCx<'test> {
             p.push("lib");
             p
         };
-        debug!(?stage_std_path);
 
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
@@ -3682,7 +3662,6 @@ impl<'test> TestCx<'test> {
             paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
             paths
         };
-        debug!(?recipe_dylib_search_paths);
 
         // Compute runtime library search paths for recipes. This is target-specific.
         let target_runtime_dylib_search_paths = {
@@ -3691,8 +3670,6 @@ impl<'test> TestCx<'test> {
             paths
         };
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
-        // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
         // FIXME(jieyouxu): please rename `TARGET_RPATH_ENV`, `HOST_RPATH_DIR` and
         // `TARGET_RPATH_DIR`, it is **extremely** confusing!
         let mut cmd = Command::new(&recipe_bin);
