@@ -264,6 +264,9 @@ ast_passes_unsafe_negative_impl = negative impls cannot be unsafe
     .negative = negative because of this
     .unsafe = unsafe because of this
 
+ast_passes_unsafe_static =
+    static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
+
 ast_passes_visibility_not_permitted =
     visibility qualifiers are not permitted here
     .enum_variant = enum variants and their fields always share the visibility of the enum they are in

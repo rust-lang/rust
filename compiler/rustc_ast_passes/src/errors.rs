@@ -226,6 +226,13 @@ pub struct InvalidSafetyOnExtern {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_unsafe_static)]
+pub struct UnsafeStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_bound_in_context)]
 pub struct BoundInContext<'a> {
     #[primary_span]
