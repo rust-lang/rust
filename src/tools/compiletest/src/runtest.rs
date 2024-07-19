@@ -3440,14 +3440,42 @@ impl<'test> TestCx<'test> {
         //    library.
         // 2. We need to run the recipe binary.
 
-        // FIXME(jieyouxu): hm, cwd doesn't look right here?
-        let cwd = env::current_dir().unwrap();
-        // FIXME(jieyouxu): is there a better way to get `src_root`?
-        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
-        let src_root = cwd.join(&src_root);
-        // FIXME(jieyouxu): is there a better way to get `build_root`?
-        let build_root = self.config.build_base.parent().unwrap().parent().unwrap();
-        let build_root = cwd.join(&build_root);
+        // FIXME(jieyouxu): path examples
+        // source_root="/home/gh-jieyouxu/rust"
+        // src_root="/home/gh-jieyouxu/rust"
+        // build_root="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu"
+        // self.config.build_base="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/test/run-make"
+        // support_lib_deps="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/stage1-tools/aarch64-unknown-linux-gnu/release/deps"
+        // support_lib_deps_deps="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/stage1-tools/release/deps"
+        // recipe_bin="/home/gh-jieyouxu/rust/build/aarch64-unknown-linux-gnu/test/run-make/a-b-a-linker-guard/a-b-a-linker-guard/rmake"
+
+        // So we assume the rust-lang/rust project setup looks like (our `.` is the top-level
+        // directory, irrelevant entries to our purposes omitted):
+        //
+        // ```
+        // .                               // <- `source_root`
+        // ├── build/                      // <- `build_root`
+        // ├── compiler/
+        // ├── library/
+        // ├── src/
+        // │  └── tools/
+        // │     └── run_make_support/
+        // └── tests
+        //    └── run-make/
+        // ```
+
+        // `source_root` is the top-level directory containing the rust-lang/rust checkout.
+        let source_root =
+            self.config.find_rust_src_root().expect("could not determine rust source root");
+        debug!(?source_root);
+        // `self.config.build_base` is actually the build base folder + "test" + test suite name, it
+        // looks like `build/<host_tuplet>/test/run-make`. But we want `build/<host_tuplet>/`. Note
+        // that the `build` directory does not need to be called `build`, nor does it need to be
+        // under `source_root`, so we must compute it based off of `self.config.build_base`.
+        debug!(?self.config.build_base);
+        let build_root =
+            self.config.build_base.parent().and_then(Path::parent).unwrap().to_path_buf();
+        debug!(?build_root);
 
         // We construct the following directory tree for each rmake.rs test:
         // ```
@@ -3462,7 +3490,7 @@ impl<'test> TestCx<'test> {
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
         // FIXME(jieyouxu): is there a better way to compute `base_dir`?
-        let base_dir = cwd.join(self.output_base_name());
+        let base_dir = self.output_base_name();
         if base_dir.exists() {
             self.aggressive_rm_rf(&base_dir).unwrap();
         }
@@ -3532,7 +3560,7 @@ impl<'test> TestCx<'test> {
             Vec::from_iter(env::split_paths(&env::var(dylib_env_var()).unwrap()));
 
         let mut host_dylib_env_paths = Vec::new();
-        host_dylib_env_paths.push(cwd.join(&self.config.compile_lib_path));
+        host_dylib_env_paths.push(self.config.compile_lib_path.clone());
         host_dylib_env_paths.extend(orig_dylib_env_paths.iter().cloned());
         let host_dylib_env_paths = env::join_paths(host_dylib_env_paths).unwrap();
 
@@ -3551,17 +3579,18 @@ impl<'test> TestCx<'test> {
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
-            .env("RUSTC", cwd.join(&self.config.rustc_path))
+            .env("RUSTC", &self.config.rustc_path)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
             .env(dylib_env_var(), &host_dylib_env_paths)
-            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
-            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+            .env("HOST_RPATH_DIR", &self.config.compile_lib_path)
+            .env("TARGET_RPATH_DIR", &self.config.run_lib_path)
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         // In test code we want to be very pedantic about values being silently discarded that are
         // annotated with `#[must_use]`.
         cmd.arg("-Dunused_must_use");
 
+        // FIXME(jieyouxu): explain this!
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
             let mut stage0_sysroot = build_root.clone();
             stage0_sysroot.push("stage0-sysroot");
@@ -3602,15 +3631,15 @@ impl<'test> TestCx<'test> {
             .env(dylib_env_var(), &dylib_env_paths)
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
-            .env("SOURCE_ROOT", &src_root)
+            .env("SOURCE_ROOT", &source_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
-            .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
-            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+            .env("RUSTC", &self.config.rustc_path)
+            .env("HOST_RPATH_DIR", &self.config.compile_lib_path)
+            .env("TARGET_RPATH_DIR", &self.config.run_lib_path)
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
-            cmd.env("RUSTDOC", cwd.join(rustdoc));
+            cmd.env("RUSTDOC", source_root.join(rustdoc));
         }
 
         if let Some(ref node) = self.config.nodejs {
