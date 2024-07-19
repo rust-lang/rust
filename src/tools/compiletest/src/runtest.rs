@@ -3582,14 +3582,15 @@ impl<'test> TestCx<'test> {
         };
         debug!(?support_lib_deps_deps);
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
+        // To compile the recipe with rustc, we need to provide suitable dynamic library search
+        // paths to rustc. This includes both:
+        // 1. The "base" dylib search paths that was provided to compiletest, e.g. `LD_LIBRARY_PATH`
+        //    on some linux distros.
+        // 2. Specific library paths in `self.config.compile_lib_path` needed for running rustc.
 
-        // This is the base dynamic library search paths that was made available to compiletest.
         let base_dylib_search_paths =
             Vec::from_iter(env::split_paths(&env::var(dylib_env_var()).unwrap()));
 
-        // We add in `self.config.compile_lib_path` which are the libraries needed to run the
-        // host compiler.
         let host_dylib_search_paths = {
             let mut paths = vec![self.config.compile_lib_path.clone()];
             paths.extend(base_dylib_search_paths.iter().cloned());
