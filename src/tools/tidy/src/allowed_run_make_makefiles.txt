@@ -47,7 +47,6 @@ run-make/link-cfg/Makefile
 run-make/link-framework/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
-run-make/lto-linkage-used-attr/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/min-global-align/Makefile
 run-make/native-link-modifier-bundle/Makefile
