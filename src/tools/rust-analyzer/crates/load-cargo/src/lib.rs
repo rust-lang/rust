@@ -377,7 +377,7 @@ fn load_crate_graph(
 ) -> RootDatabase {
     let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
-    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
+    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
     let mut db = RootDatabase::new(lru_cap);
     let mut analysis_change = ChangeWithProcMacros::new();
 

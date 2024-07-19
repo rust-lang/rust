@@ -1,5 +1,8 @@
 use crate::debug::TableEntry;
+use crate::derived_lru::MemoizationPolicy;
 use crate::durability::Durability;
+use crate::lru::LruIndex;
+use crate::lru::LruNode;
 use crate::plumbing::{DatabaseOps, QueryFunction};
 use crate::revision::Revision;
 use crate::runtime::local_state::ActiveQueryGuard;
@@ -11,18 +14,21 @@ use crate::runtime::WaitResult;
 use crate::Cycle;
 use crate::{Database, DatabaseKeyIndex, Event, EventKind, QueryDb};
 use parking_lot::{RawRwLock, RwLock};
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, info};
 
-pub(super) struct Slot<Q>
+pub(super) struct Slot<Q, MP>
 where
     Q: QueryFunction,
+    MP: MemoizationPolicy<Q>,
 {
     key_index: u32,
-    // FIXME: Yeet this
     group_index: u16,
     state: RwLock<QueryState<Q>>,
+    lru_index: LruIndex,
+    policy: PhantomData<MP>,
 }
 
 /// Defines the "current state" of query's memoized results.
@@ -48,7 +54,7 @@ where
 
 struct Memo<V> {
     /// The result of the query, if we decide to memoize it.
-    value: V,
+    value: Option<V>,
 
     /// Last revision when this memo was verified; this begins
     /// as the current revision.
@@ -71,6 +77,12 @@ enum ProbeState<V, G> {
     /// verified in this revision.
     Stale(G),
 
+    /// There is an entry, and it has been verified
+    /// in this revision, but it has no cached
+    /// value. The `Revision` is the revision where the
+    /// value last changed (if we were to recompute it).
+    NoValue(G, Revision),
+
     /// There is an entry which has been verified,
     /// and it has the following value-- or, we blocked
     /// on another thread, and that resulted in a cycle.
@@ -91,16 +103,18 @@ enum MaybeChangedSinceProbeState<G> {
     Stale(G),
 }
 
-impl<Q> Slot<Q>
+impl<Q, MP> Slot<Q, MP>
 where
     Q: QueryFunction,
-    Q::Value: Eq,
+    MP: MemoizationPolicy<Q>,
 {
     pub(super) fn new(database_key_index: DatabaseKeyIndex) -> Self {
         Self {
             key_index: database_key_index.key_index,
             group_index: database_key_index.group_index,
             state: RwLock::new(QueryState::NotComputed),
+            lru_index: LruIndex::default(),
+            policy: PhantomData,
         }
     }
 
@@ -132,7 +146,9 @@ where
         loop {
             match self.probe(db, self.state.read(), runtime, revision_now) {
                 ProbeState::UpToDate(v) => return v,
-                ProbeState::Stale(..) | ProbeState::NotComputed(..) => break,
+                ProbeState::Stale(..) | ProbeState::NoValue(..) | ProbeState::NotComputed(..) => {
+                    break
+                }
                 ProbeState::Retry => continue,
             }
         }
@@ -160,7 +176,9 @@ where
         let mut old_memo = loop {
             match self.probe(db, self.state.upgradable_read(), runtime, revision_now) {
                 ProbeState::UpToDate(v) => return v,
-                ProbeState::Stale(state) | ProbeState::NotComputed(state) => {
+                ProbeState::Stale(state)
+                | ProbeState::NotComputed(state)
+                | ProbeState::NoValue(state, _) => {
                     type RwLockUpgradableReadGuard<'a, T> =
                         lock_api::RwLockUpgradableReadGuard<'a, RawRwLock, T>;
 
@@ -208,7 +226,7 @@ where
         runtime: &Runtime,
         revision_now: Revision,
         active_query: ActiveQueryGuard<'_>,
-        panic_guard: PanicGuard<'_, Q>,
+        panic_guard: PanicGuard<'_, Q, MP>,
         old_memo: Option<Memo<Q::Value>>,
         key: &Q::Key,
     ) -> StampedValue<Q::Value> {
@@ -267,18 +285,22 @@ where
         // "backdate" its `changed_at` revision to be the same as the
         // old value.
         if let Some(old_memo) = &old_memo {
-            // Careful: if the value became less durable than it
-            // used to be, that is a "breaking change" that our
-            // consumers must be aware of. Becoming *more* durable
-            // is not. See the test `constant_to_non_constant`.
-            if revisions.durability >= old_memo.revisions.durability && old_memo.value == value {
-                debug!(
-                    "read_upgrade({:?}): value is equal, back-dating to {:?}",
-                    self, old_memo.revisions.changed_at,
-                );
+            if let Some(old_value) = &old_memo.value {
+                // Careful: if the value became less durable than it
+                // used to be, that is a "breaking change" that our
+                // consumers must be aware of. Becoming *more* durable
+                // is not. See the test `constant_to_non_constant`.
+                if revisions.durability >= old_memo.revisions.durability
+                    && MP::memoized_value_eq(old_value, &value)
+                {
+                    debug!(
+                        "read_upgrade({:?}): value is equal, back-dating to {:?}",
+                        self, old_memo.revisions.changed_at,
+                    );
 
-                assert!(old_memo.revisions.changed_at <= revisions.changed_at);
-                revisions.changed_at = old_memo.revisions.changed_at;
+                    assert!(old_memo.revisions.changed_at <= revisions.changed_at);
+                    revisions.changed_at = old_memo.revisions.changed_at;
+                }
             }
         }
 
@@ -288,7 +310,8 @@ where
             changed_at: revisions.changed_at,
         };
 
-        let memo_value = new_value.value.clone();
+        let memo_value =
+            if self.should_memoize_value(key) { Some(new_value.value.clone()) } else { None };
 
         debug!("read_upgrade({:?}): result.revisions = {:#?}", self, revisions,);
 
@@ -348,16 +371,20 @@ where
                     return ProbeState::Stale(state);
                 }
 
-                let value = &memo.value;
-                let value = StampedValue {
-                    durability: memo.revisions.durability,
-                    changed_at: memo.revisions.changed_at,
-                    value: value.clone(),
-                };
+                if let Some(value) = &memo.value {
+                    let value = StampedValue {
+                        durability: memo.revisions.durability,
+                        changed_at: memo.revisions.changed_at,
+                        value: value.clone(),
+                    };
 
-                info!("{:?}: returning memoized value changed at {:?}", self, value.changed_at);
+                    info!("{:?}: returning memoized value changed at {:?}", self, value.changed_at);
 
-                ProbeState::UpToDate(value)
+                    ProbeState::UpToDate(value)
+                } else {
+                    let changed_at = memo.revisions.changed_at;
+                    ProbeState::NoValue(state, changed_at)
+                }
             }
         }
     }
@@ -380,9 +407,21 @@ where
         match &*self.state.read() {
             QueryState::NotComputed => None,
             QueryState::InProgress { .. } => Some(TableEntry::new(key.clone(), None)),
-            QueryState::Memoized(memo) => {
-                Some(TableEntry::new(key.clone(), Some(memo.value.clone())))
+            QueryState::Memoized(memo) => Some(TableEntry::new(key.clone(), memo.value.clone())),
+        }
+    }
+
+    pub(super) fn evict(&self) {
+        let mut state = self.state.write();
+        if let QueryState::Memoized(memo) = &mut *state {
+            // Evicting a value with an untracked input could
+            // lead to inconsistencies. Note that we can't check
+            // `has_untracked_input` when we add the value to the cache,
+            // because inputs can become untracked in the next revision.
+            if memo.has_untracked_input() {
+                return;
             }
+            memo.value = None;
         }
     }
 
@@ -450,7 +489,8 @@ where
 
             // If we know when value last changed, we can return right away.
             // Note that we don't need the actual value to be available.
-            ProbeState::UpToDate(StampedValue { value: _, durability: _, changed_at }) => {
+            ProbeState::NoValue(_, changed_at)
+            | ProbeState::UpToDate(StampedValue { value: _, durability: _, changed_at }) => {
                 MaybeChangedSinceProbeState::ChangedAt(changed_at)
             }
 
@@ -505,7 +545,7 @@ where
             let maybe_changed = old_memo.revisions.changed_at > revision;
             panic_guard.proceed(Some(old_memo));
             maybe_changed
-        } else {
+        } else if old_memo.value.is_some() {
             // We found that this memoized value may have changed
             // but we have an old value. We can re-run the code and
             // actually *check* if it has changed.
@@ -519,6 +559,12 @@ where
                 key,
             );
             changed_at > revision
+        } else {
+            // We found that inputs to this memoized value may have chanced
+            // but we don't have an old value to compare against or re-use.
+            // No choice but to drop the memo and say that its value may have changed.
+            panic_guard.proceed(None);
+            true
         }
     }
 
@@ -537,6 +583,10 @@ where
             mutex_guard,
         )
     }
+
+    fn should_memoize_value(&self, key: &Q::Key) -> bool {
+        MP::should_memoize_value(key)
+    }
 }
 
 impl<Q> QueryState<Q>
@@ -548,21 +598,21 @@ where
     }
 }
 
-struct PanicGuard<'me, Q>
+struct PanicGuard<'me, Q, MP>
 where
     Q: QueryFunction,
-    Q::Value: Eq,
+    MP: MemoizationPolicy<Q>,
 {
-    slot: &'me Slot<Q>,
+    slot: &'me Slot<Q, MP>,
     runtime: &'me Runtime,
 }
 
-impl<'me, Q> PanicGuard<'me, Q>
+impl<'me, Q, MP> PanicGuard<'me, Q, MP>
 where
     Q: QueryFunction,
-    Q::Value: Eq,
+    MP: MemoizationPolicy<Q>,
 {
-    fn new(slot: &'me Slot<Q>, runtime: &'me Runtime) -> Self {
+    fn new(slot: &'me Slot<Q, MP>, runtime: &'me Runtime) -> Self {
         Self { slot, runtime }
     }
 
@@ -616,10 +666,10 @@ Please report this bug to https://github.com/salsa-rs/salsa/issues."
     }
 }
 
-impl<'me, Q> Drop for PanicGuard<'me, Q>
+impl<'me, Q, MP> Drop for PanicGuard<'me, Q, MP>
 where
     Q: QueryFunction,
-    Q::Value: Eq,
+    MP: MemoizationPolicy<Q>,
 {
     fn drop(&mut self) {
         if std::thread::panicking() {
@@ -652,11 +702,15 @@ where
         revision_now: Revision,
         active_query: &ActiveQueryGuard<'_>,
     ) -> Option<StampedValue<V>> {
+        // If we don't have a memoized value, nothing to validate.
+        if self.value.is_none() {
+            return None;
+        }
         if self.verify_revisions(db, revision_now, active_query) {
-            Some(StampedValue {
+            self.value.clone().map(|value| StampedValue {
                 durability: self.revisions.durability,
                 changed_at: self.revisions.changed_at,
-                value: self.value.clone(),
+                value,
             })
         } else {
             None
@@ -734,42 +788,58 @@ where
         self.verified_at = revision_now;
         true
     }
+
+    fn has_untracked_input(&self) -> bool {
+        self.revisions.untracked
+    }
 }
 
-impl<Q> std::fmt::Debug for Slot<Q>
+impl<Q, MP> std::fmt::Debug for Slot<Q, MP>
 where
     Q: QueryFunction,
+    MP: MemoizationPolicy<Q>,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "{:?}", Q::default())
     }
 }
 
-/// Check that `Slot<Q, >: Send + Sync` as long as
+impl<Q, MP> LruNode for Slot<Q, MP>
+where
+    Q: QueryFunction,
+    MP: MemoizationPolicy<Q>,
+{
+    fn lru_index(&self) -> &LruIndex {
+        &self.lru_index
+    }
+}
+
+/// Check that `Slot<Q, MP>: Send + Sync` as long as
 /// `DB::DatabaseData: Send + Sync`, which in turn implies that
 /// `Q::Key: Send + Sync`, `Q::Value: Send + Sync`.
 #[allow(dead_code)]
-fn check_send_sync<Q>()
+fn check_send_sync<Q, MP>()
 where
     Q: QueryFunction,
-
+    MP: MemoizationPolicy<Q>,
     Q::Key: Send + Sync,
     Q::Value: Send + Sync,
 {
     fn is_send_sync<T: Send + Sync>() {}
-    is_send_sync::<Slot<Q>>();
+    is_send_sync::<Slot<Q, MP>>();
 }
 
-/// Check that `Slot<Q, >: 'static` as long as
+/// Check that `Slot<Q, MP>: 'static` as long as
 /// `DB::DatabaseData: 'static`, which in turn implies that
 /// `Q::Key: 'static`, `Q::Value: 'static`.
 #[allow(dead_code)]
-fn check_static<Q>()
+fn check_static<Q, MP>()
 where
     Q: QueryFunction + 'static,
+    MP: MemoizationPolicy<Q> + 'static,
     Q::Key: 'static,
     Q::Value: 'static,
 {
     fn is_static<T: 'static>() {}
-    is_static::<Slot<Q>>();
+    is_static::<Slot<Q, MP>>();
 }

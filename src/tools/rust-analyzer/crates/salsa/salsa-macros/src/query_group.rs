@@ -53,7 +53,11 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
                         num_storages += 1;
                     }
                     "dependencies" => {
-                        storage = QueryStorage::Dependencies;
+                        storage = QueryStorage::LruDependencies;
+                        num_storages += 1;
+                    }
+                    "lru" => {
+                        storage = QueryStorage::LruMemoized;
                         num_storages += 1;
                     }
                     "input" => {
@@ -235,7 +239,7 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
 
         queries_with_storage.push(fn_name);
 
-        let tracing = if let QueryStorage::Memoized = query.storage {
+        let tracing = if let QueryStorage::Memoized | QueryStorage::LruMemoized = query.storage {
             let s = format!("{trait_name}::{fn_name}");
             Some(quote! {
                 let _p = tracing::debug_span!(#s, #(#key_names = tracing::field::debug(&#key_names)),*).entered();
@@ -376,8 +380,9 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
 
         let storage = match &query.storage {
             QueryStorage::Memoized => quote!(salsa::plumbing::MemoizedStorage<Self>),
-            QueryStorage::Dependencies => {
-                quote!(salsa::plumbing::DependencyStorage<Self>)
+            QueryStorage::LruMemoized => quote!(salsa::plumbing::LruMemoizedStorage<Self>),
+            QueryStorage::LruDependencies => {
+                quote!(salsa::plumbing::LruDependencyStorage<Self>)
             }
             QueryStorage::Input if query.keys.is_empty() => {
                 quote!(salsa::plumbing::UnitInputStorage<Self>)
@@ -724,7 +729,8 @@ impl Query {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum QueryStorage {
     Memoized,
-    Dependencies,
+    LruDependencies,
+    LruMemoized,
     Input,
     Interned,
     InternedLookup { intern_query_type: Ident },
@@ -739,7 +745,9 @@ impl QueryStorage {
             | QueryStorage::Interned
             | QueryStorage::InternedLookup { .. }
             | QueryStorage::Transparent => false,
-            QueryStorage::Memoized | QueryStorage::Dependencies => true,
+            QueryStorage::Memoized | QueryStorage::LruMemoized | QueryStorage::LruDependencies => {
+                true
+            }
         }
     }
 }
