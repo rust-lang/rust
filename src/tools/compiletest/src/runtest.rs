@@ -82,24 +82,20 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 /// The platform-specific library name
-fn get_lib_name(lib: &str, aux_type: AuxType) -> Option<String> {
+fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
     match aux_type {
         AuxType::Bin => None,
         // In some cases (e.g. MUSL), we build a static
         // library, rather than a dynamic library.
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
-        AuxType::Lib => Some(format!("lib{}.rlib", lib)),
-        AuxType::Dylib => Some(if cfg!(windows) {
-            format!("{}.dll", lib)
-        } else if cfg!(target_vendor = "apple") {
-            format!("lib{}.dylib", lib)
-        } else if cfg!(target_os = "aix") {
-            format!("lib{}.a", lib)
-        } else {
-            format!("lib{}.so", lib)
-        }),
+        AuxType::Lib => Some(format!("lib{name}.rlib")),
+        AuxType::Dylib => Some(dylib_name(name)),
     }
+}
+
+fn dylib_name(name: &str) -> String {
+    format!("{}{name}.{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_EXTENSION)
 }
 
 pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
