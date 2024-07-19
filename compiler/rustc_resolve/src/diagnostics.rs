@@ -2532,7 +2532,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 && let NestedMetaItem::MetaItem(meta_item) = &nested[0]
                 && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
             {
-                let note = errors::ItemWasBehindFeature { feature: feature_name.symbol };
+                let note = errors::ItemWasBehindFeature {
+                    feature: feature_name.symbol,
+                    span: meta_item.span,
+                };
+                err.subdiagnostic(note);
+            } else {
+                let note = errors::ItemWasCfgOut { span: cfg.span };
                 err.subdiagnostic(note);
             }
         }
