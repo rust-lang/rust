@@ -3598,7 +3598,7 @@ impl<'test> TestCx<'test> {
         };
 
         // Calculate the paths of the recipe binary. As previously discussed, this is placed at
-        // `<base_dir>/<bin_name>` with `bin_name` being `rmake` or `rmake.exe` dependending on
+        // `<base_dir>/<bin_name>` with `bin_name` being `rmake` or `rmake.exe` depending on
         // platform.
         let recipe_bin = {
             let mut p = base_dir.join("rmake");
@@ -3611,7 +3611,6 @@ impl<'test> TestCx<'test> {
         // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc
-            // Specify output path
             .arg("-o")
             .arg(&recipe_bin)
             // Specify library search paths for `run_make_support`.
@@ -3622,9 +3621,7 @@ impl<'test> TestCx<'test> {
             // `extern run_make_support;`.
             .arg("--extern")
             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
-            // Default to Edition 2021.
             .arg("--edition=2021")
-            // The recipe file itself.
             .arg(&self.testpaths.file.join("rmake.rs"))
             // Provide necessary library search paths for rustc.
             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
@@ -3696,20 +3693,37 @@ impl<'test> TestCx<'test> {
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
         // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
+        // FIXME(jieyouxu): please rename `TARGET_RPATH_ENV`, `HOST_RPATH_DIR` and
+        // `TARGET_RPATH_DIR`, it is **extremely** confusing!
         let mut cmd = Command::new(&recipe_bin);
         cmd.current_dir(&rmake_out_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            // Provide the target-specific env var that is used to record dylib search paths. For
+            // example, this could be `LD_LIBRARY_PATH` on some linux distros but `PATH` on Windows.
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env("TARGET_RPATH_ENV", &env::join_paths(target_runtime_dylib_search_paths).unwrap())
+            // Provide the dylib search paths.
             .env(dylib_env_var(), &env::join_paths(recipe_dylib_search_paths).unwrap())
+            // Provide runtime dylib search paths.
+            .env("TARGET_RPATH_ENV", &env::join_paths(target_runtime_dylib_search_paths).unwrap())
+            // Provide the target.
             .env("TARGET", &self.config.target)
+            // Some tests unfortunately still need Python, so provide path to a Python interpreter.
             .env("PYTHON", &self.config.python)
+            // Provide path to checkout root. This is the top-level directory containing
+            // rust-lang/rust checkout.
             .env("SOURCE_ROOT", &source_root)
-            .env("RUST_BUILD_STAGE", &self.config.stage_id)
+            // Provide path to stage-corresponding rustc.
             .env("RUSTC", &self.config.rustc_path)
+            // Provide the directory to libraries that are needed to run the *compiler*. This is not
+            // to be confused with `TARGET_RPATH_ENV` or `TARGET_RPATH_DIR`. This is needed if the
+            // recipe wants to invoke rustc.
             .env("HOST_RPATH_DIR", &self.config.compile_lib_path)
+            // Provide the directory to libraries that might be needed to run compiled binaries
+            // (further compiled by the recipe!).
             .env("TARGET_RPATH_DIR", &self.config.run_lib_path)
+            // Provide which LLVM components are available (e.g. which LLVM components are provided
+            // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
