@@ -3,7 +3,25 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a> Actor for () {
    |      ^^ unconstrained lifetime parameter
+   |
+help: this use of an otherwise unconstrained lifetime is not allowed
+  --> $DIR/unconstrained-impl-region.rs:16:20
+   |
+LL |     type Message = &'a ();
+   |                    ^^^^^^
 
-error: aborting due to 1 previous error
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-impl-region.rs:13:6
+   |
+LL | impl<'a> Actor for () {
+   |      ^^ unconstrained lifetime parameter
+   |
+help: this use of an otherwise unconstrained lifetime is not allowed
+  --> $DIR/unconstrained-impl-region.rs:17:5
+   |
+LL |     async fn on_mount(self, _: impl Inbox<&'a ()>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0207`.

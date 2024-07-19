@@ -552,6 +552,7 @@ hir_analysis_unconstrained_generic_parameter = the {$param_def_kind} `{$param_na
     .label = unconstrained {$param_def_kind}
     .const_param_note = expressions using a const parameter must map each value to a distinct output value
     .const_param_note2 = proving the result of expressions other than the parameter are unique is not supported
+    .help = this use of an otherwise unconstrained lifetime is not allowed
 
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}

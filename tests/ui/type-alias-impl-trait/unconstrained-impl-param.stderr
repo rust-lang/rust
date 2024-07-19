@@ -3,6 +3,12 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a> Trait for Opaque<&'a str> {
    |      ^^ unconstrained lifetime parameter
+   |
+help: this use of an otherwise unconstrained lifetime is not allowed
+  --> $DIR/unconstrained-impl-param.rs:13:18
+   |
+LL |     type Assoc = &'a str;
+   |                  ^^^^^^^
 
 error: aborting due to 1 previous error
 

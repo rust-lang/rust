@@ -42,7 +42,6 @@ struct Implementor;
 
 impl Implementor {
     type Type<T: ~const Trait> = (); //~ ERROR `~const` is not allowed
-    //~^ ERROR inherent associated types are unstable
     fn non_const_function<T: ~const Trait>() {} //~ ERROR `~const` is not allowed
     const CONSTANT<T: ~const Trait>: () = (); //~ ERROR `~const` is not allowed
     //~^ ERROR generic const items are experimental

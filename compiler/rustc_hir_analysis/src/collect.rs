@@ -14,17 +14,18 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::iter;
 use std::ops::Bound;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, E0207, E0228, ErrorGuaranteed, StashKey,
+    struct_span_code_err,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -36,7 +37,9 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{
+    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt as _, TypingMode,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, Span};
@@ -46,7 +49,8 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
-use crate::errors;
+use crate::constrained_generic_params::{self as cgp, Parameter};
+use crate::errors::{self, UnconstrainedGenericParameter};
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
 
 pub(crate) mod dump;
@@ -127,6 +131,7 @@ pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
+    pub(crate) forbidden_params: RefCell<FxHashMap<Parameter, ty::GenericParamDef>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -375,7 +380,12 @@ fn bad_placeholder<'cx, 'tcx>(
 
 impl<'tcx> ItemCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
+        ItemCtxt {
+            tcx,
+            item_def_id,
+            tainted_by_errors: Cell::new(None),
+            forbidden_params: Default::default(),
+        }
     }
 
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
@@ -395,6 +405,58 @@ impl<'tcx> ItemCtxt<'tcx> {
             Some(err) => Err(err),
             None => Ok(()),
         }
+    }
+
+    fn forbid_unconstrained_lifetime_params_from_parent_impl(&self) -> Result<(), ErrorGuaranteed> {
+        let tcx = self.tcx;
+        let impl_def_id = tcx.hir().get_parent_item(self.hir_id());
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+        impl_self_ty.error_reported()?;
+        let impl_generics = tcx.generics_of(impl_def_id);
+        let impl_predicates = tcx.predicates_of(impl_def_id);
+        let impl_trait_ref =
+            tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
+
+        impl_trait_ref.error_reported()?;
+
+        let mut input_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
+
+        cgp::identify_constrained_generic_params(
+            tcx,
+            impl_predicates,
+            impl_trait_ref,
+            &mut input_parameters,
+        );
+
+        for param in &impl_generics.own_params {
+            let p = match param.kind {
+                // This is a horrible concession to reality. It'd be
+                // better to just ban unconstrained lifetimes outright, but in
+                // practice people do non-hygienic macros like:
+                //
+                // ```
+                // macro_rules! __impl_slice_eq1 {
+                //     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
+                //         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+                //            ....
+                //         }
+                //     }
+                // }
+                // ```
+                //
+                // In a concession to backwards compatibility, we continue to
+                // permit those, so long as the lifetimes aren't used in
+                // associated types. This is sound, because lifetimes
+                // used elsewhere are not projected back out.
+                ty::GenericParamDefKind::Type { .. } => continue,
+                ty::GenericParamDefKind::Lifetime => param.to_early_bound_region_data().into(),
+                ty::GenericParamDefKind::Const { .. } => continue,
+            };
+            if !input_parameters.contains(&p) {
+                self.forbidden_params.borrow_mut().insert(p, param.clone());
+            }
+        }
+        Ok(())
     }
 }
 
@@ -538,8 +600,25 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         ty.ty_adt_def()
     }
 
-    fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
-        // There's no place to record types from signatures?
+    fn record_ty(&self, _hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
+        // There's no place to record types from signatures
+
+        if !self.forbidden_params.borrow().is_empty() {
+            for param in cgp::parameters_for(self.tcx, ty, true) {
+                if let Some(param) = self.forbidden_params.borrow_mut().remove(&param) {
+                    let mut diag = self.dcx().create_err(UnconstrainedGenericParameter {
+                        span: self.tcx.def_span(param.def_id),
+                        param_name: param.name,
+                        param_def_kind: self.tcx.def_descr(param.def_id),
+                        const_param_note: false,
+                        const_param_note2: false,
+                        lifetime_help: Some(span),
+                    });
+                    diag.code(E0207);
+                    diag.emit();
+                }
+            }
+        }
     }
 
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {

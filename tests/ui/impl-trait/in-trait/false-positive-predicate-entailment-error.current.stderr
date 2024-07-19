@@ -23,6 +23,31 @@ LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
    |                                        +++++++++++
 
 error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
+  --> $DIR/false-positive-predicate-entailment-error.rs:36:5
+   |
+LL | /     fn autobatch<F>(self) -> impl Trait
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     where
+LL | |         F: Callback<Self::CallbackArg>,
+   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
+   |
+note: required for `F` to implement `Callback<i32>`
+  --> $DIR/false-positive-predicate-entailment-error.rs:14:21
+   |
+LL | impl<A, F: MyFn<A>> Callback<A> for F {
+   |            -------  ^^^^^^^^^^^     ^
+   |            |
+   |            unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider further restricting this bound
+   |
+LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
+   |                                        +++++++++++
+
+error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:30
    |
 LL |     fn autobatch<F>(self) -> impl Trait
@@ -43,31 +68,6 @@ LL |     fn autobatch<F>(self) -> impl Trait
 ...
 LL |         F: Callback<Self::CallbackArg>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<Sender as ChannelSender>::autobatch`
-help: consider further restricting this bound
-   |
-LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
-   |                                        +++++++++++
-
-error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
-  --> $DIR/false-positive-predicate-entailment-error.rs:36:5
-   |
-LL | /     fn autobatch<F>(self) -> impl Trait
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     where
-LL | |         F: Callback<Self::CallbackArg>,
-   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
-   |
-note: required for `F` to implement `Callback<i32>`
-  --> $DIR/false-positive-predicate-entailment-error.rs:14:21
-   |
-LL | impl<A, F: MyFn<A>> Callback<A> for F {
-   |            -------  ^^^^^^^^^^^     ^
-   |            |
-   |            unsatisfied trait bound introduced here
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting this bound
    |
 LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,

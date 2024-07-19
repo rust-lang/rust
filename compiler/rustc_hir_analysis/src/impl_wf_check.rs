@@ -11,7 +11,6 @@
 use std::assert_matches::debug_assert_matches;
 
 use min_specialization::check_min_specialization;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -89,25 +88,6 @@ fn enforce_impl_params_are_constrained(
         &mut input_parameters,
     );
 
-    // Disallow unconstrained lifetimes, but only if they appear in assoc types.
-    let lifetimes_in_associated_types: FxHashSet<_> = tcx
-        .associated_item_def_ids(impl_def_id)
-        .iter()
-        .flat_map(|def_id| {
-            let item = tcx.associated_item(def_id);
-            match item.kind {
-                ty::AssocKind::Type => {
-                    if item.defaultness(tcx).has_value() {
-                        cgp::parameters_for(tcx, tcx.type_of(def_id).instantiate_identity(), true)
-                    } else {
-                        vec![]
-                    }
-                }
-                ty::AssocKind::Fn | ty::AssocKind::Const => vec![],
-            }
-        })
-        .collect();
-
     let mut res = Ok(());
     for param in &impl_generics.own_params {
         let err = match param.kind {
@@ -116,11 +96,7 @@ fn enforce_impl_params_are_constrained(
                 let param_ty = ty::ParamTy::for_def(param);
                 !input_parameters.contains(&cgp::Parameter::from(param_ty))
             }
-            ty::GenericParamDefKind::Lifetime => {
-                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
-                lifetimes_in_associated_types.contains(&param_lt) && // (*)
-                    !input_parameters.contains(&param_lt)
-            }
+            ty::GenericParamDefKind::Lifetime => false,
             ty::GenericParamDefKind::Const { .. } => {
                 let param_ct = ty::ParamConst::for_def(param);
                 !input_parameters.contains(&cgp::Parameter::from(param_ct))
@@ -134,29 +110,11 @@ fn enforce_impl_params_are_constrained(
                 param_def_kind: tcx.def_descr(param.def_id),
                 const_param_note,
                 const_param_note2: const_param_note,
+                lifetime_help: None,
             });
             diag.code(E0207);
             res = Err(diag.emit());
         }
     }
     res
-
-    // (*) This is a horrible concession to reality. I think it'd be
-    // better to just ban unconstrained lifetimes outright, but in
-    // practice people do non-hygienic macros like:
-    //
-    // ```
-    // macro_rules! __impl_slice_eq1 {
-    //     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
-    //         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
-    //            ....
-    //         }
-    //     }
-    // }
-    // ```
-    //
-    // In a concession to backwards compatibility, we continue to
-    // permit those, so long as the lifetimes aren't used in
-    // associated types. I believe this is sound, because lifetimes
-    // used elsewhere are not projected back out.
 }

@@ -388,6 +388,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+
+    let icx = ItemCtxt::new(tcx, def_id);
+
     // If we are computing `type_of` the synthesized associated type for an RPITIT in the impl
     // side, use `collect_return_position_impl_trait_in_trait_tys` to infer the value of the
     // associated type in the impl.
@@ -396,7 +400,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
                 Ok(map) => {
                     let assoc_item = tcx.associated_item(def_id);
-                    return map[&assoc_item.trait_item_def_id.unwrap()];
+                    let ty = map[&assoc_item.trait_item_def_id.unwrap()];
+                    match icx.forbid_unconstrained_lifetime_params_from_parent_impl() {
+                        Ok(()) => {
+                            // Ensure no unconstrained lifetimes are used in these impls.
+                            icx.record_ty(hir_id, ty.instantiate_identity(), tcx.def_span(def_id));
+                        }
+                        Err(guar) => return ty::EarlyBinder::bind(Ty::new_error(tcx, guar)),
+                    }
+                    return ty;
                 }
                 Err(_) => {
                     return ty::EarlyBinder::bind(Ty::new_error_with_message(
@@ -417,10 +429,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         }
         None => {}
     }
-
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-
-    let icx = ItemCtxt::new(tcx, def_id);
 
     let output = match tcx.hir_node(hir_id) {
         Node::TraitItem(item) => match item.kind {
@@ -472,7 +480,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 
-                icx.lower_ty(ty)
+                match icx.forbid_unconstrained_lifetime_params_from_parent_impl() {
+                    Err(guar) => Ty::new_error(tcx, guar),
+                    Ok(()) => icx.lower_ty(ty),
+                }
             }
         },
 

@@ -9,6 +9,12 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a,T: Trait2<'a>> Trait1<<T as Trait2<'a>>::Foo> for T {
    |      ^^ unconstrained lifetime parameter
+   |
+help: this use of an otherwise unconstrained lifetime is not allowed
+  --> $DIR/issue-26262.rs:19:16
+   |
+LL |     type Bar = &'a ();
+   |                ^^^^^^
 
 error: aborting due to 2 previous errors
 

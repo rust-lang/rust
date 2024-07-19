@@ -11,7 +11,8 @@ pub(crate) trait Actor: Sized {
 }
 
 impl<'a> Actor for () {
-//~^ ERROR the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+    //~^ ERROR the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+    //~| ERROR the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
     type Message = &'a ();
     async fn on_mount(self, _: impl Inbox<&'a ()>) {}
 }
