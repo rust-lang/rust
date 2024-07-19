@@ -15,7 +15,7 @@ use crate::comment::{
     FindUncommented,
 };
 use crate::config::lists::*;
-use crate::config::{BraceStyle, Config, IndentStyle, Version};
+use crate::config::{BraceStyle, Config, IndentStyle, StyleEdition};
 use crate::expr::{
     is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
     rewrite_assign_rhs_with_comments, rewrite_else_kw_with_comments, rewrite_let_else_block,
@@ -145,7 +145,8 @@ impl Rewrite for ast::Local {
                 let else_kw_span = init.span.between(block.span);
                 // Strip attributes and comments to check if newline is needed before the else
                 // keyword from the initializer part. (#5901)
-                let init_str = if context.config.version() == Version::Two {
+                let style_edition = context.config.style_edition();
+                let init_str = if style_edition >= StyleEdition::Edition2024 {
                     &result[let_kw_offset..]
                 } else {
                     result.as_str()
@@ -169,7 +170,8 @@ impl Rewrite for ast::Local {
                     std::cmp::min(shape.width, context.config.single_line_let_else_max_width());
 
                 // If available_space hits zero we know for sure this will be a multi-lined block
-                let assign_str_with_else_kw = if context.config.version() == Version::Two {
+                let style_edition = context.config.style_edition();
+                let assign_str_with_else_kw = if style_edition >= StyleEdition::Edition2024 {
                     &result[let_kw_offset..]
                 } else {
                     result.as_str()
@@ -675,10 +677,10 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let shape = self.shape();
-        let attrs_str = if context.config.version() == Version::Two {
+        let attrs_str = if context.config.style_edition() >= StyleEdition::Edition2024 {
             field.attrs.rewrite(&context, shape)?
         } else {
-            // Version::One formatting that was off by 1. See issue #5801
+            // StyleEdition::Edition20{15|18|21} formatting that was off by 1. See issue #5801
             field.attrs.rewrite(&context, shape.sub_width(1)?)?
         };
         // sub_width(1) to take the trailing comma into account
@@ -966,7 +968,7 @@ fn format_impl_ref_and_type(
     result.push_str(format_defaultness(defaultness));
     result.push_str(format_safety(safety));
 
-    let shape = if context.config.version() == Version::Two {
+    let shape = if context.config.style_edition() >= StyleEdition::Edition2024 {
         Shape::indented(offset + last_line_width(&result), context.config)
     } else {
         generics_shape_from_config(
@@ -2107,7 +2109,7 @@ impl Rewrite for ast::FnRetTy {
             ast::FnRetTy::Default(_) => Ok(String::new()),
             ast::FnRetTy::Ty(ref ty) => {
                 let arrow_width = "-> ".len();
-                if context.config.version() == Version::One
+                if context.config.style_edition() <= StyleEdition::Edition2021
                     || context.config.indent_style() == IndentStyle::Visual
                 {
                     let inner_width = shape
@@ -2510,7 +2512,7 @@ fn rewrite_fn_base(
             .last()
             .map_or(false, |last_line| last_line.contains("//"));
 
-        if context.config.version() == Version::Two {
+        if context.config.style_edition() >= StyleEdition::Edition2024 {
             if closing_paren_overflow_max_width {
                 result.push(')');
                 result.push_str(&indent.to_string_with_newline(context.config));
@@ -2553,7 +2555,7 @@ fn rewrite_fn_base(
             }
         };
         let ret_shape = if ret_should_indent {
-            if context.config.version() == Version::One
+            if context.config.style_edition() <= StyleEdition::Edition2021
                 || context.config.indent_style() == IndentStyle::Visual
             {
                 let indent = if param_str.is_empty() {
@@ -2586,7 +2588,7 @@ fn rewrite_fn_base(
                 ret_shape
             }
         } else {
-            if context.config.version() == Version::Two {
+            if context.config.style_edition() >= StyleEdition::Edition2024 {
                 if !param_str.is_empty() || !no_params_and_over_max_width {
                     result.push(' ');
                 }
@@ -3071,7 +3073,7 @@ fn rewrite_bounds_on_where_clause(
         DefinitiveListTactic::Vertical
     };
 
-    let preserve_newline = context.config.version() == Version::One;
+    let preserve_newline = context.config.style_edition() <= StyleEdition::Edition2021;
 
     let fmt = ListFormatting::new(shape, context.config)
         .tactic(shape_tactic)

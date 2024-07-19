@@ -8,7 +8,7 @@ use rustc_ast::{ast, ptr};
 use rustc_span::Span;
 
 use crate::closures;
-use crate::config::Version;
+use crate::config::StyleEdition;
 use crate::config::{lists::*, Config};
 use crate::expr::{
     can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
@@ -200,8 +200,8 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::NestedMetaItem(..) => SPECIAL_CASE_ATTR,
             _ => &[],
         };
-        let additional_cases = match (self, config.version()) {
-            (OverflowableItem::MacroArg(..), Version::Two) => SPECIAL_CASE_MACROS_V2,
+        let additional_cases = match (self, config.style_edition()) {
+            (OverflowableItem::MacroArg(..), StyleEdition::Edition2024) => SPECIAL_CASE_MACROS_V2,
             _ => &[],
         };
         base_cases.iter().chain(additional_cases)
@@ -494,7 +494,7 @@ impl<'a> Context<'a> {
                 Some(OverflowableItem::MacroArg(MacroArg::Expr(expr)))
                     if !combine_arg_with_callee
                         && is_method_call(expr)
-                        && self.context.config.version() == Version::Two =>
+                        && self.context.config.style_edition() >= StyleEdition::Edition2024 =>
                 {
                     self.context.force_one_line_chain.replace(true);
                 }
@@ -690,7 +690,8 @@ impl<'a> Context<'a> {
         );
         result.push_str(self.ident);
         result.push_str(prefix);
-        let force_single_line = if self.context.config.version() == Version::Two {
+        let force_single_line = if self.context.config.style_edition() >= StyleEdition::Edition2024
+        {
             !self.context.use_block_indent() || (is_extendable && extend_width <= shape.width)
         } else {
             // 2 = `()`

@@ -4,7 +4,7 @@ use rustc_span::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, FindUncommented};
 use crate::config::lists::*;
-use crate::config::Version;
+use crate::config::StyleEdition;
 use crate::expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use crate::lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
@@ -280,7 +280,9 @@ impl Rewrite for Pat {
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape).ok()
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
-            PatKind::Slice(ref slice_pat) if context.config.version() == Version::One => {
+            PatKind::Slice(ref slice_pat)
+                if context.config.style_edition() <= StyleEdition::Edition2021 =>
+            {
                 let rw: Vec<String> = slice_pat
                     .iter()
                     .map(|p| {

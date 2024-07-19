@@ -10,7 +10,7 @@ use rustc_span::{sym, symbol, BytePos, LocalExpnId, Span, Symbol, SyntaxContext}
 use unicode_width::UnicodeWidthStr;
 
 use crate::comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
-use crate::config::{Config, Version};
+use crate::config::{Config, StyleEdition};
 use crate::rewrite::RewriteContext;
 use crate::shape::{Indent, Shape};
 
@@ -604,7 +604,7 @@ pub(crate) fn trim_left_preserve_layout(
 
             // just InString{Commented} in order to allow the start of a string to be indented
             let new_veto_trim_value = (kind == FullCodeCharKind::InString
-                || (config.version() == Version::Two
+                || (config.style_edition() >= StyleEdition::Edition2024
                     && kind == FullCodeCharKind::InStringCommented))
                 && !line.ends_with('\\');
             let line = if veto_trim || new_veto_trim_value {
@@ -620,7 +620,7 @@ pub(crate) fn trim_left_preserve_layout(
             // such lines should not be taken into account when computing the minimum.
             match kind {
                 FullCodeCharKind::InStringCommented | FullCodeCharKind::EndStringCommented
-                    if config.version() == Version::Two =>
+                    if config.style_edition() >= StyleEdition::Edition2024 =>
                 {
                     None
                 }
@@ -664,7 +664,7 @@ pub(crate) fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Conf
         // formatting the code block, therefore the string's indentation needs
         // to be adjusted for the code surrounding the code block.
         config.format_strings() && line.ends_with('\\')
-    } else if config.version() == Version::Two {
+    } else if config.style_edition() >= StyleEdition::Edition2024 {
         !kind.is_commented_string()
     } else {
         true

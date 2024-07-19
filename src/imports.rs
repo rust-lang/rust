@@ -15,7 +15,7 @@ use rustc_span::{
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;
 use crate::config::ImportGranularity;
-use crate::config::{Edition, IndentStyle, Version};
+use crate::config::{Edition, IndentStyle, StyleEdition};
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
 };
@@ -104,7 +104,7 @@ pub(crate) enum UseSegmentKind {
 #[derive(Clone, Eq, PartialEq)]
 pub(crate) struct UseSegment {
     pub(crate) kind: UseSegmentKind,
-    pub(crate) version: Version,
+    pub(crate) style_edition: StyleEdition,
 }
 
 #[derive(Clone)]
@@ -149,7 +149,7 @@ impl UseSegment {
         };
         UseSegment {
             kind,
-            version: self.version,
+            style_edition: self.style_edition,
         }
     }
 
@@ -197,7 +197,7 @@ impl UseSegment {
 
         Some(UseSegment {
             kind,
-            version: context.config.version(),
+            style_edition: context.config.style_edition(),
         })
     }
 
@@ -444,18 +444,21 @@ impl UseTree {
             }
         }
 
-        let version = context.config.version();
+        let style_edition = context.config.style_edition();
 
         match a.kind {
             UseTreeKind::Glob => {
                 // in case of a global path and the glob starts at the root, e.g., "::*"
                 if a.prefix.segments.len() == 1 && leading_modsep {
                     let kind = UseSegmentKind::Ident("".to_owned(), None);
-                    result.path.push(UseSegment { kind, version });
+                    result.path.push(UseSegment {
+                        kind,
+                        style_edition,
+                    });
                 }
                 result.path.push(UseSegment {
                     kind: UseSegmentKind::Glob,
-                    version,
+                    style_edition,
                 });
             }
             UseTreeKind::Nested {
@@ -480,7 +483,10 @@ impl UseTree {
                 // e.g., "::{foo, bar}"
                 if a.prefix.segments.len() == 1 && leading_modsep {
                     let kind = UseSegmentKind::Ident("".to_owned(), None);
-                    result.path.push(UseSegment { kind, version });
+                    result.path.push(UseSegment {
+                        kind,
+                        style_edition,
+                    });
                 }
                 let kind = UseSegmentKind::List(
                     list.iter()
@@ -490,7 +496,10 @@ impl UseTree {
                         })
                         .collect(),
                 );
-                result.path.push(UseSegment { kind, version });
+                result.path.push(UseSegment {
+                    kind,
+                    style_edition,
+                });
             }
             UseTreeKind::Simple(ref rename) => {
                 // If the path has leading double colons and is composed of only 2 segments, then we
@@ -519,7 +528,10 @@ impl UseTree {
                     _ => UseSegmentKind::Ident(name, alias),
                 };
 
-                let segment = UseSegment { kind, version };
+                let segment = UseSegment {
+                    kind,
+                    style_edition,
+                };
 
                 // `name` is already in result.
                 result.path.pop();
@@ -614,7 +626,7 @@ impl UseTree {
             list.sort();
             last = UseSegment {
                 kind: UseSegmentKind::List(list),
-                version: last.version,
+                style_edition: last.style_edition,
             };
         }
 
@@ -732,9 +744,12 @@ impl UseTree {
         }) = self.path.last()
         {
             let self_segment = self.path.pop().unwrap();
-            let version = self_segment.version;
+            let style_edition = self_segment.style_edition;
             let kind = UseSegmentKind::List(vec![UseTree::from_path(vec![self_segment], DUMMY_SP)]);
-            self.path.push(UseSegment { kind, version });
+            self.path.push(UseSegment {
+                kind,
+                style_edition,
+            });
         }
         self
     }
@@ -750,7 +765,7 @@ fn merge_rest(
         return None;
     }
     if a.len() != len && b.len() != len {
-        let version = a[len].version;
+        let style_edition = a[len].style_edition;
         if let UseSegmentKind::List(ref list) = a[len].kind {
             let mut list = list.clone();
             merge_use_trees_inner(
@@ -760,7 +775,10 @@ fn merge_rest(
             );
             let mut new_path = b[..len].to_vec();
             let kind = UseSegmentKind::List(list);
-            new_path.push(UseSegment { kind, version });
+            new_path.push(UseSegment {
+                kind,
+                style_edition,
+            });
             return Some(new_path);
         }
     } else if len == 1 {
@@ -770,9 +788,12 @@ fn merge_rest(
             (&b[0], &a[1..])
         };
         let kind = UseSegmentKind::Slf(common.get_alias().map(ToString::to_string));
-        let version = a[0].version;
+        let style_edition = a[0].style_edition;
         let mut list = vec![UseTree::from_path(
-            vec![UseSegment { kind, version }],
+            vec![UseSegment {
+                kind,
+                style_edition,
+            }],
             DUMMY_SP,
         )];
         match rest {
@@ -788,7 +809,7 @@ fn merge_rest(
             b[0].clone(),
             UseSegment {
                 kind: UseSegmentKind::List(list),
-                version,
+                style_edition,
             },
         ]);
     } else {
@@ -801,8 +822,11 @@ fn merge_rest(
     list.sort();
     let mut new_path = b[..len].to_vec();
     let kind = UseSegmentKind::List(list);
-    let version = a[0].version;
-    new_path.push(UseSegment { kind, version });
+    let style_edition = a[0].style_edition;
+    new_path.push(UseSegment {
+        kind,
+        style_edition,
+    });
     Some(new_path)
 }
 
@@ -892,7 +916,7 @@ impl Ord for UseSegment {
             | (Super(ref a), Super(ref b))
             | (Crate(ref a), Crate(ref b)) => match (a, b) {
                 (Some(sa), Some(sb)) => {
-                    if self.version == Version::Two {
+                    if self.style_edition >= StyleEdition::Edition2024 {
                         sa.trim_start_matches("r#").cmp(sb.trim_start_matches("r#"))
                     } else {
                         a.cmp(b)
@@ -902,7 +926,7 @@ impl Ord for UseSegment {
             },
             (Glob, Glob) => Ordering::Equal,
             (Ident(ref pia, ref aa), Ident(ref pib, ref ab)) => {
-                let (ia, ib) = if self.version == Version::Two {
+                let (ia, ib) = if self.style_edition >= StyleEdition::Edition2024 {
                     (pia.trim_start_matches("r#"), pib.trim_start_matches("r#"))
                 } else {
                     (pia.as_str(), pib.as_str())
@@ -928,7 +952,7 @@ impl Ord for UseSegment {
                     (None, Some(_)) => Ordering::Less,
                     (Some(_), None) => Ordering::Greater,
                     (Some(aas), Some(abs)) => {
-                        if self.version == Version::Two {
+                        if self.style_edition >= StyleEdition::Edition2024 {
                             aas.trim_start_matches("r#")
                                 .cmp(abs.trim_start_matches("r#"))
                         } else {
@@ -1114,7 +1138,7 @@ mod test {
 
         struct Parser<'a> {
             input: Peekable<Chars<'a>>,
-            version: Version,
+            style_edition: StyleEdition,
         }
 
         impl<'a> Parser<'a> {
@@ -1132,7 +1156,7 @@ mod test {
                 buf: &mut String,
                 alias_buf: &mut Option<String>,
             ) {
-                let version = self.version;
+                let style_edition = self.style_edition;
                 if !buf.is_empty() {
                     let mut alias = None;
                     swap(alias_buf, &mut alias);
@@ -1140,19 +1164,28 @@ mod test {
                     match buf.as_ref() {
                         "self" => {
                             let kind = UseSegmentKind::Slf(alias);
-                            result.push(UseSegment { kind, version });
+                            result.push(UseSegment {
+                                kind,
+                                style_edition,
+                            });
                             *buf = String::new();
                             *alias_buf = None;
                         }
                         "super" => {
                             let kind = UseSegmentKind::Super(alias);
-                            result.push(UseSegment { kind, version });
+                            result.push(UseSegment {
+                                kind,
+                                style_edition,
+                            });
                             *buf = String::new();
                             *alias_buf = None;
                         }
                         "crate" => {
                             let kind = UseSegmentKind::Crate(alias);
-                            result.push(UseSegment { kind, version });
+                            result.push(UseSegment {
+                                kind,
+                                style_edition,
+                            });
                             *buf = String::new();
                             *alias_buf = None;
                         }
@@ -1160,7 +1193,10 @@ mod test {
                             let mut name = String::new();
                             swap(buf, &mut name);
                             let kind = UseSegmentKind::Ident(name, alias);
-                            result.push(UseSegment { kind, version });
+                            result.push(UseSegment {
+                                kind,
+                                style_edition,
+                            });
                         }
                     }
                 }
@@ -1178,7 +1214,7 @@ mod test {
                             let kind = UseSegmentKind::List(self.parse_list());
                             result.push(UseSegment {
                                 kind,
-                                version: self.version,
+                                style_edition: self.style_edition,
                             });
                             self.eat('}');
                         }
@@ -1188,7 +1224,7 @@ mod test {
                             let kind = UseSegmentKind::Glob;
                             result.push(UseSegment {
                                 kind,
-                                version: self.version,
+                                style_edition: self.style_edition,
                             });
                         }
                         ':' => {
@@ -1249,7 +1285,7 @@ mod test {
 
         let mut parser = Parser {
             input: s.chars().peekable(),
-            version: Version::One,
+            style_edition: StyleEdition::Edition2015,
         };
         parser.parse_in_list()
     }

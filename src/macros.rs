@@ -25,7 +25,7 @@ use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
 };
 use crate::config::lists::*;
-use crate::config::Version;
+use crate::config::StyleEdition;
 use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
@@ -1251,7 +1251,7 @@ impl MacroBranch {
         let old_body = context.snippet(self.body).trim();
         let has_block_body = old_body.starts_with('{');
         let mut prefix_width = 5; // 5 = " => {"
-        if context.config.version() == Version::Two {
+        if context.config.style_edition() >= StyleEdition::Edition2024 {
             if has_block_body {
                 prefix_width = 6; // 6 = " => {{"
             }

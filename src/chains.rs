@@ -62,7 +62,7 @@ use rustc_ast::{ast, ptr};
 use rustc_span::{symbol, BytePos, Span};
 
 use crate::comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
-use crate::config::{IndentStyle, Version};
+use crate::config::{IndentStyle, StyleEdition};
 use crate::expr::rewrite_call;
 use crate::lists::extract_pre_comment;
 use crate::macros::convert_try_mac;
@@ -285,7 +285,7 @@ impl Rewrite for ChainItem {
             ChainItemKind::StructField(ident) => format!(".{}", rewrite_ident(context, ident)),
             ChainItemKind::TupleField(ident, nested) => format!(
                 "{}.{}",
-                if nested && context.config.version() == Version::One {
+                if nested && context.config.style_edition() <= StyleEdition::Edition2021 {
                     " "
                 } else {
                     ""

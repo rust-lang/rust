@@ -7,7 +7,7 @@ use rustc_span::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, rewrite_comment, FindUncommented};
 use crate::config::lists::*;
-use crate::config::{Config, ControlBraceStyle, IndentStyle, MatchArmLeadingPipe, Version};
+use crate::config::{Config, ControlBraceStyle, IndentStyle, MatchArmLeadingPipe, StyleEdition};
 use crate::expr::{
     format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line, rewrite_cond,
     ExprType, RhsTactics,
@@ -112,9 +112,10 @@ pub(crate) fn rewrite_match(
     let inner_attrs_str = if inner_attrs.is_empty() {
         String::new()
     } else {
-        let shape = match context.config.version() {
-            Version::One => shape,
-            _ => shape.block_indent(context.config.tab_spaces()),
+        let shape = if context.config.style_edition() <= StyleEdition::Edition2021 {
+            shape
+        } else {
+            shape.block_indent(context.config.tab_spaces())
         };
         inner_attrs
             .rewrite_result(context, shape)
@@ -437,7 +438,7 @@ fn rewrite_match_body(
         let arrow_snippet = context.snippet(arrow_span).trim();
         // search for the arrow starting from the end of the snippet since there may be a match
         // expression within the guard
-        let arrow_index = if context.config.version() == Version::One {
+        let arrow_index = if context.config.style_edition() <= StyleEdition::Edition2021 {
             arrow_snippet.rfind("=>").unwrap()
         } else {
             arrow_snippet.find_last_uncommented("=>").unwrap()
@@ -475,7 +476,7 @@ fn rewrite_match_body(
                 } else {
                     ""
                 };
-                let semicolon = if context.config.version() == Version::One {
+                let semicolon = if context.config.style_edition() <= StyleEdition::Edition2021 {
                     ""
                 } else {
                     if semicolon_for_expr(context, body) {

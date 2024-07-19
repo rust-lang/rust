@@ -6,7 +6,7 @@ use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, contains_comment};
 use crate::config::lists::*;
-use crate::config::{IndentStyle, TypeDensity, Version};
+use crate::config::{IndentStyle, StyleEdition, TypeDensity};
 use crate::expr::{
     format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple, rewrite_unary_prefix, ExprType,
     RhsAssignKind,
@@ -888,7 +888,7 @@ impl Rewrite for ast::Ty {
             // FIXME: we drop any comments here, even though it's a silly place to put
             // comments.
             ast::TyKind::Paren(ref ty) => {
-                if context.config.version() == Version::One
+                if context.config.style_edition() <= StyleEdition::Edition2021
                     || context.config.indent_style() == IndentStyle::Visual
                 {
                     let budget = shape
@@ -966,7 +966,7 @@ impl Rewrite for ast::Ty {
                 if it.is_empty() {
                     return Ok("impl".to_owned());
                 }
-                let rw = if context.config.version() == Version::One {
+                let rw = if context.config.style_edition() <= StyleEdition::Edition2021 {
                     it.rewrite_result(context, shape)
                 } else {
                     join_bounds(context, shape, it, false)
@@ -1212,16 +1212,16 @@ fn join_bounds_inner(
     //   and either there is more than one item;
     //       or the single item is of type `Trait`,
     //          and any of the internal arrays contains more than one item;
-    let retry_with_force_newline = match context.config.version() {
-        Version::One => {
+    let retry_with_force_newline = match context.config.style_edition() {
+        style_edition @ _ if style_edition <= StyleEdition::Edition2021 => {
             !force_newline
                 && items.len() > 1
                 && (result.0.contains('\n') || result.0.len() > shape.width)
         }
-        Version::Two if force_newline => false,
-        Version::Two if (!result.0.contains('\n') && result.0.len() <= shape.width) => false,
-        Version::Two if items.len() > 1 => true,
-        Version::Two => is_item_with_multi_items_array(&items[0]),
+        _ if force_newline => false,
+        _ if (!result.0.contains('\n') && result.0.len() <= shape.width) => false,
+        _ if items.len() > 1 => true,
+        _ => is_item_with_multi_items_array(&items[0]),
     };
 
     if retry_with_force_newline {
