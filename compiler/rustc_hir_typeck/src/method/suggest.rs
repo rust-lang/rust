@@ -1265,9 +1265,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         (
                             match parent_pred {
-                                None => format!("`{}`", &p),
+                                None => format!("`{p}`"),
                                 Some(parent_pred) => match format_pred(*parent_pred) {
-                                    None => format!("`{}`", &p),
+                                    None => format!("`{p}`"),
                                     Some((parent_p, _)) => {
                                         if !suggested
                                             && !suggested_bounds.contains(pred)

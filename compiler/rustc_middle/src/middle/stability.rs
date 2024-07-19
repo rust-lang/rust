@@ -112,7 +112,7 @@ pub fn report_unstable(
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{feature}': {r}"),
-        None => format!("use of unstable library feature '{}'", &feature),
+        None => format!("use of unstable library feature '{feature}'"),
     };
 
     if is_soft {

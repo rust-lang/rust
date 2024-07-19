@@ -253,7 +253,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
 
             for Attribute { id: Identifier { name: attr_name }, .. } in attributes {
                 let snake_name = Ident::new(
-                    &format!("{}{}", &crate_prefix, &attr_name.replace('-', "_")),
+                    &format!("{crate_prefix}{}", attr_name.replace('-', "_")),
                     resource_str.span(),
                 );
                 if !previous_attrs.insert(snake_name.clone()) {
