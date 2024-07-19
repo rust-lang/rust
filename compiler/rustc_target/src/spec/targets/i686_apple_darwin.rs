@@ -6,7 +6,8 @@ pub fn target() -> Target {
     let arch = Arch::I386;
     let mut base = opts("macos", arch, TargetAbi::Normal);
     base.max_atomic_width = Some(64);
-    base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
+    base.pre_link_args =
+        TargetOptions::link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
     base.frame_pointer = FramePointer::Always;
 
     Target {

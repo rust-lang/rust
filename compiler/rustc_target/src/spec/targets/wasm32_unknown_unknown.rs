@@ -9,30 +9,31 @@
 //!
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
-
-use crate::spec::{base, Cc, LinkerFlavor, Target};
+use crate::spec::{base, Cc, LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
     options.os = "unknown".into();
 
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::No),
-        &[
-            // For now this target just never has an entry symbol no matter the output
-            // type, so unconditionally pass this.
-            "--no-entry",
-        ],
-    );
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::Yes),
-        &[
-            // Make sure clang uses LLD as its linker and is configured appropriately
-            // otherwise
-            "--target=wasm32-unknown-unknown",
-            "-Wl,--no-entry",
-        ],
-    );
+    options.pre_link_args = TargetOptions::link_args_list(&[
+        (
+            LinkerFlavor::WasmLld(Cc::No),
+            &[
+                // For now this target just never has an entry symbol no matter the output
+                // type, so unconditionally pass this.
+                "--no-entry",
+            ],
+        ),
+        (
+            LinkerFlavor::WasmLld(Cc::Yes),
+            &[
+                // Make sure clang uses LLD as its linker and is configured appropriately
+                // otherwise
+                "--target=wasm32-unknown-unknown",
+                "-Wl,--no-entry",
+            ],
+        ),
+    ]);
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),

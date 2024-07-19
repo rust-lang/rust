@@ -37,7 +37,7 @@ impl Target {
             &self.late_link_args_static,
             &self.post_link_args,
         ] {
-            for (&flavor, flavor_args) in args {
+            for (&flavor, flavor_args) in &**args {
                 assert!(!flavor_args.is_empty());
                 // Check that flavors mentioned in link args are compatible with the default flavor.
                 match self.linker_flavor {

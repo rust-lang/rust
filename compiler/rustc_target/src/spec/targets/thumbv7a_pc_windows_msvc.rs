@@ -9,7 +9,7 @@ pub fn target() -> Target {
     // should be smart enough to insert branch islands only
     // where necessary, but this is not the observed behavior.
     // Disabling the LBR optimization works around the issue.
-    base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["/OPT:NOLBR"]);
+    base.pre_link_args = TargetOptions::link_args(LinkerFlavor::Msvc(Lld::No), &["/OPT:NOLBR"]);
 
     Target {
         llvm_target: "thumbv7a-pc-windows-msvc".into(),

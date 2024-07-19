@@ -1,7 +1,5 @@
-use crate::spec::{
-    add_link_args, cvs, Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel,
-    TargetOptions, TlsModel,
-};
+use crate::spec::{cvs, Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy};
+use crate::spec::{RelocModel, TargetOptions, TlsModel};
 
 pub fn options() -> TargetOptions {
     macro_rules! args {
@@ -48,8 +46,10 @@ pub fn options() -> TargetOptions {
         };
     }
 
-    let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::WasmLld(Cc::No), args!(""));
-    add_link_args(&mut pre_link_args, LinkerFlavor::WasmLld(Cc::Yes), args!("-Wl,"));
+    let pre_link_args = TargetOptions::link_args_list(&[
+        (LinkerFlavor::WasmLld(Cc::No), args!("")),
+        (LinkerFlavor::WasmLld(Cc::Yes), args!("-Wl,")),
+    ]);
 
     TargetOptions {
         is_like_wasm: true,

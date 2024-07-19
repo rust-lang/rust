@@ -5,7 +5,8 @@ pub fn opts() -> TargetOptions {
 
     opts.abi = "uwp".into();
     opts.vendor = "uwp".into();
-    opts.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["/APPCONTAINER", "mincore.lib"]);
+    opts.pre_link_args =
+        TargetOptions::link_args(LinkerFlavor::Msvc(Lld::No), &["/APPCONTAINER", "mincore.lib"]);
 
     opts
 }
