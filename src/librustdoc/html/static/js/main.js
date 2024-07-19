@@ -531,13 +531,13 @@ function preLoadCss(cssUrl) {
                 link.href = path;
                 link.textContent = name;
                 const li = document.createElement("li");
-                li.appendChild(link);
-                ul.appendChild(li);
                 // Don't "optimize" this to just use `path`.
                 // We want the browser to normalize this into an absolute URL.
                 if (link.href === current_page) {
                     li.classList.add("current");
                 }
+                li.appendChild(link);
+                ul.appendChild(li);
             }
             sidebar.appendChild(h3);
             sidebar.appendChild(ul);
