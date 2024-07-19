@@ -101,6 +101,8 @@ pub(super) fn atom_expr(
         }
         T![loop] => loop_expr(p, None),
         T![while] => while_expr(p, None),
+        // test try_macro_fallback 2015
+        // fn foo() { try!(Ok(())); }
         T![try] => try_block_expr(p, None),
         T![match] => match_expr(p),
         T![return] => return_expr(p),
@@ -767,24 +769,6 @@ fn break_expr(p: &mut Parser<'_>, r: Restrictions) -> CompletedMarker {
 fn try_block_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![try]));
     let m = m.unwrap_or_else(|| p.start());
-    // Special-case `try!` as macro.
-    // This is a hack until we do proper edition support
-    if p.nth_at(1, T![!]) {
-        // test try_macro_fallback
-        // fn foo() { try!(Ok(())); }
-        let macro_call = p.start();
-        let path = p.start();
-        let path_segment = p.start();
-        let name_ref = p.start();
-        p.bump_remap(IDENT);
-        name_ref.complete(p, NAME_REF);
-        path_segment.complete(p, PATH_SEGMENT);
-        path.complete(p, PATH);
-        let _block_like = items::macro_call_after_excl(p);
-        macro_call.complete(p, MACRO_CALL);
-        return m.complete(p, MACRO_EXPR);
-    }
-
     p.bump(T![try]);
     if p.at(T!['{']) {
         stmt_list(p);

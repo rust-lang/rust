@@ -559,11 +559,17 @@ mod ok {
     fn try_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/try_expr.rs"); }
     #[test]
     fn try_macro_fallback() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/try_macro_fallback.rs");
+        run_and_expect_no_errors_with_edition(
+            "test_data/parser/inline/ok/try_macro_fallback.rs",
+            crate::Edition::Edition2015,
+        );
     }
     #[test]
     fn try_macro_rules() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/try_macro_rules.rs");
+        run_and_expect_no_errors_with_edition(
+            "test_data/parser/inline/ok/try_macro_rules.rs",
+            crate::Edition::Edition2015,
+        );
     }
     #[test]
     fn tuple_attrs() { run_and_expect_no_errors("test_data/parser/inline/ok/tuple_attrs.rs"); }

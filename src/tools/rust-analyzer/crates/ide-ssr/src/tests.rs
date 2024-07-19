@@ -844,9 +844,9 @@ fn f1() -> DynTrait<Vec<Error>> {foo()}
 #[test]
 fn replace_macro_invocations() {
     assert_ssr_transform(
-        "try!($a) ==>> $a?",
-        "macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(try!(foo()));}",
-        expect![["macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(foo()?);}"]],
+        "try_!($a) ==>> $a?",
+        "macro_rules! try_ {() => {}} fn f1() -> Result<(), E> {bar(try_!(foo()));}",
+        expect![["macro_rules! try_ {() => {}} fn f1() -> Result<(), E> {bar(foo()?);}"]],
     );
     // FIXME: Figure out why this doesn't work anymore
     // assert_ssr_transform(
