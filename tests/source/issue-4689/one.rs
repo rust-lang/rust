@@ -1,4 +1,4 @@
-// rustfmt-version: One
+// rustfmt-style_edition: 2015
 
 // Based on the issue description
 pub trait PrettyPrinter<'tcx>:
