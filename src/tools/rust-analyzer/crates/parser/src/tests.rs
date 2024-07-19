@@ -11,6 +11,7 @@ use expect_test::expect_file;
 
 use crate::{Edition, LexedStr, TopEntryPoint};
 
+#[rustfmt::skip]
 #[path = "../test_data/generated/runner.rs"]
 mod runner;
 
