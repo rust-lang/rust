@@ -2162,92 +2162,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.ascribe_types(block, ascriptions);
 
-        // rust-lang/rust#27282: The `autoref` business deserves some
-        // explanation here.
-        //
-        // The intent of the `autoref` flag is that when it is true,
-        // then any pattern bindings of type T will map to a `&T`
-        // within the context of the guard expression, but will
-        // continue to map to a `T` in the context of the arm body. To
-        // avoid surfacing this distinction in the user source code
-        // (which would be a severe change to the language and require
-        // far more revision to the compiler), when `autoref` is true,
-        // then any occurrence of the identifier in the guard
-        // expression will automatically get a deref op applied to it.
-        //
-        // So an input like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { foo if inspect(foo)
-        //     => feed(foo), ... }
-        // ```
-        //
-        // will be treated as if it were really something like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { Foo { .. } if { let tmp1 = &place; inspect(*tmp1) }
-        //     => { let tmp2 = place; feed(tmp2) }, ... }
-        // ```
-        //
-        // And an input like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { ref mut foo if inspect(foo)
-        //     => feed(foo), ... }
-        // ```
-        //
-        // will be treated as if it were really something like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { Foo { .. } if { let tmp1 = & &mut place; inspect(*tmp1) }
-        //     => { let tmp2 = &mut place; feed(tmp2) }, ... }
-        // ```
-        //
-        // In short, any pattern binding will always look like *some*
-        // kind of `&T` within the guard at least in terms of how the
-        // MIR-borrowck views it, and this will ensure that guard
-        // expressions cannot mutate their the match inputs via such
-        // bindings. (It also ensures that guard expressions can at
-        // most *copy* values from such bindings; non-Copy things
-        // cannot be moved via pattern bindings in guard expressions.)
-        //
-        // ----
-        //
-        // Implementation notes (under assumption `autoref` is true).
-        //
-        // To encode the distinction above, we must inject the
-        // temporaries `tmp1` and `tmp2`.
-        //
-        // There are two cases of interest: binding by-value, and binding by-ref.
-        //
-        // 1. Binding by-value: Things are simple.
-        //
-        //    * Establishing `tmp1` creates a reference into the
-        //      matched place. This code is emitted by
-        //      bind_matched_candidate_for_guard.
-        //
-        //    * `tmp2` is only initialized "lazily", after we have
-        //      checked the guard. Thus, the code that can trigger
-        //      moves out of the candidate can only fire after the
-        //      guard evaluated to true. This initialization code is
-        //      emitted by bind_matched_candidate_for_arm.
-        //
-        // 2. Binding by-reference: Things are tricky.
-        //
-        //    * Here, the guard expression wants a `&&` or `&&mut`
-        //      into the original input. This means we need to borrow
-        //      the reference that we create for the arm.
-        //    * So we eagerly create the reference for the arm and then take a
-        //      reference to that.
+        // Lower an instance of the arm guard (if present) for this candidate,
+        // and then perform bindings for the arm body.
         if let Some((arm, match_scope)) = arm_match_scope
             && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
 
+            // Bindings for guards require some extra handling to automatically
+            // insert implicit references/dereferences.
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
             let guard_frame = GuardFrame {
                 locals: bindings.clone().map(|b| GuardFrameLocal::new(b.var_id)).collect(),
@@ -2387,6 +2310,82 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    /// Binding for guards is a bit different from binding for the arm body,
+    /// because an extra layer of implicit reference/dereference is added.
+    ///
+    /// The idea is that any pattern bindings of type T will map to a `&T` within
+    /// the context of the guard expression, but will continue to map to a `T`
+    /// in the context of the arm body. To avoid surfacing this distinction in
+    /// the user source code (which would be a severe change to the language and
+    /// require far more revision to the compiler), any occurrence of the
+    /// identifier in the guard expression will automatically get a deref op
+    /// applied to it. (See the caller of [`Self::is_bound_var_in_guard`].)
+    ///
+    /// So an input like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { foo if inspect(foo)
+    ///     => feed(foo), ... }
+    /// ```
+    ///
+    /// will be treated as if it were really something like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { Foo { .. } if { let tmp1 = &place; inspect(*tmp1) }
+    ///     => { let tmp2 = place; feed(tmp2) }, ... }
+    /// ```
+    ///
+    /// And an input like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { ref mut foo if inspect(foo)
+    ///     => feed(foo), ... }
+    /// ```
+    ///
+    /// will be treated as if it were really something like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { Foo { .. } if { let tmp1 = & &mut place; inspect(*tmp1) }
+    ///     => { let tmp2 = &mut place; feed(tmp2) }, ... }
+    /// ```
+    /// ---
+    ///
+    /// ## Implementation notes
+    ///
+    /// To encode the distinction above, we must inject the
+    /// temporaries `tmp1` and `tmp2`.
+    ///
+    /// There are two cases of interest: binding by-value, and binding by-ref.
+    ///
+    /// 1. Binding by-value: Things are simple.
+    ///
+    ///    * Establishing `tmp1` creates a reference into the
+    ///      matched place. This code is emitted by
+    ///      [`Self::bind_matched_candidate_for_guard`].
+    ///
+    ///    * `tmp2` is only initialized "lazily", after we have
+    ///      checked the guard. Thus, the code that can trigger
+    ///      moves out of the candidate can only fire after the
+    ///      guard evaluated to true. This initialization code is
+    ///      emitted by [`Self::bind_matched_candidate_for_arm_body`].
+    ///
+    /// 2. Binding by-reference: Things are tricky.
+    ///
+    ///    * Here, the guard expression wants a `&&` or `&&mut`
+    ///      into the original input. This means we need to borrow
+    ///      the reference that we create for the arm.
+    ///    * So we eagerly create the reference for the arm and then take a
+    ///      reference to that.
+    ///
+    /// ---
+    ///
+    /// See these PRs for some historical context:
+    /// - <https://github.com/rust-lang/rust/pull/49870> (introduction of autoref)
+    /// - <https://github.com/rust-lang/rust/pull/59114> (always use autoref)
     fn bind_matched_candidate_for_guard<'b>(
         &mut self,
         block: BasicBlock,
@@ -2418,10 +2417,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             match binding.binding_mode.0 {
                 ByRef::No => {
+                    // The arm binding will be by value, so for the guard binding
+                    // just take a shared reference to the matched place.
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
                 ByRef::Yes(mutbl) => {
+                    // The arm binding will be by reference, so eagerly create it now.
                     let value_for_arm = self.storage_live_binding(
                         block,
                         binding.var_id,
@@ -2433,6 +2435,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let rvalue =
                         Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source);
                     self.cfg.push_assign(block, source_info, value_for_arm, rvalue);
+                    // For the guard binding, take a shared reference to that reference.
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, value_for_arm);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
