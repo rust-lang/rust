@@ -216,6 +216,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::implicit_return::IMPLICIT_RETURN_INFO,
     crate::implicit_saturating_add::IMPLICIT_SATURATING_ADD_INFO,
     crate::implicit_saturating_sub::IMPLICIT_SATURATING_SUB_INFO,
+    crate::implicit_saturating_sub::INVERTED_SATURATING_SUB_INFO,
     crate::implied_bounds_in_impls::IMPLIED_BOUNDS_IN_IMPLS_INFO,
     crate::incompatible_msrv::INCOMPATIBLE_MSRV_INFO,
     crate::inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR_INFO,

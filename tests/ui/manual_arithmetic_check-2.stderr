@@ -9,8 +9,7 @@ note: this subtraction underflows when `b < a`
    |
 LL |     let result = if a > b { b - a } else { 0 };
    |                             ^^^^^
-   = note: `-D clippy::implicit-saturating-sub` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_sub)]`
+   = note: `#[deny(clippy::inverted_saturating_sub)]` on by default
 
 error: inverted arithmetic check before subtraction
   --> tests/ui/manual_arithmetic_check-2.rs:11:23

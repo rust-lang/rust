@@ -41,7 +41,37 @@ declare_clippy_lint! {
     "Perform saturating subtraction instead of implicitly checking lower bound of data type"
 }
 
-declare_lint_pass!(ImplicitSaturatingSub => [IMPLICIT_SATURATING_SUB]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for comparisons between integers, followed by subtracting the greater value from the
+    /// lower one.
+    ///
+    /// ### Why is this bad?
+    /// This could result in an underflow and is most likely not what the user wants. If this was
+    /// intended to be a saturated subtraction, consider using the `saturating_sub` method directly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let a = 12u32;
+    /// let b = 13u32;
+    ///
+    /// let result = if a > b { b - a } else { 0 };
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let a = 12u32;
+    /// let b = 13u32;
+    ///
+    /// let result = a.saturating_sub(b);
+    /// ```
+    #[clippy::version = "1.44.0"]
+    pub INVERTED_SATURATING_SUB,
+    correctness,
+    "Check if a variable is smaller than another one and still subtract from it even if smaller"
+}
+
+declare_lint_pass!(ImplicitSaturatingSub => [IMPLICIT_SATURATING_SUB, INVERTED_SATURATING_SUB]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -182,7 +212,7 @@ fn check_subtraction(
         {
             span_lint_and_then(
                 cx,
-                IMPLICIT_SATURATING_SUB,
+                INVERTED_SATURATING_SUB,
                 condition_span,
                 "inverted arithmetic check before subtraction",
                 |diag| {
