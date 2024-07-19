@@ -6,7 +6,6 @@ use crate::lru::LruNode;
 use crate::plumbing::{DatabaseOps, QueryFunction};
 use crate::revision::Revision;
 use crate::runtime::local_state::ActiveQueryGuard;
-use crate::runtime::local_state::QueryInputs;
 use crate::runtime::local_state::QueryRevisions;
 use crate::runtime::Runtime;
 use crate::runtime::RuntimeId;
@@ -28,8 +27,8 @@ where
     key_index: u32,
     group_index: u16,
     state: RwLock<QueryState<Q>>,
-    policy: PhantomData<MP>,
     lru_index: LruIndex,
+    policy: PhantomData<MP>,
 }
 
 /// Defines the "current state" of query's memoized results.
@@ -430,7 +429,8 @@ where
         tracing::debug!("Slot::invalidate(new_revision = {:?})", new_revision);
         match &mut *self.state.write() {
             QueryState::Memoized(memo) => {
-                memo.revisions.inputs = QueryInputs::Untracked;
+                memo.revisions.untracked = true;
+                memo.revisions.inputs = None;
                 memo.revisions.changed_at = new_revision;
                 Some(memo.revisions.durability)
             }
@@ -746,11 +746,8 @@ where
         match &self.revisions.inputs {
             // We can't validate values that had untracked inputs; just have to
             // re-execute.
-            QueryInputs::Untracked => {
-                return false;
-            }
-
-            QueryInputs::NoInputs => {}
+            None if self.revisions.untracked => return false,
+            None => {}
 
             // Check whether any of our inputs changed since the
             // **last point where we were verified** (not since we
@@ -761,7 +758,7 @@ where
             // R1. But our *verification* date will be R2, and we
             // are only interested in finding out whether the
             // input changed *again*.
-            QueryInputs::Tracked { inputs } => {
+            Some(inputs) => {
                 let changed_input =
                     inputs.slice.iter().find(|&&input| db.maybe_changed_after(input, verified_at));
                 if let Some(input) = changed_input {
@@ -793,7 +790,7 @@ where
     }
 
     fn has_untracked_input(&self) -> bool {
-        matches!(self.revisions.inputs, QueryInputs::Untracked)
+        self.revisions.untracked
     }
 }
 
