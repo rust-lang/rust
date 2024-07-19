@@ -1226,10 +1226,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog2(self) -> Option<u32> {
-            if let Some(x) = NonZero::new(self) {
-                Some(x.ilog2())
-            } else {
-                None
+            match NonZero::new(self) {
+                Some(x) => Some(x.ilog2()),
+                None => None,
             }
         }
 
@@ -1248,10 +1247,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
-            if let Some(x) = NonZero::new(self) {
-                Some(x.ilog10())
-            } else {
-                None
+            match NonZero::new(self) {
+                Some(x) => Some(x.ilog10()),
+                None => None,
             }
         }
 
@@ -2590,37 +2588,10 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            if self < 2 {
-                return self;
+            match NonZero::new(self) {
+                Some(x) => x.isqrt().get(),
+                None => 0,
             }
-
-            // The algorithm is based on the one presented in
-            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
-            // which cites as source the following C code:
-            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
-
-            let mut op = self;
-            let mut res = 0;
-            let mut one = 1 << (self.ilog2() & !1);
-
-            while one != 0 {
-                if op >= res + one {
-                    op -= res + one;
-                    res = (res >> 1) + one;
-                } else {
-                    res >>= 1;
-                }
-                one >>= 2;
-            }
-
-            // SAFETY: the result is positive and fits in an integer with half as many bits.
-            // Inform the optimizer about it.
-            unsafe {
-                hint::assert_unchecked(0 < res);
-                hint::assert_unchecked(res < 1 << (Self::BITS / 2));
-            }
-
-            res
         }
 
         /// Performs Euclidean division.
