@@ -44,7 +44,7 @@ pub use external_deps::{c_build, cc, clang, htmldocck, llvm, python, rustc, rust
 
 // These rely on external dependencies.
 pub use c_build::{build_native_dynamic_lib, build_native_static_lib};
-pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
+pub use cc::{cc, cxx, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
 pub use llvm::{

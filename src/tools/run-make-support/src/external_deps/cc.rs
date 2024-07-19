@@ -15,6 +15,12 @@ pub fn cc() -> Cc {
     Cc::new()
 }
 
+/// Construct a new platform-specific CXX compiler invocation.
+#[track_caller]
+pub fn cxx() -> Cc {
+    Cc::new_cxx()
+}
+
 /// A platform-specific C compiler invocation builder. The specific C compiler used is
 /// passed down from compiletest.
 #[derive(Debug)]
@@ -37,6 +43,21 @@ impl Cc {
         let mut cmd = Command::new(compiler);
 
         let default_cflags = env_var("CC_DEFAULT_FLAGS");
+        for flag in default_cflags.split(char::is_whitespace) {
+            cmd.arg(flag);
+        }
+
+        Self { cmd }
+    }
+
+    /// Construct a new platform-specific CXX compiler invocation.
+    #[track_caller]
+    pub fn new_cxx() -> Self {
+        let compiler = env_var("CXX");
+
+        let mut cmd = Command::new(compiler);
+
+        let default_cflags = env_var("CXX_DEFAULT_FLAGS");
         for flag in default_cflags.split(char::is_whitespace) {
             cmd.arg(flag);
         }

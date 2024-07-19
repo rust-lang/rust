@@ -2,7 +2,6 @@ run-make/branch-protection-check-IBT/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
-run-make/compiler-rt-works-on-mingw/Makefile
 run-make/cross-lang-lto-clang/Makefile
 run-make/cross-lang-lto-pgo-smoketest/Makefile
 run-make/cross-lang-lto-upstream-rlibs/Makefile
