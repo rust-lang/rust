@@ -106,7 +106,7 @@ fn tag_base_type<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> Ty<'tcx> {
-    debug_assert!(match enum_type_and_layout.ty.kind() {
+    assert!(match enum_type_and_layout.ty.kind() {
         ty::Coroutine(..) => true,
         ty::Adt(adt_def, _) => adt_def.is_enum(),
         _ => false,
@@ -251,7 +251,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
     variant_layout: TyAndLayout<'tcx>,
     di_flags: DIFlags,
 ) -> &'ll DIType {
-    debug_assert_eq!(variant_layout.ty, enum_type_and_layout.ty);
+    assert_eq!(variant_layout.ty, enum_type_and_layout.ty);
 
     type_map::build_type_with_children(
         cx,
