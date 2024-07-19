@@ -199,4 +199,27 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn hints_closing_brace_for_block_expr() {
+        check_with_config(
+            InlayHintsConfig { closing_brace_hints_min_lines: Some(2), ..DISABLED_CONFIG },
+            r#"
+fn test() {
+    'end: {
+        'do_a: {
+            'do_b: {
+
+            }
+          //^ 'do_b
+            break 'end;
+        }
+      //^ 'do_a
+    }
+  //^ 'end
+  }
+//^ fn test
+"#,
+        );
+    }
 }
