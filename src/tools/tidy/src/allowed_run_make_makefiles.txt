@@ -17,7 +17,6 @@ run-make/cross-lang-lto/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
-run-make/dump-ice-to-disk/Makefile
 run-make/emit-to-stdout/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
@@ -67,7 +66,6 @@ run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-duplicate-libs/Makefile
-run-make/panic-abort-eh_frame/Makefile
 run-make/pass-non-c-like-enum-to-c/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
