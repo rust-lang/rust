@@ -244,7 +244,7 @@ impl<'a> Tarball<'a> {
             cmd.arg("generate")
                 .arg("--image-dir")
                 .arg(&this.image_dir)
-                .arg(format!("--component-name={}", &component_name));
+                .arg(format!("--component-name={component_name}"));
 
             if let Some((dir, dirs)) = this.bulk_dirs.split_first() {
                 let mut arg = dir.as_os_str().to_os_string();
