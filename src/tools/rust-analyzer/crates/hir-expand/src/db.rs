@@ -65,7 +65,7 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::transparent]
     fn parse_or_expand_with_err(&self, file_id: HirFileId) -> ExpandResult<Parse<SyntaxNode>>;
     /// Implementation for the macro case.
-    // This query is LRU cached
+    #[salsa::lru]
     fn parse_macro_expansion(
         &self,
         macro_file: MacroFileId,

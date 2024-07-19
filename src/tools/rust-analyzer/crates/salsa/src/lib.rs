@@ -10,6 +10,7 @@
 //! from previous invocations as appropriate.
 
 mod derived;
+mod derived_lru;
 mod durability;
 mod hash;
 mod input;

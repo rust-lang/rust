@@ -59,6 +59,7 @@ pub trait FileLoader {
 #[salsa::query_group(SourceDatabaseStorage)]
 pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// Parses the file into the syntax tree.
+    #[salsa::lru]
     fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
 
     /// Returns the set of errors obtained from parsing the file including validation errors.
@@ -105,6 +106,7 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn compressed_file_text(&self, file_id: FileId) -> Arc<[u8]>;
 
+    #[salsa::lru]
     fn file_text(&self, file_id: FileId) -> Arc<str>;
 
     /// Path to a file, relative to the root of its source root.
