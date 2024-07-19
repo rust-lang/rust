@@ -1,4 +1,3 @@
-// ignore-tidy-trailing-newlines
 // issue: rust-lang/rust#127868
 
 fn main() {

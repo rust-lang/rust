@@ -1,5 +1,5 @@
 error: mismatched closing delimiter: `}`
-  --> $DIR/mismatched-delimiter-corner-case-issue-127868.rs:5:42
+  --> $DIR/mismatched-delimiter-corner-case-issue-127868.rs:4:42
    |
 LL | fn main() {
    |           - closing delimiter possibly meant for this
@@ -9,29 +9,14 @@ LL | }
    | ^ mismatched closing delimiter
 
 error: this file contains an unclosed delimiter
-  --> $DIR/mismatched-delimiter-corner-case-issue-127868.rs:7:51
+  --> $DIR/mismatched-delimiter-corner-case-issue-127868.rs:6:52
    |
 LL | fn main() {
    |           - unclosed delimiter
 LL |     let a = [[[[[[[[[[[[[[[[[[[[1, {, (, [,;
-   |             --------------------   - this delimiter might not be properly closed...
-   |             ||||||||||||||||||||
-   |             |||||||||||||||||||unclosed delimiter
-   |             ||||||||||||||||||unclosed delimiter
-   |             |||||||||||||||||unclosed delimiter
-   |             ||||||||||||||||unclosed delimiter
-   |             |||||||||||||||unclosed delimiter
-   |             ||||||||||||||unclosed delimiter
-   |             |||||||||||||unclosed delimiter
-   |             ||||||||||||unclosed delimiter
-   |             |||||||||||unclosed delimiter
-   |             ||||||||||unclosed delimiter
-   |             |||||||||unclosed delimiter
-   |             ||||||||unclosed delimiter
-   |             |||||||unclosed delimiter
-   |             ||||||unclosed delimiter
-   |             |||||unclosed delimiter
-   |             ||||unclosed delimiter
+   |             -----                  - this delimiter might not be properly closed...
+   |             |||||
+   |             ||||another 16 unclosed delimiters begin from here
    |             |||unclosed delimiter
    |             ||unclosed delimiter
    |             |unclosed delimiter
