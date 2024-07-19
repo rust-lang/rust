@@ -16,6 +16,9 @@
 trait Parent1 {
     type P1;
     fn p1(&self) -> Self::P1;
+    fn d(&self) -> i32 {
+        42
+    }
 }
 
 trait Parent2 {
@@ -60,14 +63,17 @@ fn main() {
     x.c();
     x.p1();
     x.p2();
+    x.d();
     // Parents can be created and access their methods.
     let y = &Foo as &dyn Parent1<P1=u16>;
     y.p1();
+    y.d();
     let z = &Foo as &dyn Parent2<P2=u32>;
     z.p2();
     // Trait upcasting works
     let x1 = x as &dyn Parent1<P1=u16>;
     x1.p1();
+    x1.d();
     let x2 = x as &dyn Parent2<P2=u32>;
     x2.p2();
 }

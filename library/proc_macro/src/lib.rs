@@ -1544,10 +1544,10 @@ impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Literal")
             // format the kind on one line even in {:#?} mode
-            .field("kind", &format_args!("{:?}", &self.0.kind))
+            .field("kind", &format_args!("{:?}", self.0.kind))
             .field("symbol", &self.0.symbol)
             // format `Some("...")` on one line even in {:#?} mode
-            .field("suffix", &format_args!("{:?}", &self.0.suffix))
+            .field("suffix", &format_args!("{:?}", self.0.suffix))
             .field("span", &self.0.span)
             .finish()
     }

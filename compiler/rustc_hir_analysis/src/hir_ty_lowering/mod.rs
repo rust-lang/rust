@@ -14,6 +14,7 @@
 //! trait references and bounds.
 
 mod bounds;
+mod cmse;
 pub mod errors;
 pub mod generics;
 mod lint;
@@ -2377,6 +2378,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
+
+        // reject function types that violate cmse ABI requirements
+        cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);
 
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.

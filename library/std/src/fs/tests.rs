@@ -683,7 +683,7 @@ fn recursive_rmdir_toctou() {
     let drop_canary_arc = Arc::new(());
     let drop_canary_weak = Arc::downgrade(&drop_canary_arc);
 
-    eprintln!("x: {:?}", &victim_del_path);
+    eprintln!("x: {victim_del_path:?}");
 
     // victim just continuously removes `victim_del`
     thread::spawn(move || {

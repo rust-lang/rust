@@ -1605,6 +1605,20 @@ pub(crate) enum UnusedGenericParameterHelp {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_unconstrained_generic_parameter)]
+pub(crate) struct UnconstrainedGenericParameter {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub param_name: Symbol,
+    pub param_def_kind: &'static str,
+    #[note(hir_analysis_const_param_note)]
+    pub const_param_note: Option<()>,
+    #[note(hir_analysis_const_param_note2)]
+    pub const_param_note2: Option<()>,
+}
+
+#[derive(Diagnostic)]
 pub enum UnnamedFieldsRepr<'a> {
     #[diag(hir_analysis_unnamed_fields_repr_missing_repr_c)]
     MissingReprC {
@@ -1673,3 +1687,30 @@ pub struct InvalidReceiverTy<'tcx> {
 #[note]
 #[help]
 pub struct EffectsWithoutNextSolver;
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_inputs_stack_spill, code = E0798)]
+#[note]
+pub struct CmseCallInputsStackSpill {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub plural: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_output_stack_spill, code = E0798)]
+#[note(hir_analysis_note1)]
+#[note(hir_analysis_note2)]
+pub struct CmseCallOutputStackSpill {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_generic, code = E0798)]
+pub struct CmseCallGeneric {
+    #[primary_span]
+    pub span: Span,
+}

@@ -1922,31 +1922,24 @@ fn report_bivariance<'tcx>(
     );
 
     if !usage_spans.is_empty() {
-        // First, check if the ADT is (probably) cyclical. We say probably here, since
-        // we're not actually looking into substitutions, just walking through fields.
-        // And we only recurse into the fields of ADTs, and not the hidden types of
-        // opaques or anything else fancy.
+        // First, check if the ADT/LTA is (probably) cyclical. We say probably here, since we're
+        // not actually looking into substitutions, just walking through fields / the "RHS".
+        // We don't recurse into the hidden types of opaques or anything else fancy.
         let item_def_id = item.owner_id.to_def_id();
-        let is_probably_cyclical = if matches!(
-            tcx.def_kind(item_def_id),
-            DefKind::Struct | DefKind::Union | DefKind::Enum
-        ) {
-            IsProbablyCyclical { tcx, adt_def_id: item_def_id, seen: Default::default() }
-                .visit_all_fields(tcx.adt_def(item_def_id))
-                .is_break()
-        } else {
-            false
-        };
-        // If the ADT is cyclical, then if at least one usage of the type parameter or
-        // the `Self` alias is present in the, then it's probably a cyclical struct, and
-        // we should call those parameter usages recursive rather than just saying they're
-        // unused...
+        let is_probably_cyclical =
+            IsProbablyCyclical { tcx, item_def_id, seen: Default::default() }
+                .visit_def(item_def_id)
+                .is_break();
+        // If the ADT/LTA is cyclical, then if at least one usage of the type parameter or
+        // the `Self` alias is present in the, then it's probably a cyclical struct/ type
+        // alias, and we should call those parameter usages recursive rather than just saying
+        // they're unused...
         //
         // We currently report *all* of the parameter usages, since computing the exact
         // subset is very involved, and the fact we're mentioning recursion at all is
         // likely to guide the user in the right direction.
         if is_probably_cyclical {
-            let diag = tcx.dcx().create_err(errors::RecursiveGenericParameter {
+            return tcx.dcx().emit_err(errors::RecursiveGenericParameter {
                 spans: usage_spans,
                 param_span: param.span,
                 param_name,
@@ -1954,7 +1947,6 @@ fn report_bivariance<'tcx>(
                 help,
                 note: (),
             });
-            return diag.emit();
         }
     }
 
@@ -1974,42 +1966,51 @@ fn report_bivariance<'tcx>(
     diag.emit()
 }
 
-/// Detects cases where an ADT is trivially cyclical -- we want to detect this so
-/// /we only mention that its parameters are used cyclically if the ADT is truly
+/// Detects cases where an ADT/LTA is trivially cyclical -- we want to detect this so
+/// we only mention that its parameters are used cyclically if the ADT/LTA is truly
 /// cyclical.
 ///
 /// Notably, we don't consider substitutions here, so this may have false positives.
 struct IsProbablyCyclical<'tcx> {
     tcx: TyCtxt<'tcx>,
-    adt_def_id: DefId,
+    item_def_id: DefId,
     seen: FxHashSet<DefId>,
 }
 
 impl<'tcx> IsProbablyCyclical<'tcx> {
-    fn visit_all_fields(&mut self, adt_def: ty::AdtDef<'tcx>) -> ControlFlow<(), ()> {
-        for field in adt_def.all_fields() {
-            self.tcx.type_of(field.did).instantiate_identity().visit_with(self)?;
+    fn visit_def(&mut self, def_id: DefId) -> ControlFlow<(), ()> {
+        match self.tcx.def_kind(def_id) {
+            DefKind::Struct | DefKind::Enum | DefKind::Union => {
+                self.tcx.adt_def(def_id).all_fields().try_for_each(|field| {
+                    self.tcx.type_of(field.did).instantiate_identity().visit_with(self)
+                })
+            }
+            DefKind::TyAlias if self.tcx.type_alias_is_lazy(def_id) => {
+                self.tcx.type_of(def_id).instantiate_identity().visit_with(self)
+            }
+            _ => ControlFlow::Continue(()),
         }
-
-        ControlFlow::Continue(())
     }
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
     type Result = ControlFlow<(), ()>;
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<(), ()> {
-        if let Some(adt_def) = t.ty_adt_def() {
-            if adt_def.did() == self.adt_def_id {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<(), ()> {
+        let def_id = match ty.kind() {
+            ty::Adt(adt_def, _) => Some(adt_def.did()),
+            ty::Alias(ty::Weak, alias_ty) => Some(alias_ty.def_id),
+            _ => None,
+        };
+        if let Some(def_id) = def_id {
+            if def_id == self.item_def_id {
                 return ControlFlow::Break(());
             }
-
-            if self.seen.insert(adt_def.did()) {
-                self.visit_all_fields(adt_def)?;
+            if self.seen.insert(def_id) {
+                self.visit_def(def_id)?;
             }
         }
-
-        t.super_visit_with(self)
+        ty.super_visit_with(self)
     }
 }
 
