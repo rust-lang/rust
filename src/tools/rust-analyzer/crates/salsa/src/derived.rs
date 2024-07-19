@@ -115,7 +115,7 @@ where
     }
 
     fn durability(&self, db: &<Q as QueryDb<'_>>::DynDb, key: &Q::Key) -> Durability {
-        self.slot(key).durability(db)
+        self.slot_map.read().get(key).map_or(Durability::LOW, |slot| slot.durability(db))
     }
 
     fn entries<C>(&self, _db: &<Q as QueryDb<'_>>::DynDb) -> C
