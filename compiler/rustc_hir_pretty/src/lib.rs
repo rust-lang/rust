@@ -12,8 +12,9 @@ use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
 use rustc_hir::{
-    BindingMode, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
-    LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term, TraitBoundModifier,
+    BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
+    HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
+    TraitBoundModifier,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -87,6 +88,7 @@ impl<'a> State<'a> {
             Node::Variant(a) => self.print_variant(a),
             Node::AnonConst(a) => self.print_anon_const(a),
             Node::ConstBlock(a) => self.print_inline_const(a),
+            Node::ConstArg(a) => self.print_const_arg(a),
             Node::Expr(a) => self.print_expr(a),
             Node::ExprField(a) => self.print_expr_field(a),
             Node::Stmt(a) => self.print_stmt(a),
@@ -983,12 +985,19 @@ impl<'a> State<'a> {
     fn print_array_length(&mut self, len: &hir::ArrayLen<'_>) {
         match len {
             hir::ArrayLen::Infer(..) => self.word("_"),
-            hir::ArrayLen::Body(ct) => self.print_anon_const(ct),
+            hir::ArrayLen::Body(ct) => self.print_const_arg(ct),
         }
     }
 
     fn print_anon_const(&mut self, constant: &hir::AnonConst) {
         self.ann.nested(self, Nested::Body(constant.body))
+    }
+
+    fn print_const_arg(&mut self, const_arg: &hir::ConstArg<'_>) {
+        match &const_arg.kind {
+            ConstArgKind::Path(qpath) => self.print_qpath(qpath, true),
+            ConstArgKind::Anon(anon) => self.print_anon_const(anon),
+        }
     }
 
     fn print_call_post(&mut self, args: &[hir::Expr<'_>]) {
@@ -1679,7 +1688,7 @@ impl<'a> State<'a> {
                             GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
                             GenericArg::Lifetime(_) => {}
                             GenericArg::Type(ty) => s.print_type(ty),
-                            GenericArg::Const(ct) => s.print_anon_const(&ct.value),
+                            GenericArg::Const(ct) => s.print_const_arg(ct),
                             GenericArg::Infer(_inf) => s.word("_"),
                         }
                     });
@@ -1720,7 +1729,7 @@ impl<'a> State<'a> {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
-                    Term::Const(ref c) => self.print_anon_const(c),
+                    Term::Const(ref c) => self.print_const_arg(c),
                 }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => {
@@ -2155,7 +2164,7 @@ impl<'a> State<'a> {
                 if let Some(default) = default {
                     self.space();
                     self.word_space("=");
-                    self.print_anon_const(default);
+                    self.print_const_arg(default);
                 }
             }
         }

@@ -912,6 +912,7 @@ impl<'hir> Map<'hir> {
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => constant.span,
             Node::ConstBlock(constant) => self.body(constant.body).value.span,
+            Node::ConstArg(const_arg) => const_arg.span(),
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
@@ -962,7 +963,8 @@ impl<'hir> Map<'hir> {
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
     pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
-        match self.tcx.parent_hir_node(anon_const) {
+        let const_arg = self.tcx.parent_hir_id(anon_const);
+        match self.tcx.parent_hir_node(const_arg) {
             Node::GenericParam(GenericParam {
                 def_id: param_id,
                 kind: GenericParamKind::Const { .. },
@@ -1182,6 +1184,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         }
         Node::AnonConst(_) => node_str("const"),
         Node::ConstBlock(_) => node_str("const"),
+        Node::ConstArg(_) => node_str("const"),
         Node::Expr(_) => node_str("expr"),
         Node::ExprField(_) => node_str("expr field"),
         Node::Stmt(_) => node_str("stmt"),

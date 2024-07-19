@@ -2395,6 +2395,9 @@ pub(crate) enum ConstantKind {
     /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
     /// by a DefId. So this field must be different from `Extern`.
     TyConst { expr: Box<str> },
+    /// A constant that is just a path (i.e., referring to a const param, free const, etc.).
+    // FIXME: this is an unfortunate representation. rustdoc's logic around consts needs to be improved.
+    Path { path: Box<str> },
     /// A constant (expression) that's not an item or associated item. These are usually found
     /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
     /// used to define explicit discriminant values for enum variants.
@@ -2423,6 +2426,7 @@ impl ConstantKind {
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             ConstantKind::TyConst { ref expr } => expr.to_string(),
+            ConstantKind::Path { ref path } => path.to_string(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
@@ -2432,7 +2436,9 @@ impl ConstantKind {
 
     pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
         match *self {
-            ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
+            ConstantKind::TyConst { .. }
+            | ConstantKind::Path { .. }
+            | ConstantKind::Anonymous { .. } => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
                 print_evaluated_const(tcx, def_id, true, true)
             }
@@ -2441,7 +2447,9 @@ impl ConstantKind {
 
     pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
-            ConstantKind::TyConst { .. } | ConstantKind::Extern { .. } => false,
+            ConstantKind::TyConst { .. }
+            | ConstantKind::Extern { .. }
+            | ConstantKind::Path { .. } => false,
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 is_literal_expr(tcx, body.hir_id)
             }

@@ -228,11 +228,51 @@ impl<'hir> PathSegment<'hir> {
     }
 }
 
+/// A constant that enters the type system, used for arguments to const generics (e.g. array lengths).
+///
+/// These are distinct from [`AnonConst`] as anon consts in the type system are not allowed
+/// to use any generic parameters, therefore we must represent `N` differently. Additionally
+/// future designs for supporting generic parameters in const arguments will likely not use
+/// an anon const based design.
+///
+/// So, `ConstArg` (specifically, [`ConstArgKind`]) distinguishes between const args
+/// that are [just paths](ConstArgKind::Path) (currently just bare const params)
+/// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3 }`).
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct ConstArg<'hir> {
-    pub value: &'hir AnonConst,
+    #[stable_hasher(ignore)]
+    pub hir_id: HirId,
+    pub kind: ConstArgKind<'hir>,
     /// Indicates whether this comes from a `~const` desugaring.
     pub is_desugared_from_effects: bool,
+}
+
+impl<'hir> ConstArg<'hir> {
+    pub fn anon_const_hir_id(&self) -> Option<HirId> {
+        match self.kind {
+            ConstArgKind::Anon(ac) => Some(ac.hir_id),
+            _ => None,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self.kind {
+            ConstArgKind::Path(path) => path.span(),
+            ConstArgKind::Anon(anon) => anon.span,
+        }
+    }
+}
+
+/// See [`ConstArg`].
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub enum ConstArgKind<'hir> {
+    /// **Note:** Currently this is only used for bare const params
+    /// (`N` where `fn foo<const N: usize>(...)`),
+    /// not paths to any const (`N` where `const N: usize = ...`).
+    ///
+    /// However, in the future, we'll be using it for all of those.
+    Path(QPath<'hir>),
+    Anon(&'hir AnonConst),
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -251,7 +291,7 @@ impl InferArg {
 pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir>),
-    Const(ConstArg<'hir>),
+    Const(&'hir ConstArg<'hir>),
     Infer(InferArg),
 }
 
@@ -260,7 +300,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.value.span,
+            GenericArg::Const(c) => c.span(),
             GenericArg::Infer(i) => i.span,
         }
     }
@@ -269,7 +309,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.value.hir_id,
+            GenericArg::Const(c) => c.hir_id,
             GenericArg::Infer(i) => i.hir_id,
         }
     }
@@ -524,7 +564,7 @@ pub enum GenericParamKind<'hir> {
     Const {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
-        default: Option<&'hir AnonConst>,
+        default: Option<&'hir ConstArg<'hir>>,
         is_host_effect: bool,
         synthetic: bool,
     },
@@ -1598,13 +1638,13 @@ pub type Lit = Spanned<LitKind>;
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ArrayLen<'hir> {
     Infer(InferArg),
-    Body(&'hir AnonConst),
+    Body(&'hir ConstArg<'hir>),
 }
 
 impl ArrayLen<'_> {
     pub fn hir_id(&self) -> HirId {
         match self {
-            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(AnonConst { hir_id, .. }) => {
+            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(ConstArg { hir_id, .. }) => {
                 *hir_id
             }
         }
@@ -2434,7 +2474,7 @@ impl<'hir> AssocItemConstraint<'hir> {
     }
 
     /// Obtain the const on the RHS of an assoc const equality constraint if applicable.
-    pub fn ct(self) -> Option<&'hir AnonConst> {
+    pub fn ct(self) -> Option<&'hir ConstArg<'hir>> {
         match self.kind {
             AssocItemConstraintKind::Equality { term: Term::Const(ct) } => Some(ct),
             _ => None,
@@ -2445,7 +2485,7 @@ impl<'hir> AssocItemConstraint<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum Term<'hir> {
     Ty(&'hir Ty<'hir>),
-    Const(&'hir AnonConst),
+    Const(&'hir ConstArg<'hir>),
 }
 
 impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
@@ -2454,8 +2494,8 @@ impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
     }
 }
 
-impl<'hir> From<&'hir AnonConst> for Term<'hir> {
-    fn from(c: &'hir AnonConst) -> Self {
+impl<'hir> From<&'hir ConstArg<'hir>> for Term<'hir> {
+    fn from(c: &'hir ConstArg<'hir>) -> Self {
         Term::Const(c)
     }
 }
@@ -3689,6 +3729,7 @@ pub enum Node<'hir> {
     Field(&'hir FieldDef<'hir>),
     AnonConst(&'hir AnonConst),
     ConstBlock(&'hir ConstBlock),
+    ConstArg(&'hir ConstArg<'hir>),
     Expr(&'hir Expr<'hir>),
     ExprField(&'hir ExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
@@ -3750,6 +3791,7 @@ impl<'hir> Node<'hir> {
             Node::Param(..)
             | Node::AnonConst(..)
             | Node::ConstBlock(..)
+            | Node::ConstArg(..)
             | Node::Expr(..)
             | Node::Stmt(..)
             | Node::Block(..)
@@ -3966,7 +4008,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 24);
+    static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);

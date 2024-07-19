@@ -388,7 +388,7 @@ fn const_evaluatable_predicates_of(
             }
         }
 
-        fn visit_const_param_default(&mut self, _param: HirId, _ct: &'tcx hir::AnonConst) {
+        fn visit_const_param_default(&mut self, _param: HirId, _ct: &'tcx hir::ConstArg<'tcx>) {
             // Do not look into const param defaults,
             // these get checked when they are actually instantiated.
             //
