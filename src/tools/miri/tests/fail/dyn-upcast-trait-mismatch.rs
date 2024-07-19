@@ -59,8 +59,10 @@ impl Baz for i32 {
 }
 
 fn main() {
-    let baz: &dyn Baz = &1;
-    let baz_fake: *const dyn Bar = unsafe { std::mem::transmute(baz) };
-    let _err = baz_fake as *const dyn Foo;
-    //~^ERROR: using vtable for trait `Baz` but trait `Bar` was expected
+    unsafe {
+        let baz: &dyn Baz = &1;
+        let baz_fake: *const dyn Bar = std::mem::transmute(baz);
+        let _err = baz_fake as *const dyn Foo;
+        //~^ERROR: using vtable for trait `Baz` but trait `Bar` was expected
+    }
 }
