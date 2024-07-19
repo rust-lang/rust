@@ -18,7 +18,7 @@ use crate::{
     name, quote,
     quote::dollar_crate,
     tt::{self, DelimSpan},
-    ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroFileIdExt,
+    ExpandError, ExpandResult, HirFileIdExt, Lookup as _, MacroCallId,
 };
 
 macro_rules! register_builtin {
@@ -687,8 +687,8 @@ fn relative_file(
     path_str: &str,
     allow_recursion: bool,
 ) -> Result<EditionedFileId, ExpandError> {
-    let call_site =
-        call_id.as_macro_file().parent(db).original_file_respecting_includes(db).file_id();
+    let lookup = call_id.lookup(db);
+    let call_site = lookup.kind.file_id().original_file_respecting_includes(db).file_id();
     let path = AnchoredPath { anchor: call_site, path: path_str };
     let res = db
         .resolve_path(path)
@@ -697,7 +697,7 @@ fn relative_file(
     if res == call_site && !allow_recursion {
         Err(ExpandError::other(format!("recursive inclusion of `{path_str}`")))
     } else {
-        Ok(EditionedFileId::new(res, Edition::CURRENT_FIXME))
+        Ok(EditionedFileId::new(res, db.crate_graph()[lookup.krate].edition))
     }
 }
 
