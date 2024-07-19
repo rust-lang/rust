@@ -1518,13 +1518,3 @@ export function openWalkthrough(_: Ctx): Cmd {
         );
     };
 }
-
-export function openFAQ(_: Ctx): Cmd {
-    return async () => {
-        await vscode.commands.executeCommand(
-            "workbench.action.openWalkthrough",
-            "rust-lang.rust-analyzer#faq",
-            true,
-        );
-    };
-}

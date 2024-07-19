@@ -3216,9 +3216,6 @@
                 },
                 {
                     "command": "rust-analyzer.openWalkthrough"
-                },
-                {
-                    "command": "rust-analyzer.openFAQ"
                 }
             ],
             "editor/context": [

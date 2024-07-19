@@ -179,7 +179,6 @@ function createCommands(): Record<string, CommandFactory> {
         toggleCheckOnSave: { enabled: commands.toggleCheckOnSave },
         toggleLSPLogs: { enabled: commands.toggleLSPLogs },
         openWalkthrough: { enabled: commands.openWalkthrough },
-        openFAQ: { enabled: commands.openFAQ },
         // Internal commands which are invoked by the server.
         applyActionGroup: { enabled: commands.applyActionGroup },
         applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
