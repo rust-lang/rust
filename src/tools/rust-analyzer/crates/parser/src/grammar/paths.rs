@@ -2,6 +2,8 @@ use super::*;
 
 pub(super) const PATH_FIRST: TokenSet =
     TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
+pub(super) const WEAK_DYN_PATH_FIRST: TokenSet =
+    TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self]]);
 
 pub(super) fn is_path_start(p: &Parser<'_>) -> bool {
     is_use_path_start(p) || p.at(T![<]) || p.at(T![Self])

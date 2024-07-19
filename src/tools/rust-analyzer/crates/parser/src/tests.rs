@@ -70,7 +70,7 @@ fn parse_err() {
 
 fn parse(entry: TopEntryPoint, text: &str, edition: Edition) -> (String, bool) {
     let lexed = LexedStr::new(edition, text);
-    let input = lexed.to_input();
+    let input = lexed.to_input(edition);
     let output = entry.parse(&input, edition);
 
     let mut buf = String::new();
