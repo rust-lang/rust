@@ -577,7 +577,7 @@ where
     /// cost of potential extra recalculations of evicted values.
     ///
     /// If `cap` is zero, all values are preserved, this is the default.
-    pub fn set_lru_capacity(&self, cap: usize)
+    pub fn set_lru_capacity(&self, cap: u16)
     where
         Q::Storage: plumbing::LruQueryStorageOps,
     {

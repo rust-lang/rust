@@ -1,7 +1,7 @@
 use oorandom::Rand64;
 use parking_lot::Mutex;
 use std::fmt::Debug;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
 use triomphe::Arc;
 
@@ -20,15 +20,15 @@ pub(crate) struct Lru<Node>
 where
     Node: LruNode,
 {
-    green_zone: AtomicUsize,
+    green_zone: AtomicU16,
     data: Mutex<LruData<Node>>,
 }
 
 #[derive(Debug)]
 struct LruData<Node> {
-    end_red_zone: usize,
-    end_yellow_zone: usize,
-    end_green_zone: usize,
+    end_red_zone: u16,
+    end_yellow_zone: u16,
+    end_green_zone: u16,
     rng: Rand64,
     entries: Vec<Arc<Node>>,
 }
@@ -39,9 +39,9 @@ pub(crate) trait LruNode: Sized + Debug {
 
 #[derive(Debug)]
 pub(crate) struct LruIndex {
-    /// Index in the appropriate LRU list, or std::usize::MAX if not a
+    /// Index in the appropriate LRU list, or std::u16::MAX if not a
     /// member.
-    index: AtomicUsize,
+    index: AtomicU16,
 }
 
 impl<Node> Default for Lru<Node>
@@ -68,12 +68,12 @@ where
 
     #[cfg_attr(not(test), allow(dead_code))]
     fn with_seed(seed: &str) -> Self {
-        Lru { green_zone: AtomicUsize::new(0), data: Mutex::new(LruData::with_seed(seed)) }
+        Lru { green_zone: AtomicU16::new(0), data: Mutex::new(LruData::with_seed(seed)) }
     }
 
     /// Adjust the total number of nodes permitted to have a value at
     /// once.  If `len` is zero, this disables LRU caching completely.
-    pub(crate) fn set_lru_capacity(&self, len: usize) {
+    pub(crate) fn set_lru_capacity(&self, len: u16) {
         let mut data = self.data.lock();
 
         // We require each zone to have at least 1 slot. Therefore,
@@ -143,23 +143,24 @@ where
         LruData { end_yellow_zone: 0, end_green_zone: 0, end_red_zone: 0, entries: Vec::new(), rng }
     }
 
-    fn green_zone(&self) -> std::ops::Range<usize> {
+    fn green_zone(&self) -> std::ops::Range<u16> {
         0..self.end_green_zone
     }
 
-    fn yellow_zone(&self) -> std::ops::Range<usize> {
+    fn yellow_zone(&self) -> std::ops::Range<u16> {
         self.end_green_zone..self.end_yellow_zone
     }
 
-    fn red_zone(&self) -> std::ops::Range<usize> {
+    fn red_zone(&self) -> std::ops::Range<u16> {
         self.end_yellow_zone..self.end_red_zone
     }
 
-    fn resize(&mut self, len_green_zone: usize, len_yellow_zone: usize, len_red_zone: usize) {
+    fn resize(&mut self, len_green_zone: u16, len_yellow_zone: u16, len_red_zone: u16) {
         self.end_green_zone = len_green_zone;
         self.end_yellow_zone = self.end_green_zone + len_yellow_zone;
         self.end_red_zone = self.end_yellow_zone + len_red_zone;
-        let entries = std::mem::replace(&mut self.entries, Vec::with_capacity(self.end_red_zone));
+        let entries =
+            std::mem::replace(&mut self.entries, Vec::with_capacity(self.end_red_zone as usize));
 
         tracing::debug!("green_zone = {:?}", self.green_zone());
         tracing::debug!("yellow_zone = {:?}", self.yellow_zone());
@@ -207,7 +208,7 @@ where
 
         // Easy case: we still have capacity. Push it, and then promote
         // it up to the appropriate zone.
-        let len = self.entries.len();
+        let len = self.entries.len() as u16;
         if len < self.end_red_zone {
             self.entries.push(node.clone());
             node.lru_index().store(len);
@@ -218,7 +219,7 @@ where
         // Harder case: no capacity. Create some by evicting somebody from red
         // zone and then promoting.
         let victim_index = self.pick_index(self.red_zone());
-        let victim_node = std::mem::replace(&mut self.entries[victim_index], node.clone());
+        let victim_node = std::mem::replace(&mut self.entries[victim_index as usize], node.clone());
         tracing::debug!("evicting red node {:?} from {}", victim_node, victim_index);
         victim_node.lru_index().clear();
         self.promote_red_to_green(node, victim_index);
@@ -231,7 +232,7 @@ where
     ///
     /// NB: It is not required that `node.lru_index()` is up-to-date
     /// when entering this method.
-    fn promote_red_to_green(&mut self, node: &Arc<Node>, red_index: usize) {
+    fn promote_red_to_green(&mut self, node: &Arc<Node>, red_index: u16) {
         debug_assert!(self.red_zone().contains(&red_index));
 
         // Pick a yellow at random and switch places with it.
@@ -242,12 +243,12 @@ where
         let yellow_index = self.pick_index(self.yellow_zone());
         tracing::debug!(
             "demoting yellow node {:?} from {} to red at {}",
-            self.entries[yellow_index],
+            self.entries[yellow_index as usize],
             yellow_index,
             red_index,
         );
-        self.entries.swap(yellow_index, red_index);
-        self.entries[red_index].lru_index().store(red_index);
+        self.entries.swap(yellow_index as usize, red_index as usize);
+        self.entries[red_index as usize].lru_index().store(red_index);
 
         // Now move ourselves up into the green zone.
         self.promote_yellow_to_green(node, yellow_index);
@@ -259,51 +260,51 @@ where
     ///
     /// NB: It is not required that `node.lru_index()` is up-to-date
     /// when entering this method.
-    fn promote_yellow_to_green(&mut self, node: &Arc<Node>, yellow_index: usize) {
+    fn promote_yellow_to_green(&mut self, node: &Arc<Node>, yellow_index: u16) {
         debug_assert!(self.yellow_zone().contains(&yellow_index));
 
         // Pick a yellow at random and switch places with it.
         let green_index = self.pick_index(self.green_zone());
         tracing::debug!(
             "demoting green node {:?} from {} to yellow at {}",
-            self.entries[green_index],
+            self.entries[green_index as usize],
             green_index,
             yellow_index
         );
-        self.entries.swap(green_index, yellow_index);
-        self.entries[yellow_index].lru_index().store(yellow_index);
+        self.entries.swap(green_index as usize, yellow_index as usize);
+        self.entries[yellow_index as usize].lru_index().store(yellow_index);
         node.lru_index().store(green_index);
 
         tracing::debug!("promoted {:?} to green index {}", node, green_index);
     }
 
-    fn pick_index(&mut self, zone: std::ops::Range<usize>) -> usize {
-        let end_index = std::cmp::min(zone.end, self.entries.len());
-        self.rng.rand_range(zone.start as u64..end_index as u64) as usize
+    fn pick_index(&mut self, zone: std::ops::Range<u16>) -> u16 {
+        let end_index = std::cmp::min(zone.end, self.entries.len() as u16);
+        self.rng.rand_range(zone.start as u64..end_index as u64) as u16
     }
 }
 
 impl Default for LruIndex {
     fn default() -> Self {
-        Self { index: AtomicUsize::new(usize::MAX) }
+        Self { index: AtomicU16::new(u16::MAX) }
     }
 }
 
 impl LruIndex {
-    fn load(&self) -> usize {
+    fn load(&self) -> u16 {
         self.index.load(Ordering::Acquire) // see note on ordering below
     }
 
-    fn store(&self, value: usize) {
+    fn store(&self, value: u16) {
         self.index.store(value, Ordering::Release) // see note on ordering below
     }
 
     fn clear(&self) {
-        self.store(usize::MAX);
+        self.store(u16::MAX);
     }
 
     fn is_in_lru(&self) -> bool {
-        self.load() != usize::MAX
+        self.load() != u16::MAX
     }
 }
 

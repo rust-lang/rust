@@ -145,7 +145,7 @@ impl Default for RootDatabase {
 }
 
 impl RootDatabase {
-    pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
+    pub fn new(lru_capacity: Option<u16>) -> RootDatabase {
         let mut db = RootDatabase { storage: ManuallyDrop::new(salsa::Storage::default()) };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_proc_macros_with_durability(Default::default(), Durability::HIGH);
@@ -161,7 +161,7 @@ impl RootDatabase {
         self.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
     }
 
-    pub fn update_base_query_lru_capacities(&mut self, lru_capacity: Option<usize>) {
+    pub fn update_base_query_lru_capacities(&mut self, lru_capacity: Option<u16>) {
         let lru_capacity = lru_capacity.unwrap_or(base_db::DEFAULT_PARSE_LRU_CAP);
         base_db::FileTextQuery.in_db_mut(self).set_lru_capacity(DEFAULT_FILE_TEXT_LRU_CAP);
         base_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
@@ -170,7 +170,7 @@ impl RootDatabase {
         hir::db::BorrowckQuery.in_db_mut(self).set_lru_capacity(base_db::DEFAULT_BORROWCK_LRU_CAP);
     }
 
-    pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
+    pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, u16>) {
         use hir::db as hir_db;
 
         base_db::FileTextQuery.in_db_mut(self).set_lru_capacity(DEFAULT_FILE_TEXT_LRU_CAP);

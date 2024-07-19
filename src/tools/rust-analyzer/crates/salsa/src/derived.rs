@@ -203,7 +203,7 @@ where
     Q: QueryFunction,
     MP: MemoizationPolicy<Q>,
 {
-    fn set_lru_capacity(&self, new_capacity: usize) {
+    fn set_lru_capacity(&self, new_capacity: u16) {
         self.lru_list.set_lru_capacity(new_capacity);
     }
 }

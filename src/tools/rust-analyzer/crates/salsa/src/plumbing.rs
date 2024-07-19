@@ -228,7 +228,7 @@ where
 /// that is, storage whose value is not derived from other storage but
 /// is set independently.
 pub trait LruQueryStorageOps {
-    fn set_lru_capacity(&self, new_capacity: usize);
+    fn set_lru_capacity(&self, new_capacity: u16);
 }
 
 pub trait DerivedQueryStorageOps<Q>

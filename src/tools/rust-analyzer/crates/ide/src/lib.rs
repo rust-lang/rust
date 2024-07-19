@@ -161,7 +161,7 @@ pub struct AnalysisHost {
 }
 
 impl AnalysisHost {
-    pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
+    pub fn new(lru_capacity: Option<u16>) -> AnalysisHost {
         AnalysisHost { db: RootDatabase::new(lru_capacity) }
     }
 
@@ -169,11 +169,11 @@ impl AnalysisHost {
         AnalysisHost { db }
     }
 
-    pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
+    pub fn update_lru_capacity(&mut self, lru_capacity: Option<u16>) {
         self.db.update_base_query_lru_capacities(lru_capacity);
     }
 
-    pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
+    pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, u16>) {
         self.db.update_lru_capacities(lru_capacities);
     }
 

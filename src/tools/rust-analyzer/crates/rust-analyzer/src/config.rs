@@ -283,9 +283,9 @@ config_data! {
         linkedProjects: Vec<ManifestOrProjectJson> = vec![],
 
         /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
-        lru_capacity: Option<usize>                 = None,
+        lru_capacity: Option<u16>                 = None,
         /// Sets the LRU capacity of the specified queries.
-        lru_query_capacities: FxHashMap<Box<str>, usize> = FxHashMap::default(),
+        lru_query_capacities: FxHashMap<Box<str>, u16> = FxHashMap::default(),
 
         /// These proc-macros will be ignored when trying to expand them.
         ///
@@ -1606,11 +1606,11 @@ impl Config {
         extra_env
     }
 
-    pub fn lru_parse_query_capacity(&self) -> Option<usize> {
+    pub fn lru_parse_query_capacity(&self) -> Option<u16> {
         self.lru_capacity().to_owned()
     }
 
-    pub fn lru_query_capacities_config(&self) -> Option<&FxHashMap<Box<str>, usize>> {
+    pub fn lru_query_capacities_config(&self) -> Option<&FxHashMap<Box<str>, u16>> {
         self.lru_query_capacities().is_empty().not().then(|| self.lru_query_capacities())
     }
 
