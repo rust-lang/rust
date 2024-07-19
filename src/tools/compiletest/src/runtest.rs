@@ -3489,7 +3489,6 @@ impl<'test> TestCx<'test> {
         // `rmake_out/` directory.
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
-        // FIXME(jieyouxu): is there a better way to compute `base_dir`?
         let base_dir = self.output_base_name();
         if base_dir.exists() {
             self.aggressive_rm_rf(&base_dir).unwrap();
@@ -3512,9 +3511,29 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        // FIXME(jieyouxu): is there a better way to get the stage number or otherwise compute the
-        // required stage-specific build directories?
-        // HACK: assume stageN-target, we only want stageN.
+        // `self.config.stage_id` looks like `stage1-<target_tuplet>`, but we only want
+        // the `stage1` part as that is what the output directories of bootstrap are prefixed with.
+        // Note that this *assumes* build layout from bootstrap is produced as:
+        //
+        // ```
+        // build/<target_tuplet>/          // <- this is `build_root`
+        // ├── stage0
+        // ├── stage0-bootstrap-tools
+        // ├── stage0-codegen
+        // ├── stage0-rustc
+        // ├── stage0-std
+        // ├── stage0-sysroot
+        // ├── stage0-tools
+        // ├── stage0-tools-bin
+        // ├── stage1
+        // ├── stage1-std
+        // ├── stage1-tools
+        // ├── stage1-tools-bin
+        // └── test
+        // ```
+        // FIXME(jieyouxu): improve the communication between bootstrap and compiletest here so
+        // we don't have to hack out a `stageN`.
+        debug!(?self.config.stage_id);
         let stage = self.config.stage_id.split('-').next().unwrap();
 
         // First, we construct the path to the built support library.
