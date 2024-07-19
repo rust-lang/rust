@@ -72,6 +72,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::MissingLet,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(kw::Auto) && self.may_recover() {
             self.bump(); // `auto`
@@ -79,6 +80,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotAuto,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(sym::var) && self.may_recover() {
             self.bump(); // `var`
@@ -86,6 +88,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotVar,
+                force_collect,
             )?
         } else if self.check_path()
             && !self.token.is_qpath_start()
@@ -96,17 +99,17 @@ impl<'a> Parser<'a> {
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
-            match force_collect {
-                ForceCollect::Yes => {
-                    self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))?
+            let stmt = self.collect_tokens_trailing_token(
+                AttrWrapper::empty(),
+                force_collect,
+                |this, _empty_attrs| Ok((this.parse_stmt_path_start(lo, attrs)?, false)),
+            );
+            match stmt {
+                Ok(stmt) => stmt,
+                Err(mut err) => {
+                    self.suggest_add_missing_let_for_stmt(&mut err);
+                    return Err(err);
                 }
-                ForceCollect::No => match self.parse_stmt_path_start(lo, attrs) {
-                    Ok(stmt) => stmt,
-                    Err(mut err) => {
-                        self.suggest_add_missing_let_for_stmt(&mut err);
-                        return Err(err);
-                    }
-                },
             }
         } else if let Some(item) = self.parse_item_common(
             attrs.clone(),
@@ -123,12 +126,13 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
-            let e = match force_collect {
-                ForceCollect::Yes => self.collect_tokens_no_attrs(|this| {
-                    this.parse_expr_res(Restrictions::STMT_EXPR, attrs)
-                })?,
-                ForceCollect::No => self.parse_expr_res(Restrictions::STMT_EXPR, attrs)?,
-            };
+            let e = self.collect_tokens_trailing_token(
+                AttrWrapper::empty(),
+                force_collect,
+                |this, _empty_attrs| {
+                    Ok((this.parse_expr_res(Restrictions::STMT_EXPR, attrs)?, false))
+                },
+            )?;
             if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
@@ -231,13 +235,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         attrs: AttrWrapper,
         subdiagnostic: fn(Span) -> errors::InvalidVariableDeclarationSub,
+        force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
-        let stmt =
-            self.collect_tokens_trailing_token(attrs, ForceCollect::Yes, |this, attrs| {
-                let local = this.parse_local(attrs)?;
-                // FIXME - maybe capture semicolon in recovery?
-                Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
-            })?;
+        let stmt = self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+            let local = this.parse_local(attrs)?;
+            // FIXME - maybe capture semicolon in recovery?
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
+        })?;
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
