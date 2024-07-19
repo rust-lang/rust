@@ -403,8 +403,9 @@ lint_inner_macro_attribute_unstable = inner macro attributes are unstable
 
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
-    .note = an LLVM bug makes these labels ambiguous with a binary literal number
-    .note = see <https://bugs.llvm.org/show_bug.cgi?id=36144> for more information
+    .help = start numbering with `2` instead
+    .note1 = an LLVM bug makes these labels ambiguous with a binary literal number on x86
+    .note2 = see <https://github.com/llvm/llvm-project/issues/99547> for more information
 
 lint_invalid_asm_label_format_arg = avoid using named labels in inline assembly
     .help = only local labels of the form `<number>:` should be used in inline asm

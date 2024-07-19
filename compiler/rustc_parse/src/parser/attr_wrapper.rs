@@ -17,12 +17,12 @@ use std::{iter, mem};
 ///
 /// This wrapper prevents direct access to the underlying `ast::AttrVec`.
 /// Parsing code can only get access to the underlying attributes
-/// by passing an `AttrWrapper` to `collect_tokens_trailing_tokens`.
+/// by passing an `AttrWrapper` to `collect_tokens_trailing_token`.
 /// This makes it difficult to accidentally construct an AST node
 /// (which stores an `ast::AttrVec`) without first collecting tokens.
 ///
 /// This struct has its own module, to ensure that the parser code
-/// cannot directly access the `attrs` field
+/// cannot directly access the `attrs` field.
 #[derive(Debug, Clone)]
 pub struct AttrWrapper {
     attrs: AttrVec,
@@ -76,14 +76,13 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
     })
 }
 
-// Produces a `TokenStream` on-demand. Using `cursor_snapshot`
-// and `num_calls`, we can reconstruct the `TokenStream` seen
-// by the callback. This allows us to avoid producing a `TokenStream`
-// if it is never needed - for example, a captured `macro_rules!`
-// argument that is never passed to a proc macro.
-// In practice token stream creation happens rarely compared to
-// calls to `collect_tokens` (see some statistics in #78736),
-// so we are doing as little up-front work as possible.
+// From a value of this type we can reconstruct the `TokenStream` seen by the
+// `f` callback passed to a call to `Parser::collect_tokens_trailing_token`, by
+// replaying the getting of the tokens. This saves us producing a `TokenStream`
+// if it is never needed, e.g. a captured `macro_rules!` argument that is never
+// passed to a proc macro. In practice, token stream creation happens rarely
+// compared to calls to `collect_tokens` (see some statistics in #78736) so we
+// are doing as little up-front work as possible.
 //
 // This also makes `Parser` very cheap to clone, since
 // there is no intermediate collection buffer to clone.
@@ -163,46 +162,55 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
 }
 
 impl<'a> Parser<'a> {
-    /// Records all tokens consumed by the provided callback,
-    /// including the current token. These tokens are collected
-    /// into a `LazyAttrTokenStream`, and returned along with the first part of
-    /// the callback's result. The second (bool) part of the callback's result
-    /// indicates if an extra token should be captured, e.g. a comma or
+    /// Parses code with `f`. If appropriate, it records the tokens (in
+    /// `LazyAttrTokenStream` form) that were parsed in the result, accessible
+    /// via the `HasTokens` trait. The second (bool) part of the callback's
+    /// result indicates if an extra token should be captured, e.g. a comma or
     /// semicolon.
     ///
     /// The `attrs` passed in are in `AttrWrapper` form, which is opaque. The
     /// `AttrVec` within is passed to `f`. See the comment on `AttrWrapper` for
     /// details.
     ///
-    /// Note: If your callback consumes an opening delimiter
-    /// (including the case where you call `collect_tokens`
-    /// when the current token is an opening delimiter),
-    /// you must also consume the corresponding closing delimiter.
+    /// Note: If your callback consumes an opening delimiter (including the
+    /// case where `self.token` is an opening delimiter on entry to this
+    /// function), you must also consume the corresponding closing delimiter.
+    /// E.g. you can consume `something ([{ }])` or `([{}])`, but not `([{}]`.
+    /// This restriction isn't a problem in practice, because parsed AST items
+    /// always have matching delimiters.
     ///
-    /// That is, you can consume
-    /// `something ([{ }])` or `([{}])`, but not `([{}]`
-    ///
-    /// This restriction shouldn't be an issue in practice,
-    /// since this function is used to record the tokens for
-    /// a parsed AST item, which always has matching delimiters.
+    /// The following example code will be used to explain things in comments
+    /// below. It has an outer attribute and an inner attribute. Parsing it
+    /// involves two calls to this method, one of which is indirectly
+    /// recursive.
+    /// ```ignore (fake attributes)
+    /// #[cfg_eval]                         // token pos
+    /// mod m {                             //   0.. 3
+    ///     #[cfg_attr(cond1, attr1)]       //   3..12
+    ///     fn g() {                        //  12..17
+    ///         #![cfg_attr(cond2, attr2)]  //  17..27
+    ///         let _x = 3;                 //  27..32
+    ///     }                               //  32..33
+    /// }                                   //  33..34
+    /// ```
     pub fn collect_tokens_trailing_token<R: HasAttrs + HasTokens>(
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
         f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, bool)>,
     ) -> PResult<'a, R> {
-        // We only bail out when nothing could possibly observe the collected tokens:
-        // 1. We cannot be force collecting tokens (since force-collecting requires tokens
-        //    by definition
+        // Skip collection when nothing could observe the collected tokens, i.e.
+        // all of the following conditions hold.
+        // - We are not force collecting tokens (because force collection
+        //   requires tokens by definition).
         if matches!(force_collect, ForceCollect::No)
-            // None of our outer attributes can require tokens (e.g. a proc-macro)
+            // - None of our outer attributes require tokens.
             && attrs.is_complete()
-            // If our target supports custom inner attributes, then we cannot bail
-            // out early, since we may need to capture tokens for a custom inner attribute
-            // invocation.
+            // - Our target doesn't support custom inner attributes (custom
+            //   inner attribute invocation might require token capturing).
             && !R::SUPPORTS_CUSTOM_INNER_ATTRS
-            // Never bail out early in `capture_cfg` mode, since there might be `#[cfg]`
-            // or `#[cfg_attr]` attributes.
+            // - We are not in `capture_cfg` mode (which requires tokens if
+            //   the parsed node has `#[cfg]` or `#[cfg_attr]` attributes).
             && !self.capture_cfg
         {
             return Ok(f(self, attrs.attrs)?.0);
@@ -214,6 +222,12 @@ impl<'a> Parser<'a> {
         let has_outer_attrs = !attrs.attrs.is_empty();
         let replace_ranges_start = self.capture_state.replace_ranges.len();
 
+        // We set and restore `Capturing::Yes` on either side of the call to
+        // `f`, so we can distinguish the outermost call to
+        // `collect_tokens_trailing_token` (e.g. parsing `m` in the example
+        // above) from any inner (indirectly recursive) calls (e.g. parsing `g`
+        // in the example above). This distinction is used below and in
+        // `Parser::parse_inner_attributes`.
         let (mut ret, capture_trailing) = {
             let prev_capturing = mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
             let ret_and_trailing = f(self, attrs.attrs);
@@ -221,49 +235,44 @@ impl<'a> Parser<'a> {
             ret_and_trailing?
         };
 
-        // When we're not in `capture-cfg` mode, then bail out early if:
-        // 1. Our target doesn't support tokens at all (e.g we're parsing an `NtIdent`)
-        //    so there's nothing for us to do.
-        // 2. Our target already has tokens set (e.g. we've parsed something
-        //    like `#[my_attr] $item`). The actual parsing code takes care of
-        //    prepending any attributes to the nonterminal, so we don't need to
-        //    modify the already captured tokens.
-        // Note that this check is independent of `force_collect`- if we already
-        // have tokens, or can't even store them, then there's never a need to
-        // force collection of new tokens.
+        // When we're not in `capture_cfg` mode, then skip collecting and
+        // return early if either of the following conditions hold.
+        // - `None`: Our target doesn't support tokens at all (e.g. `NtIdent`).
+        // - `Some(Some(_))`: Our target already has tokens set (e.g. we've
+        //   parsed something like `#[my_attr] $item`). The actual parsing code
+        //   takes care of prepending any attributes to the nonterminal, so we
+        //   don't need to modify the already captured tokens.
+        //
+        // Note that this check is independent of `force_collect`. There's no
+        // need to collect tokens when we don't support tokens or already have
+        // tokens.
         if !self.capture_cfg && matches!(ret.tokens_mut(), None | Some(Some(_))) {
             return Ok(ret);
         }
 
-        // This is very similar to the bail out check at the start of this function.
-        // Now that we've parsed an AST node, we have more information available.
+        // This is similar to the "skip collection" check at the start of this
+        // function, but now that we've parsed an AST node we have more
+        // information available. (If we return early here that means the
+        // setup, such as cloning the token cursor, was unnecessary. That's
+        // hard to avoid.)
+        //
+        // Skip collection when nothing could observe the collected tokens, i.e.
+        // all of the following conditions hold.
+        // - We are not force collecting tokens.
         if matches!(force_collect, ForceCollect::No)
-            // We now have inner attributes available, so this check is more precise
-            // than `attrs.is_complete()` at the start of the function.
-            // As a result, we don't need to check `R::SUPPORTS_CUSTOM_INNER_ATTRS`
+            // - None of our outer *or* inner attributes require tokens.
+            //   (`attrs` was just outer attributes, but `ret.attrs()` is outer
+            //   and inner attributes. That makes this check more precise than
+            //   `attrs.is_complete()` at the start of the function, and we can
+            //   skip the subsequent check on `R::SUPPORTS_CUSTOM_INNER_ATTRS`.
             && crate::parser::attr::is_complete(ret.attrs())
-            // Subtle: We call `has_cfg_or_cfg_attr` with the attrs from `ret`.
-            // This ensures that we consider inner attributes (e.g. `#![cfg]`),
-            // which require us to have tokens available
-            // We also call `has_cfg_or_cfg_attr` at the beginning of this function,
-            // but we only bail out if there's no possibility of inner attributes
-            // (!R::SUPPORTS_CUSTOM_INNER_ATTRS)
-            // We only capture about `#[cfg]` or `#[cfg_attr]` in `capture_cfg`
-            // mode - during normal parsing, we don't need any special capturing
-            // for those attributes, since they're builtin.
-            && !(self.capture_cfg && has_cfg_or_cfg_attr(ret.attrs()))
+            // - We are not in `capture_cfg` mode, or we are but there are no
+            //   `#[cfg]` or `#[cfg_attr]` attributes. (During normal
+            //   non-`capture_cfg` parsing, we don't need any special capturing
+            //   for those attributes, because they're builtin.)
+            && (!self.capture_cfg || !has_cfg_or_cfg_attr(ret.attrs()))
         {
             return Ok(ret);
-        }
-
-        let mut inner_attr_replace_ranges = Vec::new();
-        // Take the captured ranges for any inner attributes that we parsed.
-        for inner_attr in ret.attrs().iter().filter(|a| a.style == ast::AttrStyle::Inner) {
-            if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&inner_attr.id) {
-                inner_attr_replace_ranges.push(attr_range);
-            } else {
-                self.dcx().span_delayed_bug(inner_attr.span, "Missing token range for attribute");
-            }
         }
 
         let replace_ranges_end = self.capture_state.replace_ranges.len();
@@ -283,15 +292,28 @@ impl<'a> Parser<'a> {
 
         let num_calls = end_pos - start_pos;
 
+        // Take the captured ranges for any inner attributes that we parsed in
+        // `Parser::parse_inner_attributes`, and pair them in a `ReplaceRange`
+        // with `None`, which means the relevant tokens will be removed. (More
+        // details below.)
+        let mut inner_attr_replace_ranges = Vec::new();
+        for inner_attr in ret.attrs().iter().filter(|a| a.style == ast::AttrStyle::Inner) {
+            if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&inner_attr.id) {
+                inner_attr_replace_ranges.push((attr_range, None));
+            } else {
+                self.dcx().span_delayed_bug(inner_attr.span, "Missing token range for attribute");
+            }
+        }
+
         // This is hot enough for `deep-vector` that checking the conditions for an empty iterator
         // is measurably faster than actually executing the iterator.
         let replace_ranges: Box<[ReplaceRange]> =
             if replace_ranges_start == replace_ranges_end && inner_attr_replace_ranges.is_empty() {
                 Box::new([])
             } else {
-                // Grab any replace ranges that occur *inside* the current AST node.
-                // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
-                // to an `AttrTokenStream`.
+                // Grab any replace ranges that occur *inside* the current AST node. We will
+                // perform the actual replacement only when we convert the `LazyAttrTokenStream` to
+                // an `AttrTokenStream`.
                 self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
                     .iter()
                     .cloned()
@@ -299,6 +321,28 @@ impl<'a> Parser<'a> {
                     .map(|(range, data)| ((range.start - start_pos)..(range.end - start_pos), data))
                     .collect()
             };
+
+        // What is the status here when parsing the example code at the top of this method?
+        //
+        // When parsing `g`:
+        // - `start_pos..end_pos` is `12..33` (`fn g { ... }`, excluding the outer attr).
+        // - `inner_attr_replace_ranges` has one entry (`5..15`, when counting from `fn`), to
+        //   delete the inner attr's tokens.
+        //   - This entry is put into the lazy tokens for `g`, i.e. deleting the inner attr from
+        //     those tokens (if they get evaluated).
+        //   - Those lazy tokens are also put into an `AttrsTarget` that is appended to `self`'s
+        //     replace ranges at the bottom of this function, for processing when parsing `m`.
+        // - `replace_ranges_start..replace_ranges_end` is empty.
+        //
+        // When parsing `m`:
+        // - `start_pos..end_pos` is `0..34` (`mod m`, excluding the `#[cfg_eval]` attribute).
+        // - `inner_attr_replace_ranges` is empty.
+        // - `replace_range_start..replace_ranges_end` has two entries.
+        //   - One to delete the inner attribute (`17..27`), obtained when parsing `g` (see above).
+        //   - One `AttrsTarget` (added below when parsing `g`) to replace all of `g` (`3..33`,
+        //     including its outer attribute), with:
+        //     - `attrs`: includes the outer and the inner attr.
+        //     - `tokens`: lazy tokens for `g` (with its inner attr deleted).
 
         let tokens = LazyAttrTokenStream::new(LazyAttrTokenStreamImpl {
             start_token,
@@ -313,27 +357,37 @@ impl<'a> Parser<'a> {
             *target_tokens = Some(tokens.clone());
         }
 
-        let final_attrs = ret.attrs();
-
         // If `capture_cfg` is set and we're inside a recursive call to
         // `collect_tokens_trailing_token`, then we need to register a replace range
         // if we have `#[cfg]` or `#[cfg_attr]`. This allows us to run eager cfg-expansion
         // on the captured token stream.
         if self.capture_cfg
             && matches!(self.capture_state.capturing, Capturing::Yes)
-            && has_cfg_or_cfg_attr(final_attrs)
+            && has_cfg_or_cfg_attr(ret.attrs())
         {
             assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
 
-            // Replace the entire AST node that we just parsed, including attributes, with
-            // `target`. If this AST node is inside an item that has `#[derive]`, then this will
-            // allow us to cfg-expand this AST node.
+            // What is the status here when parsing the example code at the top of this method?
+            //
+            // When parsing `g`, we add two entries:
+            // - The `start_pos..end_pos` (`3..33`) entry has a new `AttrsTarget` with:
+            //   - `attrs`: includes the outer and the inner attr.
+            //   - `tokens`: lazy tokens for `g` (with its inner attr deleted).
+            // - `inner_attr_replace_ranges` contains the one entry to delete the inner attr's
+            //   tokens (`17..27`).
+            //
+            // When parsing `m`, we do nothing here.
+
+            // Set things up so that the entire AST node that we just parsed, including attributes,
+            // will be replaced with `target` in the lazy token stream. This will allow us to
+            // cfg-expand this AST node.
             let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
-            let target = AttrsTarget { attrs: final_attrs.iter().cloned().collect(), tokens };
+            let target = AttrsTarget { attrs: ret.attrs().iter().cloned().collect(), tokens };
             self.capture_state.replace_ranges.push((start_pos..end_pos, Some(target)));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
         } else if matches!(self.capture_state.capturing, Capturing::No) {
-            // Only clear the ranges once we've finished capturing entirely.
+            // Only clear the ranges once we've finished capturing entirely, i.e. we've finished
+            // the outermost call to this method.
             self.capture_state.replace_ranges.clear();
             self.capture_state.inner_attr_ranges.clear();
         }
