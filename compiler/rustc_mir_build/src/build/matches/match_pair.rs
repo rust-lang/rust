@@ -3,37 +3,37 @@ use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::build::matches::{FlatPat, MatchPair, TestCase};
+use crate::build::matches::{FlatPat, MatchPairTree, TestCase};
 use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Builds and returns [`MatchPair`] trees, one for each pattern in
+    /// Builds and returns [`MatchPairTree`] subtrees, one for each pattern in
     /// `subpatterns`, representing the fields of a [`PatKind::Variant`] or
     /// [`PatKind::Leaf`].
     ///
-    /// Used internally by [`MatchPair::new`].
+    /// Used internally by [`MatchPairTree::for_pattern`].
     fn field_match_pairs<'pat>(
         &mut self,
         place: PlaceBuilder<'tcx>,
         subpatterns: &'pat [FieldPat<'tcx>],
-    ) -> Vec<MatchPair<'pat, 'tcx>> {
+    ) -> Vec<MatchPairTree<'pat, 'tcx>> {
         subpatterns
             .iter()
             .map(|fieldpat| {
                 let place =
                     place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-                MatchPair::new(place, &fieldpat.pattern, self)
+                MatchPairTree::for_pattern(place, &fieldpat.pattern, self)
             })
             .collect()
     }
 
-    /// Builds [`MatchPair`] trees for the prefix/middle/suffix parts of an
+    /// Builds [`MatchPairTree`] subtrees for the prefix/middle/suffix parts of an
     /// array pattern or slice pattern, and adds those trees to `match_pairs`.
     ///
-    /// Used internally by [`MatchPair::new`].
+    /// Used internally by [`MatchPairTree::for_pattern`].
     fn prefix_slice_suffix<'pat>(
         &mut self,
-        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+        match_pairs: &mut Vec<MatchPairTree<'pat, 'tcx>>,
         place: &PlaceBuilder<'tcx>,
         prefix: &'pat [Box<Pat<'tcx>>],
         opt_slice: &'pat Option<Box<Pat<'tcx>>>,
@@ -52,7 +52,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
-            MatchPair::new(place.clone_project(elem), subpattern, self)
+            MatchPairTree::for_pattern(place.clone_project(elem), subpattern, self)
         }));
 
         if let Some(subslice_pat) = opt_slice {
@@ -62,7 +62,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 to: if exact_size { min_length - suffix_len } else { suffix_len },
                 from_end: !exact_size,
             });
-            match_pairs.push(MatchPair::new(subslice, subslice_pat, self));
+            match_pairs.push(MatchPairTree::for_pattern(subslice, subslice_pat, self));
         }
 
         match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
@@ -73,19 +73,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 from_end: !exact_size,
             };
             let place = place.clone_project(elem);
-            MatchPair::new(place, subpattern, self)
+            MatchPairTree::for_pattern(place, subpattern, self)
         }));
     }
 }
 
-impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
-    /// Recursively builds a `MatchPair` tree for the given pattern and its
+impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
+    /// Recursively builds a match pair tree for the given pattern and its
     /// subpatterns.
-    pub(in crate::build) fn new(
+    pub(in crate::build) fn for_pattern(
         mut place_builder: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
-    ) -> MatchPair<'pat, 'tcx> {
+    ) -> MatchPairTree<'pat, 'tcx> {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
         if let Some(resolved) = place_builder.resolve_upvar(cx) {
@@ -138,7 +138,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                     variance,
                 });
 
-                subpairs.push(MatchPair::new(place_builder, subpattern, cx));
+                subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
@@ -152,7 +152,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    subpairs.push(MatchPair::new(place_builder, subpattern, cx));
+                    subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
                 }
                 TestCase::Irrefutable { ascription: None, binding }
             }
@@ -182,7 +182,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                     super::Ascription { annotation, source, variance: ty::Contravariant }
                 });
 
-                subpairs.push(MatchPair::new(place_builder, pattern, cx));
+                subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
@@ -231,7 +231,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
             }
 
             PatKind::Deref { ref subpattern } => {
-                subpairs.push(MatchPair::new(place_builder.deref(), subpattern, cx));
+                subpairs.push(MatchPairTree::for_pattern(place_builder.deref(), subpattern, cx));
                 default_irrefutable()
             }
 
@@ -242,13 +242,17 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                     Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty, mutability),
                     pattern.span,
                 );
-                subpairs.push(MatchPair::new(PlaceBuilder::from(temp).deref(), subpattern, cx));
+                subpairs.push(MatchPairTree::for_pattern(
+                    PlaceBuilder::from(temp).deref(),
+                    subpattern,
+                    cx,
+                ));
                 TestCase::Deref { temp, mutability }
             }
 
             PatKind::Never => TestCase::Never,
         };
 
-        MatchPair { place, test_case, subpairs, pattern }
+        MatchPairTree { place, test_case, subpairs, pattern }
     }
 }

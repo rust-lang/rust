@@ -1032,15 +1032,15 @@ impl<'tcx> PatternExtraData<'tcx> {
 #[derive(Debug, Clone)]
 struct FlatPat<'pat, 'tcx> {
     /// To match the pattern, all of these must be satisfied...
-    // Invariant: all the `MatchPair`s are recursively simplified.
+    // Invariant: all the match pairs are recursively simplified.
     // Invariant: or-patterns must be sorted to the end.
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
 }
 
 impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
-    /// Creates a `FlatPat` containing a simplified [`MatchPair`] list/forest
+    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
     /// for the given pattern.
     fn new(
         place: PlaceBuilder<'tcx>,
@@ -1048,7 +1048,7 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
         // First, recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![MatchPair::new(place, pattern, cx)];
+        let mut match_pairs = vec![MatchPairTree::for_pattern(place, pattern, cx)];
         let mut extra_data = PatternExtraData {
             span: pattern.span,
             bindings: Vec::new(),
@@ -1065,9 +1065,9 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
     /// For the candidate to match, all of these must be satisfied...
-    // Invariant: all the `MatchPair`s are recursively simplified.
+    // Invariant: all the match pairs are recursively simplified.
     // Invariant: or-patterns must be sorted at the end.
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
     // Invariant: at the end of the algorithm, this must never contain a `is_never` candidate
@@ -1126,7 +1126,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
-        matches!(&*self.match_pairs, [MatchPair { test_case: TestCase::Or { .. }, .. }, ..])
+        matches!(&*self.match_pairs, [MatchPairTree { test_case: TestCase::Or { .. }, .. }, ..])
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1206,7 +1206,7 @@ impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
 /// Each node also has a list of subpairs (possibly empty) that must also match,
 /// and a reference to the THIR pattern it represents.
 #[derive(Debug, Clone)]
-pub(crate) struct MatchPair<'pat, 'tcx> {
+pub(crate) struct MatchPairTree<'pat, 'tcx> {
     /// This place...
     ///
     /// ---
@@ -1629,7 +1629,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
-        match_pair: MatchPair<'pat, 'tcx>,
+        match_pair: MatchPairTree<'pat, 'tcx>,
     ) {
         let TestCase::Or { pats } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
@@ -1813,8 +1813,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Range`]: TestKind::Range
     fn pick_test(&mut self, candidates: &[&mut Candidate<'_, 'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
-        let match_pair = &candidates.first().unwrap().match_pairs[0];
-        let test = self.test(match_pair);
+        let match_pair = &candidates[0].match_pairs[0];
+        let test = self.pick_test_for_match_pair(match_pair);
         // Unwrap is ok after simplification.
         let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);

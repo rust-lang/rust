@@ -1500,33 +1500,33 @@ pub struct StaticMutRef<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: StaticMutRefSugg,
+    pub sugg: MutRefSugg,
     pub shared: &'a str,
 }
 
 #[derive(Subdiagnostic)]
-pub enum StaticMutRefSugg {
-    #[suggestion(
+pub enum MutRefSugg {
+    #[multipart_suggestion(
         hir_analysis_suggestion,
         style = "verbose",
-        code = "addr_of!({var})",
         applicability = "maybe-incorrect"
     )]
     Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
+        #[suggestion_part(code = "addr_of!(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
     },
-    #[suggestion(
+    #[multipart_suggestion(
         hir_analysis_suggestion_mut,
         style = "verbose",
-        code = "addr_of_mut!({var})",
         applicability = "maybe-incorrect"
     )]
     Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
+        #[suggestion_part(code = "addr_of_mut!(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
     },
 }
 
@@ -1539,34 +1539,8 @@ pub struct RefOfMutStatic<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: RefOfMutStaticSugg,
+    pub sugg: MutRefSugg,
     pub shared: &'a str,
-}
-
-#[derive(Subdiagnostic)]
-pub enum RefOfMutStaticSugg {
-    #[suggestion(
-        hir_analysis_suggestion,
-        style = "verbose",
-        code = "addr_of!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
-    #[suggestion(
-        hir_analysis_suggestion_mut,
-        style = "verbose",
-        code = "addr_of_mut!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -1597,10 +1571,27 @@ pub(crate) struct UnusedGenericParameter {
     pub span: Span,
     pub param_name: Ident,
     pub param_def_kind: &'static str,
+    #[label(hir_analysis_usage_spans)]
+    pub usage_spans: Vec<Span>,
     #[subdiagnostic]
     pub help: UnusedGenericParameterHelp,
     #[help(hir_analysis_const_param_help)]
     pub const_param_help: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_recursive_generic_parameter)]
+pub(crate) struct RecursiveGenericParameter {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[label]
+    pub param_span: Span,
+    pub param_name: Ident,
+    pub param_def_kind: &'static str,
+    #[subdiagnostic]
+    pub help: UnusedGenericParameterHelp,
+    #[note]
+    pub note: (),
 }
 
 #[derive(Subdiagnostic)]

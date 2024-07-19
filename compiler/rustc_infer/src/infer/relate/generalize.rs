@@ -401,10 +401,6 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         self.infcx.tcx
     }
 
-    fn tag(&self) -> &'static str {
-        "Generalizer"
-    }
-
     fn relate_item_args(
         &mut self,
         item_def_id: DefId,

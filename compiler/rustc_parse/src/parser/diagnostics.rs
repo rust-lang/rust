@@ -566,10 +566,7 @@ impl<'a> Parser<'a> {
             && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Eq)))
         {
             // Likely typo: `=` → `==` in let expr or enum item
-            return Err(self.dcx().create_err(UseEqInstead {
-                span: self.token.span,
-                suggestion: self.token.span.with_lo(self.token.span.lo() + BytePos(1)),
-            }));
+            return Err(self.dcx().create_err(UseEqInstead { span: self.token.span }));
         }
 
         if self.token.is_keyword(kw::Move) && self.prev_token.is_keyword(kw::Async) {

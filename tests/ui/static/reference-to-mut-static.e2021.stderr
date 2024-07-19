@@ -15,7 +15,7 @@ LL | #![deny(static_mut_refs)]
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         let _y = addr_of!(X);
-   |                  ~~~~~~~~~~~
+   |                  ~~~~~~~~~ +
 
 error: creating a mutable reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:20:18
@@ -29,7 +29,7 @@ LL |         let _y = &mut X;
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |         let _y = addr_of_mut!(X);
-   |                  ~~~~~~~~~~~~~~~
+   |                  ~~~~~~~~~~~~~ +
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:28:22
@@ -43,7 +43,7 @@ LL |         let ref _a = X;
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         let ref _a = addr_of!(X);
-   |                      ~~~~~~~~~~~
+   |                      +++++++++ +
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:32:25
@@ -57,7 +57,7 @@ LL |         let (_b, _c) = (&X, &Y);
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         let (_b, _c) = (addr_of!(X), &Y);
-   |                         ~~~~~~~~~~~
+   |                         ~~~~~~~~~ +
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:32:29
@@ -71,7 +71,7 @@ LL |         let (_b, _c) = (&X, &Y);
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         let (_b, _c) = (&X, addr_of!(Y));
-   |                             ~~~~~~~~~~~
+   |                             ~~~~~~~~~ +
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:38:13
@@ -85,7 +85,7 @@ LL |         foo(&X);
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         foo(addr_of!(X));
-   |             ~~~~~~~~~~~
+   |             ~~~~~~~~~ +
 
 error: aborting due to 6 previous errors
 

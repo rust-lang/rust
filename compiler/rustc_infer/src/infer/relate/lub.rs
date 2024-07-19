@@ -23,10 +23,6 @@ impl<'combine, 'infcx, 'tcx> Lub<'combine, 'infcx, 'tcx> {
 }
 
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Lub<'_, '_, 'tcx> {
-    fn tag(&self) -> &'static str {
-        "Lub"
-    }
-
     fn cx(&self) -> TyCtxt<'tcx> {
         self.fields.tcx()
     }
@@ -51,13 +47,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Lub<'_, '_, 'tcx> {
         lattice::super_lattice_tys(self, a, b)
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn regions(
         &mut self,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
-
         let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
         // LUB(&'static u8, &'a u8) == &RegionGLB('static, 'a) u8 == &'a u8
         Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().glb_regions(
@@ -68,6 +63,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Lub<'_, '_, 'tcx> {
         ))
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn consts(
         &mut self,
         a: ty::Const<'tcx>,
