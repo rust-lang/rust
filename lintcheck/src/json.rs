@@ -51,12 +51,16 @@ fn print_warnings(title: &str, warnings: &[LintJson]) {
         return;
     }
 
-    println!("### {title}");
+    //We have to use HTML here to be able to manually add an id.
+    println!(r#"<h3 id="{title}">{title}</h3>"#);
+    println!();
     for warning in warnings {
         println!("{title} `{}` at {}", warning.lint, warning.file_link);
+        println!();
         println!("```");
         print!("{}", warning.rendered);
         println!("```");
+        println!();
     }
 }
 
@@ -65,9 +69,12 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
         return;
     }
 
-    println!("### Changed");
+    //We have to use HTML here to be able to manually add an id.
+    println!(r#"<h3 id="changed">Changed</h3>"#);
+    println!();
     for (old, new) in changed {
         println!("Changed `{}` at {}", new.lint, new.file_link);
+        println!();
         println!("```diff");
         for change in diff::lines(&old.rendered, &new.rendered) {
             use diff::Result::{Both, Left, Right};
@@ -109,13 +116,30 @@ pub(crate) fn diff(old_path: &Path, new_path: &Path) {
     }
 
     print!(
-        "{} added, {} removed, {} changed\n\n",
-        added.len(),
-        removed.len(),
-        changed.len()
+        r##"{}, {}, {}"##,
+        count_string("added", added.len()),
+        count_string("removed", removed.len()),
+        count_string("changed", changed.len()),
     );
+    println!();
+    println!();
 
     print_warnings("Added", &added);
     print_warnings("Removed", &removed);
     print_changed_diff(&changed);
+}
+
+/// This generates the `x added` string for the start of the job summery.
+/// It linkifies them if possible to jump to the respective heading.
+fn count_string(label: &str, count: usize) -> String {
+    // Headlines are only added, if anything will be displayed under the headline.
+    // We therefore only want to add links to them if they exist
+    if count == 0 {
+        format!("0 {label}")
+    } else {
+        // GitHub's job summaries don't add HTML ids to headings. That's why we
+        // manually have to add them. GitHub prefixes these manual ids with
+        // `user-content-` and that's how we end up with these awesome links :D
+        format!("[{count} {label}](#user-content-{label})")
+    }
 }
