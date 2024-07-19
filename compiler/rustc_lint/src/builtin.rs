@@ -2740,8 +2740,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
-    /// # #![feature(asm_experimental_arch)]
+    /// ```rust,ignore (fails on non-x86_64)
+    /// #![cfg(target_arch = "x86_64")]
+    ///
     /// use std::arch::asm;
     ///
     /// fn main() {
@@ -2751,19 +2752,32 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// {{produces}}
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: avoid using labels containing only the digits `0` and `1` in inline assembly
+    ///  --> <source>:7:15
+    ///   |
+    /// 7 |         asm!("0: jmp 0b");
+    ///   |               ^ use a different label that doesn't start with `0` or `1`
+    ///   |
+    ///   = help: start numbering with `2` instead
+    ///   = note: an LLVM bug makes these labels ambiguous with a binary literal number on x86
+    ///   = note: see <https://github.com/llvm/llvm-project/issues/99547> for more information
+    ///   = note: `#[deny(binary_asm_labels)]` on by default
+    /// ```
     ///
     /// ### Explanation
     ///
-    /// A [LLVM bug] causes this code to fail to compile because it interprets the `0b` as a binary
-    /// literal instead of a reference to the previous local label `0`. Note that even though the
-    /// bug is marked as fixed, it only fixes a specific usage of intel syntax within standalone
-    /// files, not inline assembly. To work around this bug, don't use labels that could be
-    /// confused with a binary literal.
+    /// An [LLVM bug] causes this code to fail to compile because it interprets the `0b` as a binary
+    /// literal instead of a reference to the previous local label `0`. To work around this bug,
+    /// don't use labels that could be confused with a binary literal.
+    ///
+    /// This behavior is platform-specific to x86 and x86-64.
     ///
     /// See the explanation in [Rust By Example] for more details.
     ///
-    /// [LLVM bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
+    /// [LLVM bug]: https://github.com/llvm/llvm-project/issues/99547
     /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels
     pub BINARY_ASM_LABELS,
     Deny,
