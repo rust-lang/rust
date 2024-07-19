@@ -3543,19 +3543,6 @@ impl<'test> TestCx<'test> {
         support_lib_path.push(format!("{}-tools-bin", stage));
         support_lib_path.push("librun_make_support.rlib");
 
-        let mut stage_std_path = PathBuf::new();
-        stage_std_path.push(&build_root);
-        stage_std_path.push(&stage);
-        stage_std_path.push("lib");
-
-        // Then, we need to build the recipe `rmake.rs` and link in the support library.
-        // FIXME(jieyouxu): use `std::env::consts::EXE_EXTENSION`.
-        let recipe_bin = base_dir.join(if self.config.target.contains("windows") {
-            "rmake.exe"
-        } else {
-            "rmake"
-        });
-
         // FIXME(jieyouxu): explain what the hecc we are doing here.
         let mut support_lib_deps = PathBuf::new();
         support_lib_deps.push(&build_root);
@@ -3582,6 +3569,15 @@ impl<'test> TestCx<'test> {
         host_dylib_env_paths.push(self.config.compile_lib_path.clone());
         host_dylib_env_paths.extend(orig_dylib_env_paths.iter().cloned());
         let host_dylib_env_paths = env::join_paths(host_dylib_env_paths).unwrap();
+
+        // Finally, we need to run the recipe binary to build and run the actual tests.
+        // FIXME(jieyouxu): use `std::env::consts::EXE_EXTENSION`.
+        let recipe_bin = base_dir.join(if self.config.target.contains("windows") {
+            "rmake.exe"
+        } else {
+            "rmake"
+        });
+        debug!(?recipe_bin);
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
         // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
@@ -3624,8 +3620,11 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
         }
 
-        // Finally, we need to run the recipe binary to build and run the actual tests.
-        debug!(?recipe_bin);
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
+        let mut stage_std_path = PathBuf::new();
+        stage_std_path.push(&build_root);
+        stage_std_path.push(&stage);
+        stage_std_path.push("lib");
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
         let mut dylib_env_paths = orig_dylib_env_paths.clone();
