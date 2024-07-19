@@ -367,18 +367,16 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             }
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
-            Array(t, c) => write!(f, "[{:?}; {:?}]", &t, &c),
-            Pat(t, p) => write!(f, "pattern_type!({:?} is {:?})", &t, &p),
+            Array(t, c) => write!(f, "[{t:?}; {c:?}]"),
+            Pat(t, p) => write!(f, "pattern_type!({t:?} is {p:?})"),
             Slice(t) => write!(f, "[{:?}]", &t),
             RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), ty),
             Ref(r, t, m) => write!(f, "&{:?} {}{:?}", r, m.prefix_str(), t),
             FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&s).finish(),
-            FnPtr(s) => write!(f, "{:?}", &s),
+            FnPtr(s) => write!(f, "{s:?}"),
             Dynamic(p, r, repr) => match repr {
-                DynKind::Dyn => write!(f, "dyn {:?} + {:?}", &p, &r),
-                DynKind::DynStar => {
-                    write!(f, "dyn* {:?} + {:?}", &p, &r)
-                }
+                DynKind::Dyn => write!(f, "dyn {p:?} + {r:?}"),
+                DynKind::DynStar => write!(f, "dyn* {p:?} + {r:?}"),
             },
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&s).finish(),
             CoroutineClosure(d, s) => f.debug_tuple("CoroutineClosure").field(d).field(&s).finish(),
@@ -392,7 +390,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
                     if count > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{:?}", &ty)?;
+                    write!(f, "{ty:?}")?;
                     count += 1;
                 }
                 // unary tuples need a trailing comma
@@ -1050,7 +1048,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
             if i > 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{:?}", &ty)?;
+            write!(f, "{ty:?}")?;
         }
         if *c_variadic {
             if inputs.is_empty() {

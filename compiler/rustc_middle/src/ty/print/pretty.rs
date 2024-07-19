@@ -2627,7 +2627,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             self.prepare_region_info(value);
         }
 
-        debug!("self.used_region_names: {:?}", &self.used_region_names);
+        debug!("self.used_region_names: {:?}", self.used_region_names);
 
         let mut empty = true;
         let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {

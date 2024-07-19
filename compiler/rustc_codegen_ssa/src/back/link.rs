@@ -759,7 +759,7 @@ fn link_natively(
     sess.dcx().abort_if_errors();
 
     // Invoke the system linker
-    info!("{:?}", &cmd);
+    info!("{cmd:?}");
     let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
     let unknown_arg_regex =
         Regex::new(r"(unknown|unrecognized) (command line )?(option|argument)").unwrap();
@@ -796,7 +796,7 @@ fn link_natively(
                     cmd.arg(arg);
                 }
             }
-            info!("{:?}", &cmd);
+            info!("{cmd:?}");
             continue;
         }
 
@@ -817,7 +817,7 @@ fn link_natively(
                     cmd.arg(arg);
                 }
             }
-            info!("{:?}", &cmd);
+            info!("{cmd:?}");
             continue;
         }
 
@@ -878,7 +878,7 @@ fn link_natively(
                     cmd.arg(arg);
                 }
             }
-            info!("{:?}", &cmd);
+            info!("{cmd:?}");
             continue;
         }
 
@@ -996,7 +996,7 @@ fn link_natively(
                 sess.dcx().emit_err(errors::UnableToExeLinker {
                     linker_path,
                     error: e,
-                    command_formatted: format!("{:?}", &cmd),
+                    command_formatted: format!("{cmd:?}"),
                 });
             }
 
@@ -1567,7 +1567,7 @@ fn print_native_static_libs(
                 sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
                 // Prefix for greppability
                 // Note: This must not be translated as tools are allowed to depend on this exact string.
-                sess.dcx().note(format!("native-static-libs: {}", &lib_args.join(" ")));
+                sess.dcx().note(format!("native-static-libs: {}", lib_args.join(" ")));
             }
         }
     }
