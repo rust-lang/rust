@@ -684,8 +684,8 @@ impl From<Vec<String>> for Lines {
     }
 }
 
-impl std::fmt::Display for Lines {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+impl fmt::Display for Lines {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for line in self.lines.iter() {
             write!(f, "\n{:width$}{line}", "", width = self.indent)?;
         }
@@ -1182,11 +1182,7 @@ fn type_to_ext(t: &str, v: bool, r: bool, pi8: bool) -> String {
     let native = type_to_native_type(t);
     let sub_ext = match type_sub_len(t) {
         1 => String::new(),
-        _ if v => format!(
-            ".p0v{}{}",
-            &type_len(&type_to_sub_type(t)).to_string(),
-            native
-        ),
+        _ if v => format!(".p0v{}{native}", type_len(&type_to_sub_type(t))),
         _ if pi8 => ".p0i8".to_string(),
         _ => format!(".p0{native}"),
     };
@@ -1195,12 +1191,7 @@ fn type_to_ext(t: &str, v: bool, r: bool, pi8: bool) -> String {
         "u" => native.replace('u', "i"),
         _ => panic!("unknown type: {t}"),
     };
-    let ext = format!(
-        "v{}{}{}",
-        &type_len(&type_to_sub_type(t)).to_string(),
-        sub_type,
-        sub_ext
-    );
+    let ext = format!("v{}{sub_type}{sub_ext}", type_len(&type_to_sub_type(t)));
     if r {
         let ss: Vec<_> = ext.split('.').collect();
         if ss.len() != 2 {
@@ -2800,7 +2791,7 @@ fn get_call(
                 if i != 0 || j != 0 {
                     s.push_str(", ");
                 }
-                s.push_str(&format!("{base_len} * {} as u32", &fn_format[2]));
+                s.push_str(&format!("{base_len} * {} as u32", fn_format[2]));
                 if j != 0 {
                     s.push_str(&format!(" + {j}"));
                 }
@@ -2816,7 +2807,7 @@ fn get_call(
             "in_ttn" => type_to_native_type(in_t[1]),
             _ => String::new(),
         };
-        return format!("{} as {t}", &fn_format[1]);
+        return format!("{} as {t}", fn_format[1]);
     }
     if fn_name.starts_with("ins") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -2861,11 +2852,11 @@ fn get_call(
             "in2_dot" => type_exp_len(in_t[2], 4),
             _ => 0,
         };
-        if len == 0 {
-            return format!(r#"static_assert!({} == 0);"#, fn_format[2]);
+        return if len == 0 {
+            format!(r#"static_assert!({} == 0);"#, fn_format[2])
         } else {
-            return format!(r#"static_assert_uimm_bits!({}, {len});"#, fn_format[2]);
-        }
+            format!(r#"static_assert_uimm_bits!({}, {len});"#, fn_format[2])
+        };
     }
     if fn_name.starts_with("static_assert") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -3175,7 +3166,7 @@ fn get_call(
             } else {
                 String::from(&types[1])
             };
-            fn_name.push_str(&format!("::<{}, {}>", &type1, &type2));
+            fn_name.push_str(&format!("::<{type1}, {type2}>"));
         } else {
             fn_name.push_str(&fn_format[2]);
         }
@@ -3183,14 +3174,11 @@ fn get_call(
     if param_str.is_empty() {
         fn_name.replace("out_t", out_t)
     } else if let Some((re_name, re_type)) = re.clone() {
-        format!(
-            r#"let {}: {} = {}({});"#,
-            re_name, re_type, fn_name, param_str
-        )
+        format!("let {re_name}: {re_type} = {fn_name}({param_str});")
     } else if fn_name.starts_with('*') {
-        format!(r#"{fn_name} = {param_str};"#)
+        format!("{fn_name} = {param_str};")
     } else {
-        format!(r#"{fn_name}({param_str})"#)
+        format!("{fn_name}({param_str})")
     }
 }
 
