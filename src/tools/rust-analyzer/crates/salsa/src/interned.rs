@@ -121,8 +121,8 @@ impl InternValueTrivial for String {}
 
 #[derive(Debug)]
 struct Slot<V> {
-    /// DatabaseKeyIndex for this slot.
-    database_key_index: DatabaseKeyIndex,
+    /// key index for this slot.
+    key_index: u32,
 
     /// Value that was interned.
     value: V,
@@ -199,13 +199,8 @@ where
         };
 
         let create_slot = |index: InternId| {
-            let database_key_index = DatabaseKeyIndex {
-                group_index: self.group_index,
-                query_index: Q::QUERY_INDEX,
-                key_index: index.as_u32(),
-            };
             Arc::new(Slot {
-                database_key_index,
+                key_index: index.as_u32(),
                 value: insert(Q::Value::from_intern_id(index)),
                 interned_at: revision_now,
             })
@@ -242,7 +237,11 @@ where
         };
         let changed_at = slot.interned_at;
         db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
-            slot.database_key_index,
+            DatabaseKeyIndex {
+                group_index: self.group_index,
+                query_index: Q::QUERY_INDEX,
+                key_index: slot.key_index,
+            },
             INTERN_DURABILITY,
             changed_at,
         );
@@ -294,7 +293,11 @@ where
         };
         let changed_at = slot.interned_at;
         db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
-            slot.database_key_index,
+            DatabaseKeyIndex {
+                group_index: self.group_index,
+                query_index: Q::QUERY_INDEX,
+                key_index: slot.key_index,
+            },
             INTERN_DURABILITY,
             changed_at,
         );
@@ -414,7 +417,11 @@ where
         let value = slot.value.clone();
         let interned_at = slot.interned_at;
         db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
-            slot.database_key_index,
+            DatabaseKeyIndex {
+                group_index: interned_storage.group_index,
+                query_index: Q::QUERY_INDEX,
+                key_index: slot.key_index,
+            },
             INTERN_DURABILITY,
             interned_at,
         );
