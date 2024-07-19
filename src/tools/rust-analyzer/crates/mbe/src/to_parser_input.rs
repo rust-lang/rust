@@ -3,11 +3,15 @@
 
 use std::fmt;
 
+use span::Edition;
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
 use tt::buffer::TokenBuffer;
 
-pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(buffer: &TokenBuffer<'_, S>) -> parser::Input {
+pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(
+    edition: Edition,
+    buffer: &TokenBuffer<'_, S>,
+) -> parser::Input {
     let mut res = parser::Input::default();
 
     let mut current = buffer.begin();
@@ -60,6 +64,10 @@ pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(buffer: &TokenBuffer<'_, S>)
                         "_" => res.push(T![_]),
                         i if i.starts_with('\'') => res.push(LIFETIME_IDENT),
                         _ if ident.is_raw.yes() => res.push(IDENT),
+                        "gen" if !edition.at_least_2024() => res.push(IDENT),
+                        "async" | "await" | "dyn" | "try" if !edition.at_least_2018() => {
+                            res.push(IDENT)
+                        }
                         text => match SyntaxKind::from_keyword(text) {
                             Some(kind) => res.push(kind),
                             None => {

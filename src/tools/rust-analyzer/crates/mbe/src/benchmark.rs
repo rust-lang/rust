@@ -25,9 +25,7 @@ fn benchmark_parse_macro_rules() {
         rules
             .values()
             .map(|it| {
-                DeclarativeMacro::parse_macro_rules(it, |_| span::Edition::CURRENT, true)
-                    .rules
-                    .len()
+                DeclarativeMacro::parse_macro_rules(it, |_| span::Edition::CURRENT).rules.len()
             })
             .sum()
     };
@@ -59,9 +57,7 @@ fn benchmark_expand_macro_rules() {
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
     macro_rules_fixtures_tt()
         .into_iter()
-        .map(|(id, tt)| {
-            (id, DeclarativeMacro::parse_macro_rules(&tt, |_| span::Edition::CURRENT, true))
-        })
+        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, |_| span::Edition::CURRENT)))
         .collect()
 }
 

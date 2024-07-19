@@ -144,9 +144,7 @@ impl DeclarativeMacro {
     /// The old, `macro_rules! m {}` flavor.
     pub fn parse_macro_rules(
         tt: &tt::Subtree<Span>,
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
-        // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
-        new_meta_vars: bool,
+        ctx_edition: impl Copy + Fn(SyntaxContextId) -> Edition,
     ) -> DeclarativeMacro {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
@@ -156,7 +154,7 @@ impl DeclarativeMacro {
         let mut err = None;
 
         while src.len() > 0 {
-            let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
+            let rule = match Rule::parse(ctx_edition, &mut src) {
                 Ok(it) => it,
                 Err(e) => {
                     err = Some(Box::new(e));
@@ -186,9 +184,7 @@ impl DeclarativeMacro {
     pub fn parse_macro2(
         args: Option<&tt::Subtree<Span>>,
         body: &tt::Subtree<Span>,
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
-        // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
-        new_meta_vars: bool,
+        ctx_edition: impl Copy + Fn(SyntaxContextId) -> Edition,
     ) -> DeclarativeMacro {
         let mut rules = Vec::new();
         let mut err = None;
@@ -197,8 +193,8 @@ impl DeclarativeMacro {
             cov_mark::hit!(parse_macro_def_simple);
 
             let rule = (|| {
-                let lhs = MetaTemplate::parse_pattern(edition, args)?;
-                let rhs = MetaTemplate::parse_template(edition, body, new_meta_vars)?;
+                let lhs = MetaTemplate::parse_pattern(ctx_edition, args)?;
+                let rhs = MetaTemplate::parse_template(ctx_edition, body)?;
 
                 Ok(crate::Rule { lhs, rhs })
             })();
@@ -211,7 +207,7 @@ impl DeclarativeMacro {
             cov_mark::hit!(parse_macro_def_rules);
             let mut src = TtIter::new(body);
             while src.len() > 0 {
-                let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
+                let rule = match Rule::parse(ctx_edition, &mut src) {
                     Ok(it) => it,
                     Err(e) => {
                         err = Some(Box::new(e));
@@ -264,7 +260,6 @@ impl Rule {
     fn parse(
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         src: &mut TtIter<'_, Span>,
-        new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
         let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
         src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
@@ -272,7 +267,7 @@ impl Rule {
         let rhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
 
         let lhs = MetaTemplate::parse_pattern(edition, lhs)?;
-        let rhs = MetaTemplate::parse_template(edition, rhs, new_meta_vars)?;
+        let rhs = MetaTemplate::parse_template(edition, rhs)?;
 
         Ok(crate::Rule { lhs, rhs })
     }
@@ -367,7 +362,7 @@ fn expect_fragment<S: Copy + fmt::Debug>(
 ) -> ExpandResult<Option<tt::TokenTree<S>>> {
     use ::parser;
     let buffer = tt::buffer::TokenBuffer::from_tokens(tt_iter.as_slice());
-    let parser_input = to_parser_input::to_parser_input(&buffer);
+    let parser_input = to_parser_input::to_parser_input(edition, &buffer);
     let tree_traversal = entry_point.parse(&parser_input, edition);
     let mut cursor = buffer.begin();
     let mut error = false;

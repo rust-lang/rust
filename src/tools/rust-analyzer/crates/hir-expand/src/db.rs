@@ -348,7 +348,7 @@ fn parse_macro_expansion(
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
     let _p = tracing::info_span!("parse_macro_expansion").entered();
     let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-    let edition = loc.def.edition;
+    let def_edition = loc.def.edition;
     let expand_to = loc.expand_to();
     let mbe::ValueResult { value: (tt, matched_arm), err } =
         macro_expand(db, macro_file.macro_call_id, loc);
@@ -359,7 +359,7 @@ fn parse_macro_expansion(
             CowArc::Owned(it) => it,
         },
         expand_to,
-        edition,
+        def_edition,
     );
     rev_token_map.matched_arm = matched_arm;
 
