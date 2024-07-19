@@ -4,7 +4,8 @@
 // This test checks that the impl_* symbols are preserved as they should.
 // See https://github.com/rust-lang/rust/issues/108030
 
-//FIXME(Oneirical): try it on more than only-x86_64-unknown-linux-gnu
+//@ only-x86_64-unknown-linux-gnu
+// Reason: some of the inline assembly directives are architecture-specific.
 
 use run_make_support::rustc;
 

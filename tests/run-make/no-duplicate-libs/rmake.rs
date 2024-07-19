@@ -9,7 +9,8 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-// FIXME(Oneirical): try on msvc because of #27979
+//@ ignore-msvc
+// Reason: native compilation results in an unresolved external symbol
 
 use run_make_support::{build_native_static_lib, run, rustc};
 
