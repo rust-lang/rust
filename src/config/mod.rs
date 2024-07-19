@@ -149,6 +149,7 @@ create_config! {
     blank_lines_lower_bound: BlankLinesLowerBound, false,
         "Minimum number of blank lines which must be put between items";
     edition: EditionConfig, true, "The edition of the parser (RFC 2052)";
+    style_edition: StyleEditionConfig, false, "The edition of the Style Guide (RFC 3338)";
     version: VersionConfig, false, "Version of formatting rules";
     inline_attribute_width: InlineAttributeWidth, false,
         "Write an item and its attribute on the same line \
@@ -502,6 +503,9 @@ mod test {
             stable_option: StableOption, true, "A stable option";
             unstable_option: UnstableOption, false, "An unstable option";
             partially_unstable_option: PartiallyUnstable, true, "A partially unstable option";
+            edition: EditionConfig, true, "blah";
+            style_edition: StyleEditionConfig, true, "blah";
+            version: VersionConfig, false, "blah blah"
         }
 
         #[cfg(test)]
@@ -685,6 +689,7 @@ match_block_trailing_comma = false
 blank_lines_upper_bound = 1
 blank_lines_lower_bound = 0
 edition = "2015"
+style_edition = "2015"
 version = "One"
 inline_attribute_width = 0
 format_generated_files = true

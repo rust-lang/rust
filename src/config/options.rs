@@ -456,6 +456,17 @@ impl From<Edition> for rustc_span::edition::Edition {
     }
 }
 
+impl From<Edition> for StyleEdition {
+    fn from(edition: Edition) -> Self {
+        match edition {
+            Edition::Edition2015 => StyleEdition::Edition2015,
+            Edition::Edition2018 => StyleEdition::Edition2018,
+            Edition::Edition2021 => StyleEdition::Edition2021,
+            Edition::Edition2024 => StyleEdition::Edition2024,
+        }
+    }
+}
+
 impl PartialOrd for Edition {
     fn partial_cmp(&self, other: &Edition) -> Option<std::cmp::Ordering> {
         rustc_span::edition::Edition::partial_cmp(&(*self).into(), &(*other).into())
@@ -473,10 +484,11 @@ pub enum MatchArmLeadingPipe {
     Preserve,
 }
 
-/// Defines the default values for each config according to [the style guide].
-/// rustfmt output may differ between style editions.
+/// Defines the default values for each config according to the edition of the
+/// [Style Guide] as per [RFC 3338]. Rustfmt output may differ between Style editions.
 ///
-/// [the style guide]: https://doc.rust-lang.org/nightly/style-guide/
+/// [Style Guide]: https://doc.rust-lang.org/nightly/style-guide/
+/// [RFC 3338]: https://rust-lang.github.io/rfcs/3338-style-evolution.html
 #[config_type]
 pub enum StyleEdition {
     #[value = "2015"]
@@ -493,8 +505,26 @@ pub enum StyleEdition {
     Edition2021,
     #[value = "2024"]
     #[doc_hint = "2024"]
+    #[unstable_variant]
     /// [Edition 2024]().
     Edition2024,
+}
+
+impl From<StyleEdition> for rustc_span::edition::Edition {
+    fn from(edition: StyleEdition) -> Self {
+        match edition {
+            StyleEdition::Edition2015 => Self::Edition2015,
+            StyleEdition::Edition2018 => Self::Edition2018,
+            StyleEdition::Edition2021 => Self::Edition2021,
+            StyleEdition::Edition2024 => Self::Edition2024,
+        }
+    }
+}
+
+impl PartialOrd for StyleEdition {
+    fn partial_cmp(&self, other: &StyleEdition) -> Option<std::cmp::Ordering> {
+        rustc_span::edition::Edition::partial_cmp(&(*self).into(), &(*other).into())
+    }
 }
 
 /// Defines unit structs to implement `StyleEditionDefault` for.
@@ -608,6 +638,7 @@ config_option_with_style_edition_default!(
     BlankLinesUpperBound, usize, _ => 1;
     BlankLinesLowerBound, usize, _ => 0;
     EditionConfig, Edition, _ => Edition::Edition2015;
+    StyleEditionConfig, StyleEdition, _ => StyleEdition::Edition2015;
     VersionConfig, Version, Edition2024 => Version::Two, _ => Version::One;
     InlineAttributeWidth, usize, _ => 0;
     FormatGeneratedFiles, bool, _ => true;
