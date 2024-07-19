@@ -310,11 +310,6 @@
                 "command": "rust-analyzer.openWalkthrough",
                 "title": "Open Walkthrough",
                 "category": "rust-analyzer"
-            },
-            {
-                "command": "rust-analyzer.openFAQ",
-                "title": "Open FAQ",
-                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -3221,9 +3216,6 @@
                 },
                 {
                     "command": "rust-analyzer.openWalkthrough"
-                },
-                {
-                    "command": "rust-analyzer.openFAQ"
                 }
             ],
             "editor/context": [
