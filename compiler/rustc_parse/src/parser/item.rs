@@ -17,6 +17,7 @@ use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::source_map;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::{Span, DUMMY_SP};
 use std::fmt::Write;
 use std::mem;
@@ -2332,12 +2333,104 @@ impl<'a> Parser<'a> {
                 }
             }
         };
+
+        // Store the end of function parameters to give better diagnostics
+        // inside `parse_fn_body()`.
+        let fn_params_end = self.prev_token.span.shrink_to_hi();
+
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
+        // `fn_params_end` is needed only when it's followed by a where clause.
+        let fn_params_end =
+            if generics.where_clause.has_where_token { Some(fn_params_end) } else { None };
+
         let mut sig_hi = self.prev_token.span;
-        let body = self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body)?; // `;` or `{ ... }`.
+        // Either `;` or `{ ... }`.
+        let body =
+            self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
         let fn_sig_span = sig_lo.to(sig_hi);
         Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
+    }
+
+    /// Provide diagnostics when function body is not found
+    fn error_fn_body_not_found(
+        &mut self,
+        ident_span: Span,
+        req_body: bool,
+        fn_params_end: Option<Span>,
+    ) -> PResult<'a, ErrorGuaranteed> {
+        let expected = if req_body {
+            &[token::OpenDelim(Delimiter::Brace)][..]
+        } else {
+            &[token::Semi, token::OpenDelim(Delimiter::Brace)]
+        };
+        match self.expected_one_of_not_found(&[], expected) {
+            Ok(error_guaranteed) => Ok(error_guaranteed),
+            Err(mut err) => {
+                if self.token.kind == token::CloseDelim(Delimiter::Brace) {
+                    // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
+                    // the AST for typechecking.
+                    err.span_label(ident_span, "while parsing this `fn`");
+                    Ok(err.emit())
+                } else if self.token.kind == token::RArrow
+                    && let Some(fn_params_end) = fn_params_end
+                {
+                    // Instead of a function body, the parser has encountered a right arrow
+                    // preceded by a where clause.
+
+                    // Find whether token behind the right arrow is a function trait and
+                    // store its span.
+                    let fn_trait_span =
+                        [sym::FnOnce, sym::FnMut, sym::Fn].into_iter().find_map(|symbol| {
+                            if self.prev_token.is_ident_named(symbol) {
+                                Some(self.prev_token.span)
+                            } else {
+                                None
+                            }
+                        });
+
+                    // Parse the return type (along with the right arrow) and store its span.
+                    // If there's a parse error, cancel it and return the existing error
+                    // as we are primarily concerned with the
+                    // expected-function-body-but-found-something-else error here.
+                    let arrow_span = self.token.span;
+                    let ty_span = match self.parse_ret_ty(
+                        AllowPlus::Yes,
+                        RecoverQPath::Yes,
+                        RecoverReturnSign::Yes,
+                    ) {
+                        Ok(ty_span) => ty_span.span().shrink_to_hi(),
+                        Err(parse_error) => {
+                            parse_error.cancel();
+                            return Err(err);
+                        }
+                    };
+                    let ret_ty_span = arrow_span.to(ty_span);
+
+                    if let Some(fn_trait_span) = fn_trait_span {
+                        // Typo'd Fn* trait bounds such as
+                        // fn foo<F>() where F: FnOnce -> () {}
+                        err.subdiagnostic(errors::FnTraitMissingParen { span: fn_trait_span });
+                    } else if let Ok(snippet) = self.psess.source_map().span_to_snippet(ret_ty_span)
+                    {
+                        // If token behind right arrow is not a Fn* trait, the programmer
+                        // probably misplaced the return type after the where clause like
+                        // `fn foo<T>() where T: Default -> u8 {}`
+                        err.primary_message(
+                            "return type should be specified after the function parameters",
+                        );
+                        err.subdiagnostic(errors::MisplacedReturnType {
+                            fn_params_end,
+                            snippet,
+                            ret_ty_span,
+                        });
+                    }
+                    Err(err)
+                } else {
+                    Err(err)
+                }
+            }
+        }
     }
 
     /// Parse the "body" of a function.
@@ -2349,6 +2442,7 @@ impl<'a> Parser<'a> {
         ident: &Ident,
         sig_hi: &mut Span,
         req_body: bool,
+        fn_params_end: Option<Span>,
     ) -> PResult<'a, Option<P<Block>>> {
         let has_semi = if req_body {
             self.token.kind == TokenKind::Semi
@@ -2377,33 +2471,7 @@ impl<'a> Parser<'a> {
             });
             (AttrVec::new(), Some(self.mk_block_err(span, guar)))
         } else {
-            let expected = if req_body {
-                &[token::OpenDelim(Delimiter::Brace)][..]
-            } else {
-                &[token::Semi, token::OpenDelim(Delimiter::Brace)]
-            };
-            if let Err(mut err) = self.expected_one_of_not_found(&[], expected) {
-                if self.token.kind == token::CloseDelim(Delimiter::Brace) {
-                    // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
-                    // the AST for typechecking.
-                    err.span_label(ident.span, "while parsing this `fn`");
-                    err.emit();
-                } else {
-                    // check for typo'd Fn* trait bounds such as
-                    // fn foo<F>() where F: FnOnce -> () {}
-                    if self.token.kind == token::RArrow {
-                        let machine_applicable = [sym::FnOnce, sym::FnMut, sym::Fn]
-                            .into_iter()
-                            .any(|s| self.prev_token.is_ident_named(s));
-
-                        err.subdiagnostic(errors::FnTraitMissingParen {
-                            span: self.prev_token.span,
-                            machine_applicable,
-                        });
-                    }
-                    return Err(err);
-                }
-            }
+            self.error_fn_body_not_found(ident.span, req_body, fn_params_end)?;
             (AttrVec::new(), None)
         };
         attrs.extend(inner_attrs);

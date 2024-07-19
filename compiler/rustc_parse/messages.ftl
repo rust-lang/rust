@@ -524,6 +524,8 @@ parse_mismatched_closing_delimiter = mismatched closing delimiter: `{$delimiter}
     .label_opening_candidate = closing delimiter possibly meant for this
     .label_unclosed = unclosed delimiter
 
+parse_misplaced_return_type = place the return type after the function parameters
+
 parse_missing_comma_after_match_arm = expected `,` following `match` arm
     .suggestion = missing a comma here to end this `match` arm
 
