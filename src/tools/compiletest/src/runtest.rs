@@ -3633,12 +3633,29 @@ impl<'test> TestCx<'test> {
         // annotated with `#[must_use]`.
         rustc.arg("-Dunused_must_use");
 
-        // FIXME(jieyouxu): explain this!
+        // > `cg_clif` uses `COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0` for running the rustc
+        // > test suite. With the introduction of rmake.rs this broke. `librun_make_support.rlib` is
+        // > compiled using the bootstrap rustc wrapper which sets `--sysroot
+        // > build/aarch64-unknown-linux-gnu/stage0-sysroot`, but then compiletest will compile
+        // > `rmake.rs` using the sysroot of the bootstrap compiler causing it to not find the
+        // > `libstd.rlib` against which `librun_make_support.rlib` is compiled.
+        //
+        // The gist here is that we have to pass the proper stage0 sysroot if we want
+        //
+        // ```
+        // $ COMPILETEST_FORCE_STAGE0=1 ./x test run-make --stage 0
+        // ```
+        //
+        // to work correctly.
+        //
+        // See <https://github.com/rust-lang/rust/pull/122248> for more background.
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
-            let mut stage0_sysroot = build_root.clone();
-            stage0_sysroot.push("stage0-sysroot");
+            let stage0_sysroot = {
+                let mut p = build_root.clone();
+                p.push("stage0-sysroot");
+                p
+            };
             debug!(?stage0_sysroot);
-            debug!(exists = stage0_sysroot.exists());
 
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
