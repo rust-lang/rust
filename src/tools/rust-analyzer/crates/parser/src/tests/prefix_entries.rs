@@ -83,7 +83,7 @@ fn meta_item() {
 #[track_caller]
 fn check(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     let lexed = LexedStr::new(Edition::CURRENT, input);
-    let input = lexed.to_input();
+    let input = lexed.to_input(Edition::CURRENT);
 
     let mut n_tokens = 0;
     for step in entry.parse(&input, Edition::CURRENT).iter() {

@@ -1,3 +1,5 @@
+use crate::grammar::paths::WEAK_DYN_PATH_FIRST;
+
 use super::*;
 
 pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
@@ -49,6 +51,13 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         T![dyn] => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
         T![<] => path_type_bounds(p, allow_bounds),
+        T![ident]
+            if !p.edition().at_least_2018()
+                && p.at_contextual_kw(T![dyn])
+                && WEAK_DYN_PATH_FIRST.contains(p.nth(1)) =>
+        {
+            dyn_trait_type_weak(p)
+        }
         _ if paths::is_path_start(p) => path_or_macro_type_(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         _ => {
@@ -275,6 +284,18 @@ fn dyn_trait_type(p: &mut Parser<'_>) {
     assert!(p.at(T![dyn]));
     let m = p.start();
     p.bump(T![dyn]);
+    generic_params::bounds_without_colon(p);
+    m.complete(p, DYN_TRAIT_TYPE);
+}
+
+// test dyn_trait_type_weak 2015
+// type A = dyn Iterator<Item=Foo<'a>> + 'a;
+// type A = &dyn Iterator<Item=Foo<'a>> + 'a;
+// type A = dyn::Path;
+fn dyn_trait_type_weak(p: &mut Parser<'_>) {
+    assert!(p.at_contextual_kw(T![dyn]));
+    let m = p.start();
+    p.bump_remap(T![dyn]);
     generic_params::bounds_without_colon(p);
     m.complete(p, DYN_TRAIT_TYPE);
 }

@@ -195,6 +195,13 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/dyn_trait_type.rs");
     }
     #[test]
+    fn dyn_trait_type_weak() {
+        run_and_expect_no_errors_with_edition(
+            "test_data/parser/inline/ok/dyn_trait_type_weak.rs",
+            crate::Edition::Edition2015,
+        );
+    }
+    #[test]
     fn effect_blocks() { run_and_expect_no_errors("test_data/parser/inline/ok/effect_blocks.rs"); }
     #[test]
     fn exclusive_range_pat() {

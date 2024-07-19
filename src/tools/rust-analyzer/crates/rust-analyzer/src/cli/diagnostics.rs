@@ -5,8 +5,8 @@ use project_model::{CargoConfig, RustLibSource};
 use rustc_hash::FxHashSet;
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
-use ide::{AnalysisHost, AssistResolveStrategy, DiagnosticsConfig, Severity};
-use ide_db::base_db::SourceDatabaseExt;
+use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
+use ide_db::{base_db::SourceDatabaseExt, LineIndexDatabase};
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
 use crate::cli::flags;
@@ -74,7 +74,11 @@ impl flags::Diagnostics {
                         found_error = true;
                     }
 
-                    println!("{diagnostic:?}");
+                    let Diagnostic { code, message, range, severity, .. } = diagnostic;
+                    let line_index = db.line_index(range.file_id);
+                    let start = line_index.line_col(range.range.start());
+                    let end = line_index.line_col(range.range.end());
+                    println!("{severity:?} {code:?} from {start:?} to {end:?}: {message}");
                 }
 
                 visited_files.insert(file_id);
