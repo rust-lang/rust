@@ -516,7 +516,7 @@ mod tests {
         match result {
             Ok(RangeInfo { range, info: () }) => {
                 let source = analysis.file_text(position.file_id).unwrap();
-                expect.assert_eq(&format!("{range:?}: {}", &source[range]))
+                expect.assert_eq(&format!("{range:?}: {}", source[range]))
             }
             Err(RenameError(err)) => expect.assert_eq(&err),
         };

@@ -43,7 +43,7 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
 
     acc.add(
         AssistId("bind_unused_param", AssistKind::QuickFix),
-        &format!("Bind as `let _ = {};`", &ident_pat),
+        &format!("Bind as `let _ = {ident_pat};`"),
         param.syntax().text_range(),
         |builder| {
             let line_index = ctx.db().line_index(ctx.file_id().into());
