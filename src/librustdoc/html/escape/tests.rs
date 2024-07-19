@@ -6,6 +6,12 @@ fn escape_body_text_with_wbr() {
     assert_eq!(&E("").to_string(), "");
     assert_eq!(&E("a").to_string(), "a");
     assert_eq!(&E("A").to_string(), "A");
+    assert_eq!(&E("_").to_string(), "_");
+    assert_eq!(&E(":").to_string(), ":");
+    assert_eq!(&E(" ").to_string(), " ");
+    assert_eq!(&E("___________").to_string(), "___________");
+    assert_eq!(&E(":::::::::::").to_string(), ":::::::::::");
+    assert_eq!(&E("           ").to_string(), "           ");
     // real(istic) examples
     assert_eq!(&E("FirstSecond").to_string(), "First<wbr>Second");
     assert_eq!(&E("First_Second").to_string(), "First<wbr>_Second");
@@ -15,8 +21,9 @@ fn escape_body_text_with_wbr() {
     assert_eq!(&E("First SecondThird").to_string(), "First Second<wbr>Third");
     assert_eq!(&E("First<T>_Second").to_string(), "First&lt;<wbr>T&gt;<wbr>_Second");
     assert_eq!(&E("first_second").to_string(), "first<wbr>_second");
+    assert_eq!(&E("first:second").to_string(), "first:<wbr>second");
+    assert_eq!(&E("first::second").to_string(), "first::<wbr>second");
     assert_eq!(&E("MY_CONSTANT").to_string(), "MY<wbr>_CONSTANT");
-    assert_eq!(&E("___________").to_string(), "___________");
     // a string won't get wrapped if it's less than 8 bytes
     assert_eq!(&E("HashSet").to_string(), "HashSet");
     // an individual word won't get wrapped if it's less than 4 bytes

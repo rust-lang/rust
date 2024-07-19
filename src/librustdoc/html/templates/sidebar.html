@@ -31,6 +31,6 @@
         </section>
     {% endif %}
     {% if !path.is_empty() %}
-        <h2><a href="{% if is_mod %}../{% endif %}index.html">In {{+ path}}</a></h2>
+        <h2><a href="{% if is_mod %}../{% endif %}index.html">In {{+ path|wrapped|safe}}</a></h2>
     {% endif %}
 </div>

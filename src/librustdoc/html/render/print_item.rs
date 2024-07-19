@@ -571,7 +571,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             display_fn(move |f| {
                 write!(
                     f,
-                    r#"<span class="stab {class}" title="{title}">{contents}</span>"#,
+                    r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
                     title = Escape(title),
                 )
             })

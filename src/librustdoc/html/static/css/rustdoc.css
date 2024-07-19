@@ -568,12 +568,15 @@ ul.block, .block li {
 }
 
 .sidebar h2 {
+	text-wrap: balance;
 	overflow-wrap: anywhere;
 	padding: 0;
 	margin: 0.7rem 0;
 }
 
 .sidebar h3 {
+	text-wrap: balance;
+	overflow-wrap: anywhere;
 	font-size: 1.125rem; /* 18px */
 	padding: 0;
 	margin: 0;
@@ -2183,7 +2186,7 @@ in src-script.js and main.js
 		width: 33%;
 	}
 	.item-table > li > div {
-		word-break: break-all;
+		overflow-wrap: anywhere;
 	}
 }
 

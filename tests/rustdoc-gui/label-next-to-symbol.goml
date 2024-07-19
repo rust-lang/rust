@@ -27,7 +27,8 @@ compare-elements-position-near: (
     ".item-name .stab.deprecated",
     {"y": 2},
 )
-compare-elements-position: (
+// "Unix" part is on second line
+compare-elements-position-false: (
     ".item-name .stab.deprecated",
     ".item-name .stab.portability",
     ["y"],
