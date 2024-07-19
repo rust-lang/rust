@@ -53,7 +53,8 @@ pub(super) fn hints(
         let module = ast::Module::cast(list.syntax().parent()?)?;
         (format!("mod {}", module.name()?), module.name().map(name))
     } else if let Some(label) = ast::Label::cast(node.clone()) {
-        // in this case, `ast::Label` could be seen as a part of `ast::BlockExpr`, to respect the `min_lines` config
+        // in this case, `ast::Label` could be seen as a part of `ast::BlockExpr`
+        // the actual number of lines in this case should be the line count of the parent BlockExpr, which the `min_lines` config care about
         node = node.parent()?;
         let block = label.syntax().parent().and_then(ast::BlockExpr::cast)?;
         closing_token = block.stmt_list()?.r_curly_token()?;
