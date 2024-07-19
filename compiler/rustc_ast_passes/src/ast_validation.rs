@@ -438,6 +438,11 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    /// This ensures that items can only be `unsafe` (or unmarked) outside of extern
+    /// blocks.
+    ///
+    /// This additionally ensures that within extern blocks, items can only be
+    /// `safe`/`unsafe` inside of a `unsafe`-adorned extern block.
     fn check_item_safety(&self, span: Span, safety: Safety) {
         match self.extern_mod_safety {
             Some(extern_safety) => {
@@ -1177,6 +1182,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Static(box StaticItem { expr, safety, .. }) => {
                 self.check_item_safety(item.span, *safety);
+                if matches!(safety, Safety::Unsafe(_)) {
+                    self.dcx().emit_err(errors::UnsafeStatic { span: item.span });
+                }
 
                 if expr.is_none() {
                     self.dcx().emit_err(errors::StaticWithoutBody {

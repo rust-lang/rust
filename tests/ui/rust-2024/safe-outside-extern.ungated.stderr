@@ -28,6 +28,12 @@ error: function pointers cannot be declared with `safe` safety qualifier
 LL | type FnPtr = safe fn(i32, i32) -> i32;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
+  --> $DIR/safe-outside-extern.rs:28:1
+   |
+LL | unsafe static LOL: u8 = 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0658]: `unsafe extern {}` blocks and `safe` keyword are experimental
   --> $DIR/safe-outside-extern.rs:4:1
    |
@@ -78,6 +84,6 @@ LL | type FnPtr = safe fn(i32, i32) -> i32;
    = help: add `#![feature(unsafe_extern_blocks)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
