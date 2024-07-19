@@ -675,7 +675,6 @@ ul.block, .block li {
 	border-top: solid 16px transparent;
 	box-sizing: content-box;
 	position: relative;
-	background-color: var(--sidebar-background-color);
 	background-clip: border-box;
 	z-index: 1;
 }
