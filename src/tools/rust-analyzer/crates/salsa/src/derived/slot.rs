@@ -94,6 +94,7 @@ enum MaybeChangedSinceProbeState<G> {
 impl<Q> Slot<Q>
 where
     Q: QueryFunction,
+    Q::Value: Eq,
 {
     pub(super) fn new(database_key_index: DatabaseKeyIndex) -> Self {
         Self {
@@ -270,7 +271,7 @@ where
             // used to be, that is a "breaking change" that our
             // consumers must be aware of. Becoming *more* durable
             // is not. See the test `constant_to_non_constant`.
-            if revisions.durability >= old_memo.revisions.durability {
+            if revisions.durability >= old_memo.revisions.durability && old_memo.value == value {
                 debug!(
                     "read_upgrade({:?}): value is equal, back-dating to {:?}",
                     self, old_memo.revisions.changed_at,
@@ -550,6 +551,7 @@ where
 struct PanicGuard<'me, Q>
 where
     Q: QueryFunction,
+    Q::Value: Eq,
 {
     slot: &'me Slot<Q>,
     runtime: &'me Runtime,
@@ -558,6 +560,7 @@ where
 impl<'me, Q> PanicGuard<'me, Q>
 where
     Q: QueryFunction,
+    Q::Value: Eq,
 {
     fn new(slot: &'me Slot<Q>, runtime: &'me Runtime) -> Self {
         Self { slot, runtime }
@@ -616,6 +619,7 @@ Please report this bug to https://github.com/salsa-rs/salsa/issues."
 impl<'me, Q> Drop for PanicGuard<'me, Q>
 where
     Q: QueryFunction,
+    Q::Value: Eq,
 {
     fn drop(&mut self) {
         if std::thread::panicking() {

@@ -43,6 +43,7 @@ where
 impl<Q> DerivedStorage<Q>
 where
     Q: QueryFunction,
+    Q::Value: Eq,
 {
     fn slot(&self, key: &Q::Key) -> Arc<Slot<Q>> {
         if let Some(v) = self.slot_map.read().get(key) {
@@ -64,6 +65,7 @@ where
 impl<Q> QueryStorageOps<Q> for DerivedStorage<Q>
 where
     Q: QueryFunction,
+    Q::Value: Eq,
 {
     const CYCLE_STRATEGY: crate::plumbing::CycleRecoveryStrategy = Q::CYCLE_STRATEGY;
 
@@ -139,6 +141,7 @@ where
 impl<Q> DerivedQueryStorageOps<Q> for DerivedStorage<Q>
 where
     Q: QueryFunction,
+    Q::Value: Eq,
 {
     fn invalidate<S>(&self, runtime: &mut Runtime, key: &S)
     where
