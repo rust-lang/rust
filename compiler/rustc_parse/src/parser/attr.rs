@@ -303,17 +303,13 @@ impl<'a> Parser<'a> {
                 None
             };
             if let Some(attr) = attr {
-                let end_pos = self.num_bump_calls;
-                // If we are currently capturing tokens, mark the location of this inner attribute.
-                // If capturing ends up creating a `LazyAttrTokenStream`, we will include
-                // this replace range with it, removing the inner attribute from the final
-                // `AttrTokenStream`. Inner attributes are stored in the parsed AST note.
-                // During macro expansion, they are selectively inserted back into the
-                // token stream (the first inner attribute is removed each time we invoke the
-                // corresponding macro).
-                let range = start_pos..end_pos;
+                // If we are currently capturing tokens (i.e. we are within a call to
+                // `Parser::collect_tokens_trailing_tokens`) record the token positions of this
+                // inner attribute, for possible later processing in a `LazyAttrTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
-                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, None));
+                    let end_pos = self.num_bump_calls;
+                    let range = start_pos..end_pos;
+                    self.capture_state.inner_attr_ranges.insert(attr.id, range);
                 }
                 attrs.push(attr);
             } else {
@@ -463,7 +459,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// The attributes are complete if all attributes are either a doc comment or a builtin attribute other than `cfg_attr`
+/// The attributes are complete if all attributes are either a doc comment or a
+/// builtin attribute other than `cfg_attr`.
 pub fn is_complete(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().all(|attr| {
         attr.is_doc_comment()
