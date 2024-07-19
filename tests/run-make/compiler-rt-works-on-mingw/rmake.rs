@@ -1,6 +1,6 @@
 // `compiler-rt` ("runtime") is a suite of LLVM features compatible with rustc.
-// After building it was enabled on Windows-gnu in #29874, this test checks
-// that compilation and execution with it are successful.
+// After building it was enabled on Windows-gnu in #29874, this test is a basic smoke test to
+// check if building and linking to it can work at all.
 // See https://github.com/rust-lang/rust/pull/29478
 
 //@ only-windows-gnu

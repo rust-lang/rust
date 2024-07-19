@@ -6,7 +6,9 @@
 // library will be stripped out, and the linkage will fail.
 // See https://github.com/rust-lang/rust/commit/e6072fa0c4c22d62acf3dcb78c8ee260a1368bd7
 
-// FIXME(Oneirical): test-various
+//@ ignore-cross-compile
+// Reason: linkage still fails as the object files produced are not in the correct
+// format in the `build_native_static_lib` step
 
 use run_make_support::{build_native_static_lib, rustc};
 

@@ -16,6 +16,7 @@ pub fn cc() -> Cc {
 }
 
 /// Construct a new platform-specific CXX compiler invocation.
+/// CXX_DEFAULT_FLAGS is passed from compiletest.
 #[track_caller]
 pub fn cxx() -> Cc {
     Cc::new_cxx()
@@ -51,6 +52,7 @@ impl Cc {
     }
 
     /// Construct a new platform-specific CXX compiler invocation.
+    /// CXX_DEFAULT_FLAGS is passed from compiletest.
     #[track_caller]
     pub fn new_cxx() -> Self {
         let compiler = env_var("CXX");
