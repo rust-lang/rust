@@ -261,6 +261,80 @@ mod debug_tuple {
             format!("{Bar:#?}")
         );
     }
+
+    #[test]
+    fn test_empty_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_tuple("Foo").finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("Foo(..)", format!("{Foo:?}"));
+        assert_eq!("Foo(..)", format!("{Foo:#?}"));
+    }
+
+    #[test]
+    fn test_multiple_and_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_tuple("Foo")
+                    .field(&true)
+                    .field(&format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("Foo(true, 10/20, ..)", format!("{Foo:?}"));
+        assert_eq!(
+            "Foo(
+    true,
+    10/20,
+    ..
+)",
+            format!("{Foo:#?}")
+        );
+    }
+
+    #[test]
+    fn test_nested_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_tuple("Foo")
+                    .field(&true)
+                    .field(&format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        struct Bar;
+
+        impl fmt::Debug for Bar {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_tuple("Bar").field(&Foo).field(&"world").finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!(r#"Bar(Foo(true, 10/20, ..), "world", ..)"#, format!("{Bar:?}"));
+        assert_eq!(
+            r#"Bar(
+    Foo(
+        true,
+        10/20,
+        ..
+    ),
+    "world",
+    ..
+)"#,
+            format!("{Bar:#?}")
+        );
+    }
 }
 
 mod debug_map {
@@ -371,8 +445,7 @@ mod debug_map {
         }
 
         assert_eq!(
-            r#"{"foo": {"bar": true, 10: 10/20}, \
-                    {"bar": true, 10: 10/20}: "world"}"#,
+            r#"{"foo": {"bar": true, 10: 10/20}, {"bar": true, 10: 10/20}: "world"}"#,
             format!("{Bar:?}")
         );
         assert_eq!(
@@ -471,6 +544,103 @@ mod debug_map {
 
         let _ = format!("{Foo:?}");
     }
+
+    #[test]
+    fn test_empty_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_map().finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("{..}", format!("{Foo:?}"));
+        assert_eq!("{..}", format!("{Foo:#?}"));
+    }
+
+    #[test]
+    fn test_multiple_and_non_exhaustive() {
+        struct Entry;
+
+        impl fmt::Debug for Entry {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_map()
+                    .entry(&"bar", &true)
+                    .entry(&10, &format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        struct KeyValue;
+
+        impl fmt::Debug for KeyValue {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_map()
+                    .key(&"bar")
+                    .value(&true)
+                    .key(&10)
+                    .value(&format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!(format!("{Entry:?}"), format!("{KeyValue:?}"));
+        assert_eq!(format!("{Entry:#?}"), format!("{KeyValue:#?}"));
+
+        assert_eq!(r#"{"bar": true, 10: 10/20, ..}"#, format!("{Entry:?}"));
+        assert_eq!(
+            r#"{
+    "bar": true,
+    10: 10/20,
+    ..
+}"#,
+            format!("{Entry:#?}")
+        );
+    }
+
+    #[test]
+    fn test_nested_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_map()
+                    .entry(&"bar", &true)
+                    .entry(&10, &format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        struct Bar;
+
+        impl fmt::Debug for Bar {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_map().entry(&"foo", &Foo).entry(&Foo, &"world").finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!(
+            r#"{"foo": {"bar": true, 10: 10/20, ..}, {"bar": true, 10: 10/20, ..}: "world", ..}"#,
+            format!("{Bar:?}")
+        );
+        assert_eq!(
+            r#"{
+    "foo": {
+        "bar": true,
+        10: 10/20,
+        ..
+    },
+    {
+        "bar": true,
+        10: 10/20,
+        ..
+    }: "world",
+    ..
+}"#,
+            format!("{Bar:#?}")
+        );
+    }
 }
 
 mod debug_set {
@@ -559,6 +729,80 @@ mod debug_set {
             format!("{Bar:#?}")
         );
     }
+
+    #[test]
+    fn test_empty_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_set().finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("{..}", format!("{Foo:?}"));
+        assert_eq!("{..}", format!("{Foo:#?}"));
+    }
+
+    #[test]
+    fn test_multiple_and_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_set()
+                    .entry(&true)
+                    .entry(&format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("{true, 10/20, ..}", format!("{Foo:?}"));
+        assert_eq!(
+            "{
+    true,
+    10/20,
+    ..
+}",
+            format!("{Foo:#?}")
+        );
+    }
+
+    #[test]
+    fn test_nested_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_set()
+                    .entry(&true)
+                    .entry(&format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        struct Bar;
+
+        impl fmt::Debug for Bar {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_set().entry(&Foo).entry(&"world").finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!(r#"{{true, 10/20, ..}, "world", ..}"#, format!("{Bar:?}"));
+        assert_eq!(
+            r#"{
+    {
+        true,
+        10/20,
+        ..
+    },
+    "world",
+    ..
+}"#,
+            format!("{Bar:#?}")
+        );
+    }
 }
 
 mod debug_list {
@@ -643,6 +887,80 @@ mod debug_list {
         10/20,
     ],
     "world",
+]"#,
+            format!("{Bar:#?}")
+        );
+    }
+
+    #[test]
+    fn test_empty_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_list().finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("[..]", format!("{Foo:?}"));
+        assert_eq!("[..]", format!("{Foo:#?}"));
+    }
+
+    #[test]
+    fn test_multiple_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_list()
+                    .entry(&true)
+                    .entry(&format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!("[true, 10/20, ..]", format!("{Foo:?}"));
+        assert_eq!(
+            "[
+    true,
+    10/20,
+    ..
+]",
+            format!("{Foo:#?}")
+        );
+    }
+
+    #[test]
+    fn test_nested_non_exhaustive() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_list()
+                    .entry(&true)
+                    .entry(&format_args!("{}/{}", 10, 20))
+                    .finish_non_exhaustive()
+            }
+        }
+
+        struct Bar;
+
+        impl fmt::Debug for Bar {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_list().entry(&Foo).entry(&"world").finish_non_exhaustive()
+            }
+        }
+
+        assert_eq!(r#"[[true, 10/20, ..], "world", ..]"#, format!("{Bar:?}"));
+        assert_eq!(
+            r#"[
+    [
+        true,
+        10/20,
+        ..
+    ],
+    "world",
+    ..
 ]"#,
             format!("{Bar:#?}")
         );
