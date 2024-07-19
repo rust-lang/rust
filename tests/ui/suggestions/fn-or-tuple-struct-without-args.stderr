@@ -129,6 +129,11 @@ error[E0533]: expected value, found struct variant `E::B`
    |
 LL |     let _: E = E::B;
    |                ^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let _: E = E::B { a: /* value */ };
+   |                     ++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:37:20
