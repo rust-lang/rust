@@ -19,7 +19,7 @@ use getopts::{Matches, Options};
 
 use crate::rustfmt::{
     load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName,
-    FormatReportFormatterBuilder, Input, Session, Verbosity,
+    FormatReportFormatterBuilder, Input, Session, StyleEdition, Verbosity,
 };
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rustfmt/issues/new?labels=bug";
@@ -129,7 +129,12 @@ fn make_opts() -> Options {
          found reverts to the input file path",
         "[Path for the configuration file]",
     );
-    opts.optopt("", "edition", "Rust edition to use", "[2015|2018|2021]");
+    opts.optopt(
+        "",
+        "edition",
+        "Rust edition to use",
+        "[2015|2018|2021|2024]",
+    );
     opts.optopt(
         "",
         "color",
@@ -180,6 +185,12 @@ fn make_opts() -> Options {
             "",
             "skip-children",
             "Don't reformat child modules (unstable).",
+        );
+        opts.optopt(
+            "",
+            "style-edition",
+            "The edition of the Style Guide (unstable).",
+            "[2015|2018|2021|2024]",
         );
     }
 
@@ -525,6 +536,7 @@ struct GetOptsOptions {
     backup: bool,
     check: bool,
     edition: Option<Edition>,
+    style_edition: Option<StyleEdition>,
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
@@ -556,6 +568,10 @@ impl GetOptsOptions {
                 if let Some(ref file_lines) = matches.opt_str("file-lines") {
                     options.file_lines = file_lines.parse()?;
                 }
+                if let Some(ref edition_str) = matches.opt_str("style-edition") {
+                    options.style_edition =
+                        Some(style_edition_from_style_edition_str(edition_str)?);
+                }
             } else {
                 let mut unstable_options = vec![];
                 if matches.opt_present("skip-children") {
@@ -566,6 +582,9 @@ impl GetOptsOptions {
                 }
                 if matches.opt_present("file-lines") {
                     unstable_options.push("`--file-lines`");
+                }
+                if matches.opt_present("style-edition") {
+                    unstable_options.push("`--style-edition`");
                 }
                 if !unstable_options.is_empty() {
                     let s = if unstable_options.len() == 1 { "" } else { "s" };
@@ -688,6 +707,9 @@ impl CliOptions for GetOptsOptions {
         if let Some(edition) = self.edition {
             config.set_cli().edition(edition);
         }
+        if let Some(edition) = self.style_edition {
+            config.set().style_edition(edition);
+        }
         if self.check {
             config.set_cli().emit_mode(EmitMode::Diff);
         } else if let Some(emit_mode) = self.emit_mode {
@@ -720,6 +742,16 @@ fn edition_from_edition_str(edition_str: &str) -> Result<Edition> {
         "2021" => Ok(Edition::Edition2021),
         "2024" => Ok(Edition::Edition2024),
         _ => Err(format_err!("Invalid value for `--edition`")),
+    }
+}
+
+fn style_edition_from_style_edition_str(edition_str: &str) -> Result<StyleEdition> {
+    match edition_str {
+        "2015" => Ok(StyleEdition::Edition2015),
+        "2018" => Ok(StyleEdition::Edition2018),
+        "2021" => Ok(StyleEdition::Edition2021),
+        "2024" => Ok(StyleEdition::Edition2024),
+        _ => Err(format_err!("Invalid value for `--style-edition`")),
     }
 }
 
