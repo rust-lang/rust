@@ -1270,7 +1270,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             // Inform the optimizer about it.
             unsafe { hint::assert_unchecked(res < 1 << (Self::BITS / 2)) };
 
-            // SAFETY: The result is positive.
+            // SAFETY: The square root of an integer >= 1 is always >= 1.
             unsafe { Self::new_unchecked(res) }
         }
     };
