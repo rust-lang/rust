@@ -3536,29 +3536,50 @@ impl<'test> TestCx<'test> {
         debug!(?self.config.stage_id);
         let stage = self.config.stage_id.split('-').next().unwrap();
 
-        // First, we construct the path to the built support library.
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let mut support_lib_path = PathBuf::new();
-        support_lib_path.push(&build_root);
-        support_lib_path.push(format!("{}-tools-bin", stage));
-        support_lib_path.push("librun_make_support.rlib");
+        // In order to link in the support library as a rlib when compiling recipes, we need three
+        // paths:
+        // 1. Path of the built support library rlib itself.
+        // 2. Path of the built support library's dependencies directory.
+        // 3. Path of the built support library's dependencies' dependencies directory.
+        //
+        // The paths look like
+        //
+        // ```
+        // build/<target_tuplet>/
+        // ├── stageN-tools-bin/
+        // │   └── librun_make_support.rlib       // <- support rlib itself
+        // ├── stageN-tools/
+        // │   ├── release/deps/                  // <- deps of deps
+        // │   └── <host_tuplet>/release/deps/    // <- deps
+        // ```
+        //
+        // There almost certainly is a better way to do this, but this seems to work for now.
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let mut support_lib_deps = PathBuf::new();
-        support_lib_deps.push(&build_root);
-        support_lib_deps.push(format!("{}-tools", stage));
-        support_lib_deps.push(&self.config.host);
-        support_lib_deps.push("release");
-        support_lib_deps.push("deps");
+        let support_lib_path = {
+            let mut p = build_root.clone();
+            p.push(format!("{}-tools-bin", stage));
+            p.push("librun_make_support.rlib");
+            p
+        };
+        debug!(?support_lib_path);
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let mut support_lib_deps_deps = PathBuf::new();
-        support_lib_deps_deps.push(&build_root);
-        support_lib_deps_deps.push(format!("{}-tools", stage));
-        support_lib_deps_deps.push("release");
-        support_lib_deps_deps.push("deps");
-
+        let support_lib_deps = {
+            let mut p = build_root.clone();
+            p.push(format!("{}-tools", stage));
+            p.push(&self.config.host);
+            p.push("release");
+            p.push("deps");
+            p
+        };
         debug!(?support_lib_deps);
+
+        let support_lib_deps_deps = {
+            let mut p = build_root.clone();
+            p.push(format!("{}-tools", stage));
+            p.push("release");
+            p.push("deps");
+            p
+        };
         debug!(?support_lib_deps_deps);
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
