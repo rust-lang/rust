@@ -11,12 +11,14 @@ fn main() {
     cfged_out::inner::uwu(); //~ ERROR cannot find function
     //~^ NOTE found an item that was configured out
     //~| NOTE not found in `cfged_out::inner`
+    //~| NOTE the item is gated here
 
     // The module isn't found - we would like to get a diagnostic, but currently don't due to
     // the awkward way the resolver diagnostics are currently implemented.
     cfged_out::inner::doesnt_exist::hello(); //~ ERROR failed to resolve
     //~^ NOTE could not find `doesnt_exist` in `inner`
     //~| NOTE found an item that was configured out
+    //~| NOTE the item is gated here
 
     // It should find the one in the right module, not the wrong one.
     cfged_out::inner::right::meow(); //~ ERROR cannot find function
@@ -28,4 +30,5 @@ fn main() {
     cfged_out::vanished(); //~ ERROR cannot find function
     //~^ NOTE found an item that was configured out
     //~| NOTE not found in `cfged_out`
+    //~| NOTE the item is gated here
 }
