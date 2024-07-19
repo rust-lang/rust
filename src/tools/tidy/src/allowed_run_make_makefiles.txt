@@ -53,7 +53,6 @@ run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
-run-make/no-duplicate-libs/Makefile
 run-make/panic-abort-eh_frame/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
