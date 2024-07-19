@@ -3660,27 +3660,35 @@ impl<'test> TestCx<'test> {
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
 
+        // Now run rustc to build the recipe.
         let res = self.run_command_to_procres(&mut rustc);
         if !res.status.success() {
             self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
         }
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let mut stage_std_path = PathBuf::new();
-        stage_std_path.push(&build_root);
-        stage_std_path.push(&stage);
-        stage_std_path.push("lib");
+        // To actually run the recipe, we have to provide the recipe with a bunch of information
+        // provided through env vars.
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
+        // Compute stage-specific standard library paths.
+        let stage_std_path = {
+            let mut p = build_root.clone();
+            p.push(&stage);
+            p.push("lib");
+            p
+        };
+        debug!(?stage_std_path);
+
+        // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
             let mut paths = base_dylib_search_paths.clone();
             paths.push(support_lib_path.parent().unwrap().to_path_buf());
             paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
             paths
         };
+        debug!(?recipe_dylib_search_paths);
 
-        // FIXME(jieyouxu): explain what the hecc we are doing here.
-        let target_rpaths = {
+        // Compute runtime library search paths for recipes. This is target-specific.
+        let target_runtime_dylib_search_paths = {
             let mut paths = vec![rmake_out_dir.clone()];
             paths.extend(base_dylib_search_paths.iter().cloned());
             paths
@@ -3693,7 +3701,7 @@ impl<'test> TestCx<'test> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env("TARGET_RPATH_ENV", &env::join_paths(target_rpaths).unwrap())
+            .env("TARGET_RPATH_ENV", &env::join_paths(target_runtime_dylib_search_paths).unwrap())
             .env(dylib_env_var(), &env::join_paths(recipe_dylib_search_paths).unwrap())
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
