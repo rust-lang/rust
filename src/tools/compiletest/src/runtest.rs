@@ -3609,8 +3609,9 @@ impl<'test> TestCx<'test> {
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
         // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
-        let mut cmd = Command::new(&self.config.rustc_path);
-        cmd.arg("-o")
+        let mut rustc = Command::new(&self.config.rustc_path);
+        rustc
+            .arg("-o")
             .arg(&recipe_bin)
             .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap().to_string_lossy()))
             .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
@@ -3631,7 +3632,7 @@ impl<'test> TestCx<'test> {
 
         // In test code we want to be very pedantic about values being silently discarded that are
         // annotated with `#[must_use]`.
-        cmd.arg("-Dunused_must_use");
+        rustc.arg("-Dunused_must_use");
 
         // FIXME(jieyouxu): explain this!
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
@@ -3640,10 +3641,10 @@ impl<'test> TestCx<'test> {
             debug!(?stage0_sysroot);
             debug!(exists = stage0_sysroot.exists());
 
-            cmd.arg("--sysroot").arg(&stage0_sysroot);
+            rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
 
-        let res = self.run_command_to_procres(&mut cmd);
+        let res = self.run_command_to_procres(&mut rustc);
         if !res.status.success() {
             self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
         }
