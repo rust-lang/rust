@@ -6,6 +6,7 @@
 // positives.
 
 #![feature(iter_collect_into)]
+#![feature(let_chains)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -87,8 +88,6 @@ impl Crate {
             );
         }
 
-        let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
-
         let cargo_home = env!("CARGO_HOME");
 
         // `src/lib.rs` -> `target/lintcheck/sources/crate-1.2.3/src/lib.rs`
@@ -132,7 +131,7 @@ impl Crate {
             // The wrapper is set to `lintcheck` itself so we can force enable linting and ignore certain crates
             // (see `crate::driver`)
             let status = cmd
-                .env("CARGO_TARGET_DIR", shared_target_dir.join("recursive"))
+                .env("CARGO_TARGET_DIR", shared_target_dir("recursive"))
                 .env("RUSTC_WRAPPER", env::current_exe().unwrap())
                 // Pass the absolute path so `crate::driver` can find `clippy-driver`, as it's executed in various
                 // different working directories
@@ -150,9 +149,10 @@ impl Crate {
             cmd.arg("--message-format=json");
         }
 
+        let shared_target_dir = shared_target_dir(&format!("_{thread_index:?}"));
         let all_output = cmd
             // use the looping index to create individual target dirs
-            .env("CARGO_TARGET_DIR", shared_target_dir.join(format!("_{thread_index:?}")))
+            .env("CARGO_TARGET_DIR", shared_target_dir.as_os_str())
             // Roughly equivalent to `cargo clippy`/`cargo clippy --fix`
             .env("RUSTC_WORKSPACE_WRAPPER", clippy_driver_path)
             .output()
@@ -186,7 +186,10 @@ impl Crate {
         // get all clippy warnings and ICEs
         let mut entries: Vec<ClippyCheckOutput> = Message::parse_stream(stdout.as_bytes())
             .filter_map(|msg| match msg {
-                Ok(Message::CompilerMessage(message)) => ClippyWarning::new(message.message, &self.base_url),
+                Ok(Message::CompilerMessage(message)) => ClippyWarning::new(
+                    normalize_diag(message.message, shared_target_dir.to_str().unwrap()),
+                    &self.base_url,
+                ),
                 _ => None,
             })
             .map(ClippyCheckOutput::ClippyWarning)
@@ -200,6 +203,31 @@ impl Crate {
 
         entries
     }
+}
+
+/// The target directory can sometimes be stored in the file name of spans.
+/// This is problematic since the directory in constructed from the thread
+/// ID and also used in our CI to determine if two lint emissions are the
+/// same or not. This function simply normalizes the `_<thread_id>` to `_*`.
+fn normalize_diag(
+    mut message: cargo_metadata::diagnostic::Diagnostic,
+    thread_target_dir: &str,
+) -> cargo_metadata::diagnostic::Diagnostic {
+    let mut dir_found = false;
+    message
+        .spans
+        .iter_mut()
+        .filter(|span| span.file_name.starts_with(thread_target_dir))
+        .for_each(|span| {
+            dir_found = true;
+            span.file_name
+                .replace_range(0..thread_target_dir.len(), shared_target_dir("_*").to_str().unwrap());
+        });
+
+    if dir_found && let Some(rendered) = &mut message.rendered {
+        *rendered = rendered.replace(thread_target_dir, shared_target_dir("_*").to_str().unwrap());
+    }
+    message
 }
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
@@ -298,7 +326,7 @@ fn lintcheck(config: LintcheckConfig) {
                 true
             }
         })
-        .map(|krate| krate.download_and_extract())
+        .map(|krate| krate.download_and_prepare())
         .collect();
 
     if crates.is_empty() {
@@ -386,6 +414,15 @@ fn lintcheck(config: LintcheckConfig) {
 #[must_use]
 fn clippy_project_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()
+}
+
+/// The qualifier can be used to separate different threads from another. By
+/// default it should be set to `_<thread_id>`
+#[must_use]
+fn shared_target_dir(qualifier: &str) -> PathBuf {
+    clippy_project_root()
+        .join("target/lintcheck/shared_target_dir")
+        .join(qualifier)
 }
 
 #[test]

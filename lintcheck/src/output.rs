@@ -70,7 +70,14 @@ impl ClippyWarning {
         let rendered = diag.rendered.as_mut().unwrap();
         *rendered = strip_ansi_escapes::strip_str(&rendered);
 
-        let span = diag.spans.iter().find(|span| span.is_primary).unwrap();
+        // Turns out that there are lints without spans... For example Rust's
+        // `renamed_and_removed_lints` if the lint is given via the CLI.
+        let span = diag
+            .spans
+            .iter()
+            .find(|span| span.is_primary)
+            .or(diag.spans.first())
+            .unwrap_or_else(|| panic!("Diagnositc without span: {diag}"));
         let file = &span.file_name;
         let url = if let Some(src_split) = file.find("/src/") {
             // This removes the inital `target/lintcheck/sources/<crate>-<version>/`
