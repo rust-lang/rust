@@ -3479,7 +3479,7 @@ impl<'test> TestCx<'test> {
 
         // We construct the following directory tree for each rmake.rs test:
         // ```
-        // base_dir/
+        // <base_dir>/
         //     rmake.exe
         //     rmake_out/
         // ```
@@ -3597,13 +3597,14 @@ impl<'test> TestCx<'test> {
             paths
         };
 
-        // Finally, we need to run the recipe binary to build and run the actual tests.
-        // FIXME(jieyouxu): use `std::env::consts::EXE_EXTENSION`.
-        let recipe_bin = base_dir.join(if self.config.target.contains("windows") {
-            "rmake.exe"
-        } else {
-            "rmake"
-        });
+        // Calculate the paths of the recipe binary. As previously discussed, this is placed at
+        // `<base_dir>/<bin_name>` with `bin_name` being `rmake` or `rmake.exe` dependending on
+        // platform.
+        let recipe_bin = {
+            let mut p = base_dir.join("rmake");
+            p.set_extension(env::consts::EXE_EXTENSION);
+            p
+        };
         debug!(?recipe_bin);
 
         // FIXME(jieyouxu): explain what the hecc we are doing here.
