@@ -289,7 +289,7 @@ impl Malloc {
 
 impl Install {
     pub(crate) fn server(&self) -> Option<ServerOpt> {
-        if !self.server {
+        if (self.client || self.proc_macro_server) && !self.server {
             return None;
         }
         let malloc = if self.mimalloc {
@@ -308,7 +308,7 @@ impl Install {
         Some(ProcMacroServerOpt { dev_rel: self.dev_rel })
     }
     pub(crate) fn client(&self) -> Option<ClientOpt> {
-        if !self.client {
+        if (self.server || self.proc_macro_server) && !self.client {
             return None;
         }
         Some(ClientOpt { code_bin: self.code_bin.clone() })
