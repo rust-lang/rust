@@ -3433,14 +3433,19 @@ impl<'test> TestCx<'test> {
 
     fn run_rmake_v2_test(&self) {
         // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
-        // (`rmake.rs`) to run the actual tests. The support library is already built as a tool
-        // dylib and is available under `build/$TARGET/stageN-tools-bin/librun_make_support.rlib`.
+        // (`rmake.rs`) to run the actual tests. The support library is already built as a tool rust
+        // library and is available under `build/$TARGET/stageN-tools-bin/librun_make_support.rlib`.
         //
-        // 1. We need to build the recipe `rmake.rs` and link in the support library.
-        // 2. We need to run the recipe to build and run the tests.
+        // 1. We need to build the recipe `rmake.rs` as a binary and link in the `run_make_support`
+        //    library.
+        // 2. We need to run the recipe binary.
+
+        // FIXME(jieyouxu): hm, cwd doesn't look right here?
         let cwd = env::current_dir().unwrap();
+        // FIXME(jieyouxu): is there a better way to get `src_root`?
         let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
         let src_root = cwd.join(&src_root);
+        // FIXME(jieyouxu): is there a better way to get `build_root`?
         let build_root = self.config.build_base.parent().unwrap().parent().unwrap();
         let build_root = cwd.join(&build_root);
 
@@ -3450,11 +3455,13 @@ impl<'test> TestCx<'test> {
         //     rmake.exe
         //     rmake_out/
         // ```
-        // having the executable separate from the output artifacts directory allows the recipes to
-        // `remove_dir_all($TMPDIR)` without running into permission denied issues because
-        // the executable is not under the `rmake_out/` directory.
+        // having the recipe executable separate from the output artifacts directory allows the
+        // recipes to `remove_dir_all($TMPDIR)` without running into issues related trying to remove
+        // a currently running executable because the recipe executable is not under the
+        // `rmake_out/` directory.
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
+        // FIXME(jieyouxu): is there a better way to compute `base_dir`?
         let base_dir = cwd.join(self.output_base_name());
         if base_dir.exists() {
             self.aggressive_rm_rf(&base_dir).unwrap();
@@ -3477,10 +3484,13 @@ impl<'test> TestCx<'test> {
             }
         }
 
+        // FIXME(jieyouxu): is there a better way to get the stage number or otherwise compute the
+        // required stage-specific build directories?
         // HACK: assume stageN-target, we only want stageN.
         let stage = self.config.stage_id.split('-').next().unwrap();
 
         // First, we construct the path to the built support library.
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
         let mut support_lib_path = PathBuf::new();
         support_lib_path.push(&build_root);
         support_lib_path.push(format!("{}-tools-bin", stage));
@@ -3492,12 +3502,14 @@ impl<'test> TestCx<'test> {
         stage_std_path.push("lib");
 
         // Then, we need to build the recipe `rmake.rs` and link in the support library.
+        // FIXME(jieyouxu): use `std::env::consts::EXE_EXTENSION`.
         let recipe_bin = base_dir.join(if self.config.target.contains("windows") {
             "rmake.exe"
         } else {
             "rmake"
         });
 
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
         let mut support_lib_deps = PathBuf::new();
         support_lib_deps.push(&build_root);
         support_lib_deps.push(format!("{}-tools", stage));
@@ -3505,6 +3517,7 @@ impl<'test> TestCx<'test> {
         support_lib_deps.push("release");
         support_lib_deps.push("deps");
 
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
         let mut support_lib_deps_deps = PathBuf::new();
         support_lib_deps_deps.push(&build_root);
         support_lib_deps_deps.push(format!("{}-tools", stage));
@@ -3514,6 +3527,7 @@ impl<'test> TestCx<'test> {
         debug!(?support_lib_deps);
         debug!(?support_lib_deps_deps);
 
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
         let orig_dylib_env_paths =
             Vec::from_iter(env::split_paths(&env::var(dylib_env_var()).unwrap()));
 
@@ -3522,6 +3536,8 @@ impl<'test> TestCx<'test> {
         host_dylib_env_paths.extend(orig_dylib_env_paths.iter().cloned());
         let host_dylib_env_paths = env::join_paths(host_dylib_env_paths).unwrap();
 
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
+        // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
         let mut cmd = Command::new(&self.config.rustc_path);
         cmd.arg("-o")
             .arg(&recipe_bin)
@@ -3563,16 +3579,20 @@ impl<'test> TestCx<'test> {
         // Finally, we need to run the recipe binary to build and run the actual tests.
         debug!(?recipe_bin);
 
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
         let mut dylib_env_paths = orig_dylib_env_paths.clone();
         dylib_env_paths.push(support_lib_path.parent().unwrap().to_path_buf());
         dylib_env_paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
         let dylib_env_paths = env::join_paths(dylib_env_paths).unwrap();
 
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
         let mut target_rpath_env_path = Vec::new();
         target_rpath_env_path.push(&rmake_out_dir);
         target_rpath_env_path.extend(&orig_dylib_env_paths);
         let target_rpath_env_path = env::join_paths(target_rpath_env_path).unwrap();
 
+        // FIXME(jieyouxu): explain what the hecc we are doing here.
+        // FIXME(jieyouxu): audit these env vars. some of them only makes sense for make, not rustc!
         let mut cmd = Command::new(&recipe_bin);
         cmd.current_dir(&rmake_out_dir)
             .stdout(Stdio::piped())
