@@ -78,7 +78,7 @@ impl fmt::Write for PadAdapter<'_, '_> {
 ///
 /// assert_eq!(
 ///     format!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() }),
-///     "Foo { bar: 10, baz: \"Hello World\" }",
+///     r#"Foo { bar: 10, baz: "Hello World" }"#,
 /// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
@@ -125,7 +125,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Bar { bar: 10, another: "Hello World".to_string() }),
-    ///     "Bar { bar: 10, another: \"Hello World\", nonexistent_field: 1 }",
+    ///     r#"Bar { bar: 10, another: "Hello World", nonexistent_field: 1 }"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -237,7 +237,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Bar { bar: 10, baz: "Hello World".to_string() }),
-    ///     "Bar { bar: 10, baz: \"Hello World\" }",
+    ///     r#"Bar { bar: 10, baz: "Hello World" }"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -280,7 +280,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 ///
 /// assert_eq!(
 ///     format!("{:?}", Foo(10, "Hello World".to_string())),
-///     "Foo(10, \"Hello World\")",
+///     r#"Foo(10, "Hello World")"#,
 /// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
@@ -322,7 +322,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(10, "Hello World".to_string())),
-    ///     "Foo(10, \"Hello World\")",
+    ///     r#"Foo(10, "Hello World")"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -381,7 +381,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(10, "Hello World".to_string())),
-    ///     "Foo(10, \"Hello World\")",
+    ///     r#"Foo(10, "Hello World")"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -747,7 +747,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 ///
 /// assert_eq!(
 ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-///     "{\"A\": 10, \"B\": 11}",
+///     r#"{"A": 10, "B": 11}"#,
 /// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
@@ -787,7 +787,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    ///     r#"{"whole": [("A", 10), ("B", 11)]}"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -823,7 +823,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    ///     r#"{"whole": [("A", 10), ("B", 11)]}"#,
     /// );
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
@@ -899,7 +899,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    ///     r#"{"whole": [("A", 10), ("B", 11)]}"#,
     /// );
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
@@ -957,7 +957,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"A\": 10, \"B\": 11}",
+    ///     r#"{"A": 10, "B": 11}"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -997,7 +997,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// assert_eq!(
     ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"A\": 10, \"B\": 11}",
+    ///     r#"{"A": 10, "B": 11}"#,
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
