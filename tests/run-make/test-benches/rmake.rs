@@ -13,6 +13,7 @@
 use run_make_support::{run, run_with_args, rustc};
 
 fn main() {
+    // Smoke-test that #[bench] isn't entirely broken.
     rustc().arg("--test").input("smokebench.rs").opt().run();
     run_with_args("smokebench", &["--bench"]);
     run_with_args("smokebench", &["--bench", "noiter"]);
