@@ -51,7 +51,7 @@ Let's place our async test at `tests/ui/async-await/await-without-async.rs`:
 
 ```rust,ignore
 // Check what happens when using await in a non-async fn.
-// edition:2018
+//@ edition:2018
 
 async fn foo() {}
 
@@ -66,7 +66,7 @@ A few things to notice about our test:
 
 * The top should start with a short comment that [explains what the test is
   for](#explanatory_comment).
-* The `// edition:2018` comment is called a [header](headers.md) which provides
+* The `//@ edition:2018` comment is called a [header](headers.md) which provides
   instructions to compiletest on how to build the test.
   Here we need to set the edition for `async` to work (the default is 2015).
 * Following that is the source of the test.
