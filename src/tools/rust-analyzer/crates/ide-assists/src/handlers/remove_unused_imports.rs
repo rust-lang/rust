@@ -1,8 +1,7 @@
 use std::collections::hash_map::Entry;
 
-use hir::{HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
+use hir::{FileRange, HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
 use ide_db::{
-    base_db::FileRange,
     defs::Definition,
     search::{FileReference, ReferenceCategory, SearchScope},
     FxHashMap, RootDatabase,

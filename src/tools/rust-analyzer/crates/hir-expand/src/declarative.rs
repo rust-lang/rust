@@ -129,20 +129,7 @@ impl DeclarativeMacroExpander {
                 _ => None,
             }
         };
-        let toolchain = db.toolchain(def_crate);
-        let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
-            REQUIREMENT.get_or_init(|| VersionReq::parse(">=1.76").unwrap()).matches(
-                &base_db::Version {
-                    pre: base_db::Prerelease::EMPTY,
-                    build: base_db::BuildMetadata::EMPTY,
-                    major: version.major,
-                    minor: version.minor,
-                    patch: version.patch,
-                },
-            )
-        });
-
-        let edition = |ctx: SyntaxContextId| {
+        let ctx_edition = |ctx: SyntaxContextId| {
             let crate_graph = db.crate_graph();
             if ctx.is_root() {
                 crate_graph[def_crate].edition
@@ -165,7 +152,7 @@ impl DeclarativeMacroExpander {
                             DocCommentDesugarMode::Mbe,
                         );
 
-                        mbe::DeclarativeMacro::parse_macro_rules(&tt, edition, new_meta_vars)
+                        mbe::DeclarativeMacro::parse_macro_rules(&tt, ctx_edition)
                     }
                     None => mbe::DeclarativeMacro::from_err(mbe::ParseError::Expected(
                         "expected a token tree".into(),
@@ -193,12 +180,7 @@ impl DeclarativeMacroExpander {
                             DocCommentDesugarMode::Mbe,
                         );
 
-                        mbe::DeclarativeMacro::parse_macro2(
-                            args.as_ref(),
-                            &body,
-                            edition,
-                            new_meta_vars,
-                        )
+                        mbe::DeclarativeMacro::parse_macro2(args.as_ref(), &body, ctx_edition)
                     }
                     None => mbe::DeclarativeMacro::from_err(mbe::ParseError::Expected(
                         "expected a token tree".into(),

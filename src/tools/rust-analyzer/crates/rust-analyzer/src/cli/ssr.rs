@@ -1,6 +1,7 @@
 //! Applies structured search replace rules from the command line.
 
 use anyhow::Context;
+use ide_db::EditionedFileId;
 use ide_ssr::MatchFinder;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use project_model::{CargoConfig, RustLibSource};
@@ -67,7 +68,10 @@ impl flags::Search {
             for &root in db.local_roots().iter() {
                 let sr = db.source_root(root);
                 for file_id in sr.iter() {
-                    for debug_info in match_finder.debug_where_text_equal(file_id, debug_snippet) {
+                    for debug_info in match_finder.debug_where_text_equal(
+                        EditionedFileId::current_edition(file_id),
+                        debug_snippet,
+                    ) {
                         println!("{debug_info:#?}");
                     }
                 }

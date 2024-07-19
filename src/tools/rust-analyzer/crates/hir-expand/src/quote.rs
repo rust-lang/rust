@@ -227,7 +227,6 @@ impl_to_to_tokentrees! {
 mod tests {
     use crate::tt;
     use ::tt::IdentIsRaw;
-    use base_db::FileId;
     use expect_test::expect;
     use intern::Symbol;
     use span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
@@ -235,7 +234,13 @@ mod tests {
 
     const DUMMY: tt::Span = tt::Span {
         range: TextRange::empty(TextSize::new(0)),
-        anchor: SpanAnchor { file_id: FileId::from_raw(0xe4e4e), ast_id: ROOT_ERASED_FILE_AST_ID },
+        anchor: SpanAnchor {
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        },
         ctx: SyntaxContextId::ROOT,
     };
 

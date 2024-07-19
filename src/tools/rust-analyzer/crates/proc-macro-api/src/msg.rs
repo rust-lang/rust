@@ -157,7 +157,6 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 
 #[cfg(test)]
 mod tests {
-    use base_db::FileId;
     use intern::{sym, Symbol};
     use la_arena::RawIdx;
     use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId};
@@ -168,7 +167,10 @@ mod tests {
 
     fn fixture_token_tree() -> Subtree<Span> {
         let anchor = SpanAnchor {
-            file_id: FileId::from_raw(0),
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
             ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)),
         };
 

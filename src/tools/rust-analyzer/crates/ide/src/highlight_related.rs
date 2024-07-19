@@ -1,8 +1,7 @@
 use std::iter;
 
-use hir::{DescendPreference, Semantics};
+use hir::{DescendPreference, FilePosition, FileRange, Semantics};
 use ide_db::{
-    base_db::{FileId, FilePosition, FileRange},
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -11,6 +10,7 @@ use ide_db::{
     },
     FxHashSet, RootDatabase,
 };
+use span::EditionedFileId;
 use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode,
@@ -53,9 +53,12 @@ pub struct HighlightRelatedConfig {
 pub(crate) fn highlight_related(
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightRelatedConfig,
-    pos @ FilePosition { offset, file_id }: FilePosition,
+    ide_db::FilePosition { offset, file_id }: ide_db::FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
     let _p = tracing::info_span!("highlight_related").entered();
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
     let syntax = sema.parse(file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
@@ -81,7 +84,9 @@ pub(crate) fn highlight_related(
         }
         T![|] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
         T![move] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
-        _ if config.references => highlight_references(sema, token, pos),
+        _ if config.references => {
+            highlight_references(sema, token, FilePosition { file_id, offset })
+        }
         _ => None,
     }
 }
@@ -89,7 +94,7 @@ pub(crate) fn highlight_related(
 fn highlight_closure_captures(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
-    file_id: FileId,
+    file_id: EditionedFileId,
 ) -> Option<Vec<HighlightedRange>> {
     let closure = token.parent_ancestors().take(2).find_map(ast::ClosureExpr::cast)?;
     let search_range = closure.body()?.syntax().text_range();

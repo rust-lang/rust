@@ -1,5 +1,7 @@
 SOURCE_FILE
   FN
+    COMMENT "// 2015"
+    WHITESPACE "\n"
     FN_KW "fn"
     WHITESPACE " "
     NAME

@@ -1,7 +1,7 @@
 //! This module is responsible for resolving paths within rules.
 
 use hir::AsAssocItem;
-use ide_db::{base_db::FilePosition, FxHashMap};
+use ide_db::FxHashMap;
 use parsing::Placeholder;
 use syntax::{
     ast::{self, HasGenericArgs},
@@ -195,7 +195,7 @@ impl Resolver<'_, '_> {
 impl<'db> ResolutionScope<'db> {
     pub(crate) fn new(
         sema: &hir::Semantics<'db, ide_db::RootDatabase>,
-        resolve_context: FilePosition,
+        resolve_context: hir::FilePosition,
     ) -> Option<ResolutionScope<'db>> {
         use syntax::ast::AstNode;
         let file = sema.parse(resolve_context.file_id);

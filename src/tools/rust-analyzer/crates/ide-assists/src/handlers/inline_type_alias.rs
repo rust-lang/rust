@@ -92,7 +92,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
             };
 
             for (file_id, refs) in usages.into_iter() {
-                inline_refs_for_file(file_id, refs);
+                inline_refs_for_file(file_id.file_id(), refs);
             }
             if !definition_deleted {
                 builder.edit_file(ctx.file_id());

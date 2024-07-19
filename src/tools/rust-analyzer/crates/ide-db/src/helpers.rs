@@ -2,8 +2,9 @@
 
 use std::collections::VecDeque;
 
-use base_db::{FileId, SourceDatabaseExt};
+use base_db::SourceDatabaseExt;
 use hir::{Crate, DescendPreference, ItemInNs, ModuleDef, Name, Semantics};
+use span::FileId;
 use syntax::{
     ast::{self, make},
     AstToken, SyntaxKind, SyntaxToken, ToSmolStr, TokenAtOffset,

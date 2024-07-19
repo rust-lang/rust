@@ -12,7 +12,7 @@ use cfg::CfgOptions;
 use intern::Symbol;
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::Edition;
+use span::{Edition, EditionedFileId};
 use triomphe::Arc;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
@@ -661,6 +661,10 @@ impl CrateData {
     // is existent among `self.dependencies`.
     fn add_dep(&mut self, dep: Dependency) {
         self.dependencies.push(dep)
+    }
+
+    pub fn root_file_id(&self) -> EditionedFileId {
+        EditionedFileId::new(self.root_file_id, self.edition)
     }
 }
 

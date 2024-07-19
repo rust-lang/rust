@@ -52,7 +52,10 @@ pub(crate) mod dummy_test_span_utils {
     pub const DUMMY: Span = Span {
         range: TextRange::empty(TextSize::new(0)),
         anchor: span::SpanAnchor {
-            file_id: span::FileId::from_raw(0xe4e4e),
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
             ast_id: span::ROOT_ERASED_FILE_AST_ID,
         },
         ctx: SyntaxContextId::ROOT,
@@ -65,7 +68,10 @@ pub(crate) mod dummy_test_span_utils {
             Span {
                 range,
                 anchor: span::SpanAnchor {
-                    file_id: span::FileId::from_raw(0xe4e4e),
+                    file_id: span::EditionedFileId::new(
+                        span::FileId::from_raw(0xe4e4e),
+                        span::Edition::CURRENT,
+                    ),
                     ast_id: span::ROOT_ERASED_FILE_AST_ID,
                 },
                 ctx: SyntaxContextId::ROOT,
@@ -147,7 +153,7 @@ where
         } => TokenBuffer::from_tokens(token_trees),
         _ => TokenBuffer::from_subtree(tt),
     };
-    let parser_input = to_parser_input(&buffer);
+    let parser_input = to_parser_input(edition, &buffer);
     let parser_output = entry_point.parse(&parser_input, edition);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     for event in parser_output.iter() {

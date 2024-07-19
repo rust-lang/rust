@@ -6,7 +6,7 @@ use std::{collections::VecDeque, fmt, fs, iter, sync};
 
 use anyhow::Context;
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileId,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env,
     LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
@@ -14,7 +14,7 @@ use intern::{sym, Symbol};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
-use span::Edition;
+use span::{Edition, FileId};
 use toolchain::Tool;
 use tracing::instrument;
 use triomphe::Arc;
@@ -1470,7 +1470,7 @@ fn sysroot_to_crate_graph(
                     let display_name = CrateDisplayName::from_canonical_name(&stitched[krate].name);
                     let crate_id = crate_graph.add_crate_root(
                         file_id,
-                        Edition::CURRENT,
+                        Edition::CURRENT_FIXME,
                         Some(display_name),
                         None,
                         cfg_options.clone(),

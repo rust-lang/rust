@@ -10,14 +10,12 @@ use hir::{
     HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
 };
 use ide_db::{
-    base_db::{FilePosition, SourceDatabase},
-    famous_defs::FamousDefs,
-    helpers::is_editable_crate,
+    base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
     FxHashMap, FxHashSet, RootDatabase,
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, Edition, SmolStr,
+    AstNode, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -660,6 +658,7 @@ impl<'a> CompletionContext<'a> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
+        let file_id = sema.attach_first_edition(file_id)?;
         let original_file = sema.parse(file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
@@ -668,8 +667,7 @@ impl<'a> CompletionContext<'a> {
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
             let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            // FIXME: Edition
-            parse.reparse(&edit, Edition::CURRENT).tree()
+            parse.reparse(&edit, file_id.edition()).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually

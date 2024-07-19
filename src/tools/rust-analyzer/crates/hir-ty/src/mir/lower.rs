@@ -2,7 +2,7 @@
 
 use std::{fmt::Write, iter, mem};
 
-use base_db::{salsa::Cycle, FileId};
+use base_db::salsa::Cycle;
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     body::Body,
@@ -21,6 +21,7 @@ use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
+use span::FileId;
 use syntax::TextRange;
 use triomphe::Arc;
 

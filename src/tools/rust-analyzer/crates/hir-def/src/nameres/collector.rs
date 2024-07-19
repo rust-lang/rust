@@ -5,7 +5,7 @@
 
 use std::{cmp::Ordering, iter, mem, ops::Not};
 
-use base_db::{CrateId, CrateOrigin, Dependency, FileId, LangCrateOrigin};
+use base_db::{CrateId, CrateOrigin, Dependency, LangCrateOrigin};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -22,7 +22,7 @@ use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, ErasedFileAstId, FileAstId, SyntaxContextId};
+use span::{Edition, EditionedFileId, ErasedFileAstId, FileAstId, SyntaxContextId};
 use syntax::ast;
 use triomphe::Arc;
 
@@ -272,7 +272,7 @@ impl DefCollector<'_> {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
         let crate_graph = self.db.crate_graph();
-        let file_id = crate_graph[self.def_map.krate].root_file_id;
+        let file_id = crate_graph[self.def_map.krate].root_file_id();
         let item_tree = self.db.file_item_tree(file_id.into());
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
@@ -2003,7 +2003,7 @@ impl ModCollector<'_, '_> {
         &mut self,
         name: Name,
         declaration: FileAstId<ast::Module>,
-        definition: Option<(FileId, bool)>,
+        definition: Option<(EditionedFileId, bool)>,
         visibility: &crate::visibility::RawVisibility,
         mod_tree_id: FileItemTreeId<Mod>,
     ) -> LocalModuleId {

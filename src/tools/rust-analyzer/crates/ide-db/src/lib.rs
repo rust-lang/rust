@@ -48,10 +48,13 @@ use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
     salsa::{self, Durability},
-    AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
+    AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
     DEFAULT_FILE_TEXT_LRU_CAP,
 };
-use hir::db::{DefDatabase, ExpandDatabase, HirDatabase};
+use hir::{
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
+    FilePositionWrapper, FileRangeWrapper,
+};
 use triomphe::Arc;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
@@ -61,10 +64,14 @@ pub use ::line_index;
 
 /// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
 pub use base_db;
+pub use span::{EditionedFileId, FileId};
 
 pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 pub type FxIndexMap<K, V> =
     indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+
+pub type FilePosition = FilePositionWrapper<FileId>;
+pub type FileRange = FileRangeWrapper<FileId>;
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,

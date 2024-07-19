@@ -150,15 +150,17 @@ impl Parse<SourceFile> {
     }
 
     pub fn reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
-        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel, edition))
+        self.incremental_reparse(indel, edition)
+            .unwrap_or_else(|| self.full_reparse(indel, edition))
     }
 
-    fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
+    fn incremental_reparse(&self, indel: &Indel, edition: Edition) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
         parsing::incremental_reparse(
             self.tree().syntax(),
             indel,
             self.errors.as_deref().unwrap_or_default().iter().cloned(),
+            edition,
         )
         .map(|(green_node, errors, _reparsed_range)| Parse {
             green: green_node,

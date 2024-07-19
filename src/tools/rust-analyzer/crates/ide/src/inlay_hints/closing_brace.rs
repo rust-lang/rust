@@ -4,19 +4,20 @@
 //! } /* fn g */
 //! ```
 use hir::{HirDisplay, Semantics};
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::{FileRange, RootDatabase};
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode, HasName},
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{FileId, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
-    file_id: FileId,
+    file_id: EditionedFileId,
     node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
@@ -107,7 +108,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let linked_location = name_range.map(|range| FileRange { file_id, range });
+    let linked_location = name_range.map(|range| FileRange { file_id: file_id.into(), range });
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,

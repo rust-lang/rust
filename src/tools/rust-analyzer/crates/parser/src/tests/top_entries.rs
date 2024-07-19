@@ -307,6 +307,6 @@ fn expr() {
 
 #[track_caller]
 fn check(entry: TopEntryPoint, input: &str, expect: expect_test::Expect) {
-    let (parsed, _errors) = super::parse(entry, input);
+    let (parsed, _errors) = super::parse(entry, input, crate::Edition::CURRENT);
     expect.assert_eq(&parsed)
 }

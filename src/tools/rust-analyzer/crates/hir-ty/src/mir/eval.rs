@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
-use base_db::{CrateId, FileId};
+use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
@@ -23,6 +23,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -395,7 +396,7 @@ impl MirEvalError {
                 };
                 let file_id = span.file_id.original_file(db.upcast());
                 let text_range = span.value.text_range();
-                writeln!(f, "{}", span_formatter(file_id, text_range))?;
+                writeln!(f, "{}", span_formatter(file_id.file_id(), text_range))?;
             }
         }
         match err {

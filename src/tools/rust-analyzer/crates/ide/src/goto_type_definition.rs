@@ -21,7 +21,7 @@ pub(crate) fn goto_type_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = hir::Semantics::new(db);
 
-    let file: ast::SourceFile = sema.parse(file_id);
+    let file: ast::SourceFile = sema.parse_guess_edition(file_id);
     let token: SyntaxToken =
         pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
             IDENT | INT_NUMBER | T![self] => 2,
@@ -113,7 +113,7 @@ pub(crate) fn goto_type_definition(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use ide_db::FileRange;
     use itertools::Itertools;
 
     use crate::fixture;

@@ -1,6 +1,6 @@
 use ide_db::{
-    base_db::{CrateOrigin, FileId, SourceDatabase},
-    FxIndexSet, RootDatabase,
+    base_db::{CrateOrigin, SourceDatabase},
+    FileId, FxIndexSet, RootDatabase,
 };
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

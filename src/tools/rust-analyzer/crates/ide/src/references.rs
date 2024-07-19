@@ -11,10 +11,9 @@
 
 use hir::{DescendPreference, PathResolution, Semantics};
 use ide_db::{
-    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
-    RootDatabase,
+    FileId, RootDatabase,
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
@@ -56,7 +55,7 @@ pub(crate) fn find_all_refs(
     search_scope: Option<SearchScope>,
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = tracing::info_span!("find_all_refs").entered();
-    let syntax = sema.parse(position.file_id).syntax().clone();
+    let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
             let mut usages =
@@ -70,7 +69,7 @@ pub(crate) fn find_all_refs(
                 .into_iter()
                 .map(|(file_id, refs)| {
                     (
-                        file_id,
+                        file_id.into(),
                         refs.into_iter()
                             .map(|file_ref| (file_ref.range, file_ref.category))
                             .unique()
@@ -300,7 +299,8 @@ fn is_lit_name_ref(name_ref: &ast::NameRef) -> bool {
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FileId;
+    use ide_db::FileId;
+    use span::EditionedFileId;
     use stdx::format_to;
 
     use crate::{fixture, SearchScope};
@@ -941,7 +941,7 @@ pub(super) struct Foo$0 {
 
         check_with_scope(
             code,
-            Some(SearchScope::single_file(FileId::from_raw(2))),
+            Some(SearchScope::single_file(EditionedFileId::current_edition(FileId::from_raw(2)))),
             expect![[r#"
                 quux Function FileId(0) 19..35 26..30
 

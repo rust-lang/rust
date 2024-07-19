@@ -37,7 +37,7 @@ mod display;
 use std::{mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, FileId};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin};
 use either::Either;
 use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
@@ -78,7 +78,7 @@ use hir_ty::{
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
-use span::{Edition, MacroCallId};
+use span::{Edition, EditionedFileId, FileId, MacroCallId};
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasName},
@@ -129,12 +129,16 @@ pub use {
     hir_expand::{
         attrs::{Attr, AttrId},
         change::ChangeWithProcMacros,
+        files::{
+            FilePosition, FilePositionWrapper, FileRange, FileRangeWrapper, HirFilePosition,
+            HirFileRange, InFile, InFileWrapper, InMacroFile, InRealFile, MacroFilePosition,
+            MacroFileRange,
+        },
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
         name::Name,
         proc_macro::ProcMacros,
-        tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
-        MacroFileIdExt,
+        tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt,
     },
     hir_ty::{
         consteval::ConstEvalError,
@@ -3200,7 +3204,7 @@ impl LocalSource {
         }
     }
 
-    pub fn original_file(&self, db: &dyn HirDatabase) -> FileId {
+    pub fn original_file(&self, db: &dyn HirDatabase) -> EditionedFileId {
         self.source.file_id.original_file(db.upcast())
     }
 

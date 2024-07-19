@@ -30,10 +30,10 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{salsa::InternValueTrivial, CrateId, FileId};
+use base_db::{salsa::InternValueTrivial, CrateId};
 use either::Either;
 use span::{
-    Edition, ErasedFileAstId, FileAstId, FileRange, HirFileIdRepr, Span, SpanAnchor,
+    Edition, EditionedFileId, ErasedFileAstId, FileAstId, HirFileIdRepr, Span, SpanAnchor,
     SyntaxContextData, SyntaxContextId,
 };
 use syntax::{
@@ -52,7 +52,7 @@ use crate::{
     span_map::{ExpansionSpanMap, SpanMap},
 };
 
-pub use crate::files::{AstId, ErasedAstId, InFile, InMacroFile, InRealFile};
+pub use crate::files::{AstId, ErasedAstId, FileRange, InFile, InMacroFile, InRealFile};
 
 pub use mbe::{DeclarativeMacro, ValueResult};
 pub use span::{HirFileId, MacroCallId, MacroFileId};
@@ -243,11 +243,11 @@ pub enum MacroCallKind {
 
 pub trait HirFileIdExt {
     /// Returns the original file of this macro call hierarchy.
-    fn original_file(self, db: &dyn ExpandDatabase) -> FileId;
+    fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId;
 
     /// Returns the original file of this macro call hierarchy while going into the included file if
     /// one of the calls comes from an `include!``.
-    fn original_file_respecting_includes(self, db: &dyn ExpandDatabase) -> FileId;
+    fn original_file_respecting_includes(self, db: &dyn ExpandDatabase) -> EditionedFileId;
 
     /// If this is a macro call, returns the syntax node of the very first macro call this file resides in.
     fn original_call_node(self, db: &dyn ExpandDatabase) -> Option<InRealFile<SyntaxNode>>;
@@ -256,7 +256,7 @@ pub trait HirFileIdExt {
 }
 
 impl HirFileIdExt for HirFileId {
-    fn original_file(self, db: &dyn ExpandDatabase) -> FileId {
+    fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId {
         let mut file_id = self;
         loop {
             match file_id.repr() {
@@ -268,7 +268,7 @@ impl HirFileIdExt for HirFileId {
         }
     }
 
-    fn original_file_respecting_includes(mut self, db: &dyn ExpandDatabase) -> FileId {
+    fn original_file_respecting_includes(mut self, db: &dyn ExpandDatabase) -> EditionedFileId {
         loop {
             match self.repr() {
                 HirFileIdRepr::FileId(id) => break id,
@@ -568,7 +568,7 @@ impl MacroCallLoc {
         &self,
         db: &dyn ExpandDatabase,
         macro_call_id: MacroCallId,
-    ) -> Option<FileId> {
+    ) -> Option<EditionedFileId> {
         if self.def.is_include() {
             if let MacroCallKind::FnLike { eager: Some(eager), .. } = &self.kind {
                 if let Ok(it) =

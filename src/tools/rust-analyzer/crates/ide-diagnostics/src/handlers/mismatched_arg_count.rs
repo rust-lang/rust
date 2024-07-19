@@ -1,6 +1,6 @@
 use either::Either;
 use hir::InFile;
-use ide_db::base_db::FileRange;
+use ide_db::FileRange;
 use syntax::{
     ast::{self, HasArgList},
     AstNode, AstPtr,

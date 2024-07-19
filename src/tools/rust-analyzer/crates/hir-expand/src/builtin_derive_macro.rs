@@ -209,7 +209,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
     let (parsed, tm) = &mbe::token_tree_to_syntax_node(
         tt,
         mbe::TopEntryPoint::MacroItems,
-        parser::Edition::CURRENT,
+        parser::Edition::CURRENT_FIXME,
     );
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
         .ok_or_else(|| ExpandError::other("invalid item definition"))?;

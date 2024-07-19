@@ -41,7 +41,7 @@ use intern::Symbol;
 use la_arena::RawIdx;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId};
 use text_size::TextRange;
 
 use crate::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
@@ -53,7 +53,7 @@ pub fn serialize_span_data_index_map(map: &SpanDataIndexMap) -> Vec<u32> {
     map.iter()
         .flat_map(|span| {
             [
-                span.anchor.file_id.index(),
+                span.anchor.file_id.as_u32(),
                 span.anchor.ast_id.into_raw().into_u32(),
                 span.range.start().into(),
                 span.range.end().into(),
@@ -70,7 +70,7 @@ pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
             let &[file_id, ast_id, start, end, e] = span else { unreachable!() };
             Span {
                 anchor: SpanAnchor {
-                    file_id: FileId::from_raw(file_id),
+                    file_id: EditionedFileId::from_raw(file_id),
                     ast_id: ErasedFileAstId::from_raw(RawIdx::from_u32(ast_id)),
                 },
                 range: TextRange::new(start.into(), end.into()),

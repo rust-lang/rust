@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use base_db::{CrateGraph, FileId, ProcMacroPaths};
+use base_db::{CrateGraph, ProcMacroPaths};
 use cargo_metadata::Metadata;
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect_file, ExpectFile};
@@ -8,6 +8,7 @@ use intern::sym;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
+use span::FileId;
 use triomphe::Arc;
 
 use crate::{

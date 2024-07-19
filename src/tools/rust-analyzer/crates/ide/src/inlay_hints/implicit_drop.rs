@@ -10,7 +10,7 @@ use hir::{
     mir::{MirSpan, TerminatorKind},
     ChalkTyInterner, DefWithBody, Semantics,
 };
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::{FileRange, RootDatabase};
 
 use syntax::{
     ast::{self, AstNode},
@@ -81,13 +81,15 @@ pub(super) fn hints(
                 MirSpan::Unknown => continue,
             };
             let binding = &hir.bindings[*binding];
-            let binding_source = binding
-                .definitions
-                .first()
-                .and_then(|d| source_map.pat_syntax(*d).ok())
-                .and_then(|d| {
-                    Some(FileRange { file_id: d.file_id.file_id()?, range: d.value.text_range() })
-                });
+            let binding_source =
+                binding.definitions.first().and_then(|d| source_map.pat_syntax(*d).ok()).and_then(
+                    |d| {
+                        Some(FileRange {
+                            file_id: d.file_id.file_id()?.into(),
+                            range: d.value.text_range(),
+                        })
+                    },
+                );
             let name = binding.name.display_no_db().to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables

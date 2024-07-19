@@ -1,10 +1,10 @@
-use base_db::FileId;
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 use rustc_apfloat::{
     ieee::{Half as f16, Quad as f128},
     Float,
 };
+use span::EditionedFileId;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
@@ -102,8 +102,8 @@ fn pretty_print_err(e: ConstEvalError, db: TestDB) -> String {
     err
 }
 
-fn eval_goal(db: &TestDB, file_id: FileId) -> Result<Const, ConstEvalError> {
-    let module_id = db.module_for_file(file_id);
+fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const, ConstEvalError> {
+    let module_id = db.module_for_file(file_id.file_id());
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id.local_id].scope;
     let const_id = scope

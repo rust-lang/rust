@@ -7,7 +7,7 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{Callable, Semantics};
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::RootDatabase;
 
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -48,7 +48,7 @@ pub(super) fn hints(
         .filter(|(_, param_name, arg, _)| {
             !should_hide_param_name_hint(sema, &callable, &param_name.text(), arg)
         })
-        .map(|(param, param_name, _, FileRange { range, .. })| {
+        .map(|(param, param_name, _, hir::FileRange { range, .. })| {
             let linked_location = param.and_then(|name| sema.original_range_opt(name.syntax()));
 
             let label = render_label(&param_name, config, linked_location);
@@ -70,11 +70,11 @@ pub(super) fn hints(
 pub(super) fn render_label(
     param_name: impl Display,
     config: &InlayHintsConfig,
-    linked_location: Option<FileRange>,
+    linked_location: Option<hir::FileRange>,
 ) -> InlayHintLabel {
     let colon = if config.render_colons { ":" } else { "" };
 
-    InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location)
+    InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location.map(Into::into))
 }
 
 fn get_callable(

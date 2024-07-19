@@ -31,15 +31,14 @@ impl MetaTemplate {
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         pattern: &tt::Subtree<Span>,
     ) -> Result<Self, ParseError> {
-        MetaTemplate::parse(edition, pattern, Mode::Pattern, false)
+        MetaTemplate::parse(edition, pattern, Mode::Pattern)
     }
 
     pub(crate) fn parse_template(
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         template: &tt::Subtree<Span>,
-        new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
-        MetaTemplate::parse(edition, template, Mode::Template, new_meta_vars)
+        MetaTemplate::parse(edition, template, Mode::Template)
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
@@ -50,13 +49,12 @@ impl MetaTemplate {
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         tt: &tt::Subtree<Span>,
         mode: Mode,
-        new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
         let mut src = TtIter::new(tt);
 
         let mut res = Vec::new();
         while let Some(first) = src.peek_n(0) {
-            let op = next_op(edition, first, &mut src, mode, new_meta_vars)?;
+            let op = next_op(edition, first, &mut src, mode)?;
             res.push(op);
         }
 
@@ -161,7 +159,6 @@ fn next_op(
     first_peeked: &tt::TokenTree<Span>,
     src: &mut TtIter<'_, Span>,
     mode: Mode,
-    new_meta_vars: bool,
 ) -> Result<Op, ParseError> {
     let res = match first_peeked {
         tt::TokenTree::Leaf(tt::Leaf::Punct(p @ tt::Punct { char: '$', .. })) => {
@@ -181,14 +178,14 @@ fn next_op(
                 tt::TokenTree::Subtree(subtree) => match subtree.delimiter.kind {
                     tt::DelimiterKind::Parenthesis => {
                         let (separator, kind) = parse_repeat(src)?;
-                        let tokens = MetaTemplate::parse(edition, subtree, mode, new_meta_vars)?;
+                        let tokens = MetaTemplate::parse(edition, subtree, mode)?;
                         Op::Repeat { tokens, separator: separator.map(Arc::new), kind }
                     }
                     tt::DelimiterKind::Brace => match mode {
                         Mode::Template => {
-                            parse_metavar_expr(new_meta_vars, &mut TtIter::new(subtree)).map_err(
-                                |()| ParseError::unexpected("invalid metavariable expression"),
-                            )?
+                            parse_metavar_expr(&mut TtIter::new(subtree)).map_err(|()| {
+                                ParseError::unexpected("invalid metavariable expression")
+                            })?
                         }
                         Mode::Pattern => {
                             return Err(ParseError::unexpected(
@@ -260,7 +257,7 @@ fn next_op(
 
         tt::TokenTree::Subtree(subtree) => {
             src.next().expect("first token already peeked");
-            let tokens = MetaTemplate::parse(edition, subtree, mode, new_meta_vars)?;
+            let tokens = MetaTemplate::parse(edition, subtree, mode)?;
             Op::Subtree { tokens, delimiter: subtree.delimiter }
         }
     };
@@ -343,7 +340,7 @@ fn parse_repeat(src: &mut TtIter<'_, Span>) -> Result<(Option<Separator>, Repeat
     Err(ParseError::InvalidRepeat)
 }
 
-fn parse_metavar_expr(new_meta_vars: bool, src: &mut TtIter<'_, Span>) -> Result<Op, ()> {
+fn parse_metavar_expr(src: &mut TtIter<'_, Span>) -> Result<Op, ()> {
     let func = src.expect_ident()?;
     let args = src.expect_subtree()?;
 
@@ -355,18 +352,14 @@ fn parse_metavar_expr(new_meta_vars: bool, src: &mut TtIter<'_, Span>) -> Result
 
     let op = match &func.sym {
         s if sym::ignore == *s => {
-            if new_meta_vars {
-                args.expect_dollar()?;
-            }
+            args.expect_dollar()?;
             let ident = args.expect_ident()?;
             Op::Ignore { name: ident.sym.clone(), id: ident.span }
         }
         s if sym::index == *s => Op::Index { depth: parse_depth(&mut args)? },
         s if sym::len == *s => Op::Len { depth: parse_depth(&mut args)? },
         s if sym::count == *s => {
-            if new_meta_vars {
-                args.expect_dollar()?;
-            }
+            args.expect_dollar()?;
             let ident = args.expect_ident()?;
             let depth = if try_eat_comma(&mut args) { Some(parse_depth(&mut args)?) } else { None };
             Op::Count { name: ident.sym.clone(), depth }

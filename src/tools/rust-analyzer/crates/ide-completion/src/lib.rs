@@ -12,13 +12,12 @@ mod tests;
 
 use hir::ImportPathConfig;
 use ide_db::{
-    base_db::FilePosition,
     helpers::mod_path_to_ast,
     imports::{
         import_assets::NameToImport,
         insert_use::{self, ImportScope},
     },
-    items_locator, RootDatabase,
+    items_locator, FilePosition, RootDatabase,
 };
 use syntax::algo;
 use text_edit::TextEdit;
@@ -239,7 +238,7 @@ pub fn resolve_completion_edits(
     let _p = tracing::info_span!("resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
 
-    let original_file = sema.parse(file_id);
+    let original_file = sema.parse(sema.attach_first_edition(file_id)?);
     let original_token =
         syntax::AstNode::syntax(&original_file).token_at_offset(offset).left_biased()?;
     let position_for_import = &original_token.parent()?;

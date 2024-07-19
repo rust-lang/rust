@@ -288,8 +288,9 @@ fn compute_expr_scopes(
 
 #[cfg(test)]
 mod tests {
-    use base_db::{FileId, SourceDatabase};
+    use base_db::SourceDatabase;
     use hir_expand::{name::AsName, InFile};
+    use span::FileId;
     use syntax::{algo::find_node_at_offset, ast, AstNode};
     use test_fixture::WithFixture;
     use test_utils::{assert_eq_text, extract_offset};
@@ -325,7 +326,7 @@ mod tests {
 
         let file_syntax = db.parse(file_id).syntax_node();
         let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
-        let function = find_function(&db, file_id);
+        let function = find_function(&db, file_id.file_id());
 
         let scopes = db.expr_scopes(function.into());
         let (_body, source_map) = db.body_with_source_map(function.into());
@@ -480,7 +481,7 @@ fn foo() {
             .expect("failed to find a name at the target offset");
         let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset).unwrap();
 
-        let function = find_function(&db, file_id);
+        let function = find_function(&db, file_id.file_id());
 
         let scopes = db.expr_scopes(function.into());
         let (body, source_map) = db.body_with_source_map(function.into());

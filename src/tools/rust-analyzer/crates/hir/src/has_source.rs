@@ -1,6 +1,5 @@
 //! Provides set of implementation for hir's objects that allows get back location in file.
 
-use base_db::FileId;
 use either::Either;
 use hir_def::{
     nameres::{ModuleOrigin, ModuleSource},
@@ -9,6 +8,7 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::db::InternedClosure;
+use span::EditionedFileId;
 use syntax::ast;
 use tt::TextRange;
 
@@ -58,7 +58,7 @@ impl Module {
         }
     }
 
-    pub fn as_source_file_id(self, db: &dyn HirDatabase) -> Option<FileId> {
+    pub fn as_source_file_id(self, db: &dyn HirDatabase) -> Option<EditionedFileId> {
         let def_map = self.id.def_map(db.upcast());
         match def_map[self.id.local_id].origin {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition, .. } => {

@@ -3,13 +3,12 @@ use hir::{
     StructKind, Type, TypeInfo,
 };
 use ide_db::{
-    base_db::FileId,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
     path_transform::PathTransform,
     source_change::SourceChangeBuilder,
-    FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
@@ -208,7 +207,8 @@ fn get_adt_source(
     let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
-    find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()]).map(|impl_| (impl_, range.file_id))
+    find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()])
+        .map(|impl_| (impl_, range.file_id.file_id()))
 }
 
 struct FunctionBuilder {
@@ -482,7 +482,7 @@ fn get_fn_target(
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId)> {
-    let mut file = ctx.file_id();
+    let mut file = ctx.file_id().into();
     let target = match target_module {
         Some(target_module) => {
             let (in_file, target) = next_space_for_fn_in_module(ctx.db(), target_module);
@@ -1168,7 +1168,7 @@ fn next_space_for_fn_in_module(
         }
     };
 
-    (file, assist_item)
+    (file.file_id(), assist_item)
 }
 
 #[derive(Clone, Copy)]

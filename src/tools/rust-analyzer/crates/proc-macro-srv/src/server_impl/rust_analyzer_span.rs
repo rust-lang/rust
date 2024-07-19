@@ -469,7 +469,7 @@ impl server::Server for RaSpanServer {
 
 #[cfg(test)]
 mod tests {
-    use span::SyntaxContextId;
+    use span::{EditionedFileId, FileId, SyntaxContextId};
 
     use super::*;
 
@@ -478,7 +478,7 @@ mod tests {
         let span = Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: span::SpanAnchor {
-                file_id: span::FileId::from_raw(0),
+                file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
                 ast_id: span::ErasedFileAstId::from_raw(0.into()),
             },
             ctx: SyntaxContextId::ROOT,
@@ -514,7 +514,7 @@ mod tests {
         let span = Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: span::SpanAnchor {
-                file_id: span::FileId::from_raw(0),
+                file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
                 ast_id: span::ErasedFileAstId::from_raw(0.into()),
             },
             ctx: SyntaxContextId::ROOT,

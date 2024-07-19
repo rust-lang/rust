@@ -25,7 +25,7 @@ use ide_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
         SourceDatabase, SourceDatabaseExt,
     },
-    LineIndexDatabase, SnippetCap,
+    EditionedFileId, LineIndexDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -35,7 +35,7 @@ use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSourc
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{AstNode, SyntaxNode};
-use vfs::{AbsPathBuf, FileId, Vfs, VfsPath};
+use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
     flags::{self, OutputFormat},
@@ -120,7 +120,7 @@ impl flags::AnalysisStats {
                 for file_id in source_root.iter() {
                     if let Some(p) = source_root.path_for_file(&file_id) {
                         if let Some((_, Some("rs"))) = p.name_and_extension() {
-                            db.file_item_tree(file_id.into());
+                            db.file_item_tree(EditionedFileId::current_edition(file_id).into());
                             num_item_trees += 1;
                         }
                     }
@@ -140,7 +140,7 @@ impl flags::AnalysisStats {
             let module = krate.root_module();
             let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
-            let source_root = db.file_source_root(file_id);
+            let source_root = db.file_source_root(file_id.into());
             let source_root = db.source_root(source_root);
             if !source_root.is_library || self.with_deps {
                 num_crates += 1;
@@ -332,7 +332,7 @@ impl flags::AnalysisStats {
         ws: &ProjectWorkspace,
         db: &RootDatabase,
         vfs: &Vfs,
-        mut file_ids: Vec<FileId>,
+        mut file_ids: Vec<EditionedFileId>,
         verbosity: Verbosity,
     ) {
         let cargo_config = CargoConfig {
@@ -367,11 +367,10 @@ impl flags::AnalysisStats {
 
         for &file_id in &file_ids {
             let sema = hir::Semantics::new(db);
-            let _ = db.parse(file_id);
 
-            let parse = sema.parse(file_id);
-            let file_txt = db.file_text(file_id);
-            let path = vfs.file_path(file_id).as_path().unwrap();
+            let parse = sema.parse_guess_edition(file_id.into());
+            let file_txt = db.file_text(file_id.into());
+            let path = vfs.file_path(file_id.into()).as_path().unwrap();
 
             for node in parse.syntax().descendants() {
                 let expr = match syntax::ast::Expr::cast(node.clone()) {
@@ -398,7 +397,7 @@ impl flags::AnalysisStats {
 
                 let range = sema.original_range(expected_tail.syntax()).range;
                 let original_text: String = db
-                    .file_text(file_id)
+                    .file_text(file_id.into())
                     .chars()
                     .skip(usize::from(range.start()))
                     .take(usize::from(range.end()) - usize::from(range.start()))
@@ -650,7 +649,7 @@ impl flags::AnalysisStats {
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
-                        let path = vfs.file_path(original_file);
+                        let path = vfs.file_path(original_file.into());
                         let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
@@ -944,7 +943,7 @@ impl flags::AnalysisStats {
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
-                        let path = vfs.file_path(original_file);
+                        let path = vfs.file_path(original_file.into());
                         let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
@@ -968,7 +967,7 @@ impl flags::AnalysisStats {
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
     }
 
-    fn run_ide_things(&self, analysis: Analysis, mut file_ids: Vec<FileId>) {
+    fn run_ide_things(&self, analysis: Analysis, mut file_ids: Vec<EditionedFileId>) {
         file_ids.sort();
         file_ids.dedup();
         let mut sw = self.stop_watch();
@@ -998,7 +997,7 @@ impl flags::AnalysisStats {
                     term_search_borrowck: true,
                 },
                 ide::AssistResolveStrategy::All,
-                file_id,
+                file_id.into(),
             );
         }
         for &file_id in &file_ids {
@@ -1031,7 +1030,7 @@ impl flags::AnalysisStats {
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: true,
                 },
-                file_id,
+                file_id.into(),
                 None,
             );
         }
@@ -1047,7 +1046,7 @@ impl flags::AnalysisStats {
                         annotate_enum_variant_references: false,
                         location: ide::AnnotationLocation::AboveName,
                     },
-                    file_id,
+                    file_id.into(),
                 )
                 .unwrap()
                 .into_iter()
@@ -1072,8 +1071,8 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
-    let path = vfs.file_path(original_range.file_id);
-    let line_index = db.line_index(original_range.file_id);
+    let path = vfs.file_path(original_range.file_id.into());
+    let line_index = db.line_index(original_range.file_id.into());
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1088,8 +1087,8 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
-    let path = vfs.file_path(original_range.file_id);
-    let line_index = db.line_index(original_range.file_id);
+    let path = vfs.file_path(original_range.file_id.into());
+    let line_index = db.line_index(original_range.file_id.into());
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1107,8 +1106,8 @@ fn expr_syntax_range<'a>(
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
-        let path = vfs.file_path(original_range.file_id);
-        let line_index = db.line_index(original_range.file_id);
+        let path = vfs.file_path(original_range.file_id.into());
+        let line_index = db.line_index(original_range.file_id.into());
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1128,8 +1127,8 @@ fn pat_syntax_range<'a>(
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
-        let path = vfs.file_path(original_range.file_id);
-        let line_index = db.line_index(original_range.file_id);
+        let path = vfs.file_path(original_range.file_id.into());
+        let line_index = db.line_index(original_range.file_id.into());
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));

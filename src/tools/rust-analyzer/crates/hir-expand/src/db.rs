@@ -1,11 +1,11 @@
 //! Defines database & queries for macro expansion.
 
-use base_db::{salsa, CrateId, FileId, SourceDatabase};
+use base_db::{salsa, CrateId, SourceDatabase};
 use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, MatchedArmIndex};
 use rustc_hash::FxHashSet;
-use span::{AstIdMap, Span, SyntaxContextData, SyntaxContextId};
+use span::{AstIdMap, EditionedFileId, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
 use triomphe::Arc;
 
@@ -78,7 +78,7 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::invoke(crate::span_map::expansion_span_map)]
     fn expansion_span_map(&self, file_id: MacroFileId) -> Arc<ExpansionSpanMap>;
     #[salsa::invoke(crate::span_map::real_span_map)]
-    fn real_span_map(&self, file_id: FileId) -> Arc<RealSpanMap>;
+    fn real_span_map(&self, file_id: EditionedFileId) -> Arc<RealSpanMap>;
 
     /// Macro ids. That's probably the tricksiest bit in rust-analyzer, and the
     /// reason why we use salsa at all.
@@ -348,7 +348,7 @@ fn parse_macro_expansion(
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
     let _p = tracing::info_span!("parse_macro_expansion").entered();
     let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-    let edition = loc.def.edition;
+    let def_edition = loc.def.edition;
     let expand_to = loc.expand_to();
     let mbe::ValueResult { value: (tt, matched_arm), err } =
         macro_expand(db, macro_file.macro_call_id, loc);
@@ -359,7 +359,7 @@ fn parse_macro_expansion(
             CowArc::Owned(it) => it,
         },
         expand_to,
-        edition,
+        def_edition,
     );
     rev_token_map.matched_arm = matched_arm;
 
