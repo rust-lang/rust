@@ -3,6 +3,7 @@
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
+use build_helper::git::{get_git_merge_base, output_result, GitConfig};
 use build_helper::util::fail;
 use std::env;
 use std::ffi::OsStr;
@@ -520,4 +521,27 @@ pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     }
 
     git
+}
+
+/// Returns the closest commit available from upstream for the given `author` and `target_paths`.
+///
+/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
+pub fn get_closest_merge_base_commit(
+    source_dir: Option<&Path>,
+    config: &GitConfig<'_>,
+    author: &str,
+    target_paths: &[PathBuf],
+) -> Result<String, String> {
+    let mut git = git(source_dir).capture_stdout();
+
+    let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
+
+    git.arg(Path::new("rev-list"));
+    git.args([&format!("--author={author}"), "-n1", "--first-parent", &merge_base]);
+
+    if !target_paths.is_empty() {
+        git.arg("--").args(target_paths);
+    }
+
+    Ok(output_result(git.as_command_mut())?.trim().to_owned())
 }

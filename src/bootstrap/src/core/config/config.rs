@@ -20,7 +20,7 @@ use crate::core::build_steps::llvm;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
-use crate::utils::helpers::{self, exe, output, t};
+use crate::utils::helpers::{self, exe, get_closest_merge_base_commit, output, t};
 use build_helper::exit;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
@@ -2471,14 +2471,13 @@ impl Config {
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let merge_base = output(
-            helpers::git(Some(&self.src))
-                .arg("rev-list")
-                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", "HEAD"])
-                .as_command_mut(),
-        );
-        let commit = merge_base.trim_end();
+        let commit = get_closest_merge_base_commit(
+            Some(&self.src),
+            &self.git_config(),
+            &self.stage0_metadata.config.git_merge_commit_email,
+            &[],
+        )
+        .unwrap();
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
             println!("HELP: maybe your repository history is too shallow?");
@@ -2489,7 +2488,7 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", commit])
+            .args(["diff-index", "--quiet", &commit])
             .arg("--")
             .args([self.src.join("compiler"), self.src.join("library")])
             .as_command_mut()
@@ -2565,14 +2564,13 @@ impl Config {
     ) -> Option<String> {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let merge_base = output(
-            helpers::git(Some(&self.src))
-                .arg("rev-list")
-                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", "HEAD"])
-                .as_command_mut(),
-        );
-        let commit = merge_base.trim_end();
+        let commit = get_closest_merge_base_commit(
+            Some(&self.src),
+            &self.git_config(),
+            &self.stage0_metadata.config.git_merge_commit_email,
+            &[],
+        )
+        .unwrap();
         if commit.is_empty() {
             println!("error: could not find commit hash for downloading components from CI");
             println!("help: maybe your repository history is too shallow?");
@@ -2583,7 +2581,7 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let mut git = helpers::git(Some(&self.src));
-        git.args(["diff-index", "--quiet", commit, "--"]);
+        git.args(["diff-index", "--quiet", &commit, "--"]);
 
         // Handle running from a directory other than the top level
         let top_level = &self.src;

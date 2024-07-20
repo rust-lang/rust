@@ -1,4 +1,5 @@
 //! A readers-writer lock implementation backed by the SOLID kernel extension.
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::sys::pal::{
     abi,
