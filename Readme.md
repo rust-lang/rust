@@ -16,7 +16,6 @@ $ rustup component add rustc-codegen-cranelift-preview --toolchain nightly
 
 Once it is installed, you can enable it with one of the following approaches:
 - `CARGO_PROFILE_DEV_CODEGEN_BACKEND=cranelift cargo +nightly build -Zcodegen-backend`
-- `RUSTFLAGS="-Zcodegen-backend=cranelift" cargo +nightly build`
 - Add the following to `.cargo/config.toml`:
     ```toml
     [unstable]
