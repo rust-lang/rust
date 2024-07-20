@@ -17,6 +17,6 @@ trait Sized {}
 pub fn foo() {
     // CHECK: @foo() unnamed_addr #0
 
-    // unset-NOT: attributes #0 = { {{.*}}"no-jump-tables"="true"{{.*}} }
-    // set: attributes #0 = { {{.*}}"no-jump-tables"="true"{{.*}} }
+    // CHECK-UNSET-NOT: attributes #0 = { {{.*}}"no-jump-tables"="true"{{.*}} }
+    // CHECK-SET: attributes #0 = { {{.*}}"no-jump-tables"="true"{{.*}} }
 }

@@ -2,6 +2,6 @@
 
 //@ should-fail
 
-// MSVC: text that should not match
-// NONMSVC: text that should not match
+// CHECK-MSVC: text that should not match
+// CHECK-NONMSVC: text that should not match
 fn main() {}

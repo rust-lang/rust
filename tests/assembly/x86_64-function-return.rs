@@ -17,14 +17,14 @@
 // CHECK-LABEL: foo:
 #[no_mangle]
 pub unsafe fn foo() {
-    // unset: ret
-    // unset-NOT: jmp __x86_return_thunk
-    // keep: ret
-    // keep-NOT: jmp __x86_return_thunk
-    // thunk-extern: jmp __x86_return_thunk
-    // thunk-extern-NOT: ret
-    // keep-thunk-extern: jmp __x86_return_thunk
-    // keep-thunk-extern-NOT: ret
-    // thunk-extern-keep: ret
-    // thunk-extern-keep-NOT: jmp __x86_return_thunk
+    // CHECK-UNSET: ret
+    // CHECK-UNSET-NOT: jmp __x86_return_thunk
+    // CHECK-KEEP: ret
+    // CHECK-KEEP-NOT: jmp __x86_return_thunk
+    // CHECK-THUNK-EXTERN: jmp __x86_return_thunk
+    // CHECK-THUNK-EXTERN-NOT: ret
+    // CHECK-KEEP-THUNK-EXTERN: jmp __x86_return_thunk
+    // CHECK-KEEP-THUNK-EXTERN-NOT: ret
+    // CHECK-THUNK-EXTERN-KEEP: ret
+    // CHECK-THUNK-EXTERN-KEEP-NOT: jmp __x86_return_thunk
 }

@@ -235,9 +235,9 @@ pub unsafe extern "ptx-kernel" fn f_byte_array_arg(_a: [u8; 5]) {}
 #[no_mangle]
 pub unsafe extern "ptx-kernel" fn f_float_array_arg(_a: [f32; 5]) {}
 
-// FIXME: u128 started to break compilation with disabled CI
-// NO_CHECK: .visible .entry f_u128_array_arg(
-// NO_CHECK: .param .align 16 .b8 f_u128_array_arg_param_0[80]
+// COM: FIXME: u128 started to break compilation with disabled CI
+// COM: CHECK: .visible .entry f_u128_array_arg(
+// COM: CHECK: .param .align 16 .b8 f_u128_array_arg_param_0[80]
 //#[no_mangle]
 //pub unsafe extern "ptx-kernel" fn f_u128_array_arg(_a: [u128; 5]) {}
 

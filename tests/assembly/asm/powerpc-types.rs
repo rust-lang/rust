@@ -88,10 +88,10 @@ check!(reg_i16, i16, reg, "mr");
 // CHECK: #NO_APP
 check!(reg_i32, i32, reg, "mr");
 
-// powerpc64-LABEL: reg_i64:
-// powerpc64: #APP
-// powerpc64: mr {{[0-9]+}}, {{[0-9]+}}
-// powerpc64: #NO_APP
+// CHECK-POWERPC64-LABEL: reg_i64:
+// CHECK-POWERPC64: #APP
+// CHECK-POWERPC64: mr {{[0-9]+}}, {{[0-9]+}}
+// CHECK-POWERPC64: #NO_APP
 #[cfg(powerpc64)]
 check!(reg_i64, i64, reg, "mr");
 
@@ -113,10 +113,10 @@ check!(reg_i16_nz, i16, reg_nonzero, "mr");
 // CHECK: #NO_APP
 check!(reg_i32_nz, i32, reg_nonzero, "mr");
 
-// powerpc64-LABEL: reg_i64_nz:
-// powerpc64: #APP
-// powerpc64: mr {{[0-9]+}}, {{[0-9]+}}
-// powerpc64: #NO_APP
+// CHECK-POWERPC64-LABEL: reg_i64_nz:
+// CHECK-POWERPC64: #APP
+// CHECK-POWERPC64: mr {{[0-9]+}}, {{[0-9]+}}
+// CHECK-POWERPC64: #NO_APP
 #[cfg(powerpc64)]
 check!(reg_i64_nz, i64, reg_nonzero, "mr");
 
@@ -150,10 +150,10 @@ check_reg!(reg_i16_r0, i16, "0", "0", "mr");
 // CHECK: #NO_APP
 check_reg!(reg_i32_r0, i32, "0", "0", "mr");
 
-// powerpc64-LABEL: reg_i64_r0:
-// powerpc64: #APP
-// powerpc64: mr 0, 0
-// powerpc64: #NO_APP
+// CHECK-POWERPC64-LABEL: reg_i64_r0:
+// CHECK-POWERPC64: #APP
+// CHECK-POWERPC64: mr 0, 0
+// CHECK-POWERPC64: #NO_APP
 #[cfg(powerpc64)]
 check_reg!(reg_i64_r0, i64, "0", "0", "mr");
 
@@ -175,10 +175,10 @@ check_reg!(reg_i16_r18, i16, "18", "18", "mr");
 // CHECK: #NO_APP
 check_reg!(reg_i32_r18, i32, "18", "18", "mr");
 
-// powerpc64-LABEL: reg_i64_r18:
-// powerpc64: #APP
-// powerpc64: mr 18, 18
-// powerpc64: #NO_APP
+// CHECK-POWERPC64-LABEL: reg_i64_r18:
+// CHECK-POWERPC64: #APP
+// CHECK-POWERPC64: mr 18, 18
+// CHECK-POWERPC64: #NO_APP
 #[cfg(powerpc64)]
 check_reg!(reg_i64_r18, i64, "18", "18", "mr");
 

@@ -53,15 +53,15 @@ macro_rules! check {
 
 // CHECK-LABEL: reg:
 // CHECK: #APP
-// x86_64: mov rax, rax
-// i686: mov eax, eax
+// CHECK-X86_64: mov rax, rax
+// CHECK-I686: mov eax, eax
 // CHECK: #NO_APP
 check!(reg "" reg "mov");
 
-// x86_64-LABEL: reg_l:
-// x86_64: #APP
-// x86_64: mov al, al
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: reg_l:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov al, al
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check!(reg_l "l" reg "mov");
 
@@ -77,17 +77,17 @@ check!(reg_x "x" reg "mov");
 // CHECK: #NO_APP
 check!(reg_e "e" reg "mov");
 
-// x86_64-LABEL: reg_r:
-// x86_64: #APP
-// x86_64: mov rax, rax
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: reg_r:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov rax, rax
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check!(reg_r "r" reg "mov");
 
 // CHECK-LABEL: reg_abcd:
 // CHECK: #APP
-// x86_64: mov rax, rax
-// i686: mov eax, eax
+// CHECK-X86_64: mov rax, rax
+// CHECK-I686: mov eax, eax
 // CHECK: #NO_APP
 check!(reg_abcd "" reg_abcd "mov");
 
@@ -115,10 +115,10 @@ check!(reg_abcd_x "x" reg_abcd "mov");
 // CHECK: #NO_APP
 check!(reg_abcd_e "e" reg_abcd "mov");
 
-// x86_64-LABEL: reg_abcd_r:
-// x86_64: #APP
-// x86_64: mov rax, rax
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: reg_abcd_r:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov rax, rax
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check!(reg_abcd_r "r" reg_abcd "mov");
 

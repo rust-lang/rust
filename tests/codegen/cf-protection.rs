@@ -19,19 +19,19 @@ trait Sized {}
 // A basic test function.
 pub fn test() {}
 
-// undefined-NOT: !"cf-protection-branch"
-// undefined-NOT: !"cf-protection-return"
+// CHECK-UNDEFINED-NOT: !"cf-protection-branch"
+// CHECK-UNDEFINED-NOT: !"cf-protection-return"
 
-// none-NOT: !"cf-protection-branch"
-// none-NOT: !"cf-protection-return"
+// CHECK-NONE-NOT: !"cf-protection-branch"
+// CHECK-NONE-NOT: !"cf-protection-return"
 
-// branch-NOT: !"cf-protection-return"
-// branch: !"cf-protection-branch", i32 1
-// branch-NOT: !"cf-protection-return"
+// CHECK-BRANCH-NOT: !"cf-protection-return"
+// CHECK-BRANCH: !"cf-protection-branch", i32 1
+// CHECK-BRANCH-NOT: !"cf-protection-return"
 
-// return-NOT: !"cf-protection-branch"
-// return: !"cf-protection-return", i32 1
-// return-NOT: !"cf-protection-branch"
+// CHECK-RETURN-NOT: !"cf-protection-branch"
+// CHECK-RETURN: !"cf-protection-return", i32 1
+// CHECK-RETURN-NOT: !"cf-protection-branch"
 
-// full: !"cf-protection-branch", i32 1
-// full: !"cf-protection-return", i32 1
+// CHECK-FULL: !"cf-protection-branch", i32 1
+// CHECK-FULL: !"cf-protection-return", i32 1

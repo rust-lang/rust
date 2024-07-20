@@ -1,11 +1,11 @@
-//@ revisions: OPT2 OPT3WINX64 OPT3LINX64
-//@ [OPT2] compile-flags: -O
-//@ [OPT3LINX64] compile-flags: -C opt-level=3
-//@ [OPT3WINX64] compile-flags: -C opt-level=3
-//@ [OPT3LINX64] only-linux
-//@ [OPT3WINX64] only-windows
-//@ [OPT3LINX64] only-x86_64
-//@ [OPT3WINX64] only-x86_64
+//@ revisions: opt2 opt3winx64 opt3linx64
+//@ [opt2] compile-flags: -O
+//@ [opt3linx64] compile-flags: -C opt-level=3
+//@ [opt3winx64] compile-flags: -C opt-level=3
+//@ [opt3linx64] only-linux
+//@ [opt3winx64] only-windows
+//@ [opt3linx64] only-x86_64
+//@ [opt3winx64] only-x86_64
 //@ min-llvm-version: 18.1.3
 
 #![crate_type = "lib"]
@@ -16,27 +16,27 @@
 // to avoid complicating the code.
 // CHECK-LABEL: define{{.*}}void @convert(
 // CHECK-NOT: shufflevector
-// OPT2: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 2
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 4
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 6
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 8
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 10
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 12
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 14
-// OPT2-NEXT: store i16
-// OPT3LINX64: load <8 x i16>
-// OPT3LINX64-NEXT: call <8 x i16> @llvm.bswap
-// OPT3LINX64-NEXT: store <8 x i16>
-// OPT3WINX64: load <8 x i16>
-// OPT3WINX64-NEXT: call <8 x i16> @llvm.bswap
-// OPT3WINX64-NEXT: store <8 x i16>
+// CHECK-OPT2: store i16
+// CHECK-OPT2-NEXT: getelementptr inbounds i8, {{.+}} 2
+// CHECK-OPT2-NEXT: store i16
+// CHECK-OPT2-NEXT: getelementptr inbounds i8, {{.+}} 4
+// CHECK-OPT2-NEXT: store i16
+// CHECK-OPT2-NEXT: getelementptr inbounds i8, {{.+}} 6
+// CHECK-OPT2-NEXT: store i16
+// CHECK-OPT2-NEXT: getelementptr inbounds i8, {{.+}} 8
+// CHECK-OPT2-NEXT: store i16
+// CHECK-OPT2-NEXT: getelementptr inbounds i8, {{.+}} 10
+// CHECK-OPT2-NEXT: store i16
+// CHECK-OPT2-NEXT: getelementptr inbounds i8, {{.+}} 12
+// CHECK-OPT2-NEXT: store i16
+// CHECK-OPT2-NEXT: getelementptr inbounds i8, {{.+}} 14
+// CHECK-OPT2-NEXT: store i16
+// CHECK-OPT3LINX64: load <8 x i16>
+// CHECK-OPT3LINX64-NEXT: call <8 x i16> @llvm.bswap
+// CHECK-OPT3LINX64-NEXT: store <8 x i16>
+// CHECK-OPT3WINX64: load <8 x i16>
+// CHECK-OPT3WINX64-NEXT: call <8 x i16> @llvm.bswap
+// CHECK-OPT3WINX64-NEXT: store <8 x i16>
 // CHECK-NEXT: ret void
 #[no_mangle]
 pub fn convert(value: [u16; 8]) -> [u8; 16] {

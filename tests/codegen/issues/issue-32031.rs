@@ -9,8 +9,8 @@
 #[no_mangle]
 pub struct F32(f32);
 
-// other: define{{.*}}float @add_newtype_f32(float %a, float %b)
-// x86: define{{.*}}i32 @add_newtype_f32(float %a, float %b)
+// CHECK-OTHER: define{{.*}}float @add_newtype_f32(float %a, float %b)
+// CHECK-X86: define{{.*}}i32 @add_newtype_f32(float %a, float %b)
 #[inline(never)]
 #[no_mangle]
 pub fn add_newtype_f32(a: F32, b: F32) -> F32 {
@@ -20,8 +20,8 @@ pub fn add_newtype_f32(a: F32, b: F32) -> F32 {
 #[no_mangle]
 pub struct F64(f64);
 
-// other: define{{.*}}double @add_newtype_f64(double %a, double %b)
-// x86: define{{.*}}void @add_newtype_f64(ptr{{.*}}sret([8 x i8]){{.*}}%_0, double %a, double %b)
+// CHECK-OTHER: define{{.*}}double @add_newtype_f64(double %a, double %b)
+// CHECK-X86: define{{.*}}void @add_newtype_f64(ptr{{.*}}sret([8 x i8]){{.*}}%_0, double %a, double %b)
 #[inline(never)]
 #[no_mangle]
 pub fn add_newtype_f64(a: F64, b: F64) -> F64 {

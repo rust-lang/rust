@@ -143,16 +143,16 @@ pub fn f128_as_f16(a: f128) -> f16 {
     a as f16
 }
 
-// other-LABEL: float @f128_as_f32(
-// x86-LABEL: i32 @f128_as_f32(
+// CHECK-OTHER-LABEL: float @f128_as_f32(
+// CHECK-X86-LABEL: i32 @f128_as_f32(
 #[no_mangle]
 pub fn f128_as_f32(a: f128) -> f32 {
     // CHECK: fptrunc fp128 %{{.+}} to float
     a as f32
 }
 
-// other-LABEL: double @f128_as_f64(
-// x86-LABEL: void @f128_as_f64(
+// CHECK-OTHER-LABEL: double @f128_as_f64(
+// CHECK-X86-LABEL: void @f128_as_f64(
 #[no_mangle]
 pub fn f128_as_f64(a: f128) -> f64 {
     // CHECK: fptrunc fp128 %{{.+}} to double

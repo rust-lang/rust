@@ -37,12 +37,12 @@ pub struct DoubleFoo {
 }
 
 extern "C" {
-    // x86-linux: declare void @f({{.*}}byval([32 x i8]) align 4{{.*}})
-    // x86-darwin: declare void @f({{.*}}byval([32 x i8]) align 16{{.*}})
+    // CHECK-X86-LINUX: declare void @f({{.*}}byval([32 x i8]) align 4{{.*}})
+    // CHECK-X86-DARWIN: declare void @f({{.*}}byval([32 x i8]) align 16{{.*}})
     fn f(foo: Foo);
 
-    // x86-linux: declare void @g({{.*}}byval([64 x i8]) align 4{{.*}})
-    // x86-darwin: declare void @g({{.*}}byval([64 x i8]) align 16{{.*}})
+    // CHECK-X86-LINUX: declare void @g({{.*}}byval([64 x i8]) align 4{{.*}})
+    // CHECK-X86-DARWIN: declare void @g({{.*}}byval([64 x i8]) align 16{{.*}})
     fn g(foo: DoubleFoo);
 }
 

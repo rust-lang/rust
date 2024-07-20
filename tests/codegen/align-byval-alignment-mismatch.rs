@@ -55,13 +55,13 @@ extern "C" {
 // CHECK-LABEL: @rust_to_c_increases_alignment
 #[no_mangle]
 pub unsafe fn rust_to_c_increases_alignment(x: Align1) {
-    // i686-linux: start:
-    // i686-linux-NEXT: [[ALLOCA:%[0-9a-z]+]] = alloca [48 x i8], align 4
-    // i686-linux-NEXT: call void @llvm.memcpy.{{.+}}(ptr {{.*}}align 4 {{.*}}[[ALLOCA]], ptr {{.*}}align 1 {{.*}}%x
-    // i686-linux-NEXT: call void @extern_c_align1({{.+}} [[ALLOCA]])
+    // CHECK-I686-LINUX: start:
+    // CHECK-I686-LINUX-NEXT: [[ALLOCA:%[0-9a-z]+]] = alloca [48 x i8], align 4
+    // CHECK-I686-LINUX-NEXT: call void @llvm.memcpy.{{.+}}(ptr {{.*}}align 4 {{.*}}[[ALLOCA]], ptr {{.*}}align 1 {{.*}}%x
+    // CHECK-I686-LINUX-NEXT: call void @extern_c_align1({{.+}} [[ALLOCA]])
 
-    // x86_64-linux: start:
-    // x86_64-linux-NEXT: call void @extern_c_align1
+    // CHECK-X86_64-LINUX: start:
+    // CHECK-X86_64-LINUX-NEXT: call void @extern_c_align1
     extern_c_align1(x);
 }
 
@@ -89,13 +89,13 @@ pub unsafe extern "C" fn c_to_rust_decreases_alignment(x: Align1) {
 // CHECK-LABEL: @c_to_rust_increases_alignment
 #[no_mangle]
 pub unsafe extern "C" fn c_to_rust_increases_alignment(x: Align16) {
-    // i686-linux: start:
-    // i686-linux-NEXT: [[ALLOCA:%[0-9a-z]+]] = alloca [48 x i8], align 16
-    // i686-linux-NEXT: call void @llvm.memcpy.{{.+}}(ptr {{.*}}align 16 {{.*}}[[ALLOCA]], ptr {{.*}}align 4 {{.*}}%0
-    // i686-linux-NEXT: call void @extern_rust_align16({{.+}} [[ALLOCA]])
+    // CHECK-I686-LINUX: start:
+    // CHECK-I686-LINUX-NEXT: [[ALLOCA:%[0-9a-z]+]] = alloca [48 x i8], align 16
+    // CHECK-I686-LINUX-NEXT: call void @llvm.memcpy.{{.+}}(ptr {{.*}}align 16 {{.*}}[[ALLOCA]], ptr {{.*}}align 4 {{.*}}%0
+    // CHECK-I686-LINUX-NEXT: call void @extern_rust_align16({{.+}} [[ALLOCA]])
 
-    // x86_64-linux: start:
-    // x86_64-linux-NEXT: call void @extern_rust_align16
+    // CHECK-X86_64-LINUX: start:
+    // CHECK-X86_64-LINUX-NEXT: call void @extern_rust_align16
     extern_rust_align16(x);
 }
 
@@ -115,12 +115,12 @@ pub unsafe extern "C" fn c_to_rust_ref_decreases_alignment(x: Align1) {
 // CHECK-LABEL: @c_to_rust_ref_increases_alignment
 #[no_mangle]
 pub unsafe extern "C" fn c_to_rust_ref_increases_alignment(x: Align16) {
-    // i686-linux: start:
-    // i686-linux-NEXT: [[ALLOCA:%[0-9a-z]+]] = alloca [48 x i8], align 16
-    // i686-linux-NEXT: call void @llvm.memcpy.{{.+}}(ptr {{.*}}align 16 {{.*}}[[ALLOCA]], ptr {{.*}}align 4 {{.*}}%0
-    // i686-linux-NEXT: call void @extern_rust_ref_align16({{.+}} [[ALLOCA]])
+    // CHECK-I686-LINUX: start:
+    // CHECK-I686-LINUX-NEXT: [[ALLOCA:%[0-9a-z]+]] = alloca [48 x i8], align 16
+    // CHECK-I686-LINUX-NEXT: call void @llvm.memcpy.{{.+}}(ptr {{.*}}align 16 {{.*}}[[ALLOCA]], ptr {{.*}}align 4 {{.*}}%0
+    // CHECK-I686-LINUX-NEXT: call void @extern_rust_ref_align16({{.+}} [[ALLOCA]])
 
-    // x86_64-linux: start:
-    // x86_64-linux-NEXT: call void @extern_rust_ref_align16
+    // CHECK-X86_64-LINUX: start:
+    // CHECK-X86_64-LINUX-NEXT: call void @extern_rust_ref_align16
     extern_rust_ref_align16(&x);
 }

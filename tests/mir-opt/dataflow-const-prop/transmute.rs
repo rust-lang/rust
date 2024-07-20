@@ -8,7 +8,8 @@ use std::mem::transmute;
 // EMIT_MIR transmute.less_as_i8.DataflowConstProp.diff
 pub fn less_as_i8() -> i8 {
     // CHECK-LABEL: fn less_as_i8(
-    // FIXME-CHECK: _0 = const -1_i8;
+    // COM: FIXME: not yet optimized
+    // COM: CHECK: _0 = const -1_i8;
     unsafe { transmute(std::cmp::Ordering::Less) }
 }
 

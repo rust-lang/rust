@@ -7,15 +7,15 @@
 use std::arch::asm;
 
 // CHECK-LABEL: @amx_clobber
-// base: call void asm sideeffect inteldialect "", "~{tmm0}"()
+// CHECK-BASE: call void asm sideeffect inteldialect "", "~{tmm0}"()
 #[no_mangle]
 pub unsafe fn amx_clobber() {
     asm!("", out("tmm0") _, options(nostack, nomem, preserves_flags));
 }
 
 // CHECK-LABEL: @avx512_clobber
-// base: call void asm sideeffect inteldialect "", "~{xmm31}"()
-// avx512: call float asm sideeffect inteldialect "", "=&{xmm31}"()
+// CHECK-BASE: call void asm sideeffect inteldialect "", "~{xmm31}"()
+// CHECK-AVX512: call float asm sideeffect inteldialect "", "=&{xmm31}"()
 #[no_mangle]
 pub unsafe fn avx512_clobber() {
     asm!("", out("zmm31") _, options(nostack, nomem, preserves_flags));

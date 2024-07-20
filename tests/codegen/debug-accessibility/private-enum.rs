@@ -13,8 +13,8 @@ enum PrivateFooEnum {
     C { x: u32 },
 }
 
-// NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "PrivateFooEnum"{{.*}}flags: DIFlagPrivate{{.*}})
-// MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<private_enum::PrivateFooEnum>"{{.*}}flags: DIFlagPrivate{{.*}})
+// CHECK-NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "PrivateFooEnum"{{.*}}flags: DIFlagPrivate{{.*}})
+// CHECK-MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<private_enum::PrivateFooEnum>"{{.*}}flags: DIFlagPrivate{{.*}})
 
 fn main() {
     black_box(PrivateFooEnum::A);

@@ -13,8 +13,8 @@ pub enum PublicFooEnum {
     C { x: u32 },
 }
 
-// NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "PublicFooEnum"{{.*}}flags: DIFlagPublic{{.*}})
-// MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<public_enum::PublicFooEnum>"{{.*}}flags: DIFlagPublic{{.*}})
+// CHECK-NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "PublicFooEnum"{{.*}}flags: DIFlagPublic{{.*}})
+// CHECK-MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<public_enum::PublicFooEnum>"{{.*}}flags: DIFlagPublic{{.*}})
 
 fn main() {
     black_box(PublicFooEnum::A);

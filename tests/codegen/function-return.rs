@@ -20,9 +20,9 @@ trait Sized {}
 pub fn foo() {
     // CHECK: @foo() unnamed_addr #0
 
-    // unset-NOT: fn_ret_thunk_extern
-    // keep-NOT: fn_ret_thunk_extern
-    // thunk-extern: attributes #0 = { {{.*}}fn_ret_thunk_extern{{.*}} }
-    // keep-thunk-extern: attributes #0 = { {{.*}}fn_ret_thunk_extern{{.*}} }
-    // thunk-extern-keep-NOT: fn_ret_thunk_extern
+    // CHECK-UNSET-NOT: fn_ret_thunk_extern
+    // CHECK-KEEP-NOT: fn_ret_thunk_extern
+    // CHECK-THUNK-EXTERN: attributes #0 = { {{.*}}fn_ret_thunk_extern{{.*}} }
+    // CHECK-KEEP-THUNK-EXTERN: attributes #0 = { {{.*}}fn_ret_thunk_extern{{.*}} }
+    // CHECK-THUNK-EXTERN-KEEP-NOT: fn_ret_thunk_extern
 }

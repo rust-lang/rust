@@ -17,6 +17,6 @@ trait Sized {}
 pub fn foo() {
     // CHECK: @foo() unnamed_addr #0
 
-    // unset-NOT: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+reserve-x18{{.*}} }
-    // set: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+reserve-x18{{.*}} }
+    // CHECK-UNSET-NOT: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+reserve-x18{{.*}} }
+    // CHECK-SET: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+reserve-x18{{.*}} }
 }

@@ -70,44 +70,44 @@ macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
     }
 };}
 
-// mips32-LABEL: sym_static_32:
-// mips32: #APP
-// mips32: lw $3, %got(extern_static)($gp)
-// mips32: #NO_APP
+// CHECK-MIPS32-LABEL: sym_static_32:
+// CHECK-MIPS32: #APP
+// CHECK-MIPS32: lw $3, %got(extern_static)($gp)
+// CHECK-MIPS32: #NO_APP
 #[cfg(mips32)]
 #[no_mangle]
 pub unsafe fn sym_static_32() {
     asm!("lw $v1, {}", sym extern_static);
 }
 
-// mips32-LABEL: sym_fn_32:
-// mips32: #APP
-// mips32: lw $3, %got(extern_func)($gp)
-// mips32: #NO_APP
+// CHECK-MIPS32-LABEL: sym_fn_32:
+// CHECK-MIPS32: #APP
+// CHECK-MIPS32: lw $3, %got(extern_func)($gp)
+// CHECK-MIPS32: #NO_APP
 #[cfg(mips32)]
 #[no_mangle]
 pub unsafe fn sym_fn_32() {
     asm!("lw $v1, {}", sym extern_func);
 }
 
-// mips64-LABEL: sym_static_64:
-// mips64: #APP
-// mips64: lui    $3, %got_hi(extern_static)
-// mips64: daddu  $3, $3, $gp
-// mips64: ld     $3, %got_lo(extern_static)($3)
-// mips64: #NO_APP
+// CHECK-MIPS64-LABEL: sym_static_64:
+// CHECK-MIPS64: #APP
+// CHECK-MIPS64: lui    $3, %got_hi(extern_static)
+// CHECK-MIPS64: daddu  $3, $3, $gp
+// CHECK-MIPS64: ld     $3, %got_lo(extern_static)($3)
+// CHECK-MIPS64: #NO_APP
 #[cfg(mips64)]
 #[no_mangle]
 pub unsafe fn sym_static_64() {
     asm!("ld $v1, {}", sym extern_static);
 }
 
-// mips64-LABEL: sym_fn_64:
-// mips64: #APP
-// mips64: lui    $3, %got_hi(extern_func)
-// mips64: daddu  $3, $3, $gp
-// mips64: ld     $3, %got_lo(extern_func)($3)
-// mips64: #NO_APP
+// CHECK-MIPS64-LABEL: sym_fn_64:
+// CHECK-MIPS64: #APP
+// CHECK-MIPS64: lui    $3, %got_hi(extern_func)
+// CHECK-MIPS64: daddu  $3, $3, $gp
+// CHECK-MIPS64: ld     $3, %got_lo(extern_func)($3)
+// CHECK-MIPS64: #NO_APP
 #[cfg(mips64)]
 #[no_mangle]
 pub unsafe fn sym_fn_64() {
@@ -172,10 +172,10 @@ check!(reg_i32, i32, reg, "move");
 // CHECK: #NO_APP
 check!(reg_f32_soft, f32, reg, "move");
 
-// mips64-LABEL: reg_f64_soft:
-// mips64: #APP
-// mips64: move ${{[0-9]+}}, ${{[0-9]+}}
-// mips64: #NO_APP
+// CHECK-MIPS64-LABEL: reg_f64_soft:
+// CHECK-MIPS64: #APP
+// CHECK-MIPS64: move ${{[0-9]+}}, ${{[0-9]+}}
+// CHECK-MIPS64: #NO_APP
 #[cfg(mips64)]
 check!(reg_f64_soft, f64, reg, "move");
 
@@ -197,10 +197,10 @@ check!(reg_u8, u8, reg, "move");
 // CHECK: #NO_APP
 check!(reg_i16, i16, reg, "move");
 
-// mips64-LABEL: reg_i64:
-// mips64: #APP
-// mips64: move ${{[0-9]+}}, ${{[0-9]+}}
-// mips64: #NO_APP
+// CHECK-MIPS64-LABEL: reg_i64:
+// CHECK-MIPS64: #APP
+// CHECK-MIPS64: move ${{[0-9]+}}, ${{[0-9]+}}
+// CHECK-MIPS64: #NO_APP
 #[cfg(mips64)]
 check!(reg_i64, i64, reg, "move");
 

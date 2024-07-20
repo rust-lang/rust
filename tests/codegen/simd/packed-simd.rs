@@ -35,7 +35,7 @@ fn load<T, const N: usize>(v: Simd<T, N>) -> FullSimd<T, N> {
 #[no_mangle]
 pub fn square_packed_full(x: Simd<f32, 3>) -> FullSimd<f32, 3> {
     // CHECK-NEXT: start
-    // noopt: alloca [[RET_TYPE]], [[RET_ALIGN]]
+    // CHECK-NOOPT: alloca [[RET_TYPE]], [[RET_ALIGN]]
     // CHECK: load <3 x float>
     let x = load(x);
     // CHECK: [[VREG:%[a-z0-9_]+]] = fmul <3 x float>
@@ -51,7 +51,7 @@ pub fn square_packed_full(x: Simd<f32, 3>) -> FullSimd<f32, 3> {
 pub fn square_packed(x: Simd<f32, 3>) -> Simd<f32, 3> {
     // CHECK-NEXT: start
     // CHECK-NEXT: load <3 x float>
-    // noopt-NEXT: load <3 x float>
+    // CHECK-NOOPT-NEXT: load <3 x float>
     // CHECK-NEXT: [[VREG:%[a-z0-9_]+]] = fmul <3 x float>
     // CHECK-NEXT: store <3 x float> [[VREG]], ptr [[RET_VREG]], [[RET_ALIGN]]
     // CHECK-NEXT: ret void
