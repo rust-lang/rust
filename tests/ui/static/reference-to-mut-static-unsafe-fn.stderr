@@ -4,7 +4,7 @@ error[E0796]: creating a shared reference to a mutable static
 LL |         let _y = &X;
    |                  ^^ shared reference to mutable static
    |
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         let _y = addr_of!(X);
@@ -16,11 +16,7 @@ error[E0796]: creating a shared reference to a mutable static
 LL |         let ref _a = X;
    |                      ^ shared reference to mutable static
    |
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
-help: use `addr_of!` instead to create a raw pointer
-   |
-LL |         let ref _a = addr_of!(X);
-   |                      +++++++++ +
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
 
 error[E0796]: creating a mutable reference to a mutable static
   --> $DIR/reference-to-mut-static-unsafe-fn.rs:16:26
@@ -28,11 +24,7 @@ error[E0796]: creating a mutable reference to a mutable static
 LL |         let ref mut _a = X;
    |                          ^ mutable reference to mutable static
    |
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-help: use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |         let ref mut _a = addr_of_mut!(X);
-   |                          +++++++++++++ +
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
 
 error[E0796]: creating a shared reference to a mutable static
   --> $DIR/reference-to-mut-static-unsafe-fn.rs:19:25
@@ -40,7 +32,7 @@ error[E0796]: creating a shared reference to a mutable static
 LL |         let (_b, _c) = (&X, &mut Y);
    |                         ^^ shared reference to mutable static
    |
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         let (_b, _c) = (addr_of!(X), &mut Y);
@@ -52,7 +44,7 @@ error[E0796]: creating a mutable reference to a mutable static
 LL |         let (_b, _c) = (&X, &mut Y);
    |                             ^^^^^^ mutable reference to mutable static
    |
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |         let (_b, _c) = (&X, addr_of_mut!(Y));
@@ -64,7 +56,7 @@ error[E0796]: creating a shared reference to a mutable static
 LL |         foo(&X);
    |             ^^ shared reference to mutable static
    |
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |         foo(addr_of!(X));

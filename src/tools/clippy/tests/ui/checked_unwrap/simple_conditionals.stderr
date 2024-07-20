@@ -1,3 +1,15 @@
+error: creating a shared reference to mutable static is discouraged
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:174:12
+   |
+LL |         if X.is_some() {
+   |            ^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: `-D static-mut-refs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(static_mut_refs)]`
+
 error: called `unwrap` on `x` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:46:9
    |
@@ -236,5 +248,5 @@ LL |     if result.is_ok() {
 LL |         result.as_mut().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: aborting due to 26 previous errors
 

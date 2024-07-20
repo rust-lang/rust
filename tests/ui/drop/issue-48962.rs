@@ -10,6 +10,7 @@ impl Drop for Dropee {
     fn drop(&mut self) {
         unsafe {
             ORDER[INDEX] = self.0;
+            //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
             INDEX = INDEX + 1;
         }
     }
@@ -18,6 +19,7 @@ impl Drop for Dropee {
 fn add_sentintel() {
     unsafe {
         ORDER[INDEX] = 2;
+        //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
         INDEX = INDEX + 1;
     }
 }
@@ -30,5 +32,6 @@ fn main() {
     {x}; // drop value
     unsafe {
         assert_eq!(ORDER, [1, 2, 3]);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

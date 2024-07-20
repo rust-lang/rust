@@ -1,8 +1,8 @@
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/issue-23338-ensure-param-drop-order.rs:93:31
+  --> $DIR/thread-local-issue-37508.rs:30:10
    |
-LL |             (mem::size_of_val(&trails) * 8) as u32
-   |                               ^^^^^^^ shared reference to mutable static
+LL |     Some(&KEY.inner)
+   |          ^^^^^^^^^^ shared reference to mutable static
    |
    = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
    = note: this will be a hard error in the 2024 edition
@@ -10,8 +10,8 @@ LL |             (mem::size_of_val(&trails) * 8) as u32
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `addr_of!` instead to create a raw pointer
    |
-LL |             (mem::size_of_val(addr_of!(trails)) * 8) as u32
-   |                               ~~~~~~~~~      +
+LL |     Some(addr_of!(KEY.inner))
+   |          ~~~~~~~~~         +
 
 warning: 1 warning emitted
 
