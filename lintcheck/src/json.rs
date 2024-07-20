@@ -9,6 +9,7 @@ use crate::ClippyWarning;
 #[derive(Deserialize, Serialize)]
 struct LintJson {
     lint: String,
+    krate: String,
     file_name: String,
     byte_pos: (u32, u32),
     file_link: String,
@@ -18,6 +19,10 @@ struct LintJson {
 impl LintJson {
     fn key(&self) -> impl Ord + '_ {
         (self.file_name.as_str(), self.byte_pos, self.lint.as_str())
+    }
+
+    fn info_text(&self, action: &str) -> String {
+        format!("{action} `{}` in `{}` at {}", self.lint, self.krate, self.file_link)
     }
 }
 
@@ -30,6 +35,7 @@ pub(crate) fn output(clippy_warnings: Vec<ClippyWarning>) -> String {
             LintJson {
                 file_name: span.file_name.clone(),
                 byte_pos: (span.byte_start, span.byte_end),
+                krate: warning.krate,
                 file_link: warning.url,
                 lint: warning.lint,
                 rendered: warning.diag.rendered.unwrap(),
@@ -55,7 +61,7 @@ fn print_warnings(title: &str, warnings: &[LintJson]) {
     println!(r#"<h3 id="{title}">{title}</h3>"#);
     println!();
     for warning in warnings {
-        println!("{title} `{}` at {}", warning.lint, warning.file_link);
+        println!("{}", warning.info_text(title));
         println!();
         println!("```");
         println!("{}", warning.rendered.trim_end());
@@ -73,7 +79,7 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
     println!(r#"<h3 id="changed">Changed</h3>"#);
     println!();
     for (old, new) in changed {
-        println!("Changed `{}` at {}", new.lint, new.file_link);
+        println!("{}", new.info_text("Changed"));
         println!();
         println!("```diff");
         for change in diff::lines(old.rendered.trim_end(), new.rendered.trim_end()) {

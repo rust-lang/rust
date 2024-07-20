@@ -53,12 +53,13 @@ impl RustcIce {
 pub struct ClippyWarning {
     pub lint: String,
     pub diag: Diagnostic,
+    pub krate: String,
     /// The URL that points to the file and line of the lint emission
     pub url: String,
 }
 
 impl ClippyWarning {
-    pub fn new(mut diag: Diagnostic, base_url: &str) -> Option<Self> {
+    pub fn new(mut diag: Diagnostic, base_url: &str, krate: &str) -> Option<Self> {
         let lint = diag.code.clone()?.code;
         if !(lint.contains("clippy") || diag.message.contains("clippy"))
             || diag.message.contains("could not read cargo metadata")
@@ -90,7 +91,12 @@ impl ClippyWarning {
             file.clone()
         };
 
-        Some(Self { lint, diag, url })
+        Some(Self {
+            lint,
+            diag,
+            url,
+            krate: krate.to_string(),
+        })
     }
 
     pub fn span(&self) -> &DiagnosticSpan {
