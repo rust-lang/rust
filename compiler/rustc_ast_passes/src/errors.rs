@@ -70,6 +70,13 @@ pub struct ForbiddenBound {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_forbidden_const_param)]
+pub struct ForbiddenConstParam {
+    #[primary_span]
+    pub const_param_spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_fn_param_too_many)]
 pub struct FnParamTooMany {
     #[primary_span]
