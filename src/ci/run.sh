@@ -19,7 +19,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     # already be running with the right user.
     #
     # For NO_CHANGE_USER done in the small number of Dockerfiles affected.
-    echo -e '[safe]\n\tdirectory = *' > /home/user/gitconfig
+    echo -e '[safe]\n\tdirectory = *' > /home/user/.gitconfig
 
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
   fi
