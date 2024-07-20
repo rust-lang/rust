@@ -525,6 +525,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                         _ => {}
                     }
                 }
+
+                // the self_ty may contain alias type, mark it live
+                if let hir::ItemKind::Impl(imp) = self.tcx.hir().expect_item(item).kind {
+                    intravisit::walk_ty(self, imp.self_ty);
+                }
+
                 intravisit::walk_impl_item(self, impl_item);
             }
             Node::ForeignItem(foreign_item) => {
