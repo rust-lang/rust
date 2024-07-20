@@ -203,7 +203,9 @@ pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
             || target.contains("aarch64")
             || target.contains("s390x")
             || target.contains("riscv64gc")
-    } else if target.contains("darwin") || target.is_windows() {
+    } else if target.contains("darwin") {
+        target.contains("x86_64") || target.contains("aarch64")
+    } else if target.is_windows() {
         target.contains("x86_64")
     } else {
         false
