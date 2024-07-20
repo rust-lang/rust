@@ -58,7 +58,7 @@ fn print_warnings(title: &str, warnings: &[LintJson]) {
         println!("{title} `{}` at {}", warning.lint, warning.file_link);
         println!();
         println!("```");
-        print!("{}", warning.rendered);
+        println!("{}", warning.rendered.trim_end());
         println!("```");
         println!();
     }
@@ -76,7 +76,7 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
         println!("Changed `{}` at {}", new.lint, new.file_link);
         println!();
         println!("```diff");
-        for change in diff::lines(&old.rendered, &new.rendered) {
+        for change in diff::lines(old.rendered.trim_end(), new.rendered.trim_end()) {
             use diff::Result::{Both, Left, Right};
 
             match change {
