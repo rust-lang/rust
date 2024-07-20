@@ -614,3 +614,9 @@ pub mod private {
         B,
     }
 }
+
+pub mod trait_bounds {
+    pub trait OneBound: Sized {}
+    pub trait TwoBounds: Sized + Copy {}
+    pub trait ThreeBounds: Sized + Copy + Eq {}
+}
