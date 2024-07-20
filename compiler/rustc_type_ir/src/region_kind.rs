@@ -232,7 +232,7 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
             ReStatic => f.write_str("'static"),
 
-            ReVar(vid) => write!(f, "{:?}", &vid),
+            ReVar(vid) => write!(f, "{vid:?}"),
 
             RePlaceholder(placeholder) => write!(f, "{placeholder:?}"),
 
