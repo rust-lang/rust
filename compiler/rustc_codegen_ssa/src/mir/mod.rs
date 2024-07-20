@@ -177,29 +177,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
-    if cx.tcx().has_attr(instance.def.def_id(), rustc_span::sym::naked) {
-        let cached_llbbs = IndexVec::new();
-
-        let fx: FunctionCx<'_, '_, Bx> = FunctionCx {
-            instance,
-            mir,
-            llfn,
-            fn_abi,
-            cx,
-            personality_slot: None,
-            cached_llbbs,
-            unreachable_block: None,
-            terminate_block: None,
-            cleanup_kinds: None,
-            landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
-            funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
-            locals: locals::Locals::empty(),
-            debug_context: None,
-            per_local_var_debug_info: None,
-            caller_location: None,
-        };
-
-        fx.codegen_naked_asm(instance);
+    if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+        crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
         return;
     }
 

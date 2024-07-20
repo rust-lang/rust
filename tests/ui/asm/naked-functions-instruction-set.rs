@@ -24,7 +24,7 @@ unsafe extern "C" fn test_thumb() {
 
 #[no_mangle]
 #[naked]
-#[instruction_set(arm::t32)]
+#[instruction_set(arm::a32)]
 unsafe extern "C" fn test_arm() {
     naked_asm!("bx lr");
 }

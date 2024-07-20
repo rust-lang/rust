@@ -1,8 +1,9 @@
 use rustc_hir as hir;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::mono::{LinkageInfo, MonoItem, Visibility};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{span_bug, ty};
 use tracing::debug;
 
@@ -135,7 +136,14 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.predefine_static(def_id, linkage_info.into_linkage(), visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                cx.predefine_fn(instance, linkage_info.into_linkage(), visibility, symbol_name);
+                let attrs = cx.tcx().codegen_fn_attrs(instance.def_id());
+                let linkage = if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+                    linkage_info.into_naked_linkage()
+                } else {
+                    linkage_info.into_linkage()
+                };
+
+                cx.predefine_fn(instance, linkage, visibility, symbol_name);
             }
             MonoItem::GlobalAsm(..) => {}
         }
