@@ -2890,6 +2890,14 @@ pub struct SOCKADDR {
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
+pub struct SOCKADDR_STORAGE {
+    pub ss_family: ADDRESS_FAMILY,
+    pub __ss_pad1: [i8; 6],
+    pub __ss_align: i64,
+    pub __ss_pad2: [i8; 112],
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub struct SOCKADDR_UN {
     pub sun_family: ADDRESS_FAMILY,
     pub sun_path: [i8; 108],
