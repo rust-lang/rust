@@ -8,7 +8,7 @@
 //! 1.58) and future ABIs (stage1, nightly)
 
 use std::{
-    env, fs,
+    env,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -30,8 +30,7 @@ fn main() {
 
     if !has_features {
         println!("proc-macro-test testing only works on nightly toolchains");
-        let info_path = out_dir.join("proc_macro_test_location.txt");
-        fs::File::create(info_path).unwrap();
+        println!("cargo::rustc-env=PROC_MACRO_TEST_LOCATION=\"\"");
         return;
     }
 
@@ -121,6 +120,5 @@ fn main() {
     // This file is under `target_dir` and is already under `OUT_DIR`.
     let artifact_path = artifact_path.expect("no dylib for proc-macro-test-impl found");
 
-    let info_path = out_dir.join("proc_macro_test_location.txt");
-    fs::write(info_path, artifact_path.to_str().unwrap()).unwrap();
+    println!("cargo::rustc-env=PROC_MACRO_TEST_LOCATION={}", artifact_path.display());
 }

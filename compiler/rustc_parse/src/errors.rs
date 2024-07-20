@@ -660,9 +660,8 @@ pub(crate) struct RemoveLet {
 #[diag(parse_use_eq_instead)]
 pub(crate) struct UseEqInstead {
     #[primary_span]
+    #[suggestion(style = "verbose", applicability = "machine-applicable", code = "=")]
     pub span: Span,
-    #[suggestion(style = "verbose", applicability = "machine-applicable", code = "")]
-    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1504,6 +1503,20 @@ pub(crate) struct FnPtrWithGenerics {
 }
 
 #[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_misplaced_return_type,
+    style = "verbose",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct MisplacedReturnType {
+    #[suggestion_part(code = " {snippet}")]
+    pub fn_params_end: Span,
+    pub snippet: String,
+    #[suggestion_part(code = "")]
+    pub ret_ty_span: Span,
+}
+
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(parse_suggestion, applicability = "maybe-incorrect")]
 pub(crate) struct FnPtrWithGenericsSugg {
     #[suggestion_part(code = "{snippet}")]
@@ -1517,7 +1530,6 @@ pub(crate) struct FnPtrWithGenericsSugg {
 
 pub(crate) struct FnTraitMissingParen {
     pub span: Span,
-    pub machine_applicable: bool,
 }
 
 impl Subdiagnostic for FnTraitMissingParen {
@@ -1527,16 +1539,11 @@ impl Subdiagnostic for FnTraitMissingParen {
         _: &F,
     ) {
         diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
-        let applicability = if self.machine_applicable {
-            Applicability::MachineApplicable
-        } else {
-            Applicability::MaybeIncorrect
-        };
         diag.span_suggestion_short(
             self.span.shrink_to_hi(),
             crate::fluent_generated::parse_add_paren,
             "()",
-            applicability,
+            Applicability::MachineApplicable,
         );
     }
 }
@@ -2007,6 +2014,21 @@ pub struct CannotBeRawIdent {
     #[primary_span]
     pub span: Span,
     pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_keyword_lifetime)]
+pub struct KeywordLifetime {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_label)]
+pub struct InvalidLabel {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]

@@ -1,6 +1,10 @@
 use base_db::FileId;
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
+use rustc_apfloat::{
+    ieee::{Half as f16, Quad as f128},
+    Float,
+};
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
@@ -141,6 +145,14 @@ fn bit_op() {
 #[test]
 fn floating_point() {
     check_number(
+        r#"const GOAL: f128 = 2.0 + 3.0 * 5.5 - 8.;"#,
+        "10.5".parse::<f128>().unwrap().to_bits() as i128,
+    );
+    check_number(
+        r#"const GOAL: f128 = -90.0 + 36.0;"#,
+        "-54.0".parse::<f128>().unwrap().to_bits() as i128,
+    );
+    check_number(
         r#"const GOAL: f64 = 2.0 + 3.0 * 5.5 - 8.;"#,
         i128::from_le_bytes(pad16(&f64::to_le_bytes(10.5), true)),
     );
@@ -151,6 +163,20 @@ fn floating_point() {
     check_number(
         r#"const GOAL: f32 = -90.0 + 36.0;"#,
         i128::from_le_bytes(pad16(&f32::to_le_bytes(-54.0), true)),
+    );
+    check_number(
+        r#"const GOAL: f16 = 2.0 + 3.0 * 5.5 - 8.;"#,
+        i128::from_le_bytes(pad16(
+            &u16::try_from("10.5".parse::<f16>().unwrap().to_bits()).unwrap().to_le_bytes(),
+            true,
+        )),
+    );
+    check_number(
+        r#"const GOAL: f16 = -90.0 + 36.0;"#,
+        i128::from_le_bytes(pad16(
+            &u16::try_from("-54.0".parse::<f16>().unwrap().to_bits()).unwrap().to_le_bytes(),
+            true,
+        )),
     );
 }
 

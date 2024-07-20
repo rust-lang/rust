@@ -5,7 +5,9 @@ use std::panic;
 use std::path::Path;
 use std::process::{Command as StdCommand, ExitStatus, Output, Stdio};
 
-use crate::{assert_contains, assert_equals, assert_not_contains, handle_failed_output};
+use crate::util::handle_failed_output;
+use crate::{assert_contains, assert_equals, assert_not_contains};
+
 use build_helper::drop_bomb::DropBomb;
 
 /// This is a custom command wrapper that simplifies working with commands and makes it easier to

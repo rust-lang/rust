@@ -120,6 +120,18 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
+    /// Why do we need this in addition to [`Self::current_hir_id_owner`]?
+    ///
+    /// Currently (as of June 2024), anonymous constants are not HIR owners; however,
+    /// they do get their own DefIds. Some of these DefIds have to be created during
+    /// AST lowering, rather than def collection, because we can't tell until after
+    /// name resolution whether an anonymous constant will end up instead being a
+    /// [`hir::ConstArgKind::Path`]. However, to compute which generics are
+    /// available to an anonymous constant nested inside another, we need to make
+    /// sure that the parent is recorded as the parent anon const, not the enclosing
+    /// item. So we need to track parent defs differently from HIR owners, since they
+    /// will be finer-grained in the case of anon consts.
+    current_def_id_parent: LocalDefId,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
 
@@ -162,6 +174,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             attrs: SortedMap::default(),
             children: Vec::default(),
             current_hir_id_owner: hir::CRATE_OWNER_ID,
+            current_def_id_parent: CRATE_DEF_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
             node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
@@ -592,7 +605,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
         debug_assert_eq!(_old, None);
 
-        let item = f(self);
+        let item = self.with_def_id_parent(def_id, f);
         debug_assert_eq!(def_id, item.def_id().def_id);
         // `f` should have consumed all the elements in these vectors when constructing `item`.
         debug_assert!(self.impl_trait_defs.is_empty());
@@ -610,6 +623,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         debug_assert!(!self.children.iter().any(|(id, _)| id == &def_id));
         self.children.push((def_id, hir::MaybeOwner::Owner(info)));
+    }
+
+    fn with_def_id_parent<T>(&mut self, parent: LocalDefId, f: impl FnOnce(&mut Self) -> T) -> T {
+        let current_def_id_parent = std::mem::replace(&mut self.current_def_id_parent, parent);
+        let result = f(self);
+        self.current_def_id_parent = current_def_id_parent;
+        result
     }
 
     /// Installs the remapping `remap` in scope while `f` is being executed.
@@ -806,7 +826,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
-                    self.current_hir_id_owner.def_id,
+                    self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
                     param,
                     kw::UnderscoreLifetime,
                     DefKind::LifetimeParam,
@@ -1044,7 +1064,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     Term::Ty(ty) => self.lower_ty(ty, itctx).into(),
-                    Term::Const(c) => self.lower_anon_const(c).into(),
+                    Term::Const(c) => self.lower_anon_const_to_const_arg(c).into(),
                 };
                 hir::AssocItemConstraintKind::Equality { term }
             }
@@ -1150,42 +1170,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     ty,
                                 );
 
-                                // Construct an AnonConst where the expr is the "ty"'s path.
-
-                                let parent_def_id = self.current_hir_id_owner;
-                                let node_id = self.next_node_id();
-                                let span = self.lower_span(ty.span);
-
-                                // Add a definition for the in-band const def.
-                                let def_id = self.create_def(
-                                    parent_def_id.def_id,
-                                    node_id,
-                                    kw::Empty,
-                                    DefKind::AnonConst,
-                                    span,
-                                );
-
-                                let path_expr = Expr {
-                                    id: ty.id,
-                                    kind: ExprKind::Path(None, path.clone()),
-                                    span,
-                                    attrs: AttrVec::new(),
-                                    tokens: None,
-                                };
-
-                                let ct = self.with_new_scopes(span, |this| {
-                                    self.arena.alloc(hir::AnonConst {
-                                        def_id,
-                                        hir_id: this.lower_node_id(node_id),
-                                        body: this
-                                            .lower_const_body(path_expr.span, Some(&path_expr)),
-                                        span,
-                                    })
-                                });
-                                return GenericArg::Const(ConstArg {
-                                    value: ct,
-                                    is_desugared_from_effects: false,
-                                });
+                                let ct =
+                                    self.lower_const_path_to_const_arg(path, res, ty.id, ty.span);
+                                return GenericArg::Const(ct);
                             }
                         }
                     }
@@ -1193,10 +1180,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArg::Type(self.lower_ty(ty, itctx))
             }
-            ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                value: self.lower_anon_const(ct),
-                is_desugared_from_effects: false,
-            }),
+            ast::GenericArg::Const(ct) => GenericArg::Const(self.lower_anon_const_to_const_arg(ct)),
         }
     }
 
@@ -1355,7 +1339,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Array(ty, length) => {
                 hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
             }
-            TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const(expr)),
+            TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const_to_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
                 let mut lifetime_bound = None;
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
@@ -1429,7 +1413,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
 
                         self.create_def(
-                            self.current_hir_id_owner.def_id,
+                            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
                             *def_node_id,
                             ident.name,
                             DefKind::TyParam,
@@ -1637,7 +1621,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.create_def(
-            self.current_hir_id_owner.def_id,
+            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
             opaque_ty_node_id,
             kw::Empty,
             DefKind::OpaqueTy,
@@ -2222,7 +2206,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             false
                         }
                     })
-                    .map(|def| self.lower_anon_const(def));
+                    .map(|def| self.lower_anon_const_to_const_arg(def));
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
@@ -2360,19 +2344,153 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         "using `_` for array lengths is unstable",
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                    hir::ArrayLen::Body(self.lower_anon_const(c))
+                    hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c))
                 }
             }
-            _ => hir::ArrayLen::Body(self.lower_anon_const(c)),
+            _ => hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c)),
         }
     }
 
-    fn lower_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
-        self.arena.alloc(self.with_new_scopes(c.value.span, |this| hir::AnonConst {
-            def_id: this.local_def_id(c.id),
-            hir_id: this.lower_node_id(c.id),
-            body: this.lower_const_body(c.value.span, Some(&c.value)),
-            span: this.lower_span(c.value.span),
+    #[instrument(level = "debug", skip(self))]
+    fn lower_const_path_to_const_arg(
+        &mut self,
+        path: &Path,
+        res: Res<NodeId>,
+        ty_id: NodeId,
+        span: Span,
+    ) -> &'hir hir::ConstArg<'hir> {
+        let ct_kind = match res {
+            Res::Def(DefKind::ConstParam, _) => {
+                let qpath = self.lower_qpath(
+                    ty_id,
+                    &None,
+                    path,
+                    ParamMode::Optional,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
+                );
+                hir::ConstArgKind::Path(qpath)
+            }
+            _ => {
+                // Construct an AnonConst where the expr is the "ty"'s path.
+
+                let parent_def_id = self.current_def_id_parent;
+                let node_id = self.next_node_id();
+                let span = self.lower_span(span);
+
+                // Add a definition for the in-band const def.
+                let def_id =
+                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, span);
+                let hir_id = self.lower_node_id(node_id);
+
+                let path_expr = Expr {
+                    id: ty_id,
+                    kind: ExprKind::Path(None, path.clone()),
+                    span,
+                    attrs: AttrVec::new(),
+                    tokens: None,
+                };
+
+                let ct = self.with_new_scopes(span, |this| {
+                    self.arena.alloc(hir::AnonConst {
+                        def_id,
+                        hir_id,
+                        body: this.with_def_id_parent(def_id, |this| {
+                            this.lower_const_body(path_expr.span, Some(&path_expr))
+                        }),
+                        span,
+                    })
+                });
+                hir::ConstArgKind::Anon(ct)
+            }
+        };
+
+        self.arena.alloc(hir::ConstArg {
+            hir_id: self.next_id(),
+            kind: ct_kind,
+            is_desugared_from_effects: false,
+        })
+    }
+
+    /// See [`hir::ConstArg`] for when to use this function vs
+    /// [`Self::lower_anon_const_to_anon_const`].
+    fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> &'hir hir::ConstArg<'hir> {
+        self.arena.alloc(self.lower_anon_const_to_const_arg_direct(anon))
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn lower_anon_const_to_const_arg_direct(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        let expr = if let ExprKind::Block(block, _) = &anon.value.kind
+            && let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
+            && let ExprKind::Path(..) = &expr.kind
+        {
+            expr
+        } else {
+            &anon.value
+        };
+        let maybe_res =
+            self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
+        debug!("res={:?}", maybe_res);
+        // FIXME(min_generic_const_args): for now we only lower params to ConstArgKind::Path
+        if let Some(res) = maybe_res
+            && let Res::Def(DefKind::ConstParam, _) = res
+            && let ExprKind::Path(qself, path) = &expr.kind
+        {
+            let qpath = self.lower_qpath(
+                expr.id,
+                qself,
+                path,
+                ParamMode::Optional,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
+
+            return ConstArg {
+                hir_id: self.next_id(),
+                kind: hir::ConstArgKind::Path(qpath),
+                is_desugared_from_effects: false,
+            };
+        }
+
+        let lowered_anon = self.lower_anon_const_to_anon_const(anon);
+        ConstArg {
+            hir_id: self.next_id(),
+            kind: hir::ConstArgKind::Anon(lowered_anon),
+            is_desugared_from_effects: false,
+        }
+    }
+
+    /// See [`hir::ConstArg`] for when to use this function vs
+    /// [`Self::lower_anon_const_to_const_arg`].
+    fn lower_anon_const_to_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
+        if c.value.is_potential_trivial_const_arg() {
+            // HACK(min_generic_const_args): see DefCollector::visit_anon_const
+            // Over there, we guess if this is a bare param and only create a def if
+            // we think it's not. However we may can guess wrong (see there for example)
+            // in which case we have to create the def here.
+            self.create_def(
+                self.current_def_id_parent,
+                c.id,
+                kw::Empty,
+                DefKind::AnonConst,
+                c.value.span,
+            );
+        }
+
+        self.arena.alloc(self.with_new_scopes(c.value.span, |this| {
+            let def_id = this.local_def_id(c.id);
+            let hir_id = this.lower_node_id(c.id);
+            hir::AnonConst {
+                def_id,
+                hir_id,
+                body: this.with_def_id_parent(def_id, |this| {
+                    this.lower_const_body(c.value.span, Some(&c.value))
+                }),
+                span: this.lower_span(c.value.span),
+            }
         }))
     }
 

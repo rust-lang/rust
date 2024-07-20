@@ -8,7 +8,6 @@ use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCall
 use itertools::Itertools;
 use la_arena::Idx;
 use once_cell::sync::Lazy;
-use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use stdx::format_to;
@@ -65,8 +64,6 @@ pub struct ImportId {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
-    _c: Count<Self>,
-
     /// Defs visible in this scope. This includes `declarations`, but also
     /// imports. The imports belong to this module and can be resolved by using them on
     /// the `use_imports_*` fields.
@@ -722,7 +719,6 @@ impl ItemScope {
     pub(crate) fn shrink_to_fit(&mut self) {
         // Exhaustive match to require handling new fields.
         let Self {
-            _c: _,
             types,
             values,
             macros,

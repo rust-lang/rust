@@ -8,13 +8,13 @@
 //@ ignore-windows
 // Reason: Because of Windows exception handling, the code is not necessarily any shorter.
 
-use run_make_support::{fs_wrapper, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rustc().opt().emit("asm").input("exit-ret.rs").run();
     rustc().opt().emit("asm").input("exit-unreachable.rs").run();
     assert!(
-        fs_wrapper::read_to_string("exit-unreachable.s").lines().count()
-            < fs_wrapper::read_to_string("exit-ret.s").lines().count()
+        rfs::read_to_string("exit-unreachable.s").lines().count()
+            < rfs::read_to_string("exit-ret.s").lines().count()
     );
 }

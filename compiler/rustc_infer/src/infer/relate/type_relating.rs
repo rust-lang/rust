@@ -28,11 +28,7 @@ impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
 }
 
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
-    fn tag(&self) -> &'static str {
-        "TypeRelating"
-    }
-
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.fields.infcx.tcx
     }
 
@@ -48,7 +44,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
             // (e.g., #41849).
             relate_args_invariantly(self, a_arg, b_arg)
         } else {
-            let tcx = self.tcx();
+            let tcx = self.cx();
             let opt_variances = tcx.variances_of(item_def_id);
             relate_args_with_variances(self, item_def_id, opt_variances, a_arg, b_arg, false)
         }
@@ -71,7 +67,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         r
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         if a == b {
             return Ok(a);
@@ -88,7 +84,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                         // can't make progress on `A <: B` if both A and B are
                         // type variables, so record an obligation.
                         self.fields.goals.push(Goal::new(
-                            self.tcx(),
+                            self.cx(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                                 a_is_expected: true,
@@ -101,7 +97,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
                         // can't make progress on `B <: A` if both A and B are
                         // type variables, so record an obligation.
                         self.fields.goals.push(Goal::new(
-                            self.tcx(),
+                            self.cx(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                                 a_is_expected: false,
@@ -134,7 +130,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
 
             (&ty::Error(e), _) | (_, &ty::Error(e)) => {
                 infcx.set_tainted_by_errors(e);
-                return Ok(Ty::new_error(self.tcx(), e));
+                return Ok(Ty::new_error(self.cx(), e));
             }
 
             (
@@ -166,12 +162,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         Ok(a)
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn regions(
         &mut self,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
         let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
 
         match self.ambient_variance {
@@ -209,6 +205,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
         Ok(a)
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn consts(
         &mut self,
         a: ty::Const<'tcx>,

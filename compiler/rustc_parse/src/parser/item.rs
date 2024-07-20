@@ -1,8 +1,6 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, TrailingToken,
-};
+use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
 use crate::maybe_whole;
@@ -19,6 +17,7 @@ use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::source_map;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::{Span, DUMMY_SP};
 use std::fmt::Write;
 use std::mem;
@@ -128,56 +127,41 @@ impl<'a> Parser<'a> {
             Some(item.into_inner())
         });
 
-        let item =
-            self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
-                let item =
-                    this.parse_item_common_(attrs, mac_allowed, attrs_allowed, fn_parse_mode);
-                Ok((item?, TrailingToken::None))
-            })?;
+        self.collect_tokens_trailing_token(attrs, force_collect, |this, mut attrs| {
+            let lo = this.token.span;
+            let vis = this.parse_visibility(FollowedByType::No)?;
+            let mut def = this.parse_defaultness();
+            let kind = this.parse_item_kind(
+                &mut attrs,
+                mac_allowed,
+                lo,
+                &vis,
+                &mut def,
+                fn_parse_mode,
+                Case::Sensitive,
+            )?;
+            if let Some((ident, kind)) = kind {
+                this.error_on_unconsumed_default(def, &kind);
+                let span = lo.to(this.prev_token.span);
+                let id = DUMMY_NODE_ID;
+                let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
+                return Ok((Some(item), false));
+            }
 
-        Ok(item)
-    }
+            // At this point, we have failed to parse an item.
+            if !matches!(vis.kind, VisibilityKind::Inherited) {
+                this.dcx().emit_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
+            }
 
-    fn parse_item_common_(
-        &mut self,
-        mut attrs: AttrVec,
-        mac_allowed: bool,
-        attrs_allowed: bool,
-        fn_parse_mode: FnParseMode,
-    ) -> PResult<'a, Option<Item>> {
-        let lo = self.token.span;
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        let mut def = self.parse_defaultness();
-        let kind = self.parse_item_kind(
-            &mut attrs,
-            mac_allowed,
-            lo,
-            &vis,
-            &mut def,
-            fn_parse_mode,
-            Case::Sensitive,
-        )?;
-        if let Some((ident, kind)) = kind {
-            self.error_on_unconsumed_default(def, &kind);
-            let span = lo.to(self.prev_token.span);
-            let id = DUMMY_NODE_ID;
-            let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
-            return Ok(Some(item));
-        }
+            if let Defaultness::Default(span) = def {
+                this.dcx().emit_err(errors::DefaultNotFollowedByItem { span });
+            }
 
-        // At this point, we have failed to parse an item.
-        if !matches!(vis.kind, VisibilityKind::Inherited) {
-            self.dcx().emit_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
-        }
-
-        if let Defaultness::Default(span) = def {
-            self.dcx().emit_err(errors::DefaultNotFollowedByItem { span });
-        }
-
-        if !attrs_allowed {
-            self.recover_attrs_no_item(&attrs)?;
-        }
-        Ok(None)
+            if !attrs_allowed {
+                this.recover_attrs_no_item(&attrs)?;
+            }
+            Ok((None, false))
+        })
     }
 
     /// Error in-case `default` was parsed in an in-appropriate context.
@@ -1570,7 +1554,7 @@ impl<'a> Parser<'a> {
 
                 let vis = this.parse_visibility(FollowedByType::No)?;
                 if !this.recover_nested_adt_item(kw::Enum)? {
-                    return Ok((None, TrailingToken::None));
+                    return Ok((None, false));
                 }
                 let ident = this.parse_field_ident("enum", vlo)?;
 
@@ -1582,7 +1566,7 @@ impl<'a> Parser<'a> {
                     this.bump();
                     this.parse_delim_args()?;
 
-                    return Ok((None, TrailingToken::MaybeComma));
+                    return Ok((None, this.token == token::Comma));
                 }
 
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
@@ -1639,7 +1623,7 @@ impl<'a> Parser<'a> {
                     is_placeholder: false,
                 };
 
-                Ok((Some(vr), TrailingToken::MaybeComma))
+                Ok((Some(vr), this.token == token::Comma))
             },
         )
         .map_err(|mut err| {
@@ -1831,7 +1815,7 @@ impl<'a> Parser<'a> {
                         attrs,
                         is_placeholder: false,
                     },
-                    TrailingToken::MaybeComma,
+                    p.token == token::Comma,
                 ))
             })
         })
@@ -1846,8 +1830,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
-                .map(|field| (field, TrailingToken::None))
+            this.parse_single_struct_field(adt_ty, lo, vis, attrs).map(|field| (field, false))
         })
     }
 
@@ -2350,12 +2333,104 @@ impl<'a> Parser<'a> {
                 }
             }
         };
+
+        // Store the end of function parameters to give better diagnostics
+        // inside `parse_fn_body()`.
+        let fn_params_end = self.prev_token.span.shrink_to_hi();
+
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
+        // `fn_params_end` is needed only when it's followed by a where clause.
+        let fn_params_end =
+            if generics.where_clause.has_where_token { Some(fn_params_end) } else { None };
+
         let mut sig_hi = self.prev_token.span;
-        let body = self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body)?; // `;` or `{ ... }`.
+        // Either `;` or `{ ... }`.
+        let body =
+            self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
         let fn_sig_span = sig_lo.to(sig_hi);
         Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
+    }
+
+    /// Provide diagnostics when function body is not found
+    fn error_fn_body_not_found(
+        &mut self,
+        ident_span: Span,
+        req_body: bool,
+        fn_params_end: Option<Span>,
+    ) -> PResult<'a, ErrorGuaranteed> {
+        let expected = if req_body {
+            &[token::OpenDelim(Delimiter::Brace)][..]
+        } else {
+            &[token::Semi, token::OpenDelim(Delimiter::Brace)]
+        };
+        match self.expected_one_of_not_found(&[], expected) {
+            Ok(error_guaranteed) => Ok(error_guaranteed),
+            Err(mut err) => {
+                if self.token.kind == token::CloseDelim(Delimiter::Brace) {
+                    // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
+                    // the AST for typechecking.
+                    err.span_label(ident_span, "while parsing this `fn`");
+                    Ok(err.emit())
+                } else if self.token.kind == token::RArrow
+                    && let Some(fn_params_end) = fn_params_end
+                {
+                    // Instead of a function body, the parser has encountered a right arrow
+                    // preceded by a where clause.
+
+                    // Find whether token behind the right arrow is a function trait and
+                    // store its span.
+                    let fn_trait_span =
+                        [sym::FnOnce, sym::FnMut, sym::Fn].into_iter().find_map(|symbol| {
+                            if self.prev_token.is_ident_named(symbol) {
+                                Some(self.prev_token.span)
+                            } else {
+                                None
+                            }
+                        });
+
+                    // Parse the return type (along with the right arrow) and store its span.
+                    // If there's a parse error, cancel it and return the existing error
+                    // as we are primarily concerned with the
+                    // expected-function-body-but-found-something-else error here.
+                    let arrow_span = self.token.span;
+                    let ty_span = match self.parse_ret_ty(
+                        AllowPlus::Yes,
+                        RecoverQPath::Yes,
+                        RecoverReturnSign::Yes,
+                    ) {
+                        Ok(ty_span) => ty_span.span().shrink_to_hi(),
+                        Err(parse_error) => {
+                            parse_error.cancel();
+                            return Err(err);
+                        }
+                    };
+                    let ret_ty_span = arrow_span.to(ty_span);
+
+                    if let Some(fn_trait_span) = fn_trait_span {
+                        // Typo'd Fn* trait bounds such as
+                        // fn foo<F>() where F: FnOnce -> () {}
+                        err.subdiagnostic(errors::FnTraitMissingParen { span: fn_trait_span });
+                    } else if let Ok(snippet) = self.psess.source_map().span_to_snippet(ret_ty_span)
+                    {
+                        // If token behind right arrow is not a Fn* trait, the programmer
+                        // probably misplaced the return type after the where clause like
+                        // `fn foo<T>() where T: Default -> u8 {}`
+                        err.primary_message(
+                            "return type should be specified after the function parameters",
+                        );
+                        err.subdiagnostic(errors::MisplacedReturnType {
+                            fn_params_end,
+                            snippet,
+                            ret_ty_span,
+                        });
+                    }
+                    Err(err)
+                } else {
+                    Err(err)
+                }
+            }
+        }
     }
 
     /// Parse the "body" of a function.
@@ -2367,6 +2442,7 @@ impl<'a> Parser<'a> {
         ident: &Ident,
         sig_hi: &mut Span,
         req_body: bool,
+        fn_params_end: Option<Span>,
     ) -> PResult<'a, Option<P<Block>>> {
         let has_semi = if req_body {
             self.token.kind == TokenKind::Semi
@@ -2395,33 +2471,7 @@ impl<'a> Parser<'a> {
             });
             (AttrVec::new(), Some(self.mk_block_err(span, guar)))
         } else {
-            let expected = if req_body {
-                &[token::OpenDelim(Delimiter::Brace)][..]
-            } else {
-                &[token::Semi, token::OpenDelim(Delimiter::Brace)]
-            };
-            if let Err(mut err) = self.expected_one_of_not_found(&[], expected) {
-                if self.token.kind == token::CloseDelim(Delimiter::Brace) {
-                    // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
-                    // the AST for typechecking.
-                    err.span_label(ident.span, "while parsing this `fn`");
-                    err.emit();
-                } else {
-                    // check for typo'd Fn* trait bounds such as
-                    // fn foo<F>() where F: FnOnce -> () {}
-                    if self.token.kind == token::RArrow {
-                        let machine_applicable = [sym::FnOnce, sym::FnMut, sym::Fn]
-                            .into_iter()
-                            .any(|s| self.prev_token.is_ident_named(s));
-
-                        err.subdiagnostic(errors::FnTraitMissingParen {
-                            span: self.prev_token.span,
-                            machine_applicable,
-                        });
-                    }
-                    return Err(err);
-                }
-            }
+            self.error_fn_body_not_found(ident.span, req_body, fn_params_end)?;
             (AttrVec::new(), None)
         };
         attrs.extend(inner_attrs);
@@ -2750,7 +2800,7 @@ impl<'a> Parser<'a> {
             if let Some(mut param) = this.parse_self_param()? {
                 param.attrs = attrs;
                 let res = if first_param { Ok(param) } else { this.recover_bad_self_param(param) };
-                return Ok((res?, TrailingToken::None));
+                return Ok((res?, false));
             }
 
             let is_name_required = match this.token.kind {
@@ -2766,7 +2816,7 @@ impl<'a> Parser<'a> {
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {
                         let guar = err.emit();
-                        Ok((dummy_arg(ident, guar), TrailingToken::None))
+                        Ok((dummy_arg(ident, guar), false))
                     } else {
                         Err(err)
                     };
@@ -2809,7 +2859,7 @@ impl<'a> Parser<'a> {
 
             Ok((
                 Param { attrs, id: ast::DUMMY_NODE_ID, is_placeholder: false, pat, span, ty },
-                TrailingToken::None,
+                false,
             ))
         })
     }

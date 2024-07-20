@@ -177,6 +177,7 @@ pub(crate) fn complete_expr_path(
                                 ImportPathConfig {
                                     prefer_no_std: ctx.config.prefer_no_std,
                                     prefer_prelude: ctx.config.prefer_prelude,
+                                    prefer_absolute: ctx.config.prefer_absolute,
                                 },
                             )
                             .filter(|it| it.len() > 1);
@@ -202,6 +203,7 @@ pub(crate) fn complete_expr_path(
                                 ImportPathConfig {
                                     prefer_no_std: ctx.config.prefer_no_std,
                                     prefer_prelude: ctx.config.prefer_prelude,
+                                    prefer_absolute: ctx.config.prefer_absolute,
                                 },
                             )
                             .filter(|it| it.len() > 1);

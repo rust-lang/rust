@@ -699,8 +699,7 @@ impl Token {
         false
     }
 
-    /// Would `maybe_whole_expr` in `parser.rs` return `Ok(..)`?
-    /// That is, is this a pre-parsed expression dropped into the token stream
+    /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(nt) = &self.kind

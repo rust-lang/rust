@@ -1,8 +1,6 @@
 //! Thin wrappers around `std::path`/`camino::path`, distinguishing between absolute and
 //! relative paths.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 use std::{
     borrow::Borrow,
     ffi::OsStr,

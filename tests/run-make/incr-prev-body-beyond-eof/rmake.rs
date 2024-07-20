@@ -13,14 +13,14 @@
 //@ ignore-nvptx64-nvidia-cuda
 // FIXME: can't find crate for `std`
 
-use run_make_support::fs_wrapper as fs;
+use run_make_support::rfs;
 use run_make_support::rustc;
 
 fn main() {
-    fs::create_dir("src");
-    fs::create_dir("incr");
-    fs::copy("a.rs", "src/main.rs");
+    rfs::create_dir("src");
+    rfs::create_dir("incr");
+    rfs::copy("a.rs", "src/main.rs");
     rustc().incremental("incr").input("src/main.rs").run();
-    fs::copy("b.rs", "src/main.rs");
+    rfs::copy("b.rs", "src/main.rs");
     rustc().incremental("incr").input("src/main.rs").run();
 }

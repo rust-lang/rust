@@ -232,6 +232,8 @@ resolve_is_private =
 resolve_item_was_behind_feature =
     the item is gated behind the `{$feature}` feature
 
+resolve_item_was_cfg_out = the item is gated here
+
 resolve_items_in_traits_are_not_importable =
     items in traits are not importable
 

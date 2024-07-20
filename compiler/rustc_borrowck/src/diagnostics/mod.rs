@@ -768,10 +768,11 @@ struct CapturedMessageOpt {
     is_loop_message: bool,
     is_move_msg: bool,
     is_loop_move: bool,
+    has_suggest_reborrow: bool,
     maybe_reinitialized_locations_is_empty: bool,
 }
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
         &self,
@@ -997,7 +998,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn explain_captures(
         &mut self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'infcx>,
         span: Span,
         move_span: Span,
         move_spans: UseSpans<'tcx>,
@@ -1009,6 +1010,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             is_loop_message,
             is_move_msg,
             is_loop_move,
+            has_suggest_reborrow,
             maybe_reinitialized_locations_is_empty,
         } = msg_opt;
         if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } = move_spans {
@@ -1182,18 +1184,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                         if let ty::Ref(_, _, hir::Mutability::Mut) =
                             moved_place.ty(self.body, self.infcx.tcx).ty.kind()
                         {
-                            // If we are in a loop this will be suggested later.
-                            if !is_loop_move {
-                                err.span_suggestion_verbose(
+                            // Suggest `reborrow` in other place for following situations:
+                            // 1. If we are in a loop this will be suggested later.
+                            // 2. If the moved value is a mut reference, it is used in a
+                            // generic function and the corresponding arg's type is generic param.
+                            if !is_loop_move && !has_suggest_reborrow {
+                                self.suggest_reborrow(
+                                    err,
                                     move_span.shrink_to_lo(),
-                                    format!(
-                                        "consider creating a fresh reborrow of {} here",
-                                        self.describe_place(moved_place.as_ref())
-                                            .map(|n| format!("`{n}`"))
-                                            .unwrap_or_else(|| "the mutable reference".to_string()),
-                                    ),
-                                    "&mut *",
-                                    Applicability::MachineApplicable,
+                                    moved_place.as_ref(),
                                 );
                             }
                         }

@@ -15,6 +15,8 @@ pub struct AssistConfig {
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
+    pub prefer_absolute: bool,
     pub assist_emit_must_use: bool,
     pub term_search_fuel: u64,
+    pub term_search_borrowck: bool,
 }

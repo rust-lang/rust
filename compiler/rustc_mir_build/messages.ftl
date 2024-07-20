@@ -4,8 +4,6 @@ mir_build_already_borrowed = cannot borrow value as mutable because it is also b
 
 mir_build_already_mut_borrowed = cannot borrow value as immutable because it is also borrowed as mutable
 
-mir_build_assoc_const_in_pattern = associated consts cannot be referenced in patterns
-
 mir_build_bindings_with_variant_name =
     pattern binding `{$name}` is named the same as one of the variants of the type `{$ty_path}`
     .suggestion = to match on the variant, qualify the path

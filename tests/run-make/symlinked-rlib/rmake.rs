@@ -8,10 +8,10 @@
 //@ ignore-cross-compile
 //@ needs-symlink
 
-use run_make_support::{create_symlink, cwd, rustc};
+use run_make_support::{cwd, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").crate_type("rlib").output("foo.xxx").run();
-    create_symlink("foo.xxx", "libfoo.rlib");
+    rfs::create_symlink("foo.xxx", "libfoo.rlib");
     rustc().input("bar.rs").library_search_path(cwd()).run();
 }

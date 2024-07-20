@@ -1,5 +1,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(target_os = "xous"))]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 pub mod ffi;
 

@@ -3,7 +3,6 @@ use crate::error_reporting::traits::fulfillment_errors::InferCtxtPrivExt;
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
-use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::InferCtxtExt;
 use rustc_ast::AttrArgs;
 use rustc_ast::AttrArgsEq;
@@ -14,6 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_macros::{extension, LintDiagnostic};
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;

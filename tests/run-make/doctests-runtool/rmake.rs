@@ -1,6 +1,6 @@
 // Tests behavior of rustdoc `--runtool`.
 
-use run_make_support::fs_wrapper::{create_dir, remove_dir_all};
+use run_make_support::rfs::{create_dir, remove_dir_all};
 use run_make_support::{rustc, rustdoc};
 use std::path::PathBuf;
 

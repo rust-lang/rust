@@ -298,6 +298,7 @@ pub(crate) fn render_expr(
     let cfg = ImportPathConfig {
         prefer_no_std: ctx.config.prefer_no_std,
         prefer_prelude: ctx.config.prefer_prelude,
+        prefer_absolute: ctx.config.prefer_absolute,
     };
 
     let label = expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg).ok()?;
@@ -764,6 +765,7 @@ fn main() {
 "#,
             expect![[r#"
                 st dep::test_mod_b::Struct {…} [type_could_unify]
+                ex dep::test_mod_b::Struct {  } [type_could_unify]
                 st Struct (use dep::test_mod_b::Struct) [type_could_unify+requires_import]
                 fn main() []
                 fn test(…) []
@@ -839,6 +841,7 @@ fn main() {
 "#,
             expect![[r#"
                 ev dep::test_mod_b::Enum::variant [type_could_unify]
+                ex dep::test_mod_b::Enum::variant [type_could_unify]
                 en Enum (use dep::test_mod_b::Enum) [type_could_unify+requires_import]
                 fn main() []
                 fn test(…) []
@@ -876,6 +879,7 @@ fn main() {
 "#,
             expect![[r#"
                 ev dep::test_mod_b::Enum::Variant [type_could_unify]
+                ex dep::test_mod_b::Enum::Variant [type_could_unify]
                 fn main() []
                 fn test(…) []
                 md dep []
@@ -1839,7 +1843,6 @@ fn f() { A { bar: b$0 }; }
                 fn baz() [type]
                 ex baz() [type]
                 ex bar() [type]
-                ex A { bar: ... }.bar [type]
                 st A []
                 fn f() []
             "#]],
@@ -1978,7 +1981,6 @@ fn main() {
             "#,
             expect![[r#"
                 ex core::ops::Deref::deref(&t) (use core::ops::Deref) [type_could_unify]
-                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &t [type+local]
@@ -2028,7 +2030,6 @@ fn main() {
             "#,
             expect![[r#"
                 ex core::ops::DerefMut::deref_mut(&mut t) (use core::ops::DerefMut) [type_could_unify]
-                ex core::ops::DerefMut::deref_mut(&mut T(S)) (use core::ops::DerefMut) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &mut t [type+local]
@@ -2132,7 +2133,6 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
                 ex core::ops::Deref::deref(&bar()) (use core::ops::Deref) [type_could_unify]
                 st S []
                 st &S [type]

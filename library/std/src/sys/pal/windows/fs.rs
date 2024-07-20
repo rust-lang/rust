@@ -1,4 +1,3 @@
-#![allow(unsafe_op_in_unsafe_fn)]
 use core::ptr::addr_of;
 
 use crate::os::windows::prelude::*;
@@ -33,6 +32,7 @@ pub struct FileAttr {
     creation_time: c::FILETIME,
     last_access_time: c::FILETIME,
     last_write_time: c::FILETIME,
+    change_time: Option<c::FILETIME>,
     file_size: u64,
     reparse_tag: u32,
     volume_serial_number: Option<u32>,
@@ -378,6 +378,7 @@ impl File {
                 creation_time: info.ftCreationTime,
                 last_access_time: info.ftLastAccessTime,
                 last_write_time: info.ftLastWriteTime,
+                change_time: None, // Only available in FILE_BASIC_INFO
                 file_size: (info.nFileSizeLow as u64) | ((info.nFileSizeHigh as u64) << 32),
                 reparse_tag,
                 volume_serial_number: Some(info.dwVolumeSerialNumber),
@@ -414,6 +415,10 @@ impl File {
                     dwLowDateTime: info.LastWriteTime as u32,
                     dwHighDateTime: (info.LastWriteTime >> 32) as u32,
                 },
+                change_time: Some(c::FILETIME {
+                    dhLowDateTime: info.ChangeTime as c::DWORD,
+                    dhHighDateTime: (info.ChangeTime >> 32) as c::DWORD,
+                }),
                 file_size: 0,
                 reparse_tag: 0,
                 volume_serial_number: None,
@@ -795,10 +800,12 @@ impl<'a> Iterator for DirBuffIter<'a> {
 }
 
 unsafe fn from_maybe_unaligned<'a>(p: *const u16, len: usize) -> Cow<'a, [u16]> {
-    if p.is_aligned() {
-        Cow::Borrowed(crate::slice::from_raw_parts(p, len))
-    } else {
-        Cow::Owned((0..len).map(|i| p.add(i).read_unaligned()).collect())
+    unsafe {
+        if p.is_aligned() {
+            Cow::Borrowed(crate::slice::from_raw_parts(p, len))
+        } else {
+            Cow::Owned((0..len).map(|i| p.add(i).read_unaligned()).collect())
+        }
     }
 }
 
@@ -897,7 +904,9 @@ impl IntoRawHandle for File {
 
 impl FromRawHandle for File {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        Self { handle: FromInner::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        unsafe {
+            Self { handle: FromInner::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        }
     }
 }
 
@@ -954,6 +963,10 @@ impl FileAttr {
         to_u64(&self.creation_time)
     }
 
+    pub fn changed_u64(&self) -> Option<u64> {
+        self.change_time.as_ref().map(|c| to_u64(c))
+    }
+
     pub fn volume_serial_number(&self) -> Option<u32> {
         self.volume_serial_number
     }
@@ -973,6 +986,7 @@ impl From<c::WIN32_FIND_DATAW> for FileAttr {
             creation_time: wfd.ftCreationTime,
             last_access_time: wfd.ftLastAccessTime,
             last_write_time: wfd.ftLastWriteTime,
+            change_time: None,
             file_size: ((wfd.nFileSizeHigh as u64) << 32) | (wfd.nFileSizeLow as u64),
             reparse_tag: if wfd.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                 // reserved unless this is a reparse point
@@ -1427,10 +1441,12 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         _hDestinationFile: c::HANDLE,
         lpData: *const c_void,
     ) -> u32 {
-        if dwStreamNumber == 1 {
-            *(lpData as *mut i64) = StreamBytesTransferred;
+        unsafe {
+            if dwStreamNumber == 1 {
+                *(lpData as *mut i64) = StreamBytesTransferred;
+            }
+            c::PROGRESS_CONTINUE
         }
-        c::PROGRESS_CONTINUE
     }
     let pfrom = maybe_verbatim(from)?;
     let pto = maybe_verbatim(to)?;

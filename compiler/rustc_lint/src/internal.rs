@@ -3,7 +3,8 @@
 
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
-    QueryInstability, SpanUseEqCtxtDiag, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
+    NonGlobImportTypeIrInherent, QueryInstability, SpanUseEqCtxtDiag, TyQualified, TykindDiag,
+    TykindKind, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
@@ -261,6 +262,49 @@ fn gen_args(segment: &PathSegment<'_>) -> String {
     }
 
     String::new()
+}
+
+declare_tool_lint! {
+    /// The `non_glob_import_of_type_ir_inherent_item` lint detects
+    /// non-glob imports of module `rustc_type_ir::inherent`.
+    pub rustc::NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
+    Allow,
+    "non-glob import of `rustc_type_ir::inherent`",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(TypeIr => [NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT]);
+
+impl<'tcx> LateLintPass<'tcx> for TypeIr {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        let rustc_hir::ItemKind::Use(path, kind) = item.kind else { return };
+
+        let is_mod_inherent = |def_id| cx.tcx.is_diagnostic_item(sym::type_ir_inherent, def_id);
+        let (lo, hi, snippet) = match path.segments {
+            [.., penultimate, segment]
+                if penultimate.res.opt_def_id().is_some_and(is_mod_inherent) =>
+            {
+                (segment.ident.span, item.ident.span, "*")
+            }
+            [.., segment]
+                if path.res.iter().flat_map(Res::opt_def_id).any(is_mod_inherent)
+                    && let rustc_hir::UseKind::Single = kind =>
+            {
+                let (lo, snippet) =
+                    match cx.tcx.sess.source_map().span_to_snippet(path.span).as_deref() {
+                        Ok("self") => (path.span, "*"),
+                        _ => (segment.ident.span.shrink_to_hi(), "::*"),
+                    };
+                (lo, if segment.ident == item.ident { lo } else { item.ident.span }, snippet)
+            }
+            _ => return,
+        };
+        cx.emit_span_lint(
+            NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
+            path.span,
+            NonGlobImportTypeIrInherent { suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)), snippet },
+        );
+    }
 }
 
 declare_tool_lint! {

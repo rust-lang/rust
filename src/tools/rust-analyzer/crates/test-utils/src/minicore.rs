@@ -123,7 +123,7 @@ pub mod marker {
         impl_copy! {
             usize u8 u16 u32 u64 u128
             isize i8 i16 i32 i64 i128
-            f32 f64
+            f16 f32 f64 f128
             bool char
         }
 
@@ -180,7 +180,7 @@ pub mod default {
         0; usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128
     }
     impl_default! {
-        0.0; f32 f64
+        0.0; f16 f32 f64 f128
     }
     // endregion:builtin_impls
 }
@@ -276,7 +276,7 @@ pub mod clone {
     impl_clone! {
         usize u8 u16 u32 u64 u128
         isize i8 i16 i32 i64 i128
-        f32 f64
+        f16 f32 f64 f128
         bool char
     }
 
@@ -796,7 +796,7 @@ pub mod ops {
         )*)
     }
 
-    add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+    add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
     // endregion:builtin_impls
     // endregion:add
 
@@ -1043,7 +1043,7 @@ pub mod fmt {
     impl_debug! {
         usize u8 u16 u32 u64 u128
         isize i8 i16 i32 i64 i128
-        f32 f64
+        f16 f32 f64 f128
         bool char
     }
 

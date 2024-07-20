@@ -32,7 +32,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/suggest-better-removing-issue-126246.rs:10:5
    |
 LL |     add_one(2, 2);
-   |     ^^^^^^^    - unexpected argument of type `{integer}`
+   |     ^^^^^^^    - unexpected argument #2 of type `{integer}`
    |
 note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:1:4
@@ -49,7 +49,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/suggest-better-removing-issue-126246.rs:11:5
    |
 LL |     add_one(no_such_local, 10);
-   |     ^^^^^^^ ------------- unexpected argument
+   |     ^^^^^^^ ------------- unexpected argument #1
    |
 note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:1:4
@@ -66,7 +66,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/suggest-better-removing-issue-126246.rs:13:5
    |
 LL |     add_one(10, no_such_local);
-   |     ^^^^^^^     ------------- unexpected argument
+   |     ^^^^^^^     ------------- unexpected argument #2
    |
 note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:1:4
@@ -83,7 +83,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/suggest-better-removing-issue-126246.rs:15:5
    |
 LL |     add_two(10, no_such_local, 10);
-   |     ^^^^^^^     ------------- unexpected argument
+   |     ^^^^^^^     ------------- unexpected argument #2
    |
 note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:5:4
@@ -100,7 +100,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/suggest-better-removing-issue-126246.rs:17:5
    |
 LL |     add_two(no_such_local, 10, 10);
-   |     ^^^^^^^ ------------- unexpected argument
+   |     ^^^^^^^ ------------- unexpected argument #1
    |
 note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:5:4
@@ -117,7 +117,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/suggest-better-removing-issue-126246.rs:19:5
    |
 LL |     add_two(10, 10, no_such_local);
-   |     ^^^^^^^         ------------- unexpected argument
+   |     ^^^^^^^         ------------- unexpected argument #3
    |
 note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:5:4

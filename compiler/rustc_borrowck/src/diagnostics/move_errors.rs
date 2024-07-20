@@ -554,6 +554,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             is_loop_message: false,
             is_move_msg: false,
             is_loop_move: false,
+            has_suggest_reborrow: false,
             maybe_reinitialized_locations_is_empty: true,
         };
         if let Some(use_spans) = use_spans {

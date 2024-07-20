@@ -101,8 +101,12 @@ pub trait TypeVisitor<I: Interner>: Sized {
 
     // The default region visitor is a no-op because `Region` is non-recursive
     // and has no `super_visit_with` method to call.
-    fn visit_region(&mut self, _r: I::Region) -> Self::Result {
-        Self::Result::output()
+    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+        if let ty::ReError(guar) = r.kind() {
+            self.visit_error(guar)
+        } else {
+            Self::Result::output()
+        }
     }
 
     fn visit_const(&mut self, c: I::Const) -> Self::Result {
@@ -115,6 +119,10 @@ pub trait TypeVisitor<I: Interner>: Sized {
 
     fn visit_clauses(&mut self, p: I::Clauses) -> Self::Result {
         p.super_visit_with(self)
+    }
+
+    fn visit_error(&mut self, _guar: I::ErrorGuaranteed) -> Self::Result {
+        Self::Result::output()
     }
 }
 
@@ -439,6 +447,15 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
             ControlFlow::Continue(())
         }
     }
+
+    #[inline]
+    fn visit_error(&mut self, _guar: <I as Interner>::ErrorGuaranteed) -> Self::Result {
+        if self.flags.intersects(TypeFlags::HAS_ERROR) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -547,27 +564,7 @@ struct HasErrorVisitor;
 impl<I: Interner> TypeVisitor<I> for HasErrorVisitor {
     type Result = ControlFlow<I::ErrorGuaranteed>;
 
-    fn visit_ty(&mut self, t: <I as Interner>::Ty) -> Self::Result {
-        if let ty::Error(guar) = t.kind() {
-            ControlFlow::Break(guar)
-        } else {
-            t.super_visit_with(self)
-        }
-    }
-
-    fn visit_const(&mut self, c: <I as Interner>::Const) -> Self::Result {
-        if let ty::ConstKind::Error(guar) = c.kind() {
-            ControlFlow::Break(guar)
-        } else {
-            c.super_visit_with(self)
-        }
-    }
-
-    fn visit_region(&mut self, r: <I as Interner>::Region) -> Self::Result {
-        if let ty::ReError(guar) = r.kind() {
-            ControlFlow::Break(guar)
-        } else {
-            ControlFlow::Continue(())
-        }
+    fn visit_error(&mut self, guar: <I as Interner>::ErrorGuaranteed) -> Self::Result {
+        ControlFlow::Break(guar)
     }
 }

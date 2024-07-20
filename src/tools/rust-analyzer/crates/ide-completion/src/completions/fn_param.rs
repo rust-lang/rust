@@ -173,7 +173,8 @@ fn should_add_self_completions(
 }
 
 fn comma_wrapper(ctx: &CompletionContext<'_>) -> Option<(impl Fn(&str) -> String, TextRange)> {
-    let param = ctx.token.parent_ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
+    let param =
+        ctx.original_token.parent_ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
 
     let next_token_kind = {
         let t = param.last_token()?.next_token()?;

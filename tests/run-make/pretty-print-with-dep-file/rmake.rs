@@ -5,13 +5,13 @@
 // does not get an unexpected dep-info file.
 // See https://github.com/rust-lang/rust/issues/112898
 
-use run_make_support::{fs_wrapper, invalid_utf8_contains, rustc};
+use run_make_support::{invalid_utf8_contains, rfs, rustc};
 use std::path::Path;
 
 fn main() {
     rustc().emit("dep-info").arg("-Zunpretty=expanded").input("with-dep.rs").run();
     invalid_utf8_contains("with-dep.d", "with-dep.rs");
-    fs_wrapper::remove_file("with-dep.d");
+    rfs::remove_file("with-dep.d");
     rustc().emit("dep-info").arg("-Zunpretty=normal").input("with-dep.rs").run();
     assert!(!Path::new("with-dep.d").exists());
 }

@@ -6,8 +6,8 @@ use rustc_span::symbol::Symbol;
 
 use super::metadata::search_for_section;
 
-pub use ar_archive_writer::get_native_object_symbols;
 use ar_archive_writer::{write_archive_to_stream, ArchiveKind, NewArchiveMember};
+pub use ar_archive_writer::{ObjectReader, DEFAULT_OBJECT_READER};
 use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
 use tempfile::Builder as TempFileBuilder;
@@ -89,8 +89,7 @@ pub trait ArchiveBuilder {
 #[must_use = "must call build() to finish building the archive"]
 pub struct ArArchiveBuilder<'a> {
     sess: &'a Session,
-    get_object_symbols:
-        fn(buf: &[u8], f: &mut dyn FnMut(&[u8]) -> io::Result<()>) -> io::Result<bool>,
+    object_reader: &'static ObjectReader,
 
     src_archives: Vec<(PathBuf, Mmap)>,
     // Don't use an `HashMap` here, as the order is important. `lib.rmeta` needs
@@ -105,14 +104,8 @@ enum ArchiveEntry {
 }
 
 impl<'a> ArArchiveBuilder<'a> {
-    pub fn new(
-        sess: &'a Session,
-        get_object_symbols: fn(
-            buf: &[u8],
-            f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
-        ) -> io::Result<bool>,
-    ) -> ArArchiveBuilder<'a> {
-        ArArchiveBuilder { sess, get_object_symbols, src_archives: vec![], entries: vec![] }
+    pub fn new(sess: &'a Session, object_reader: &'static ObjectReader) -> ArArchiveBuilder<'a> {
+        ArArchiveBuilder { sess, object_reader, src_archives: vec![], entries: vec![] }
     }
 }
 
@@ -267,7 +260,7 @@ impl<'a> ArArchiveBuilder<'a> {
 
             entries.push(NewArchiveMember {
                 buf: data,
-                get_symbols: self.get_object_symbols,
+                object_reader: self.object_reader,
                 member_name: String::from_utf8(entry_name).unwrap(),
                 mtime: 0,
                 uid: 0,
@@ -294,7 +287,13 @@ impl<'a> ArArchiveBuilder<'a> {
         let mut archive_tmpfile = File::create_new(&archive_tmpfile_path)
             .map_err(|err| io_error_context("couldn't create the temp file", err))?;
 
-        write_archive_to_stream(&mut archive_tmpfile, &entries, archive_kind, false)?;
+        write_archive_to_stream(
+            &mut archive_tmpfile,
+            &entries,
+            archive_kind,
+            false,
+            /* is_ec = */ self.sess.target.arch == "arm64ec",
+        )?;
 
         let any_entries = !entries.is_empty();
         drop(entries);

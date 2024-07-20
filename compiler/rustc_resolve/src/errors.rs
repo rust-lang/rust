@@ -1228,6 +1228,15 @@ pub(crate) struct FoundItemConfigureOut {
 #[note(resolve_item_was_behind_feature)]
 pub(crate) struct ItemWasBehindFeature {
     pub(crate) feature: Symbol,
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_item_was_cfg_out)]
+pub(crate) struct ItemWasCfgOut {
+    #[primary_span]
+    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]

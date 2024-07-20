@@ -1502,3 +1502,23 @@ export function toggleLSPLogs(ctx: Ctx): Cmd {
         }
     };
 }
+
+export function openWalkthrough(_: Ctx): Cmd {
+    return async () => {
+        await vscode.commands.executeCommand(
+            "workbench.action.openWalkthrough",
+            "rust-lang.rust-analyzer#landing",
+            false,
+        );
+    };
+}
+
+export function openFAQ(_: Ctx): Cmd {
+    return async () => {
+        await vscode.commands.executeCommand(
+            "workbench.action.openWalkthrough",
+            "rust-lang.rust-analyzer#faq",
+            true,
+        );
+    };
+}

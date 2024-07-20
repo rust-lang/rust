@@ -2,8 +2,8 @@
 //!
 //! The layout for generics as expected by chalk are as follows:
 //! - Optional Self parameter
-//! - Type or Const parameters
 //! - Lifetime parameters
+//! - Type or Const parameters
 //! - Parent parameters
 //!
 //! where parent follows the same scheme.
@@ -20,18 +20,23 @@ use hir_def::{
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
 use intern::Interned;
+use itertools::chain;
+use stdx::TupleExt;
 
 use crate::{db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx, Interner, Substitution};
 
 pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
-    Generics { def, params: db.generic_params(def), parent_generics }
+    let params = db.generic_params(def);
+    let has_trait_self_param = params.trait_self_param().is_some();
+    Generics { def, params, parent_generics, has_trait_self_param }
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Generics {
     def: GenericDefId,
     params: Interned<GenericParams>,
     parent_generics: Option<Box<Generics>>,
+    has_trait_self_param: bool,
 }
 
 impl<T> ops::Index<T> for Generics
@@ -57,7 +62,7 @@ impl Generics {
         self.iter_self().map(|(id, _)| id)
     }
 
-    fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
+    pub(crate) fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
         self.iter_parent().map(|(id, _)| id)
     }
 
@@ -65,6 +70,12 @@ impl Generics {
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
         self.params.iter_type_or_consts()
+    }
+
+    pub(crate) fn iter_self_type_or_consts_id(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = GenericParamId> + '_ {
+        self.params.iter_type_or_consts().map(from_toc_id(self)).map(TupleExt::head)
     }
 
     /// Iterate over the params followed by the parent params.
@@ -78,10 +89,9 @@ impl Generics {
     pub(crate) fn iter_self(
         &self,
     ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'_>)> + '_ {
-        self.params
-            .iter_type_or_consts()
-            .map(from_toc_id(self))
-            .chain(self.params.iter_lt().map(from_lt_id(self)))
+        let mut toc = self.params.iter_type_or_consts().map(from_toc_id(self));
+        let trait_self_param = self.has_trait_self_param.then(|| toc.next()).flatten();
+        chain!(trait_self_param, self.params.iter_lt().map(from_lt_id(self)), toc)
     }
 
     /// Iterator over types and const params of parent.
@@ -89,8 +99,9 @@ impl Generics {
         &self,
     ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'_>)> + '_ {
         self.parent_generics().into_iter().flat_map(|it| {
-            let lt_iter = it.params.iter_lt().map(from_lt_id(it));
-            it.params.iter_type_or_consts().map(from_toc_id(it)).chain(lt_iter)
+            let mut toc = it.params.iter_type_or_consts().map(from_toc_id(it));
+            let trait_self_param = it.has_trait_self_param.then(|| toc.next()).flatten();
+            chain!(trait_self_param, it.params.iter_lt().map(from_lt_id(it)), toc)
         })
     }
 
@@ -134,8 +145,11 @@ impl Generics {
     fn find_type_or_const_param(&self, param: TypeOrConstParamId) -> Option<usize> {
         if param.parent == self.def {
             let idx = param.local_id.into_raw().into_u32() as usize;
-            debug_assert!(idx <= self.params.type_or_consts.len());
-            Some(idx)
+            debug_assert!(idx <= self.params.len_type_or_consts());
+            if self.params.trait_self_param() == Some(param.local_id) {
+                return Some(idx);
+            }
+            Some(self.params.len_lifetimes() + idx)
         } else {
             debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(param.parent));
             self.parent_generics()
@@ -152,8 +166,8 @@ impl Generics {
     fn find_lifetime(&self, lifetime: LifetimeParamId) -> Option<usize> {
         if lifetime.parent == self.def {
             let idx = lifetime.local_id.into_raw().into_u32() as usize;
-            debug_assert!(idx <= self.params.lifetimes.len());
-            Some(self.params.type_or_consts.len() + idx)
+            debug_assert!(idx <= self.params.len_lifetimes());
+            Some(self.params.trait_self_param().is_some() as usize + idx)
         } else {
             debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(lifetime.parent));
             self.parent_generics()
@@ -216,7 +230,6 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,
         GenericDefId::ConstId(it) => it.lookup(db).container,
-        GenericDefId::EnumVariantId(it) => return Some(it.lookup(db).parent.into()),
         GenericDefId::AdtId(_)
         | GenericDefId::TraitId(_)
         | GenericDefId::ImplId(_)

@@ -519,7 +519,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, e)
             }
             Res::Def(DefKind::Variant, _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, E0533, "value");
+                let e = report_unexpected_variant_res(
+                    tcx,
+                    res,
+                    Some(expr),
+                    qpath,
+                    expr.span,
+                    E0533,
+                    "value",
+                );
                 Ty::new_error(tcx, e)
             }
             _ => {
@@ -1439,9 +1447,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
-            && let hir::ArrayLen::Body(&hir::AnonConst { hir_id, .. }) = length
+            && let hir::ArrayLen::Body(ct) = length
         {
-            let span = self.tcx.hir().span(hir_id);
+            let span = ct.span();
             self.dcx().try_steal_modify_and_emit_err(
                 span,
                 StashKey::UnderscoreForArrayLengths,
@@ -2210,8 +2218,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let variant_ident_span = self.tcx.def_ident_span(variant.def_id).unwrap();
-        match variant.ctor_kind() {
-            Some(CtorKind::Fn) => match ty.kind() {
+        match variant.ctor {
+            Some((CtorKind::Fn, def_id)) => match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => {
                     err.span_label(
                         variant_ident_span,
@@ -2222,28 +2230,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
+                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                    let inputs = fn_sig.inputs().skip_binder();
+                    let fields = format!(
+                        "({})",
+                        inputs.iter().map(|i| format!("/* {i} */")).collect::<Vec<_>>().join(", ")
+                    );
+                    let (replace_span, sugg) = match expr.kind {
+                        hir::ExprKind::Struct(qpath, ..) => {
+                            (qpath.span().shrink_to_hi().with_hi(expr.span.hi()), fields)
+                        }
+                        _ => {
+                            (expr.span, format!("{ty}::{variant}{fields}", variant = variant.name))
+                        }
+                    };
                     err.span_suggestion_verbose(
-                        expr.span,
+                        replace_span,
                         format!(
                             "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
                             adt = ty,
                             variant = variant.name,
                         ),
-                        format!(
-                            "{adt}::{variant}(/* fields */)",
-                            adt = ty,
-                            variant = variant.name,
-                        ),
+                        sugg,
                         Applicability::HasPlaceholders,
                     );
                 }
                 _ => {
                     err.span_label(variant_ident_span, format!("`{ty}` defined here"));
                     err.span_label(field.ident.span, "field does not exist");
+                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                    let inputs = fn_sig.inputs().skip_binder();
+                    let fields = format!(
+                        "({})",
+                        inputs.iter().map(|i| format!("/* {i} */")).collect::<Vec<_>>().join(", ")
+                    );
                     err.span_suggestion_verbose(
                         expr.span,
                         format!("`{ty}` is a tuple {kind_name}, use the appropriate syntax",),
-                        format!("{ty}(/* fields */)"),
+                        format!("{ty}{fields}"),
                         Applicability::HasPlaceholders,
                     );
                 }

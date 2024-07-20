@@ -27,4 +27,16 @@ fn missing<'a, 'captured, 'not_captured, Captured>(x: &'a ()) -> impl Captures<'
 //~^ ERROR hidden type for
 }
 
+fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
+//~^ HELP add a `use<...>` bound
+    y
+//~^ ERROR hidden type for
+}
+
+fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
+//~^ HELP add a `use<...>` bound
+    y
+//~^ ERROR hidden type for
+}
+
 fn main() {}

@@ -11,7 +11,7 @@ LL |             (mem::size_of_val(&trails) * 8) as u32
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |             (mem::size_of_val(addr_of!(trails)) * 8) as u32
-   |                               ~~~~~~~~~~~~~~~~
+   |                               ~~~~~~~~~      +
 
 warning: 1 warning emitted
 

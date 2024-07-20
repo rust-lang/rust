@@ -15,6 +15,7 @@
 	--desktop-sidebar-width: 200px;
 	--src-sidebar-width: 300px;
 	--desktop-sidebar-z-index: 100;
+	--sidebar-elems-left-padding: 24px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -559,8 +560,11 @@ ul.block, .block li {
 .sidebar > h2 a {
 	display: block;
 	padding: 0.25rem; /* 4px */
-	margin-left: -0.25rem;
 	margin-right: 0.25rem;
+	/* extend click target to far edge of screen (mile wide bar) */
+	border-left: solid var(--sidebar-elems-left-padding) transparent;
+	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
+	background-clip: border-box;
 }
 
 .sidebar h2 {
@@ -578,7 +582,7 @@ ul.block, .block li {
 .sidebar-elems,
 .sidebar > .version,
 .sidebar > h2 {
-	padding-left: 24px;
+	padding-left: var(--sidebar-elems-left-padding);
 }
 
 .sidebar a {
@@ -632,13 +636,55 @@ ul.block, .block li {
 .sidebar-crate .logo-container {
 	/* The logo is expected to have 8px "slop" along its edges, so we can optically
 		center it. */
-	margin: 0 -16px 0 -16px;
+	margin: 0 calc(-16px - var(--sidebar-elems-left-padding));
+	padding: 0 var(--sidebar-elems-left-padding);
 	text-align: center;
+}
+
+.sidebar-crate .logo-container img {
+	/* When in a horizontal logo lockup, the highlight color of the crate name menu item
+		extends underneath the actual logo (in a vertical lockup, that background highlight
+		extends to the left edge of the screen).
+
+		To prevent a weird-looking colored band from appearing under the logo, cover it up
+		with the sidebar's background. Additionally, the crate name extends slightly above
+		the logo, so that its highlight has a bit of space to let the ascenders breath while
+		also having those ascenders meet exactly with the top of the logo.
+
+		In ANSI art, make it look like this:
+		|        ┌─────┐
+		|    (R) │ std │
+		|        └─────┘
+
+		Not like this (which would happen without the z-index):
+		|     ┌────────┐
+		|    (│    std │
+		|     └────────┘
+
+		Not like this (which would happen without the background):
+		|     ┌────────┐
+		|    (R)   std │
+		|     └────────┘
+
+		Nor like this (which would happen without the negative margin):
+		|     ─────────┐
+		|    (R) │ std │
+		|        └─────┘
+		*/
+	margin-top: -16px;
+	border-top: solid 16px transparent;
+	box-sizing: content-box;
+	position: relative;
+	background-clip: border-box;
+	z-index: 1;
 }
 
 .sidebar-crate h2 a {
 	display: block;
-	margin: 0 calc(-24px + 0.25rem) 0 -0.2rem;
+	/* extend click target to far edge of screen (mile wide bar) */
+	border-left: solid var(--sidebar-elems-left-padding) transparent;
+	background-clip: border-box;
+	margin: 0 calc(-24px + 0.25rem) 0 calc(-0.2rem - var(--sidebar-elems-left-padding));
 	/* Align the sidebar crate link with the search bar, which have different
 		font sizes.
 
@@ -2126,6 +2172,14 @@ in src-script.js and main.js
 		right: 5px;
 		padding: 2px 4px;
 		box-shadow: 0 0 4px var(--main-background-color);
+	}
+
+	.item-table > li > .item-name {
+		width: 33%;
+	}
+	.item-table > li > div {
+		padding-bottom: 5px;
+		word-break: break-all;
 	}
 }
 

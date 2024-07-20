@@ -304,7 +304,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                     self.tcx.ensure().type_of(param.def_id);
                     if let Some(default) = default {
                         // need to store default and type of default
-                        self.tcx.ensure().type_of(default.def_id);
+                        if let hir::ConstArgKind::Anon(ac) = default.kind {
+                            self.tcx.ensure().type_of(ac.def_id);
+                        }
                         self.tcx.ensure().const_param_default(param.def_id);
                     }
                 }

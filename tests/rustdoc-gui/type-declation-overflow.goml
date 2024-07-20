@@ -16,7 +16,11 @@ assert-property: ("pre.item-decl", {"scrollWidth": "1324"})
 
 // In the table-ish view on the module index, the name should not be wrapped more than necessary.
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/index.html"
-assert-property: (".item-table .struct", {"offsetWidth": "684"})
+
+// We'll ensure that items with short documentation have the same width.
+store-property: ("//*[@class='item-table']//*[@class='struct']/..", {"offsetWidth": offset_width})
+assert: |offset_width| == "277"
+assert-property: ("//*[@class='item-table']//*[@class='constant']/..", {"offsetWidth": |offset_width|})
 
 // We now make the same check on type declaration...
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/type.ReallyLongTypeNameLongLongLong.html"

@@ -4,7 +4,7 @@ use crate::errors::{
     WhereClauseBeforeTupleStructBodySugg,
 };
 
-use super::{ForceCollect, Parser, TrailingToken};
+use super::{ForceCollect, Parser};
 
 use ast::token::Delimiter;
 use rustc_ast::token;
@@ -229,13 +229,13 @@ impl<'a> Parser<'a> {
                                     span: where_predicate.span(),
                                 });
                                 // FIXME - try to continue parsing other generics?
-                                return Ok((None, TrailingToken::None));
+                                return Ok((None, false));
                             }
                             Err(err) => {
                                 err.cancel();
                                 // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
                                 this.restore_snapshot(snapshot);
-                                return Ok((None, TrailingToken::None));
+                                return Ok((None, false));
                             }
                         }
                     } else {
@@ -249,14 +249,14 @@ impl<'a> Parser<'a> {
                                     .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
                             }
                         }
-                        return Ok((None, TrailingToken::None));
+                        return Ok((None, false));
                     };
 
                     if !this.eat(&token::Comma) {
                         done = true;
                     }
-                    // We just ate the comma, so no need to use `TrailingToken`
-                    Ok((param, TrailingToken::None))
+                    // We just ate the comma, so no need to capture the trailing token.
+                    Ok((param, false))
                 })?;
 
             if let Some(param) = param {

@@ -23,7 +23,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
-use rustc_infer::infer::error_reporting::TypeErrCtxt;
+use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_macros::extension;
 use rustc_middle::hir::map;
@@ -466,7 +466,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(expr)
         {
             // Suggest dereferencing the argument to a function/method call if possible
-
             let mut real_trait_pred = trait_pred;
             while let Some((parent_code, parent_trait_pred)) = code.parent() {
                 code = parent_code;
@@ -553,6 +552,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                         if self.predicate_may_hold(&obligation)
                             && self.predicate_must_hold_modulo_regions(&sized_obligation)
+                            // Do not suggest * if it is already a reference,
+                            // will suggest removing the borrow instead in that case.
+                            && !matches!(expr.kind, hir::ExprKind::AddrOf(..))
                         {
                             let call_node = self.tcx.hir_node(*call_hir_id);
                             let msg = "consider dereferencing here";
@@ -3810,6 +3812,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()
                     && let Some(failed_pred) = failed_pred.as_trait_clause()
+                    && where_pred.def_id() == failed_pred.def_id()
                 {
                     self.enter_forall(where_pred, |where_pred| {
                         let failed_pred = self.instantiate_binder_with_fresh_vars(

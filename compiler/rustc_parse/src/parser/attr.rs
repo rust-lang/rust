@@ -124,7 +124,7 @@ impl<'a> Parser<'a> {
                 if this.eat(&token::Not) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
 
             this.expect(&token::OpenDelim(Delimiter::Bracket))?;
-            let item = this.parse_attr_item(false)?;
+            let item = this.parse_attr_item(ForceCollect::No)?;
             this.expect(&token::CloseDelim(Delimiter::Bracket))?;
             let attr_sp = lo.to(this.prev_token.span);
 
@@ -248,16 +248,15 @@ impl<'a> Parser<'a> {
     ///     PATH
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
-    pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
+    pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
         maybe_whole!(self, NtMeta, |attr| attr.into_inner());
 
-        let do_parse = |this: &mut Self| {
+        let do_parse = |this: &mut Self, _empty_attrs| {
             let is_unsafe = this.eat_keyword(kw::Unsafe);
             let unsafety = if is_unsafe {
                 let unsafe_span = this.prev_token.span;
                 this.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
                 this.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
-
                 ast::Safety::Unsafe(unsafe_span)
             } else {
                 ast::Safety::Default
@@ -268,10 +267,10 @@ impl<'a> Parser<'a> {
             if is_unsafe {
                 this.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }
-            Ok(ast::AttrItem { unsafety, path, args, tokens: None })
+            Ok((ast::AttrItem { unsafety, path, args, tokens: None }, false))
         };
-        // Attr items don't have attributes
-        if capture_tokens { self.collect_tokens_no_attrs(do_parse) } else { do_parse(self) }
+        // Attr items don't have attributes.
+        self.collect_tokens_trailing_token(AttrWrapper::empty(), force_collect, do_parse)
     }
 
     /// Parses attributes that appear after the opening of an item. These should
@@ -303,17 +302,13 @@ impl<'a> Parser<'a> {
                 None
             };
             if let Some(attr) = attr {
-                let end_pos = self.num_bump_calls;
-                // If we are currently capturing tokens, mark the location of this inner attribute.
-                // If capturing ends up creating a `LazyAttrTokenStream`, we will include
-                // this replace range with it, removing the inner attribute from the final
-                // `AttrTokenStream`. Inner attributes are stored in the parsed AST note.
-                // During macro expansion, they are selectively inserted back into the
-                // token stream (the first inner attribute is removed each time we invoke the
-                // corresponding macro).
-                let range = start_pos..end_pos;
+                // If we are currently capturing tokens (i.e. we are within a call to
+                // `Parser::collect_tokens_trailing_tokens`) record the token positions of this
+                // inner attribute, for possible later processing in a `LazyAttrTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
-                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, None));
+                    let end_pos = self.num_bump_calls;
+                    let range = start_pos..end_pos;
+                    self.capture_state.inner_attr_ranges.insert(attr.id, range);
                 }
                 attrs.push(attr);
             } else {
@@ -344,7 +339,7 @@ impl<'a> Parser<'a> {
         let mut expanded_attrs = Vec::with_capacity(1);
         while self.token.kind != token::Eof {
             let lo = self.token.span;
-            let item = self.parse_attr_item(true)?;
+            let item = self.parse_attr_item(ForceCollect::Yes)?;
             expanded_attrs.push((item, lo.to(self.prev_token.span)));
             if !self.eat(&token::Comma) {
                 break;
@@ -463,7 +458,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// The attributes are complete if all attributes are either a doc comment or a builtin attribute other than `cfg_attr`
+/// The attributes are complete if all attributes are either a doc comment or a
+/// builtin attribute other than `cfg_attr`.
 pub fn is_complete(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().all(|attr| {
         attr.is_doc_comment()

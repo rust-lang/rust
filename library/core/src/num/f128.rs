@@ -170,7 +170,7 @@ impl f128 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f128::MANTISSA_DIGITS
     #[unstable(feature = "f128", issue = "116909")]
-    pub const EPSILON: f128 = 1.92592994438723585305597794258492731e-34_f128;
+    pub const EPSILON: f128 = 1.92592994438723585305597794258492732e-34_f128;
 
     /// Smallest finite `f128` value.
     ///
@@ -178,7 +178,7 @@ impl f128 {
     ///
     /// [`MAX`]: f128::MAX
     #[unstable(feature = "f128", issue = "116909")]
-    pub const MIN: f128 = -1.18973149535723176508575932662800701e+4932_f128;
+    pub const MIN: f128 = -1.18973149535723176508575932662800702e+4932_f128;
     /// Smallest positive normal `f128` value.
     ///
     /// Equal to 2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
@@ -194,7 +194,7 @@ impl f128 {
     /// [`MANTISSA_DIGITS`]: f128::MANTISSA_DIGITS
     /// [`MAX_EXP`]: f128::MAX_EXP
     #[unstable(feature = "f128", issue = "116909")]
-    pub const MAX: f128 = 1.18973149535723176508575932662800701e+4932_f128;
+    pub const MAX: f128 = 1.18973149535723176508575932662800702e+4932_f128;
 
     /// One greater than the minimum possible normal power of 2 exponent.
     ///

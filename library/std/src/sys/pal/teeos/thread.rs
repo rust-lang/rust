@@ -28,22 +28,24 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
-        let mut native: libc::pthread_t = mem::zeroed();
-        let mut attr: libc::pthread_attr_t = mem::zeroed();
-        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+        let mut native: libc::pthread_t = unsafe { mem::zeroed() };
+        let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
+        assert_eq!(unsafe { libc::pthread_attr_init(&mut attr) }, 0);
         assert_eq!(
-            libc::pthread_attr_settee(
-                &mut attr,
-                libc::TEESMP_THREAD_ATTR_CA_INHERIT,
-                libc::TEESMP_THREAD_ATTR_TASK_ID_INHERIT,
-                libc::TEESMP_THREAD_ATTR_HAS_SHADOW,
-            ),
+            unsafe {
+                libc::pthread_attr_settee(
+                    &mut attr,
+                    libc::TEESMP_THREAD_ATTR_CA_INHERIT,
+                    libc::TEESMP_THREAD_ATTR_TASK_ID_INHERIT,
+                    libc::TEESMP_THREAD_ATTR_HAS_SHADOW,
+                )
+            },
             0,
         );
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
 
-        match libc::pthread_attr_setstacksize(&mut attr, stack_size) {
+        match unsafe { libc::pthread_attr_setstacksize(&mut attr, stack_size) } {
             0 => {}
             n => {
                 assert_eq!(n, libc::EINVAL);
@@ -54,7 +56,7 @@ impl Thread {
                 let page_size = os::page_size();
                 let stack_size =
                     (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
-                assert_eq!(libc::pthread_attr_setstacksize(&mut attr, stack_size), 0);
+                assert_eq!(unsafe { libc::pthread_attr_setstacksize(&mut attr, stack_size) }, 0);
             }
         };
 
@@ -62,12 +64,12 @@ impl Thread {
         // Note: if the thread creation fails and this assert fails, then p will
         // be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        assert_eq!(unsafe { libc::pthread_attr_destroy(&mut attr) }, 0);
 
         return if ret != 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            drop(unsafe { Box::from_raw(p) });
             Err(io::Error::from_raw_os_error(ret))
         } else {
             // The new thread will start running earliest after the next yield.

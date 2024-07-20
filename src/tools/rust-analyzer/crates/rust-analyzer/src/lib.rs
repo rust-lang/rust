@@ -9,11 +9,9 @@
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 pub mod cli;
 
-mod caps;
+mod capabilities;
 mod diagnostics;
 mod diff;
 mod dispatch;
@@ -49,7 +47,8 @@ mod integrated_benchmarks;
 use serde::de::DeserializeOwned;
 
 pub use crate::{
-    caps::server_capabilities, main_loop::main_loop, reload::ws_to_crate_graph, version::version,
+    capabilities::server_capabilities, main_loop::main_loop, reload::ws_to_crate_graph,
+    version::version,
 };
 
 pub fn from_json<T: DeserializeOwned>(

@@ -22,6 +22,7 @@ pub struct CompletionConfig {
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
+    pub prefer_absolute: bool,
     pub snippets: Vec<Snippet>,
     pub limit: Option<usize>,
 }

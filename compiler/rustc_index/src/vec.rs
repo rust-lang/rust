@@ -1,4 +1,4 @@
-#[cfg(feature = "rustc_serialize")]
+#[cfg(feature = "nightly")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::borrow::{Borrow, BorrowMut};
@@ -322,14 +322,14 @@ impl<I: Idx, T, const N: usize> From<[T; N]> for IndexVec<I, T> {
     }
 }
 
-#[cfg(feature = "rustc_serialize")]
+#[cfg(feature = "nightly")]
 impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
     fn encode(&self, s: &mut S) {
         Encodable::encode(&self.raw, s);
     }
 }
 
-#[cfg(feature = "rustc_serialize")]
+#[cfg(feature = "nightly")]
 impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
     fn decode(d: &mut D) -> Self {
         IndexVec::from_raw(Vec::<T>::decode(d))

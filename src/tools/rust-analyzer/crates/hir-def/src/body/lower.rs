@@ -15,8 +15,8 @@ use span::AstIdMap;
 use stdx::never;
 use syntax::{
     ast::{
-        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasLoopBody, HasName,
-        RangeItem, SlicePatComponents,
+        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasGenericArgs,
+        HasLoopBody, HasName, RangeItem, SlicePatComponents,
     },
     AstNode, AstPtr, AstToken as _, SyntaxNodePtr,
 };

@@ -340,7 +340,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let span = match term {
                 hir::Term::Ty(ty) => ty.span,
-                hir::Term::Const(ct) => tcx.def_span(ct.def_id),
+                hir::Term::Const(ct) => ct.span(),
             };
             (span, Some(ident.span), assoc_item.kind, assoc_kind)
         } else {
@@ -1257,14 +1257,12 @@ pub fn prohibit_assoc_item_constraint(
             };
 
             // Now emit the suggestion
-            if let Ok(suggestion) = tcx.sess.source_map().span_to_snippet(removal_span) {
-                e.span_suggestion_verbose(
-                    removal_span,
-                    format!("consider removing this associated item {}", constraint.kind.descr()),
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            e.span_suggestion_verbose(
+                removal_span,
+                format!("consider removing this associated item {}", constraint.kind.descr()),
+                "",
+                Applicability::MaybeIncorrect,
+            );
         };
 
         // Suggest replacing the associated item binding with a generic argument.
@@ -1296,8 +1294,7 @@ pub fn prohibit_assoc_item_constraint(
                     hir::AssocItemConstraintKind::Equality { term: hir::Term::Const(c) },
                     GenericParamDefKind::Const { .. },
                 ) => {
-                    let span = tcx.hir().span(c.hir_id);
-                    suggest_direct_use(&mut err, span);
+                    suggest_direct_use(&mut err, c.span());
                 }
                 (hir::AssocItemConstraintKind::Bound { bounds }, _) => {
                     // Suggest `impl<T: Bound> Trait<T> for Foo` when finding
@@ -1340,11 +1337,13 @@ pub fn prohibit_assoc_item_constraint(
                                 format!("<{lifetimes}{type_with_constraints}>"),
                             )
                         };
-                        let suggestions =
-                            vec![param_decl, (constraint.span, format!("{}", matching_param.name))];
+                        let suggestions = vec![
+                            param_decl,
+                            (constraint.span.with_lo(constraint.ident.span.hi()), String::new()),
+                        ];
 
                         err.multipart_suggestion_verbose(
-                            format!("declare the type parameter right after the `impl` keyword"),
+                            "declare the type parameter right after the `impl` keyword",
                             suggestions,
                             Applicability::MaybeIncorrect,
                         );

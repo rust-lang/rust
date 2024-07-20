@@ -4,10 +4,10 @@
 // an internal compiler error (ICE).
 // See https://github.com/rust-lang/rust/pull/28673
 
-use run_make_support::{fs_wrapper, rustc, static_lib_name};
+use run_make_support::{rfs, rustc, static_lib_name};
 
 fn main() {
-    fs_wrapper::create_file(static_lib_name("foo"));
+    rfs::create_file(static_lib_name("foo"));
     rustc()
         .arg("-")
         .crate_type("rlib")

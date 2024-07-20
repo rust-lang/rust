@@ -57,6 +57,7 @@ mod tests {
         check(
             r"fn my_fn() { unsafe $0 }",
             expect![[r#"
+                kw async
                 kw fn
                 kw impl
                 kw trait

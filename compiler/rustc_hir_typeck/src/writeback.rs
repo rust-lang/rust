@@ -8,7 +8,7 @@ use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -783,7 +783,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     self.fcx.tcx.hir().body_owner_def_id(self.body.id()),
                     self.span.to_span(self.fcx.tcx),
                     p.into(),
-                    E0282,
+                    TypeAnnotationNeeded::E0282,
                     false,
                 )
                 .emit()

@@ -13,7 +13,7 @@ use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-#[instrument(level = "debug", skip(tcx))]
+#[instrument(level = "debug", skip(tcx), ret)]
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
@@ -102,6 +102,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 None
             } else if tcx.features().generic_const_exprs {
                 let parent_node = tcx.parent_hir_node(hir_id);
+                debug!(?parent_node);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
                     && constant.hir_id == hir_id
                 {
@@ -164,13 +165,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
             } else {
                 let parent_node = tcx.parent_hir_node(hir_id);
+                let parent_node = match parent_node {
+                    Node::ConstArg(ca) => tcx.parent_hir_node(ca.hir_id),
+                    _ => parent_node,
+                };
                 match parent_node {
                     // HACK(eddyb) this provides the correct generics for repeat
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
                     // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
                     // as they shouldn't be able to cause query cycle errors.
-                    Node::Expr(Expr { kind: ExprKind::Repeat(_, constant), .. })
-                        if constant.hir_id() == hir_id =>
+                    Node::Expr(Expr { kind: ExprKind::Repeat(_, ArrayLen::Body(ct)), .. })
+                        if ct.anon_const_hir_id() == Some(hir_id) =>
                     {
                         Some(parent_did)
                     }

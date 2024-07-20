@@ -56,8 +56,6 @@ pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
 where
     L: LatticeDir<'a, 'tcx>,
 {
-    debug!("{}", this.tag());
-
     if a == b {
         return Ok(a);
     }

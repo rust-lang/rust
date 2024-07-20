@@ -4,10 +4,10 @@
 // the ensuing compilation failure is not an ICE.
 // See https://github.com/rust-lang/rust/pull/85698
 
-use run_make_support::{fs_wrapper, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
-    fs_wrapper::create_file("session");
+    rfs::create_file("session");
     // rustc should fail to create the session directory here.
     let out = rustc().input("foo.rs").crate_type("rlib").incremental("session").run_fail();
     out.assert_stderr_contains("could not create incremental compilation crate directory");

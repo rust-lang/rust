@@ -1026,7 +1026,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{}", value), "a");
 /// assert_eq!(format!("{:?}", value), "'a'");
 ///
-/// let wrapped = fmt::FormatterFn(|f| write!(f, "{:?}", &value));
+/// let wrapped = fmt::FormatterFn(|f| write!(f, "{value:?}"));
 /// assert_eq!(format!("{}", wrapped), "'a'");
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```

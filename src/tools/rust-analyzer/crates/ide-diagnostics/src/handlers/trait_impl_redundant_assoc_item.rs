@@ -28,10 +28,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             let function = id;
             (
                 format!("`fn {redundant_assoc_item_name}`"),
-                function
-                    .source(db)
-                    .map(|it| it.syntax().value.text_range())
-                    .unwrap_or(default_range),
+                function.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
                 format!("\n    {};", function.display(db)),
             )
         }
@@ -39,10 +36,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             let constant = id;
             (
                 format!("`const {redundant_assoc_item_name}`"),
-                constant
-                    .source(db)
-                    .map(|it| it.syntax().value.text_range())
-                    .unwrap_or(default_range),
+                constant.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
                 format!("\n    {};", constant.display(db)),
             )
         }
@@ -50,10 +44,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             let type_alias = id;
             (
                 format!("`type {redundant_assoc_item_name}`"),
-                type_alias
-                    .source(db)
-                    .map(|it| it.syntax().value.text_range())
-                    .unwrap_or(default_range),
+                type_alias.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
                 format!("\n    type {};", type_alias.name(ctx.sema.db).to_smol_str()),
             )
         }

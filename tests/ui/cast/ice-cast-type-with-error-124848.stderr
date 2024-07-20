@@ -39,7 +39,7 @@ error[E0061]: this struct takes 2 arguments but 1 argument was supplied
   --> $DIR/ice-cast-type-with-error-124848.rs:12:24
    |
 LL |     let mut unpinned = MyType(Cell::new(None));
-   |                        ^^^^^^----------------- an argument is missing
+   |                        ^^^^^^----------------- argument #2 is missing
    |
 note: tuple struct defined here
   --> $DIR/ice-cast-type-with-error-124848.rs:7:8

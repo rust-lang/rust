@@ -3,6 +3,11 @@ error[E0533]: expected value, found struct variant `Alias::Braced`
    |
 LL |     Alias::Braced;
    |     ^^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     Alias::Braced {};
+   |                   ++
 
 error[E0533]: expected unit struct, unit variant or constant, found struct variant `Alias::Braced`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:10:9

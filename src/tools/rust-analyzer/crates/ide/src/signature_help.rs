@@ -272,7 +272,7 @@ fn signature_help_for_generics(
     arg_list: ast::GenericArgList,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
-    let (mut generics_def, mut active_parameter, first_arg_is_non_lifetime) =
+    let (generics_def, mut active_parameter, first_arg_is_non_lifetime, variant) =
         generic_def_for_node(sema, &arg_list, &token)?;
     let mut res = SignatureHelp {
         doc: None,
@@ -290,6 +290,12 @@ fn signature_help_for_generics(
         hir::GenericDef::Adt(hir::Adt::Enum(it)) => {
             res.doc = it.docs(db);
             format_to!(res.signature, "enum {}", it.name(db).display(db));
+            if let Some(variant) = variant {
+                // In paths, generics of an enum can be specified *after* one of its variants.
+                // eg. `None::<u8>`
+                // We'll use the signature of the enum, but include the docs of the variant.
+                res.doc = variant.docs(db);
+            }
         }
         hir::GenericDef::Adt(hir::Adt::Struct(it)) => {
             res.doc = it.docs(db);
@@ -310,15 +316,6 @@ fn signature_help_for_generics(
         hir::GenericDef::TypeAlias(it) => {
             res.doc = it.docs(db);
             format_to!(res.signature, "type {}", it.name(db).display(db));
-        }
-        hir::GenericDef::Variant(it) => {
-            // In paths, generics of an enum can be specified *after* one of its variants.
-            // eg. `None::<u8>`
-            // We'll use the signature of the enum, but include the docs of the variant.
-            res.doc = it.docs(db);
-            let enum_ = it.parent_enum(db);
-            format_to!(res.signature, "enum {}", enum_.name(db).display(db));
-            generics_def = enum_.into();
         }
         // These don't have generic args that can be specified
         hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,

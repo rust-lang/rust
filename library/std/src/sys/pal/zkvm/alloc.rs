@@ -5,7 +5,7 @@ use crate::alloc::{GlobalAlloc, Layout, System};
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        abi::sys_alloc_aligned(layout.size(), layout.align())
+        unsafe { abi::sys_alloc_aligned(layout.size(), layout.align()) }
     }
 
     #[inline]

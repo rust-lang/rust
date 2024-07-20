@@ -20,10 +20,10 @@ tracing = "0.1"
 [features]
 default = ["nightly"]
 nightly = [
+    "dep:rustc_data_structures",
+    "dep:rustc_macros",
+    "dep:rustc_serialize",
     "rustc_ast_ir/nightly",
-    "rustc_data_structures",
     "rustc_index/nightly",
-    "rustc_macros",
-    "rustc_serialize",
     "rustc_type_ir/nightly",
 ]

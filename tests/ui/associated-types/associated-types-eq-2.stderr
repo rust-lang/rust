@@ -50,8 +50,9 @@ LL | impl Tr1<A = usize> for usize {
    |
 help: consider removing this associated item binding
    |
-LL | impl Tr1<A = usize> for usize {
-   |         ~~~~~~~~~~~
+LL - impl Tr1<A = usize> for usize {
+LL + impl Tr1 for usize {
+   |
 
 error[E0046]: not all trait items implemented, missing: `A`
   --> $DIR/associated-types-eq-2.rs:20:1
@@ -70,8 +71,9 @@ LL | fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
    |
 help: consider removing this associated item binding
    |
-LL | fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
-   |                              ~~~~~~~
+LL - fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
+LL + fn baz<I: Tr1>(_x: &<I as Tr1>::A) {}
+   |
 
 error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
   --> $DIR/associated-types-eq-2.rs:40:6
@@ -128,8 +130,9 @@ LL | impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
    |
 help: consider removing this associated item binding
    |
-LL | impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
-   |             ~~~~~~~~~~
+LL - impl Tr2<i32, t2 = Qux, T3 = usize> for Qux {
+LL + impl Tr2<i32, T3 = usize> for Qux {
+   |
 
 error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
   --> $DIR/associated-types-eq-2.rs:54:6
@@ -157,8 +160,9 @@ LL | impl Tr2<i32, X = Qux, Y = usize> for Bar {
    |
 help: consider removing this associated item binding
    |
-LL | impl Tr2<i32, X = Qux, Y = usize> for Bar {
-   |             ~~~~~~~~~
+LL - impl Tr2<i32, X = Qux, Y = usize> for Bar {
+LL + impl Tr2<i32, Y = usize> for Bar {
+   |
 
 error[E0107]: trait takes 3 generic arguments but 2 generic arguments were supplied
   --> $DIR/associated-types-eq-2.rs:61:6
@@ -228,8 +232,9 @@ LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
    |
 help: consider removing this associated item binding
    |
-LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
-   |          ~~~~~~~
+LL - impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
+LL + impl Tr3<T2 = Qux, T3 = usize> for Qux {
+   |
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:92:10
@@ -239,8 +244,9 @@ LL | impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
    |
 help: consider removing this associated item binding
    |
-LL | impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
-   |          ~~~~~~~~
+LL - impl Tr3<N = u32, T2 = Qux, T3 = usize> for Bar {
+LL + impl Tr3<T2 = Qux, T3 = usize> for Bar {
+   |
 
 error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
   --> $DIR/associated-types-eq-2.rs:98:6
@@ -268,8 +274,9 @@ LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
    |
 help: consider removing this associated item binding
    |
-LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
-   |            ~~~~~~~~~
+LL - impl Tr3<42, T2 = 42, T3 = usize> for Bar {
+LL + impl Tr3<42, T3 = usize> for Bar {
+   |
 
 error[E0107]: trait takes 3 generic arguments but 0 generic arguments were supplied
   --> $DIR/associated-types-eq-2.rs:106:6
@@ -295,8 +302,9 @@ LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
    |
 help: consider removing this associated item binding
    |
-LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
-   |          ~~~~~~~
+LL - impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
+LL + impl Tr3<Y = Qux, Z = usize> for Bar {
+   |
 
 error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/associated-types-eq-2.rs:117:13

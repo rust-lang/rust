@@ -4,7 +4,7 @@ use ide_db::{
     famous_defs::FamousDefs,
 };
 use syntax::{
-    ast::{self, HasVisibility},
+    ast::{self, HasGenericArgs, HasVisibility},
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
 };
 
@@ -142,6 +142,7 @@ pub(crate) fn desugar_async_into_impl_future(
         ImportPathConfig {
             prefer_no_std: ctx.config.prefer_no_std,
             prefer_prelude: ctx.config.prefer_prelude,
+            prefer_absolute: ctx.config.prefer_absolute,
         },
     )?;
     let trait_path = trait_path.display(ctx.db());

@@ -1999,3 +1999,45 @@ where
 "#,
     );
 }
+
+#[test]
+fn tait_async_stack_overflow_17199() {
+    check_types(
+        r#"
+    //- minicore: fmt, future
+    type Foo = impl core::fmt::Debug;
+
+    async fn foo() -> Foo {
+        ()
+    }
+
+    async fn test() {
+        let t = foo().await;
+         // ^ impl Debug
+    }
+"#,
+    );
+}
+
+#[test]
+fn lifetime_params_move_param_defaults() {
+    check_types(
+        r#"
+pub struct Thing<'s, T = u32>;
+
+impl <'s> Thing<'s> {
+    pub fn new() -> Thing<'s> {
+        Thing
+      //^^^^^ Thing<'?, u32>
+    }
+}
+
+fn main() {
+    let scope =
+      //^^^^^ &'? Thing<'?, u32>
+                &Thing::new();
+               //^^^^^^^^^^^^ Thing<'?, u32>
+}
+"#,
+    );
+}

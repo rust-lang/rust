@@ -5,7 +5,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_infer::infer::error_reporting::TypeErrCtxt;
+use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_macros::extension;
 use rustc_middle::ty::print::{FmtPrinter, Print};

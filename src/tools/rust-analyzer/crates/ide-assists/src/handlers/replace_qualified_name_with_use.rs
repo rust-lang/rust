@@ -4,7 +4,7 @@ use ide_db::{
     imports::insert_use::{insert_use, ImportScope},
 };
 use syntax::{
-    ast::{self, make},
+    ast::{self, make, HasGenericArgs},
     match_ast, ted, AstNode, SyntaxNode,
 };
 
@@ -70,6 +70,7 @@ pub(crate) fn replace_qualified_name_with_use(
                 ImportPathConfig {
                     prefer_no_std: ctx.config.prefer_no_std,
                     prefer_prelude: ctx.config.prefer_prelude,
+                    prefer_absolute: ctx.config.prefer_absolute,
                 },
             )
         })

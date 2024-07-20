@@ -1023,7 +1023,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
-                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0533, expected);
+                let e =
+                    report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0533, expected);
                 return Ty::new_error(tcx, e);
             }
             Res::SelfCtor(def_id) => {
@@ -1036,6 +1037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let e = report_unexpected_variant_res(
                         tcx,
                         res,
+                        None,
                         qpath,
                         pat.span,
                         E0533,
@@ -1189,7 +1191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let report_unexpected_res = |res: Res| {
             let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0164, expected);
+            let e = report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected);
             on_error(e);
             e
         };

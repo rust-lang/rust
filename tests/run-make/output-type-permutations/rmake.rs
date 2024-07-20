@@ -5,7 +5,7 @@
 // See https://github.com/rust-lang/rust/pull/12020
 
 use run_make_support::{
-    bin_name, dynamic_lib_name, filename_not_in_denylist, fs_wrapper, rust_lib_name, rustc,
+    bin_name, dynamic_lib_name, filename_not_in_denylist, rfs, rust_lib_name, rustc,
     shallow_find_files, static_lib_name,
 };
 use std::path::PathBuf;
@@ -20,10 +20,10 @@ fn assert_expected_output_files(expectations: Expectations, rustc_invocation: im
     let Expectations { expected_files: must_exist, allowed_files: can_exist, test_dir: dir } =
         expectations;
 
-    fs_wrapper::create_dir(&dir);
+    rfs::create_dir(&dir);
     rustc_invocation();
     for file in must_exist {
-        fs_wrapper::remove_file(PathBuf::from(&dir).join(&file));
+        rfs::remove_file(PathBuf::from(&dir).join(&file));
     }
     let actual_output_files =
         shallow_find_files(dir, |path| filename_not_in_denylist(path, &can_exist));
@@ -526,17 +526,14 @@ fn main() {
             test_dir: "rlib-emits".to_string(),
         },
         || {
-            fs_wrapper::rename("staticlib-all3/bar.bc", "rlib-emits/foo.bc");
+            rfs::rename("staticlib-all3/bar.bc", "rlib-emits/foo.bc");
             rustc()
                 .input("foo.rs")
                 .emit("llvm-bc,link")
                 .crate_type("rlib")
                 .out_dir("rlib-emits")
                 .run();
-            assert_eq!(
-                fs_wrapper::read("rlib-emits/foo.bc"),
-                fs_wrapper::read("rlib-emits/bar.bc")
-            );
+            assert_eq!(rfs::read("rlib-emits/foo.bc"), rfs::read("rlib-emits/bar.bc"));
         },
     );
 }

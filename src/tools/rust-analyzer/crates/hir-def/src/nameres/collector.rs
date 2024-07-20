@@ -83,7 +83,9 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                     let name = Name::new_text_dont_use(it.name.clone());
                     (
                         name,
-                        if it.disabled {
+                        if !db.expand_proc_attr_macros() {
+                            CustomProcMacroExpander::dummy()
+                        } else if it.disabled {
                             CustomProcMacroExpander::disabled()
                         } else {
                             CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId::new(
@@ -1331,16 +1333,6 @@ impl DefCollector<'_> {
 
                     let call_id = call_id();
                     if let MacroDefKind::ProcMacro(_, exp, _) = def.kind {
-                        // If proc attribute macro expansion is disabled, skip expanding it here
-                        if !self.db.expand_proc_attr_macros() {
-                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
-                                directive.module_id,
-                                self.db.lookup_intern_macro_call(call_id).kind,
-                                def.krate,
-                            ));
-                            return recollect_without(self);
-                        }
-
                         // If there's no expander for the proc macro (e.g.
                         // because proc macros are disabled, or building the
                         // proc macro crate failed), report this and skip
