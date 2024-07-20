@@ -25,6 +25,16 @@ macro_rules! unlikely {
     };
 }
 
+// Use this when the generated code should differ between signed and unsigned types.
+macro_rules! sign_dependent_expr {
+    (signed ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
+        $signed_case
+    };
+    (unsigned ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
+        $unsigned_case
+    };
+}
+
 // All these modules are technically private and only exposed for coretests:
 #[cfg(not(no_fp_fmt_parse))]
 pub mod bignum;
@@ -1410,13 +1420,22 @@ const fn from_str_radix_panic(radix: u32) {
 }
 
 macro_rules! from_str_radix {
-    ($($int_ty:ty)+) => {$(
+    ($signedness:ident $($int_ty:ty)+) => {$(
         impl $int_ty {
             /// Converts a string slice in a given base to an integer.
             ///
-            /// The string is expected to be an optional `+` or `-` sign (the latter not being
-            /// allowed for unsigned integers) followed by only digits. Leading and trailing
-            /// non-digit characters (including whitespace) represent an error.
+            /// The string is expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
             /// * `0-9`
@@ -1535,7 +1554,8 @@ macro_rules! from_str_radix {
     )+}
 }
 
-from_str_radix! { i8 u8 i16 u16 i32 u32 i64 u64 i128 u128 }
+from_str_radix! { unsigned u8 u16 u32 u64 u128 }
+from_str_radix! { signed i8 i16 i32 i64 i128 }
 
 // Re-use the relevant implementation of from_str_radix for isize and usize to avoid outputting two
 // identical functions.
