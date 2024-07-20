@@ -1563,38 +1563,38 @@ from_str_radix! { signed i8 i16 i32 i64 i128 }
 macro_rules! from_str_radix_size_impl {
     ($($signedness:ident $t:ident $size:ty),*) => {$(
     impl $size {
-            /// Converts a string slice in a given base to an integer.
-            ///
-            /// The string is expected to be an optional
-            #[doc = sign_dependent_expr!{
-                $signedness ?
-                if signed {
-                    " `+` or `-` "
-                }
-                if unsigned {
-                    " `+` "
-                }
-            }]
-            /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in rust literals)
-            /// also represent an error.
-            ///
-            /// Digits are a subset of these characters, depending on `radix`:
-            /// * `0-9`
-            /// * `a-z`
-            /// * `A-Z`
-            ///
-            /// # Panics
-            ///
-            /// This function panics if `radix` is not in the range from 2 to 36.
-            ///
-            /// # Examples
-            ///
-            /// Basic usage:
-            ///
-            /// ```
-            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str_radix(\"A\", 16), Ok(10));")]
-            /// ```
+        /// Converts a string slice in a given base to an integer.
+        ///
+        /// The string is expected to be an optional
+        #[doc = sign_dependent_expr!{
+            $signedness ?
+            if signed {
+                " `+` or `-` "
+            }
+            if unsigned {
+                " `+` "
+            }
+        }]
+        /// sign followed by only digits. Leading and trailing non-digit characters (including
+        /// whitespace) represent an error. Underscores (which are accepted in rust literals)
+        /// also represent an error.
+        ///
+        /// Digits are a subset of these characters, depending on `radix`:
+        /// * `0-9`
+        /// * `a-z`
+        /// * `A-Z`
+        ///
+        /// # Panics
+        ///
+        /// This function panics if `radix` is not in the range from 2 to 36.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str_radix(\"A\", 16), Ok(10));")]
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_int_from_str", issue = "59133")]
         pub const fn from_str_radix(src: &str, radix: u32) -> Result<$size, ParseIntError> {
