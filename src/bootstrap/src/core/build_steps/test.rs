@@ -3505,3 +3505,80 @@ impl Step for CodegenGCC {
         cargo.into_cmd().run(builder);
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TestFloatParse {
+    path: PathBuf,
+    host: TargetSelection,
+}
+
+impl Step for TestFloatParse {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/etc/test-float-parse")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        for path in run.paths {
+            let path = path.assert_single_path().path.clone();
+            run.builder.ensure(Self { path, host: run.target });
+        }
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let path = self.path.to_str().unwrap();
+        let crate_name = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
+
+        builder.ensure(compile::Std::new(compiler, self.host));
+
+        // Run any unit tests in the crate
+        let cargo_test = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            bootstrap_host,
+            "test",
+            path,
+            SourceType::InTree,
+            &[],
+        );
+
+        run_cargo_test(
+            cargo_test,
+            &[],
+            &[],
+            crate_name,
+            crate_name,
+            compiler,
+            bootstrap_host,
+            builder,
+        );
+
+        // Run the actual parse tests.
+        let mut cargo_run = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            bootstrap_host,
+            "run",
+            path,
+            SourceType::InTree,
+            &[],
+        );
+
+        cargo_run.arg("--");
+        if builder.config.args().is_empty() {
+            // By default, exclude tests that take longer than ~1m.
+            cargo_run.arg("--skip-huge");
+        } else {
+            cargo_run.args(builder.config.args());
+        }
+
+        cargo_run.into_cmd().run(builder);
+    }
+}
