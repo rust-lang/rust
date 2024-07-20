@@ -1954,7 +1954,7 @@ impl<'a> Builder<'a> {
         if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
                 let llvm_libdir =
-                    command(llvm_config).capture_stdout().arg("--libdir").run(self).stdout();
+                    command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
             }
         }
