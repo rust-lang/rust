@@ -695,7 +695,7 @@ fn copy_sanitizers(
             || target == "x86_64-apple-ios"
         {
             // Update the library’s install name to reflect that it has been renamed.
-            apple_darwin_update_library_name(builder, &dst, &format!("@rpath/{}", &runtime.name));
+            apple_darwin_update_library_name(builder, &dst, &format!("@rpath/{}", runtime.name));
             // Upon renaming the install name, the code signature of the file will invalidate,
             // so we will sign it again.
             apple_darwin_sign_file(builder, &dst);

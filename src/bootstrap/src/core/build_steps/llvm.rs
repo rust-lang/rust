@@ -1411,7 +1411,7 @@ impl Step for Libunwind {
                 }
             }
         }
-        assert_eq!(cpp_len, count, "Can't get object files from {:?}", &out_dir);
+        assert_eq!(cpp_len, count, "Can't get object files from {out_dir:?}");
 
         cc_cfg.compile("unwind");
         out_dir
