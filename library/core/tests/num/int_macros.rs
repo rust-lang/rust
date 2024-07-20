@@ -244,6 +244,8 @@ macro_rules! int_module {
 
             assert_eq!($T::from_str_radix("Z", 35).ok(), None::<$T>);
             assert_eq!($T::from_str_radix("-9", 2).ok(), None::<$T>);
+            assert_eq!($T::from_str_radix("10_0", 10).ok(), None::<$T>);
+            assert_eq!(u32::from_str_radix("-9", 10).ok(), None::<u32>);
         }
 
         #[test]
