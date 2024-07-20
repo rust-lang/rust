@@ -278,6 +278,7 @@ impl<'tcx> PredicatesBuilder<'tcx> {
         ty::GenericPredicates {
             parent: self.parent,
             predicates: self.tcx.arena.alloc_from_iter(preds),
+            errored_due_to_unconstrained_params: Ok(()),
         }
     }
 }

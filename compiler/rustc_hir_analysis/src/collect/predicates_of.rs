@@ -6,7 +6,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
+    self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
@@ -107,6 +108,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(tcx.parent(def_id.to_def_id())),
                 predicates: tcx.arena.alloc_from_iter(predicates),
+                errored_due_to_unconstrained_params: Ok(()),
             };
         }
 
@@ -128,6 +130,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(impl_def_id),
                 predicates: tcx.arena.alloc_from_iter(impl_predicates),
+                errored_due_to_unconstrained_params: trait_assoc_predicates
+                    .errored_due_to_unconstrained_params,
             };
         }
 
@@ -153,6 +157,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We use an `IndexSet` to preserve order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
+    let mut errored_due_to_unconstrained_params = Ok(());
 
     let hir_generics = node.generics().unwrap_or(NO_GENERICS);
     if let Node::Item(item) = node {
@@ -319,11 +324,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
         let self_ty = tcx.type_of(def_id).instantiate_identity();
         let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::instantiate_identity);
-        cgp::setup_constraining_predicates(
-            tcx,
-            &mut predicates,
-            trait_ref,
-            &mut cgp::parameters_for_impl(tcx, self_ty, trait_ref),
+        let mut input_parameters = cgp::parameters_for_impl(tcx, self_ty, trait_ref);
+        cgp::setup_constraining_predicates(tcx, &mut predicates, trait_ref, &mut input_parameters);
+        errored_due_to_unconstrained_params = errored_due_to_unconstrained_params.and(
+            self_ty.error_reported().and(trait_ref.error_reported()).and_then(|()| {
+                crate::impl_wf_check::enforce_impl_params_are_constrained(
+                    tcx,
+                    def_id,
+                    input_parameters,
+                )
+            }),
         );
     }
 
@@ -338,6 +348,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
+        errored_due_to_unconstrained_params,
     }
 }
 
@@ -507,6 +518,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
             ty::GenericPredicates {
                 parent: predicates_and_bounds.parent,
                 predicates: tcx.arena.alloc_slice(&predicates),
+                errored_due_to_unconstrained_params: predicates_and_bounds
+                    .errored_due_to_unconstrained_params,
             }
         }
     } else {
@@ -558,6 +571,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
             return GenericPredicates {
                 parent: parent_preds.parent,
                 predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
+                errored_due_to_unconstrained_params: parent_preds
+                    .errored_due_to_unconstrained_params,
             };
         }
         gather_explicit_predicates_of(tcx, def_id)

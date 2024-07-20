@@ -1,0 +1,9 @@
+error[E0207]: the type parameter `V` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/missing_method_in_impl_with_unconstrained_type_param.rs:9:14
+   |
+LL |     impl<'a, V: ?Sized> Callable for &'a () {
+   |              ^ unconstrained type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0207`.

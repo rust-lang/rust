@@ -1404,6 +1404,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 clean_ty_generics(cx, tcx.generics_of(assoc_item.def_id), ty::GenericPredicates {
                     parent: None,
                     predicates,
+                    errored_due_to_unconstrained_params: Ok(()),
                 });
             simplify::move_bounds_to_generic_parameters(&mut generics);
 

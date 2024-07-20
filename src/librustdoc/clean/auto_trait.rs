@@ -105,7 +105,12 @@ fn synthesize_auto_trait_impl<'tcx>(
             let mut generics = clean_ty_generics(
                 cx,
                 tcx.generics_of(item_def_id),
-                ty::GenericPredicates::default(),
+                ty::GenericPredicates {
+                    parent: None,
+                    predicates: &[],
+                    effects_min_tys: ty::List::empty(),
+                    errored_due_to_unconstrained_params: Ok(()),
+                },
             );
             generics.where_predicates.clear();
 
