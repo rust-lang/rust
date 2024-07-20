@@ -96,3 +96,24 @@ fn issue_12569() {
         0
     };
 }
+
+// Should not warn!
+fn issue_12928() {
+    let x = Some((1, 2));
+    let y = if let Some((a, _)) = x { a } else { 0 };
+    let y = if let Some((a, ..)) = x { a } else { 0 };
+    let x = Some([1, 2]);
+    let y = if let Some([a, _]) = x { a } else { 0 };
+    let y = if let Some([a, ..]) = x { a } else { 0 };
+
+    struct X {
+        a: u8,
+        b: u8,
+    }
+    let x = Some(X { a: 0, b: 0 });
+    let y = if let Some(X { a, .. }) = x { a } else { 0 };
+    struct Y(u8, u8);
+    let x = Some(Y(0, 0));
+    let y = if let Some(Y(a, _)) = x { a } else { 0 };
+    let y = if let Some(Y(a, ..)) = x { a } else { 0 };
+}
