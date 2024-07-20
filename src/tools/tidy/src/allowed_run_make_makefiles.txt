@@ -4,10 +4,8 @@ run-make/c-dynamic-rlib/Makefile
 run-make/c-static-dylib/Makefile
 run-make/c-static-rlib/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
-run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
-run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
 run-make/cross-lang-lto-clang/Makefile
 run-make/cross-lang-lto-pgo-smoketest/Makefile
@@ -96,7 +94,6 @@ run-make/staticlib-dylib-linkage/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
-run-make/test-benches/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
 run-make/translation/Makefile
