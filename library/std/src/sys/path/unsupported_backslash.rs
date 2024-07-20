@@ -1,3 +1,4 @@
+#![forbid(unsafe_op_in_unsafe_fn)]
 use crate::ffi::OsStr;
 use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
