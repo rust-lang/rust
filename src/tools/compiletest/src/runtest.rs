@@ -2608,13 +2608,14 @@ impl<'test> TestCx<'test> {
         // Because we use custom prefixes, we also have to register the default prefix.
         filecheck.arg("--check-prefix=CHECK");
 
-        // Some tests use the current revision name as a check prefix.
+        // The current revision name can also be used as a check prefix
         if let Some(rev) = self.revision {
-            filecheck.arg("--check-prefix").arg(rev);
+            filecheck.arg(format!("--check-prefix=CHECK-{}", rev.to_uppercase()));
         }
 
         // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
-        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
+        let msvc_or_not =
+            if self.config.target.contains("msvc") { "CHECK-MSVC" } else { "CHECK-NONMSVC" };
         filecheck.arg("--check-prefix").arg(msvc_or_not);
 
         // The filecheck tool normally fails if a prefix is defined but not used.
