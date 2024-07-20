@@ -651,7 +651,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             self.path_segment.hir_id,
             num_params_to_take,
         );
-        debug!("suggested_args: {:?}", &suggested_args);
+        debug!("suggested_args: {suggested_args:?}");
 
         match self.angle_brackets {
             AngleBrackets::Missing => {

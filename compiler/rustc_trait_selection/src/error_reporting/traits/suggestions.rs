@@ -1793,25 +1793,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err.children.clear();
 
         let span = obligation.cause.span;
-        if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span)
-            && snip.starts_with("dyn ")
-        {
-            err.span_suggestion(
-                span.with_hi(span.lo() + BytePos(4)),
-                "return an `impl Trait` instead of a `dyn Trait`, \
-                if all returned values are the same type",
-                "impl ",
-                Applicability::MaybeIncorrect,
-            );
-        }
-
         let body = self.tcx.hir().body_owned_by(obligation.cause.body_id);
 
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
 
-        let mut sugg =
-            vec![(span.shrink_to_lo(), "Box<".to_string()), (span.shrink_to_hi(), ">".to_string())];
+        let (pre, impl_span) = if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span)
+            && snip.starts_with("dyn ")
+        {
+            ("", span.with_hi(span.lo() + BytePos(4)))
+        } else {
+            ("dyn ", span.shrink_to_lo())
+        };
+        let alternatively = if visitor
+            .returns
+            .iter()
+            .map(|expr| self.typeck_results.as_ref().unwrap().expr_ty_adjusted_opt(expr))
+            .collect::<FxHashSet<_>>()
+            .len()
+            <= 1
+        {
+            err.span_suggestion_verbose(
+                impl_span,
+                "consider returning an `impl Trait` instead of a `dyn Trait`",
+                "impl ",
+                Applicability::MaybeIncorrect,
+            );
+            "alternatively, "
+        } else {
+            err.help("if there were a single returned type, you could use `impl Trait` instead");
+            ""
+        };
+
+        let mut sugg = vec![
+            (span.shrink_to_lo(), format!("Box<{pre}")),
+            (span.shrink_to_hi(), ">".to_string()),
+        ];
         sugg.extend(visitor.returns.into_iter().flat_map(|expr| {
             let span =
                 expr.span.find_ancestor_in_same_ctxt(obligation.cause.span).unwrap_or(expr.span);
@@ -1837,7 +1854,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }));
 
         err.multipart_suggestion(
-            "box the return type, and wrap all of the returned values in `Box::new`",
+            format!(
+                "{alternatively}box the return type, and wrap all of the returned values in \
+                 `Box::new`",
+            ),
             sugg,
             Applicability::MaybeIncorrect,
         );

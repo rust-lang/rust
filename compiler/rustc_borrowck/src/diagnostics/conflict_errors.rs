@@ -456,10 +456,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 if let Some(def_id) = def_id
                     && self.infcx.tcx.def_kind(def_id).is_fn_like()
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
-                    && let ty::Param(_) =
-                        self.infcx.tcx.fn_sig(def_id).skip_binder().skip_binder().inputs()
-                            [pos + offset]
-                            .kind()
+                    && let Some(arg) = self
+                        .infcx
+                        .tcx
+                        .fn_sig(def_id)
+                        .skip_binder()
+                        .skip_binder()
+                        .inputs()
+                        .get(pos + offset)
+                    && let ty::Param(_) = arg.kind()
                 {
                     let place = &self.move_data.move_paths[mpi].place;
                     let ty = place.ty(self.body, self.infcx.tcx).ty;

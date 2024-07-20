@@ -14,7 +14,7 @@ pub fn find_self_call<'tcx>(
     local: Local,
     block: BasicBlock,
 ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
-    debug!("find_self_call(local={:?}): terminator={:?}", local, &body[block].terminator);
+    debug!("find_self_call(local={:?}): terminator={:?}", local, body[block].terminator);
     if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
         &body[block].terminator
     {

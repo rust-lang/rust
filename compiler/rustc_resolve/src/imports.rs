@@ -694,7 +694,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .collect::<Vec<_>>();
         let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
-        let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{}", &msg);
+        let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{msg}");
 
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
             diag.note(note.clone());

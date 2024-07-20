@@ -102,7 +102,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 | StatementKind::Nop => (),
 
                 StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
-                    bug!("{:?} not found in this MIR phase!", &statement.kind)
+                    bug!("{:?} not found in this MIR phase!", statement.kind)
                 }
             }
         }

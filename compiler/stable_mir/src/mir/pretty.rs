@@ -179,7 +179,7 @@ fn pretty_terminator_head<W: Write>(writer: &mut W, terminator: &TerminatorKind)
             if !expected {
                 write!(writer, "!")?;
             }
-            write!(writer, "{}, ", &pretty_operand(cond))?;
+            write!(writer, "{}, ", pretty_operand(cond))?;
             pretty_assert_message(writer, msg)?;
             write!(writer, ")")
         }
@@ -325,7 +325,7 @@ fn pretty_ty_const(ct: &TyConst) -> String {
 fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
     match rval {
         Rvalue::AddressOf(mutability, place) => {
-            write!(writer, "&raw {}(*{:?})", &pretty_mut(*mutability), place)
+            write!(writer, "&raw {}(*{:?})", pretty_mut(*mutability), place)
         }
         Rvalue::Aggregate(aggregate_kind, operands) => {
             // FIXME: Add pretty_aggregate function that returns a pretty string
@@ -336,13 +336,13 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             write!(writer, ")")
         }
         Rvalue::BinaryOp(bin, op1, op2) => {
-            write!(writer, "{:?}({}, {})", bin, &pretty_operand(op1), pretty_operand(op2))
+            write!(writer, "{:?}({}, {})", bin, pretty_operand(op1), pretty_operand(op2))
         }
         Rvalue::Cast(_, op, ty) => {
             write!(writer, "{} as {}", pretty_operand(op), ty)
         }
         Rvalue::CheckedBinaryOp(bin, op1, op2) => {
-            write!(writer, "Checked{:?}({}, {})", bin, &pretty_operand(op1), pretty_operand(op2))
+            write!(writer, "Checked{:?}({}, {})", bin, pretty_operand(op1), pretty_operand(op2))
         }
         Rvalue::CopyForDeref(deref) => {
             write!(writer, "CopyForDeref({:?})", deref)
@@ -363,7 +363,7 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             write!(writer, "{kind}{:?}", place)
         }
         Rvalue::Repeat(op, cnst) => {
-            write!(writer, "{} \" \" {}", &pretty_operand(op), &pretty_ty_const(cnst))
+            write!(writer, "{} \" \" {}", pretty_operand(op), pretty_ty_const(cnst))
         }
         Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::ThreadLocalRef(item) => {

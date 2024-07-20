@@ -130,7 +130,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
         let symbol_name = self.symbol_name(cx.tcx()).name;
 
-        debug!("symbol {}", &symbol_name);
+        debug!("symbol {symbol_name}");
 
         match *self {
             MonoItem::Static(def_id) => {

@@ -56,7 +56,7 @@ hermit-abi = { version = "0.4.0", features = ['rustc-dep-of-std'], public = true
 wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }
 
 [target.'cfg(target_os = "uefi")'.dependencies]
-r-efi = { version = "4.2.0", features = ['rustc-dep-of-std'] }
+r-efi = { version = "4.5.0", features = ['rustc-dep-of-std'] }
 r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
 
 [features]
