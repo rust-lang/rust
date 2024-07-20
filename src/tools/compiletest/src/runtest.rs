@@ -3433,29 +3433,51 @@ impl<'test> TestCx<'test> {
 
     fn run_rmake_v2_test(&self) {
         // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
-        // (`rmake.rs`) to run the actual tests. The support library is already built as a tool
-        // dylib and is available under `build/$TARGET/stageN-tools-bin/librun_make_support.rlib`.
+        // (`rmake.rs`) to run the actual tests. The support library is already built as a tool rust
+        // library and is available under `build/$TARGET/stageN-tools-bin/librun_make_support.rlib`.
         //
-        // 1. We need to build the recipe `rmake.rs` and link in the support library.
-        // 2. We need to run the recipe to build and run the tests.
-        let cwd = env::current_dir().unwrap();
-        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
-        let src_root = cwd.join(&src_root);
-        let build_root = self.config.build_base.parent().unwrap().parent().unwrap();
-        let build_root = cwd.join(&build_root);
+        // 1. We need to build the recipe `rmake.rs` as a binary and link in the `run_make_support`
+        //    library.
+        // 2. We need to run the recipe binary.
+
+        // So we assume the rust-lang/rust project setup looks like the following (our `.` is the
+        // top-level directory, irrelevant entries to our purposes omitted):
+        //
+        // ```
+        // .                               // <- `source_root`
+        // ├── build/                      // <- `build_root`
+        // ├── compiler/
+        // ├── library/
+        // ├── src/
+        // │  └── tools/
+        // │     └── run_make_support/
+        // └── tests
+        //    └── run-make/
+        // ```
+
+        // `source_root` is the top-level directory containing the rust-lang/rust checkout.
+        let source_root =
+            self.config.find_rust_src_root().expect("could not determine rust source root");
+        // `self.config.build_base` is actually the build base folder + "test" + test suite name, it
+        // looks like `build/<host_triple>/test/run-make`. But we want `build/<host_triple>/`. Note
+        // that the `build` directory does not need to be called `build`, nor does it need to be
+        // under `source_root`, so we must compute it based off of `self.config.build_base`.
+        let build_root =
+            self.config.build_base.parent().and_then(Path::parent).unwrap().to_path_buf();
 
         // We construct the following directory tree for each rmake.rs test:
         // ```
-        // base_dir/
+        // <base_dir>/
         //     rmake.exe
         //     rmake_out/
         // ```
-        // having the executable separate from the output artifacts directory allows the recipes to
-        // `remove_dir_all($TMPDIR)` without running into permission denied issues because
-        // the executable is not under the `rmake_out/` directory.
+        // having the recipe executable separate from the output artifacts directory allows the
+        // recipes to `remove_dir_all($TMPDIR)` without running into issues related trying to remove
+        // a currently running executable because the recipe executable is not under the
+        // `rmake_out/` directory.
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
-        let base_dir = cwd.join(self.output_base_name());
+        let base_dir = self.output_base_name();
         if base_dir.exists() {
             self.aggressive_rm_rf(&base_dir).unwrap();
         }
@@ -3477,120 +3499,186 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        // HACK: assume stageN-target, we only want stageN.
+        // `self.config.stage_id` looks like `stage1-<target_triple>`, but we only want
+        // the `stage1` part as that is what the output directories of bootstrap are prefixed with.
+        // Note that this *assumes* build layout from bootstrap is produced as:
+        //
+        // ```
+        // build/<target_triple>/          // <- this is `build_root`
+        // ├── stage0
+        // ├── stage0-bootstrap-tools
+        // ├── stage0-codegen
+        // ├── stage0-rustc
+        // ├── stage0-std
+        // ├── stage0-sysroot
+        // ├── stage0-tools
+        // ├── stage0-tools-bin
+        // ├── stage1
+        // ├── stage1-std
+        // ├── stage1-tools
+        // ├── stage1-tools-bin
+        // └── test
+        // ```
+        // FIXME(jieyouxu): improve the communication between bootstrap and compiletest here so
+        // we don't have to hack out a `stageN`.
         let stage = self.config.stage_id.split('-').next().unwrap();
 
-        // First, we construct the path to the built support library.
-        let mut support_lib_path = PathBuf::new();
-        support_lib_path.push(&build_root);
-        support_lib_path.push(format!("{}-tools-bin", stage));
-        support_lib_path.push("librun_make_support.rlib");
+        // In order to link in the support library as a rlib when compiling recipes, we need three
+        // paths:
+        // 1. Path of the built support library rlib itself.
+        // 2. Path of the built support library's dependencies directory.
+        // 3. Path of the built support library's dependencies' dependencies directory.
+        //
+        // The paths look like
+        //
+        // ```
+        // build/<target_triple>/
+        // ├── stageN-tools-bin/
+        // │   └── librun_make_support.rlib       // <- support rlib itself
+        // ├── stageN-tools/
+        // │   ├── release/deps/                  // <- deps of deps
+        // │   └── <host_triple>/release/deps/    // <- deps
+        // ```
+        //
+        // FIXME(jieyouxu): there almost certainly is a better way to do this (specifically how the
+        // support lib and its deps are organized, can't we copy them to the tools-bin dir as
+        // well?), but this seems to work for now.
 
-        let mut stage_std_path = PathBuf::new();
-        stage_std_path.push(&build_root);
-        stage_std_path.push(&stage);
-        stage_std_path.push("lib");
+        let stage_tools_bin = build_root.join(format!("{stage}-tools-bin"));
+        let support_lib_path = stage_tools_bin.join("librun_make_support.rlib");
 
-        // Then, we need to build the recipe `rmake.rs` and link in the support library.
-        let recipe_bin = base_dir.join(if self.config.target.contains("windows") {
-            "rmake.exe"
-        } else {
-            "rmake"
-        });
+        let stage_tools = build_root.join(format!("{stage}-tools"));
+        let support_lib_deps = stage_tools.join(&self.config.host).join("release").join("deps");
+        let support_lib_deps_deps = stage_tools.join("release").join("deps");
 
-        let mut support_lib_deps = PathBuf::new();
-        support_lib_deps.push(&build_root);
-        support_lib_deps.push(format!("{}-tools", stage));
-        support_lib_deps.push(&self.config.host);
-        support_lib_deps.push("release");
-        support_lib_deps.push("deps");
+        // To compile the recipe with rustc, we need to provide suitable dynamic library search
+        // paths to rustc. This includes both:
+        // 1. The "base" dylib search paths that was provided to compiletest, e.g. `LD_LIBRARY_PATH`
+        //    on some linux distros.
+        // 2. Specific library paths in `self.config.compile_lib_path` needed for running rustc.
 
-        let mut support_lib_deps_deps = PathBuf::new();
-        support_lib_deps_deps.push(&build_root);
-        support_lib_deps_deps.push(format!("{}-tools", stage));
-        support_lib_deps_deps.push("release");
-        support_lib_deps_deps.push("deps");
-
-        debug!(?support_lib_deps);
-        debug!(?support_lib_deps_deps);
-
-        let orig_dylib_env_paths =
+        let base_dylib_search_paths =
             Vec::from_iter(env::split_paths(&env::var(dylib_env_var()).unwrap()));
 
-        let mut host_dylib_env_paths = Vec::new();
-        host_dylib_env_paths.push(cwd.join(&self.config.compile_lib_path));
-        host_dylib_env_paths.extend(orig_dylib_env_paths.iter().cloned());
-        let host_dylib_env_paths = env::join_paths(host_dylib_env_paths).unwrap();
+        let host_dylib_search_paths = {
+            let mut paths = vec![self.config.compile_lib_path.clone()];
+            paths.extend(base_dylib_search_paths.iter().cloned());
+            paths
+        };
 
-        let mut cmd = Command::new(&self.config.rustc_path);
-        cmd.arg("-o")
+        // Calculate the paths of the recipe binary. As previously discussed, this is placed at
+        // `<base_dir>/<bin_name>` with `bin_name` being `rmake` or `rmake.exe` depending on
+        // platform.
+        let recipe_bin = {
+            let mut p = base_dir.join("rmake");
+            p.set_extension(env::consts::EXE_EXTENSION);
+            p
+        };
+
+        let mut rustc = Command::new(&self.config.rustc_path);
+        rustc
+            .arg("-o")
             .arg(&recipe_bin)
+            // Specify library search paths for `run_make_support`.
             .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap().to_string_lossy()))
             .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
             .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
+            // Provide `run_make_support` as extern prelude, so test writers don't need to write
+            // `extern run_make_support;`.
             .arg("--extern")
             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
             .arg("--edition=2021")
             .arg(&self.testpaths.file.join("rmake.rs"))
-            .env("TARGET", &self.config.target)
-            .env("PYTHON", &self.config.python)
-            .env("RUST_BUILD_STAGE", &self.config.stage_id)
-            .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env(dylib_env_var(), &host_dylib_env_paths)
-            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
-            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
-            .env("LLVM_COMPONENTS", &self.config.llvm_components);
+            // Provide necessary library search paths for rustc.
+            .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
         // In test code we want to be very pedantic about values being silently discarded that are
         // annotated with `#[must_use]`.
-        cmd.arg("-Dunused_must_use");
+        rustc.arg("-Dunused_must_use");
 
+        // > `cg_clif` uses `COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0` for running the rustc
+        // > test suite. With the introduction of rmake.rs this broke. `librun_make_support.rlib` is
+        // > compiled using the bootstrap rustc wrapper which sets `--sysroot
+        // > build/aarch64-unknown-linux-gnu/stage0-sysroot`, but then compiletest will compile
+        // > `rmake.rs` using the sysroot of the bootstrap compiler causing it to not find the
+        // > `libstd.rlib` against which `librun_make_support.rlib` is compiled.
+        //
+        // The gist here is that we have to pass the proper stage0 sysroot if we want
+        //
+        // ```
+        // $ COMPILETEST_FORCE_STAGE0=1 ./x test run-make --stage 0
+        // ```
+        //
+        // to work correctly.
+        //
+        // See <https://github.com/rust-lang/rust/pull/122248> for more background.
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
-            let mut stage0_sysroot = build_root.clone();
-            stage0_sysroot.push("stage0-sysroot");
-            debug!(?stage0_sysroot);
-            debug!(exists = stage0_sysroot.exists());
-
-            cmd.arg("--sysroot").arg(&stage0_sysroot);
+            let stage0_sysroot = build_root.join("stage0-sysroot");
+            rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
 
-        let res = self.run_command_to_procres(&mut cmd);
+        // Now run rustc to build the recipe.
+        let res = self.run_command_to_procres(&mut rustc);
         if !res.status.success() {
             self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
         }
 
-        // Finally, we need to run the recipe binary to build and run the actual tests.
-        debug!(?recipe_bin);
+        // To actually run the recipe, we have to provide the recipe with a bunch of information
+        // provided through env vars.
 
-        let mut dylib_env_paths = orig_dylib_env_paths.clone();
-        dylib_env_paths.push(support_lib_path.parent().unwrap().to_path_buf());
-        dylib_env_paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
-        let dylib_env_paths = env::join_paths(dylib_env_paths).unwrap();
+        // Compute stage-specific standard library paths.
+        let stage_std_path = build_root.join(&stage).join("lib");
 
-        let mut target_rpath_env_path = Vec::new();
-        target_rpath_env_path.push(&rmake_out_dir);
-        target_rpath_env_path.extend(&orig_dylib_env_paths);
-        let target_rpath_env_path = env::join_paths(target_rpath_env_path).unwrap();
+        // Compute dynamic library search paths for recipes.
+        let recipe_dylib_search_paths = {
+            let mut paths = base_dylib_search_paths.clone();
+            paths.push(support_lib_path.parent().unwrap().to_path_buf());
+            paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
+            paths
+        };
 
+        // Compute runtime library search paths for recipes. This is target-specific.
+        let target_runtime_dylib_search_paths = {
+            let mut paths = vec![rmake_out_dir.clone()];
+            paths.extend(base_dylib_search_paths.iter().cloned());
+            paths
+        };
+
+        // FIXME(jieyouxu): please rename `TARGET_RPATH_ENV`, `HOST_RPATH_DIR` and
+        // `TARGET_RPATH_DIR`, it is **extremely** confusing!
         let mut cmd = Command::new(&recipe_bin);
         cmd.current_dir(&rmake_out_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            // Provide the target-specific env var that is used to record dylib search paths. For
+            // example, this could be `LD_LIBRARY_PATH` on some linux distros but `PATH` on Windows.
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env("TARGET_RPATH_ENV", &target_rpath_env_path)
-            .env(dylib_env_var(), &dylib_env_paths)
+            // Provide the dylib search paths.
+            .env(dylib_env_var(), &env::join_paths(recipe_dylib_search_paths).unwrap())
+            // Provide runtime dylib search paths.
+            .env("TARGET_RPATH_ENV", &env::join_paths(target_runtime_dylib_search_paths).unwrap())
+            // Provide the target.
             .env("TARGET", &self.config.target)
+            // Some tests unfortunately still need Python, so provide path to a Python interpreter.
             .env("PYTHON", &self.config.python)
-            .env("SOURCE_ROOT", &src_root)
-            .env("RUST_BUILD_STAGE", &self.config.stage_id)
-            .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
-            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+            // Provide path to checkout root. This is the top-level directory containing
+            // rust-lang/rust checkout.
+            .env("SOURCE_ROOT", &source_root)
+            // Provide path to stage-corresponding rustc.
+            .env("RUSTC", &self.config.rustc_path)
+            // Provide the directory to libraries that are needed to run the *compiler*. This is not
+            // to be confused with `TARGET_RPATH_ENV` or `TARGET_RPATH_DIR`. This is needed if the
+            // recipe wants to invoke rustc.
+            .env("HOST_RPATH_DIR", &self.config.compile_lib_path)
+            // Provide the directory to libraries that might be needed to run compiled binaries
+            // (further compiled by the recipe!).
+            .env("TARGET_RPATH_DIR", &self.config.run_lib_path)
+            // Provide which LLVM components are available (e.g. which LLVM components are provided
+            // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
-            cmd.env("RUSTDOC", cwd.join(rustdoc));
+            cmd.env("RUSTDOC", source_root.join(rustdoc));
         }
 
         if let Some(ref node) = self.config.nodejs {
