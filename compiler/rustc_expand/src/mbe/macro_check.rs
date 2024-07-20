@@ -352,10 +352,10 @@ fn check_occurrences(
             check_ops_is_prefix(psess, node_id, macros, binders, ops, span, name);
         }
         TokenTree::MetaVarExpr(dl, ref mve) => {
-            let Some(name) = mve.ident().map(MacroRulesNormalizedIdent::new) else {
-                return;
-            };
-            check_ops_is_prefix(psess, node_id, macros, binders, ops, dl.entire(), name);
+            mve.for_each_metavar((), |_, ident| {
+                let name = MacroRulesNormalizedIdent::new(*ident);
+                check_ops_is_prefix(psess, node_id, macros, binders, ops, dl.entire(), name);
+            });
         }
         TokenTree::Delimited(.., ref del) => {
             check_nested_occurrences(psess, node_id, &del.tts, macros, binders, ops, guar);
