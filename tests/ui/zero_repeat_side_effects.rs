@@ -20,7 +20,7 @@ fn main() {
     b = [f(); 0];
 
     // on vecs
-    // vecs dont support infering value of consts
+    // vecs dont support inferring value of consts
     let c = vec![f(); 0];
     let d;
     d = vec![f(); 0];
