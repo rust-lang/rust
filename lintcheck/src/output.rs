@@ -77,10 +77,10 @@ impl ClippyWarning {
             .iter()
             .find(|span| span.is_primary)
             .or(diag.spans.first())
-            .unwrap_or_else(|| panic!("Diagnositc without span: {diag}"));
+            .unwrap_or_else(|| panic!("Diagnostic without span: {diag}"));
         let file = &span.file_name;
         let url = if let Some(src_split) = file.find("/src/") {
-            // This removes the inital `target/lintcheck/sources/<crate>-<version>/`
+            // This removes the initial `target/lintcheck/sources/<crate>-<version>/`
             let src_split = src_split + "/src/".len();
             let (_, file) = file.split_at(src_split);
 

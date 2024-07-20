@@ -20,7 +20,7 @@ fn main() {
     f(); b = [] as [i32; 0];
 
     // on vecs
-    // vecs dont support infering value of consts
+    // vecs dont support inferring value of consts
     f(); let c: std::vec::Vec<i32> = vec![];
     let d;
     f(); d = vec![] as std::vec::Vec<i32>;
