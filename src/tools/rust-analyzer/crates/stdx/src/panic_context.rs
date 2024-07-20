@@ -21,6 +21,7 @@ impl PanicContext {
     #[allow(clippy::print_stderr)]
     fn init() {
         let default_hook = panic::take_hook();
+        #[allow(deprecated)]
         let hook = move |panic_info: &panic::PanicInfo<'_>| {
             with_ctx(|ctx| {
                 if !ctx.is_empty() {
