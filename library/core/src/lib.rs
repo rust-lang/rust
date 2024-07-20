@@ -165,6 +165,7 @@
 #![feature(const_unsafecell_get_mut)]
 #![feature(const_waker)]
 #![feature(coverage_attribute)]
+#![feature(do_not_recommend)]
 #![feature(duration_consts_float)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
