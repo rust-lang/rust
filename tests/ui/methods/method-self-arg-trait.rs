@@ -1,6 +1,9 @@
 //@ run-pass
 // Test method calls with self as an argument
 
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 static mut COUNT: u64 = 1;
 
 #[derive(Copy, Clone)]
@@ -39,6 +42,7 @@ impl Bar for Foo {
 impl Foo {
     fn baz(self) {
         unsafe { COUNT *= 17; }
+
         // Test internal call.
         Bar::foo1(&self);
         Bar::foo2(self);
@@ -63,5 +67,6 @@ fn main() {
 
     x.baz();
 
-    unsafe { assert_eq!(COUNT, 2*2*3*3*5*5*7*7*11*11*13*13*17); }
+    let count = unsafe { COUNT };
+    assert_eq!(count, 2*2*3*3*5*5*7*7*11*11*13*13*17);
 }

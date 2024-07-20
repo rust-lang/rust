@@ -3,10 +3,12 @@
 
 //@ aux-build:traitimpl.rs
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 extern crate traitimpl;
 use traitimpl::Bar;
 
-static mut COUNT: usize = 1;
+static COUNT: AtomicUsize = AtomicUsize::new(1);
 
 trait T {
     fn t(&self) {} //~ WARN method `t` is never used
@@ -14,10 +16,16 @@ trait T {
 
 impl<'a> dyn T+'a {
     fn foo(&self) {
-        unsafe { COUNT *= 2; }
+        COUNT.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |mut c| {
+            c *= 2;
+            Some(c)
+        }).unwrap();
     }
     fn bar() {
-        unsafe { COUNT *= 3; }
+        COUNT.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |mut c| {
+            c *= 3;
+            Some(c)
+        }).unwrap();
     }
 }
 
@@ -33,7 +41,7 @@ fn main() {
     <dyn T>::foo(x);
     <dyn T>::bar();
 
-    unsafe { assert_eq!(COUNT, 12); }
+    assert_eq!(COUNT.load(Ordering::Relaxed), 12);
 
     // Cross-crait case
     let x: &dyn Bar = &Foo;

@@ -1,6 +1,9 @@
 //@ run-pass
 #![allow(unused_variables)]
-static mut DROP: bool = false;
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static DROP: AtomicBool = AtomicBool::new(false);
 
 struct ConnWrap(Conn);
 impl ::std::ops::Deref for ConnWrap {
@@ -10,7 +13,9 @@ impl ::std::ops::Deref for ConnWrap {
 
 struct Conn;
 impl Drop for  Conn {
-    fn drop(&mut self) { unsafe { DROP = true; } }
+    fn drop(&mut self) {
+        DROP.store(true, Ordering::Relaxed);
+    }
 }
 
 fn inner() {
@@ -23,7 +28,5 @@ fn inner() {
 
 fn main() {
     inner();
-    unsafe {
-        assert_eq!(DROP, true);
-    }
+    assert_eq!(DROP.load(Ordering::Relaxed), true);
 }

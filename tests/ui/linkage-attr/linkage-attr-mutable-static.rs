@@ -2,6 +2,8 @@
 //! them at runtime, so deny mutable statics with #[linkage].
 
 #![feature(linkage)]
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
 
 fn main() {
     #[rustfmt::skip]

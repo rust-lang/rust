@@ -1,3 +1,6 @@
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use core::num::NonZero;
 use std::assert_matches::assert_matches;
 use std::collections::vec_deque::Drain;

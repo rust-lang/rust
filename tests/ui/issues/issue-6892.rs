@@ -2,7 +2,8 @@
 #![allow(dead_code)]
 // Ensures that destructors are run for expressions of the form "let _ = e;"
 // where `e` is a type which requires a destructor.
-
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
 
 struct Foo;
 struct Bar { x: isize }

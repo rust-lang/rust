@@ -2,8 +2,9 @@
 // Test that we can quantify lifetimes outside a constraint (i.e., including
 // the self type) in a where clause.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static mut COUNT: u32 = 1;
+static COUNT: AtomicUsize = AtomicUsize::new(1);
 
 trait Bar<'a> {
     fn bar(&self);
@@ -16,13 +17,19 @@ trait Baz<'a>
 
 impl<'a, 'b> Bar<'b> for &'a u32 {
     fn bar(&self) {
-        unsafe { COUNT *= 2; }
+        COUNT.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |mut c| {
+            c *= 2;
+            Some(c)
+        }).unwrap();
     }
 }
 
 impl<'a, 'b> Baz<'b> for &'a u32 {
     fn baz(&self) {
-        unsafe { COUNT *= 3; }
+        COUNT.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |mut c| {
+            c *= 3;
+            Some(c)
+        }).unwrap();
     }
 }
 
@@ -45,7 +52,5 @@ fn main() {
     let x = 42;
     foo1(&x);
     foo2(&x);
-    unsafe {
-        assert_eq!(COUNT, 12);
-    }
+    assert_eq!(COUNT.load(Ordering::Relaxed), 12);
 }

@@ -4,8 +4,9 @@
 //@ needs-threads
 
 use std::thread;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static mut HIT: usize = 0;
+static HIT: AtomicUsize = AtomicUsize::new(0);
 
 thread_local!(static A: Foo = Foo);
 
@@ -13,20 +14,16 @@ struct Foo;
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        unsafe {
-            HIT += 1;
-        }
+        HIT.fetch_add(1, Ordering::Relaxed);
     }
 }
 
 fn main() {
-    unsafe {
-        assert_eq!(HIT, 0);
-        thread::spawn(|| {
-            assert_eq!(HIT, 0);
-            A.with(|_| ());
-            assert_eq!(HIT, 0);
-        }).join().unwrap();
-        assert_eq!(HIT, 1);
-    }
+    assert_eq!(HIT.load(Ordering::Relaxed), 0);
+    thread::spawn(|| {
+        assert_eq!(HIT.load(Ordering::Relaxed), 0);
+        A.with(|_| ());
+        assert_eq!(HIT.load(Ordering::Relaxed), 0);
+    }).join().unwrap();
+    assert_eq!(HIT.load(Ordering::Relaxed), 1);
 }

@@ -171,7 +171,7 @@ fn issue11371() {
     // `X` is being mutated and not suggest `if let Some(..) = X {}`
     static mut X: Option<i32> = Some(123);
     unsafe {
-        if X.is_some() {
+        if let Some(_) = X {
             X = None;
             X.unwrap();
         }
