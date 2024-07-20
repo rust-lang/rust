@@ -103,6 +103,10 @@ declare_hooks! {
 
     /// Create a list-like THIR representation for debugging.
     hook thir_flat(key: LocalDefId) -> String;
+
+    /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
+    /// can just link to the upstream crate and therefore don't need a mono item.
+    hook should_codegen_locally(instance: crate::ty::Instance<'tcx>) -> bool;
 }
 
 #[cold]
