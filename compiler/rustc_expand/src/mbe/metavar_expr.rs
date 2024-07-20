@@ -111,10 +111,18 @@ impl MetaVarExpr {
         Ok(rslt)
     }
 
-    pub(crate) fn ident(&self) -> Option<Ident> {
-        match *self {
-            MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => Some(ident),
-            MetaVarExpr::Concat { .. } | MetaVarExpr::Index(..) | MetaVarExpr::Len(..) => None,
+    pub(crate) fn for_each_metavar<A>(&self, mut aux: A, mut cb: impl FnMut(A, &Ident) -> A) -> A {
+        match self {
+            MetaVarExpr::Concat(elems) => {
+                for elem in elems {
+                    if let MetaVarExprConcatElem::Var(ident) = elem {
+                        aux = cb(aux, ident)
+                    }
+                }
+                aux
+            }
+            MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => cb(aux, ident),
+            MetaVarExpr::Index(..) | MetaVarExpr::Len(..) => aux,
         }
     }
 }

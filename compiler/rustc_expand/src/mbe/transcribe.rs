@@ -557,17 +557,13 @@ fn lockstep_iter_size(
             }
         }
         TokenTree::MetaVarExpr(_, expr) => {
-            let default_rslt = LockstepIterSize::Unconstrained;
-            let Some(ident) = expr.ident() else {
-                return default_rslt;
-            };
-            let name = MacroRulesNormalizedIdent::new(ident);
-            match lookup_cur_matched(name, interpolations, repeats) {
-                Some(MatchedSeq(ads)) => {
-                    default_rslt.with(LockstepIterSize::Constraint(ads.len(), name))
-                }
-                _ => default_rslt,
-            }
+            expr.for_each_metavar(LockstepIterSize::Unconstrained, |lis, ident| {
+                lis.with(lockstep_iter_size(
+                    &TokenTree::MetaVar(ident.span, *ident),
+                    interpolations,
+                    repeats,
+                ))
+            })
         }
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
     }
@@ -695,7 +691,23 @@ fn transcribe_metavar_expr<'a>(
                 let symbol = match element {
                     MetaVarExprConcatElem::Ident(elem) => elem.name,
                     MetaVarExprConcatElem::Literal(elem) => *elem,
-                    MetaVarExprConcatElem::Var(elem) => extract_var_symbol(dcx, *elem, interp)?,
+                    MetaVarExprConcatElem::Var(ident) => {
+                        match matched_from_ident(dcx, *ident, interp)? {
+                            NamedMatch::MatchedSeq(named_matches) => {
+                                let curr_idx = repeats.last().unwrap().0;
+                                match &named_matches[curr_idx] {
+                                    // FIXME(c410-f3r) Nested repetitions are unimplemented
+                                    MatchedSeq(_) => unimplemented!(),
+                                    MatchedSingle(pnr) => {
+                                        extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                                    }
+                                }
+                            }
+                            NamedMatch::MatchedSingle(pnr) => {
+                                extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                            }
+                        }
+                    }
                 };
                 concatenated.push_str(symbol.as_str());
             }
@@ -752,41 +764,48 @@ fn transcribe_metavar_expr<'a>(
 }
 
 /// Extracts an metavariable symbol that can be an identifier, a token tree or a literal.
-fn extract_var_symbol<'a>(
+fn extract_symbol_from_pnr<'a>(
     dcx: DiagCtxtHandle<'a>,
-    ident: Ident,
-    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    pnr: &ParseNtResult,
+    span_err: Span,
 ) -> PResult<'a, Symbol> {
-    if let NamedMatch::MatchedSingle(pnr) = matched_from_ident(dcx, ident, interp)? {
-        if let ParseNtResult::Ident(nt_ident, is_raw) = pnr {
+    match pnr {
+        ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
+                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
             }
             return Ok(nt_ident.name);
         }
-
-        if let ParseNtResult::Tt(TokenTree::Token(Token { kind, .. }, _)) = pnr {
-            if let TokenKind::Ident(symbol, is_raw) = kind {
-                if let IdentIsRaw::Yes = is_raw {
-                    return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
-                }
-                return Ok(*symbol);
+        ParseNtResult::Tt(TokenTree::Token(
+            Token { kind: TokenKind::Ident(symbol, is_raw), .. },
+            _,
+        )) => {
+            if let IdentIsRaw::Yes = is_raw {
+                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
             }
-
-            if let TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }) = kind {
-                return Ok(*symbol);
-            }
+            return Ok(*symbol);
         }
-
-        if let ParseNtResult::Nt(nt) = pnr
-            && let Nonterminal::NtLiteral(expr) = &**nt
-            && let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind
+        ParseNtResult::Tt(TokenTree::Token(
+            Token {
+                kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
+                ..
+            },
+            _,
+        )) => {
+            return Ok(*symbol);
+        }
+        ParseNtResult::Nt(nt)
+            if let Nonterminal::NtLiteral(expr) = &**nt
+                && let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) =
+                    &expr.kind =>
         {
             return Ok(*symbol);
         }
+        _ => Err(dcx
+            .struct_err(
+                "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`",
+            )
+            .with_note("currently only string literals are supported")
+            .with_span(span_err)),
     }
-    Err(dcx
-        .struct_err("metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`")
-        .with_note("currently only string literals are supported")
-        .with_span(ident.span))
 }
