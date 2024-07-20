@@ -78,19 +78,6 @@ pub fn enable() {
 pub static CALLBACK: unsafe extern "system" fn(*mut c_void, u32, *mut c_void) = tls_callback;
 
 unsafe extern "system" fn tls_callback(_h: *mut c_void, dw_reason: u32, _pv: *mut c_void) {
-    // See comments above for what this is doing. Note that we don't need this
-    // trickery on GNU windows, just on MSVC.
-    #[cfg(all(target_env = "msvc", not(target_thread_local)))]
-    {
-        extern "C" {
-            static _tls_used: u8;
-        }
-
-        unsafe {
-            ptr::from_ref(&_tls_used).read_volatile();
-        }
-    }
-
     if dw_reason == c::DLL_THREAD_DETACH || dw_reason == c::DLL_PROCESS_DETACH {
         #[cfg(target_thread_local)]
         unsafe {
