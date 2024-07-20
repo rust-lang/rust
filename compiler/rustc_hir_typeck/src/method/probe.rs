@@ -1254,6 +1254,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         for (kind, candidates) in
             [("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
         {
+            if kind == "inherent" && self.should_skip_shadowable_inherent_numerical_methods() {
+                continue;
+            }
+
             debug!("searching {} candidates", kind);
             let res = self.consider_candidates(
                 self_ty,
@@ -1688,6 +1692,26 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             result
         })
+    }
+
+    fn should_skip_shadowable_inherent_numerical_methods(&self) -> bool {
+        let res = self.inherent_candidates.len() > 1
+            && self.extension_candidates.iter().any(|cand| match cand.kind {
+                TraitCandidate(trait_ref) => {
+                    let trait_def_id = trait_ref.def_id();
+                    self.tcx.crate_name(trait_def_id.krate) == sym::compiler_builtins
+                        && [sym::Float, sym::Int].contains(&self.tcx.item_name(trait_def_id))
+                }
+                InherentImplCandidate(_) | ObjectCandidate(_) | WhereClauseCandidate(_) => false,
+            })
+            && self.inherent_candidates.iter().all(|cand| match cand.kind {
+                InherentImplCandidate(def_id) => {
+                    self.tcx.type_of(def_id).skip_binder().is_numeric()
+                }
+                ObjectCandidate(_) | TraitCandidate(_) | WhereClauseCandidate(_) => false,
+            });
+
+        res
     }
 
     /// Sometimes we get in a situation where we have multiple probes that are all impls of the
