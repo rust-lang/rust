@@ -67,7 +67,7 @@ cfg_if::cfg_if! {
     ))] {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
-            libc::memalign(layout.align(), layout.size()) as *mut u8
+            unsafe { libc::memalign(layout.align(), layout.size()) as *mut u8 }
         }
     } else {
         #[inline]
