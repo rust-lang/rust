@@ -333,6 +333,7 @@
 #    "rust-analyzer-proc-macro-srv",
 #    "analysis",
 #    "src",
+#    "wasm-component-ld",
 #]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose, 3 == print environment variables on each rustc invocation
