@@ -6,26 +6,21 @@
 //! The tests for this functionality live in another crate:
 //! `hir_def::macro_expansion_tests::mbe`.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod expander;
 mod parser;
 mod syntax_bridge;
 mod to_parser_input;
-mod tt_iter;
 
 #[cfg(test)]
 mod benchmark;
 
 use span::{Edition, Span, SyntaxContextId};
 use stdx::impl_from;
+use tt::iter::TtIter;
 
 use std::fmt;
 
-use crate::{
-    parser::{MetaTemplate, MetaVarKind, Op},
-    tt_iter::TtIter,
-};
+use crate::parser::{MetaTemplate, MetaVarKind, Op};
 
 // FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
 pub use ::parser::TopEntryPoint;
@@ -161,7 +156,7 @@ impl DeclarativeMacro {
         let mut err = None;
 
         while src.len() > 0 {
-            let rule = match Rule::parse(edition, &mut src, true, new_meta_vars) {
+            let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
                 Ok(it) => it,
                 Err(e) => {
                     err = Some(Box::new(e));
@@ -189,19 +184,34 @@ impl DeclarativeMacro {
 
     /// The new, unstable `macro m {}` flavor.
     pub fn parse_macro2(
-        tt: &tt::Subtree<Span>,
+        args: Option<&tt::Subtree<Span>>,
+        body: &tt::Subtree<Span>,
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
         new_meta_vars: bool,
     ) -> DeclarativeMacro {
-        let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         let mut err = None;
 
-        if tt::DelimiterKind::Brace == tt.delimiter.kind {
+        if let Some(args) = args {
+            cov_mark::hit!(parse_macro_def_simple);
+
+            let rule = (|| {
+                let lhs = MetaTemplate::parse_pattern(edition, args)?;
+                let rhs = MetaTemplate::parse_template(edition, body, new_meta_vars)?;
+
+                Ok(crate::Rule { lhs, rhs })
+            })();
+
+            match rule {
+                Ok(rule) => rules.push(rule),
+                Err(e) => err = Some(Box::new(e)),
+            }
+        } else {
             cov_mark::hit!(parse_macro_def_rules);
+            let mut src = TtIter::new(body);
             while src.len() > 0 {
-                let rule = match Rule::parse(edition, &mut src, true, new_meta_vars) {
+                let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
                     Ok(it) => it,
                     Err(e) => {
                         err = Some(Box::new(e));
@@ -216,19 +226,6 @@ impl DeclarativeMacro {
                         )));
                     }
                     break;
-                }
-            }
-        } else {
-            cov_mark::hit!(parse_macro_def_simple);
-            match Rule::parse(edition, &mut src, false, new_meta_vars) {
-                Ok(rule) => {
-                    if src.len() != 0 {
-                        err = Some(Box::new(ParseError::expected("remaining tokens in macro def")));
-                    }
-                    rules.push(rule);
-                }
-                Err(e) => {
-                    err = Some(Box::new(e));
                 }
             }
         }
@@ -247,6 +244,10 @@ impl DeclarativeMacro {
         self.err.as_deref()
     }
 
+    pub fn num_rules(&self) -> usize {
+        self.rules.len()
+    }
+
     pub fn expand(
         &self,
         tt: &tt::Subtree<Span>,
@@ -263,14 +264,11 @@ impl Rule {
     fn parse(
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         src: &mut TtIter<'_, Span>,
-        expect_arrow: bool,
         new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
         let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
-        if expect_arrow {
-            src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
-            src.expect_char('>').map_err(|()| ParseError::expected("expected `>`"))?;
-        }
+        src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
+        src.expect_char('>').map_err(|()| ParseError::expected("expected `>`"))?;
         let rhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
 
         let lhs = MetaTemplate::parse_pattern(edition, lhs)?;
@@ -360,4 +358,61 @@ impl<T: Default, E> From<Result<T, E>> for ValueResult<T, E> {
     fn from(result: Result<T, E>) -> Self {
         result.map_or_else(Self::only_err, Self::ok)
     }
+}
+
+fn expect_fragment<S: Copy + fmt::Debug>(
+    tt_iter: &mut TtIter<'_, S>,
+    entry_point: ::parser::PrefixEntryPoint,
+    edition: ::parser::Edition,
+) -> ExpandResult<Option<tt::TokenTree<S>>> {
+    use ::parser;
+    let buffer = tt::buffer::TokenBuffer::from_tokens(tt_iter.as_slice());
+    let parser_input = to_parser_input::to_parser_input(&buffer);
+    let tree_traversal = entry_point.parse(&parser_input, edition);
+    let mut cursor = buffer.begin();
+    let mut error = false;
+    for step in tree_traversal.iter() {
+        match step {
+            parser::Step::Token { kind, mut n_input_tokens } => {
+                if kind == ::parser::SyntaxKind::LIFETIME_IDENT {
+                    n_input_tokens = 2;
+                }
+                for _ in 0..n_input_tokens {
+                    cursor = cursor.bump_subtree();
+                }
+            }
+            parser::Step::FloatSplit { .. } => {
+                // FIXME: We need to split the tree properly here, but mutating the token trees
+                // in the buffer is somewhat tricky to pull off.
+                cursor = cursor.bump_subtree();
+            }
+            parser::Step::Enter { .. } | parser::Step::Exit => (),
+            parser::Step::Error { .. } => error = true,
+        }
+    }
+
+    let err = if error || !cursor.is_root() {
+        Some(ExpandError::binding_error(format!("expected {entry_point:?}")))
+    } else {
+        None
+    };
+
+    let mut curr = buffer.begin();
+    let mut res = vec![];
+
+    while curr != cursor {
+        let Some(token) = curr.token_tree() else { break };
+        res.push(token.cloned());
+        curr = curr.bump();
+    }
+
+    *tt_iter = TtIter::new_iter(tt_iter.as_slice()[res.len()..].iter());
+    let res = match &*res {
+        [] | [_] => res.pop(),
+        [first, ..] => Some(tt::TokenTree::Subtree(tt::Subtree {
+            delimiter: Delimiter::invisible_spanned(first.first_span()),
+            token_trees: res.into_boxed_slice(),
+        })),
+    };
+    ExpandResult { value: res, err }
 }

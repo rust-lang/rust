@@ -473,9 +473,41 @@ impl StepDescription {
             return;
         }
 
-        // Handle all PathSets.
+        let mut path_lookup: Vec<(PathBuf, bool)> =
+            paths.clone().into_iter().map(|p| (p, false)).collect();
+
+        // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
+        // compared to the given CLI paths. So we can respect to the CLI order by using this value to sort
+        // the steps.
+        let mut steps_to_run = vec![];
+
         for (desc, should_run) in v.iter().zip(&should_runs) {
             let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+
+            // This value is used for sorting the step execution order.
+            // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.
+            //
+            // If we resolve the step's path from the given CLI input, this value will be updated with
+            // the step's actual index.
+            let mut closest_index = usize::MAX;
+
+            // Find the closest index from the original list of paths given by the CLI input.
+            for (index, (path, is_used)) in path_lookup.iter_mut().enumerate() {
+                if !*is_used && !paths.contains(path) {
+                    closest_index = index;
+                    *is_used = true;
+                    break;
+                }
+            }
+
+            steps_to_run.push((closest_index, desc, pathsets));
+        }
+
+        // Sort the steps before running them to respect the CLI order.
+        steps_to_run.sort_by_key(|(index, _, _)| *index);
+
+        // Handle all PathSets.
+        for (_index, desc, pathsets) in steps_to_run {
             if !pathsets.is_empty() {
                 desc.maybe_run(builder, pathsets);
             }
@@ -2001,6 +2033,7 @@ impl<'a> Builder<'a> {
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
             rustflags.arg("-Wkeyword_idents_2024");
+            rustflags.arg("-Wunsafe_op_in_unsafe_fn");
         }
 
         if self.config.rust_frame_pointers {
@@ -2108,7 +2141,7 @@ impl<'a> Builder<'a> {
         // Try to use a sysroot-relative bindir, in case it was configured absolutely.
         cargo.env("RUSTC_INSTALL_BINDIR", self.config.bindir_relative());
 
-        self.ci_env.force_coloring_in_ci(cargo.as_command_mut());
+        cargo.force_coloring_in_ci(self.ci_env);
 
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of

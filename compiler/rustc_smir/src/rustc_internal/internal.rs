@@ -4,6 +4,7 @@
 //! due to incomplete stable coverage.
 
 // Prefer importing stable_mir over internal rustc constructs to make this file more readable.
+
 use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy, TyCtxt};
 use rustc_span::Symbol;

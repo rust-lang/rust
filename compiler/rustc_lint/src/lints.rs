@@ -927,6 +927,14 @@ pub struct TyQualified {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_non_glob_import_type_ir_inherent)]
+pub struct NonGlobImportTypeIrInherent {
+    #[suggestion(code = "{snippet}", applicability = "maybe-incorrect")]
+    pub suggestion: Option<Span>,
+    pub snippet: &'static str,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_lintpass_by_hand)]
 #[help]
 pub struct LintPassByHand;
@@ -2066,7 +2074,9 @@ pub enum InvalidAsmLabel {
         missing_precise_span: bool,
     },
     #[diag(lint_invalid_asm_label_binary)]
-    #[note]
+    #[help]
+    #[note(lint_note1)]
+    #[note(lint_note2)]
     Binary {
         #[note(lint_invalid_asm_label_no_span)]
         missing_precise_span: bool,

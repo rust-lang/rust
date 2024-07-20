@@ -216,7 +216,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
-        back::write::optimize(cgcx, dcx, module, config)
+        unsafe { back::write::optimize(cgcx, dcx, module, config) }
     }
     fn optimize_fat(
         cgcx: &CodegenContext<Self>,
@@ -230,7 +230,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::lto::optimize_thin_module(thin, cgcx)
+        unsafe { back::lto::optimize_thin_module(thin, cgcx) }
     }
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
@@ -238,7 +238,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, dcx, module, config)
+        unsafe { back::write::codegen(cgcx, dcx, module, config) }
     }
     fn prepare_thin(
         module: ModuleCodegen<Self::Module>,

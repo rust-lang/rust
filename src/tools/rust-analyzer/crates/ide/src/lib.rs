@@ -8,7 +8,7 @@
 //! in this crate.
 
 // For proving that RootDatabase is RefUnwindSafe.
-#![warn(rust_2018_idioms, unused_lifetimes)]
+
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "128"]
 
@@ -89,8 +89,8 @@ pub use crate::{
     },
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
-        InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition,
-        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
+        GenericParameterHints, InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart,
+        InlayHintPosition, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,

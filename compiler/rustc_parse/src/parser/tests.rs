@@ -1522,7 +1522,7 @@ fn debug_lookahead() {
         },
     },
     tokens: [],
-    approx_token_stream_pos: 1,
+    approx_token_stream_pos: 0,
     ..
 }"
         );
@@ -1566,7 +1566,7 @@ fn debug_lookahead() {
             Parenthesis,
         ),
     ],
-    approx_token_stream_pos: 1,
+    approx_token_stream_pos: 0,
     ..
 }"
         );
@@ -1631,7 +1631,7 @@ fn debug_lookahead() {
         Semi,
         Eof,
     ],
-    approx_token_stream_pos: 1,
+    approx_token_stream_pos: 0,
     ..
 }"
         );
@@ -1663,7 +1663,7 @@ fn debug_lookahead() {
             No,
         ),
     ],
-    approx_token_stream_pos: 9,
+    approx_token_stream_pos: 8,
     ..
 }"
         );
@@ -1701,7 +1701,7 @@ fn debug_lookahead() {
             No,
         ),
     ],
-    approx_token_stream_pos: 9,
+    approx_token_stream_pos: 8,
     ..
 }"
         );
@@ -1728,7 +1728,7 @@ fn debug_lookahead() {
     tokens: [
         Eof,
     ],
-    approx_token_stream_pos: 15,
+    approx_token_stream_pos: 14,
     ..
 }"
         );

@@ -413,12 +413,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             });
 
             // Provide the resolved type of the associated constant to `type_of(AnonConst)`.
-            if let Some(anon_const) = constraint.ct() {
-                let ty = alias_term
-                    .map_bound(|alias| tcx.type_of(alias.def_id).instantiate(tcx, alias.args));
-                let ty =
-                    check_assoc_const_binding_type(self, constraint.ident, ty, constraint.hir_id);
-                tcx.feed_anon_const_type(anon_const.def_id, ty::EarlyBinder::bind(ty));
+            if let Some(const_arg) = constraint.ct() {
+                if let hir::ConstArgKind::Anon(anon_const) = const_arg.kind {
+                    let ty = alias_term
+                        .map_bound(|alias| tcx.type_of(alias.def_id).instantiate(tcx, alias.args));
+                    let ty = check_assoc_const_binding_type(
+                        self,
+                        constraint.ident,
+                        ty,
+                        constraint.hir_id,
+                    );
+                    tcx.feed_anon_const_type(anon_const.def_id, ty::EarlyBinder::bind(ty));
+                }
             }
 
             alias_term
@@ -435,7 +441,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                    hir::Term::Const(ct) => ty::Const::from_anon_const(tcx, ct.def_id).into(),
+                    hir::Term::Const(ct) => {
+                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No).into()
+                    }
                 };
 
                 // Find any late-bound regions declared in `ty` that are not

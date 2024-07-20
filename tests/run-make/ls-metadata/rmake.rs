@@ -6,12 +6,12 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::fs_wrapper;
+use run_make_support::rfs;
 use run_make_support::rustc;
 
 fn main() {
     rustc().input("foo.rs").run();
     rustc().arg("-Zls=root").input("foo").run();
-    fs_wrapper::create_file("bar");
+    rfs::create_file("bar");
     rustc().arg("-Zls=root").input("bar").run();
 }

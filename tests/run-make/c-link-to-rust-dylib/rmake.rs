@@ -3,9 +3,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{
-    cc, cwd, dynamic_lib_extension, fs_wrapper, is_msvc, read_dir, run, run_fail, rustc,
-};
+use run_make_support::{cc, cwd, dynamic_lib_extension, is_msvc, rfs, run, run_fail, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();
@@ -21,14 +19,14 @@ fn main() {
     run("bar");
 
     let expected_extension = dynamic_lib_extension();
-    read_dir(cwd(), |path| {
+    rfs::read_dir_entries(cwd(), |path| {
         if path.is_file()
             && path.extension().is_some_and(|ext| ext == expected_extension)
             && path.file_name().and_then(|name| name.to_str()).is_some_and(|name| {
                 name.ends_with(".so") || name.ends_with(".dll") || name.ends_with(".dylib")
             })
         {
-            fs_wrapper::remove_file(path);
+            rfs::remove_file(path);
         }
     });
     run_fail("bar");

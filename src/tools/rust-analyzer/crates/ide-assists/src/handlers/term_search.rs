@@ -37,7 +37,11 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         sema: &ctx.sema,
         scope: &scope,
         goal: target_ty,
-        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
+        config: TermSearchConfig {
+            fuel: ctx.config.term_search_fuel,
+            enable_borrowcheck: ctx.config.term_search_borrowck,
+            ..Default::default()
+        },
     };
     let paths = hir::term_search::term_search(&term_search_ctx);
 
@@ -56,6 +60,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                 ImportPathConfig {
                     prefer_no_std: ctx.config.prefer_no_std,
                     prefer_prelude: ctx.config.prefer_prelude,
+                    prefer_absolute: ctx.config.prefer_absolute,
                 },
             )
             .ok()
@@ -144,7 +149,7 @@ fn f() { let a = A { x: 1, y: true }; let b: i32 = a.x; }"#,
             term_search,
             r#"//- minicore: todo, unimplemented, option
 fn f() { let a: i32 = 1; let b: Option<i32> = todo$0!(); }"#,
-            r#"fn f() { let a: i32 = 1; let b: Option<i32> = None; }"#,
+            r#"fn f() { let a: i32 = 1; let b: Option<i32> = Some(a); }"#,
         )
     }
 

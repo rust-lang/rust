@@ -2,7 +2,6 @@
 //!
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 

@@ -11,7 +11,7 @@ LL |             let _y2 = &mut static_x_mut;
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |             let _y2 = addr_of_mut!(static_x_mut);
-   |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                       ~~~~~~~~~~~~~            +
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-access-permissions.rs:10:19

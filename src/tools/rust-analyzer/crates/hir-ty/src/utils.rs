@@ -157,8 +157,7 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(Tra
     let generic_params = db.generic_params(trait_.into());
     let trait_self = generic_params.trait_self_param();
     generic_params
-        .where_predicates
-        .iter()
+        .where_predicates()
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {

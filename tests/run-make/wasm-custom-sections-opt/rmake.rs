@@ -1,6 +1,6 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{fs_wrapper, rustc, wasmparser};
+use run_make_support::{rfs, rustc, wasmparser};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -12,7 +12,7 @@ fn main() {
 
 fn verify(path: &Path) {
     eprintln!("verify {path:?}");
-    let file = fs_wrapper::read(&path);
+    let file = rfs::read(&path);
 
     let mut custom = HashMap::new();
     for payload in wasmparser::Parser::new(0).parse_all(&file) {

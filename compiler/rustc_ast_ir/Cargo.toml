@@ -14,8 +14,8 @@ rustc_span = { path = "../rustc_span", optional = true }
 [features]
 default = ["nightly"]
 nightly = [
-    "rustc_serialize",
-    "rustc_data_structures",
-    "rustc_macros",
-    "rustc_span",
+    "dep:rustc_serialize",
+    "dep:rustc_data_structures",
+    "dep:rustc_macros",
+    "dep:rustc_span",
 ]

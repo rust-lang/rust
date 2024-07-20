@@ -9,8 +9,8 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    cwd, fs_wrapper, has_extension, has_prefix, llvm_filecheck, llvm_profdata, run_with_args,
-    rustc, shallow_find_files,
+    cwd, has_extension, has_prefix, llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc,
+    shallow_find_files,
 };
 
 fn main() {
@@ -47,7 +47,7 @@ fn main() {
     // line with the function name before the line with the function attributes.
     // FileCheck only supports checking that something matches on the next line,
     // but not if something matches on the previous line.
-    let ir = fs_wrapper::read_to_string("main.ll");
+    let ir = rfs::read_to_string("main.ll");
     let lines: Vec<_> = ir.lines().rev().collect();
     let mut reversed_ir = lines.join("\n");
     reversed_ir.push('\n');

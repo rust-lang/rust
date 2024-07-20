@@ -48,7 +48,7 @@ LL | use foo::self;
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo as other_foo;
-   |     ~~~~~~~~~~~~~~~~
+   |         ~~~~~~~~~~~~
 
 error[E0252]: the name `A` is defined multiple times
   --> $DIR/import-self.rs:16:11

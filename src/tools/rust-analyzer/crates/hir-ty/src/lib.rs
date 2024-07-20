@@ -1,6 +1,6 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
-#![warn(rust_2018_idioms, unused_lifetimes)]
+
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
@@ -60,7 +60,7 @@ use chalk_ir::{
     NoSolution,
 };
 use either::Either;
-use hir_def::{hir::ExprId, type_ref::Rawness, GeneralConstId, TypeOrConstParamId};
+use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
 use hir_expand::name;
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
@@ -84,8 +84,8 @@ pub use infer::{
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, CallableDefId, ImplTraitLoweringMode, ParamLoweringMode,
-    TyDefId, TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, ImplTraitLoweringMode, ParamLoweringMode, TyDefId,
+    TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,

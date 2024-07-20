@@ -401,15 +401,46 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             (ty::Dynamic(data_a, _, ty::Dyn), ty::Dynamic(data_b, _, ty::Dyn)) => {
                 let val = self.read_immediate(src)?;
-                if data_a.principal() == data_b.principal() {
-                    // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.
-                    // (But currently mismatching vtables violate the validity invariant so UB is triggered anyway.)
-                    return self.write_immediate(*val, dest);
-                }
+                // Take apart the old pointer, and find the dynamic type.
                 let (old_data, old_vptr) = val.to_scalar_pair();
                 let old_data = old_data.to_pointer(self)?;
                 let old_vptr = old_vptr.to_pointer(self)?;
                 let ty = self.get_ptr_vtable_ty(old_vptr, Some(data_a))?;
+
+                // Sanity-check that `supertrait_vtable_slot` in this type's vtable indeed produces
+                // our destination trait.
+                if cfg!(debug_assertions) {
+                    let vptr_entry_idx =
+                        self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
+                    let vtable_entries = self.vtable_entries(data_a.principal(), ty);
+                    if let Some(entry_idx) = vptr_entry_idx {
+                        let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
+                            vtable_entries.get(entry_idx)
+                        else {
+                            span_bug!(
+                                self.cur_span(),
+                                "invalid vtable entry index in {} -> {} upcast",
+                                src_pointee_ty,
+                                dest_pointee_ty
+                            );
+                        };
+                        let erased_trait_ref = upcast_trait_ref
+                            .map_bound(|r| ty::ExistentialTraitRef::erase_self_ty(*self.tcx, r));
+                        assert!(
+                            data_b
+                                .principal()
+                                .is_some_and(|b| self.eq_in_param_env(erased_trait_ref, b))
+                        );
+                    } else {
+                        // In this case codegen would keep using the old vtable. We don't want to do
+                        // that as it has the wrong trait. The reason codegen can do this is that
+                        // one vtable is a prefix of the other, so we double-check that.
+                        let vtable_entries_b = self.vtable_entries(data_b.principal(), ty);
+                        assert!(&vtable_entries[..vtable_entries_b.len()] == vtable_entries_b);
+                    };
+                }
+
+                // Get the destination trait vtable and return that.
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }

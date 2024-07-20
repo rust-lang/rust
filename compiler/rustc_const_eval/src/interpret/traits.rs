@@ -1,10 +1,7 @@
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::interpret::{InterpResult, Pointer};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt, VtblEntry};
 use rustc_target::abi::{Align, Size};
-use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::trace;
 
 use super::util::ensure_monomorphic_enough;
@@ -47,6 +44,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok((layout.size, layout.align.abi))
     }
 
+    pub(super) fn vtable_entries(
+        &self,
+        trait_: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        dyn_ty: Ty<'tcx>,
+    ) -> &'tcx [VtblEntry<'tcx>] {
+        if let Some(trait_) = trait_ {
+            let trait_ref = trait_.with_self_ty(*self.tcx, dyn_ty);
+            let trait_ref = self.tcx.erase_regions(trait_ref);
+            self.tcx.vtable_entries(trait_ref)
+        } else {
+            TyCtxt::COMMON_VTABLE_ENTRIES
+        }
+    }
+
     /// Check that the given vtable trait is valid for a pointer/reference/place with the given
     /// expected trait type.
     pub(super) fn check_vtable_for_type(
@@ -54,28 +65,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         vtable_trait: Option<ty::PolyExistentialTraitRef<'tcx>>,
         expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> InterpResult<'tcx> {
-        // Fast path: if they are equal, it's all fine.
-        if expected_trait.principal() == vtable_trait {
-            return Ok(());
+        let eq = match (expected_trait.principal(), vtable_trait) {
+            (Some(a), Some(b)) => self.eq_in_param_env(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+        if !eq {
+            throw_ub!(InvalidVTableTrait { expected_trait, vtable_trait });
         }
-        if let (Some(expected_trait), Some(vtable_trait)) =
-            (expected_trait.principal(), vtable_trait)
-        {
-            // Slow path: spin up an inference context to check if these traits are sufficiently equal.
-            let infcx = self.tcx.infer_ctxt().build();
-            let ocx = ObligationCtxt::new(&infcx);
-            let cause = ObligationCause::dummy_with_span(self.cur_span());
-            // equate the two trait refs after normalization
-            let expected_trait = ocx.normalize(&cause, self.param_env, expected_trait);
-            let vtable_trait = ocx.normalize(&cause, self.param_env, vtable_trait);
-            if ocx.eq(&cause, self.param_env, expected_trait, vtable_trait).is_ok() {
-                if ocx.select_all_or_error().is_empty() {
-                    // All good.
-                    return Ok(());
-                }
-            }
-        }
-        throw_ub!(InvalidVTableTrait { expected_trait, vtable_trait });
+        Ok(())
     }
 
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.

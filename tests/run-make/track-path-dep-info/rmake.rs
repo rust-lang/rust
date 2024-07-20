@@ -4,10 +4,10 @@
 // output successfully added the file as a dependency.
 // See https://github.com/rust-lang/rust/pull/84029
 
-use run_make_support::{fs_wrapper, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rustc().input("macro_def.rs").run();
     rustc().env("EXISTING_PROC_MACRO_ENV", "1").emit("dep-info").input("macro_use.rs").run();
-    assert!(fs_wrapper::read_to_string("macro_use.d").contains("emojis.txt:"));
+    assert!(rfs::read_to_string("macro_use.d").contains("emojis.txt:"));
 }

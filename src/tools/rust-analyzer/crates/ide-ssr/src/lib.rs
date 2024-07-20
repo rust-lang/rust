@@ -3,8 +3,6 @@
 //! Allows searching the AST for code that matches one or more patterns and then replacing that code
 //! based on a template.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 // Feature: Structural Search and Replace
 //
 // Search and replace with named wildcards that will match any expression, type, path, pattern or item.

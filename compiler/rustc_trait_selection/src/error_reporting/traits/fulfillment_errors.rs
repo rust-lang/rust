@@ -4,7 +4,6 @@ use crate::error_reporting::traits::infer_ctxt_ext::InferCtxtExt;
 use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
-use crate::infer::error_reporting::TyCategory;
 use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -25,7 +24,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_hir::{self as hir, LangItem};
-use rustc_infer::infer::error_reporting::TypeErrCtxt;
+use rustc_infer::error_reporting::infer::TyCategory;
+use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_macros::extension;
 use rustc_middle::traits::select::OverflowError;

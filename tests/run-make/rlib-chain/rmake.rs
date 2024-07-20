@@ -8,7 +8,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{fs_wrapper, run, rust_lib_name, rustc};
+use run_make_support::{rfs, run, rust_lib_name, rustc};
 
 fn main() {
     rustc().input("m1.rs").run();
@@ -16,8 +16,8 @@ fn main() {
     rustc().input("m3.rs").run();
     rustc().input("m4.rs").run();
     run("m4");
-    fs_wrapper::remove_file(rust_lib_name("m1"));
-    fs_wrapper::remove_file(rust_lib_name("m2"));
-    fs_wrapper::remove_file(rust_lib_name("m3"));
+    rfs::remove_file(rust_lib_name("m1"));
+    rfs::remove_file(rust_lib_name("m2"));
+    rfs::remove_file(rust_lib_name("m3"));
     run("m4");
 }

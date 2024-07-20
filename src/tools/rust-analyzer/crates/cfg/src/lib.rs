@@ -1,7 +1,5 @@
 //! cfg defines conditional compiling options, `cfg` attribute parser and evaluator
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod cfg_expr;
 mod dnf;
 #[cfg(test)]

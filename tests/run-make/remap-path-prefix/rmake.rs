@@ -4,7 +4,7 @@
 // See https://github.com/rust-lang/rust/pull/85344
 
 use run_make_support::bstr::ByteSlice;
-use run_make_support::{bstr, fs_wrapper, is_darwin, rustc};
+use run_make_support::{bstr, is_darwin, rfs, rustc};
 
 fn main() {
     let mut out_simple = rustc();
@@ -60,12 +60,9 @@ fn main() {
 // helper functions.
 fn rmeta_contains(expected: &str) {
     // Normalize to account for path differences in Windows.
-    if !bstr::BString::from(fs_wrapper::read("liblib.rmeta"))
-        .replace(b"\\", b"/")
-        .contains_str(expected)
-    {
+    if !bstr::BString::from(rfs::read("liblib.rmeta")).replace(b"\\", b"/").contains_str(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");
-        eprintln!("{}", String::from_utf8_lossy(&fs_wrapper::read("liblib.rmeta")));
+        eprintln!("{}", String::from_utf8_lossy(&rfs::read("liblib.rmeta")));
         eprintln!("=== SPECIFIED TEXT ===");
         eprintln!("{}", expected);
         panic!("specified text was not found in file");
@@ -74,12 +71,9 @@ fn rmeta_contains(expected: &str) {
 
 fn rmeta_not_contains(expected: &str) {
     // Normalize to account for path differences in Windows.
-    if bstr::BString::from(fs_wrapper::read("liblib.rmeta"))
-        .replace(b"\\", b"/")
-        .contains_str(expected)
-    {
+    if bstr::BString::from(rfs::read("liblib.rmeta")).replace(b"\\", b"/").contains_str(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");
-        eprintln!("{}", String::from_utf8_lossy(&fs_wrapper::read("liblib.rmeta")));
+        eprintln!("{}", String::from_utf8_lossy(&rfs::read("liblib.rmeta")));
         eprintln!("=== SPECIFIED TEXT ===");
         eprintln!("{}", expected);
         panic!("specified text was not found in file");

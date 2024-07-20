@@ -393,6 +393,7 @@ fn process_references(
                     ImportPathConfig {
                         prefer_no_std: ctx.config.prefer_no_std,
                         prefer_prelude: ctx.config.prefer_prelude,
+                        prefer_absolute: ctx.config.prefer_absolute,
                     },
                 );
                 if let Some(mut mod_path) = mod_path {

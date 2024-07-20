@@ -146,7 +146,7 @@ enum SingleVariantEnum {
 }
 use SingleVariantEnum::Variant;
 fn foo() {
-   let a$0
+   for a$0
 }
 "#,
         expect![[r#"

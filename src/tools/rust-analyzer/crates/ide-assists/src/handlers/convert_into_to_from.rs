@@ -1,6 +1,6 @@
 use hir::ImportPathConfig;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast, traits::resolve_target_trait};
-use syntax::ast::{self, AstNode, HasName};
+use syntax::ast::{self, AstNode, HasGenericArgs, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -47,6 +47,7 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
     let cfg = ImportPathConfig {
         prefer_no_std: ctx.config.prefer_no_std,
         prefer_prelude: ctx.config.prefer_prelude,
+        prefer_absolute: ctx.config.prefer_absolute,
     };
 
     let src_type_path = {

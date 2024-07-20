@@ -110,7 +110,7 @@ impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
 
     /// Binds the pattern variable `br` to `value`; returns an `Err` if the pattern
     /// is already bound to a different value.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn bind(
         &mut self,
         br: ty::BoundRegion,
@@ -133,11 +133,7 @@ impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
 }
 
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx> {
-    fn tag(&self) -> &'static str {
-        "MatchAgainstHigherRankedOutlives"
-    }
-
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -154,13 +150,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         if variance != ty::Bivariant { self.relate(a, b) } else { Ok(a) }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn regions(
         &mut self,
         pattern: ty::Region<'tcx>,
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("self.pattern_depth = {:?}", self.pattern_depth);
         if let ty::RegionKind::ReBound(depth, br) = pattern.kind()
             && depth == self.pattern_depth
         {
@@ -172,7 +167,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn tys(&mut self, pattern: Ty<'tcx>, value: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         // FIXME(non_lifetime_binders): What to do here?
         if matches!(pattern.kind(), ty::Error(_) | ty::Bound(..)) {
@@ -185,13 +180,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn consts(
         &mut self,
         pattern: ty::Const<'tcx>,
         value: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        debug!("{}.consts({:?}, {:?})", self.tag(), pattern, value);
         if pattern == value {
             Ok(pattern)
         } else {
@@ -199,6 +193,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         }
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn binders<T>(
         &mut self,
         pattern: ty::Binder<'tcx, T>,

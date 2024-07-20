@@ -4,20 +4,11 @@ error[E0284]: type annotations needed: cannot normalize `process<T>::{constant#0
 LL | fn process<T: const Trait>(input: [(); T::make(2)]) -> [(); T::make(2)] {
    |                                   ^^^^^^^^^^^^^^^^ cannot normalize `process<T>::{constant#0}`
 
-error[E0284]: type annotations needed: cannot satisfy `the constant `T::make(P)` can be evaluated`
-  --> $DIR/const-trait-bounds.rs:18:5
+error[E0284]: type annotations needed: cannot normalize `Struct<T, P>::field::{constant#0}`
+  --> $DIR/const-trait-bounds.rs:20:12
    |
-LL |     [u32; T::make(P)]:,
-   |     ^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `T::make(P)` can be evaluated`
-   |
-note: required by a bound in `Struct`
-  --> $DIR/const-trait-bounds.rs:18:11
-   |
-LL | struct Struct<T: const Trait, const P: usize>
-   |        ------ required by a bound in this struct
-LL | where
-LL |     [u32; T::make(P)]:,
-   |           ^^^^^^^^^^ required by this bound in `Struct`
+LL |     field: [u32; T::make(P)],
+   |            ^^^^^^^^^^^^^^^^^ cannot normalize `Struct<T, P>::field::{constant#0}`
 
 error[E0284]: type annotations needed: cannot normalize `process<T>::{constant#1}`
   --> $DIR/const-trait-bounds.rs:13:5

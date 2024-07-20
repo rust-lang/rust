@@ -781,8 +781,15 @@ const unsafe fn strlen(ptr: *const c_char) -> usize {
 pub struct Bytes<'a> {
     // since we know the string is nul-terminated, we only need one pointer
     ptr: NonNull<u8>,
-    phantom: PhantomData<&'a u8>,
+    phantom: PhantomData<&'a [c_char]>,
 }
+
+#[unstable(feature = "cstr_bytes", issue = "112115")]
+unsafe impl Send for Bytes<'_> {}
+
+#[unstable(feature = "cstr_bytes", issue = "112115")]
+unsafe impl Sync for Bytes<'_> {}
+
 impl<'a> Bytes<'a> {
     #[inline]
     fn new(s: &'a CStr) -> Self {
@@ -815,7 +822,7 @@ impl Iterator for Bytes<'_> {
             if ret == 0 {
                 None
             } else {
-                self.ptr = self.ptr.offset(1);
+                self.ptr = self.ptr.add(1);
                 Some(ret)
             }
         }
@@ -824,6 +831,12 @@ impl Iterator for Bytes<'_> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         if self.is_empty() { (0, Some(0)) } else { (1, None) }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        // SAFETY: We always hold a valid pointer to a C string
+        unsafe { strlen(self.ptr.as_ptr().cast()) }
     }
 }
 

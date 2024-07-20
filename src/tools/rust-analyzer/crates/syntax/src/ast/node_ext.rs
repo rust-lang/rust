@@ -10,7 +10,10 @@ use parser::SyntaxKind;
 use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
-    ast::{self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasName, SyntaxNode},
+    ast::{
+        self, support, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
+        SyntaxNode,
+    },
     ted, NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 

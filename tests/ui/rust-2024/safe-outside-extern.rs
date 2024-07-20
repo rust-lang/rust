@@ -25,4 +25,7 @@ type FnPtr = safe fn(i32, i32) -> i32;
 //~^ ERROR: function pointers cannot be declared with `safe` safety qualifier
 //[ungated]~| ERROR: unsafe extern {}` blocks and `safe` keyword are experimental [E0658]
 
+unsafe static LOL: u8 = 0;
+//~^ ERROR: static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
+
 fn main() {}

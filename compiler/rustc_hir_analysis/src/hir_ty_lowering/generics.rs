@@ -113,8 +113,12 @@ fn generic_arg_mismatch_err(
             }
         }
         (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
-            let body = tcx.hir().body(cnst.value.body);
-            if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
+            // FIXME(min_generic_const_args): once ConstArgKind::Path is used for non-params too,
+            // this should match against that instead of ::Anon
+            if let hir::ConstArgKind::Anon(anon) = cnst.kind
+                && let body = tcx.hir().body(anon.body)
+                && let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
+                    body.value.kind
             {
                 if let Res::Def(DefKind::Fn { .. }, id) = path.res {
                     err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));

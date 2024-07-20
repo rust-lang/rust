@@ -337,6 +337,7 @@ bootstrap_tool!(
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
+    WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -855,6 +856,15 @@ impl Step for LlvmBitcodeLinker {
             "src/tools/llvm-bitcode-linker",
             SourceType::InTree,
             &self.extra_features,
+        );
+
+        let _guard = builder.msg_tool(
+            Kind::Build,
+            Mode::ToolRustc,
+            bin_name,
+            self.compiler.stage,
+            &self.compiler.host,
+            &self.target,
         );
 
         cargo.into_cmd().run(builder);

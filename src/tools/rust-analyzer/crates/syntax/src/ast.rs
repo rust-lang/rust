@@ -31,8 +31,8 @@ pub use self::{
     operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
     token_ext::{CommentKind, CommentPlacement, CommentShape, IsString, QuoteOffsets, Radix},
     traits::{
-        AttrDocCommentIter, DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams,
-        HasLoopBody, HasModuleItem, HasName, HasTypeBounds, HasVisibility,
+        AttrDocCommentIter, DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericArgs,
+        HasGenericParams, HasLoopBody, HasModuleItem, HasName, HasTypeBounds, HasVisibility,
     },
 };
 
@@ -149,14 +149,17 @@ pub trait RangeItem {
 mod support {
     use super::{AstChildren, AstNode, SyntaxKind, SyntaxNode, SyntaxToken};
 
+    #[inline]
     pub(super) fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
         parent.children().find_map(N::cast)
     }
 
+    #[inline]
     pub(super) fn children<N: AstNode>(parent: &SyntaxNode) -> AstChildren<N> {
         AstChildren::new(parent)
     }
 
+    #[inline]
     pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
         parent.children_with_tokens().filter_map(|it| it.into_token()).find(|it| it.kind() == kind)
     }

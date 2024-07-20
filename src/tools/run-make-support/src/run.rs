@@ -4,9 +4,8 @@ use std::panic;
 use std::path::{Path, PathBuf};
 
 use crate::command::{Command, CompletedProcess};
-use crate::{cwd, env_var, is_windows, set_host_rpath};
-
-use super::handle_failed_output;
+use crate::util::{handle_failed_output, set_host_rpath};
+use crate::{cwd, env_var, is_windows};
 
 #[track_caller]
 fn run_common(name: &str, args: Option<&[&str]>) -> Command {

@@ -750,7 +750,7 @@ fn link_natively(
 
     for print in &sess.opts.prints {
         if print.kind == PrintKind::LinkArgs {
-            let content = format!("{cmd:?}");
+            let content = format!("{cmd:?}\n");
             print.out.overwrite(&content, sess);
         }
     }

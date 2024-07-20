@@ -4,7 +4,6 @@
 //! tree originates not from the text of some `FileId`, but from some macro
 //! expansion.
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
-#![warn(rust_2018_idioms, unused_lifetimes)]
 
 pub mod attrs;
 pub mod builtin_attr_macro;

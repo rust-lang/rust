@@ -91,17 +91,6 @@ pub enum ForceCollect {
     No,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum TrailingToken {
-    None,
-    Semi,
-    Gt,
-    /// If the trailing token is a comma, then capture it
-    /// Otherwise, ignore the trailing token
-    MaybeComma,
-}
-
-/// Like `maybe_whole_expr`, but for things other than expressions.
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
@@ -232,11 +221,12 @@ enum Capturing {
     Yes,
 }
 
+// This state is used by `Parser::collect_tokens_trailing_token`.
 #[derive(Clone, Debug)]
 struct CaptureState {
     capturing: Capturing,
     replace_ranges: Vec<ReplaceRange>,
-    inner_attr_ranges: FxHashMap<AttrId, ReplaceRange>,
+    inner_attr_ranges: FxHashMap<AttrId, Range<u32>>,
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
@@ -436,6 +426,11 @@ impl<'a> Parser<'a> {
         // Make parser point to the first token.
         parser.bump();
 
+        // Change this from 1 back to 0 after the bump. This eases debugging of
+        // `Parser::collect_tokens_trailing_token` nicer because it makes the
+        // token positions 0-indexed which is nicer than 1-indexed.
+        parser.num_bump_calls = 0;
+
         parser
     }
 
@@ -506,6 +501,7 @@ impl<'a> Parser<'a> {
             FatalError.raise();
         } else {
             self.expected_one_of_not_found(edible, inedible)
+                .map(|error_guaranteed| Recovered::Yes(error_guaranteed))
         }
     }
 
@@ -953,11 +949,10 @@ impl<'a> Parser<'a> {
         let initial_semicolon = self.token.span;
 
         while self.eat(&TokenKind::Semi) {
-            let _ =
-                self.parse_stmt_without_recovery(false, ForceCollect::Yes).unwrap_or_else(|e| {
-                    e.cancel();
-                    None
-                });
+            let _ = self.parse_stmt_without_recovery(false, ForceCollect::No).unwrap_or_else(|e| {
+                e.cancel();
+                None
+            });
         }
 
         expect_err
@@ -1509,7 +1504,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(
             AttrWrapper::empty(),
             ForceCollect::Yes,
-            |this, _attrs| Ok((f(this)?, TrailingToken::None)),
+            |this, _attrs| Ok((f(this)?, false)),
         )
     }
 

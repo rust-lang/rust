@@ -112,6 +112,7 @@ ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,wasm32-wasip1
 ENV TARGETS=$TARGETS,wasm32-wasip1-threads
+ENV TARGETS=$TARGETS,wasm32-wasip2
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32

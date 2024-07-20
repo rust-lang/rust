@@ -117,6 +117,7 @@ pub mod too_long {
     pub type ReallyLongTypeNameLongLongLong =
         Option<unsafe extern "C" fn(a: *const u8, b: *const u8) -> *const u8>;
 
+    /// Short doc.
     pub const ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong: u32 = 0;
 
     /// This also has a really long doccomment. Lorem ipsum dolor sit amet,

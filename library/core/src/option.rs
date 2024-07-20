@@ -770,6 +770,13 @@ impl<T> Option<T> {
         }
     }
 
+    #[inline]
+    const fn len(&self) -> usize {
+        // Using the intrinsic avoids emitting a branch to get the 0 or 1.
+        let discriminant: isize = crate::intrinsics::discriminant_value(self);
+        discriminant as usize
+    }
+
     /// Returns a slice of the contained value, if any. If this is `None`, an
     /// empty slice is returned. This can be useful to have a single type of
     /// iterator over an `Option` or slice.
@@ -812,7 +819,7 @@ impl<T> Option<T> {
         unsafe {
             slice::from_raw_parts(
                 (self as *const Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
-                self.is_some() as usize,
+                self.len(),
             )
         }
     }
@@ -869,7 +876,7 @@ impl<T> Option<T> {
         unsafe {
             slice::from_raw_parts_mut(
                 (self as *mut Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
-                self.is_some() as usize,
+                self.len(),
             )
         }
     }
@@ -2242,10 +2249,8 @@ impl<A> Iterator for Item<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.opt {
-            Some(_) => (1, Some(1)),
-            None => (0, Some(0)),
-        }
+        let len = self.len();
+        (len, Some(len))
     }
 }
 
@@ -2256,7 +2261,12 @@ impl<A> DoubleEndedIterator for Item<A> {
     }
 }
 
-impl<A> ExactSizeIterator for Item<A> {}
+impl<A> ExactSizeIterator for Item<A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.opt.len()
+    }
+}
 impl<A> FusedIterator for Item<A> {}
 unsafe impl<A> TrustedLen for Item<A> {}
 

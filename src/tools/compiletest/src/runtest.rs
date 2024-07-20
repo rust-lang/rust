@@ -94,6 +94,8 @@ fn get_lib_name(lib: &str, aux_type: AuxType) -> Option<String> {
             format!("{}.dll", lib)
         } else if cfg!(target_vendor = "apple") {
             format!("lib{}.dylib", lib)
+        } else if cfg!(target_os = "aix") {
+            format!("lib{}.a", lib)
         } else {
             format!("lib{}.so", lib)
         }),

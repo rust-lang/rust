@@ -10,7 +10,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, cwd, dynamic_lib_name, fs_wrapper, is_msvc, run, rustc};
+use run_make_support::{cc, cwd, dynamic_lib_name, is_msvc, rfs, run, rustc};
 
 fn main() {
     rustc().input("bar.rs").run();
@@ -23,7 +23,7 @@ fn main() {
     }
 
     run("foo");
-    fs_wrapper::remove_file(dynamic_lib_name("foo"));
+    rfs::remove_file(dynamic_lib_name("foo"));
 
     rustc().input("foo.rs").arg("-Clto").run();
     run("foo");

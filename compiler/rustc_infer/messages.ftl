@@ -225,6 +225,8 @@ infer_outlives_content = lifetime of reference outlives lifetime of borrowed con
 infer_precise_capturing_existing = add `{$new_lifetime}` to the `use<...>` bound to explicitly capture it
 infer_precise_capturing_new = add a `use<...>` bound to explicitly capture `{$new_lifetime}`
 
+infer_precise_capturing_new_but_apit = add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+
 infer_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
 infer_prlf_defined_without_sub = the lifetime defined here...
 infer_prlf_known_limitation = this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
@@ -387,6 +389,9 @@ infer_type_annotations_needed = {$source_kind ->
     .label = type must be known at this point
 
 infer_types_declared_different = these two types are declared with different lifetimes...
+
+infer_warn_removing_apit_params = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
+
 infer_where_copy_predicates = copy the `where` clause predicates from the trait
 
 infer_where_remove = remove the `where` clause

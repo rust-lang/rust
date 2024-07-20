@@ -13,7 +13,7 @@ use hir_def::{
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArgs, Path},
-    BlockId, FieldId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
+    BlockId, FieldId, GenericDefId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -440,7 +440,8 @@ impl InferenceContext<'_> {
                 let ty = match self.infer_path(p, tgt_expr.into()) {
                     Some(ty) => ty,
                     None => {
-                        if matches!(p, Path::Normal { mod_path, .. } if mod_path.is_ident()) {
+                        if matches!(p, Path::Normal { mod_path, .. } if mod_path.is_ident() || mod_path.is_self())
+                        {
                             self.push_diagnostic(InferenceDiagnostic::UnresolvedIdent {
                                 expr: tgt_expr,
                             });
@@ -1895,7 +1896,8 @@ impl InferenceContext<'_> {
         let callable_ty = self.resolve_ty_shallow(callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
-            let generic_predicates = self.db.generic_predicates(def.into());
+            let generic_predicates =
+                self.db.generic_predicates(GenericDefId::from_callable(self.db.upcast(), def));
             for predicate in generic_predicates.iter() {
                 let (predicate, binders) = predicate
                     .clone()

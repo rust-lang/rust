@@ -31,7 +31,6 @@ ignore = [
     "library/backtrace",
     "library/portable-simd",
     "library/stdarch",
-    "compiler/rustc_codegen_gcc",
     "src/doc/book",
     "src/doc/edition-guide",
     "src/doc/embedded-book",
@@ -50,4 +49,8 @@ ignore = [
     # These are ignored by a standard cargo fmt run.
     "compiler/rustc_codegen_cranelift/scripts",
     "compiler/rustc_codegen_cranelift/example/gen_block_iterate.rs", # uses edition 2024
+    "compiler/rustc_codegen_gcc/tests",
+    # Code automatically generated and included.
+    "compiler/rustc_codegen_gcc/src/intrinsic/archs.rs",
+    "compiler/rustc_codegen_gcc/example",
 ]

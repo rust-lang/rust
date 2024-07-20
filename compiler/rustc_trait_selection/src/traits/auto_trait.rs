@@ -765,8 +765,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 unevaluated,
                                 obligation.cause.span,
                             ) {
-                                Ok(Some(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args))),
-                                Ok(None) => {
+                                Ok(Ok(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args))),
+                                Ok(Err(_)) => {
                                     let tcx = self.tcx;
                                     let reported =
                                         tcx.dcx().emit_err(UnableToConstructConstantValue {

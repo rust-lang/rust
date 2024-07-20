@@ -7,9 +7,9 @@ LL |       String::with_capacity(
 LL | /     r#"
 LL | | pub(crate) struct Person<T: Clone> {}
 LL | | "#,
-   | |__- unexpected argument of type `&'static str`
+   | |__- unexpected argument #2 of type `&'static str`
 LL |        r#""#,
-   |        ----- unexpected argument of type `&'static str`
+   |        ----- unexpected argument #3 of type `&'static str`
    |
 note: expected `usize`, found fn item
   --> $DIR/issue-109854.rs:4:5

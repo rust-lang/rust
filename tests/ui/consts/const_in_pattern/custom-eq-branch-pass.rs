@@ -23,9 +23,20 @@ const BAR_BAZ: Foo = if 42 == 42 {
     Foo::Qux(CustomEq) // dead arm
 };
 
+const EMPTY: &[CustomEq] = &[];
+
 fn main() {
+    // BAR_BAZ itself is fine but the enum has other variants
+    // that are non-structural. Still, this should be accepted.
     match Foo::Qux(CustomEq) {
         BAR_BAZ => panic!(),
         _ => {}
+    }
+
+    // Similarly, an empty slice of a type that is non-structural
+    // is accepted.
+    match &[CustomEq] as &[CustomEq] {
+        EMPTY => panic!(),
+        _ => {},
     }
 }

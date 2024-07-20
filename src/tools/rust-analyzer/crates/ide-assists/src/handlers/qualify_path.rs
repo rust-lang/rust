@@ -6,6 +6,7 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::import_assets::{ImportCandidate, LocatedImport},
 };
+use syntax::ast::HasGenericArgs;
 use syntax::{
     ast,
     ast::{make, HasArgList},
@@ -40,6 +41,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let cfg = ImportPathConfig {
         prefer_no_std: ctx.config.prefer_no_std,
         prefer_prelude: ctx.config.prefer_prelude,
+        prefer_absolute: ctx.config.prefer_absolute,
     };
 
     let mut proposed_imports: Vec<_> =

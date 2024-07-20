@@ -76,7 +76,8 @@ export async function createClient(
                         // value === "unlinked-file" &&
                         value === "temporary-disabled" &&
                         !unlinkedFiles.includes(uri) &&
-                        diag.message !== "file not included in module tree"
+                        (diag.message === "file not included in crate hierarchy" ||
+                            diag.message.startsWith("This file is not included in any crates"))
                     ) {
                         const config = vscode.workspace.getConfiguration("rust-analyzer");
                         if (config.get("showUnlinkedFileNotification")) {

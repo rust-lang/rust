@@ -775,7 +775,7 @@ impl Error {
     ///
     /// impl Display for MyError {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "MyError: {}", &self.v)
+    ///         write!(f, "MyError: {}", self.v)
     ///     }
     /// }
     ///

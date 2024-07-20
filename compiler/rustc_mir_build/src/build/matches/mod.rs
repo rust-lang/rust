@@ -24,6 +24,7 @@ use tracing::{debug, instrument};
 use util::visit_bindings;
 
 // helper functions, broken out by category:
+mod match_pair;
 mod simplify;
 mod test;
 mod util;
@@ -121,8 +122,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::LogicalOp { op: op @ LogicalOp::And, lhs, rhs } => {
                 this.visit_coverage_branch_operation(op, expr_span);
-                let lhs_then_block = unpack!(this.then_else_break_inner(block, lhs, args));
-                let rhs_then_block = unpack!(this.then_else_break_inner(lhs_then_block, rhs, args));
+                let lhs_then_block = this.then_else_break_inner(block, lhs, args).into_block();
+                let rhs_then_block =
+                    this.then_else_break_inner(lhs_then_block, rhs, args).into_block();
                 rhs_then_block.unit()
             }
             ExprKind::LogicalOp { op: op @ LogicalOp::Or, lhs, rhs } => {
@@ -139,14 +141,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         )
                     });
-                let rhs_success_block = unpack!(this.then_else_break_inner(
-                    failure_block,
-                    rhs,
-                    ThenElseArgs {
-                        declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                        ..args
-                    },
-                ));
+                let rhs_success_block = this
+                    .then_else_break_inner(
+                        failure_block,
+                        rhs,
+                        ThenElseArgs {
+                            declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                            ..args
+                        },
+                    )
+                    .into_block();
 
                 // Make the LHS and RHS success arms converge to a common block.
                 // (We can't just make LHS goto RHS, because `rhs_success_block`
@@ -451,7 +455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()> {
-        let arm_end_blocks: Vec<_> = arm_candidates
+        let arm_end_blocks: Vec<BasicBlock> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
                 debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
@@ -502,6 +506,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     this.expr_into_dest(destination, arm_block, arm.body)
                 })
+                .into_block()
             })
             .collect();
 
@@ -512,10 +517,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             outer_source_info.span.with_lo(outer_source_info.span.hi() - BytePos::from_usize(1)),
         );
         for arm_block in arm_end_blocks {
-            let block = &self.cfg.basic_blocks[arm_block.0];
+            let block = &self.cfg.basic_blocks[arm_block];
             let last_location = block.statements.last().map(|s| s.source_info);
 
-            self.cfg.goto(unpack!(arm_block), last_location.unwrap_or(end_brace), end_block);
+            self.cfg.goto(arm_block, last_location.unwrap_or(end_brace), end_block);
         }
 
         self.source_scope = outer_source_info.scope;
@@ -621,7 +626,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                block = self.expr_into_dest(place, block, initializer_id).into_block();
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -660,7 +665,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                block = self.expr_into_dest(place, block, initializer_id).into_block();
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -1027,15 +1032,15 @@ impl<'tcx> PatternExtraData<'tcx> {
 #[derive(Debug, Clone)]
 struct FlatPat<'pat, 'tcx> {
     /// To match the pattern, all of these must be satisfied...
-    // Invariant: all the `MatchPair`s are recursively simplified.
+    // Invariant: all the match pairs are recursively simplified.
     // Invariant: or-patterns must be sorted to the end.
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
 }
 
 impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
-    /// Creates a `FlatPat` containing a simplified [`MatchPair`] list/forest
+    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
     /// for the given pattern.
     fn new(
         place: PlaceBuilder<'tcx>,
@@ -1043,7 +1048,7 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
         // First, recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![MatchPair::new(place, pattern, cx)];
+        let mut match_pairs = vec![MatchPairTree::for_pattern(place, pattern, cx)];
         let mut extra_data = PatternExtraData {
             span: pattern.span,
             bindings: Vec::new(),
@@ -1060,9 +1065,9 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
     /// For the candidate to match, all of these must be satisfied...
-    // Invariant: all the `MatchPair`s are recursively simplified.
+    // Invariant: all the match pairs are recursively simplified.
     // Invariant: or-patterns must be sorted at the end.
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
     // Invariant: at the end of the algorithm, this must never contain a `is_never` candidate
@@ -1121,7 +1126,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
-        matches!(&*self.match_pairs, [MatchPair { test_case: TestCase::Or { .. }, .. }, ..])
+        matches!(&*self.match_pairs, [MatchPairTree { test_case: TestCase::Or { .. }, .. }, ..])
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1195,17 +1200,27 @@ impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
     }
 }
 
+/// Node in a tree of "match pairs", where each pair consists of a place to be
+/// tested, and a test to perform on that place.
+///
+/// Each node also has a list of subpairs (possibly empty) that must also match,
+/// and a reference to the THIR pattern it represents.
 #[derive(Debug, Clone)]
-pub(crate) struct MatchPair<'pat, 'tcx> {
+pub(crate) struct MatchPairTree<'pat, 'tcx> {
     /// This place...
-    // This can be `None` if it referred to a non-captured place in a closure.
-    // Invariant: place.is_none() => test_case is Irrefutable
-    // In other words this must be `Some(_)` after simplification.
+    ///
+    /// ---
+    /// This can be `None` if it referred to a non-captured place in a closure.
+    ///
+    /// Invariant: Can only be `None` when `test_case` is `Irrefutable`.
+    /// Therefore this must be `Some(_)` after simplification.
     place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
-    // Invariant: after creation and simplification in `Candidate::new()`, this must not be
-    // `Irrefutable`.
+    ///
+    /// ---
+    /// Invariant: after creation and simplification in [`FlatPat::new`],
+    /// this must not be [`TestCase::Irrefutable`].
     test_case: TestCase<'pat, 'tcx>,
 
     /// ... and these subpairs must match.
@@ -1536,10 +1551,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
     ) -> BlockAnd<&'b mut [&'c mut Candidate<'pat, 'tcx>]> {
-        // We can't expand or-patterns freely. The rule is: if the candidate has an
-        // or-pattern as its only remaining match pair, we can expand it freely. If it has
-        // other match pairs, we can expand it but we can't process more candidates after
-        // it.
+        // We can't expand or-patterns freely. The rule is:
+        // - If a candidate doesn't start with an or-pattern, we include it in
+        //   the expansion list as-is (i.e. it "expands" to itself).
+        // - If a candidate has an or-pattern as its only remaining match pair,
+        //   we can expand it.
+        // - If it starts with an or-pattern but also has other match pairs,
+        //   we can expand it, but we can't process more candidates after it.
         //
         // If we didn't stop, the `otherwise` cases could get mixed up. E.g. in the
         // following, or-pattern simplification (in `merge_trivial_subcandidates`) makes it
@@ -1556,17 +1574,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // }
         // ```
         //
-        // We therefore split the `candidates` slice in two, expand or-patterns in the first half,
+        // We therefore split the `candidates` slice in two, expand or-patterns in the first part,
         // and process the rest separately.
-        let mut expand_until = 0;
-        for (i, candidate) in candidates.iter().enumerate() {
-            expand_until = i + 1;
-            if candidate.match_pairs.len() > 1 && candidate.starts_with_or_pattern() {
-                // The candidate has an or-pattern as well as more match pairs: we must
-                // split the candidates list here.
-                break;
-            }
-        }
+        let expand_until = candidates
+            .iter()
+            .position(|candidate| {
+                // If a candidate starts with an or-pattern and has more match pairs,
+                // we can expand it, but we must stop expanding _after_ it.
+                candidate.match_pairs.len() > 1 && candidate.starts_with_or_pattern()
+            })
+            .map(|pos| pos + 1) // Stop _after_ the found candidate
+            .unwrap_or(candidates.len()); // Otherwise, include all candidates
         let (candidates_to_expand, remaining_candidates) = candidates.split_at_mut(expand_until);
 
         // Expand one level of or-patterns for each candidate in `candidates_to_expand`.
@@ -1581,6 +1599,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     expanded_candidates.push(subcandidate);
                 }
             } else {
+                // A candidate that doesn't start with an or-pattern has nothing to
+                // expand, so it is included in the post-expansion list as-is.
                 expanded_candidates.push(candidate);
             }
         }
@@ -1609,7 +1629,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
-        match_pair: MatchPair<'pat, 'tcx>,
+        match_pair: MatchPairTree<'pat, 'tcx>,
     ) {
         let TestCase::Or { pats } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
@@ -1793,8 +1813,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Range`]: TestKind::Range
     fn pick_test(&mut self, candidates: &[&mut Candidate<'_, 'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
-        let match_pair = &candidates.first().unwrap().match_pairs[0];
-        let test = self.test(match_pair);
+        let match_pair = &candidates[0].match_pairs[0];
+        let test = self.pick_test_for_match_pair(match_pair);
         // Unwrap is ok after simplification.
         let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);

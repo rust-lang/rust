@@ -3,6 +3,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
+use crate::hint;
 use crate::intrinsics;
 use crate::marker::{Freeze, StructuralPartialEq};
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
@@ -604,7 +605,6 @@ macro_rules! nonzero_integer {
             }
 
             nonzero_integer_signedness_dependent_methods! {
-                Self = $Ty,
                 Primitive = $signedness $Int,
                 UnsignedPrimitive = $Uint,
             }
@@ -823,7 +823,7 @@ macro_rules! nonzero_integer {
             }
         }
 
-        nonzero_integer_signedness_dependent_impls!($Ty $signedness $Int);
+        nonzero_integer_signedness_dependent_impls!($signedness $Int);
     };
 
     (Self = $Ty:ident, Primitive = unsigned $Int:ident $(,)?) => {
@@ -849,7 +849,7 @@ macro_rules! nonzero_integer {
 
 macro_rules! nonzero_integer_signedness_dependent_impls {
     // Impls for unsigned nonzero types only.
-    ($Ty:ident unsigned $Int:ty) => {
+    (unsigned $Int:ty) => {
         #[stable(feature = "nonzero_div", since = "1.51.0")]
         impl Div<NonZero<$Int>> for $Int {
             type Output = $Int;
@@ -897,7 +897,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         }
     };
     // Impls for signed nonzero types only.
-    ($Ty:ident signed $Int:ty) => {
+    (signed $Int:ty) => {
         #[stable(feature = "signed_nonzero_neg", since = "1.71.0")]
         impl Neg for NonZero<$Int> {
             type Output = Self;
@@ -918,7 +918,6 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 macro_rules! nonzero_integer_signedness_dependent_methods {
     // Associated items for unsigned nonzero types only.
     (
-        Self = $Ty:ident,
         Primitive = unsigned $Int:ident,
         UnsignedPrimitive = $Uint:ty,
     ) => {
@@ -1224,11 +1223,60 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
 
             intrinsics::ctpop(self.get()) < 2
         }
+
+        /// Returns the square root of the number, rounded down.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        /// #![feature(isqrt)]
+        /// # use std::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("let ten = NonZero::new(10", stringify!($Int), ")?;")]
+        #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ")?;")]
+        ///
+        /// assert_eq!(ten.isqrt(), three);
+        /// # Some(())
+        /// # }
+        #[unstable(feature = "isqrt", issue = "116226")]
+        #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn isqrt(self) -> Self {
+            // The algorithm is based on the one presented in
+            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
+            // which cites as source the following C code:
+            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
+
+            let mut op = self.get();
+            let mut res = 0;
+            let mut one = 1 << (self.ilog2() & !1);
+
+            while one != 0 {
+                if op >= res + one {
+                    op -= res + one;
+                    res = (res >> 1) + one;
+                } else {
+                    res >>= 1;
+                }
+                one >>= 2;
+            }
+
+            // SAFETY: The result fits in an integer with half as many bits.
+            // Inform the optimizer about it.
+            unsafe { hint::assert_unchecked(res < 1 << (Self::BITS / 2)) };
+
+            // SAFETY: The square root of an integer >= 1 is always >= 1.
+            unsafe { Self::new_unchecked(res) }
+        }
     };
 
     // Associated items for signed nonzero types only.
     (
-        Self = $Ty:ident,
         Primitive = signed $Int:ident,
         UnsignedPrimitive = $Uint:ty,
     ) => {

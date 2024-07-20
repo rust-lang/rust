@@ -64,11 +64,13 @@ error: expected identifier or string literal
 LL |         let ${concat($ident, 1)}: () = ();
    |                              ^
 
-error: `${concat(..)}` currently only accepts identifiers or meta-variables as parameters
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
   --> $DIR/syntax-errors.rs:22:19
    |
 LL |         ${concat($ex, aaaa)}
    |                   ^^
+   |
+   = note: currently only string literals are supported
 
 error: variable `foo` is not recognized in meta-variable expression
   --> $DIR/syntax-errors.rs:35:30
@@ -131,5 +133,152 @@ LL |     empty!();
    |
    = note: this error originates in the macro `empty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 18 previous errors
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/syntax-errors.rs:103:16
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bad_literal_string!("\u{00BD}");
+   |     ------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/syntax-errors.rs:103:16
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bad_literal_string!("\x41");
+   |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/syntax-errors.rs:103:16
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bad_literal_string!("🤷");
+   |     ------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/syntax-errors.rs:103:16
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bad_literal_string!("d[-_-]b");
+   |     ------------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/syntax-errors.rs:103:16
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bad_literal_string!("-1");
+   |     ------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/syntax-errors.rs:103:16
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bad_literal_string!("1.0");
+   |     -------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/syntax-errors.rs:103:16
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     bad_literal_string!("'1'");
+   |     -------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:116:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
+   |
+   = note: currently only string literals are supported
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:116:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
+   |
+   = note: currently only string literals are supported
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:116:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
+   |
+   = note: currently only string literals are supported
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:116:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
+   |
+   = note: currently only string literals are supported
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:116:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
+   |
+   = note: currently only string literals are supported
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:127:31
+   |
+LL |         const ${concat(_foo, $tt)}: () = ();
+   |                               ^^
+   |
+   = note: currently only string literals are supported
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:127:31
+   |
+LL |         const ${concat(_foo, $tt)}: () = ();
+   |                               ^^
+   |
+   = note: currently only string literals are supported
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+  --> $DIR/syntax-errors.rs:127:31
+   |
+LL |         const ${concat(_foo, $tt)}: () = ();
+   |                               ^^
+   |
+   = note: currently only string literals are supported
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 33 previous errors
 

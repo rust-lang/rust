@@ -9,10 +9,15 @@ for enum variants.
 --
 Placeholder expression to use for missing expressions in assists.
 --
-[[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `400`)::
+[[rust-analyzer.assist.termSearch.borrowcheck]]rust-analyzer.assist.termSearch.borrowcheck (default: `true`)::
 +
 --
-Term search fuel in "units of work" for assists (Defaults to 400).
+Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+--
+[[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `1800`)::
++
+--
+Term search fuel in "units of work" for assists (Defaults to 1800).
 --
 [[rust-analyzer.cachePriming.enable]]rust-analyzer.cachePriming.enable (default: `true`)::
 +
@@ -350,12 +355,6 @@ Default:
     "description": "Put the expression into a pinned `Box`",
     "scope": "expr"
   },
-  "Ok": {
-    "postfix": "ok",
-    "body": "Ok(${receiver})",
-    "description": "Wrap the expression in a `Result::Ok`",
-    "scope": "expr"
-  },
   "Err": {
     "postfix": "err",
     "body": "Err(${receiver})",
@@ -366,6 +365,12 @@ Default:
     "postfix": "some",
     "body": "Some(${receiver})",
     "description": "Wrap the expression in an `Option::Some`",
+    "scope": "expr"
+  },
+  "Ok": {
+    "postfix": "ok",
+    "body": "Ok(${receiver})",
+    "description": "Wrap the expression in a `Result::Ok`",
     "scope": "expr"
   }
 }
@@ -378,10 +383,10 @@ Custom completion snippets.
 --
 Whether to enable term search based snippets like `Some(foo.bar().baz())`.
 --
-[[rust-analyzer.completion.termSearch.fuel]]rust-analyzer.completion.termSearch.fuel (default: `200`)::
+[[rust-analyzer.completion.termSearch.fuel]]rust-analyzer.completion.termSearch.fuel (default: `1000`)::
 +
 --
-Term search fuel in "units of work" for autocompletion (Defaults to 200).
+Term search fuel in "units of work" for autocompletion (Defaults to 1000).
 --
 [[rust-analyzer.diagnostics.disabled]]rust-analyzer.diagnostics.disabled (default: `[]`)::
 +
@@ -589,6 +594,11 @@ Whether to prefer import paths containing a `prelude` module.
 --
 The path structure for newly inserted paths to use.
 --
+[[rust-analyzer.imports.prefixExternPrelude]]rust-analyzer.imports.prefixExternPrelude (default: `false`)::
++
+--
+Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
+--
 [[rust-analyzer.inlayHints.bindingModeHints.enable]]rust-analyzer.inlayHints.bindingModeHints.enable (default: `false`)::
 +
 --
@@ -644,6 +654,21 @@ Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
 +
 --
 Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
+--
+[[rust-analyzer.inlayHints.genericParameterHints.const.enable]]rust-analyzer.inlayHints.genericParameterHints.const.enable (default: `false`)::
++
+--
+Whether to show const generic parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.lifetime.enable]]rust-analyzer.inlayHints.genericParameterHints.lifetime.enable (default: `true`)::
++
+--
+Whether to show generic lifetime parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.type.enable]]rust-analyzer.inlayHints.genericParameterHints.type.enable (default: `false`)::
++
+--
+Whether to show generic type parameter name inlay hints.
 --
 [[rust-analyzer.inlayHints.implicitDrops.enable]]rust-analyzer.inlayHints.implicitDrops.enable (default: `false`)::
 +

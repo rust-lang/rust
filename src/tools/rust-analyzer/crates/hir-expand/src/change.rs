@@ -25,7 +25,8 @@ impl ChangeWithProcMacros {
 
     pub fn apply(self, db: &mut (impl ExpandDatabase + SourceDatabaseExt)) {
         self.source_change.apply(db);
-        if let Some(proc_macros) = self.proc_macros {
+        if let Some(mut proc_macros) = self.proc_macros {
+            proc_macros.shrink_to_fit();
             db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH);
         }
         if let Some(target_data_layouts) = self.target_data_layouts {

@@ -2,7 +2,8 @@
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
+pub mod buffer;
+pub mod iter;
 
 use std::fmt;
 
@@ -364,8 +365,6 @@ impl<S> Subtree<S> {
         res
     }
 }
-
-pub mod buffer;
 
 pub fn pretty<S>(tkns: &[TokenTree<S>]) -> String {
     fn tokentree_to_text<S>(tkn: &TokenTree<S>) -> String {

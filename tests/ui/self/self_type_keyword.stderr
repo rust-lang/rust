@@ -4,6 +4,12 @@ error: expected identifier, found keyword `Self`
 LL |   struct Self;
    |          ^^^^ expected identifier, found keyword
 
+error: lifetimes cannot use keyword names
+  --> $DIR/self_type_keyword.rs:6:12
+   |
+LL | struct Bar<'Self>;
+   |            ^^^^^
+
 error: expected identifier, found keyword `Self`
   --> $DIR/self_type_keyword.rs:14:13
    |
@@ -52,12 +58,6 @@ error: expected identifier, found keyword `Self`
    |
 LL |     trait Self {}
    |           ^^^^ expected identifier, found keyword
-
-error: lifetimes cannot use keyword names
-  --> $DIR/self_type_keyword.rs:6:12
-   |
-LL | struct Bar<'Self>;
-   |            ^^^^^
 
 error: cannot find macro `Self` in this scope
   --> $DIR/self_type_keyword.rs:21:9

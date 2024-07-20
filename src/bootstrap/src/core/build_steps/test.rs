@@ -9,7 +9,6 @@ use std::ffi::OsString;
 use std::fs;
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 use clap_complete::shells;
 
@@ -169,12 +168,8 @@ You can skip linkcheck with --skip src/tools/linkchecker"
     }
 }
 
-fn check_if_tidy_is_installed() -> bool {
-    Command::new("tidy")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .status()
-        .map_or(false, |status| status.success())
+fn check_if_tidy_is_installed(builder: &Builder<'_>) -> bool {
+    command("tidy").capture_stdout().allow_failure().arg("--version").run(builder).is_success()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -188,8 +183,9 @@ impl Step for HtmlCheck {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
         let run = run.path("src/tools/html-checker");
-        run.lazy_default_condition(Box::new(check_if_tidy_is_installed))
+        run.lazy_default_condition(Box::new(|| check_if_tidy_is_installed(builder)))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -197,7 +193,7 @@ impl Step for HtmlCheck {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if !check_if_tidy_is_installed() {
+        if !check_if_tidy_is_installed(builder) {
             eprintln!("not running HTML-check tool because `tidy` is missing");
             eprintln!(
                 "You need the HTML tidy tool https://www.html-tidy.org/, this tool is *not* part of the rust project and needs to be installed separately, for example via your package manager."
@@ -2099,9 +2095,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let git_config = builder.config.git_config();
         cmd.arg("--git-repository").arg(git_config.git_repository);
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
-
-        // FIXME: Move CiEnv back to bootstrap, it is only used here anyway
-        builder.ci_env.force_coloring_in_ci(cmd.as_command_mut());
+        cmd.force_coloring_in_ci(builder.ci_env);
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(

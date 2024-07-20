@@ -21,6 +21,11 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use thin_vec::{thin_vec, ThinVec};
 
+/// Signals whether parsing a type should allow `+`.
+///
+/// For example, let T be the type `impl Default + 'static`
+/// With `AllowPlus::Yes`, T will be parsed successfully
+/// With `AllowPlus::No`, parsing T will return a parse error
 #[derive(Copy, Clone, PartialEq)]
 pub(super) enum AllowPlus {
     Yes,
@@ -1230,6 +1235,12 @@ impl<'a> Parser<'a> {
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
+            if ident.without_first_quote().is_reserved()
+                && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&ident.name)
+            {
+                self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
+            }
+
             self.bump();
             Lifetime { ident, id: ast::DUMMY_NODE_ID }
         } else {

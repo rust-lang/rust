@@ -19,6 +19,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
+use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use syntax::TextRange;
 use triomphe::Arc;
@@ -183,7 +184,7 @@ impl MirLowerError {
             },
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let parent = id.parent;
-                let param = &db.generic_params(parent).type_or_consts[id.local_id];
+                let param = &db.generic_params(parent)[id.local_id];
                 writeln!(
                     f,
                     "Generic arg not provided for {}",
@@ -483,7 +484,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         Ok(Some(current))
                     }
                     ValueNs::GenericParam(p) => {
-                        let Some(def) = self.owner.as_generic_def_id() else {
+                        let Some(def) = self.owner.as_generic_def_id(self.db.upcast()) else {
                             not_supported!("owner without generic def id");
                         };
                         let gen = generics(self.db.upcast(), def);
@@ -1330,7 +1331,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn placeholder_subst(&mut self) -> Substitution {
-        match self.owner.as_generic_def_id() {
+        match self.owner.as_generic_def_id(self.db.upcast()) {
             Some(it) => TyBuilder::placeholder_subst(self.db, it),
             None => Substitution::empty(Interner),
         }
@@ -1432,10 +1433,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
             hir_def::hir::Literal::Int(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
             hir_def::hir::Literal::Uint(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
             hir_def::hir::Literal::Float(f, _) => match size()? {
-                8 => Box::new(f.into_f64().to_le_bytes()),
-                4 => Box::new(f.into_f32().to_le_bytes()),
+                16 => Box::new(f.to_f128().to_bits().to_le_bytes()),
+                8 => Box::new(f.to_f64().to_le_bytes()),
+                4 => Box::new(f.to_f32().to_le_bytes()),
+                2 => Box::new(u16::try_from(f.to_f16().to_bits()).unwrap().to_le_bytes()),
                 _ => {
-                    return Err(MirLowerError::TypeError("float with size other than 4 or 8 bytes"))
+                    return Err(MirLowerError::TypeError(
+                        "float with size other than 2, 4, 8 or 16 bytes",
+                    ))
                 }
             },
         };
@@ -2160,9 +2165,7 @@ pub fn lower_to_mir(
     root_expr: ExprId,
 ) -> Result<MirBody> {
     if infer.has_errors {
-        return Err(MirLowerError::TypeMismatch(
-            infer.type_mismatches().next().map(|(_, it)| it.clone()),
-        ));
+        return Err(MirLowerError::TypeMismatch(None));
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);
     // 0 is return local

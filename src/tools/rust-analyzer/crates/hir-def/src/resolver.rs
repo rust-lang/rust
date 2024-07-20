@@ -596,7 +596,7 @@ impl Resolver {
                 Scope::GenericParams { params, def } => Some((params, def)),
                 _ => None,
             })
-            .flat_map(|(params, def)| params.where_predicates.iter().zip(iter::repeat(def)))
+            .flat_map(|(params, def)| params.where_predicates().zip(iter::repeat(def)))
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {
@@ -758,10 +758,10 @@ impl Scope {
             }
             Scope::GenericParams { params, def: parent } => {
                 let parent = *parent;
-                for (local_id, param) in params.type_or_consts.iter() {
+                for (local_id, param) in params.iter_type_or_consts() {
                     if let Some(name) = &param.name() {
                         let id = TypeOrConstParamId { parent, local_id };
-                        let data = &db.generic_params(parent).type_or_consts[local_id];
+                        let data = &db.generic_params(parent)[local_id];
                         acc.add(
                             name,
                             ScopeDef::GenericParam(match data {
@@ -775,7 +775,7 @@ impl Scope {
                         );
                     }
                 }
-                for (local_id, param) in params.lifetimes.iter() {
+                for (local_id, param) in params.iter_lt() {
                     let id = LifetimeParamId { parent, local_id };
                     acc.add(&param.name, ScopeDef::GenericParam(id.into()))
                 }
@@ -1164,7 +1164,6 @@ impl HasResolver for GenericDefId {
             GenericDefId::TraitAliasId(inner) => inner.resolver(db),
             GenericDefId::TypeAliasId(inner) => inner.resolver(db),
             GenericDefId::ImplId(inner) => inner.resolver(db),
-            GenericDefId::EnumVariantId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
         }
     }

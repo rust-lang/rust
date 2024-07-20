@@ -14,7 +14,7 @@ use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::str;
 
 use serde_derive::Deserialize;
@@ -695,10 +695,10 @@ fn copy_sanitizers(
             || target == "x86_64-apple-ios"
         {
             // Update the library’s install name to reflect that it has been renamed.
-            apple_darwin_update_library_name(&dst, &format!("@rpath/{}", &runtime.name));
+            apple_darwin_update_library_name(builder, &dst, &format!("@rpath/{}", &runtime.name));
             // Upon renaming the install name, the code signature of the file will invalidate,
             // so we will sign it again.
-            apple_darwin_sign_file(&dst);
+            apple_darwin_sign_file(builder, &dst);
         }
 
         target_deps.push(dst);
@@ -707,25 +707,17 @@ fn copy_sanitizers(
     target_deps
 }
 
-fn apple_darwin_update_library_name(library_path: &Path, new_name: &str) {
-    let status = Command::new("install_name_tool")
-        .arg("-id")
-        .arg(new_name)
-        .arg(library_path)
-        .status()
-        .expect("failed to execute `install_name_tool`");
-    assert!(status.success());
+fn apple_darwin_update_library_name(builder: &Builder<'_>, library_path: &Path, new_name: &str) {
+    command("install_name_tool").arg("-id").arg(new_name).arg(library_path).run(builder);
 }
 
-fn apple_darwin_sign_file(file_path: &Path) {
-    let status = Command::new("codesign")
+fn apple_darwin_sign_file(builder: &Builder<'_>, file_path: &Path) {
+    command("codesign")
         .arg("-f") // Force to rewrite the existing signature
         .arg("-s")
         .arg("-")
         .arg(file_path)
-        .status()
-        .expect("failed to execute `codesign`");
-    assert!(status.success());
+        .run(builder);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1171,7 +1163,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_profile_generate && target.is_msvc() {
         if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
             // Add clang's runtime library directory to the search path
-            let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+            let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
             llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
         }
     }
@@ -1828,6 +1820,21 @@ impl Step for Assemble {
                     &self_contained_lld_dir.join(exe(name, target_compiler.host)),
                 );
             }
+
+            // In addition to `rust-lld` also install `wasm-component-ld` when
+            // LLD is enabled. This is a relatively small binary that primarily
+            // delegates to the `rust-lld` binary for linking and then runs
+            // logic to create the final binary. This is used by the
+            // `wasm32-wasip2` target of Rust.
+            let wasm_component_ld_exe =
+                builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
+                    compiler: build_compiler,
+                    target: target_compiler.host,
+                });
+            builder.copy_link(
+                &wasm_component_ld_exe,
+                &libdir_bin.join(wasm_component_ld_exe.file_name().unwrap()),
+            );
         }
 
         if builder.config.llvm_enabled(target_compiler.host) {

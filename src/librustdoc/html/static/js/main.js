@@ -529,11 +529,13 @@ function preLoadCss(cssUrl) {
                 }
                 const link = document.createElement("a");
                 link.href = path;
-                if (path === current_page) {
-                    link.className = "current";
-                }
                 link.textContent = name;
                 const li = document.createElement("li");
+                // Don't "optimize" this to just use `path`.
+                // We want the browser to normalize this into an absolute URL.
+                if (link.href === current_page) {
+                    li.classList.add("current");
+                }
                 li.appendChild(link);
                 ul.appendChild(li);
             }
