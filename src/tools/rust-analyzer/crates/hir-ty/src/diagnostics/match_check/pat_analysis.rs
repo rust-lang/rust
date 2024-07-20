@@ -86,6 +86,15 @@ impl<'db> MatchCheckCtx<'db> {
         arms: &[MatchArm<'db>],
         scrut_ty: Ty,
     ) -> Result<UsefulnessReport<'db, Self>, ()> {
+        if scrut_ty.contains_unknown() {
+            return Err(());
+        }
+        for arm in arms {
+            if arm.pat.ty().contains_unknown() {
+                return Err(());
+            }
+        }
+
         // FIXME: Determine place validity correctly. For now, err on the safe side.
         let place_validity = PlaceValidity::MaybeInvalid;
         // Measured to take ~100ms on modern hardware.
