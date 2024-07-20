@@ -1338,7 +1338,7 @@ pub(crate) fn code_action(
 
     let commands = snap.config.client_commands();
     res.command = match assist.command {
-        Some(assists::Command::TriggerSignatureHelp) if commands.trigger_parameter_hints => {
+        Some(assists::Command::TriggerParameterHints) if commands.trigger_parameter_hints => {
             Some(command::trigger_parameter_hints())
         }
         Some(assists::Command::Rename) if commands.rename => Some(command::rename()),

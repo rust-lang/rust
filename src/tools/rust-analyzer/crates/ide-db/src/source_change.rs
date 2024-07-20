@@ -307,8 +307,8 @@ impl SourceChangeBuilder {
     }
 
     /// Triggers the parameter hint popup after the assist is applied
-    pub fn trigger_signature_help(&mut self) {
-        self.command = Some(Command::TriggerSignatureHelp);
+    pub fn trigger_parameter_hints(&mut self) {
+        self.command = Some(Command::TriggerParameterHints);
     }
 
     /// Renames the item at the cursor position after the assist is applied

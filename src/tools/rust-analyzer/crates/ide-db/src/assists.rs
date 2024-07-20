@@ -36,7 +36,7 @@ pub struct Assist {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
     /// Show the parameter hints popup.
-    TriggerSignatureHelp,
+    TriggerParameterHints,
     /// Rename the just inserted item.
     Rename,
 }
