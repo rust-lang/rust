@@ -3540,31 +3540,16 @@ impl<'test> TestCx<'test> {
         // │   └── <host_triple>/release/deps/    // <- deps
         // ```
         //
-        // There almost certainly is a better way to do this, but this seems to work for now.
+        // FIXME(jieyouxu): there almost certainly is a better way to do this (specifically how the
+        // support lib and its deps are organized, can't we copy them to the tools-bin dir as
+        // well?), but this seems to work for now.
 
-        let support_lib_path = {
-            let mut p = build_root.clone();
-            p.push(format!("{}-tools-bin", stage));
-            p.push("librun_make_support.rlib");
-            p
-        };
+        let stage_tools_bin = build_root.join(format!("{stage}-tools-bin"));
+        let support_lib_path = stage_tools_bin.join("librun_make_support.rlib");
 
-        let support_lib_deps = {
-            let mut p = build_root.clone();
-            p.push(format!("{}-tools", stage));
-            p.push(&self.config.host);
-            p.push("release");
-            p.push("deps");
-            p
-        };
-
-        let support_lib_deps_deps = {
-            let mut p = build_root.clone();
-            p.push(format!("{}-tools", stage));
-            p.push("release");
-            p.push("deps");
-            p
-        };
+        let stage_tools = build_root.join(format!("{stage}-tools"));
+        let support_lib_deps = stage_tools.join(&self.config.host).join("release").join("deps");
+        let support_lib_deps_deps = stage_tools.join("release").join("deps");
 
         // To compile the recipe with rustc, we need to provide suitable dynamic library search
         // paths to rustc. This includes both:
@@ -3628,13 +3613,7 @@ impl<'test> TestCx<'test> {
         //
         // See <https://github.com/rust-lang/rust/pull/122248> for more background.
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
-            let stage0_sysroot = {
-                let mut p = build_root.clone();
-                p.push("stage0-sysroot");
-                p
-            };
-            debug!(?stage0_sysroot);
-
+            let stage0_sysroot = build_root.join("stage0-sysroot");
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
 
@@ -3648,12 +3627,7 @@ impl<'test> TestCx<'test> {
         // provided through env vars.
 
         // Compute stage-specific standard library paths.
-        let stage_std_path = {
-            let mut p = build_root.clone();
-            p.push(&stage);
-            p.push("lib");
-            p
-        };
+        let stage_std_path = build_root.join(&stage).join("lib");
 
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
