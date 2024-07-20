@@ -1593,7 +1593,7 @@ macro_rules! from_str_radix_size_impl {
         /// Basic usage:
         ///
         /// ```
-        #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str_radix(\"A\", 16), Ok(10));")]
+        #[doc = concat!("assert_eq!(", stringify!($size), "::from_str_radix(\"A\", 16), Ok(10));")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_int_from_str", issue = "59133")]
