@@ -292,7 +292,6 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 .into_iter()
                 .flat_map(|id| world.analysis.transitive_rev_deps(id))
                 .flatten()
-                .sorted()
                 .unique()
                 .collect();
 
