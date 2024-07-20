@@ -1435,7 +1435,8 @@ macro_rules! from_str_radix {
                 }
             }]
             /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error.
+            /// whitespace) represent an error. Underscores (which are accepted in rust literals)
+            /// also represent an error.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
             /// * `0-9`
