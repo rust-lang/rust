@@ -1,9 +1,20 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/functional-struct-update-respects-privacy.rs:14:36
+   |
+LL |         let val = unsafe { let p = COUNT.get(); let val = *p; *p = val + 1; val };
+   |                                    ^^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
 error[E0451]: field `secret_uid` of struct `S` is private
-  --> $DIR/functional-struct-update-respects-privacy.rs:28:49
+  --> $DIR/functional-struct-update-respects-privacy.rs:29:49
    |
 LL |     let s_2 = foo::S { b: format!("ess two"), ..s_1 }; // FRU ...
    |                                                 ^^^ field `secret_uid` is private
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0451`.

@@ -9,6 +9,7 @@ fn is_send_sync<T: Send + Sync>(_: T) {}
 
 async fn fun() {
     let u = unsafe { A[async { 1 }.await] };
+    //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
     unsafe {
         match A {
             i if async { true }.await => (),
@@ -21,6 +22,7 @@ async fn fun() {
 fn main() {
     let index_block = async {
         let u = unsafe { A[async { 1 }.await] };
+        //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
     };
     let match_block = async {
         unsafe {

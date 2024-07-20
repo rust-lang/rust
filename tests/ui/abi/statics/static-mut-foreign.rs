@@ -19,15 +19,20 @@ fn static_bound_set(a: &'static mut c_int) {
 
 unsafe fn run() {
     assert_eq!(rust_dbg_static_mut, 3);
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     rust_dbg_static_mut = 4;
     assert_eq!(rust_dbg_static_mut, 4);
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     rust_dbg_static_mut_check_four();
     rust_dbg_static_mut += 1;
     assert_eq!(rust_dbg_static_mut, 5);
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     rust_dbg_static_mut *= 3;
     assert_eq!(rust_dbg_static_mut, 15);
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     rust_dbg_static_mut = -3;
     assert_eq!(rust_dbg_static_mut, -3);
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     static_bound(&rust_dbg_static_mut);
     //~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
     static_bound_set(&mut rust_dbg_static_mut);
