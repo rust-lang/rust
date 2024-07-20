@@ -75,7 +75,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
         .unique()
         .map(|code| Assist {
             id: AssistId("typed-hole", AssistKind::QuickFix),
-            label: Label::new(format!("Replace `_` with `{}`", &code)),
+            label: Label::new(format!("Replace `_` with `{code}`")),
             group: Some(GroupLabel("Replace `_` with a term".to_owned())),
             target: original_range.range,
             source_change: Some(SourceChange::from_text_edit(

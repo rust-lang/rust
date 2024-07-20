@@ -664,7 +664,7 @@ mod tests {
     /// If provided vec![vec![a], vec![b, c], vec![d]], then this will assert:
     ///     a.score < b.score == c.score < d.score
     fn check_relevance_score_ordered(expected_relevance_order: Vec<Vec<CompletionRelevance>>) {
-        let expected = format!("{:#?}", &expected_relevance_order);
+        let expected = format!("{expected_relevance_order:#?}");
 
         let actual_relevance_order = expected_relevance_order
             .into_iter()
@@ -685,7 +685,7 @@ mod tests {
             )
             .1;
 
-        let actual = format!("{:#?}", &actual_relevance_order);
+        let actual = format!("{actual_relevance_order:#?}");
 
         assert_eq_text!(&expected, &actual);
     }

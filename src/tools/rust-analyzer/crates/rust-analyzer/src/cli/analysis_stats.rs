@@ -422,7 +422,7 @@ impl flags::AnalysisStats {
                 if found_terms.is_empty() {
                     acc.tail_expr_no_term += 1;
                     acc.total_tail_exprs += 1;
-                    // println!("\n{}\n", &original_text);
+                    // println!("\n{original_text}\n");
                     continue;
                 };
 

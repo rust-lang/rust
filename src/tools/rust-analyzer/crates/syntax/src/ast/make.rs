@@ -179,18 +179,18 @@ pub fn ty_alias(
     }
 
     if let Some(list) = type_param_bounds {
-        s.push_str(&format!(" : {}", &list));
+        s.push_str(&format!(" : {list}"));
     }
 
     if let Some(cl) = where_clause {
-        s.push_str(&format!(" {}", &cl.to_string()));
+        s.push_str(&format!(" {cl}"));
     }
 
     if let Some(exp) = assignment {
         if let Some(cl) = exp.1 {
-            s.push_str(&format!(" = {} {}", &exp.0.to_string(), &cl.to_string()));
+            s.push_str(&format!(" = {} {cl}", exp.0));
         } else {
-            s.push_str(&format!(" = {}", &exp.0.to_string()));
+            s.push_str(&format!(" = {}", exp.0));
         }
     }
 
