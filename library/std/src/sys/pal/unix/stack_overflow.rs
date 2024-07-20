@@ -87,13 +87,18 @@ mod imp {
     // out many large systems and all implementations allow returning from a
     // signal handler to work. For a more detailed explanation see the
     // comments on #26458.
+    /// SIGSEGV/SIGBUS entry point
+    /// # Safety
+    /// Rust doesn't call this, it *gets called*.
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe extern "C" fn signal_handler(
         signum: libc::c_int,
         info: *mut libc::siginfo_t,
         _data: *mut libc::c_void,
     ) {
         let (start, end) = GUARD.get();
-        let addr = (*info).si_addr() as usize;
+        // SAFETY: this pointer is provided by the system and will always point to a valid `siginfo_t`.
+        let addr = unsafe { (*info).si_addr().addr() };
 
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
@@ -105,9 +110,11 @@ mod imp {
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
-            let mut action: sigaction = mem::zeroed();
+            // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
+            let mut action: sigaction = unsafe { mem::zeroed() };
             action.sa_sigaction = SIG_DFL;
-            sigaction(signum, &action, ptr::null_mut());
+            // SAFETY: pray this is a well-behaved POSIX implementation of fn sigaction
+            unsafe { sigaction(signum, &action, ptr::null_mut()) };
 
             // See comment above for why this function returns.
         }
@@ -117,32 +124,45 @@ mod imp {
     static MAIN_ALTSTACK: AtomicPtr<libc::c_void> = AtomicPtr::new(ptr::null_mut());
     static NEED_ALTSTACK: AtomicBool = AtomicBool::new(false);
 
+    /// # Safety
+    /// Must be called only once
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn init() {
         PAGE_SIZE.store(os::page_size(), Ordering::Relaxed);
 
         // Always write to GUARD to ensure the TLS variable is allocated.
-        let guard = install_main_guard().unwrap_or(0..0);
+        let guard = unsafe { install_main_guard().unwrap_or(0..0) };
         GUARD.set((guard.start, guard.end));
 
-        let mut action: sigaction = mem::zeroed();
+        // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
+        let mut action: sigaction = unsafe { mem::zeroed() };
         for &signal in &[SIGSEGV, SIGBUS] {
-            sigaction(signal, ptr::null_mut(), &mut action);
+            // SAFETY: just fetches the current signal handler into action
+            unsafe { sigaction(signal, ptr::null_mut(), &mut action) };
             // Configure our signal handler if one is not already set.
             if action.sa_sigaction == SIG_DFL {
+                if !NEED_ALTSTACK.load(Ordering::Relaxed) {
+                    // haven't set up our sigaltstack yet
+                    NEED_ALTSTACK.store(true, Ordering::Release);
+                    let handler = unsafe { make_handler(true) };
+                    MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
+                    mem::forget(handler);
+                }
                 action.sa_flags = SA_SIGINFO | SA_ONSTACK;
                 action.sa_sigaction = signal_handler as sighandler_t;
-                sigaction(signal, &action, ptr::null_mut());
-                NEED_ALTSTACK.store(true, Ordering::Relaxed);
+                // SAFETY: only overriding signals if the default is set
+                unsafe { sigaction(signal, &action, ptr::null_mut()) };
             }
         }
-
-        let handler = make_handler(true);
-        MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
-        mem::forget(handler);
     }
 
+    /// # Safety
+    /// Must be called only once
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn cleanup() {
-        drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed));
+        // FIXME: I probably cause more bugs than I'm worth!
+        // see https://github.com/rust-lang/rust/issues/111272
+        unsafe { drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed)) };
     }
 
     unsafe fn get_stack() -> libc::stack_t {
@@ -187,34 +207,48 @@ mod imp {
         libc::stack_t { ss_sp: stackp, ss_flags: 0, ss_size: sigstack_size }
     }
 
+    /// # Safety
+    /// Mutates the alternate signal stack
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn make_handler(main_thread: bool) -> Handler {
-        if !NEED_ALTSTACK.load(Ordering::Relaxed) {
+        if !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
         if !main_thread {
             // Always write to GUARD to ensure the TLS variable is allocated.
-            let guard = current_guard().unwrap_or(0..0);
+            let guard = unsafe { current_guard() }.unwrap_or(0..0);
             GUARD.set((guard.start, guard.end));
         }
 
-        let mut stack = mem::zeroed();
-        sigaltstack(ptr::null(), &mut stack);
+        // SAFETY: assuming stack_t is zero-initializable
+        let mut stack = unsafe { mem::zeroed() };
+        // SAFETY: reads current stack_t into stack
+        unsafe { sigaltstack(ptr::null(), &mut stack) };
         // Configure alternate signal stack, if one is not already set.
         if stack.ss_flags & SS_DISABLE != 0 {
-            stack = get_stack();
-            sigaltstack(&stack, ptr::null_mut());
+            // SAFETY: We warned our caller this would happen!
+            unsafe {
+                stack = get_stack();
+                sigaltstack(&stack, ptr::null_mut());
+            }
             Handler { data: stack.ss_sp as *mut libc::c_void }
         } else {
             Handler::null()
         }
     }
 
+    /// # Safety
+    /// Must be called
+    /// - only with our handler or nullptr
+    /// - only when done with our altstack
+    /// This disables the alternate signal stack!
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn drop_handler(data: *mut libc::c_void) {
         if !data.is_null() {
             let sigstack_size = sigstack_size();
             let page_size = PAGE_SIZE.load(Ordering::Relaxed);
-            let stack = libc::stack_t {
+            let disabling_stack = libc::stack_t {
                 ss_sp: ptr::null_mut(),
                 ss_flags: SS_DISABLE,
                 // Workaround for bug in macOS implementation of sigaltstack
@@ -223,10 +257,11 @@ mod imp {
                 // both ss_sp and ss_size should be ignored in this case.
                 ss_size: sigstack_size,
             };
-            sigaltstack(&stack, ptr::null_mut());
-            // We know from `get_stackp` that the alternate stack we installed is part of a mapping
-            // that started one page earlier, so walk back a page and unmap from there.
-            munmap(data.sub(page_size), sigstack_size + page_size);
+            // SAFETY: we warned the caller this disables the alternate signal stack!
+            unsafe { sigaltstack(&disabling_stack, ptr::null_mut()) };
+            // SAFETY: We know from `get_stackp` that the alternate stack we installed is part of
+            // a mapping that started one page earlier, so walk back a page and unmap from there.
+            unsafe { munmap(data.sub(page_size), sigstack_size + page_size) };
         }
     }
 
@@ -455,6 +490,7 @@ mod imp {
     }
 
     #[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "solaris"))]
+    // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
         let stackptr = get_stack_start()?;
         let stackaddr = stackptr.addr();
@@ -469,6 +505,7 @@ mod imp {
         target_os = "netbsd",
         target_os = "l4re"
     ))]
+    // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
