@@ -352,7 +352,7 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = command("cmake").capture_stdout().arg("--help").run(build).stdout();
+            let out = command("cmake").arg("--help").run_capture_stdout(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "
