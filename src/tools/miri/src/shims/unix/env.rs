@@ -274,12 +274,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("getpid");
 
-        this.check_no_isolation("`getpid`")?;
-
         // The reason we need to do this wacky of a conversion is because
         // `libc::getpid` returns an i32, however, `std::process::id()` return an u32.
         // So we un-do the conversion that stdlib does and turn it back into an i32.
         #[allow(clippy::cast_possible_wrap)]
-        Ok(std::process::id() as i32)
+        Ok(this.get_pid() as i32)
+    }
+
+    fn linux_gettid(&mut self) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_ref();
+        this.assert_target_os("linux", "gettid");
+
+        let index = this.machine.threads.active_thread().to_u32();
+
+        // Compute a TID for this thread, ensuring that the main thread has PID == TID.
+        let tid = this.get_pid().strict_add(index);
+
+        #[allow(clippy::cast_possible_wrap)]
+        Ok(tid as i32)
     }
 }
