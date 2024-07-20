@@ -468,13 +468,7 @@ fn clean_projection<'tcx>(
     def_id: Option<DefId>,
 ) -> Type {
     if cx.tcx.is_impl_trait_in_trait(ty.skip_binder().def_id) {
-        let bounds = cx
-            .tcx
-            .explicit_item_bounds(ty.skip_binder().def_id)
-            .iter_instantiated_copied(cx.tcx, ty.skip_binder().args)
-            .map(|(pred, _)| pred)
-            .collect::<Vec<_>>();
-        return clean_middle_opaque_bounds(cx, bounds);
+        return clean_middle_opaque_bounds(cx, ty.skip_binder().def_id, ty.skip_binder().args);
     }
 
     let trait_ = clean_trait_ref_with_constraints(
@@ -2260,13 +2254,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the bounds associated with the def_id.
-                let bounds = cx
-                    .tcx
-                    .explicit_item_bounds(def_id)
-                    .iter_instantiated_copied(cx.tcx, args)
-                    .map(|(bound, _)| bound)
-                    .collect::<Vec<_>>();
-                let ty = clean_middle_opaque_bounds(cx, bounds);
+                let ty = clean_middle_opaque_bounds(cx, def_id, args);
                 if let Some(count) = cx.current_type_aliases.get_mut(&def_id) {
                     *count -= 1;
                     if *count == 0 {
@@ -2289,12 +2277,20 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
 fn clean_middle_opaque_bounds<'tcx>(
     cx: &mut DocContext<'tcx>,
-    bounds: Vec<ty::Clause<'tcx>>,
+    impl_trait_def_id: DefId,
+    args: ty::GenericArgsRef<'tcx>,
 ) -> Type {
     let mut has_sized = false;
+
+    let bounds: Vec<_> = cx
+        .tcx
+        .explicit_item_bounds(impl_trait_def_id)
+        .iter_instantiated_copied(cx.tcx, args)
+        .collect();
+
     let mut bounds = bounds
         .iter()
-        .filter_map(|bound| {
+        .filter_map(|(bound, _)| {
             let bound_predicate = bound.kind();
             let trait_ref = match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
@@ -2313,7 +2309,7 @@ fn clean_middle_opaque_bounds<'tcx>(
 
             let bindings: ThinVec<_> = bounds
                 .iter()
-                .filter_map(|bound| {
+                .filter_map(|(bound, _)| {
                     if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
                         if proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder() {
                             Some(AssocItemConstraint {
@@ -2351,6 +2347,10 @@ fn clean_middle_opaque_bounds<'tcx>(
     // Since all potential trait bounds are at the front we can just check the first bound.
     if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
         bounds.insert(0, GenericBound::sized(cx));
+    }
+
+    if let Some(args) = cx.tcx.rendered_precise_capturing_args(impl_trait_def_id) {
+        bounds.push(GenericBound::Use(args.to_vec()));
     }
 
     ImplTrait(bounds)
