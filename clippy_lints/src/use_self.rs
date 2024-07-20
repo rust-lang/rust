@@ -94,8 +94,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 .as_ref()
                 .is_none_or(|params| params.parenthesized == GenericArgsParentheses::No)
             && !item.span.from_expansion()
+            // expensive, should be last check
             && !is_from_proc_macro(cx, item)
-        // expensive, should be last check
         {
             // Self cannot be used inside const generic parameters
             let types_to_skip = generics
