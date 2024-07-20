@@ -391,12 +391,16 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
         let pattern_complexity_limit =
             get_limit_size(cx.tcx.hir().krate_attrs(), cx.tcx.sess, sym::pattern_complexity);
-        let report =
-            rustc_pattern_analysis::analyze_match(&cx, &arms, scrut_ty, pattern_complexity_limit)
-                .map_err(|err| {
-                self.error = Err(err);
-                err
-            })?;
+        let report = rustc_pattern_analysis::rustc::analyze_match(
+            &cx,
+            &arms,
+            scrut_ty,
+            pattern_complexity_limit,
+        )
+        .map_err(|err| {
+            self.error = Err(err);
+            err
+        })?;
 
         // Warn unreachable subpatterns.
         for (arm, is_useful) in report.arm_usefulness.iter() {
