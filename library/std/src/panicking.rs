@@ -852,8 +852,8 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
     rust_panic(&mut RewrapBox(payload))
 }
 
-/// An unmangled function (through `rustc_std_internal_symbol`) on which to slap
-/// yer breakpoints.
+/// An unmangled function (through `rustc_std_internal_symbol`) on which to place
+/// your breakpoints.
 #[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(not(feature = "panic_immediate_abort"))]
