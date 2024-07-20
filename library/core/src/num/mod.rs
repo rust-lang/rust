@@ -1414,11 +1414,11 @@ macro_rules! from_str_radix {
         impl $int_ty {
             /// Converts a string slice in a given base to an integer.
             ///
-            /// The string is expected to be an optional `+` sign
-            /// followed by digits.
-            /// Leading and trailing whitespace represent an error.
-            /// Digits are a subset of these characters, depending on `radix`:
+            /// The string is expected to be an optional `+` or `-` sign (the latter not being
+            /// allowed for unsigned integers) followed by only digits. Leading and trailing
+            /// non-digit characters (including whitespace) represent an error.
             ///
+            /// Digits are a subset of these characters, depending on `radix`:
             /// * `0-9`
             /// * `a-z`
             /// * `A-Z`
