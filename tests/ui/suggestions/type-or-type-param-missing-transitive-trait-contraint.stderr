@@ -1,0 +1,38 @@
+error[E0599]: the method `clone` exists for struct `HashMap<String, B<Z>>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:16:27
+   |
+LL | struct B<A> {
+   | ----------- doesn't satisfy `B<Z>: Clone`
+...
+LL |     let a_map = ctx.a_map.clone();
+   |                           ^^^^^ method cannot be called on `HashMap<String, B<Z>>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `B<Z>: Clone`
+           which is required by `HashMap<String, B<Z>>: Clone`
+help: consider restricting type parameter `Z`
+   |
+LL | fn foo<Z: std::clone::Clone>(ctx: &mut Ctx<Z>) {
+   |         +++++++++++++++++++
+
+error[E0599]: the method `clone` exists for struct `HashMap<String, B<S>>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:21:27
+   |
+LL | struct B<A> {
+   | ----------- doesn't satisfy `B<S>: Clone`
+...
+LL |     let a_map = ctx.a_map.clone();
+   |                           ^^^^^ method cannot be called on `HashMap<String, B<S>>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `B<S>: Clone`
+           which is required by `HashMap<String, B<S>>: Clone`
+help: consider annotating `S` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct S;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
