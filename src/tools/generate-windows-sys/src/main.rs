@@ -4,6 +4,24 @@ use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
+/// 32-bit ARM is not supported by Microsoft so ARM types are not generated.
+/// Therefore we need to inject a few types to make the bindings work.
+const ARM32_SHIM: &str = r#"
+#[cfg(target_arch = "arm")]
+#[repr(C)]
+pub struct WSADATA {
+    pub wVersion: u16,
+    pub wHighVersion: u16,
+    pub szDescription: [u8; 257],
+    pub szSystemStatus: [u8; 129],
+    pub iMaxSockets: u16,
+    pub iMaxUdpDg: u16,
+    pub lpVendorInfo: PSTR,
+}
+#[cfg(target_arch = "arm")]
+pub enum CONTEXT {}
+"#;
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut path: PathBuf =
         env::args_os().nth(1).expect("a path to the rust repository is required").into();
@@ -16,6 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("{info}");
 
     let mut f = std::fs::File::options().append(true).open("windows_sys.rs")?;
+    f.write_all(ARM32_SHIM.as_bytes())?;
     writeln!(&mut f, "// ignore-tidy-filelength")?;
     writeln!(&mut f, "use super::windows_targets;")?;
 
