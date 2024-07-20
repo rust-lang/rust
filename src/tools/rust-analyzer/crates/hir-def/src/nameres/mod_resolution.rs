@@ -1,7 +1,7 @@
 //! This module resolves `mod foo;` declaration to file.
 use arrayvec::ArrayVec;
 use base_db::AnchoredPath;
-use hir_expand::{name::Name, HirFileIdExt, MacroFileIdExt};
+use hir_expand::{name::Name, HirFileIdExt};
 use limit::Limit;
 use span::EditionedFileId;
 use syntax::ToSmolStr as _;
@@ -72,10 +72,6 @@ impl ModDir {
         match attr_path {
             Some(attr_path) => {
                 candidate_files.push(self.dir_path.join_attr(attr_path, self.root_non_dir_owner))
-            }
-            None if file_id.macro_file().map_or(false, |it| it.is_include_macro(db.upcast())) => {
-                candidate_files.push(format!("{}.rs", name.display(db.upcast())));
-                candidate_files.push(format!("{}/mod.rs", name.display(db.upcast())));
             }
             None => {
                 candidate_files.push(format!(
