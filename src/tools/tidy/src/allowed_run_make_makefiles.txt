@@ -1,8 +1,6 @@
 run-make/branch-protection-check-IBT/Makefile
 run-make/c-dynamic-dylib/Makefile
 run-make/c-dynamic-rlib/Makefile
-run-make/c-static-dylib/Makefile
-run-make/c-static-rlib/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
 run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
@@ -21,9 +19,7 @@ run-make/emit-to-stdout/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
-run-make/extern-fn-generic/Makefile
 run-make/extern-fn-reachable/Makefile
-run-make/extern-fn-with-union/Makefile
 run-make/extern-multiple-copies/Makefile
 run-make/extern-multiple-copies2/Makefile
 run-make/fmt-write-bloat/Makefile
@@ -36,7 +32,6 @@ run-make/interdependent-c-libraries/Makefile
 run-make/issue-107094/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
-run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
@@ -52,11 +47,9 @@ run-make/libtest-junit/Makefile
 run-make/libtest-thread-limit/Makefile
 run-make/link-cfg/Makefile
 run-make/link-framework/Makefile
-run-make/linkage-attr-on-static/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/lto-linkage-used-attr/Makefile
-run-make/lto-no-link-whole-rlib/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/min-global-align/Makefile
 run-make/native-link-modifier-bundle/Makefile
@@ -65,7 +58,6 @@ run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-duplicate-libs/Makefile
 run-make/panic-abort-eh_frame/Makefile
-run-make/pass-non-c-like-enum-to-c/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-gen-no-imp-symbols/Makefile
@@ -82,7 +74,6 @@ run-make/redundant-libs/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
-run-make/return-non-c-like-enum-from-c/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
