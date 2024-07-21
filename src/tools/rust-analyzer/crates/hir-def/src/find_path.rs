@@ -381,7 +381,7 @@ fn calculate_best_path(
                     visited_modules,
                     info.container,
                     true,
-                    best_choice.as_ref().map_or(max_len, |it| it.path_len) - 1,
+                    best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
                 );
                 let Some(mut choice) = choice else {
                     continue;
@@ -450,6 +450,11 @@ fn calculate_best_path_local(
     item: ItemInNs,
     max_len: usize,
 ) -> Option<Choice> {
+    if max_len <= 1 {
+        // recursive base case, we can't find a path prefix of length 0, one segment is occupied by
+        // the item's name itself.
+        return None;
+    }
     let mut best_choice = None::<Choice>;
     // FIXME: cache the `find_local_import_locations` output?
     find_local_import_locations(ctx.db, item, ctx.from, ctx.from_def_map, |name, module_id| {
@@ -463,7 +468,7 @@ fn calculate_best_path_local(
             visited_modules,
             module_id,
             false,
-            best_choice.as_ref().map_or(max_len, |it| it.path_len) - 1,
+            best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
         ) {
             best_choice = Some(match best_choice.take() {
                 Some(best_choice) => best_choice.select(path, name.clone()),
