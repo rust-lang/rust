@@ -703,7 +703,7 @@ fn path_import_candidate(
 ) -> Option<ImportCandidate> {
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
-            None => {
+            Some(PathResolution::Def(ModuleDef::BuiltinType(_))) | None => {
                 if qualifier.first_qualifier().map_or(true, |it| sema.resolve_path(&it).is_none()) {
                     let qualifier = qualifier
                         .segments()
