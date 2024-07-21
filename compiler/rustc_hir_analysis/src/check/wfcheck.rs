@@ -922,10 +922,8 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
         } => {
             let ty = tcx.type_of(param.def_id).instantiate_identity();
 
-            if tcx.features().adt_const_params {
+            if tcx.features().unsized_const_params {
                 enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
-                    let trait_def_id =
-                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span));
                     wfcx.register_bound(
                         ObligationCause::new(
                             hir_ty.span,
@@ -934,7 +932,21 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ),
                         wfcx.param_env,
                         ty,
-                        trait_def_id,
+                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, Some(hir_ty.span)),
+                    );
+                    Ok(())
+                })
+            } else if tcx.features().adt_const_params {
+                enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
+                    wfcx.register_bound(
+                        ObligationCause::new(
+                            hir_ty.span,
+                            param.def_id,
+                            ObligationCauseCode::ConstParam(ty),
+                        ),
+                        wfcx.param_env,
+                        ty,
+                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span)),
                     );
                     Ok(())
                 })
@@ -958,14 +970,29 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                 diag.note("the only supported types are integers, `bool` and `char`");
 
                 let cause = ObligationCause::misc(hir_ty.span, param.def_id);
+                let adt_const_params_feature_string =
+                    " more complex and user defined types".to_string();
                 let may_suggest_feature = match type_allowed_to_implement_const_param_ty(
                     tcx,
                     tcx.param_env(param.def_id),
                     ty,
+                    LangItem::ConstParamTy,
                     cause,
                 ) {
                     // Can never implement `ConstParamTy`, don't suggest anything.
-                    Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => false,
+                    Err(
+                        ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed
+                        | ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(..),
+                    ) => None,
+                    Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired) => {
+                        Some(vec![
+                            (adt_const_params_feature_string, sym::adt_const_params),
+                            (
+                                " references to implement the `ConstParamTy` trait".into(),
+                                sym::unsized_const_params,
+                            ),
+                        ])
+                    }
                     // May be able to implement `ConstParamTy`. Only emit the feature help
                     // if the type is local, since the user may be able to fix the local type.
                     Err(ConstParamTyImplementationError::InfrigingFields(..)) => {
@@ -985,20 +1012,16 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                             }
                         }
 
-                        ty_is_local(ty)
+                        ty_is_local(ty).then_some(vec![(
+                            adt_const_params_feature_string,
+                            sym::adt_const_params,
+                        )])
                     }
                     // Implments `ConstParamTy`, suggest adding the feature to enable.
-                    Ok(..) => true,
+                    Ok(..) => Some(vec![(adt_const_params_feature_string, sym::adt_const_params)]),
                 };
-                if may_suggest_feature {
-                    tcx.disabled_nightly_features(
-                        &mut diag,
-                        Some(param.hir_id),
-                        [(
-                            " more complex and user defined types".to_string(),
-                            sym::adt_const_params,
-                        )],
-                    );
+                if let Some(features) = may_suggest_feature {
+                    tcx.disabled_nightly_features(&mut diag, Some(param.hir_id), features);
                 }
 
                 Err(diag.emit())

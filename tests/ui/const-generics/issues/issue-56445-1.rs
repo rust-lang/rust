@@ -1,6 +1,6 @@
 // Regression test for https://github.com/rust-lang/rust/issues/56445#issuecomment-518402995.
 //@ revisions: full min
-#![cfg_attr(full, feature(adt_const_params))]
+#![cfg_attr(full, feature(adt_const_params, unsized_const_params))]
 #![cfg_attr(full, allow(incomplete_features))]
 #![crate_type = "lib"]
 
