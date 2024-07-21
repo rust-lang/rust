@@ -13,7 +13,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
@@ -183,9 +182,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
             warn!("resolved ty var in error message");
         }
 
-        let mut infcx_inner = infcx.inner.borrow_mut();
-        let ty_vars = infcx_inner.type_variables();
-        let var_origin = ty_vars.var_origin(ty_vid);
+        let var_origin = infcx.type_var_origin(ty_vid);
         if let Some(def_id) = var_origin.param_def_id
             // The `Self` param of a trait has the def-id of the trait,
             // since it's a synthetic parameter.
@@ -206,24 +203,8 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         }
     };
     printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
-    let const_getter = move |ct_vid| match infcx
-        .inner
-        .borrow_mut()
-        .const_unification_table()
-        .probe_value(ct_vid)
-    {
-        ConstVariableValue::Known { value: _ } => {
-            warn!("resolved const var in error message");
-            None
-        }
-        ConstVariableValue::Unknown { origin, universe: _ } => {
-            if let Some(def_id) = origin.param_def_id {
-                Some(infcx.tcx.item_name(def_id))
-            } else {
-                None
-            }
-        }
-    };
+    let const_getter =
+        move |ct_vid| Some(infcx.tcx.item_name(infcx.const_var_origin(ct_vid)?.param_def_id?));
     printer.const_infer_name_resolver = Some(Box::new(const_getter));
     printer
 }
@@ -300,9 +281,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
-                    let mut inner = self.inner.borrow_mut();
-                    let ty_vars = &inner.type_variables();
-                    let var_origin = ty_vars.var_origin(ty_vid);
+                    let var_origin = self.infcx.type_var_origin(ty_vid);
                     if let Some(def_id) = var_origin.param_def_id
                         // The `Self` param of a trait has the def-id of the trait,
                         // since it's a synthetic parameter.
@@ -332,13 +311,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
-                    let origin =
-                        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
-                            ConstVariableValue::Known { value } => {
-                                bug!("resolved infer var: {vid:?} {value}")
-                            }
-                            ConstVariableValue::Unknown { origin, universe: _ } => origin,
-                        };
+                    let origin = self.const_var_origin(vid).expect("expected unresolved const var");
                     if let Some(def_id) = origin.param_def_id {
                         return InferenceDiagnosticsData {
                             name: self.tcx.item_name(def_id).to_string(),
@@ -885,7 +858,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
                     (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => {
-                        self.tecx.inner.borrow_mut().const_unification_table().unioned(a_vid, b_vid)
+                        self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid)
                     }
                     _ => false,
                 }

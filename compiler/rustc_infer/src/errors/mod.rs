@@ -15,10 +15,10 @@ use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 use rustc_span::{symbol::Ident, BytePos, Span};
 
+use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;
 use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::fluent_generated as fluent;
-use crate::infer::need_type_info::UnderspecifiedArgKind;
 
 use std::path::PathBuf;
 

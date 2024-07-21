@@ -65,8 +65,6 @@ pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
 pub mod type_variable;
-// FIXME(error_reporting): Where should we put this?
-pub mod need_type_info;
 
 #[must_use]
 #[derive(Debug)]
@@ -723,6 +721,16 @@ impl<'tcx> InferCtxt<'tcx> {
     /// No attempt is made to resolve `vid` to its root variable.
     pub fn type_var_origin(&self, vid: TyVid) -> TypeVariableOrigin {
         self.inner.borrow_mut().type_variables().var_origin(vid)
+    }
+
+    /// Returns the origin of the const variable identified by `vid`
+    // FIXME: We should store origins separately from the unification table
+    // so this doesn't need to be optional.
+    pub fn const_var_origin(&self, vid: ConstVid) -> Option<ConstVariableOrigin> {
+        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
+            ConstVariableValue::Known { .. } => None,
+            ConstVariableValue::Unknown { origin, .. } => Some(origin),
+        }
     }
 
     pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {

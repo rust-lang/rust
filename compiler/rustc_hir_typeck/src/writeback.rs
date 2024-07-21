@@ -8,7 +8,7 @@ use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
+use rustc_infer::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
