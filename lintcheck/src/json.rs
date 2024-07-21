@@ -1,3 +1,7 @@
+#![expect(unused)]
+
+use std::collections::BTreeSet;
+use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 
@@ -6,7 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::ClippyWarning;
 
-#[derive(Deserialize, Serialize)]
+const DEFAULT_LIMIT_PER_LINT: usize = 300;
+const TRUNCATION_TOTAL_TARGET: usize = 1000;
+
+#[derive(Debug, Deserialize, Serialize)]
 struct LintJson {
     lint: String,
     krate: String,
@@ -52,14 +59,16 @@ fn load_warnings(path: &Path) -> Vec<LintJson> {
     serde_json::from_slice(&file).unwrap_or_else(|e| panic!("failed to deserialize {}: {e}", path.display()))
 }
 
-fn print_warnings(title: &str, warnings: &[LintJson]) {
+fn print_warnings(title: &str, warnings: &[LintJson], truncate_after: usize) {
     if warnings.is_empty() {
         return;
     }
 
-    //We have to use HTML here to be able to manually add an id.
-    println!(r#"<h3 id="{title}">{title}</h3>"#);
+    print_h3(&warnings[0].lint, title);
     println!();
+
+    let warnings = truncate(warnings, truncate_after);
+
     for warning in warnings {
         println!("{}", warning.info_text(title));
         println!();
@@ -70,14 +79,16 @@ fn print_warnings(title: &str, warnings: &[LintJson]) {
     }
 }
 
-fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
+fn print_changed_diff(changed: &[(LintJson, LintJson)], truncate_after:usize) {
     if changed.is_empty() {
         return;
     }
 
-    //We have to use HTML here to be able to manually add an id.
-    println!(r#"<h3 id="changed">Changed</h3>"#);
+    print_h3(&changed[0].0.lint, "Changed");
     println!();
+
+    let changes = truncate(changed, truncate_after);
+
     for (old, new) in changed {
         println!("{}", new.info_text("Changed"));
         println!();
@@ -101,7 +112,25 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)]) {
     }
 }
 
-pub(crate) fn diff(old_path: &Path, new_path: &Path) {
+fn print_h3(lint: &str, title: &str) {
+    let html_id = to_html_id(lint);
+    // We have to use HTML here to be able to manually add an id.
+    println!(r#"<h3 id="user-content-{html_id}-{title}">{title}</h3>"#);
+}
+
+fn truncate<T>(list: &[T], truncate_after: usize) -> &[T] {
+    if list.len() > truncate_after {
+        println!("{} warnings have been truncated for this summary.", list.len() - truncate_after);
+        println!();
+    
+        list.split_at(truncate_after).0
+    } else {
+        list
+    }
+
+}
+
+pub(crate) fn diff(old_path: &Path, new_path: &Path, truncate: bool) {
     let old_warnings = load_warnings(old_path);
     let new_warnings = load_warnings(new_path);
 
@@ -121,31 +150,141 @@ pub(crate) fn diff(old_path: &Path, new_path: &Path) {
         }
     }
 
-    print!(
-        r##"{}, {}, {}"##,
-        count_string("added", added.len()),
-        count_string("removed", removed.len()),
-        count_string("changed", changed.len()),
-    );
-    println!();
+    let lint_warnings = group_by_lint(added, removed, changed);
+
+    print_summary_table(&lint_warnings);
     println!();
 
-    print_warnings("Added", &added);
-    print_warnings("Removed", &removed);
-    print_changed_diff(&changed);
+    let truncate_after = if truncate {
+        // Max 9 ensures that we at least have three messages per lint
+        DEFAULT_LIMIT_PER_LINT.min(TRUNCATION_TOTAL_TARGET / lint_warnings.len()).max(9)
+    } else {
+        // No lint should ever each this number of lint emissions, so this is equivialent to
+        // No truncation
+        usize::MAX
+    };
+
+    for lint in lint_warnings {
+        print_lint_warnings(&lint, truncate_after)
+    }
+}
+
+fn print_lint_warnings(lint: &LintWarnings, truncate_after: usize) {
+    let name = &lint.name;
+    let html_id = to_html_id(name);
+
+    // The additional anchor is added for non GH viewers that don't prefix ID's
+    println!(r#"<h2 id="user-content-{html_id}">{name}</h2>"#);
+    println!();
+
+    print!(
+        r##"{}, {}, {}"##,
+        count_string(name, "added", lint.added.len()),
+        count_string(name, "removed", lint.removed.len()),
+        count_string(name, "changed", lint.changed.len()),
+    );
+    println!();
+
+    print_warnings("Added", &lint.added, truncate_after / 3);
+    print_warnings("Removed", &lint.removed, truncate_after / 3);
+    print_changed_diff(&lint.changed, truncate_after / 3);
+}
+
+#[derive(Debug)]
+struct LintWarnings {
+    name: String,
+    added: Vec<LintJson>,
+    removed: Vec<LintJson>,
+    changed: Vec<(LintJson, LintJson)>,
+}
+
+fn group_by_lint(
+    mut added: Vec<LintJson>,
+    mut removed: Vec<LintJson>,
+    mut changed: Vec<(LintJson, LintJson)>,
+) -> Vec<LintWarnings> {
+    /// Collects items from an iterator while the condition is met
+    fn collect_while<T, F>(iter: &mut std::iter::Peekable<impl Iterator<Item = T>>, mut condition: F) -> Vec<T>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        let mut items = vec![];
+        while iter.peek().map_or(false, |item| condition(item)) {
+            items.push(iter.next().unwrap());
+        }
+        items
+    }
+
+    // Sort
+    added.sort_unstable_by(|a, b| a.lint.cmp(&b.lint));
+    removed.sort_unstable_by(|a, b| a.lint.cmp(&b.lint));
+    changed.sort_unstable_by(|(a, _), (b, _)| a.lint.cmp(&b.lint));
+
+    // Collect lint names
+    let lint_names: BTreeSet<_> = added
+        .iter()
+        .chain(removed.iter())
+        .chain(changed.iter().map(|(a, _)| a))
+        .map(|warning| &warning.lint)
+        .cloned()
+        .collect();
+
+    let mut added_iter = added.into_iter().peekable();
+    let mut removed_iter = removed.into_iter().peekable();
+    let mut changed_iter = changed.into_iter().peekable();
+
+    let mut lints = vec![];
+    for name in lint_names.into_iter() {
+        lints.push(LintWarnings {
+            added: collect_while(&mut added_iter, |warning| warning.lint == name),
+            removed: collect_while(&mut removed_iter, |warning| warning.lint == name),
+            changed: collect_while(&mut changed_iter, |(warning, _)| warning.lint == name),
+            name,
+        });
+    }
+
+    lints
+}
+
+// This function limits the number of lints in the collection if needed.
+//
+// It's honestly amazing that a function like this is needed. But some restriction
+// lints (Looking at you `implicit_return` and `if_then_some_else_none`) trigger a lot
+// like 60'000+ times in our CI.
+//
+// Each lint in the list will be limited to 200 messages
+
+fn print_summary_table(lints: &[LintWarnings]) {
+    println!("| Lint                                       | Added   | Removed | Changed |");
+    println!("| ------------------------------------------ | ------: | ------: | ------: |");
+
+    for lint in lints {
+        println!(
+            "| {:<62} | {:>7} | {:>7} | {:>7} |",
+            format!("[`{}`](#user-content-{})", lint.name, to_html_id(&lint.name)),
+            lint.added.len(),
+            lint.removed.len(),
+            lint.changed.len()
+        );
+    }
+}
+
+fn to_html_id(lint_name: &str) -> String {
+    lint_name.replace("clippy::", "").replace("_", "-")
 }
 
 /// This generates the `x added` string for the start of the job summery.
 /// It linkifies them if possible to jump to the respective heading.
-fn count_string(label: &str, count: usize) -> String {
+fn count_string(lint: &str, label: &str, count: usize) -> String {
     // Headlines are only added, if anything will be displayed under the headline.
     // We therefore only want to add links to them if they exist
     if count == 0 {
         format!("0 {label}")
     } else {
+        let lint_id = to_html_id(lint);
         // GitHub's job summaries don't add HTML ids to headings. That's why we
         // manually have to add them. GitHub prefixes these manual ids with
         // `user-content-` and that's how we end up with these awesome links :D
-        format!("[{count} {label}](#user-content-{label})")
+        format!("[{count} {label}](#user-content-{lint_id}-{label})")
     }
 }
