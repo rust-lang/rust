@@ -21,6 +21,7 @@ pub mod thread_local_key;
 pub mod time;
 
 use crate::{arch::asm, ptr::{self, addr_of_mut}};
+use crate::hash::{DefaultHasher, Hasher};
 
 #[cfg(not(test))]
 #[no_mangle]
@@ -87,6 +88,18 @@ pub fn abort_internal() -> ! {
     }
 }
 
+fn hash_time() -> u64 {
+    let mut hasher = DefaultHasher::new();
+    // The closest we can get to a random number is the time since program start
+    let time = unsafe {
+        vex_sdk::vexSystemHighResTimeGet()
+    };
+    hasher.write_u64(time);
+    hasher.finish()
+}
+
 pub fn hashmap_random_keys() -> (u64, u64) {
-    (1, 2)
+    let key1 = hash_time();
+    let key2 = hash_time();
+    (key1, key2)
 }
