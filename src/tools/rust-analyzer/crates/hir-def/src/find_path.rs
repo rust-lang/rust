@@ -153,7 +153,9 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 
     let mut visited_modules = FxHashSet::default();
 
-    calculate_best_path(ctx, &mut visited_modules, item, max_len).map(|choice| choice.path)
+    let mut best_choice = None;
+    calculate_best_path(ctx, &mut visited_modules, item, max_len, &mut best_choice);
+    best_choice.map(|choice| choice.path)
 }
 
 #[tracing::instrument(skip_all)]
@@ -164,12 +166,16 @@ fn find_path_for_module(
     maybe_extern: bool,
     max_len: usize,
 ) -> Option<Choice> {
+    if max_len == 0 {
+        // recursive base case, we can't find a path of length 0
+        return None;
+    }
     if let Some(crate_root) = module_id.as_crate_root() {
         if !maybe_extern || crate_root == ctx.from.derive_crate_root() {
             // - if the item is the crate root, return `crate`
             return Some(Choice {
                 path: ModPath::from_segments(PathKind::Crate, None),
-                path_len: 5,
+                path_text_len: 5,
                 stability: Stable,
                 prefer_due_to_prelude: false,
                 sysroot_score: 0,
@@ -232,7 +238,7 @@ fn find_path_for_module(
         if ctx.prefix != PrefixKind::ByCrate || kind == PathKind::Crate {
             return Some(Choice {
                 path: ModPath::from_segments(kind, None),
-                path_len: path_kind_len(kind),
+                path_text_len: path_kind_len(kind),
                 stability: Stable,
                 prefer_due_to_prelude: false,
                 sysroot_score: 0,
@@ -245,11 +251,13 @@ fn find_path_for_module(
     if let Some(choice) = find_in_prelude(ctx.db, ctx.from_def_map, item, ctx.from) {
         return Some(choice);
     }
+    let mut best_choice = None;
     if maybe_extern {
-        calculate_best_path(ctx, visited_modules, item, max_len)
+        calculate_best_path(ctx, visited_modules, item, max_len, &mut best_choice);
     } else {
-        calculate_best_path_local(ctx, visited_modules, item, max_len)
+        calculate_best_path_local(ctx, visited_modules, item, max_len, &mut best_choice);
     }
+    best_choice
 }
 
 fn find_in_scope(
@@ -333,12 +341,8 @@ fn calculate_best_path(
     visited_modules: &mut FxHashSet<ModuleId>,
     item: ItemInNs,
     max_len: usize,
-) -> Option<Choice> {
-    if max_len <= 1 {
-        // recursive base case, we can't find a path prefix of length 0, one segment is occupied by
-        // the item's name itself.
-        return None;
-    }
+    best_choice: &mut Option<Choice>,
+) {
     let fuel = ctx.fuel.get();
     if fuel == 0 {
         // we ran out of fuel, so we stop searching here
@@ -347,16 +351,15 @@ fn calculate_best_path(
             item.krate(ctx.db),
             ctx.from.krate()
         );
-        return None;
+        return;
     }
     ctx.fuel.set(fuel - 1);
 
     if item.krate(ctx.db) == Some(ctx.from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
-        calculate_best_path_local(ctx, visited_modules, item, max_len)
+        calculate_best_path_local(ctx, visited_modules, item, max_len, best_choice)
     } else {
-        let mut best_choice = None::<Choice>;
         let db = ctx.db;
         // Item was defined in some upstream crate. This means that it must be exported from one,
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
@@ -393,10 +396,7 @@ fn calculate_best_path(
                     if info.is_unstable { Unstable } else { Stable },
                 );
 
-                best_choice = Some(match best_choice.take() {
-                    Some(best_choice) => best_choice.select(choice, info.name.clone()),
-                    None => choice.push(ctx.cfg.prefer_prelude, info.name.clone()),
-                });
+                Choice::try_select(best_choice, choice, ctx.cfg.prefer_prelude, info.name.clone());
                 processed_something = true;
             }
             processed_something
@@ -415,12 +415,12 @@ fn calculate_best_path(
                 .map(|dep| {
                     (
                         match crate_graph[dep.crate_id].origin {
-                            CrateOrigin::Lang(LangCrateOrigin::Std) if ctx.cfg.prefer_no_std => 4,
+                            CrateOrigin::Lang(LangCrateOrigin::Std) if ctx.cfg.prefer_no_std => 5,
                             CrateOrigin::Lang(LangCrateOrigin::Std) => 1,
-                            CrateOrigin::Lang(LangCrateOrigin::Alloc) => 3,
+                            CrateOrigin::Lang(LangCrateOrigin::Alloc) => 2,
                             CrateOrigin::Lang(LangCrateOrigin::ProcMacro) => 3,
                             CrateOrigin::Lang(LangCrateOrigin::Test) => 3,
-                            CrateOrigin::Lang(LangCrateOrigin::Core) => 2,
+                            CrateOrigin::Lang(LangCrateOrigin::Core) => 4,
                             CrateOrigin::Lang(LangCrateOrigin::Other) => 1,
                             _ => 0,
                         },
@@ -431,8 +431,8 @@ fn calculate_best_path(
                 .reduce(BitOr::bitor)
                 .unwrap_or(false);
             if processed {
-                // Found a path in a sysroot crate, so return it.
-                return best_choice;
+                // Found a path in a sysroot crate
+                return;
             }
         }
 
@@ -440,7 +440,6 @@ fn calculate_best_path(
             .iter()
             .filter(|it| !ctx.is_std_item || !it.is_sysroot())
             .for_each(|dep| _ = process_dep(dep.crate_id, 0));
-        best_choice
     }
 }
 
@@ -449,13 +448,8 @@ fn calculate_best_path_local(
     visited_modules: &mut FxHashSet<ModuleId>,
     item: ItemInNs,
     max_len: usize,
-) -> Option<Choice> {
-    if max_len <= 1 {
-        // recursive base case, we can't find a path prefix of length 0, one segment is occupied by
-        // the item's name itself.
-        return None;
-    }
-    let mut best_choice = None::<Choice>;
+    best_choice: &mut Option<Choice>,
+) {
     // FIXME: cache the `find_local_import_locations` output?
     find_local_import_locations(ctx.db, item, ctx.from, ctx.from_def_map, |name, module_id| {
         if !visited_modules.insert(module_id) {
@@ -463,26 +457,22 @@ fn calculate_best_path_local(
         }
         // we are looking for paths of length up to best_path_len, any longer will make it be
         // less optimal. The -1 is due to us pushing name onto it afterwards.
-        if let Some(path) = find_path_for_module(
+        if let Some(choice) = find_path_for_module(
             ctx,
             visited_modules,
             module_id,
             false,
             best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
         ) {
-            best_choice = Some(match best_choice.take() {
-                Some(best_choice) => best_choice.select(path, name.clone()),
-                None => path.push(ctx.cfg.prefer_prelude, name.clone()),
-            });
+            Choice::try_select(best_choice, choice, ctx.cfg.prefer_prelude, name.clone());
         }
     });
-    best_choice
 }
 
 struct Choice {
     path: ModPath,
     /// The length in characters of the path
-    path_len: usize,
+    path_text_len: usize,
     /// The stability of the path
     stability: Stability,
     /// Whether this path contains a prelude segment and preference for it has been signaled
@@ -494,7 +484,7 @@ struct Choice {
 impl Choice {
     fn new(prefer_prelude: bool, kind: PathKind, name: Name, stability: Stability) -> Self {
         Self {
-            path_len: path_kind_len(kind) + name.as_str().len(),
+            path_text_len: path_kind_len(kind) + name.as_str().len(),
             stability,
             prefer_due_to_prelude: prefer_prelude && name == sym::prelude,
             sysroot_score: 0,
@@ -503,37 +493,44 @@ impl Choice {
     }
 
     fn push(mut self, prefer_prelude: bool, name: Name) -> Self {
-        self.path_len += name.as_str().len();
+        self.path_text_len += name.as_str().len();
         self.prefer_due_to_prelude |= prefer_prelude && name == sym::prelude;
         self.path.push_segment(name);
         self
     }
 
-    fn select(self, mut other: Choice, name: Name) -> Self {
+    fn try_select(
+        current: &mut Option<Choice>,
+        mut other: Choice,
+        prefer_prelude: bool,
+        name: Name,
+    ) {
+        let Some(current) = current else {
+            *current = Some(other.push(prefer_prelude, name));
+            return;
+        };
         match other
             .stability
-            .cmp(&self.stability)
-            .then_with(|| other.prefer_due_to_prelude.cmp(&self.prefer_due_to_prelude))
-            .then_with(|| self.sysroot_score.cmp(&other.sysroot_score))
-            .then_with(|| (self.path.len()).cmp(&(other.path.len() + 1)))
+            .cmp(&current.stability)
+            .then_with(|| other.prefer_due_to_prelude.cmp(&current.prefer_due_to_prelude))
+            .then_with(|| current.sysroot_score.cmp(&other.sysroot_score))
+            .then_with(|| (current.path.len()).cmp(&(other.path.len() + 1)))
         {
-            Ordering::Less => self,
+            Ordering::Less => return,
             Ordering::Equal => {
-                other.path_len += name.as_str().len();
-
-                match self.path_len.cmp(&other.path_len) {
-                    Ordering::Less | Ordering::Equal => self,
-                    Ordering::Greater => {
-                        other.path.push_segment(name);
-                        other
-                    }
+                other.path_text_len += name.as_str().len();
+                if let Ordering::Less | Ordering::Equal =
+                    current.path_text_len.cmp(&other.path_text_len)
+                {
+                    return;
                 }
             }
             Ordering::Greater => {
-                other.path.push_segment(name);
-                other
+                other.path_text_len += name.as_str().len();
             }
         }
+        other.path.push_segment(name);
+        *current = other;
     }
 }
 
