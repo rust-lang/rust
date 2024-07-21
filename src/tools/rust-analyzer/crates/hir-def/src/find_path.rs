@@ -13,7 +13,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
-    nameres::DefMap,
+    nameres::{DefMap, ModuleData},
     path::{ModPath, PathKind},
     visibility::{Visibility, VisibilityExplicitness},
     ImportPathConfig, ModuleDefId, ModuleId,
@@ -161,7 +161,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 #[tracing::instrument(skip_all)]
 fn find_path_for_module(
     ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<ModuleId>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
     module_id: ModuleId,
     maybe_extern: bool,
     max_len: usize,
@@ -338,7 +338,7 @@ fn is_kw_kind_relative_to_from(
 #[tracing::instrument(skip_all)]
 fn calculate_best_path(
     ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<ModuleId>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
     item: ItemInNs,
     max_len: usize,
     best_choice: &mut Option<Choice>,
@@ -445,28 +445,32 @@ fn calculate_best_path(
 
 fn calculate_best_path_local(
     ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<ModuleId>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
     item: ItemInNs,
     max_len: usize,
     best_choice: &mut Option<Choice>,
 ) {
     // FIXME: cache the `find_local_import_locations` output?
-    find_local_import_locations(ctx.db, item, ctx.from, ctx.from_def_map, |name, module_id| {
-        if !visited_modules.insert(module_id) {
-            return;
-        }
-        // we are looking for paths of length up to best_path_len, any longer will make it be
-        // less optimal. The -1 is due to us pushing name onto it afterwards.
-        if let Some(choice) = find_path_for_module(
-            ctx,
-            visited_modules,
-            module_id,
-            false,
-            best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
-        ) {
-            Choice::try_select(best_choice, choice, ctx.cfg.prefer_prelude, name.clone());
-        }
-    });
+    find_local_import_locations(
+        ctx.db,
+        item,
+        ctx.from,
+        ctx.from_def_map,
+        visited_modules,
+        |visited_modules, name, module_id| {
+            // we are looking for paths of length up to best_path_len, any longer will make it be
+            // less optimal. The -1 is due to us pushing name onto it afterwards.
+            if let Some(choice) = find_path_for_module(
+                ctx,
+                visited_modules,
+                module_id,
+                false,
+                best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
+            ) {
+                Choice::try_select(best_choice, choice, ctx.cfg.prefer_prelude, name.clone());
+            }
+        },
+    );
 }
 
 struct Choice {
@@ -551,7 +555,8 @@ fn find_local_import_locations(
     item: ItemInNs,
     from: ModuleId,
     def_map: &DefMap,
-    mut cb: impl FnMut(&Name, ModuleId),
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
+    mut cb: impl FnMut(&mut FxHashSet<(ItemInNs, ModuleId)>, &Name, ModuleId),
 ) {
     let _p = tracing::info_span!("find_local_import_locations").entered();
 
@@ -564,32 +569,29 @@ fn find_local_import_locations(
     let mut worklist = def_map[from.local_id]
         .children
         .values()
-        .map(|child| def_map.module_id(*child))
-        // FIXME: do we need to traverse out of block expressions here?
+        .map(|&child| def_map.module_id(child))
         .chain(iter::successors(from.containing_module(db), |m| m.containing_module(db)))
+        .zip(iter::repeat(false))
         .collect::<Vec<_>>();
-    let mut seen: FxHashSet<_> = FxHashSet::default();
 
     let def_map = def_map.crate_root().def_map(db);
+    let mut block_def_map;
+    let mut cursor = 0;
 
-    while let Some(module) = worklist.pop() {
-        if !seen.insert(module) {
-            continue; // already processed this module
+    while let Some(&mut (module, ref mut processed)) = worklist.get_mut(cursor) {
+        cursor += 1;
+        if !visited_modules.insert((item, module)) {
+            // already processed this module
+            continue;
         }
-        let ext_def_map;
-        let data = if module.krate == from.krate {
-            if module.block.is_some() {
-                // Re-query the block's DefMap
-                ext_def_map = module.def_map(db);
-                &ext_def_map[module.local_id]
-            } else {
-                // Reuse the root DefMap
-                &def_map[module.local_id]
-            }
+        *processed = true;
+        let data = if module.block.is_some() {
+            // Re-query the block's DefMap
+            block_def_map = module.def_map(db);
+            &block_def_map[module.local_id]
         } else {
-            // The crate might reexport a module defined in another crate.
-            ext_def_map = module.def_map(db);
-            &ext_def_map[module.local_id]
+            // Reuse the root DefMap
+            &def_map[module.local_id]
         };
 
         if let Some((name, vis, declared)) = data.scope.name_of(item) {
@@ -612,18 +614,30 @@ fn find_local_import_locations(
                 // the item and we're a submodule of it, so can we.
                 // Also this keeps the cached data smaller.
                 if declared || is_pub_or_explicit {
-                    cb(name, module);
+                    cb(visited_modules, name, module);
                 }
             }
         }
 
         // Descend into all modules visible from `from`.
         for (module, vis) in data.scope.modules_in_scope() {
+            if module.krate != from.krate {
+                // We don't need to look at modules from other crates as our item has to be in the
+                // current crate
+                continue;
+            }
+            if visited_modules.contains(&(item, module)) {
+                continue;
+            }
+
             if vis.is_visible_from(db, from) {
-                worklist.push(module);
+                worklist.push((module, false));
             }
         }
     }
+    worklist.into_iter().filter(|&(_, processed)| processed).for_each(|(module, _)| {
+        visited_modules.remove(&(item, module));
+    });
 }
 
 #[cfg(test)]
@@ -1591,8 +1605,6 @@ fn main() {
 
     #[test]
     fn from_inside_module() {
-        // This worked correctly, but the test suite logic was broken.
-        cov_mark::check!(submodule_in_testdb);
         check_found_path(
             r#"
 mod baz {
@@ -1613,6 +1625,35 @@ mod bar {
                 ByCrate(imports ✖): crate::baz::Foo
                 BySelf (imports ✔): crate::baz::Foo
                 BySelf (imports ✖): crate::baz::Foo
+            "#]],
+        )
+    }
+
+    #[test]
+    fn from_inside_module2() {
+        check_found_path(
+            r#"
+mod qux {
+    pub mod baz {
+        pub struct Foo {}
+    }
+
+    mod bar {
+        fn bar() {
+            $0;
+        }
+    }
+}
+
+            "#,
+            "crate::qux::baz::Foo",
+            expect![[r#"
+                Plain  (imports ✔): super::baz::Foo
+                Plain  (imports ✖): super::baz::Foo
+                ByCrate(imports ✔): crate::qux::baz::Foo
+                ByCrate(imports ✖): crate::qux::baz::Foo
+                BySelf (imports ✔): super::baz::Foo
+                BySelf (imports ✖): super::baz::Foo
             "#]],
         )
     }
