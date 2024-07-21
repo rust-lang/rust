@@ -953,6 +953,7 @@ table,
 	display: table;
 	padding: 0;
 	margin: 0;
+	width: 100%;
 }
 .item-table > li {
 	display: table-row;
