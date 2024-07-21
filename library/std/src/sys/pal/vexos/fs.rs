@@ -55,19 +55,21 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        todo!()
+        FileType {
+            is_dir: false,
+        }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        todo!()
+        unsupported()
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        todo!()
+        unsupported()
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        todo!()
+        unsupported()
     }
 }
 
@@ -146,11 +148,7 @@ impl OpenOptions {
     pub fn append(&mut self, append: bool) {
         self.append = append;
     }
-    pub fn truncate(&mut self, truncate: bool) {
-        if truncate {
-            panic!("Truncation is not supported")
-        }
-    }
+    pub fn truncate(&mut self, _truncate: bool) {}
     pub fn create(&mut self, create: bool) {
         self.write = create;
     }
@@ -169,14 +167,9 @@ impl File {
         })?;
 
         if opts.create_new {
-            let file_exists = unsafe {
-                vex_sdk::vexFileStatus(path.as_ptr())
-            };
+            let file_exists = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
             if file_exists != 0 {
-                return Err(io::Error::new(
-                    io::ErrorKind::AlreadyExists,
-                    "File already exists"
-                ))
+                return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File already exists"));
             }
         }
 
@@ -335,18 +328,11 @@ pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
 }
 
 pub fn try_exists(path: &Path) -> io::Result<bool> {
-    let path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
-        io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
-    })?;
+    let path = CString::new(path.as_os_str().as_encoded_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
 
-    let file_exists = unsafe {
-        vex_sdk::vexFileStatus(path.as_ptr())
-    };
-    if file_exists != 0 {
-        Ok(true)
-    } else {
-        Ok(false)
-    }
+    let file_exists = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
+    if file_exists != 0 { Ok(true) } else { Ok(false) }
 }
 
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
@@ -368,10 +354,14 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let fd = file.fd.0;
 
     const SEEK_END: i32 = 2;
+    const SEEK_SET: i32 = 0;
 
     let end = unsafe {
+        let cur = vex_sdk::vexFileTell(fd);
         map_fresult(vex_sdk::vexFileSeek(fd, 0, SEEK_END))?;
-        vex_sdk::vexFileTell(fd)
+        let end = vex_sdk::vexFileTell(fd);
+        map_fresult(vex_sdk::vexFileSeek(fd, cur as _, SEEK_SET))?;
+        end
     };
 
     if end >= 0 {
