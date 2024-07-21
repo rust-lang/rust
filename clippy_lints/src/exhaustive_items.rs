@@ -88,11 +88,11 @@ impl LateLintPass<'_> for ExhaustiveItems {
             && !attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
             && fields.iter().all(|f| cx.tcx.visibility(f.def_id).is_public())
         {
-            let suggestion_span = item.span.shrink_to_lo();
-            let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
             span_lint_and_then(cx, lint, item.span, msg, |diag| {
+                let suggestion_span = item.span.shrink_to_lo();
+                let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
                 let sugg = format!("#[non_exhaustive]\n{indent}");
-                diag.span_suggestion(
+                diag.span_suggestion_verbose(
                     suggestion_span,
                     "try adding #[non_exhaustive]",
                     sugg,

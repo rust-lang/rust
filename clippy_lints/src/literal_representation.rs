@@ -186,7 +186,7 @@ impl WarningType {
         }
     }
 
-    fn display(&self, num_lit: NumericLiteral<'_>, cx: &EarlyContext<'_>, span: Span) {
+    fn display(&self, num_lit: &NumericLiteral<'_>, cx: &EarlyContext<'_>, span: Span) {
         let (lint, message, try_msg) = self.lint_and_text();
         #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
         span_lint_and_then(cx, lint, span, message, |diag| {
@@ -269,7 +269,7 @@ impl LiteralDigitGrouping {
                     WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => true,
                 };
                 if should_warn {
-                    warning_type.display(num_lit, cx, span);
+                    warning_type.display(&num_lit, cx, span);
                 }
             }
         }
@@ -450,7 +450,7 @@ impl DecimalLiteralRepresentation {
             let hex = format!("{val:#X}");
             let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
             let _: Result<(), ()> = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                warning_type.display(num_lit, cx, span);
+                warning_type.display(&num_lit, cx, span);
             });
         }
     }

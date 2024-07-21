@@ -77,7 +77,6 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                 },
                 _ => return,
             };
-            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(cx, ASSERTIONS_ON_RESULT_STATES, macro_call.span, message, |diag| {
                 let semicolon = if is_expr_final_block_expr(cx.tcx, e) { ";" } else { "" };
                 let mut app = Applicability::MachineApplicable;
