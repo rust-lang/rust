@@ -148,7 +148,6 @@ impl TestDB {
             };
 
             if size != Some(new_size) {
-                cov_mark::hit!(submodule_in_testdb);
                 size = Some(new_size);
                 res = module;
             }
