@@ -718,17 +718,11 @@ impl<'tcx> InferCtxt<'tcx> {
         t.fold_with(&mut self.freshener())
     }
 
-    /// Returns the origin of the type variable identified by `vid`, or `None`
-    /// if this is not a type variable.
+    /// Returns the origin of the type variable identified by `vid`.
     ///
-    /// No attempt is made to resolve `ty`.
-    pub fn type_var_origin(&self, ty: Ty<'tcx>) -> Option<TypeVariableOrigin> {
-        match *ty.kind() {
-            ty::Infer(ty::TyVar(vid)) => {
-                Some(self.inner.borrow_mut().type_variables().var_origin(vid))
-            }
-            _ => None,
-        }
+    /// No attempt is made to resolve `vid` to its root variable.
+    pub fn type_var_origin(&self, vid: TyVid) -> TypeVariableOrigin {
+        self.inner.borrow_mut().type_variables().var_origin(vid)
     }
 
     pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
