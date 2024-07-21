@@ -189,6 +189,7 @@ impl Crate {
                 Ok(Message::CompilerMessage(message)) => ClippyWarning::new(
                     normalize_diag(message.message, shared_target_dir.to_str().unwrap()),
                     &self.base_url,
+                    &self.name,
                 ),
                 _ => None,
             })

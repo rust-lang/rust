@@ -72,7 +72,7 @@ fn process_stream(
     let messages = stderr
         .lines()
         .filter_map(|json_msg| serde_json::from_str::<Diagnostic>(json_msg).ok())
-        .filter_map(|diag| ClippyWarning::new(diag, &base_url));
+        .filter_map(|diag| ClippyWarning::new(diag, &base_url, &driver_info.package_name));
 
     for message in messages {
         sender.send(message).unwrap();
