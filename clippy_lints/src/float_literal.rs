@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     // If the type suffix is missing the suggestion would be
                     // incorrectly interpreted as an integer so adding a `.0`
                     // suffix to prevent that.
-                    
+
                     span_lint_and_then(
                         cx,
                         LOSSY_FLOAT_LITERAL,
