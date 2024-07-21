@@ -1,6 +1,6 @@
 //! An algorithm to find a path to refer to a certain item.
 
-use std::{cell::Cell, cmp::Ordering, iter, ops::BitOr};
+use std::{cell::Cell, cmp::Ordering, iter};
 
 use base_db::{CrateId, CrateOrigin, LangCrateOrigin};
 use hir_expand::{
@@ -13,7 +13,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
-    nameres::{DefMap, ModuleData},
+    nameres::DefMap,
     path::{ModPath, PathKind},
     visibility::{Visibility, VisibilityExplicitness},
     ImportPathConfig, ModuleDefId, ModuleId,
@@ -52,11 +52,11 @@ pub fn find_path(
             ignore_local_imports,
             from,
             from_def_map: &from.def_map(db),
-            is_std_item: db.crate_graph()[item_module.krate()].origin.is_lang(),
             fuel: Cell::new(FIND_PATH_FUEL),
         },
         item,
         MAX_PATH_LEN,
+        db.crate_graph()[item_module.krate()].origin.is_lang(),
     )
 }
 
@@ -66,13 +66,6 @@ enum Stability {
     Stable,
 }
 use Stability::*;
-
-fn zip_stability(a: Stability, b: Stability) -> Stability {
-    match (a, b) {
-        (Stable, Stable) => Stable,
-        _ => Unstable,
-    }
-}
 
 const MAX_PATH_LEN: usize = 15;
 const FIND_PATH_FUEL: usize = 10000;
@@ -107,17 +100,22 @@ struct FindPathCtx<'db> {
     ignore_local_imports: bool,
     from: ModuleId,
     from_def_map: &'db DefMap,
-    is_std_item: bool,
     fuel: Cell<usize>,
 }
 
 /// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
-fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Option<ModPath> {
+fn find_path_inner(
+    ctx: &FindPathCtx<'_>,
+    item: ItemInNs,
+    max_len: usize,
+    is_std_item: bool,
+) -> Option<ModPath> {
     // - if the item is a module, jump straight to module search
-    if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
-        let mut visited_modules = FxHashSet::default();
-        return find_path_for_module(ctx, &mut visited_modules, module_id, true, max_len)
-            .map(|choice| choice.path);
+    if !is_std_item {
+        if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
+            return find_path_for_module(ctx, &mut FxHashSet::default(), module_id, true, max_len)
+                .map(|choice| choice.path);
+        }
     }
 
     let may_be_in_scope = match ctx.prefix {
@@ -140,9 +138,12 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
         // - if the item is an enum variant, refer to it via the enum
-        if let Some(mut path) =
-            find_path_inner(ctx, ItemInNs::Types(variant.lookup(ctx.db).parent.into()), max_len)
-        {
+        if let Some(mut path) = find_path_inner(
+            ctx,
+            ItemInNs::Types(variant.lookup(ctx.db).parent.into()),
+            max_len,
+            is_std_item,
+        ) {
             path.push_segment(ctx.db.enum_variant_data(variant).name.clone());
             return Some(path);
         }
@@ -151,10 +152,18 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
         // variant somewhere
     }
 
-    let mut visited_modules = FxHashSet::default();
+    if is_std_item {
+        // The item we are searching for comes from the sysroot libraries, so skip prefer looking in
+        // the sysroot libraries directly.
+        // We do need to fallback as the item in question could be re-exported by another crate
+        // while not being a transitive dependency of the current crate.
+        if let Some(choice) = find_in_sysroot(ctx, &mut FxHashSet::default(), item, max_len) {
+            return Some(choice.path);
+        }
+    }
 
     let mut best_choice = None;
-    calculate_best_path(ctx, &mut visited_modules, item, max_len, &mut best_choice);
+    calculate_best_path(ctx, &mut FxHashSet::default(), item, max_len, &mut best_choice);
     best_choice.map(|choice| choice.path)
 }
 
@@ -178,7 +187,6 @@ fn find_path_for_module(
                 path_text_len: 5,
                 stability: Stable,
                 prefer_due_to_prelude: false,
-                sysroot_score: 0,
             });
         }
         // - otherwise if the item is the crate root of a dependency crate, return the name from the extern prelude
@@ -241,7 +249,6 @@ fn find_path_for_module(
                 path_text_len: path_kind_len(kind),
                 stability: Stable,
                 prefer_due_to_prelude: false,
-                sysroot_score: 0,
             });
         }
     }
@@ -360,86 +367,97 @@ fn calculate_best_path(
         // dependency in this case.
         calculate_best_path_local(ctx, visited_modules, item, max_len, best_choice)
     } else {
-        let db = ctx.db;
         // Item was defined in some upstream crate. This means that it must be exported from one,
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
         // that wants to import it here, but we always prefer to use the external path here.
 
-        let mut process_dep = |dep: CrateId, score| {
-            let import_map = db.import_map(dep);
-            let Some(import_info_for) = import_map.import_info_for(item) else {
-                return false;
-            };
-            let mut processed_something = false;
-            for info in import_info_for {
-                if info.is_doc_hidden {
-                    // the item or import is `#[doc(hidden)]`, so skip it as it is in an external crate
-                    continue;
-                }
+        ctx.db.crate_graph()[ctx.from.krate].dependencies.iter().for_each(|dep| {
+            find_in_dep(ctx, visited_modules, item, max_len, best_choice, dep.crate_id)
+        });
+    }
+}
 
-                // Determine best path for containing module and append last segment from `info`.
-                // FIXME: we should guide this to look up the path locally, or from the same crate again?
-                let choice = find_path_for_module(
-                    ctx,
-                    visited_modules,
-                    info.container,
-                    true,
-                    best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
-                );
-                let Some(mut choice) = choice else {
-                    continue;
-                };
-                choice.sysroot_score = score;
-                cov_mark::hit!(partially_imported);
-                choice.stability = zip_stability(
-                    choice.stability,
-                    if info.is_unstable { Unstable } else { Stable },
-                );
-
-                Choice::try_select(best_choice, choice, ctx.cfg.prefer_prelude, info.name.clone());
-                processed_something = true;
+fn find_in_sysroot(
+    ctx: &FindPathCtx<'_>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
+    item: ItemInNs,
+    max_len: usize,
+) -> Option<Choice> {
+    let crate_graph = ctx.db.crate_graph();
+    let dependencies = &crate_graph[ctx.from.krate].dependencies;
+    let mut best_choice = None;
+    let mut search = |lang, best_choice: &mut _| {
+        if let Some(dep) = dependencies.iter().filter(|it| it.is_sysroot()).find(|dep| {
+            match crate_graph[dep.crate_id].origin {
+                CrateOrigin::Lang(l) => l == lang,
+                _ => false,
             }
-            processed_something
-        };
+        }) {
+            find_in_dep(ctx, visited_modules, item, max_len, best_choice, dep.crate_id);
+        }
+    };
+    if ctx.cfg.prefer_no_std {
+        search(LangCrateOrigin::Core, &mut best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return best_choice;
+        }
+        search(LangCrateOrigin::Std, &mut best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return best_choice;
+        }
+    } else {
+        search(LangCrateOrigin::Std, &mut best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return best_choice;
+        }
+        search(LangCrateOrigin::Core, &mut best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return best_choice;
+        }
+    }
+    let mut best_choice = None;
+    dependencies.iter().filter(|it| it.is_sysroot()).for_each(|dep| {
+        find_in_dep(ctx, visited_modules, item, max_len, &mut best_choice, dep.crate_id);
+    });
+    best_choice
+}
 
-        let crate_graph = db.crate_graph();
-        let dependencies = &crate_graph[ctx.from.krate].dependencies;
-        if ctx.is_std_item {
-            // The item we are searching for comes from the sysroot libraries, so skip prefer looking in
-            // the sysroot libraries directly.
-            // We do need to fallback as the item in question could be re-exported by another crate
-            // while not being a transitive dependency of the current crate.
-            let processed = dependencies
-                .iter()
-                .filter(|it| it.is_sysroot())
-                .map(|dep| {
-                    (
-                        match crate_graph[dep.crate_id].origin {
-                            CrateOrigin::Lang(LangCrateOrigin::Std) if ctx.cfg.prefer_no_std => 5,
-                            CrateOrigin::Lang(LangCrateOrigin::Std) => 1,
-                            CrateOrigin::Lang(LangCrateOrigin::Alloc) => 2,
-                            CrateOrigin::Lang(LangCrateOrigin::ProcMacro) => 3,
-                            CrateOrigin::Lang(LangCrateOrigin::Test) => 3,
-                            CrateOrigin::Lang(LangCrateOrigin::Core) => 4,
-                            CrateOrigin::Lang(LangCrateOrigin::Other) => 1,
-                            _ => 0,
-                        },
-                        dep.crate_id,
-                    )
-                })
-                .map(|(score, crate_id)| process_dep(crate_id, score))
-                .reduce(BitOr::bitor)
-                .unwrap_or(false);
-            if processed {
-                // Found a path in a sysroot crate
-                return;
-            }
+fn find_in_dep(
+    ctx: &FindPathCtx<'_>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
+    item: ItemInNs,
+    max_len: usize,
+    best_choice: &mut Option<Choice>,
+    dep: CrateId,
+) {
+    let import_map = ctx.db.import_map(dep);
+    let Some(import_info_for) = import_map.import_info_for(item) else {
+        return;
+    };
+    for info in import_info_for {
+        if info.is_doc_hidden {
+            // the item or import is `#[doc(hidden)]`, so skip it as it is in an external crate
+            continue;
         }
 
-        dependencies
-            .iter()
-            .filter(|it| !ctx.is_std_item || !it.is_sysroot())
-            .for_each(|dep| _ = process_dep(dep.crate_id, 0));
+        // Determine best path for containing module and append last segment from `info`.
+        // FIXME: we should guide this to look up the path locally, or from the same crate again?
+        let choice = find_path_for_module(
+            ctx,
+            visited_modules,
+            info.container,
+            true,
+            best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
+        );
+        let Some(mut choice) = choice else {
+            continue;
+        };
+        cov_mark::hit!(partially_imported);
+        if info.is_unstable {
+            choice.stability = Unstable;
+        }
+
+        Choice::try_select(best_choice, choice, ctx.cfg.prefer_prelude, info.name.clone());
     }
 }
 
@@ -481,8 +499,6 @@ struct Choice {
     stability: Stability,
     /// Whether this path contains a prelude segment and preference for it has been signaled
     prefer_due_to_prelude: bool,
-    /// non-zero if this is a path in a sysroot crate, we want to choose the highest ranked std crate
-    sysroot_score: u8,
 }
 
 impl Choice {
@@ -491,7 +507,6 @@ impl Choice {
             path_text_len: path_kind_len(kind) + name.as_str().len(),
             stability,
             prefer_due_to_prelude: prefer_prelude && name == sym::prelude,
-            sysroot_score: 0,
             path: ModPath::from_segments(kind, iter::once(name)),
         }
     }
@@ -517,7 +532,6 @@ impl Choice {
             .stability
             .cmp(&current.stability)
             .then_with(|| other.prefer_due_to_prelude.cmp(&current.prefer_due_to_prelude))
-            .then_with(|| current.sysroot_score.cmp(&other.sysroot_score))
             .then_with(|| (current.path.len()).cmp(&(other.path.len() + 1)))
         {
             Ordering::Less => return,
