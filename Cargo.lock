@@ -2645,26 +2645,17 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.33.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8dd6c0cdf9429bce006e1362bfce61fa1bfd8c898a643ed8d2b471934701d3d"
-dependencies = [
- "crc32fast",
- "hashbrown",
- "indexmap",
- "memchr",
- "wasmparser 0.201.0",
-]
-
-[[package]]
-name = "object"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7090bae93f8585aad99e595b7073c5de9ba89fbd6b4e9f0cdd7a10177273ac8"
 dependencies = [
+ "crc32fast",
  "flate2",
+ "hashbrown",
+ "indexmap",
  "memchr",
  "ruzstd 0.6.0",
+ "wasmparser 0.201.0",
 ]
 
 [[package]]
@@ -3781,7 +3772,7 @@ dependencies = [
  "itertools",
  "libc",
  "measureme",
- "object 0.33.0",
+ "object 0.34.0",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3820,7 +3811,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.33.0",
+ "object 0.34.0",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -4803,7 +4794,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "object 0.33.0",
+ "object 0.34.0",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
