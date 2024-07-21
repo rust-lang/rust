@@ -1310,6 +1310,52 @@ pub mod ip_address {
 }
 
 #[test]
+fn include_with_submod_file() {
+    check(
+        r#"
+//- minicore: include
+//- /lib.rs
+include!("out_dir/includes.rs");
+
+//- /out_dir/includes.rs
+pub mod company_name {
+    pub mod network {
+        pub mod v1;
+    }
+}
+//- /out_dir/company_name/network/v1.rs
+pub struct IpAddress {
+    pub ip_type: &'static str,
+}
+/// Nested message and enum types in `IpAddress`.
+pub mod ip_address {
+    pub enum IpType {
+        IpV4(u32),
+    }
+}
+
+"#,
+        expect![[r#"
+            crate
+            company_name: t
+
+            crate::company_name
+            network: t
+
+            crate::company_name::network
+            v1: t
+
+            crate::company_name::network::v1
+            IpAddress: t
+            ip_address: t
+
+            crate::company_name::network::v1::ip_address
+            IpType: t
+        "#]],
+    );
+}
+
+#[test]
 fn macro_use_imports_all_macro_types() {
     let db = TestDB::with_files(
         r#"
