@@ -2,7 +2,9 @@ use std::borrow::Cow;
 
 use libc::c_uint;
 use rustc_codegen_ssa::{
-    debuginfo::{type_names::compute_debuginfo_type_name, wants_c_like_enum_debuginfo},
+    debuginfo::{
+        tag_base_type, type_names::compute_debuginfo_type_name, wants_c_like_enum_debuginfo,
+    },
     traits::ConstMethods,
 };
 
@@ -23,7 +25,7 @@ use crate::{
     debuginfo::{
         metadata::{
             build_field_di_node,
-            enums::{tag_base_type, DiscrResult},
+            enums::DiscrResult,
             file_metadata, size_and_align_of, type_di_node,
             type_map::{self, Stub, UniqueTypeId},
             unknown_file_metadata, visibility_di_flags, DINodeCreationResult, SmallVec,
@@ -204,7 +206,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type_and_layout = cx.layout_of(enum_type);
     let enum_type_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
 
-    assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(cx.tcx, enum_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -279,7 +281,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     let coroutine_type_and_layout = cx.layout_of(coroutine_type);
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
-    assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(cx.tcx, coroutine_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -395,7 +397,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
     tag_field: usize,
     untagged_variant_index: Option<VariantIdx>,
 ) -> SmallVec<&'ll DIType> {
-    let tag_base_type = super::tag_base_type(cx, enum_type_and_layout);
+    let tag_base_type = tag_base_type(cx.tcx, enum_type_and_layout);
 
     let variant_names_type_di_node = build_variant_names_type_di_node(
         cx,
@@ -690,7 +692,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
     let variant_range = coroutine_args.variant_range(coroutine_def_id, cx.tcx);
     let variant_count = (variant_range.start.as_u32()..variant_range.end.as_u32()).len();
 
-    let tag_base_type = tag_base_type(cx, coroutine_type_and_layout);
+    let tag_base_type = tag_base_type(cx.tcx, coroutine_type_and_layout);
 
     let variant_names_type_di_node = build_variant_names_type_di_node(
         cx,
@@ -817,7 +819,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
 
     assert_eq!(
         cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field).ty),
-        cx.size_and_align_of(super::tag_base_type(cx, enum_type_and_layout))
+        cx.size_and_align_of(self::tag_base_type(cx.tcx, enum_type_and_layout))
     );
 
     // ... and a field for the tag. If the tag is 128 bits wide, this will actually
