@@ -6,9 +6,12 @@ use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
+#[derive(Debug)]
 struct FileDesc(*mut vex_sdk::FIL);
 
-pub struct File(FileDesc);
+pub struct File {
+    fd: FileDesc,
+}
 
 //TODO: We may be able to get some of this info
 #[derive(Clone)]
@@ -149,12 +152,8 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let fs_status = unsafe { vex_sdk::vexFileMountSD() };
-        match fs_status {
-            vex_sdk::FRESULT::FR_OK => (),
-            //TODO: cover more results
-            _ => return Err(io::Error::new(io::ErrorKind::NotFound, "SD card cannot be written or read from")),
-        }
+        // Mount sdcard volume as FAT filesystem
+        map_fresult(unsafe { vex_sdk::vexFileMountSD() })?;
 
         let path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
             io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
@@ -180,7 +179,7 @@ impl File {
         if file.is_null() {
             Err(io::Error::new(io::ErrorKind::NotFound, "Could not open file"))
         } else {
-            Ok(Self(FileDesc(file)))
+            Ok(Self { fd: FileDesc(file) })
         }
     }
 
@@ -203,7 +202,7 @@ impl File {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let len = buf.len() as _;
         let buf_ptr = buf.as_mut_ptr();
-        let read = unsafe { vex_sdk::vexFileRead(buf_ptr.cast(), 1, len, self.0.0) };
+        let read = unsafe { vex_sdk::vexFileRead(buf_ptr.cast(), 1, len, self.fd.0) };
         if read < 0 {
             Err(io::Error::new(io::ErrorKind::Other, "Could not read from file"))
         } else {
@@ -227,12 +226,10 @@ impl File {
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = buf.len();
         let buf_ptr = buf.as_ptr();
-        let written = unsafe { vex_sdk::vexFileWrite(buf_ptr.cast_mut().cast(), 1, len as _, self.0.0) };
+        let written =
+            unsafe { vex_sdk::vexFileWrite(buf_ptr.cast_mut().cast(), 1, len as _, self.fd.0) };
         if written < 0 {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Could not write to file",
-            ))
+            Err(io::Error::new(io::ErrorKind::Other, "Could not write to file"))
         } else {
             Ok(written as usize)
         }
@@ -249,7 +246,7 @@ impl File {
 
     pub fn flush(&self) -> io::Result<()> {
         unsafe {
-            vex_sdk::vexFileSync(self.0.0);
+            vex_sdk::vexFileSync(self.fd.0);
         }
         Ok(())
     }
@@ -259,7 +256,7 @@ impl File {
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        unsupported!()
+        unsupported()
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
@@ -283,17 +280,17 @@ impl DirBuilder {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("File").finish_non_exhaustive()
+        f.debug_struct("File").field("fd", &self.fd.0).finish()
     }
 }
 impl Drop for File {
     fn drop(&mut self) {
-        unsafe { vex_sdk::vexFileClose(self.0.0) };
+        unsafe { vex_sdk::vexFileClose(self.fd.0) };
     }
 }
 
 pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    unsupported()
+    todo!()
 }
 
 pub fn unlink(_p: &Path) -> io::Result<()> {
@@ -317,7 +314,7 @@ pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
 }
 
 pub fn try_exists(_path: &Path) -> io::Result<bool> {
-    unsupported()
+    todo!()
 }
 
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
@@ -333,7 +330,7 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+    todo!()
 }
 
 pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
@@ -344,6 +341,95 @@ pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
-    unsupported()
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    use crate::fs::File;
+
+    let mut reader = File::open(from)?;
+    let mut writer = File::create(to)?;
+
+    io::copy(&mut reader, &mut writer)
+}
+
+fn map_fresult(fresult: vex_sdk::FRESULT) -> io::Result<()> {
+    // VEX presumably uses a derivative of FatFs (most likely the xilffs library)
+    // for sdcard filesystem functions.
+    //
+    // Documentation for each FRESULT originates from here:
+    // <http://elm-chan.org/fsw/ff/doc/rc.html>
+    match fresult {
+        vex_sdk::FRESULT::FR_OK => Ok(()),
+        vex_sdk::FRESULT::FR_DISK_ERR => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "internal function reported an unrecoverable hard error",
+        )),
+        vex_sdk::FRESULT::FR_INT_ERR => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "assertion failed and an insanity is detected in the internal process",
+        )),
+        vex_sdk::FRESULT::FR_NOT_READY => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "the storage device could not be prepared to work",
+        )),
+        vex_sdk::FRESULT::FR_NO_FILE => {
+            Err(io::Error::new(io::ErrorKind::NotFound, "could not find the file in the directory"))
+        }
+        vex_sdk::FRESULT::FR_NO_PATH => Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "a directory in the path name could not be found",
+        )),
+        vex_sdk::FRESULT::FR_INVALID_NAME => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "the given string is invalid as a path name",
+        )),
+        vex_sdk::FRESULT::FR_DENIED => Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "the required access for this operation was denied",
+        )),
+        vex_sdk::FRESULT::FR_EXIST => Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "an object with the same name already exists in the directory",
+        )),
+        vex_sdk::FRESULT::FR_INVALID_OBJECT => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "invalid or null file/directory object",
+        )),
+        vex_sdk::FRESULT::FR_WRITE_PROTECTED => Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "a write operation was performed on write-protected media",
+        )),
+        vex_sdk::FRESULT::FR_INVALID_DRIVE => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "an invalid drive number was specified in the path name",
+        )),
+        vex_sdk::FRESULT::FR_NOT_ENABLED => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "work area for the logical drive has not been registered",
+        )),
+        vex_sdk::FRESULT::FR_NO_FILESYSTEM => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "valid FAT volume could not be found on the drive",
+        )),
+        vex_sdk::FRESULT::FR_MKFS_ABORTED => {
+            Err(io::Error::new(io::ErrorKind::Uncategorized, "failed to create filesystem volume"))
+        }
+        vex_sdk::FRESULT::FR_TIMEOUT => Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "the function was canceled due to a timeout of thread-safe control",
+        )),
+        vex_sdk::FRESULT::FR_LOCKED => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "the operation to the object was rejected by file sharing control",
+        )),
+        vex_sdk::FRESULT::FR_NOT_ENOUGH_CORE => {
+            Err(io::Error::new(io::ErrorKind::OutOfMemory, "not enough memory for the operation"))
+        }
+        vex_sdk::FRESULT::FR_TOO_MANY_OPEN_FILES => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "maximum number of open files has been reached",
+        )),
+        vex_sdk::FRESULT::FR_INVALID_PARAMETER => {
+            Err(io::Error::new(io::ErrorKind::InvalidInput, "a given parameter was invalid"))
+        }
+        _ => unreachable!(), // C-style enum
+    }
 }
