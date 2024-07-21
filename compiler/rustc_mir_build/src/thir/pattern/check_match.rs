@@ -16,8 +16,8 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::{
-    Constructor, DeconstructedPat, MatchArm, RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport,
-    WitnessPat,
+    Constructor, DeconstructedPat, MatchArm, RevealedTy, RustcPatCtxt as PatCtxt, Usefulness,
+    UsefulnessReport, WitnessPat,
 };
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
@@ -998,27 +998,31 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     err.note(format!("the matched value is of type `{}`", scrut_ty));
 
     if !is_empty_match {
-        let mut non_exhaustive_tys = FxIndexSet::default();
+        let mut special_tys = FxIndexSet::default();
         // Look at the first witness.
-        collect_non_exhaustive_tys(cx, &witnesses[0], &mut non_exhaustive_tys);
+        collect_special_tys(cx, &witnesses[0], &mut special_tys);
 
-        for ty in non_exhaustive_tys {
+        for ty in special_tys {
             if ty.is_ptr_sized_integral() {
-                if ty == cx.tcx.types.usize {
+                if ty.inner() == cx.tcx.types.usize {
                     err.note(format!(
                         "`{ty}` does not have a fixed maximum value, so half-open ranges are necessary to match \
                              exhaustively",
                     ));
-                } else if ty == cx.tcx.types.isize {
+                } else if ty.inner() == cx.tcx.types.isize {
                     err.note(format!(
                         "`{ty}` does not have fixed minimum and maximum values, so half-open ranges are necessary to match \
                              exhaustively",
                     ));
                 }
-            } else if ty == cx.tcx.types.str_ {
+            } else if ty.inner() == cx.tcx.types.str_ {
                 err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
-            } else if cx.is_foreign_non_exhaustive_enum(cx.reveal_opaque_ty(ty)) {
+            } else if cx.is_foreign_non_exhaustive_enum(ty) {
                 err.note(format!("`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively"));
+            } else if cx.is_uninhabited(ty.inner()) && cx.tcx.features().min_exhaustive_patterns {
+                // The type is uninhabited yet there is a witness: we must be in the `MaybeInvalid`
+                // case.
+                err.note(format!("`{ty}` is uninhabited but is not being matched by value, so a wildcard `_` is required"));
             }
         }
     }
@@ -1168,22 +1172,22 @@ fn joined_uncovered_patterns<'p, 'tcx>(
     }
 }
 
-fn collect_non_exhaustive_tys<'tcx>(
+/// Collect types that require specific explanations when they show up in witnesses.
+fn collect_special_tys<'tcx>(
     cx: &PatCtxt<'_, 'tcx>,
     pat: &WitnessPat<'_, 'tcx>,
-    non_exhaustive_tys: &mut FxIndexSet<Ty<'tcx>>,
+    special_tys: &mut FxIndexSet<RevealedTy<'tcx>>,
 ) {
-    if matches!(pat.ctor(), Constructor::NonExhaustive) {
-        non_exhaustive_tys.insert(pat.ty().inner());
+    if matches!(pat.ctor(), Constructor::NonExhaustive | Constructor::Never) {
+        special_tys.insert(*pat.ty());
     }
     if let Constructor::IntRange(range) = pat.ctor() {
         if cx.is_range_beyond_boundaries(range, *pat.ty()) {
             // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
-            non_exhaustive_tys.insert(pat.ty().inner());
+            special_tys.insert(*pat.ty());
         }
     }
-    pat.iter_fields()
-        .for_each(|field_pat| collect_non_exhaustive_tys(cx, field_pat, non_exhaustive_tys))
+    pat.iter_fields().for_each(|field_pat| collect_special_tys(cx, field_pat, special_tys))
 }
 
 fn report_adt_defined_here<'tcx>(
