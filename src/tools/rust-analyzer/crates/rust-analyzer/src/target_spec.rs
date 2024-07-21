@@ -246,7 +246,7 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
             preds.iter().for_each(|cfg| required_features(cfg, features));
         }
         CfgExpr::Any(preds) => {
-            for cfg in preds {
+            for cfg in preds.iter() {
                 let len_features = features.len();
                 required_features(cfg, features);
                 if len_features != features.len() {
