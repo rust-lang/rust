@@ -892,7 +892,6 @@ impl Config {
                         SnippetScopeDef::Type => SnippetScope::Type,
                         SnippetScopeDef::Item => SnippetScope::Item,
                     };
-                    #[allow(clippy::single_match)]
                     match Snippet::new(
                         &def.prefix,
                         &def.postfix,
@@ -2833,7 +2832,7 @@ fn get_field<T: DeserializeOwned>(
         })
 }
 
-fn get_field_toml<T: DeserializeOwned>(
+fn get_field_toml<T: DeserializeOwned + fmt::Debug>(
     toml: &toml::Table,
     error_sink: &mut Vec<(String, toml::de::Error)>,
     field: &'static str,
@@ -2847,12 +2846,17 @@ fn get_field_toml<T: DeserializeOwned>(
         .filter_map(move |field| {
             let mut pointer = field.replace('_', "/");
             pointer.insert(0, '/');
-            toml_pointer(toml, &pointer)
-                .map(|it| <_>::deserialize(it.clone()).map_err(|e| (e, pointer)))
+            toml_pointer(toml, &pointer).map(|it| {
+                dbg!(&pointer, std::any::type_name::<T>());
+                <_>::deserialize(it.clone()).map_err(|e| (e, pointer))
+            })
         })
         .find(Result::is_ok)
         .and_then(|res| match res {
-            Ok(it) => Some(it),
+            Ok(it) => {
+                dbg!(&it);
+                Some(it)
+            }
             Err((e, pointer)) => {
                 tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
                 error_sink.push((pointer, e));
