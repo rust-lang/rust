@@ -326,6 +326,7 @@ auto:
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
       DIST_REQUIRE_ALL_TOOLS: 1
+      CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos-m1
 
   # This target only needs to support 11.0 and up as nothing else supports the hardware
