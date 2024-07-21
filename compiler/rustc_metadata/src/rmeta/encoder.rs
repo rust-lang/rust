@@ -2,7 +2,7 @@ use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
 use rustc_ast::Attribute;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
@@ -13,7 +13,6 @@ use rustc_hir_pretty::id_to_string;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
-use rustc_middle::query::LocalCrate;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
@@ -1509,10 +1508,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
 
-        let inherent_impls = tcx.with_stable_hashing_context(|hcx| {
-            tcx.crate_inherent_impls(()).unwrap().inherent_impls.to_sorted(&hcx, true)
-        });
-        for (def_id, impls) in inherent_impls {
+        for (def_id, impls) in &tcx.crate_inherent_impls(()).unwrap().inherent_impls {
             record_defaulted_array!(self.tables.inherent_impls[def_id.to_def_id()] <- impls.iter().map(|def_id| {
                 assert!(def_id.is_local());
                 def_id.index
@@ -2002,8 +1998,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
-            FxHashMap::default();
+        let mut trait_impls: FxIndexMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
+            FxIndexMap::default();
 
         for id in tcx.hir().items() {
             let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else {
@@ -2022,7 +2018,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     trait_ref.self_ty(),
                     TreatParams::AsCandidateKey,
                 );
-                fx_hash_map
+                trait_impls
                     .entry(trait_ref.def_id)
                     .or_default()
                     .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
@@ -2043,47 +2039,30 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
 
-        let mut all_impls: Vec<_> = fx_hash_map.into_iter().collect();
-
-        // Bring everything into deterministic order for hashing
-        all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
-
-        let all_impls: Vec<_> = all_impls
+        let trait_impls: Vec<_> = trait_impls
             .into_iter()
-            .map(|(trait_def_id, mut impls)| {
-                // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&(index, _)| {
-                    tcx.hir().def_path_hash(LocalDefId { local_def_index: index })
-                });
-
-                TraitImpls {
-                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                    impls: self.lazy_array(&impls),
-                }
+            .map(|(trait_def_id, impls)| TraitImpls {
+                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
+                impls: self.lazy_array(&impls),
             })
             .collect();
 
-        self.lazy_array(&all_impls)
+        self.lazy_array(&trait_impls)
     }
 
     #[instrument(level = "debug", skip(self))]
     fn encode_incoherent_impls(&mut self) -> LazyArray<IncoherentImpls> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let all_impls = tcx.with_stable_hashing_context(|hcx| {
-            tcx.crate_inherent_impls(()).unwrap().incoherent_impls.to_sorted(&hcx, true)
-        });
 
-        let all_impls: Vec<_> = all_impls
-            .into_iter()
-            .map(|(&simp, impls)| {
-                let mut impls: Vec<_> =
-                    impls.into_iter().map(|def_id| def_id.local_def_index).collect();
-                impls.sort_by_cached_key(|&local_def_index| {
-                    tcx.hir().def_path_hash(LocalDefId { local_def_index })
-                });
-
-                IncoherentImpls { self_ty: simp, impls: self.lazy_array(impls) }
+        let all_impls: Vec<_> = tcx
+            .crate_inherent_impls(())
+            .unwrap()
+            .incoherent_impls
+            .iter()
+            .map(|(&simp, impls)| IncoherentImpls {
+                self_ty: simp,
+                impls: self.lazy_array(impls.iter().map(|def_id| def_id.local_def_index)),
             })
             .collect();
 
@@ -2326,32 +2305,6 @@ pub fn provide(providers: &mut Providers) {
             tcx.resolutions(()).doc_link_traits_in_scope.get(&def_id).unwrap_or_else(|| {
                 span_bug!(tcx.def_span(def_id), "no traits in scope for a doc link")
             })
-        },
-        traits: |tcx, LocalCrate| {
-            let mut traits = Vec::new();
-            for id in tcx.hir().items() {
-                if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
-                    traits.push(id.owner_id.to_def_id())
-                }
-            }
-
-            // Bring everything into deterministic order.
-            traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
-            tcx.arena.alloc_slice(&traits)
-        },
-        trait_impls_in_crate: |tcx, LocalCrate| {
-            let mut trait_impls = Vec::new();
-            for id in tcx.hir().items() {
-                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
-                    && tcx.impl_trait_ref(id.owner_id).is_some()
-                {
-                    trait_impls.push(id.owner_id.to_def_id())
-                }
-            }
-
-            // Bring everything into deterministic order.
-            trait_impls.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
-            tcx.arena.alloc_slice(&trait_impls)
         },
 
         ..*providers
