@@ -20,10 +20,10 @@ Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated
 Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
 Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
 
-Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
-</span>.
-Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
-</span>.
+Finally, you can use `quz` only on <span class="stab portability" data-span="1"><code>Unix or x86-64
+</code></span>.
+Finally, you can use `quz` only on <span class="stab portability" data-span="2"><code>Unix or x86-64
+</code></span>.
 */
 
 use std::convert::AsRef;
