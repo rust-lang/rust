@@ -15,7 +15,9 @@ pub struct File {
 
 //TODO: We may be able to get some of this info
 #[derive(Clone)]
-pub struct FileAttr;
+pub struct FileAttr {
+    size: u64,
+}
 
 pub struct ReadDir(!);
 
@@ -26,6 +28,7 @@ pub struct OpenOptions {
     read: bool,
     write: bool,
     append: bool,
+    create_new: bool,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -44,7 +47,7 @@ pub struct DirBuilder {}
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
-        todo!()
+        self.size
     }
 
     pub fn perm(&self) -> FilePermissions {
@@ -131,7 +134,7 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { read: false, write: false, append: false }
+        OpenOptions { read: false, write: false, append: false, create_new: false }
     }
 
     pub fn read(&mut self, read: bool) {
@@ -143,11 +146,17 @@ impl OpenOptions {
     pub fn append(&mut self, append: bool) {
         self.append = append;
     }
-    pub fn truncate(&mut self, _truncate: bool) {}
+    pub fn truncate(&mut self, truncate: bool) {
+        if truncate {
+            panic!("Truncation is not supported")
+        }
+    }
     pub fn create(&mut self, create: bool) {
         self.write = create;
     }
-    pub fn create_new(&mut self, _create_new: bool) {}
+    pub fn create_new(&mut self, create_new: bool) {
+        self.create_new = create_new;
+    }
 }
 
 impl File {
@@ -158,6 +167,18 @@ impl File {
         let path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
             io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
         })?;
+
+        if opts.create_new {
+            let file_exists = unsafe {
+                vex_sdk::vexFileStatus(path.as_ptr())
+            };
+            if file_exists != 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "File already exists"
+                ))
+            }
+        }
 
         let file = if opts.read && !opts.write {
             // The second argument to this function is ignored.
@@ -313,8 +334,19 @@ pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn try_exists(_path: &Path) -> io::Result<bool> {
-    todo!()
+pub fn try_exists(path: &Path) -> io::Result<bool> {
+    let path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
+        io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
+    })?;
+
+    let file_exists = unsafe {
+        vex_sdk::vexFileStatus(path.as_ptr())
+    };
+    if file_exists != 0 {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
@@ -329,12 +361,34 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    todo!()
+pub fn stat(p: &Path) -> io::Result<FileAttr> {
+    let mut opts = OpenOptions::new();
+    opts.read(true);
+    let file = File::open(p, &opts)?;
+    let fd = file.fd.0;
+
+    const SEEK_END: i32 = 2;
+
+    let end = unsafe {
+        map_fresult(vex_sdk::vexFileSeek(fd, 0, SEEK_END))?;
+        vex_sdk::vexFileTell(fd)
+    };
+
+    if end >= 0 {
+        Ok(FileAttr {
+            size: end as u64,
+        })
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::NotSeekable,
+            "Failed to seek file"
+        ))
+    }
 }
 
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+    // Symlinks aren't supported in our filesystem
+    stat(p)
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
