@@ -6,10 +6,10 @@
 
 // CHECK-LABEL: @u32_index
 #[no_mangle]
-pub fn u32_index(c: u32) -> [bool; 21] {
-    let mut array = [false; 21];
+pub fn u32_index(c: u32) -> [bool; 22] {
+    let mut array = [false; 22];
 
-    let index = c.ilog2();
+    let index = 32 - c.leading_zeros();
 
     // CHECK: call core::panicking::panic
     array[index as usize] = true;
@@ -19,14 +19,14 @@ pub fn u32_index(c: u32) -> [bool; 21] {
 
 // CHECK-LABEL: @char_as_u32_index
 #[no_mangle]
-pub fn char_as_u32_index(c: char) -> [bool; 21] {
+pub fn char_as_u32_index(c: char) -> [bool; 22] {
     // CHECK: %[[B:.+]] = icmp ult i32 %c, 1114112
     // CHECK: call void @llvm.assume(i1 %[[B]])
     let c = c as u32;
 
-    let mut array = [false; 21];
+    let mut array = [false; 22];
 
-    let index = c.ilog2();
+    let index = 32 - c.leading_zeros();
 
     // CHECK-NOT: call core::panicking::panic
     array[index as usize] = true;
