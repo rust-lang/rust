@@ -55,9 +55,7 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType {
-            is_dir: false,
-        }
+        FileType { is_dir: false }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -358,6 +356,9 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 
     let end = unsafe {
         let cur = vex_sdk::vexFileTell(fd);
+        if cur < 0 {
+            return Err(io::Error::new(io::ErrorKind::NotSeekable, "Failed to seek file"));
+        }
         map_fresult(vex_sdk::vexFileSeek(fd, 0, SEEK_END))?;
         let end = vex_sdk::vexFileTell(fd);
         map_fresult(vex_sdk::vexFileSeek(fd, cur as _, SEEK_SET))?;
@@ -365,14 +366,9 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     };
 
     if end >= 0 {
-        Ok(FileAttr {
-            size: end as u64,
-        })
+        Ok(FileAttr { size: end as u64 })
     } else {
-        Err(io::Error::new(
-            io::ErrorKind::NotSeekable,
-            "Failed to seek file"
-        ))
+        Err(io::Error::new(io::ErrorKind::NotSeekable, "Failed to seek file"))
     }
 }
 
