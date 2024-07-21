@@ -59,8 +59,8 @@ fn main() {
         asm!("{}", const 0 as *mut u8);
         //~^ ERROR invalid type for `const` operand
 
-        // FIXME: Currently ICEs due to #96304
-        //asm!("{}", const &0);
+        asm!("{}", const &0);
+        //~^ ERROR invalid type for `const` operand
     }
 }
 

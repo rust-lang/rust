@@ -39,26 +39,6 @@ LL |         asm!("{}", sym x);
    |
    = help: `sym` operands must refer to either a function or a static
 
-error: invalid type for `const` operand
-  --> $DIR/type-check-1.rs:76:19
-   |
-LL | global_asm!("{}", const 0f32);
-   |                   ^^^^^^----
-   |                         |
-   |                         is an `f32`
-   |
-   = help: `const` operands must be of an integer type
-
-error: invalid type for `const` operand
-  --> $DIR/type-check-1.rs:78:19
-   |
-LL | global_asm!("{}", const 0 as *mut u8);
-   |                   ^^^^^^------------
-   |                         |
-   |                         is a `*mut u8`
-   |
-   = help: `const` operands must be of an integer type
-
 error: invalid asm output
   --> $DIR/type-check-1.rs:14:29
    |
@@ -142,7 +122,37 @@ LL |         asm!("{}", const 0 as *mut u8);
    |
    = help: `const` operands must be of an integer type
 
-error: aborting due to 16 previous errors
+error: invalid type for `const` operand
+  --> $DIR/type-check-1.rs:62:20
+   |
+LL |         asm!("{}", const &0);
+   |                    ^^^^^^--
+   |                          |
+   |                          is a `&i32`
+   |
+   = help: `const` operands must be of an integer type
+
+error: invalid type for `const` operand
+  --> $DIR/type-check-1.rs:76:19
+   |
+LL | global_asm!("{}", const 0f32);
+   |                   ^^^^^^----
+   |                         |
+   |                         is an `f32`
+   |
+   = help: `const` operands must be of an integer type
+
+error: invalid type for `const` operand
+  --> $DIR/type-check-1.rs:78:19
+   |
+LL | global_asm!("{}", const 0 as *mut u8);
+   |                   ^^^^^^------------
+   |                         |
+   |                         is a `*mut u8`
+   |
+   = help: `const` operands must be of an integer type
+
+error: aborting due to 17 previous errors
 
 Some errors have detailed explanations: E0277, E0435.
 For more information about an error, try `rustc --explain E0277`.
