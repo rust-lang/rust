@@ -32,8 +32,8 @@ impl fmt::Display for CfgAtom {
 pub enum CfgExpr {
     Invalid,
     Atom(CfgAtom),
-    All(Vec<CfgExpr>),
-    Any(Vec<CfgExpr>),
+    All(Box<[CfgExpr]>),
+    Any(Box<[CfgExpr]>),
     Not(Box<CfgExpr>),
 }
 
@@ -90,12 +90,12 @@ fn next_cfg_expr<S>(it: &mut std::slice::Iter<'_, tt::TokenTree<S>>) -> Option<C
         Some(tt::TokenTree::Subtree(subtree)) => {
             it.next();
             let mut sub_it = subtree.token_trees.iter();
-            let mut subs = std::iter::from_fn(|| next_cfg_expr(&mut sub_it)).collect();
-            match &name {
-                s if *s == sym::all => CfgExpr::All(subs),
-                s if *s == sym::any => CfgExpr::Any(subs),
-                s if *s == sym::not => {
-                    CfgExpr::Not(Box::new(subs.pop().unwrap_or(CfgExpr::Invalid)))
+            let mut subs = std::iter::from_fn(|| next_cfg_expr(&mut sub_it));
+            match name {
+                s if s == sym::all => CfgExpr::All(subs.collect()),
+                s if s == sym::any => CfgExpr::Any(subs.collect()),
+                s if s == sym::not => {
+                    CfgExpr::Not(Box::new(subs.next().unwrap_or(CfgExpr::Invalid)))
                 }
                 _ => CfgExpr::Invalid,
             }

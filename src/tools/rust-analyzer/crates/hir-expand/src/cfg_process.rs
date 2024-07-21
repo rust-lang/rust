@@ -287,8 +287,8 @@ where
                 }
             }
             let group = match &name {
-                s if *s == sym::all => CfgExpr::All(preds),
-                s if *s == sym::any => CfgExpr::Any(preds),
+                s if *s == sym::all => CfgExpr::All(preds.into_boxed_slice()),
+                s if *s == sym::any => CfgExpr::Any(preds.into_boxed_slice()),
                 s if *s == sym::not => {
                     CfgExpr::Not(Box::new(preds.pop().unwrap_or(CfgExpr::Invalid)))
                 }
@@ -343,7 +343,7 @@ mod tests {
         assert_eq!(node.syntax().text_range().start(), 0.into());
 
         let cfg = parse_from_attr_meta(node.meta().unwrap()).unwrap();
-        let actual = format!("#![cfg({})]", DnfExpr::new(cfg));
+        let actual = format!("#![cfg({})]", DnfExpr::new(&cfg));
         expect.assert_eq(&actual);
     }
     #[test]

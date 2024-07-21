@@ -29,7 +29,7 @@ fn check_dnf(input: &str, expect: Expect) {
         DocCommentDesugarMode::ProcMacro,
     );
     let cfg = CfgExpr::parse(&tt);
-    let actual = format!("#![cfg({})]", DnfExpr::new(cfg));
+    let actual = format!("#![cfg({})]", DnfExpr::new(&cfg));
     expect.assert_eq(&actual);
 }
 
@@ -43,7 +43,7 @@ fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
         DocCommentDesugarMode::ProcMacro,
     );
     let cfg = CfgExpr::parse(&tt);
-    let dnf = DnfExpr::new(cfg);
+    let dnf = DnfExpr::new(&cfg);
     let why_inactive = dnf.why_inactive(opts).unwrap().to_string();
     expect.assert_eq(&why_inactive);
 }
@@ -59,7 +59,7 @@ fn check_enable_hints(input: &str, opts: &CfgOptions, expected_hints: &[&str]) {
         DocCommentDesugarMode::ProcMacro,
     );
     let cfg = CfgExpr::parse(&tt);
-    let dnf = DnfExpr::new(cfg);
+    let dnf = DnfExpr::new(&cfg);
     let hints = dnf.compute_enable_hints(opts).map(|diff| diff.to_string()).collect::<Vec<_>>();
     assert_eq!(hints, expected_hints);
 }
@@ -82,20 +82,28 @@ fn test_cfg_expr_parser() {
 
     assert_parse_result(
         r#"#![cfg(all(foo, bar = "baz"))]"#,
-        CfgExpr::All(vec![
-            CfgAtom::Flag(Symbol::intern("foo")).into(),
-            CfgAtom::KeyValue { key: Symbol::intern("bar"), value: Symbol::intern("baz") }.into(),
-        ]),
+        CfgExpr::All(
+            vec![
+                CfgAtom::Flag(Symbol::intern("foo")).into(),
+                CfgAtom::KeyValue { key: Symbol::intern("bar"), value: Symbol::intern("baz") }
+                    .into(),
+            ]
+            .into_boxed_slice(),
+        ),
     );
 
     assert_parse_result(
         r#"#![cfg(any(not(), all(), , bar = "baz",))]"#,
-        CfgExpr::Any(vec![
-            CfgExpr::Not(Box::new(CfgExpr::Invalid)),
-            CfgExpr::All(vec![]),
-            CfgExpr::Invalid,
-            CfgAtom::KeyValue { key: Symbol::intern("bar"), value: Symbol::intern("baz") }.into(),
-        ]),
+        CfgExpr::Any(
+            vec![
+                CfgExpr::Not(Box::new(CfgExpr::Invalid)),
+                CfgExpr::All(Box::new([])),
+                CfgExpr::Invalid,
+                CfgAtom::KeyValue { key: Symbol::intern("bar"), value: Symbol::intern("baz") }
+                    .into(),
+            ]
+            .into_boxed_slice(),
+        ),
     );
 }
 
@@ -235,6 +243,6 @@ fn proptest() {
 
         let mut u = Unstructured::new(&buf);
         let cfg = CfgExpr::arbitrary(&mut u).unwrap();
-        DnfExpr::new(cfg);
+        DnfExpr::new(&cfg);
     }
 }
