@@ -822,6 +822,7 @@ dependencies = [
  "rustfix 0.8.1",
  "serde",
  "serde_json",
+ "strsim",
  "tracing",
  "tracing-subscriber",
  "unified-diff",

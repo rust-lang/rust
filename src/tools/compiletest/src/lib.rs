@@ -13,6 +13,7 @@ pub mod compute_diff;
 pub mod errors;
 pub mod header;
 mod json;
+mod load_cfg;
 mod raise_fd_limit;
 mod read2;
 pub mod runtest;
