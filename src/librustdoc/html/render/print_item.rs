@@ -2062,16 +2062,23 @@ pub(super) fn item_path(ty: ItemType, name: &str) -> String {
 
 fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> String {
     let mut bounds = String::new();
-    if !t_bounds.is_empty() {
-        if !trait_alias {
+    if t_bounds.is_empty() {
+        return bounds;
+    }
+    let has_lots_of_bounds = t_bounds.len() > 2;
+    let inter_str = if has_lots_of_bounds { "\n    + " } else { " + " };
+    if !trait_alias {
+        if has_lots_of_bounds {
+            bounds.push_str(":\n    ");
+        } else {
             bounds.push_str(": ");
         }
-        for (i, p) in t_bounds.iter().enumerate() {
-            if i > 0 {
-                bounds.push_str(" + ");
-            }
-            bounds.push_str(&p.print(cx).to_string());
+    }
+    for (i, p) in t_bounds.iter().enumerate() {
+        if i > 0 {
+            bounds.push_str(inter_str);
         }
+        bounds.push_str(&p.print(cx).to_string());
     }
     bounds
 }
