@@ -1019,6 +1019,10 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
             } else if cx.is_foreign_non_exhaustive_enum(ty) {
                 err.note(format!("`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively"));
+            } else if cx.is_uninhabited(ty.inner()) && cx.tcx.features().min_exhaustive_patterns {
+                // The type is uninhabited yet there is a witness: we must be in the `MaybeInvalid`
+                // case.
+                err.note(format!("`{ty}` is uninhabited but is not being matched by value, so a wildcard `_` is required"));
             }
         }
     }
