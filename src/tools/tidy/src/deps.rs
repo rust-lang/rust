@@ -65,7 +65,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)
     //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 has been synced back to the rust repo
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None),
     ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None),
-    //("src/etc/test-float-parse", &[], None), // FIXME uncomment once all deps are vendored
+    ("src/etc/test-float-parse", EXCEPTIONS, None),
     ("src/tools/cargo", EXCEPTIONS_CARGO, None),
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
