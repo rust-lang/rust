@@ -1618,3 +1618,18 @@ pub struct FooStruct;
         "#]],
     );
 }
+
+#[test]
+fn primitive_mod() {
+    check(
+        r#"
+//- minicore: str
+fn main() {
+    str::from$0
+}
+"#,
+        expect![[r#"
+            fn from_utf8_unchecked(…) (use core::str) const unsafe fn(&[u8]) -> &str
+        "#]],
+    );
+}
