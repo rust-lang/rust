@@ -14,8 +14,10 @@ LL +         _ => todo!()
 error: unreachable pattern
   --> $DIR/floats.rs:18:9
    |
+LL |         0.01f16..=6.5f16 => {}
+   |         ---------------- matches all the values already
 LL |         0.01f16 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ unreachable pattern
    |
 note: the lint level is defined here
   --> $DIR/floats.rs:1:9
@@ -26,80 +28,118 @@ LL | #![deny(unreachable_patterns)]
 error: unreachable pattern
   --> $DIR/floats.rs:19:9
    |
+LL |         0.01f16..=6.5f16 => {}
+   |         ---------------- matches all the values already
+LL |         0.01f16 => {}
 LL |         0.02f16 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:20:9
    |
+LL |         0.01f16..=6.5f16 => {}
+   |         ---------------- matches all the values already
+...
 LL |         6.5f16 => {}
-   |         ^^^^^^
+   |         ^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:31:9
    |
+LL |         0.01f32..=6.5f32 => {}
+   |         ---------------- matches all the values already
 LL |         0.01f32 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:32:9
    |
+LL |         0.01f32..=6.5f32 => {}
+   |         ---------------- matches all the values already
+LL |         0.01f32 => {}
 LL |         0.02f32 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:33:9
    |
+LL |         0.01f32..=6.5f32 => {}
+   |         ---------------- matches all the values already
+...
 LL |         6.5f32 => {}
-   |         ^^^^^^
+   |         ^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:45:9
    |
+LL |         0.01f64..=6.5f64 => {}
+   |         ---------------- matches all the values already
+LL |         0.005f64 => {}
 LL |         0.01f64 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:46:9
    |
+LL |         0.01f64..=6.5f64 => {}
+   |         ---------------- matches all the values already
+...
 LL |         0.02f64 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:47:9
    |
+LL |         0.01f64..=6.5f64 => {}
+   |         ---------------- matches all the values already
+...
 LL |         6.5f64 => {}
-   |         ^^^^^^
+   |         ^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:49:9
    |
+LL |         0.01f64..=6.5f64 => {}
+   |         ---------------- matches all the values already
+...
 LL |         1.0f64..=4.0f64 => {}
-   |         ^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:62:9
    |
+LL |         0.01f128..=6.5f128 => {}
+   |         ------------------ matches all the values already
+LL |         0.005f128 => {}
 LL |         0.01f128 => {}
-   |         ^^^^^^^^
+   |         ^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:63:9
    |
+LL |         0.01f128..=6.5f128 => {}
+   |         ------------------ matches all the values already
+...
 LL |         0.02f128 => {}
-   |         ^^^^^^^^
+   |         ^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:64:9
    |
+LL |         0.01f128..=6.5f128 => {}
+   |         ------------------ matches all the values already
+...
 LL |         6.5f128 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/floats.rs:66:9
    |
+LL |         0.01f128..=6.5f128 => {}
+   |         ------------------ matches all the values already
+...
 LL |         1.0f128..=4.0f128 => {}
-   |         ^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^ unreachable pattern
 
 error: aborting due to 15 previous errors
 

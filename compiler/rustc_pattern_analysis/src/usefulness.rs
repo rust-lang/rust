@@ -713,7 +713,7 @@ use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
@@ -726,18 +726,81 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
 }
 
+/// A pattern is a "branch" if it is the immediate child of an or-pattern, or if it is the whole
+/// pattern of a match arm. These are the patterns that can be meaningfully considered "redundant",
+/// since e.g. `0` in `(0, 1)` cannot be redundant on its own.
+///
+/// We track for each branch pattern whether it is useful, and if not why.
+struct BranchPatUsefulness<'p, Cx: PatCx> {
+    /// Whether this pattern is useful.
+    useful: bool,
+    /// A set of patterns that:
+    /// - come before this one in the match;
+    /// - intersect this one;
+    /// - at the end of the algorithm, if `!self.useful`, their union covers this pattern.
+    covered_by: FxHashSet<&'p DeconstructedPat<Cx>>,
+}
+
+impl<'p, Cx: PatCx> BranchPatUsefulness<'p, Cx> {
+    /// Update `self` with the usefulness information found in `row`.
+    fn update(&mut self, row: &MatrixRow<'p, Cx>, matrix: &Matrix<'p, Cx>) {
+        self.useful |= row.useful;
+        // This deserves an explanation: `intersects_at_least` does not contain all intersections
+        // because we skip irrelevant values (see the docs for `intersects_at_least` for an
+        // example). Yet we claim this suffices to build a covering set.
+        //
+        // Let `p` be our pattern. Assume it is found not useful. For a value `v`, if the value was
+        // relevant then we explored that value and found that there was another pattern `q` before
+        // `p` that matches it too. We therefore recorded an intersection with `q`. If `v` was
+        // irrelevant, we know there's another value `v2` that matches strictly fewer rows (while
+        // still matching our row) and is relevant. Since `p` is not useful, there must have been a
+        // `q` before `p` that matches `v2`, and we recorded that intersection. Since `v2` matches
+        // strictly fewer rows than `v`, `q` also matches `v`. In either case, we recorded in
+        // `intersects_at_least` a pattern that matches `v`. Hence using `intersects_at_least` is
+        // sufficient to build a covering set.
+        for row_id in row.intersects_at_least.iter() {
+            let row = &matrix.rows[row_id];
+            if row.useful && !row.is_under_guard {
+                if let PatOrWild::Pat(intersecting) = row.head() {
+                    self.covered_by.insert(intersecting);
+                }
+            }
+        }
+    }
+
+    /// Check whether this pattern is redundant, and if so explain why.
+    fn is_redundant(&self) -> Option<RedundancyExplanation<'p, Cx>> {
+        if self.useful {
+            None
+        } else {
+            // We avoid instability by sorting by `uid`. The order of `uid`s only depends on the
+            // pattern structure.
+            #[cfg_attr(feature = "rustc", allow(rustc::potential_query_instability))]
+            let mut covered_by: Vec<_> = self.covered_by.iter().copied().collect();
+            covered_by.sort_by_key(|pat| pat.uid); // sort to avoid instability
+            Some(RedundancyExplanation { covered_by })
+        }
+    }
+}
+
+impl<'p, Cx: PatCx> Default for BranchPatUsefulness<'p, Cx> {
+    fn default() -> Self {
+        Self { useful: Default::default(), covered_by: Default::default() }
+    }
+}
+
 /// Context that provides information for usefulness checking.
-struct UsefulnessCtxt<'a, Cx: PatCx> {
+struct UsefulnessCtxt<'a, 'p, Cx: PatCx> {
     /// The context for type information.
     tycx: &'a Cx,
-    /// Collect the patterns found useful during usefulness checking. This is used to lint
-    /// unreachable (sub)patterns.
-    useful_subpatterns: FxHashSet<PatId>,
+    /// Track information about the usefulness of branch patterns (see definition of "branch
+    /// pattern" at [`BranchPatUsefulness`]).
+    branch_usefulness: FxHashMap<PatId, BranchPatUsefulness<'p, Cx>>,
     complexity_limit: Option<usize>,
     complexity_level: usize,
 }
 
-impl<'a, Cx: PatCx> UsefulnessCtxt<'a, Cx> {
+impl<'a, 'p, Cx: PatCx> UsefulnessCtxt<'a, 'p, Cx> {
     fn increase_complexity_level(&mut self, complexity_add: usize) -> Result<(), Cx::Error> {
         self.complexity_level += complexity_add;
         if self
@@ -1051,14 +1114,40 @@ struct MatrixRow<'p, Cx: PatCx> {
     /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
     /// This is reset to `false` when specializing.
     useful: bool,
-    /// Tracks which rows above this one have an intersection with this one, i.e. such that there is
-    /// a value that matches both rows.
-    /// Note: Because of relevancy we may miss some intersections. The intersections we do find are
-    /// correct.
-    intersects: BitSet<usize>,
+    /// Tracks some rows above this one that have an intersection with this one, i.e. such that
+    /// there is a value that matches both rows.
+    /// Because of relevancy we may miss some intersections. The intersections we do find are
+    /// correct. In other words, this is an underapproximation of the real set of intersections.
+    ///
+    /// For example:
+    /// ```rust,ignore(illustrative)
+    /// match ... {
+    ///     (true, _, _) => {} // `intersects_at_least = []`
+    ///     (_, true, 0..=10) => {} // `intersects_at_least = []`
+    ///     (_, true, 5..15) => {} // `intersects_at_least = [1]`
+    /// }
+    /// ```
+    /// Here the `(true, true)` case is irrelevant. Since we skip it, we will not detect that row 0
+    /// intersects rows 1 and 2.
+    intersects_at_least: BitSet<usize>,
+    /// Whether the head pattern is a branch (see definition of "branch pattern" at
+    /// [`BranchPatUsefulness`])
+    head_is_branch: bool,
 }
 
 impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
+    fn new(arm: &MatchArm<'p, Cx>, arm_id: usize) -> Self {
+        MatrixRow {
+            pats: PatStack::from_pattern(arm.pat),
+            parent_row: arm_id,
+            is_under_guard: arm.has_guard,
+            useful: false,
+            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            // This pattern is a branch because it comes from a match arm.
+            head_is_branch: true,
+        }
+    }
+
     fn len(&self) -> usize {
         self.pats.len()
     }
@@ -1076,12 +1165,14 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
         &self,
         parent_row: usize,
     ) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'_> {
+        let is_or_pat = self.pats.head().is_or_pat();
         self.pats.expand_or_pat().map(move |patstack| MatrixRow {
             pats: patstack,
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
-            intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
+            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            head_is_branch: is_or_pat,
         })
     }
 
@@ -1100,7 +1191,8 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
-            intersects: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            head_is_branch: false,
         })
     }
 }
@@ -1138,7 +1230,7 @@ struct Matrix<'p, Cx: PatCx> {
 impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     /// Pushes a new row to the matrix. Internal method, prefer [`Matrix::new`].
     fn push(&mut self, mut row: MatrixRow<'p, Cx>) {
-        row.intersects = BitSet::new_empty(self.rows.len());
+        row.intersects_at_least = BitSet::new_empty(self.rows.len());
         self.rows.push(row);
     }
 
@@ -1156,14 +1248,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
             wildcard_row_is_relevant: true,
         };
         for (arm_id, arm) in arms.iter().enumerate() {
-            let v = MatrixRow {
-                pats: PatStack::from_pattern(arm.pat),
-                parent_row: arm_id,
-                is_under_guard: arm.has_guard,
-                useful: false,
-                intersects: BitSet::new_empty(0), // Initialized in `Matrix::push`.
-            };
-            matrix.push(v);
+            matrix.push(MatrixRow::new(arm, arm_id));
         }
         matrix
     }
@@ -1242,12 +1327,12 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
             let parent_row = &mut self.rows[parent_row_id];
             // A parent row is useful if any of its children is.
             parent_row.useful |= child_row.useful;
-            for child_intersection in child_row.intersects.iter() {
+            for child_intersection in child_row.intersects_at_least.iter() {
                 // Convert the intersecting ids into ids for the parent matrix.
                 let parent_intersection = specialized.rows[child_intersection].parent_row;
                 // Note: self-intersection can happen with or-patterns.
                 if parent_intersection != parent_row_id {
-                    parent_row.intersects.insert(parent_intersection);
+                    parent_row.intersects_at_least.insert(parent_intersection);
                 }
             }
         }
@@ -1544,7 +1629,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: PatCx>(
                 let overlaps_with: Vec<_> = prefixes
                     .iter()
                     .filter(|&&(other_child_row_id, _)| {
-                        child_row.intersects.contains(other_child_row_id)
+                        child_row.intersects_at_least.contains(other_child_row_id)
                     })
                     .map(|&(_, pat)| pat)
                     .collect();
@@ -1560,7 +1645,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: PatCx>(
                 let overlaps_with: Vec<_> = suffixes
                     .iter()
                     .filter(|&&(other_child_row_id, _)| {
-                        child_row.intersects.contains(other_child_row_id)
+                        child_row.intersects_at_least.contains(other_child_row_id)
                     })
                     .map(|&(_, pat)| pat)
                     .collect();
@@ -1603,8 +1688,8 @@ fn collect_non_contiguous_range_endpoints<'p, Cx: PatCx>(
 /// The core of the algorithm.
 ///
 /// This recursively computes witnesses of the non-exhaustiveness of `matrix` (if any). Also tracks
-/// usefulness of each row in the matrix (in `row.useful`). We track usefulness of each subpattern
-/// in `mcx.useful_subpatterns`.
+/// usefulness of each row in the matrix (in `row.useful`). We track usefulness of subpatterns in
+/// `mcx.branch_usefulness`.
 ///
 /// The input `Matrix` and the output `WitnessMatrix` together match the type exhaustively.
 ///
@@ -1616,7 +1701,7 @@ fn collect_non_contiguous_range_endpoints<'p, Cx: PatCx>(
 /// This is all explained at the top of the file.
 #[instrument(level = "debug", skip(mcx), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
-    mcx: &mut UsefulnessCtxt<'a, Cx>,
+    mcx: &mut UsefulnessCtxt<'a, 'p, Cx>,
     matrix: &mut Matrix<'p, Cx>,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
@@ -1635,7 +1720,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
         let mut useful = true; // Whether the next row is useful.
         for (i, row) in matrix.rows_mut().enumerate() {
             row.useful = useful;
-            row.intersects.insert_range(0..i);
+            row.intersects_at_least.insert_range(0..i);
             // The next rows stays useful if this one is under a guard.
             useful &= row.is_under_guard;
         }
@@ -1677,7 +1762,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
         if let Constructor::IntRange(overlap_range) = ctor {
             if overlap_range.is_singleton()
                 && spec_matrix.rows.len() >= 2
-                && spec_matrix.rows.iter().any(|row| !row.intersects.is_empty())
+                && spec_matrix.rows.iter().any(|row| !row.intersects_at_least.is_empty())
             {
                 collect_overlapping_range_endpoints(mcx.tycx, overlap_range, matrix, &spec_matrix);
             }
@@ -1697,19 +1782,25 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: PatCx>(
         }
     }
 
-    // Record usefulness in the patterns.
+    // Record usefulness of the branch patterns.
     for row in matrix.rows() {
-        if row.useful {
+        if row.head_is_branch {
             if let PatOrWild::Pat(pat) = row.head() {
-                let newly_useful = mcx.useful_subpatterns.insert(pat.uid);
-                if newly_useful {
-                    debug!("newly useful: {pat:?}");
-                }
+                mcx.branch_usefulness.entry(pat.uid).or_default().update(row, matrix);
             }
         }
     }
 
     Ok(ret)
+}
+
+/// Indicates why a given pattern is considered redundant.
+#[derive(Clone, Debug)]
+pub struct RedundancyExplanation<'p, Cx: PatCx> {
+    /// All the values matched by this pattern are already matched by the given set of patterns.
+    /// This list is not guaranteed to be minimal but the contained patterns are at least guaranteed
+    /// to intersect this pattern.
+    pub covered_by: Vec<&'p DeconstructedPat<Cx>>,
 }
 
 /// Indicates whether or not a given arm is useful.
@@ -1718,10 +1809,10 @@ pub enum Usefulness<'p, Cx: PatCx> {
     /// The arm is useful. This additionally carries a set of or-pattern branches that have been
     /// found to be redundant despite the overall arm being useful. Used only in the presence of
     /// or-patterns, otherwise it stays empty.
-    Useful(Vec<&'p DeconstructedPat<Cx>>),
+    Useful(Vec<(&'p DeconstructedPat<Cx>, RedundancyExplanation<'p, Cx>)>),
     /// The arm is redundant and can be removed without changing the behavior of the match
     /// expression.
-    Redundant,
+    Redundant(RedundancyExplanation<'p, Cx>),
 }
 
 /// The output of checking a match for exhaustiveness and arm usefulness.
@@ -1747,7 +1838,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     let mut cx = UsefulnessCtxt {
         tycx,
-        useful_subpatterns: FxHashSet::default(),
+        branch_usefulness: FxHashMap::default(),
         complexity_limit,
         complexity_level: 0,
     };
@@ -1760,26 +1851,32 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         .copied()
         .map(|arm| {
             debug!(?arm);
-            let usefulness = if cx.useful_subpatterns.contains(&arm.pat.uid) {
+            let usefulness = cx.branch_usefulness.get(&arm.pat.uid).unwrap();
+            let usefulness = if let Some(explanation) = usefulness.is_redundant() {
+                Usefulness::Redundant(explanation)
+            } else {
                 let mut redundant_subpats = Vec::new();
                 arm.pat.walk(&mut |subpat| {
-                    if cx.useful_subpatterns.contains(&subpat.uid) {
-                        true // keep recursing
+                    if let Some(u) = cx.branch_usefulness.get(&subpat.uid) {
+                        if let Some(explanation) = u.is_redundant() {
+                            redundant_subpats.push((subpat, explanation));
+                            false // stop recursing
+                        } else {
+                            true // keep recursing
+                        }
                     } else {
-                        redundant_subpats.push(subpat);
-                        false // stop recursing
+                        true // keep recursing
                     }
                 });
                 Usefulness::Useful(redundant_subpats)
-            } else {
-                Usefulness::Redundant
             };
             debug!(?usefulness);
             (arm, usefulness)
         })
         .collect();
 
-    let arm_intersections: Vec<_> = matrix.rows().map(|row| row.intersects.clone()).collect();
+    let arm_intersections: Vec<_> =
+        matrix.rows().map(|row| row.intersects_at_least.clone()).collect();
 
     Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses, arm_intersections })
 }

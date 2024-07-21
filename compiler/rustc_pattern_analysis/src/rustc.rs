@@ -32,6 +32,8 @@ pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcPatCtxt<'p
 pub type ConstructorSet<'p, 'tcx> = crate::constructor::ConstructorSet<RustcPatCtxt<'p, 'tcx>>;
 pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<RustcPatCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcPatCtxt<'p, 'tcx>>;
+pub type RedundancyExplanation<'p, 'tcx> =
+    crate::usefulness::RedundancyExplanation<'p, RustcPatCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcPatCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
     crate::usefulness::UsefulnessReport<'p, RustcPatCtxt<'p, 'tcx>>;
