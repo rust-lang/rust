@@ -2,12 +2,12 @@
 
 use std::{cell::Cell, cmp::Ordering, iter, ops::BitOr};
 
-use base_db::CrateId;
+use base_db::{CrateId, CrateOrigin, LangCrateOrigin};
 use hir_expand::{
     name::{AsName, Name},
     Lookup,
 };
-use intern::{sym, Symbol};
+use intern::sym;
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -60,7 +60,7 @@ pub fn find_path(
     )
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Stability {
     Unstable,
     Stable,
@@ -117,7 +117,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
         return find_path_for_module(ctx, &mut visited_modules, module_id, max_len)
-            .map(|(item, _)| item);
+            .map(|choice| choice.path);
     }
 
     let may_be_in_scope = match ctx.prefix {
@@ -135,7 +135,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 
     // - if the item is in the prelude, return the name from there
     if let Some(value) = find_in_prelude(ctx.db, ctx.from_def_map, item, ctx.from) {
-        return Some(value);
+        return Some(value.path);
     }
 
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
@@ -153,7 +153,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 
     let mut visited_modules = FxHashSet::default();
 
-    calculate_best_path(ctx, &mut visited_modules, item, max_len).map(|(item, _)| item)
+    calculate_best_path(ctx, &mut visited_modules, item, max_len).map(|choice| choice.path)
 }
 
 #[tracing::instrument(skip_all)]
@@ -162,11 +162,17 @@ fn find_path_for_module(
     visited_modules: &mut FxHashSet<ModuleId>,
     module_id: ModuleId,
     max_len: usize,
-) -> Option<(ModPath, Stability)> {
+) -> Option<Choice> {
     if let Some(crate_root) = module_id.as_crate_root() {
         if crate_root == ctx.from.derive_crate_root() {
             // - if the item is the crate root, return `crate`
-            return Some((ModPath::from_segments(PathKind::Crate, None), Stable));
+            return Some(Choice {
+                path: ModPath::from_segments(PathKind::Crate, None),
+                path_len: 5,
+                stability: Stable,
+                prefer_due_to_prelude: false,
+                sysroot_score: 0,
+            });
         }
         // - otherwise if the item is the crate root of a dependency crate, return the name from the extern prelude
 
@@ -193,7 +199,7 @@ fn find_path_for_module(
             } else {
                 PathKind::Plain
             };
-            return Some((ModPath::from_segments(kind, iter::once(name.clone())), Stable));
+            return Some(Choice::new(ctx.cfg.prefer_prelude, kind, name.clone(), Stable));
         }
     }
 
@@ -211,25 +217,33 @@ fn find_path_for_module(
         );
         if let Some(scope_name) = scope_name {
             // - if the item is already in scope, return the name under which it is
-            return Some((
-                ModPath::from_segments(ctx.prefix.path_kind(), iter::once(scope_name)),
+            return Some(Choice::new(
+                ctx.cfg.prefer_prelude,
+                ctx.prefix.path_kind(),
+                scope_name,
                 Stable,
             ));
         }
     }
 
     // - if the module can be referenced as self, super or crate, do that
-    if let Some(mod_path) = is_kw_kind_relative_to_from(ctx.from_def_map, module_id, ctx.from) {
-        if ctx.prefix != PrefixKind::ByCrate || mod_path.kind == PathKind::Crate {
-            return Some((mod_path, Stable));
+    if let Some(kind) = is_kw_kind_relative_to_from(ctx.from_def_map, module_id, ctx.from) {
+        if ctx.prefix != PrefixKind::ByCrate || kind == PathKind::Crate {
+            return Some(Choice {
+                path: ModPath::from_segments(kind, None),
+                path_len: path_kind_len(kind),
+                stability: Stable,
+                prefer_due_to_prelude: false,
+                sysroot_score: 0,
+            });
         }
     }
 
     // - if the module is in the prelude, return it by that path
-    if let Some(mod_path) =
+    if let Some(choice) =
         find_in_prelude(ctx.db, ctx.from_def_map, ItemInNs::Types(module_id.into()), ctx.from)
     {
-        return Some((mod_path, Stable));
+        return Some(choice);
     }
     calculate_best_path(ctx, visited_modules, ItemInNs::Types(module_id.into()), max_len)
 }
@@ -256,7 +270,7 @@ fn find_in_prelude(
     local_def_map: &DefMap,
     item: ItemInNs,
     from: ModuleId,
-) -> Option<ModPath> {
+) -> Option<Choice> {
     let (prelude_module, _) = local_def_map.prelude()?;
     let prelude_def_map = prelude_module.def_map(db);
     let prelude_scope = &prelude_def_map[prelude_module.local_id].scope;
@@ -278,7 +292,7 @@ fn find_in_prelude(
         });
 
     if found_and_same_def.unwrap_or(true) {
-        Some(ModPath::from_segments(PathKind::Plain, iter::once(name.clone())))
+        Some(Choice::new(false, PathKind::Plain, name.clone(), Stable))
     } else {
         None
     }
@@ -288,7 +302,7 @@ fn is_kw_kind_relative_to_from(
     def_map: &DefMap,
     item: ModuleId,
     from: ModuleId,
-) -> Option<ModPath> {
+) -> Option<PathKind> {
     if item.krate != from.krate || item.is_within_block() || from.is_within_block() {
         return None;
     }
@@ -296,14 +310,11 @@ fn is_kw_kind_relative_to_from(
     let from = from.local_id;
     if item == from {
         // - if the item is the module we're in, use `self`
-        Some(ModPath::from_segments(PathKind::SELF, None))
+        Some(PathKind::SELF)
     } else if let Some(parent_id) = def_map[from].parent {
         if item == parent_id {
             // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
-            Some(ModPath::from_segments(
-                if parent_id == DefMap::ROOT { PathKind::Crate } else { PathKind::Super(1) },
-                None,
-            ))
+            Some(if parent_id == DefMap::ROOT { PathKind::Crate } else { PathKind::Super(1) })
         } else {
             None
         }
@@ -318,7 +329,7 @@ fn calculate_best_path(
     visited_modules: &mut FxHashSet<ModuleId>,
     item: ItemInNs,
     max_len: usize,
-) -> Option<(ModPath, Stability)> {
+) -> Option<Choice> {
     if max_len <= 1 {
         // recursive base case, we can't find a path prefix of length 0, one segment is occupied by
         // the item's name itself.
@@ -336,25 +347,7 @@ fn calculate_best_path(
     }
     ctx.fuel.set(fuel - 1);
 
-    let mut best_path = None;
-    let mut best_path_len = max_len;
-    let mut process = |mut path: (ModPath, Stability), name, best_path_len: &mut _| {
-        path.0.push_segment(name);
-        let new_path = match best_path.take() {
-            Some(best_path) => select_best_path(best_path, path, ctx.cfg),
-            None => path,
-        };
-        if new_path.1 == Stable {
-            *best_path_len = new_path.0.len();
-        }
-        match &mut best_path {
-            Some((old_path, old_stability)) => {
-                *old_path = new_path.0;
-                *old_stability = zip_stability(*old_stability, new_path.1);
-            }
-            None => best_path = Some(new_path),
-        }
-    };
+    let mut best_choice = None::<Choice>;
     let db = ctx.db;
     if item.krate(db) == Some(ctx.from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
@@ -366,10 +359,16 @@ fn calculate_best_path(
             }
             // we are looking for paths of length up to best_path_len, any longer will make it be
             // less optimal. The -1 is due to us pushing name onto it afterwards.
-            if let Some(path) =
-                find_path_for_module(ctx, visited_modules, module_id, best_path_len - 1)
-            {
-                process(path, name.clone(), &mut best_path_len);
+            if let Some(path) = find_path_for_module(
+                ctx,
+                visited_modules,
+                module_id,
+                best_choice.as_ref().map_or(max_len, |it| it.path_len) - 1,
+            ) {
+                best_choice = Some(match best_choice.take() {
+                    Some(best_choice) => best_choice.select(path, name.clone()),
+                    None => path.push(ctx.cfg.prefer_prelude, name.clone()),
+                });
             }
         })
     } else {
@@ -377,7 +376,7 @@ fn calculate_best_path(
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
         // that wants to import it here, but we always prefer to use the external path here.
 
-        let mut process_dep = |dep: CrateId| {
+        let mut process_dep = |dep: CrateId, score| {
             let import_map = db.import_map(dep);
             let Some(import_info_for) = import_map.import_info_for(item) else {
                 return false;
@@ -391,24 +390,33 @@ fn calculate_best_path(
 
                 // Determine best path for containing module and append last segment from `info`.
                 // FIXME: we should guide this to look up the path locally, or from the same crate again?
-                let path =
-                    find_path_for_module(ctx, visited_modules, info.container, best_path_len - 1);
-                let Some((path, path_stability)) = path else {
+                let choice = find_path_for_module(
+                    ctx,
+                    visited_modules,
+                    info.container,
+                    best_choice.as_ref().map_or(max_len, |it| it.path_len) - 1,
+                );
+                let Some(mut choice) = choice else {
                     continue;
                 };
+                choice.sysroot_score = score;
                 cov_mark::hit!(partially_imported);
-                let path = (
-                    path,
-                    zip_stability(path_stability, if info.is_unstable { Unstable } else { Stable }),
+                choice.stability = zip_stability(
+                    choice.stability,
+                    if info.is_unstable { Unstable } else { Stable },
                 );
 
-                process(path, info.name.clone(), &mut best_path_len);
+                best_choice = Some(match best_choice.take() {
+                    Some(best_choice) => best_choice.select(choice, info.name.clone()),
+                    None => choice.push(ctx.cfg.prefer_prelude, info.name.clone()),
+                });
                 processed_something = true;
             }
             processed_something
         };
 
-        let dependencies = &db.crate_graph()[ctx.from.krate].dependencies;
+        let crate_graph = db.crate_graph();
+        let dependencies = &crate_graph[ctx.from.krate].dependencies;
         if ctx.is_std_item {
             // The item we are searching for comes from the sysroot libraries, so skip prefer looking in
             // the sysroot libraries directly.
@@ -417,89 +425,104 @@ fn calculate_best_path(
             let processed = dependencies
                 .iter()
                 .filter(|it| it.is_sysroot())
-                .map(|dep| process_dep(dep.crate_id))
+                .map(|dep| {
+                    (
+                        match crate_graph[dep.crate_id].origin {
+                            CrateOrigin::Lang(LangCrateOrigin::Std) if ctx.cfg.prefer_no_std => 4,
+                            CrateOrigin::Lang(LangCrateOrigin::Std) => 1,
+                            CrateOrigin::Lang(LangCrateOrigin::Alloc) => 3,
+                            CrateOrigin::Lang(LangCrateOrigin::ProcMacro) => 3,
+                            CrateOrigin::Lang(LangCrateOrigin::Test) => 3,
+                            CrateOrigin::Lang(LangCrateOrigin::Core) => 2,
+                            CrateOrigin::Lang(LangCrateOrigin::Other) => 1,
+                            _ => 0,
+                        },
+                        dep.crate_id,
+                    )
+                })
+                .map(|(score, crate_id)| process_dep(crate_id, score))
                 .reduce(BitOr::bitor)
                 .unwrap_or(false);
             if processed {
                 // Found a path in a sysroot crate, so return it.
-                return best_path;
+                return best_choice;
             }
         }
 
         dependencies
             .iter()
             .filter(|it| !ctx.is_std_item || !it.is_sysroot())
-            .for_each(|dep| _ = process_dep(dep.crate_id));
+            .for_each(|dep| _ = process_dep(dep.crate_id, 0));
     }
-    best_path
+    best_choice
 }
 
-/// Select the best (most relevant) path between two paths.
-/// This accounts for stability, path length whether, std should be chosen over alloc/core paths as
-/// well as ignoring prelude like paths or not.
-fn select_best_path(
-    old_path @ (_, old_stability): (ModPath, Stability),
-    new_path @ (_, new_stability): (ModPath, Stability),
-    cfg: ImportPathConfig,
-) -> (ModPath, Stability) {
-    match (old_stability, new_stability) {
-        (Stable, Unstable) => return old_path,
-        (Unstable, Stable) => return new_path,
-        _ => {}
-    }
-    let std_crates: [Symbol; 3] = [sym::std.clone(), sym::core.clone(), sym::alloc.clone()];
+struct Choice {
+    path: ModPath,
+    /// The length in characters of the path
+    path_len: usize,
+    /// The stability of the path
+    stability: Stability,
+    /// Whether this path contains a prelude segment and preference for it has been signaled
+    prefer_due_to_prelude: bool,
+    /// non-zero if this is a path in a sysroot crate, we want to choose the highest ranked std crate
+    sysroot_score: u8,
+}
 
-    let choose = |new: (ModPath, _), old: (ModPath, _)| {
-        let (new_path, _) = &new;
-        let (old_path, _) = &old;
-        let new_has_prelude = new_path.segments().iter().any(|seg| *seg == sym::prelude.clone());
-        let old_has_prelude = old_path.segments().iter().any(|seg| *seg == sym::prelude.clone());
-        match (new_has_prelude, old_has_prelude, cfg.prefer_prelude) {
-            (true, false, true) | (false, true, false) => new,
-            (true, false, false) | (false, true, true) => old,
-            // no prelude difference in the paths, so pick the shorter one
-            (true, true, _) | (false, false, _) => {
-                let new_path_is_shorter = new_path
-                    .len()
-                    .cmp(&old_path.len())
-                    .then_with(|| new_path.textual_len().cmp(&old_path.textual_len()))
-                    .is_lt();
-                if new_path_is_shorter {
-                    new
-                } else {
-                    old
+impl Choice {
+    fn new(prefer_prelude: bool, kind: PathKind, name: Name, stability: Stability) -> Self {
+        Self {
+            path_len: path_kind_len(kind) + name.as_str().len(),
+            stability,
+            prefer_due_to_prelude: prefer_prelude && name == sym::prelude,
+            sysroot_score: 0,
+            path: ModPath::from_segments(kind, iter::once(name)),
+        }
+    }
+
+    fn push(mut self, prefer_prelude: bool, name: Name) -> Self {
+        self.path_len += name.as_str().len();
+        self.prefer_due_to_prelude |= prefer_prelude && name == sym::prelude;
+        self.path.push_segment(name);
+        self
+    }
+
+    fn select(self, mut other: Choice, name: Name) -> Self {
+        match other
+            .stability
+            .cmp(&self.stability)
+            .then_with(|| other.prefer_due_to_prelude.cmp(&self.prefer_due_to_prelude))
+            .then_with(|| self.sysroot_score.cmp(&other.sysroot_score))
+            .then_with(|| (self.path.len()).cmp(&(other.path.len() + 1)))
+        {
+            Ordering::Less => self,
+            Ordering::Equal => {
+                other.path_len += name.as_str().len();
+
+                match self.path_len.cmp(&other.path_len) {
+                    Ordering::Less | Ordering::Equal => self,
+                    Ordering::Greater => {
+                        other.path.push_segment(name);
+                        other
+                    }
                 }
             }
-        }
-    };
-
-    match (old_path.0.segments().first(), new_path.0.segments().first()) {
-        (Some(old), Some(new))
-            if std_crates.contains(old.symbol()) && std_crates.contains(new.symbol()) =>
-        {
-            let rank = match cfg.prefer_no_std {
-                false => |name: &Name| match name {
-                    name if *name == sym::core.clone() => 0,
-                    name if *name == sym::alloc.clone() => 1,
-                    name if *name == sym::std.clone() => 2,
-                    _ => unreachable!(),
-                },
-                true => |name: &Name| match name {
-                    name if *name == sym::core.clone() => 2,
-                    name if *name == sym::alloc.clone() => 1,
-                    name if *name == sym::std.clone() => 0,
-                    _ => unreachable!(),
-                },
-            };
-            let nrank = rank(new);
-            let orank = rank(old);
-            match nrank.cmp(&orank) {
-                Ordering::Less => old_path,
-                Ordering::Equal => choose(new_path, old_path),
-                Ordering::Greater => new_path,
+            Ordering::Greater => {
+                other.path.push_segment(name);
+                other
             }
         }
-        _ => choose(new_path, old_path),
+    }
+}
+
+fn path_kind_len(kind: PathKind) -> usize {
+    match kind {
+        PathKind::Plain => 0,
+        PathKind::Super(0) => 4,
+        PathKind::Super(s) => s as usize * 5,
+        PathKind::Crate => 5,
+        PathKind::Abs => 2,
+        PathKind::DollarCrate(_) => 0,
     }
 }
 
