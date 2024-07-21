@@ -10,11 +10,6 @@ use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicate::BoundPredicate;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
-use rustc_infer::error_reporting::infer::nice_region_error::{
-    self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
-    HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
-};
-use rustc_infer::error_reporting::infer::region::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
@@ -25,6 +20,12 @@ use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::error_reporting::infer::nice_region_error::{
+    self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
+    HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
+};
+use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_region_diagnostic;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 

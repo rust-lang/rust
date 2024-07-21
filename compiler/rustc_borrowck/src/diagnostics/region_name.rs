@@ -14,6 +14,7 @@ use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 
 use crate::{universal_regions::DefiningTy, MirBorrowckCtxt};
 

@@ -82,7 +82,6 @@ use rustc_errors::{pluralize, struct_span_code_err, Diag};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
-use rustc_infer::error_reporting::infer::ObligationCauseExt as _;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
@@ -96,10 +95,9 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::error_reporting::traits::suggestions::{
-    ReturnsVisitor, TypeErrCtxtExt as _,
-};
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
+use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::errors;

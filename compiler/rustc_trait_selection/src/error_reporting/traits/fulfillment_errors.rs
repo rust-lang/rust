@@ -1,6 +1,9 @@
-use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
-use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as _};
+use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
+use super::suggestions::get_explanation_based_on_obligation;
+use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::infer_ctxt_ext::InferCtxtExt;
+use crate::error_reporting::traits::report_object_safety_error;
+use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
@@ -24,10 +27,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_hir::{self as hir, LangItem};
-use rustc_infer::error_reporting::infer::TyCategory;
-use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
-use rustc_macros::extension;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -49,14 +49,11 @@ use super::{
     ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate, UnsatisfiedConst,
 };
 
-pub use rustc_infer::traits::error_reporting::*;
-
-#[extension(pub trait TypeErrCtxtSelectionErrExt<'a, 'tcx>)]
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// The `root_obligation` parameter should be the `root_obligation` field
     /// from a `FulfillmentError`. If no `FulfillmentError` is available,
     /// then it should be the same as `obligation`.
-    fn report_selection_error(
+    pub fn report_selection_error(
         &self,
         mut obligation: PredicateObligation<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
@@ -682,9 +679,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 }
 
-#[extension(pub(super) trait TypeErrCtxtExt<'a, 'tcx>)]
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    fn apply_do_not_recommend(&self, obligation: &mut PredicateObligation<'tcx>) -> bool {
+    pub(super) fn apply_do_not_recommend(
+        &self,
+        obligation: &mut PredicateObligation<'tcx>,
+    ) -> bool {
         let mut base_cause = obligation.cause.code().clone();
         let mut applied_do_not_recommend = false;
         loop {
@@ -1142,7 +1141,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 }
 
-#[extension(pub(super) trait InferCtxtPrivExt<'a, 'tcx>)]
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_trait(
         &self,
@@ -1182,7 +1180,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     #[instrument(level = "debug", skip(self), ret)]
-    fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
+    pub(super) fn error_implies(
+        &self,
+        cond: ty::Predicate<'tcx>,
+        error: ty::Predicate<'tcx>,
+    ) -> bool {
         if cond == error {
             return true;
         }
@@ -1205,7 +1207,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn report_projection_error(
+    pub(super) fn report_projection_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         error: &MismatchedProjectionTypes<'tcx>,
@@ -1455,7 +1457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn fuzzy_match_tys(
+    pub fn fuzzy_match_tys(
         &self,
         mut a: Ty<'tcx>,
         mut b: Ty<'tcx>,
@@ -1535,7 +1537,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn describe_closure(&self, kind: hir::ClosureKind) -> &'static str {
+    pub(super) fn describe_closure(&self, kind: hir::ClosureKind) -> &'static str {
         match kind {
             hir::ClosureKind::Closure => "a closure",
             hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_)) => "a coroutine",
@@ -1585,7 +1587,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn find_similar_impl_candidates(
+    pub(super) fn find_similar_impl_candidates(
         &self,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
@@ -1615,7 +1617,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         candidates
     }
 
-    fn report_similar_impl_candidates(
+    pub(super) fn report_similar_impl_candidates(
         &self,
         impl_candidates: &[ImplCandidate<'tcx>],
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -1989,7 +1991,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// `trait_ref`.
     ///
     /// For this to work, `new_self_ty` must have no escaping bound variables.
-    fn mk_trait_obligation_with_new_self_ty(
+    pub(super) fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
@@ -2041,7 +2043,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
     }
 
-    fn note_obligation_cause(&self, err: &mut Diag<'_>, obligation: &PredicateObligation<'tcx>) {
+    pub fn note_obligation_cause(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
@@ -2067,7 +2073,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_recursive_obligation(
+    pub(super) fn is_recursive_obligation(
         &self,
         obligated_types: &mut Vec<Ty<'tcx>>,
         cause_code: &ObligationCauseCode<'tcx>,

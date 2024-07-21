@@ -46,14 +46,12 @@
 //! time of error detection.
 
 use std::borrow::Cow;
-use std::ops::{ControlFlow, Deref};
+use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{
-    pluralize, Applicability, Diag, DiagCtxtHandle, DiagStyledString, IntoDiagArg, StringPart,
-};
+use rustc_errors::{pluralize, Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -72,13 +70,13 @@ use rustc_middle::ty::{
 use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 
+use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, TypeTrace, ValuePairs};
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-    PredicateObligation,
 };
 
 mod note_and_explain;
@@ -111,48 +109,59 @@ fn escape_literal(s: &str) -> String {
     escaped
 }
 
-/// A helper for building type related errors. The `typeck_results`
-/// field is only populated during an in-progress typeck.
-/// Get an instance by calling `InferCtxt::err_ctxt` or `FnCtxt::err_ctxt`.
-///
-/// You must only create this if you intend to actually emit an error (or
-/// perhaps a warning, though preferably not.) It provides a lot of utility
-/// methods which should not be used during the happy path.
-pub struct TypeErrCtxt<'a, 'tcx> {
-    pub infcx: &'a InferCtxt<'tcx>,
-    pub sub_relations: std::cell::RefCell<sub_relations::SubRelations>,
-
-    pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
-    pub fallback_has_occurred: bool,
-
-    pub normalize_fn_sig: Box<dyn Fn(ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'a>,
-
-    pub autoderef_steps:
-        Box<dyn Fn(Ty<'tcx>) -> Vec<(Ty<'tcx>, Vec<PredicateObligation<'tcx>>)> + 'a>,
-}
-
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'a> {
-        self.infcx.dcx()
+    // [Note-Type-error-reporting]
+    // An invariant is that anytime the expected or actual type is Error (the special
+    // error type, meaning that an error occurred when typechecking this expression),
+    // this is a derived error. The error cascaded from another error (that was already
+    // reported), so it's not useful to display it to the user.
+    // The following methods implement this logic.
+    // They check if either the actual or expected type is Error, and don't print the error
+    // in this case. The typechecker should only ever report type errors involving mismatched
+    // types using one of these methods, and should not call span_err directly for such
+    // errors.
+    pub fn type_error_struct_with_diag<M>(
+        &self,
+        sp: Span,
+        mk_diag: M,
+        actual_ty: Ty<'tcx>,
+    ) -> Diag<'a>
+    where
+        M: FnOnce(String) -> Diag<'a>,
+    {
+        let actual_ty = self.resolve_vars_if_possible(actual_ty);
+        debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
+
+        let mut err = mk_diag(self.ty_to_string(actual_ty));
+
+        // Don't report an error if actual type is `Error`.
+        if actual_ty.references_error() {
+            err.downgrade_to_delayed_bug();
+        }
+
+        err
     }
 
-    /// This is just to avoid a potential footgun of accidentally
-    /// dropping `typeck_results` by calling `InferCtxt::err_ctxt`
-    #[deprecated(note = "you already have a `TypeErrCtxt`")]
-    #[allow(unused)]
-    pub fn err_ctxt(&self) -> ! {
-        bug!("called `err_ctxt` on `TypeErrCtxt`. Try removing the call");
+    pub fn report_mismatched_types(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        err: TypeError<'tcx>,
+    ) -> Diag<'a> {
+        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
     }
-}
 
-impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
-    type Target = InferCtxt<'tcx>;
-    fn deref(&self) -> &InferCtxt<'tcx> {
-        self.infcx
+    pub fn report_mismatched_consts(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: ty::Const<'tcx>,
+        actual: ty::Const<'tcx>,
+        err: TypeError<'tcx>,
+    ) -> Diag<'a> {
+        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
-}
 
-impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
             ty::Alias(_, ty::AliasTy { def_id, args, .. })
@@ -2185,35 +2194,6 @@ impl TyCategory {
             }
             ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
             _ => None,
-        }
-    }
-}
-
-impl<'tcx> InferCtxt<'tcx> {
-    /// Given a [`hir::Block`], get the span of its last expression or
-    /// statement, peeling off any inner blocks.
-    pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
-        let block = block.innermost_block();
-        if let Some(expr) = &block.expr {
-            expr.span
-        } else if let Some(stmt) = block.stmts.last() {
-            // possibly incorrect trailing `;` in the else arm
-            stmt.span
-        } else {
-            // empty block; point at its entirety
-            block.span
-        }
-    }
-
-    /// Given a [`hir::HirId`] for a block, get the span of its last expression
-    /// or statement, peeling off any inner blocks.
-    pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
-        match self.tcx.hir_node(hir_id) {
-            hir::Node::Block(blk) => self.find_block_span(blk),
-            // The parser was in a weird state if either of these happen, but
-            // it's better not to panic.
-            hir::Node::Expr(e) => e.span,
-            _ => rustc_span::DUMMY_SP,
         }
     }
 }

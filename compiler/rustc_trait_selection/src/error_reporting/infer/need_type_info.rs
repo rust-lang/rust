@@ -1,4 +1,4 @@
-use crate::error_reporting::infer::TypeErrCtxt;
+use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,

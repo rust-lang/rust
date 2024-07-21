@@ -5,17 +5,14 @@ use rustc_errors::{
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::traits::{Obligation, PredicateObligation};
-use rustc_macros::extension;
 use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::Span;
 use rustc_type_ir::Upcast;
 
-use super::InferCtxtPrivExt;
-use crate::error_reporting::traits::suggestions::TypeErrCtxtExt;
+use crate::error_reporting::TypeErrCtxt;
 
 pub enum OverflowCause<'tcx> {
     DeeplyNormalize(ty::AliasTerm<'tcx>),
@@ -38,7 +35,6 @@ pub fn suggest_new_overflow_limit<'tcx, G: EmissionGuarantee>(
     ));
 }
 
-#[extension(pub trait TypeErrCtxtOverflowExt<'a, 'tcx>)]
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Reports that an overflow has occurred and halts compilation. We
     /// halt compilation unconditionally because it is important that
@@ -46,7 +42,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// whose result could not be truly determined and thus we can't say
     /// if the program type checks or not -- and they are unusual
     /// occurrences in any case.
-    fn report_overflow_error(
+    pub fn report_overflow_error(
         &self,
         cause: OverflowCause<'tcx>,
         span: Span,
@@ -59,7 +55,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         FatalError.raise();
     }
 
-    fn build_overflow_error(
+    pub fn build_overflow_error(
         &self,
         cause: OverflowCause<'tcx>,
         span: Span,
@@ -132,7 +128,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// whose result could not be truly determined and thus we can't say
     /// if the program type checks or not -- and they are unusual
     /// occurrences in any case.
-    fn report_overflow_obligation<T>(
+    pub fn report_overflow_obligation<T>(
         &self,
         obligation: &Obligation<'tcx, T>,
         suggest_increasing_limit: bool,
@@ -165,7 +161,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// that we can give a more helpful error message (and, in particular,
     /// we do not suggest increasing the overflow limit, which is not
     /// going to help).
-    fn report_overflow_obligation_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
+    pub fn report_overflow_obligation_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
         let cycle = self.resolve_vars_if_possible(cycle.to_owned());
         assert!(!cycle.is_empty());
 
@@ -179,7 +175,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
     }
 
-    fn report_overflow_no_abort(
+    pub fn report_overflow_no_abort(
         &self,
         obligation: PredicateObligation<'tcx>,
         suggest_increasing_limit: bool,

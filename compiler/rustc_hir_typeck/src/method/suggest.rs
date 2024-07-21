@@ -36,7 +36,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span};
 use rustc_span::{Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{

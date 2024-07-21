@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use super::{FromSolverError, TraitEngine};
 use super::{FulfillmentContext, ScrubbedTraitError};
-use crate::error_reporting::traits::TypeErrCtxtExt;
+use crate::error_reporting::InferCtxtErrorExt;
 use crate::regions::InferCtxtRegionExt;
 use crate::solve::FulfillmentCtxt as NextFulfillmentCtxt;
 use crate::solve::NextSolverError;

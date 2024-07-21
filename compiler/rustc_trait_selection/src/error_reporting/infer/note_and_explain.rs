@@ -1,4 +1,3 @@
-use super::TypeErrCtxt;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diag, MultiSpan};
 use rustc_hir as hir;
@@ -11,6 +10,8 @@ use rustc_middle::{
     ty::{self, error::TypeError, print::FmtPrinter, suggest_constraining_type_param, Ty},
 };
 use rustc_span::{def_id::DefId, sym, BytePos, Span, Symbol};
+
+use crate::error_reporting::TypeErrCtxt;
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub fn note_and_explain_type_err(

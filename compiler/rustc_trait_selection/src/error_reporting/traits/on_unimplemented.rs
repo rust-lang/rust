@@ -1,5 +1,5 @@
 use super::{ObligationCauseCode, PredicateObligation};
-use crate::error_reporting::traits::fulfillment_errors::InferCtxtPrivExt;
+use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
@@ -13,8 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::error_reporting::infer::TypeErrCtxt;
-use rustc_macros::{extension, LintDiagnostic};
+use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::GenericArgsRef;
@@ -41,7 +40,6 @@ static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
     sym::Trait,
 ];
 
-#[extension(pub trait TypeErrCtxtExt<'tcx>)]
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
@@ -109,7 +107,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    fn on_unimplemented_note(
+    pub fn on_unimplemented_note(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,

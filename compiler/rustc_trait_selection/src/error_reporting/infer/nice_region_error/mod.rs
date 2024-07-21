@@ -1,4 +1,4 @@
-use crate::error_reporting::infer::TypeErrCtxt;
+use crate::error_reporting::TypeErrCtxt;
 use crate::infer::RegionResolutionError;
 use crate::infer::RegionResolutionError::*;
 use rustc_errors::{Diag, ErrorGuaranteed};
