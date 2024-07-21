@@ -246,6 +246,7 @@ impl ChangeFixture {
             for (from, to, prelude) in crate_deps {
                 let from_id = crates[&from];
                 let to_id = crates[&to];
+                let sysroot = crate_graph[to_id].origin.is_lang();
                 crate_graph
                     .add_dep(
                         from_id,
@@ -253,7 +254,7 @@ impl ChangeFixture {
                             CrateName::new(&to).unwrap(),
                             to_id,
                             prelude,
-                            false,
+                            sysroot,
                         ),
                     )
                     .unwrap();

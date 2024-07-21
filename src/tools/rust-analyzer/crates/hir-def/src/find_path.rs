@@ -1,7 +1,8 @@
 //! An algorithm to find a path to refer to a certain item.
 
-use std::{cell::Cell, cmp::Ordering, iter};
+use std::{cell::Cell, cmp::Ordering, iter, ops::BitOr};
 
+use base_db::CrateId;
 use hir_expand::{
     name::{AsName, Name},
     Lookup,
@@ -37,7 +38,8 @@ pub fn find_path(
 
     // within block modules, forcing a `self` or `crate` prefix will not allow using inner items, so
     // default to plain paths.
-    if item.module(db).is_some_and(ModuleId::is_within_block) {
+    let item_module = item.module(db)?;
+    if item_module.is_within_block() {
         prefix_kind = PrefixKind::Plain;
     }
     cfg.prefer_no_std = cfg.prefer_no_std || db.crate_supports_no_std(from.krate());
@@ -50,6 +52,7 @@ pub fn find_path(
             ignore_local_imports,
             from,
             from_def_map: &from.def_map(db),
+            is_std_item: db.crate_graph()[item_module.krate()].origin.is_lang(),
             fuel: Cell::new(FIND_PATH_FUEL),
         },
         item,
@@ -104,6 +107,7 @@ struct FindPathCtx<'db> {
     ignore_local_imports: bool,
     from: ModuleId,
     from_def_map: &'db DefMap,
+    is_std_item: bool,
     fuel: Cell<usize>,
 }
 
@@ -373,9 +377,12 @@ fn calculate_best_path(
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
         // that wants to import it here, but we always prefer to use the external path here.
 
-        for dep in &db.crate_graph()[ctx.from.krate].dependencies {
-            let import_map = db.import_map(dep.crate_id);
-            let Some(import_info_for) = import_map.import_info_for(item) else { continue };
+        let mut process_dep = |dep: CrateId| {
+            let import_map = db.import_map(dep);
+            let Some(import_info_for) = import_map.import_info_for(item) else {
+                return false;
+            };
+            let mut processed_something = false;
             for info in import_info_for {
                 if info.is_doc_hidden {
                     // the item or import is `#[doc(hidden)]`, so skip it as it is in an external crate
@@ -396,8 +403,33 @@ fn calculate_best_path(
                 );
 
                 process(path, info.name.clone(), &mut best_path_len);
+                processed_something = true;
+            }
+            processed_something
+        };
+
+        let dependencies = &db.crate_graph()[ctx.from.krate].dependencies;
+        if ctx.is_std_item {
+            // The item we are searching for comes from the sysroot libraries, so skip prefer looking in
+            // the sysroot libraries directly.
+            // We do need to fallback as the item in question could be re-exported by another crate
+            // while not being a transitive dependency of the current crate.
+            let processed = dependencies
+                .iter()
+                .filter(|it| it.is_sysroot())
+                .map(|dep| process_dep(dep.crate_id))
+                .reduce(BitOr::bitor)
+                .unwrap_or(false);
+            if processed {
+                // Found a path in a sysroot crate, so return it.
+                return best_path;
             }
         }
+
+        dependencies
+            .iter()
+            .filter(|it| !ctx.is_std_item || !it.is_sysroot())
+            .for_each(|dep| _ = process_dep(dep.crate_id));
     }
     best_path
 }
@@ -1915,6 +1947,36 @@ pub fn c() {}
                 ByCrate(imports ✖): crate::foo::bar::c
                 BySelf (imports ✔): self::bar::c
                 BySelf (imports ✖): self::bar::c
+            "#]],
+        );
+    }
+
+    #[test]
+    fn prefer_long_std_over_short_extern() {
+        check_found_path(
+            r#"
+//- /lib.rs crate:main deps:futures_lite,std,core
+$0
+//- /futures_lite.rs crate:futures_lite deps:std,core
+pub use crate::future::Future;
+pub mod future {
+    pub use core::future::Future;
+}
+//- /std.rs crate:std deps:core
+pub use core::future;
+//- /core.rs crate:core
+pub mod future {
+    pub trait Future {}
+}
+"#,
+            "core::future::Future",
+            expect![[r#"
+                Plain  (imports ✔): std::future::Future
+                Plain  (imports ✖): std::future::Future
+                ByCrate(imports ✔): std::future::Future
+                ByCrate(imports ✖): std::future::Future
+                BySelf (imports ✔): std::future::Future
+                BySelf (imports ✖): std::future::Future
             "#]],
         );
     }
