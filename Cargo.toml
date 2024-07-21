@@ -4,6 +4,7 @@ members = [
   "compiler/rustc",
   "library/std",
   "library/sysroot",
+  "src/etc/test-float-parse",
   "src/rustdoc-json-types",
   "src/tools/build_helper",
   "src/tools/cargotest",
@@ -108,6 +109,18 @@ strip = true
 [profile.release.package.wasm-component-ld-wrapper]
 debug = 0
 strip = true
+
+# Bigint libraries are slow without optimization, speed up testing
+[profile.dev.package.test-float-parse]
+opt-level = 3
+
+# Speed up the binary as much as possible
+[profile.release.package.test-float-parse]
+opt-level = 3
+codegen-units = 1
+# FIXME: LTO cannot be enabled for binaries in a workspace
+# <https://github.com/rust-lang/cargo/issues/9330>
+# lto = true
 
 [patch.crates-io]
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on

@@ -326,4 +326,5 @@ lint_any!(
     Rustfmt, "src/tools/rustfmt", "rustfmt";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     Tidy, "src/tools/tidy", "tidy";
+    TestFloatParse, "src/etc/test-float-parse", "test-float-parse";
 );
