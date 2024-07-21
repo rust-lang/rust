@@ -224,7 +224,7 @@ impl char {
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[rustc_const_stable(
         feature = "const_char_from_u32_unchecked",
-        since = "CURRENT_RUSTC_VERSION"
+        since = "1.81.0"
     )]
     #[must_use]
     #[inline]

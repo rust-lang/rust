@@ -223,7 +223,7 @@ declare_features! (
     (removed, unwind_attributes, "1.56.0", Some(58760), Some("use the C-unwind ABI instead")),
     (removed, visible_private_types, "1.0.0", None, None),
     /// Allows `extern "wasm" fn`
-    (removed, wasm_abi, "CURRENT_RUSTC_VERSION", Some(83788),
+    (removed, wasm_abi, "1.81.0", Some(83788),
      Some("non-standard wasm ABI is no longer supported")),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.

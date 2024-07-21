@@ -10,7 +10,7 @@ mod unwind_safe;
 pub use self::location::Location;
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use self::panic_info::PanicInfo;
-#[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "panic_info_message", since = "1.81.0")]
 pub use self::panic_info::PanicMessage;
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use self::unwind_safe::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};

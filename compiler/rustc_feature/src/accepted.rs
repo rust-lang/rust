@@ -86,7 +86,7 @@ declare_features! (
     /// Allows `c"foo"` literals.
     (accepted, c_str_literals, "1.77.0", Some(105723)),
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries and treat `extern "C" fn` as nounwind.
-    (accepted, c_unwind, "CURRENT_RUSTC_VERSION", Some(74990)),
+    (accepted, c_unwind, "1.81.0", Some(74990)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
@@ -238,7 +238,7 @@ declare_features! (
     /// Allows `let...else` statements.
     (accepted, let_else, "1.65.0", Some(87335)),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
-    (accepted, lint_reasons, "CURRENT_RUSTC_VERSION", Some(54503)),
+    (accepted, lint_reasons, "1.81.0", Some(54503)),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339)),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.
