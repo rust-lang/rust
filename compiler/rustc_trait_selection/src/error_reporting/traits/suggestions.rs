@@ -2244,7 +2244,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///
     /// Returns `true` if an async-await specific note was added to the diagnostic.
     #[instrument(level = "debug", skip_all, fields(?obligation.predicate, ?obligation.cause.span))]
-    pub(super) fn maybe_note_obligation_cause_for_async_await<G: EmissionGuarantee>(
+    pub fn maybe_note_obligation_cause_for_async_await<G: EmissionGuarantee>(
         &self,
         err: &mut Diag<'_, G>,
         obligation: &PredicateObligation<'tcx>,
