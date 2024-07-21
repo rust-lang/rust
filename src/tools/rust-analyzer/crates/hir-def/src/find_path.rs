@@ -116,7 +116,7 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
     // - if the item is a module, jump straight to module search
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
-        return find_path_for_module(ctx, &mut visited_modules, module_id, max_len)
+        return find_path_for_module(ctx, &mut visited_modules, module_id, true, max_len)
             .map(|choice| choice.path);
     }
 
@@ -161,10 +161,11 @@ fn find_path_for_module(
     ctx: &FindPathCtx<'_>,
     visited_modules: &mut FxHashSet<ModuleId>,
     module_id: ModuleId,
+    maybe_extern: bool,
     max_len: usize,
 ) -> Option<Choice> {
     if let Some(crate_root) = module_id.as_crate_root() {
-        if crate_root == ctx.from.derive_crate_root() {
+        if !maybe_extern || crate_root == ctx.from.derive_crate_root() {
             // - if the item is the crate root, return `crate`
             return Some(Choice {
                 path: ModPath::from_segments(PathKind::Crate, None),
@@ -240,12 +241,15 @@ fn find_path_for_module(
     }
 
     // - if the module is in the prelude, return it by that path
-    if let Some(choice) =
-        find_in_prelude(ctx.db, ctx.from_def_map, ItemInNs::Types(module_id.into()), ctx.from)
-    {
+    let item = ItemInNs::Types(module_id.into());
+    if let Some(choice) = find_in_prelude(ctx.db, ctx.from_def_map, item, ctx.from) {
         return Some(choice);
     }
-    calculate_best_path(ctx, visited_modules, ItemInNs::Types(module_id.into()), max_len)
+    if maybe_extern {
+        calculate_best_path(ctx, visited_modules, item, max_len)
+    } else {
+        calculate_best_path_local(ctx, visited_modules, item, max_len)
+    }
 }
 
 fn find_in_scope(
@@ -347,31 +351,13 @@ fn calculate_best_path(
     }
     ctx.fuel.set(fuel - 1);
 
-    let mut best_choice = None::<Choice>;
-    let db = ctx.db;
-    if item.krate(db) == Some(ctx.from.krate) {
+    if item.krate(ctx.db) == Some(ctx.from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
-        // FIXME: cache the `find_local_import_locations` output?
-        find_local_import_locations(db, item, ctx.from, ctx.from_def_map, |name, module_id| {
-            if !visited_modules.insert(module_id) {
-                return;
-            }
-            // we are looking for paths of length up to best_path_len, any longer will make it be
-            // less optimal. The -1 is due to us pushing name onto it afterwards.
-            if let Some(path) = find_path_for_module(
-                ctx,
-                visited_modules,
-                module_id,
-                best_choice.as_ref().map_or(max_len, |it| it.path_len) - 1,
-            ) {
-                best_choice = Some(match best_choice.take() {
-                    Some(best_choice) => best_choice.select(path, name.clone()),
-                    None => path.push(ctx.cfg.prefer_prelude, name.clone()),
-                });
-            }
-        })
+        calculate_best_path_local(ctx, visited_modules, item, max_len)
     } else {
+        let mut best_choice = None::<Choice>;
+        let db = ctx.db;
         // Item was defined in some upstream crate. This means that it must be exported from one,
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
         // that wants to import it here, but we always prefer to use the external path here.
@@ -394,6 +380,7 @@ fn calculate_best_path(
                     ctx,
                     visited_modules,
                     info.container,
+                    true,
                     best_choice.as_ref().map_or(max_len, |it| it.path_len) - 1,
                 );
                 let Some(mut choice) = choice else {
@@ -453,7 +440,37 @@ fn calculate_best_path(
             .iter()
             .filter(|it| !ctx.is_std_item || !it.is_sysroot())
             .for_each(|dep| _ = process_dep(dep.crate_id, 0));
+        best_choice
     }
+}
+
+fn calculate_best_path_local(
+    ctx: &FindPathCtx<'_>,
+    visited_modules: &mut FxHashSet<ModuleId>,
+    item: ItemInNs,
+    max_len: usize,
+) -> Option<Choice> {
+    let mut best_choice = None::<Choice>;
+    // FIXME: cache the `find_local_import_locations` output?
+    find_local_import_locations(ctx.db, item, ctx.from, ctx.from_def_map, |name, module_id| {
+        if !visited_modules.insert(module_id) {
+            return;
+        }
+        // we are looking for paths of length up to best_path_len, any longer will make it be
+        // less optimal. The -1 is due to us pushing name onto it afterwards.
+        if let Some(path) = find_path_for_module(
+            ctx,
+            visited_modules,
+            module_id,
+            false,
+            best_choice.as_ref().map_or(max_len, |it| it.path_len) - 1,
+        ) {
+            best_choice = Some(match best_choice.take() {
+                Some(best_choice) => best_choice.select(path, name.clone()),
+                None => path.push(ctx.cfg.prefer_prelude, name.clone()),
+            });
+        }
+    });
     best_choice
 }
 
