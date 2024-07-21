@@ -152,7 +152,7 @@ impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-impl<'tcx> InferCtxt<'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
             ty::Alias(_, ty::AliasTy { def_id, args, .. })
@@ -189,9 +189,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .flatten()
             })
     }
-}
 
-impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Adds a note if the types come from similarly named crates
     fn check_and_note_conflicting_crates(&self, err: &mut Diag<'_>, terr: TypeError<'tcx>) {
         use hir::def_id::CrateNum;

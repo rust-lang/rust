@@ -1,6 +1,6 @@
 use super::ObjectSafetyViolation;
 
-use crate::infer::InferCtxt;
+use crate::error_reporting::infer::TypeErrCtxt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
@@ -11,9 +11,9 @@ use rustc_span::Span;
 use std::fmt;
 use std::iter;
 
-impl<'tcx> InferCtxt<'tcx> {
-    pub fn report_extra_impl_obligation<'a>(
-        &'a self,
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    pub fn report_extra_impl_obligation(
+        &self,
         error_span: Span,
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
