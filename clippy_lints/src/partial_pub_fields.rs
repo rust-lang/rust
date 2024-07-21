@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{Item, ItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
@@ -57,24 +57,16 @@ impl EarlyLintPass for PartialPubFields {
 
         for field in fields {
             if all_priv && field.vis.kind.is_pub() {
-                span_lint_and_help(
-                    cx,
-                    PARTIAL_PUB_FIELDS,
-                    field.vis.span,
-                    msg,
-                    None,
-                    "consider using private field here",
-                );
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(cx, PARTIAL_PUB_FIELDS, field.vis.span, msg, |diag| {
+                    diag.help("consider using private field here");
+                });
                 return;
             } else if all_pub && !field.vis.kind.is_pub() {
-                span_lint_and_help(
-                    cx,
-                    PARTIAL_PUB_FIELDS,
-                    field.vis.span,
-                    msg,
-                    None,
-                    "consider using public field here",
-                );
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(cx, PARTIAL_PUB_FIELDS, field.vis.span, msg, |diag| {
+                    diag.help("consider using public field here");
+                });
                 return;
             }
         }

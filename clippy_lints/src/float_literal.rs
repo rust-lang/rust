@@ -106,16 +106,15 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             if is_whole && !sym_str.contains(['e', 'E']) {
                 // Normalize the literal by stripping the fractional portion
                 if sym_str.split('.').next().unwrap() != float_str {
-                    // If the type suffix is missing the suggestion would be
-                    // incorrectly interpreted as an integer so adding a `.0`
-                    // suffix to prevent that.
-
                     span_lint_and_then(
                         cx,
                         LOSSY_FLOAT_LITERAL,
                         expr.span,
                         "literal cannot be represented as the underlying type without loss of precision",
                         |diag| {
+                            // If the type suffix is missing the suggestion would be
+                            // incorrectly interpreted as an integer so adding a `.0`
+                            // suffix to prevent that.
                             if type_suffix.is_none() {
                                 float_str.push_str(".0");
                             }

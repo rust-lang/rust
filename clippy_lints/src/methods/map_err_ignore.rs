@@ -30,7 +30,6 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, arg: &Expr<'_>) {
             "`map_err(|_|...` wildcard pattern discards the original error",
             |diag| {
                 diag.help(
-
                     "consider storing the original error as a source in the new error, or silence this warning using an ignored identifier (`.map_err(|_foo| ...`)",
                 );
             },
