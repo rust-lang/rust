@@ -21,6 +21,8 @@ pub(super) fn check(
     if first_paragraph_len <= 200
         || !matches!(
             item.kind,
+            // This is the list of items which can be documented AND are displayed on the module
+            // page. So associated items or impl blocks are not part of this list.
             ItemKind::Static(..)
                 | ItemKind::Const(..)
                 | ItemKind::Fn(..)
