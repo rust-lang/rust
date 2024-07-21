@@ -115,4 +115,10 @@ jobs:
       uses: actions/download-artifact@v4
 
     - name: Diff results
-      run: ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json >> $GITHUB_STEP_SUMMARY
+      # GH's summery has a maximum size of 1024k:
+      # https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary
+      # That's why we first log to file and then to the summary and logs
+      run: |
+        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json >> ci_crates.diff
+        head -c 1024000 ci_crates.diff >> $GITHUB_STEP_SUMMARY
+        cat ci_crates.diff
