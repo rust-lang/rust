@@ -1789,6 +1789,8 @@ pub struct TypeBound {
 }
 impl TypeBound {
     #[inline]
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    #[inline]
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
@@ -1798,6 +1800,8 @@ impl TypeBound {
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     #[inline]
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    #[inline]
+    pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
     #[inline]
     pub fn tilde_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![~]) }
 }
