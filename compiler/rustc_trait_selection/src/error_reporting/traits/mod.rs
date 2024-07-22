@@ -1,6 +1,5 @@
 pub mod ambiguity;
 mod fulfillment_errors;
-mod infer_ctxt_ext;
 pub mod on_unimplemented;
 mod overflow;
 pub mod suggestions;
@@ -23,7 +22,6 @@ use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
 use crate::error_reporting::TypeErrCtxt;
 use crate::traits::{FulfillmentError, FulfillmentErrorCode};
 
-pub use self::infer_ctxt_ext::*;
 pub use self::overflow::*;
 
 // When outputting impl candidates, prefer showing those that are more similar.
