@@ -33,6 +33,8 @@ codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(li
 
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
 
+codegen_ssa_intrinsic_const_vector_arg = invalid argument, must be integer literal
+
 codegen_ssa_extract_bundled_libs_archive_member = failed to get data from archive member '{$rlib}': {$error}
 codegen_ssa_extract_bundled_libs_convert_name = failed to convert name '{$rlib}': {$error}
 codegen_ssa_extract_bundled_libs_mmap_file = failed to mmap file '{$rlib}': {$error}
