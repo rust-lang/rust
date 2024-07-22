@@ -1,4 +1,4 @@
-use crate::error_reporting::infer::TypeErrCtxt;
+use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,
@@ -13,7 +13,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
@@ -183,9 +182,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
             warn!("resolved ty var in error message");
         }
 
-        let mut infcx_inner = infcx.inner.borrow_mut();
-        let ty_vars = infcx_inner.type_variables();
-        let var_origin = ty_vars.var_origin(ty_vid);
+        let var_origin = infcx.type_var_origin(ty_vid);
         if let Some(def_id) = var_origin.param_def_id
             // The `Self` param of a trait has the def-id of the trait,
             // since it's a synthetic parameter.
@@ -206,24 +203,8 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         }
     };
     printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
-    let const_getter = move |ct_vid| match infcx
-        .inner
-        .borrow_mut()
-        .const_unification_table()
-        .probe_value(ct_vid)
-    {
-        ConstVariableValue::Known { value: _ } => {
-            warn!("resolved const var in error message");
-            None
-        }
-        ConstVariableValue::Unknown { origin, universe: _ } => {
-            if let Some(def_id) = origin.param_def_id {
-                Some(infcx.tcx.item_name(def_id))
-            } else {
-                None
-            }
-        }
-    };
+    let const_getter =
+        move |ct_vid| Some(infcx.tcx.item_name(infcx.const_var_origin(ct_vid)?.param_def_id?));
     printer.const_infer_name_resolver = Some(Box::new(const_getter));
     printer
 }
@@ -289,7 +270,7 @@ fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     format!("fn({args}){ret}")
 }
 
-impl<'tcx> InferCtxt<'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Extracts data used by diagnostic for either types or constants
     /// which were stuck during inference.
     pub fn extract_inference_diagnostics_data(
@@ -300,9 +281,7 @@ impl<'tcx> InferCtxt<'tcx> {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
-                    let mut inner = self.inner.borrow_mut();
-                    let ty_vars = &inner.type_variables();
-                    let var_origin = ty_vars.var_origin(ty_vid);
+                    let var_origin = self.infcx.type_var_origin(ty_vid);
                     if let Some(def_id) = var_origin.param_def_id
                         // The `Self` param of a trait has the def-id of the trait,
                         // since it's a synthetic parameter.
@@ -332,13 +311,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
-                    let origin =
-                        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
-                            ConstVariableValue::Known { value } => {
-                                bug!("resolved infer var: {vid:?} {value}")
-                            }
-                            ConstVariableValue::Unknown { origin, universe: _ } => origin,
-                        };
+                    let origin = self.const_var_origin(vid).expect("expected unresolved const var");
                     if let Some(def_id) = origin.param_def_id {
                         return InferenceDiagnosticsData {
                             name: self.tcx.item_name(def_id).to_string(),
@@ -391,7 +364,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         arg_data: InferenceDiagnosticsData,
         error_code: TypeAnnotationNeeded,
-    ) -> Diag<'_> {
+    ) -> Diag<'a> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
@@ -434,9 +407,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }),
         }
     }
-}
 
-impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, error_code))]
     pub fn emit_inference_failure_err(
         &self,
@@ -453,7 +424,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // If we don't have any typeck results we're outside
             // of a body, so we won't be able to get better info
             // here.
-            return self.infcx.bad_inference_failure_err(failure_span, arg_data, error_code);
+            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
@@ -465,7 +436,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            return self.infcx.bad_inference_failure_err(failure_span, arg_data, error_code);
+            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
         let (source_kind, name, path) = kind.ty_localized_msg(self);
@@ -887,7 +858,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
                     (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => {
-                        self.tecx.inner.borrow_mut().const_unification_table().unioned(a_vid, b_vid)
+                        self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid)
                     }
                     _ => false,
                 }

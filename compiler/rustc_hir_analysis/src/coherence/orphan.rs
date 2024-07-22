@@ -517,9 +517,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyParamCollector<'_, 'tcx> {
         if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
             return;
         }
-        let Some(origin) = self.infcx.type_var_origin(ty) else {
+        let ty::Infer(ty::TyVar(vid)) = *ty.kind() else {
             return ty.super_visit_with(self);
         };
+        let origin = self.infcx.type_var_origin(vid);
         if let Some(def_id) = origin.param_def_id {
             self.uncovered_params.insert(def_id);
         }
@@ -546,9 +547,10 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for TyVarReplacer<'cx, 'tcx> {
         if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
             return ty;
         }
-        let Some(origin) = self.infcx.type_var_origin(ty) else {
+        let ty::Infer(ty::TyVar(vid)) = *ty.kind() else {
             return ty.super_fold_with(self);
         };
+        let origin = self.infcx.type_var_origin(vid);
         if let Some(def_id) = origin.param_def_id {
             // The generics of an `impl` don't have a parent, we can index directly.
             let index = self.generics.param_def_id_to_index[&def_id];

@@ -8,7 +8,6 @@ use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -18,7 +17,7 @@ use rustc_middle::ty::TypeSuperFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;
 
 use std::mem;

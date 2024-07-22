@@ -11,7 +11,6 @@ pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
 
-use crate::error_reporting::infer::TypeErrCtxt;
 use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
 use free_regions::RegionRelations;
@@ -24,7 +23,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
@@ -65,8 +65,6 @@ pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
 pub mod type_variable;
-// FIXME(error_reporting): Where should we put this?
-pub mod need_type_info;
 
 #[must_use]
 #[derive(Debug)]
@@ -698,36 +696,24 @@ impl<'tcx> InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
-    /// Creates a `TypeErrCtxt` for emitting various inference errors.
-    /// During typeck, use `FnCtxt::err_ctxt` instead.
-    pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
-        TypeErrCtxt {
-            infcx: self,
-            sub_relations: Default::default(),
-            typeck_results: None,
-            fallback_has_occurred: false,
-            normalize_fn_sig: Box::new(|fn_sig| fn_sig),
-            autoderef_steps: Box::new(|ty| {
-                debug_assert!(false, "shouldn't be using autoderef_steps outside of typeck");
-                vec![(ty, vec![])]
-            }),
-        }
-    }
-
     pub fn freshen<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
     }
 
-    /// Returns the origin of the type variable identified by `vid`, or `None`
-    /// if this is not a type variable.
+    /// Returns the origin of the type variable identified by `vid`.
     ///
-    /// No attempt is made to resolve `ty`.
-    pub fn type_var_origin(&self, ty: Ty<'tcx>) -> Option<TypeVariableOrigin> {
-        match *ty.kind() {
-            ty::Infer(ty::TyVar(vid)) => {
-                Some(self.inner.borrow_mut().type_variables().var_origin(vid))
-            }
-            _ => None,
+    /// No attempt is made to resolve `vid` to its root variable.
+    pub fn type_var_origin(&self, vid: TyVid) -> TypeVariableOrigin {
+        self.inner.borrow_mut().type_variables().var_origin(vid)
+    }
+
+    /// Returns the origin of the const variable identified by `vid`
+    // FIXME: We should store origins separately from the unification table
+    // so this doesn't need to be optional.
+    pub fn const_var_origin(&self, vid: ConstVid) -> Option<ConstVariableOrigin> {
+        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
+            ConstVariableValue::Known { .. } => None,
+            ConstVariableValue::Unknown { origin, .. } => Some(origin),
         }
     }
 
@@ -1589,60 +1575,6 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    // [Note-Type-error-reporting]
-    // An invariant is that anytime the expected or actual type is Error (the special
-    // error type, meaning that an error occurred when typechecking this expression),
-    // this is a derived error. The error cascaded from another error (that was already
-    // reported), so it's not useful to display it to the user.
-    // The following methods implement this logic.
-    // They check if either the actual or expected type is Error, and don't print the error
-    // in this case. The typechecker should only ever report type errors involving mismatched
-    // types using one of these methods, and should not call span_err directly for such
-    // errors.
-    pub fn type_error_struct_with_diag<M>(
-        &self,
-        sp: Span,
-        mk_diag: M,
-        actual_ty: Ty<'tcx>,
-    ) -> Diag<'a>
-    where
-        M: FnOnce(String) -> Diag<'a>,
-    {
-        let actual_ty = self.resolve_vars_if_possible(actual_ty);
-        debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
-
-        let mut err = mk_diag(self.ty_to_string(actual_ty));
-
-        // Don't report an error if actual type is `Error`.
-        if actual_ty.references_error() {
-            err.downgrade_to_delayed_bug();
-        }
-
-        err
-    }
-
-    pub fn report_mismatched_types(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
-        err: TypeError<'tcx>,
-    ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
-    }
-
-    pub fn report_mismatched_consts(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        expected: ty::Const<'tcx>,
-        actual: ty::Const<'tcx>,
-        err: TypeError<'tcx>,
-    ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
-    }
-}
-
 /// Helper for [InferCtxt::ty_or_const_infer_var_changed] (see comment on that), currently
 /// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
 #[derive(Copy, Clone, Debug)]
@@ -1887,4 +1819,33 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
     }
 
     args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
+}
+
+impl<'tcx> InferCtxt<'tcx> {
+    /// Given a [`hir::Block`], get the span of its last expression or
+    /// statement, peeling off any inner blocks.
+    pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
+        let block = block.innermost_block();
+        if let Some(expr) = &block.expr {
+            expr.span
+        } else if let Some(stmt) = block.stmts.last() {
+            // possibly incorrect trailing `;` in the else arm
+            stmt.span
+        } else {
+            // empty block; point at its entirety
+            block.span
+        }
+    }
+
+    /// Given a [`hir::HirId`] for a block, get the span of its last expression
+    /// or statement, peeling off any inner blocks.
+    pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
+        match self.tcx.hir_node(hir_id) {
+            hir::Node::Block(blk) => self.find_block_span(blk),
+            // The parser was in a weird state if either of these happen, but
+            // it's better not to panic.
+            hir::Node::Expr(e) => e.span,
+            _ => rustc_span::DUMMY_SP,
+        }
+    }
 }

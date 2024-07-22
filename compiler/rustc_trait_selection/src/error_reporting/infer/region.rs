@@ -18,7 +18,8 @@ use rustc_type_ir::Upcast as _;
 
 use super::nice_region_error::find_anon_type;
 use super::{nice_region_error, ObligationCauseAsDiagArg};
-use crate::error_reporting::infer::{ObligationCauseExt as _, TypeErrCtxt};
+use crate::error_reporting::infer::ObligationCauseExt as _;
+use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     self, note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
     OutlivesContent, RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
@@ -224,16 +225,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             .add_to_diag(err),
             infer::Reborrow(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diag(err)
+                RegionOriginNote::Plain { span, msg: fluent::trait_selection_reborrow }
+                    .add_to_diag(err)
             }
             infer::RelateObjectBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
+                RegionOriginNote::Plain { span, msg: fluent::trait_selection_relate_object_bound }
                     .add_to_diag(err);
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer_reference_outlives_referent,
+                    msg: fluent::trait_selection_reference_outlives_referent,
                     name: &self.ty_to_string(ty),
                     continues: false,
                 }
@@ -242,23 +244,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::RelateParamBound(span, ty, opt_span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer_relate_param_bound,
+                    msg: fluent::trait_selection_relate_param_bound,
                     name: &self.ty_to_string(ty),
                     continues: opt_span.is_some(),
                 }
                 .add_to_diag(err);
                 if let Some(span) = opt_span {
-                    RegionOriginNote::Plain { span, msg: fluent::infer_relate_param_bound_2 }
-                        .add_to_diag(err);
+                    RegionOriginNote::Plain {
+                        span,
+                        msg: fluent::trait_selection_relate_param_bound_2,
+                    }
+                    .add_to_diag(err);
                 }
             }
             infer::RelateRegionParamBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer_relate_region_param_bound }
-                    .add_to_diag(err);
+                RegionOriginNote::Plain {
+                    span,
+                    msg: fluent::trait_selection_relate_region_param_bound,
+                }
+                .add_to_diag(err);
             }
             infer::CompareImplItemObligation { span, .. } => {
-                RegionOriginNote::Plain { span, msg: fluent::infer_compare_impl_item_obligation }
-                    .add_to_diag(err);
+                RegionOriginNote::Plain {
+                    span,
+                    msg: fluent::trait_selection_compare_impl_item_obligation,
+                }
+                .add_to_diag(err);
             }
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, parent);
@@ -266,7 +277,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::AscribeUserTypeProvePredicate(span) => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: fluent::infer_ascribe_user_type_prove_predicate,
+                    msg: fluent::trait_selection_ascribe_user_type_prove_predicate,
                 }
                 .add_to_diag(err);
             }
@@ -445,7 +456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
             }
             infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
-                let mut err = self.infcx.report_extra_impl_obligation(
+                let mut err = self.report_extra_impl_obligation(
                     span,
                     impl_item_def_id,
                     trait_item_def_id,
@@ -645,7 +656,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             trait_item_def_id,
         }) = origin
         {
-            return self.infcx.report_extra_impl_obligation(
+            return self.report_extra_impl_obligation(
                 span,
                 impl_item_def_id,
                 trait_item_def_id,

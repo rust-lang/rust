@@ -1,4 +1,3 @@
-use crate::error_reporting::traits::TypeErrCtxtOverflowExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
 use crate::traits::normalize::normalize_with_depth_to;
 use rustc_data_structures::captures::Captures;
@@ -25,6 +24,7 @@ use super::Unimplemented;
 use super::{const_evaluatable, ScrubbedTraitError};
 use super::{FulfillmentError, FulfillmentErrorCode};
 
+use crate::error_reporting::InferCtxtErrorExt;
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;

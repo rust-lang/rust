@@ -15,13 +15,13 @@ use hir::def_id::CRATE_DEF_ID;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
-use rustc_infer::error_reporting::infer::sub_relations::SubRelations;
-use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::infer;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, sym, Span, DUMMY_SP};
+use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
+use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::cell::{Cell, RefCell};
@@ -162,9 +162,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Creates an `TypeErrCtxt` with a reference to the in-progress
     /// `TypeckResults` which is used for diagnostics.
-    /// Use [`InferCtxt::err_ctxt`] to start one without a `TypeckResults`.
+    /// Use [`InferCtxtErrorExt::err_ctxt`] to start one without a `TypeckResults`.
     ///
-    /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
+    /// [`InferCtxtErrorExt::err_ctxt`]: rustc_trait_selection::error_reporting::InferCtxtErrorExt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
         let mut sub_relations = SubRelations::default();
         sub_relations.add_constraints(

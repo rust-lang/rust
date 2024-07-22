@@ -81,7 +81,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};

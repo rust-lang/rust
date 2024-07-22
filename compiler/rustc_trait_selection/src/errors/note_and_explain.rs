@@ -173,7 +173,7 @@ impl Subdiagnostic for RegionExplanation<'_> {
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
-        let msg = f(diag, fluent::infer_region_explanation.into());
+        let msg = f(diag, fluent::trait_selection_region_explanation.into());
         if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {

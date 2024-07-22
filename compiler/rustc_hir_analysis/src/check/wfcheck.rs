@@ -29,7 +29,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, ConstParamTyImplementationError,

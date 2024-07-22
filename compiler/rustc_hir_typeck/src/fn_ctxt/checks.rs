@@ -29,7 +29,6 @@ use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_index::IndexVec;
-use rustc_infer::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -39,6 +38,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
+use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 

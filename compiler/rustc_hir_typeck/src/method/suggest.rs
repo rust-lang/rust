@@ -36,7 +36,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span};
 use rustc_span::{Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -3276,7 +3275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         return_type: Option<Ty<'tcx>>,
     ) {
-        let output_ty = match self.get_impl_future_output_ty(ty) {
+        let output_ty = match self.err_ctxt().get_impl_future_output_ty(ty) {
             Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };

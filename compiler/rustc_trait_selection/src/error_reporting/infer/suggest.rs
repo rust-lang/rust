@@ -17,13 +17,12 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, Span};
 
+use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
-
-use super::TypeErrCtxt;
 
 #[derive(Clone, Copy)]
 pub enum SuggestAsRefKind {

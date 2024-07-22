@@ -11,7 +11,7 @@ use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;

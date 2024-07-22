@@ -8,21 +8,17 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor as _;
 use rustc_hir::LangItem;
-use rustc_infer::error_reporting::infer::TypeErrCtxt;
-use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_infer::infer::{BoundRegionConversionTime, InferCtxt};
 use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
-use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 
-use crate::error_reporting::traits::suggestions::TypeErrCtxtExt as _;
-use crate::error_reporting::traits::{
-    to_pretty_impl_header, FindExprBySpan, InferCtxtPrivExt as _,
-};
+use crate::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
+use crate::error_reporting::traits::{to_pretty_impl_header, FindExprBySpan};
+use crate::error_reporting::TypeErrCtxt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::ObligationCtxt;
 
@@ -153,10 +149,12 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
     ambiguities
 }
 
-#[extension(pub trait TypeErrCtxtAmbiguityExt<'a, 'tcx>)]
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
-    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>) -> ErrorGuaranteed {
+    pub(super) fn maybe_report_ambiguity(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> ErrorGuaranteed {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
         // ambiguous impls. The latter *ought* to be a
