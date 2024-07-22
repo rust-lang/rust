@@ -2183,7 +2183,6 @@ in src-script.js and main.js
 		width: 33%;
 	}
 	.item-table > li > div {
-		padding-bottom: 5px;
 		word-break: break-all;
 	}
 }

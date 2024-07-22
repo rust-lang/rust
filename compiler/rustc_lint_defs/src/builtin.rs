@@ -37,7 +37,7 @@ declare_lint_pass! {
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
-        DEPRECATED_SAFE,
+        DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
@@ -4812,8 +4812,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `deprecated_safe` lint detects unsafe functions being used as safe
-    /// functions.
+    /// The `deprecated_safe_2024` lint detects unsafe functions being used as
+    /// safe functions.
     ///
     /// ### Example
     ///
@@ -4832,8 +4832,8 @@ declare_lint! {
     ///
     /// Rust [editions] allow the language to evolve without breaking backward
     /// compatibility. This lint catches code that uses `unsafe` functions that
-    /// were declared as safe (non-`unsafe`) in earlier editions. If you switch
-    /// the compiler to a new edition without updating the code, then it
+    /// were declared as safe (non-`unsafe`) in editions prior to Rust 2024. If
+    /// you switch the compiler to Rust 2024 without updating the code, then it
     /// will fail to compile if you are using a function previously marked as
     /// safe.
     ///
@@ -4850,7 +4850,7 @@ declare_lint! {
     /// future.
     ///
     /// [editions]: https://doc.rust-lang.org/edition-guide/
-    pub DEPRECATED_SAFE,
+    pub DEPRECATED_SAFE_2024,
     Allow,
     "detects unsafe functions being used as safe functions",
     @future_incompatible = FutureIncompatibleInfo {

@@ -1691,6 +1691,7 @@ symbols! {
         rvalue_static_promotion,
         rwpi,
         s,
+        s390x_target_feature,
         safety,
         sanitize,
         sanitizer_cfi_generalize_pointers,

@@ -24,6 +24,7 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
         "keyword-idents",
         "Lints that detect identifiers which will be come keywords in later editions",
     ),
+    ("deprecated-safe", "Lints for functions which were erroneously marked as safe in the past"),
 ];
 
 type LintGroups = BTreeMap<String, BTreeSet<String>>;

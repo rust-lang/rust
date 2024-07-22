@@ -620,3 +620,11 @@ pub mod trait_bounds {
     pub trait TwoBounds: Sized + Copy {}
     pub trait ThreeBounds: Sized + Copy + Eq {}
 }
+
+pub mod short_docs {
+    /// mult_vec_num(x: &[f64], y: f64)
+    pub fn mult_vec_num() {}
+
+    /// subt_vec_num(x: &[f64], y: f64)
+    pub fn subt_vec_num() {}
+}
