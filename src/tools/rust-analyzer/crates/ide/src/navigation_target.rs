@@ -152,7 +152,7 @@ impl NavigationTarget {
         )
     }
 
-    fn from_syntax(
+    pub(crate) fn from_syntax(
         file_id: FileId,
         name: SmolStr,
         focus_range: Option<TextRange>,
@@ -710,7 +710,7 @@ impl<T> IntoIterator for UpmappingResult<T> {
 }
 
 impl<T> UpmappingResult<T> {
-    fn map<U>(self, f: impl Fn(T) -> U) -> UpmappingResult<U> {
+    pub(crate) fn map<U>(self, f: impl Fn(T) -> U) -> UpmappingResult<U> {
         UpmappingResult { call_site: f(self.call_site), def_site: self.def_site.map(f) }
     }
 }
@@ -732,13 +732,13 @@ fn orig_range_with_focus(
     )
 }
 
-fn orig_range_with_focus_r(
+pub(crate) fn orig_range_with_focus_r(
     db: &RootDatabase,
     hir_file: HirFileId,
     value: TextRange,
-    name: Option<TextRange>,
+    focus_range: Option<TextRange>,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
-    let Some(name) = name else { return orig_range_r(db, hir_file, value) };
+    let Some(name) = focus_range else { return orig_range_r(db, hir_file, value) };
 
     let call_kind =
         || db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id).kind;
