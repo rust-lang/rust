@@ -206,7 +206,7 @@ impl<'a> PatCtxt<'a> {
         &mut self,
         pats: &[PatId],
         expected_len: usize,
-        ellipsis: Option<usize>,
+        ellipsis: Option<u32>,
     ) -> Vec<FieldPat> {
         if pats.len() > expected_len {
             self.errors.push(PatternError::ExtraFields);
@@ -214,7 +214,7 @@ impl<'a> PatCtxt<'a> {
         }
 
         pats.iter()
-            .enumerate_and_adjust(expected_len, ellipsis)
+            .enumerate_and_adjust(expected_len, ellipsis.map(|it| it as usize))
             .map(|(i, &subpattern)| FieldPat {
                 field: LocalFieldId::from_raw((i as u32).into()),
                 pattern: self.lower_pattern(subpattern),

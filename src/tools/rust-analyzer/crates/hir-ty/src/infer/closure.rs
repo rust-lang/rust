@@ -889,7 +889,7 @@ impl InferenceContext<'_> {
         match &self.body[pat] {
             Pat::Missing | Pat::Wild => (),
             Pat::Tuple { args, ellipsis } => {
-                let (al, ar) = args.split_at(ellipsis.unwrap_or(args.len()));
+                let (al, ar) = args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                 let field_count = match self.result[pat].kind(Interner) {
                     TyKind::Tuple(_, s) => s.len(Interner),
                     _ => return,
@@ -964,7 +964,7 @@ impl InferenceContext<'_> {
                     }
                     VariantId::StructId(s) => {
                         let vd = &*self.db.struct_data(s).variant_data;
-                        let (al, ar) = args.split_at(ellipsis.unwrap_or(args.len()));
+                        let (al, ar) = args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                         let fields = vd.fields().iter();
                         let it =
                             al.iter().zip(fields.clone()).chain(ar.iter().rev().zip(fields.rev()));

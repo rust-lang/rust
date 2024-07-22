@@ -388,6 +388,16 @@ impl MirEvalError {
                         Ok(s) => s.map(|it| it.syntax_node_ptr()),
                         Err(_) => continue,
                     },
+                    MirSpan::BindingId(b) => {
+                        match source_map
+                            .patterns_for_binding(*b)
+                            .iter()
+                            .find_map(|p| source_map.pat_syntax(*p).ok())
+                        {
+                            Some(s) => s.map(|it| it.syntax_node_ptr()),
+                            None => continue,
+                        }
+                    }
                     MirSpan::SelfParam => match source_map.self_param_syntax() {
                         Some(s) => s.map(|it| it.syntax_node_ptr()),
                         None => continue,

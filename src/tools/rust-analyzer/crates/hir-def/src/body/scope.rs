@@ -484,7 +484,7 @@ fn foo() {
         let function = find_function(&db, file_id.file_id());
 
         let scopes = db.expr_scopes(function.into());
-        let (body, source_map) = db.body_with_source_map(function.into());
+        let (_, source_map) = db.body_with_source_map(function.into());
 
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
@@ -495,7 +495,7 @@ fn foo() {
 
         let resolved = scopes.resolve_name_in_scope(expr_scope, &name_ref.as_name()).unwrap();
         let pat_src = source_map
-            .pat_syntax(*body.bindings[resolved.binding()].definitions.first().unwrap())
+            .pat_syntax(*source_map.binding_definitions[&resolved.binding()].first().unwrap())
             .unwrap();
 
         let local_name = pat_src.value.syntax_node_ptr().to_node(file.syntax());

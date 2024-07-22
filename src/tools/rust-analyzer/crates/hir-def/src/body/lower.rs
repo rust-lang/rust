@@ -11,7 +11,6 @@ use hir_expand::{
 };
 use intern::{sym, Interned, Symbol};
 use rustc_hash::FxHashMap;
-use smallvec::SmallVec;
 use span::AstIdMap;
 use stdx::never;
 use syntax::{
@@ -1437,11 +1436,12 @@ impl ExprCollector<'_> {
         args: AstChildren<ast::Pat>,
         has_leading_comma: bool,
         binding_list: &mut BindingList,
-    ) -> (Box<[PatId]>, Option<usize>) {
+    ) -> (Box<[PatId]>, Option<u32>) {
         let args: Vec<_> = args.map(|p| self.collect_pat_possibly_rest(p, binding_list)).collect();
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possibility of there being multiple `..` here.
-        let ellipsis = args.iter().position(|p| p.is_right());
+        let ellipsis = args.iter().position(|p| p.is_right()).map(|it| it as u32);
+
         // We want to skip the `..` pattern here, since we account for it above.
         let mut args: Vec<_> = args.into_iter().filter_map(Either::left).collect();
         // if there is a leading comma, the user is most likely to type out a leading pattern
@@ -1512,7 +1512,7 @@ impl ExprCollector<'_> {
     }
 
     fn add_definition_to_binding(&mut self, binding_id: BindingId, pat_id: PatId) {
-        self.body.bindings[binding_id].definitions.push(pat_id);
+        self.source_map.binding_definitions.entry(binding_id).or_default().push(pat_id);
     }
 
     // region: labels
@@ -2058,12 +2058,7 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_binding(&mut self, name: Name, mode: BindingAnnotation) -> BindingId {
-        let binding = self.body.bindings.alloc(Binding {
-            name,
-            mode,
-            definitions: SmallVec::new(),
-            problems: None,
-        });
+        let binding = self.body.bindings.alloc(Binding { name, mode, problems: None });
         if let Some(owner) = self.current_binding_owner {
             self.body.binding_owners.insert(binding, owner);
         }
