@@ -144,7 +144,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
-            walk_item_kind(&mut item.kind, item.ident, item.span, item.id, self);
+            walk_item_kind(&mut item.kind, item.span, item.id, self);
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.
@@ -192,7 +192,7 @@ struct EntryPointCleaner<'a> {
 impl<'a> MutVisitor for EntryPointCleaner<'a> {
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         self.depth += 1;
-        let item = walk_flat_map_item(self, i, None).expect_one("noop did something");
+        let item = walk_flat_map_item(self, i).expect_one("noop did something");
         self.depth -= 1;
 
         // Remove any #[rustc_main] or #[start] from the AST so it doesn't
