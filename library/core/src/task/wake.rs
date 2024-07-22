@@ -786,7 +786,7 @@ impl LocalWaker {
         Self { waker }
     }
 
-    /// Creates a new `LocalWaker` that does nothing when `wake` is called.
+    /// Returns a reference to a `LocalWaker` that does nothing when used.
     ///
     // Note!  Much of the documentation for this method is duplicated
     // in the docs for `Waker::noop`.
@@ -795,6 +795,8 @@ impl LocalWaker {
     /// This is mostly useful for writing tests that need a [`Context`] to poll
     /// some futures, but are not expecting those futures to wake the waker or
     /// do not need to do anything specific if it happens.
+    ///
+    /// If an owned `LocalWaker` is needed, `clone()` this one.
     ///
     /// # Examples
     ///
