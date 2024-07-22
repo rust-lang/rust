@@ -187,19 +187,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
         }
 
         if (!this._client) {
-            this._serverPath = await bootstrap(this.extCtx, this.config, this.state).catch(
-                (err) => {
-                    let message = "bootstrap error. ";
-
-                    message +=
-                        'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
-                    message +=
-                        'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
-
-                    log.error("Bootstrap error", err);
-                    throw new Error(message);
-                },
-            );
+            this._serverPath = await this.bootstrap();
             text(spawn(this._serverPath, ["--version"]).stdout.setEncoding("utf-8")).then(
                 (data) => {
                     const prefix = `rust-analyzer `;
@@ -289,6 +277,19 @@ export class Ctx implements RustAnalyzerExtensionApi {
             );
         }
         return this._client;
+    }
+
+    private async bootstrap(): Promise<string> {
+        return bootstrap(this.extCtx, this.config, this.state).catch((err) => {
+            let message = "bootstrap error. ";
+
+            message +=
+                'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+            message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
+
+            log.error("Bootstrap error", err);
+            throw new Error(message);
+        });
     }
 
     async start() {
@@ -501,7 +502,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
 
         const toggleCheckOnSave = this.config.checkOnSave ? "Disable" : "Enable";
         statusBar.tooltip.appendMarkdown(
-            `[Extension Info](command:analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}` +
+            `[Extension Info](command:rust-analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}` +
                 "\n\n---\n\n" +
                 '[$(terminal) Open Logs](command:rust-analyzer.openLogs "Open the server logs")' +
                 "\n\n" +
