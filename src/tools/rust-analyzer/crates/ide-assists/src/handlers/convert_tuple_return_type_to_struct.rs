@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{ImportPathConfig, ModuleDef};
+use hir::ModuleDef;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -183,11 +183,7 @@ fn augment_references_with_imports(
 ) -> Vec<(ast::NameLike, Option<(ImportScope, ast::Path)>)> {
     let mut visited_modules = FxHashSet::default();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     references
         .iter()
