@@ -168,6 +168,7 @@ impl RootDatabase {
         // macro expansions are usually rather small, so we can afford to keep more of them alive
         hir::db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(4 * lru_capacity);
         hir::db::BorrowckQuery.in_db_mut(self).set_lru_capacity(base_db::DEFAULT_BORROWCK_LRU_CAP);
+        hir::db::BodyWithSourceMapQuery.in_db_mut(self).set_lru_capacity(2048);
     }
 
     pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, u16>) {
@@ -192,6 +193,7 @@ impl RootDatabase {
                 .copied()
                 .unwrap_or(base_db::DEFAULT_BORROWCK_LRU_CAP),
         );
+        hir::db::BodyWithSourceMapQuery.in_db_mut(self).set_lru_capacity(2048);
     }
 }
 

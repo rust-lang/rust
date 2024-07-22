@@ -62,8 +62,6 @@ pub trait ExpandDatabase: SourceDatabase {
     /// file or a macro expansion.
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
-    #[salsa::transparent]
-    fn parse_or_expand_with_err(&self, file_id: HirFileId) -> ExpandResult<Parse<SyntaxNode>>;
     /// Implementation for the macro case.
     #[salsa::lru]
     fn parse_macro_expansion(
@@ -324,18 +322,6 @@ fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> SyntaxNode {
         HirFileIdRepr::FileId(file_id) => db.parse(file_id).syntax_node(),
         HirFileIdRepr::MacroFile(macro_file) => {
             db.parse_macro_expansion(macro_file).value.0.syntax_node()
-        }
-    }
-}
-
-fn parse_or_expand_with_err(
-    db: &dyn ExpandDatabase,
-    file_id: HirFileId,
-) -> ExpandResult<Parse<SyntaxNode>> {
-    match file_id.repr() {
-        HirFileIdRepr::FileId(file_id) => ExpandResult::ok(db.parse(file_id).to_syntax()),
-        HirFileIdRepr::MacroFile(macro_file) => {
-            db.parse_macro_expansion(macro_file).map(|(it, _)| it)
         }
     }
 }
