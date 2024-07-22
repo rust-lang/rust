@@ -43,7 +43,8 @@ extern "unadjusted" {
 }
 
 extern "unadjusted" {
-    #[rustc_intrinsic_const_vector_arg("bar")] //~ ERROR attribute requires a parameter index
+    #[rustc_intrinsic_const_vector_arg("bar")] //~ ERROR invalid argument, must be integer literal
+    //~^ ERROR attribute requires a parameter index
     fn foo7(a: i8x2);
 }
 

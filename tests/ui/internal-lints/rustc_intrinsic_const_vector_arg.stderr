@@ -49,7 +49,7 @@ LL |     #[rustc_intrinsic_const_vector_arg("bar")]
    |                                        ^^^^^
 
 error: function does not have a parameter at index 2
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:51:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:52:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0, 2)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ LL |     fn foo8(a: i8x2, b: i8);
    |     ------------------------ function has 2 arguments
 
 error: parameter at index 0 must be a simd type defined in the local crate
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:56:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:57:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,12 +65,18 @@ LL |     fn foo9(a: i8);
    |                -- parameter is a non-simd type or is not defined locally
 
 error: parameter at index 0 must be a simd type defined in the local crate
-  --> $DIR/rustc_intrinsic_const_vector_arg.rs:61:5
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:62:5
    |
 LL |     #[rustc_intrinsic_const_vector_arg(0)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     fn foo10(a: Simd<i8, 2>);
    |                 ----------- parameter is a non-simd type or is not defined locally
 
-error: aborting due to 10 previous errors
+error: invalid argument, must be integer literal
+  --> $DIR/rustc_intrinsic_const_vector_arg.rs:46:5
+   |
+LL |     #[rustc_intrinsic_const_vector_arg("bar")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 

@@ -606,7 +606,7 @@ pub struct ConstVectorEvaluation {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_intrinsic_const_vector_arg)]
+#[diag(codegen_ssa_invalid_intrinsic_const_vector_arg)]
 pub struct IntrinsicConstVectorArg {
     #[primary_span]
     pub span: Span,

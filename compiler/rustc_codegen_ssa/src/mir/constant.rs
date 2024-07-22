@@ -49,7 +49,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             },
             // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
             // a constant and write that value back into `Operand`s. This could happen, but is unlikely.
-            // Also: all use`rs of `simd_shuffle` are on unstable and already need to take a lot of care
+            // Also: all users of `simd_shuffle` are on unstable and already need to take a lot of care
             // around intrinsics. For an issue to happen here, it would require a macro expanding to a
             // `simd_shuffle` call without wrapping the constant argument in a `const {}` block, but
             // the user pass through arbitrary expressions.
