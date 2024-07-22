@@ -1017,7 +1017,8 @@ pub struct Resolver<'a, 'tcx> {
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     import_res_map: NodeMap<PerNS<Option<Res>>>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    label_res_map: NodeMap<NodeId>,
+    /// The boolean stores if the node is loop. The span is the span of the node.
+    label_res_map: NodeMap<(NodeId, bool, Span)>,
     /// Resolutions for lifetimes.
     lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.

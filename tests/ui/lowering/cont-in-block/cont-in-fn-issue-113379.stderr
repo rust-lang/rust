@@ -1,0 +1,33 @@
+error[E0696]: `continue` pointing to a labeled block
+  --> $DIR/cont-in-fn-issue-113379.rs:12:17
+   |
+LL | /             'b: {
+LL | |
+LL | |                 continue 'b;
+   | |                 ^^^^^^^^^^^ labeled blocks cannot be `continue`'d
+LL | |             }
+   | |_____________- labeled block the `continue` points to
+
+error[E0696]: `continue` pointing to a labeled block
+  --> $DIR/cont-in-fn-issue-113379.rs:22:9
+   |
+LL | /     'b: {
+LL | |         continue 'b;
+   | |         ^^^^^^^^^^^ labeled blocks cannot be `continue`'d
+LL | |
+LL | |     }
+   | |_____- labeled block the `continue` points to
+
+error[E0308]: mismatched types
+  --> $DIR/cont-in-fn-issue-113379.rs:10:13
+   |
+LL | /             'b: {
+LL | |
+LL | |                 continue 'b;
+LL | |             }
+   | |_____________^ expected `usize`, found `()`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0696.
+For more information about an error, try `rustc --explain E0308`.

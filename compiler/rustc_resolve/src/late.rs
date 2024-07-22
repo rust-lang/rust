@@ -672,7 +672,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     last_block_rib: Option<Rib<'a>>,
 
     /// The current set of local scopes, for labels.
-    label_ribs: Vec<Rib<'a, NodeId>>,
+    label_ribs: Vec<Rib<'a, (NodeId, bool, Span)>>,
 
     /// The current set of local scopes for lifetimes.
     lifetime_ribs: Vec<LifetimeRib>,
@@ -2316,7 +2316,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
     /// label and reports an error if the label is not found or is unreachable.
-    fn resolve_label(&mut self, mut label: Ident) -> Result<(NodeId, Span), ResolutionError<'a>> {
+    fn resolve_label(
+        &mut self,
+        mut label: Ident,
+    ) -> Result<((NodeId, bool, Span), Span), ResolutionError<'a>> {
         let mut suggestion = None;
 
         for i in (0..self.label_ribs.len()).rev() {
@@ -4333,7 +4336,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         Ok(Some(result))
     }
 
-    fn with_resolved_label(&mut self, label: Option<Label>, id: NodeId, f: impl FnOnce(&mut Self)) {
+    fn with_resolved_label(
+        &mut self,
+        label: Option<Label>,
+        id: NodeId,
+        is_loop: bool,
+        span: Span,
+        f: impl FnOnce(&mut Self),
+    ) {
         if let Some(label) = label {
             if label.ident.as_str().as_bytes()[1] != b'_' {
                 self.diag_metadata.unused_labels.insert(id, label.ident.span);
@@ -4345,7 +4355,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             self.with_label_rib(RibKind::Normal, |this| {
                 let ident = label.ident.normalize_to_macro_rules();
-                this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
+                this.label_ribs.last_mut().unwrap().bindings.insert(ident, (id, is_loop, span));
                 f(this);
             });
         } else {
@@ -4353,8 +4363,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
     }
 
-    fn resolve_labeled_block(&mut self, label: Option<Label>, id: NodeId, block: &'ast Block) {
-        self.with_resolved_label(label, id, |this| this.visit_block(block));
+    fn resolve_labeled_block(
+        &mut self,
+        label: Option<Label>,
+        id: NodeId,
+        block: &'ast Block,
+        is_loop: bool,
+    ) {
+        self.with_resolved_label(label, id, is_loop, block.span, |this| this.visit_block(block));
     }
 
     fn resolve_block(&mut self, block: &'ast Block) {
@@ -4497,10 +4513,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
                 match self.resolve_label(label.ident) {
-                    Ok((node_id, _)) => {
+                    Ok((node, _)) => {
                         // Since this res is a label, it is never read.
-                        self.r.label_res_map.insert(expr.id, node_id);
-                        self.diag_metadata.unused_labels.remove(&node_id);
+                        self.r.label_res_map.insert(expr.id, node);
+                        self.diag_metadata.unused_labels.remove(&node.0);
                     }
                     Err(error) => {
                         self.report_error(label.ident.span, error);
@@ -4535,11 +4551,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             ExprKind::Loop(ref block, label, _) => {
-                self.resolve_labeled_block(label, expr.id, block)
+                self.resolve_labeled_block(label, expr.id, block, true)
             }
 
             ExprKind::While(ref cond, ref block, label) => {
-                self.with_resolved_label(label, expr.id, |this| {
+                self.with_resolved_label(label, expr.id, true, block.span, |this| {
                     this.with_rib(ValueNS, RibKind::Normal, |this| {
                         let old = this.diag_metadata.in_if_condition.replace(cond);
                         this.visit_expr(cond);
@@ -4553,11 +4569,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 self.visit_expr(iter);
                 self.with_rib(ValueNS, RibKind::Normal, |this| {
                     this.resolve_pattern_top(pat, PatternSource::For);
-                    this.resolve_labeled_block(label, expr.id, body);
+                    this.resolve_labeled_block(label, expr.id, body, true);
                 });
             }
 
-            ExprKind::Block(ref block, label) => self.resolve_labeled_block(label, block.id, block),
+            ExprKind::Block(ref block, label) => {
+                self.resolve_labeled_block(label, block.id, block, false)
+            }
 
             // Equivalent to `visit::walk_expr` + passing some context to children.
             ExprKind::Field(ref subexpression, _) => {

@@ -54,6 +54,11 @@ ast_lowering_clobber_abi_not_supported =
 
 ast_lowering_closure_cannot_be_static = closures cannot be static
 
+ast_lowering_continue_labeled_block =
+    `continue` pointing to a labeled block
+    .label = labeled blocks cannot be `continue`'d
+    .block_label = labeled block the `continue` points to
+
 ast_lowering_coroutine_too_many_parameters =
     too many parameters for a coroutine (expected 0 or 1 parameters)
 

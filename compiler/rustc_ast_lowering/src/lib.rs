@@ -252,7 +252,7 @@ impl ResolverAstLowering {
     }
 
     /// Obtains resolution for a label with the given `NodeId`.
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
+    fn get_label_res(&self, id: NodeId) -> Option<(NodeId, bool, Span)> {
         self.label_res_map.get(&id).copied()
     }
 

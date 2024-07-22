@@ -1,9 +1,3 @@
-error[E0695]: unlabeled `continue` inside of a labeled block
-  --> $DIR/label_break_value_continue.rs:6:9
-   |
-LL |         continue;
-   |         ^^^^^^^^ `continue` statements that would diverge to or through a labeled block need to bear a label
-
 error[E0696]: `continue` pointing to a labeled block
   --> $DIR/label_break_value_continue.rs:13:9
    |
@@ -12,6 +6,12 @@ LL | |         continue 'b;
    | |         ^^^^^^^^^^^ labeled blocks cannot be `continue`'d
 LL | |     }
    | |_____- labeled block the `continue` points to
+
+error[E0695]: unlabeled `continue` inside of a labeled block
+  --> $DIR/label_break_value_continue.rs:6:9
+   |
+LL |         continue;
+   |         ^^^^^^^^ `continue` statements that would diverge to or through a labeled block need to bear a label
 
 error[E0695]: unlabeled `continue` inside of a labeled block
   --> $DIR/label_break_value_continue.rs:21:13
