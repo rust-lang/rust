@@ -1040,6 +1040,8 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./src/tools/opt-dist/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rustc-perf/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./src/tools/rustbook/Cargo.toml"))
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
