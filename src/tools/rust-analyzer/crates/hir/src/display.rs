@@ -134,9 +134,9 @@ impl HirDisplay for Function {
                         .as_ref()
                         .unwrap()
                     }
-                    _ => panic!("Async fn ret_type should be impl Future"),
+                    _ => &TypeRef::Error,
                 },
-                _ => panic!("Async fn ret_type should be impl Future"),
+                _ => &TypeRef::Error,
             }
         };
 
