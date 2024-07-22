@@ -663,8 +663,10 @@ impl flags::AnalysisStats {
                 bar.println(msg());
             }
             bar.set_message(msg);
-            let (body, sm) = db.body_with_source_map(body_id.into());
+            let body = db.body(body_id.into());
             let inference_result = db.infer(body_id.into());
+            // This query is LRU'd, so actually calling it will skew the timing results.
+            let sm = || db.body_with_source_map(body_id.into()).1;
 
             // region:expressions
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
@@ -675,7 +677,8 @@ impl flags::AnalysisStats {
                 let unknown_or_partial = if ty.is_unknown() {
                     num_exprs_unknown += 1;
                     if verbosity.is_spammy() {
-                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm, expr_id) {
+                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm(), expr_id)
+                        {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Unknown type",
                                 path,
@@ -699,7 +702,7 @@ impl flags::AnalysisStats {
                 };
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single expression
-                    if let Some((_, start, end)) = expr_syntax_range(db, vfs, &sm, expr_id) {
+                    if let Some((_, start, end)) = expr_syntax_range(db, vfs, &sm(), expr_id) {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
@@ -715,14 +718,15 @@ impl flags::AnalysisStats {
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
-                        location_csv_expr(db, vfs, &sm, expr_id),
+                        location_csv_expr(db, vfs, &sm(), expr_id),
                         ty.display(db)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                     num_expr_type_mismatches += 1;
                     if verbosity.is_verbose() {
-                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm, expr_id) {
+                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm(), expr_id)
+                        {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
                                 path,
@@ -745,7 +749,7 @@ impl flags::AnalysisStats {
                     if self.output == Some(OutputFormat::Csv) {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
-                            location_csv_expr(db, vfs, &sm, expr_id),
+                            location_csv_expr(db, vfs, &sm(), expr_id),
                             mismatch.expected.display(db),
                             mismatch.actual.display(db)
                         );
@@ -772,7 +776,7 @@ impl flags::AnalysisStats {
                 let unknown_or_partial = if ty.is_unknown() {
                     num_pats_unknown += 1;
                     if verbosity.is_spammy() {
-                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm, pat_id) {
+                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm(), pat_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Unknown type",
                                 path,
@@ -796,7 +800,7 @@ impl flags::AnalysisStats {
                 };
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single pattern
-                    if let Some((_, start, end)) = pat_syntax_range(db, vfs, &sm, pat_id) {
+                    if let Some((_, start, end)) = pat_syntax_range(db, vfs, &sm(), pat_id) {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
@@ -812,14 +816,14 @@ impl flags::AnalysisStats {
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
-                        location_csv_pat(db, vfs, &sm, pat_id),
+                        location_csv_pat(db, vfs, &sm(), pat_id),
                         ty.display(db)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat_id) {
                     num_pat_type_mismatches += 1;
                     if verbosity.is_verbose() {
-                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm, pat_id) {
+                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm(), pat_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
                                 path,
@@ -842,7 +846,7 @@ impl flags::AnalysisStats {
                     if self.output == Some(OutputFormat::Csv) {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
-                            location_csv_pat(db, vfs, &sm, pat_id),
+                            location_csv_pat(db, vfs, &sm(), pat_id),
                             mismatch.expected.display(db),
                             mismatch.actual.display(db)
                         );
@@ -957,7 +961,7 @@ impl flags::AnalysisStats {
                 bar.println(msg());
             }
             bar.set_message(msg);
-            db.body_with_source_map(body_id.into());
+            db.body(body_id.into());
             bar.inc(1);
         }
 

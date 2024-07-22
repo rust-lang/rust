@@ -177,6 +177,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     // endregion:data
 
     #[salsa::invoke(Body::body_with_source_map_query)]
+    #[salsa::lru]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);
 
     #[salsa::invoke(Body::body_query)]
