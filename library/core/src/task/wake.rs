@@ -541,6 +541,16 @@ impl Waker {
     ///
     /// If an owned `Waker` is needed, `clone()` this one.
     ///
+    /// # Warning
+    ///
+    /// Do not use this function as a way to be able to call `poll` methods,
+    /// in production code,
+    /// from within a non-`async`, non-`poll`, function.
+    ///
+    /// Using a no-op waker for that purpose would cause wakeups to be lost:
+    /// the future would store only the no-op waker,
+    /// replacing the proper waker for the waiting task.
+    ///
     /// # Examples
     ///
     /// ```
@@ -797,6 +807,16 @@ impl LocalWaker {
     /// do not need to do anything specific if it happens.
     ///
     /// If an owned `LocalWaker` is needed, `clone()` this one.
+    ///
+    /// # Warning
+    ///
+    /// Do not use this function as a way to be able to call `poll` methods,
+    /// in production code,
+    /// from within a non-`async`, non-`poll`, function.
+    ///
+    /// Using a no-op waker for that purpose would cause wakeups to be lost:
+    /// the future would store only the no-op waker,
+    /// replacing the proper waker for the waiting task.
     ///
     /// # Examples
     ///
