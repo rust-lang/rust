@@ -2,8 +2,12 @@ use super::UnstableFeatures;
 
 #[test]
 fn rustc_bootstrap_parsing() {
+    // FIXME(edition_2024): Audit this for safety. This is probably racey, per:
+    // <https://github.com/rust-lang/rust/pull/129636#pullrequestreview-2314766092>.
     let is_bootstrap = |env, krate| {
-        std::env::set_var("RUSTC_BOOTSTRAP", env);
+        unsafe {
+            std::env::set_var("RUSTC_BOOTSTRAP", env);
+        }
         matches!(UnstableFeatures::from_environment(krate), UnstableFeatures::Cheat)
     };
     assert!(is_bootstrap("1", None));

@@ -182,13 +182,16 @@ fn configure_and_expand(
                     new_path.push(path);
                 }
             }
-            env::set_var(
-                "PATH",
-                &env::join_paths(
-                    new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
-                )
-                .unwrap(),
-            );
+            // SAFETY: `set_var` is not racey on windows.
+            unsafe {
+                env::set_var(
+                    "PATH",
+                    &env::join_paths(
+                        new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
+                    )
+                    .unwrap(),
+                );
+            }
         }
 
         // Create the config for macro expansion
@@ -227,7 +230,10 @@ fn configure_and_expand(
         }
 
         if cfg!(windows) {
-            env::set_var("PATH", &old_path);
+            // SAFETY: `set_var` is not racey on windows.
+            unsafe {
+                env::set_var("PATH", &old_path);
+            }
         }
 
         krate
