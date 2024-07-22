@@ -16,6 +16,7 @@ use hir_expand::{
     name::{AsName, Name},
     proc_macro::CustomProcMacroExpander,
     ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    MacroFileIdExt,
 };
 use intern::{sym, Interned};
 use itertools::{izip, Itertools};
@@ -1397,7 +1398,12 @@ impl DefCollector<'_> {
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
         let item_tree = self.db.file_item_tree(file_id);
 
-        let mod_dir = self.mod_dirs[&module_id].clone();
+        let mod_dir = if macro_call_id.as_macro_file().is_include_macro(self.db.upcast()) {
+            ModDir::root()
+        } else {
+            self.mod_dirs[&module_id].clone()
+        };
+
         ModCollector {
             def_collector: &mut *self,
             macro_depth: depth,
