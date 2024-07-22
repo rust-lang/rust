@@ -66,6 +66,6 @@ fn test_nofollow_symlink() {
 
     let ret = unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
     assert_eq!(ret, -1);
-    let err = io::Error::last_os_error().raw_os_error().unwrap();
+    let err = Error::last_os_error().raw_os_error().unwrap();
     assert_eq!(err, libc::ELOOP);
 }
