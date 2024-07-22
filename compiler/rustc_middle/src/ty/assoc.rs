@@ -167,7 +167,7 @@ impl AssocItems {
     ///
     /// New code should avoid relying on definition order. If you need a particular associated item
     /// for a known trait, make that trait a lang item instead of indexing this array.
-    pub fn in_definition_order(&self) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+    pub fn in_definition_order(&self) -> impl Iterator<Item = &ty::AssocItem> {
         self.items.iter().map(|(_, v)| v)
     }
 
@@ -176,10 +176,7 @@ impl AssocItems {
     }
 
     /// Returns an iterator over all associated items with the given name, ignoring hygiene.
-    pub fn filter_by_name_unhygienic(
-        &self,
-        name: Symbol,
-    ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+    pub fn filter_by_name_unhygienic(&self, name: Symbol) -> impl Iterator<Item = &ty::AssocItem> {
         self.items.get_by_key(name)
     }
 

@@ -177,11 +177,11 @@ impl<'tcx> Bounds<'tcx> {
         &self,
         // FIXME(effects): remove tcx
         _tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> + '_ {
+    ) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> {
         self.clauses.iter().cloned()
     }
 
-    pub(crate) fn effects_min_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
+    pub(crate) fn effects_min_tys(&self) -> impl Iterator<Item = Ty<'tcx>> {
         self.effects_min_tys.keys().copied()
     }
 }

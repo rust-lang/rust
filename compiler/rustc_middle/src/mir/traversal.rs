@@ -281,7 +281,7 @@ pub fn mono_reachable_reverse_postorder<'a, 'tcx>(
 /// This is clearer than writing `preorder` in cases where the order doesn't matter.
 pub fn reachable<'a, 'tcx>(
     body: &'a Body<'tcx>,
-) -> impl 'a + Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> {
+) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> {
     preorder(body)
 }
 

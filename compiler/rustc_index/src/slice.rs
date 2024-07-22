@@ -63,9 +63,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator + '_ {
+    pub fn iter_enumerated(&self) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator {
         self.raw.iter().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
@@ -84,7 +82,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub fn iter_enumerated_mut(
         &mut self,
-    ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator + '_ {
+    ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator {
         self.raw.iter_mut().enumerate().map(|(n, t)| (I::new(n), t))
     }
 

@@ -159,7 +159,7 @@ impl LintStore {
 
     pub fn get_lint_groups<'t>(
         &'t self,
-    ) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> + 't {
+    ) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> {
         self.lint_groups
             .iter()
             .filter(|(_, LintGroup { depr, .. })| {
@@ -173,7 +173,7 @@ impl LintStore {
 
     pub fn register_early_pass(
         &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
+        pass: impl Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync + 'static,
     ) {
         self.early_passes.push(Box::new(pass));
     }
@@ -186,7 +186,7 @@ impl LintStore {
     /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
     pub fn register_pre_expansion_pass(
         &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
+        pass: impl Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync + 'static,
     ) {
         self.pre_expansion_passes.push(Box::new(pass));
     }

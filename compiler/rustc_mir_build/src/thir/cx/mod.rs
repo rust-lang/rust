@@ -161,7 +161,7 @@ impl<'tcx> Cx<'tcx> {
         owner_id: HirId,
         fn_decl: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,
-    ) -> impl Iterator<Item = Param<'tcx>> + 'a {
+    ) -> impl Iterator<Item = Param<'tcx>> {
         let fn_sig = self.typeck_results.liberated_fn_sigs()[owner_id];
 
         body.params.iter().enumerate().map(move |(index, param)| {

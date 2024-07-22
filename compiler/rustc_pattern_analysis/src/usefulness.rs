@@ -905,7 +905,7 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
         &'a self,
         cx: &'a Cx,
         ctor: &'a Constructor<Cx>,
-    ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
+    ) -> impl Iterator<Item = Self> + ExactSizeIterator {
         let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
         let ctor_sub_validity = self.validity.specialize(ctor);
         ctor_sub_tys.map(move |(ty, PrivateUninhabitedField(private_uninhabited))| PlaceInfo {

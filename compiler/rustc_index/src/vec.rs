@@ -132,7 +132,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> + '_ {
+    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> {
         self.raw.drain(range)
     }
 
@@ -140,7 +140,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn drain_enumerated<R: RangeBounds<usize>>(
         &mut self,
         range: R,
-    ) -> impl Iterator<Item = (I, T)> + '_ {
+    ) -> impl Iterator<Item = (I, T)> {
         let begin = match range.start_bound() {
             std::ops::Bound::Included(i) => *i,
             std::ops::Bound::Excluded(i) => i.checked_add(1).unwrap(),

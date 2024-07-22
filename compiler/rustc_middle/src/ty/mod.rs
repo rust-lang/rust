@@ -1496,7 +1496,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.typeck(self.hir().body_owner_def_id(body))
     }
 
-    pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
+    pub fn provided_trait_methods(self, id: DefId) -> impl Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
             .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
@@ -1831,7 +1831,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: DefId,
         attr: &'attr [Symbol],
-    ) -> impl Iterator<Item = &'tcx ast::Attribute> + 'attr
+    ) -> impl Iterator<Item = &'tcx ast::Attribute>
     where
         'tcx: 'attr,
     {

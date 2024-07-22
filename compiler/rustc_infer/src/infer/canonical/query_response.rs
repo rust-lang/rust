@@ -10,7 +10,6 @@
 use std::fmt::Debug;
 use std::iter;
 
-use rustc_data_structures::captures::Captures;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
@@ -556,7 +555,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         uninstantiated_region_constraints: &'a [QueryOutlivesConstraint<'tcx>],
         result_args: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
         uninstantiated_region_constraints.iter().map(move |&constraint| {
             let predicate = instantiate_value(self.tcx, result_args, constraint);
             self.query_outlives_constraint_to_obligation(predicate, cause.clone(), param_env)

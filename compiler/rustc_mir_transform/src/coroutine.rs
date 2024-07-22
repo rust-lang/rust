@@ -781,7 +781,7 @@ struct CoroutineSavedLocals(BitSet<Local>);
 impl CoroutineSavedLocals {
     /// Returns an iterator over each `CoroutineSavedLocal` along with the `Local` it corresponds
     /// to.
-    fn iter_enumerated(&self) -> impl '_ + Iterator<Item = (CoroutineSavedLocal, Local)> {
+    fn iter_enumerated(&self) -> impl Iterator<Item = (CoroutineSavedLocal, Local)> {
         self.iter().enumerate().map(|(i, l)| (CoroutineSavedLocal::from(i), l))
     }
 

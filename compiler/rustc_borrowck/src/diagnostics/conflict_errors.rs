@@ -8,7 +8,6 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{ClosureKind, Path};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{struct_span_code_err, Applicability, Diag, MultiSpan};
@@ -3556,7 +3555,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         fn predecessor_locations<'a, 'tcx>(
             body: &'a mir::Body<'tcx>,
             location: Location,
-        ) -> impl Iterator<Item = Location> + Captures<'tcx> + 'a {
+        ) -> impl Iterator<Item = Location> {
             if location.statement_index == 0 {
                 let predecessors = body.basic_blocks.predecessors()[location.block].to_vec();
                 Either::Left(predecessors.into_iter().map(move |bb| body.terminator_loc(bb)))

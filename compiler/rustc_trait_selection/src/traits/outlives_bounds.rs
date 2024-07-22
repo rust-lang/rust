@@ -12,8 +12,8 @@ use tracing::{debug, instrument};
 use crate::infer::InferCtxt;
 use crate::traits::{ObligationCause, ObligationCtxt};
 
-pub type BoundsCompat<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
-pub type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
+pub type BoundsCompat<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>>;
+pub type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>>;
 
 /// Implied bounds are region relationships that we deduce
 /// automatically. The idea is that (e.g.) a caller must check that a

@@ -183,12 +183,12 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
+    pub fn items(self) -> impl Iterator<Item = ItemId> {
         self.tcx.hir_crate_items(()).free_items.iter().copied()
     }
 
     #[inline]
-    pub fn module_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> + 'hir {
+    pub fn module_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> {
         self.tcx.hir_module_items(module).free_items()
     }
 
@@ -289,7 +289,7 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    pub fn body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
+    pub fn body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> {
         self.body(id).params.iter().map(|arg| match arg.pat.kind {
             PatKind::Binding(_, _, ident, _) => ident,
             _ => Ident::empty(),
@@ -343,7 +343,7 @@ impl<'hir> Map<'hir> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     #[inline]
-    pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
+    pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> {
         self.tcx.hir_crate_items(()).body_owners.iter().copied()
     }
 
@@ -496,7 +496,7 @@ impl<'hir> Map<'hir> {
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
-    pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'hir {
+    pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> {
         ParentHirIterator::new(self, current_id)
     }
 

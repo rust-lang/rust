@@ -63,13 +63,13 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
 
     /// Returns an iterator over the items in the map in insertion order.
     #[inline]
-    pub fn iter(&self) -> impl '_ + DoubleEndedIterator<Item = (&K, &V)> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = (&K, &V)> {
         self.items.iter().map(|(k, v)| (k, v))
     }
 
     /// Returns an iterator over the items in the map in insertion order along with their indices.
     #[inline]
-    pub fn iter_enumerated(&self) -> impl '_ + DoubleEndedIterator<Item = (I, (&K, &V))> {
+    pub fn iter_enumerated(&self) -> impl DoubleEndedIterator<Item = (I, (&K, &V))> {
         self.items.iter_enumerated().map(|(i, (k, v))| (i, (k, v)))
     }
 
@@ -84,7 +84,7 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     /// If there are multiple items that are equivalent to `key`, they will be yielded in
     /// insertion order.
     #[inline]
-    pub fn get_by_key(&self, key: K) -> impl Iterator<Item = &V> + '_ {
+    pub fn get_by_key(&self, key: K) -> impl Iterator<Item = &V> {
         self.get_by_key_enumerated(key).map(|(_, v)| v)
     }
 
@@ -94,7 +94,7 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     /// If there are multiple items that are equivalent to `key`, they will be yielded in
     /// insertion order.
     #[inline]
-    pub fn get_by_key_enumerated(&self, key: K) -> impl Iterator<Item = (I, &V)> + '_ {
+    pub fn get_by_key_enumerated(&self, key: K) -> impl Iterator<Item = (I, &V)> {
         let lower_bound = self.idx_sorted_by_item_key.partition_point(|&i| self.items[i].0 < key);
         self.idx_sorted_by_item_key[lower_bound..].iter().map_while(move |&i| {
             let (k, v) = &self.items[i];

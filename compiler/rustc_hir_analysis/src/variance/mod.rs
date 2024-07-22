@@ -77,11 +77,8 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
 fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
     let generics = tcx.generics_of(item_def_id);
 
-    // Opaque types may only use regions that are bound. So for
-    // ```rust
-    // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
-    // ```
-    // we may not use `'c` in the hidden type.
+    /// Collect the lifetimes that are mentioned in the opaque that come from the parent,
+    /// and mark them as invariant.
     struct OpaqueTypeLifetimeCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
         root_def_id: DefId,

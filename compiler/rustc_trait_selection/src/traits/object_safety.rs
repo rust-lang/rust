@@ -131,7 +131,7 @@ fn object_safety_violations_for_trait(
 fn sized_trait_bound_spans<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: hir::GenericBounds<'tcx>,
-) -> impl 'tcx + Iterator<Item = Span> {
+) -> impl Iterator<Item = Span> {
     bounds.iter().filter_map(move |b| match b {
         hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
             if trait_has_sized_self(

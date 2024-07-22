@@ -411,8 +411,8 @@ pub use helper::*;
 
 mod helper {
     use super::*;
-    pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
-    pub type SuccessorsMut<'a> = impl DoubleEndedIterator<Item = &'a mut BasicBlock> + 'a;
+    pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock>;
+    pub type SuccessorsMut<'a> = impl DoubleEndedIterator<Item = &'a mut BasicBlock>;
 
     impl SwitchTargets {
         /// Like [`SwitchTargets::target_for_value`], but returning the same type as

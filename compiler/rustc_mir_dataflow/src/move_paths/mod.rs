@@ -67,7 +67,7 @@ impl<'tcx> MovePath<'tcx> {
     pub fn parents<'a>(
         &self,
         move_paths: &'a IndexSlice<MovePathIndex, MovePath<'tcx>>,
-    ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
+    ) -> impl Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
         let first = self.parent.map(|mpi| (mpi, &move_paths[mpi]));
         MovePathLinearIter {
             next: first,
@@ -81,7 +81,7 @@ impl<'tcx> MovePath<'tcx> {
     pub fn children<'a>(
         &self,
         move_paths: &'a IndexSlice<MovePathIndex, MovePath<'tcx>>,
-    ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
+    ) -> impl Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
         let first = self.first_child.map(|mpi| (mpi, &move_paths[mpi]));
         MovePathLinearIter {
             next: first,
@@ -343,7 +343,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     /// `MovePathIndex`es.
     pub fn iter_locals_enumerated(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + '_ {
+    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> {
         self.locals.iter_enumerated().filter_map(|(l, &idx)| Some((l, idx?)))
     }
 }

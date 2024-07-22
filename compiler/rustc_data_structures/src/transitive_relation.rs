@@ -363,7 +363,7 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
 
     /// Lists all the base edges in the graph: the initial _non-transitive_ set of element
     /// relations, which will be later used as the basis for the transitive closure computation.
-    pub fn base_edges(&self) -> impl Iterator<Item = (T, T)> + '_ {
+    pub fn base_edges(&self) -> impl Iterator<Item = (T, T)> {
         self.edges
             .iter()
             .map(move |edge| (self.elements[edge.source.0], self.elements[edge.target.0]))

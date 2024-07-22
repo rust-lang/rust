@@ -1830,7 +1830,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Ok(TyCtxtFeed { key: num, tcx: self })
     }
 
-    pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
+    pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
         // Create a dependency to the red node to be sure we re-execute this when the amount of
         // definitions change.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
@@ -2059,7 +2059,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.limits(()).move_size_limit
     }
 
-    pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn all_traits(self) -> impl Iterator<Item = DefId> {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
             .flat_map(move |cnum| self.traits(cnum).iter().copied())
@@ -2249,7 +2249,7 @@ macro_rules! sty_debug_print {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn debug_stats(self) -> impl std::fmt::Debug + 'tcx {
+    pub fn debug_stats(self) -> impl std::fmt::Debug {
         struct DebugStats<'tcx>(TyCtxt<'tcx>);
 
         impl<'tcx> std::fmt::Debug for DebugStats<'tcx> {
@@ -2508,7 +2508,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
     /// to identify which traits may define a given associated type to help avoid cycle errors,
     /// and to make size estimates for vtable layout computation.
-    pub fn supertrait_def_ids(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn supertrait_def_ids(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
         rustc_type_ir::elaborate::supertrait_def_ids(self, trait_def_id)
     }
 
