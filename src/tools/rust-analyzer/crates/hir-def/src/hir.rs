@@ -21,7 +21,6 @@ use hir_expand::name::Name;
 use intern::{Interned, Symbol};
 use la_arena::{Idx, RawIdx};
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
-use smallvec::SmallVec;
 use syntax::ast;
 
 use crate::{
@@ -525,7 +524,6 @@ pub enum BindingProblems {
 pub struct Binding {
     pub name: Name,
     pub mode: BindingAnnotation,
-    pub definitions: SmallVec<[PatId; 1]>,
     pub problems: Option<BindingProblems>,
 }
 
@@ -540,7 +538,7 @@ pub struct RecordFieldPat {
 pub enum Pat {
     Missing,
     Wild,
-    Tuple { args: Box<[PatId]>, ellipsis: Option<usize> },
+    Tuple { args: Box<[PatId]>, ellipsis: Option<u32> },
     Or(Box<[PatId]>),
     Record { path: Option<Box<Path>>, args: Box<[RecordFieldPat]>, ellipsis: bool },
     Range { start: Option<Box<LiteralOrConst>>, end: Option<Box<LiteralOrConst>> },
@@ -548,7 +546,7 @@ pub enum Pat {
     Path(Box<Path>),
     Lit(ExprId),
     Bind { id: BindingId, subpat: Option<PatId> },
-    TupleStruct { path: Option<Box<Path>>, args: Box<[PatId]>, ellipsis: Option<usize> },
+    TupleStruct { path: Option<Box<Path>>, args: Box<[PatId]>, ellipsis: Option<u32> },
     Ref { pat: PatId, mutability: Mutability },
     Box { inner: PatId },
     ConstBlock(ExprId),

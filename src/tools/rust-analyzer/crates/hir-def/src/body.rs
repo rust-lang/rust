@@ -6,13 +6,14 @@ pub mod scope;
 #[cfg(test)]
 mod tests;
 
-use std::ops::Index;
+use std::ops::{Deref, Index};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{name::Name, InFile};
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use span::MacroFileId;
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
@@ -91,6 +92,7 @@ pub struct BodySourceMap {
     label_map_back: ArenaMap<LabelId, LabelSource>,
 
     self_param: Option<InFile<AstPtr<ast::SelfParam>>>,
+    binding_definitions: FxHashMap<BindingId, SmallVec<[PatId; 4]>>,
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
@@ -377,6 +379,10 @@ impl BodySourceMap {
         self.label_map_back[label]
     }
 
+    pub fn patterns_for_binding(&self, binding: BindingId) -> &[PatId] {
+        self.binding_definitions.get(&binding).map_or(&[], Deref::deref)
+    }
+
     pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {
         let src = node.map(AstPtr::new);
         self.label_map.get(&src).cloned()
@@ -428,6 +434,7 @@ impl BodySourceMap {
             expansions,
             format_args_template_map,
             diagnostics,
+            binding_definitions,
         } = self;
         format_args_template_map.shrink_to_fit();
         expr_map.shrink_to_fit();
@@ -440,5 +447,6 @@ impl BodySourceMap {
         pat_field_map_back.shrink_to_fit();
         expansions.shrink_to_fit();
         diagnostics.shrink_to_fit();
+        binding_definitions.shrink_to_fit();
     }
 }

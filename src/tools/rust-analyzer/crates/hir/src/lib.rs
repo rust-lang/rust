@@ -1806,6 +1806,16 @@ impl DefWithBody {
                             Some(s) => s.map(|it| it.into()),
                             None => continue,
                         },
+                        mir::MirSpan::BindingId(b) => {
+                            match source_map
+                                .patterns_for_binding(b)
+                                .iter()
+                                .find_map(|p| source_map.pat_syntax(*p).ok())
+                            {
+                                Some(s) => s.map(|it| it.into()),
+                                None => continue,
+                            }
+                        }
                         mir::MirSpan::Unknown => continue,
                     };
                     acc.push(
@@ -1822,8 +1832,8 @@ impl DefWithBody {
                     let Some(&local) = mir_body.binding_locals.get(binding_id) else {
                         continue;
                     };
-                    if body[binding_id]
-                        .definitions
+                    if source_map
+                        .patterns_for_binding(binding_id)
                         .iter()
                         .any(|&pat| source_map.pat_syntax(pat).is_err())
                     {
@@ -1859,6 +1869,16 @@ impl DefWithBody {
                                         Ok(s) => s.map(|it| it.into()),
                                         Err(_) => continue,
                                     },
+                                    mir::MirSpan::BindingId(b) => {
+                                        match source_map
+                                            .patterns_for_binding(*b)
+                                            .iter()
+                                            .find_map(|p| source_map.pat_syntax(*p).ok())
+                                        {
+                                            Some(s) => s.map(|it| it.into()),
+                                            None => continue,
+                                        }
+                                    }
                                     mir::MirSpan::SelfParam => match source_map.self_param_syntax()
                                     {
                                         Some(s) => s.map(|it| it.into()),
@@ -3291,8 +3311,8 @@ impl Local {
                     source: source.map(|ast| Either::Right(ast.to_node(&root))),
                 }]
             }
-            _ => body[self.binding_id]
-                .definitions
+            _ => source_map
+                .patterns_for_binding(self.binding_id)
                 .iter()
                 .map(|&definition| {
                     let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
@@ -3320,8 +3340,8 @@ impl Local {
                     source: source.map(|ast| Either::Right(ast.to_node(&root))),
                 }
             }
-            _ => body[self.binding_id]
-                .definitions
+            _ => source_map
+                .patterns_for_binding(self.binding_id)
                 .first()
                 .map(|&definition| {
                     let src = source_map.pat_syntax(definition).unwrap(); // Hmm...

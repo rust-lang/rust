@@ -1720,14 +1720,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
     /// This function push `StorageLive` statement for the binding, and applies changes to add `StorageDead` and
     /// `Drop` in the appropriated places.
     fn push_storage_live(&mut self, b: BindingId, current: BasicBlockId) -> Result<()> {
-        let span = self.body.bindings[b]
-            .definitions
-            .first()
-            .copied()
-            .map(MirSpan::PatId)
-            .unwrap_or(MirSpan::Unknown);
         let l = self.binding_local(b)?;
-        self.push_storage_live_for_local(l, current, span)
+        self.push_storage_live_for_local(l, current, MirSpan::BindingId(b))
     }
 
     fn push_storage_live_for_local(

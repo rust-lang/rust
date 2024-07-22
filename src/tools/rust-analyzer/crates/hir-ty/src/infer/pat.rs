@@ -68,7 +68,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         default_bm: T::BindingMode,
         id: T,
-        ellipsis: Option<usize>,
+        ellipsis: Option<u32>,
         subs: &[T],
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path, true);
@@ -98,7 +98,7 @@ impl InferenceContext<'_> {
                 let visibilities = self.db.field_visibilities(def);
 
                 let (pre, post) = match ellipsis {
-                    Some(idx) => subs.split_at(idx),
+                    Some(idx) => subs.split_at(idx as usize),
                     None => (subs, &[][..]),
                 };
                 let post_idx_offset = field_types.iter().count().saturating_sub(post.len());
@@ -219,7 +219,7 @@ impl InferenceContext<'_> {
         &mut self,
         expected: &Ty,
         default_bm: T::BindingMode,
-        ellipsis: Option<usize>,
+        ellipsis: Option<u32>,
         subs: &[T],
     ) -> Ty {
         let expected = self.resolve_ty_shallow(expected);
@@ -229,7 +229,9 @@ impl InferenceContext<'_> {
         };
 
         let ((pre, post), n_uncovered_patterns) = match ellipsis {
-            Some(idx) => (subs.split_at(idx), expectations.len().saturating_sub(subs.len())),
+            Some(idx) => {
+                (subs.split_at(idx as usize), expectations.len().saturating_sub(subs.len()))
+            }
             None => ((subs, &[][..]), 0),
         };
         let mut expectations_iter = expectations
