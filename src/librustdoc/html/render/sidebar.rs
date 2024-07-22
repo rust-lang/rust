@@ -81,8 +81,10 @@ impl<'a> LinkBlock<'a> {
 /// A link to an item. Content should not be escaped.
 #[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Clone)]
 pub(crate) struct Link<'a> {
-    /// The content for the anchor tag
+    /// The content for the anchor tag and title attr
     name: Cow<'a, str>,
+    /// The content for the anchor tag (if different from name)
+    name_html: Option<Cow<'a, str>>,
     /// The id of an anchor within the page (without a `#` prefix)
     href: Cow<'a, str>,
     /// Nested list of links (used only in top-toc)
@@ -91,7 +93,7 @@ pub(crate) struct Link<'a> {
 
 impl<'a> Link<'a> {
     pub fn new(href: impl Into<Cow<'a, str>>, name: impl Into<Cow<'a, str>>) -> Self {
-        Self { href: href.into(), name: name.into(), children: vec![] }
+        Self { href: href.into(), name: name.into(), children: vec![], name_html: None }
     }
     pub fn empty() -> Link<'static> {
         Link::new("", "")
@@ -207,6 +209,7 @@ fn docblock_toc<'a>(
         .into_iter()
         .map(|entry| {
             Link {
+                name_html: if entry.html == entry.name { None } else { Some(entry.html.into()) },
                 name: entry.name.into(),
                 href: entry.id.into(),
                 children: entry
@@ -214,6 +217,11 @@ fn docblock_toc<'a>(
                     .entries
                     .into_iter()
                     .map(|entry| Link {
+                        name_html: if entry.html == entry.name {
+                            None
+                        } else {
+                            Some(entry.html.into())
+                        },
                         name: entry.name.into(),
                         href: entry.id.into(),
                         // Only a single level of nesting is shown here.

@@ -23,11 +23,25 @@
                         <ul class="block{% if !block.class.is_empty() +%} {{+block.class}}{% endif %}">
                             {% for link in block.links %}
                                 <li> {# #}
-                                    <a href="#{{link.href|safe}}">{{link.name}}</a> {# #}
+                                    <a href="#{{link.href|safe}}" title="{{link.name}}">
+                                        {% match link.name_html %}
+                                            {% when Some with (html) %}
+                                                {{html|safe}}
+                                            {% else %}
+                                                {{link.name}}
+                                        {% endmatch %}
+                                    </a> {# #}
                                     {% if !link.children.is_empty() %}
                                         <ul>
                                             {% for child in link.children %}
-                                                <li><a href="#{{child.href|safe}}">{{child.name}}</a></li>
+                                                <li><a href="#{{child.href|safe}}" title="{{child.name}}">
+                                                    {% match child.name_html %}
+                                                        {% when Some with (html) %}
+                                                            {{html|safe}}
+                                                        {% else %}
+                                                            {{child.name}}
+                                                    {% endmatch %}
+                                                </a></li>
                                             {% endfor %}
                                         </ul>
                                     {% endif %}
