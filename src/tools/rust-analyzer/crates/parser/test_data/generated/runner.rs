@@ -467,6 +467,10 @@ mod ok {
     #[test]
     fn postfix_range() { run_and_expect_no_errors("test_data/parser/inline/ok/postfix_range.rs"); }
     #[test]
+    fn precise_capturing() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/precise_capturing.rs");
+    }
+    #[test]
     fn pub_parens_typepath() {
         run_and_expect_no_errors("test_data/parser/inline/ok/pub_parens_typepath.rs");
     }
