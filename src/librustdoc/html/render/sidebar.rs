@@ -15,6 +15,18 @@ use crate::{
 
 use super::{item_ty_to_section, Context, ItemSection};
 
+#[derive(Clone, Copy)]
+pub(crate) enum ModuleLike {
+    Module,
+    Crate,
+}
+
+impl ModuleLike {
+    pub(crate) fn is_crate(self) -> bool {
+        matches!(self, ModuleLike::Crate)
+    }
+}
+
 #[derive(Template)]
 #[template(path = "sidebar.html")]
 pub(super) struct Sidebar<'a> {
@@ -530,14 +542,23 @@ fn sidebar_enum<'a>(
 pub(crate) fn sidebar_module_like(
     item_sections_in_use: FxHashSet<ItemSection>,
     ids: &mut IdMap,
+    module_like: ModuleLike,
 ) -> LinkBlock<'static> {
-    let item_sections = ItemSection::ALL
+    let item_sections: Vec<Link<'_>> = ItemSection::ALL
         .iter()
         .copied()
         .filter(|sec| item_sections_in_use.contains(sec))
         .map(|sec| Link::new(ids.derive(sec.id()), sec.name()))
         .collect();
-    LinkBlock::new(Link::empty(), "", item_sections)
+    let header = if let Some(first_section) = item_sections.get(0) {
+        Link::new(
+            first_section.href.to_owned(),
+            if module_like.is_crate() { "Crate Items" } else { "Module Items" },
+        )
+    } else {
+        Link::empty()
+    };
+    LinkBlock::new(header, "", item_sections)
 }
 
 fn sidebar_module(items: &[clean::Item], ids: &mut IdMap) -> LinkBlock<'static> {
@@ -561,7 +582,7 @@ fn sidebar_module(items: &[clean::Item], ids: &mut IdMap) -> LinkBlock<'static> 
         .map(|it| item_ty_to_section(it.type_()))
         .collect();
 
-    sidebar_module_like(item_sections_in_use, ids)
+    sidebar_module_like(item_sections_in_use, ids, ModuleLike::Module)
 }
 
 fn sidebar_foreign_type<'a>(
