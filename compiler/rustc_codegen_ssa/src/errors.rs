@@ -606,6 +606,13 @@ pub struct ConstVectorEvaluation {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_intrinsic_const_vector_arg)]
+pub struct IntrinsicConstVectorArg {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_missing_memory_ordering)]
 pub struct MissingMemoryOrdering;
 
