@@ -329,8 +329,8 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn projection_bounds<'a>(
-        &'a self,
+    pub fn projection_bounds(
+        &self,
     ) -> impl Iterator<Item = ty::Binder<'tcx, ExistentialProjection<'tcx>>> {
         self.iter().filter_map(|predicate| {
             predicate
@@ -343,7 +343,7 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> {
+    pub fn auto_traits(&self) -> impl Iterator<Item = DefId> {
         self.iter().filter_map(|predicate| match predicate.skip_binder() {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,

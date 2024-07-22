@@ -953,9 +953,9 @@ impl CrateRoot {
         self.stable_crate_id
     }
 
-    pub(crate) fn decode_crate_deps<'a>(
+    pub(crate) fn decode_crate_deps(
         &self,
-        metadata: &'a MetadataBlob,
+        metadata: &MetadataBlob,
     ) -> impl ExactSizeIterator<Item = CrateDep> {
         self.crate_deps.decode(metadata)
     }

@@ -359,7 +359,7 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns the locations contained within a given region `r`.
-    pub(crate) fn locations_outlived_by<'a>(&'a self, r: N) -> impl Iterator<Item = Location> {
+    pub(crate) fn locations_outlived_by(&self, r: N) -> impl Iterator<Item = Location> {
         self.points.row(r).into_iter().flat_map(move |set| {
             set.iter()
                 .take_while(move |&p| self.elements.point_in_range(p))
@@ -368,16 +368,13 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns just the universal regions that are contained in a given region's value.
-    pub(crate) fn universal_regions_outlived_by<'a>(
-        &'a self,
-        r: N,
-    ) -> impl Iterator<Item = RegionVid> {
+    pub(crate) fn universal_regions_outlived_by(&self, r: N) -> impl Iterator<Item = RegionVid> {
         self.free_regions.row(r).into_iter().flat_map(|set| set.iter())
     }
 
     /// Returns all the elements contained in a given region's value.
-    pub(crate) fn placeholders_contained_in<'a>(
-        &'a self,
+    pub(crate) fn placeholders_contained_in(
+        &self,
         r: N,
     ) -> impl Iterator<Item = ty::PlaceholderRegion> {
         self.placeholders
@@ -388,7 +385,7 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns all the elements contained in a given region's value.
-    pub(crate) fn elements_contained_in<'a>(&'a self, r: N) -> impl Iterator<Item = RegionElement> {
+    pub(crate) fn elements_contained_in(&self, r: N) -> impl Iterator<Item = RegionElement> {
         let points_iter = self.locations_outlived_by(r).map(RegionElement::Location);
 
         let free_regions_iter =

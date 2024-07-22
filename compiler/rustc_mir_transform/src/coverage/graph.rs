@@ -567,8 +567,8 @@ fn find_loop_backedges(
     backedges
 }
 
-fn short_circuit_preorder<'a, 'tcx, F, Iter>(
-    body: &'a mir::Body<'tcx>,
+fn short_circuit_preorder<'tcx, F, Iter>(
+    body: &mir::Body<'tcx>,
     filtered_successors: F,
 ) -> impl Iterator<Item = BasicBlock>
 where

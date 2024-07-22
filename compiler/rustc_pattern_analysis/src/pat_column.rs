@@ -41,7 +41,7 @@ impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
     pub fn head_ty(&self) -> Option<&Cx::Ty> {
         self.patterns.first().map(|pat| pat.ty())
     }
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<Cx>> {
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<Cx>> + Captures<'a> {
         self.patterns.iter().copied()
     }
 

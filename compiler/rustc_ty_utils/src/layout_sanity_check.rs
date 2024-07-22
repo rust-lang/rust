@@ -26,9 +26,9 @@ pub(super) fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     }
 
     /// Yields non-ZST fields of the type
-    fn non_zst_fields<'tcx, 'a>(
-        cx: &'a LayoutCx<'tcx>,
-        layout: &'a TyAndLayout<'tcx>,
+    fn non_zst_fields<'tcx>(
+        cx: &LayoutCx<'tcx>,
+        layout: &TyAndLayout<'tcx>,
     ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> {
         (0..layout.layout.fields().count()).filter_map(|i| {
             let field = layout.field(cx, i);

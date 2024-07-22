@@ -836,8 +836,8 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 }
 
 /// Returns the set of inference variables contained in `args`.
-fn args_infer_vars<'a, 'tcx>(
-    selcx: &SelectionContext<'a, 'tcx>,
+fn args_infer_vars<'tcx>(
+    selcx: &SelectionContext<'_, 'tcx>,
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar> {
     selcx

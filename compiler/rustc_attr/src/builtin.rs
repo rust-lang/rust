@@ -1163,23 +1163,23 @@ pub fn find_transparency(
     (transparency.map_or(fallback, |t| t.0), error)
 }
 
-pub fn allow_internal_unstable<'a>(
-    sess: &'a Session,
-    attrs: &'a [Attribute],
+pub fn allow_internal_unstable(
+    sess: &Session,
+    attrs: &[Attribute],
 ) -> impl Iterator<Item = Symbol> {
     allow_unstable(sess, attrs, sym::allow_internal_unstable)
 }
 
-pub fn rustc_allow_const_fn_unstable<'a>(
-    sess: &'a Session,
-    attrs: &'a [Attribute],
+pub fn rustc_allow_const_fn_unstable(
+    sess: &Session,
+    attrs: &[Attribute],
 ) -> impl Iterator<Item = Symbol> {
     allow_unstable(sess, attrs, sym::rustc_allow_const_fn_unstable)
 }
 
-fn allow_unstable<'a>(
-    sess: &'a Session,
-    attrs: &'a [Attribute],
+fn allow_unstable(
+    sess: &Session,
+    attrs: &[Attribute],
     symbol: Symbol,
 ) -> impl Iterator<Item = Symbol> {
     let attrs = attr::filter_by_name(attrs, symbol);

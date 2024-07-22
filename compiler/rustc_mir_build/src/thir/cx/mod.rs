@@ -156,8 +156,8 @@ impl<'tcx> Cx<'tcx> {
         })
     }
 
-    fn explicit_params<'a>(
-        &'a mut self,
+    fn explicit_params(
+        &mut self,
         owner_id: HirId,
         fn_decl: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,

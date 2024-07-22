@@ -136,7 +136,7 @@ impl SsaLocals {
     }
 
     pub(super) fn assignments<'a, 'tcx>(
-        &'a self,
+        &self,
         body: &'a Body<'tcx>,
     ) -> impl Iterator<Item = (Local, &'a Rvalue<'tcx>, Location)> {
         self.assignment_order.iter().filter_map(|&local| {

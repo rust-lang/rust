@@ -1474,9 +1474,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// The returned function is used in a fast path. If it returns `true` the variable is
     /// unchanged, `false` indicates that the status is unknown.
     #[inline]
-    pub fn is_ty_infer_var_definitely_unchanged<'a>(
-        &'a self,
-    ) -> impl Fn(TyOrConstInferVar) -> bool {
+    pub fn is_ty_infer_var_definitely_unchanged(&self) -> impl Fn(TyOrConstInferVar) -> bool {
         // This hoists the borrow/release out of the loop body.
         let inner = self.inner.try_borrow();
 
