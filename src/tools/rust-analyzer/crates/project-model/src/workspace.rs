@@ -523,6 +523,14 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn workspace_root(&self) -> &AbsPath {
+        match &self.kind {
+            ProjectWorkspaceKind::Cargo { cargo, .. } => cargo.workspace_root(),
+            ProjectWorkspaceKind::Json(project) => project.project_root(),
+            ProjectWorkspaceKind::DetachedFile { file, .. } => file.parent(),
+        }
+    }
+
     pub fn manifest(&self) -> Option<&ManifestPath> {
         match &self.kind {
             ProjectWorkspaceKind::Cargo { cargo, .. } => Some(cargo.manifest_path()),

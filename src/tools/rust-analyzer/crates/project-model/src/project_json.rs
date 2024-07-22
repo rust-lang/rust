@@ -291,6 +291,11 @@ impl ProjectJson {
         self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())
     }
 
+    /// Returns the path to the project's root folder.
+    pub fn project_root(&self) -> &AbsPath {
+        &self.project_root
+    }
+
     pub fn runnables(&self) -> &[Runnable] {
         &self.runnables
     }
