@@ -9,7 +9,8 @@
 // that compilation is successful.
 
 //@ check-pass
-//@ compile-flags: --test -C debuginfo=2 -C lto=fat -C incremental=inc-fat
+//@ compile-flags: --test -C debuginfo=2 -C lto=fat
+//@ incremental
 
 extern crate alloc;
 
