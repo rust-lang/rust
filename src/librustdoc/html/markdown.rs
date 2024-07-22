@@ -50,7 +50,7 @@ use rustc_span::{Span, Symbol};
 use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::doctest::GlobalTestOptions;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
@@ -535,7 +535,9 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
             if let Some(ref mut builder) = self.toc {
                 let mut text_header = String::new();
                 plain_text_from_events(self.buf.iter().map(|(ev, _)| ev.clone()), &mut text_header);
-                let sec = builder.push(level as u32, text_header, id.clone());
+                let mut html_header = String::new();
+                html_text_from_events(self.buf.iter().map(|(ev, _)| ev.clone()), &mut html_header);
+                let sec = builder.push(level as u32, text_header, html_header, id.clone());
                 self.buf.push_front((Event::Html(format!("{sec} ").into()), 0..0));
             }
 
@@ -1645,6 +1647,29 @@ pub(crate) fn plain_text_from_events<'a>(
                 s.push('`');
                 s.push_str(code);
                 s.push('`');
+            }
+            Event::HardBreak | Event::SoftBreak => s.push(' '),
+            Event::Start(Tag::CodeBlock(..)) => break,
+            Event::End(TagEnd::Paragraph) => break,
+            Event::End(TagEnd::Heading(..)) => break,
+            _ => (),
+        }
+    }
+}
+
+pub(crate) fn html_text_from_events<'a>(
+    events: impl Iterator<Item = pulldown_cmark::Event<'a>>,
+    s: &mut String,
+) {
+    for event in events {
+        match &event {
+            Event::Text(text) => {
+                write!(s, "{}", EscapeBodyText(text)).expect("string alloc infallible")
+            }
+            Event::Code(code) => {
+                s.push_str("<code>");
+                write!(s, "{}", EscapeBodyText(code)).expect("string alloc infallible");
+                s.push_str("</code>");
             }
             Event::HardBreak | Event::SoftBreak => s.push(' '),
             Event::Start(Tag::CodeBlock(..)) => break,
