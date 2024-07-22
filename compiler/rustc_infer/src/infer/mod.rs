@@ -755,18 +755,6 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
-    // FIXME(-Znext-solver): Get rid of this method, it's never correct. Either that,
-    // or we need to process the obligations.
-    pub fn can_eq_shallow<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
-    where
-        T: at::ToTrace<'tcx>,
-    {
-        let origin = &ObligationCause::dummy();
-        // We're only answering whether the types could be the same, and with
-        // opaque types, "they can be the same", via registering a hidden type.
-        self.probe(|_| self.at(origin, param_env).eq(DefineOpaqueTypes::Yes, a, b).is_ok())
-    }
-
     #[instrument(skip(self), level = "debug")]
     pub fn sub_regions(
         &self,
