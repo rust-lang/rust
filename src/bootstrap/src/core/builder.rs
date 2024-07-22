@@ -826,6 +826,7 @@ impl<'a> Builder<'a> {
                 clippy::Rustdoc,
                 clippy::Rustfmt,
                 clippy::RustInstaller,
+                clippy::TestFloatParse,
                 clippy::Tidy,
             ),
             Kind::Check | Kind::Fix => describe!(
@@ -840,6 +841,7 @@ impl<'a> Builder<'a> {
                 check::Rls,
                 check::Rustfmt,
                 check::RustAnalyzer,
+                check::TestFloatParse,
                 check::Bootstrap,
             ),
             Kind::Test => describe!(
@@ -901,6 +903,7 @@ impl<'a> Builder<'a> {
                 test::RustdocJson,
                 test::HtmlCheck,
                 test::RustInstaller,
+                test::TestFloatParse,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
