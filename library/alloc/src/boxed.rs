@@ -867,7 +867,7 @@ impl<T, A: Allocator> Box<[T], A> {
                 Ok(l) => l,
                 Err(_) => return Err(AllocError),
             };
-            Global.allocate(layout)?.cast()
+            alloc.allocate(layout)?.cast()
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
@@ -906,7 +906,7 @@ impl<T, A: Allocator> Box<[T], A> {
                 Ok(l) => l,
                 Err(_) => return Err(AllocError),
             };
-            Global.allocate_zeroed(layout)?.cast()
+            alloc.allocate_zeroed(layout)?.cast()
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
