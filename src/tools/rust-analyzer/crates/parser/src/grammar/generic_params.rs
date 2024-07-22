@@ -167,6 +167,12 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
                 T![async] => {
                     p.bump_any();
                 }
+                // test precise_capturing
+                // fn captures<'a: 'a, 'b: 'b, T>() -> impl Sized + use<'b, T> {}
+                T![use] => {
+                    p.bump_any();
+                    generic_param_list(p);
+                }
                 _ => (),
             }
             if paths::is_use_path_start(p) {
