@@ -26,6 +26,11 @@ impl ModuleLike {
         matches!(self, ModuleLike::Crate)
     }
 }
+impl<'a> From<&'a clean::Item> for ModuleLike {
+    fn from(it: &'a clean::Item) -> ModuleLike {
+        if it.is_crate() { ModuleLike::Crate } else { ModuleLike::Module }
+    }
+}
 
 #[derive(Template)]
 #[template(path = "sidebar.html")]
@@ -119,7 +124,9 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         clean::UnionItem(ref u) => sidebar_union(cx, it, u, &mut blocks),
         clean::EnumItem(ref e) => sidebar_enum(cx, it, e, &mut blocks),
         clean::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t, &mut blocks),
-        clean::ModuleItem(ref m) => blocks.push(sidebar_module(&m.items, &mut ids)),
+        clean::ModuleItem(ref m) => {
+            blocks.push(sidebar_module(&m.items, &mut ids, ModuleLike::from(it)))
+        }
         clean::ForeignTypeItem => sidebar_foreign_type(cx, it, &mut blocks),
         _ => {}
     }
@@ -561,7 +568,11 @@ pub(crate) fn sidebar_module_like(
     LinkBlock::new(header, "", item_sections)
 }
 
-fn sidebar_module(items: &[clean::Item], ids: &mut IdMap) -> LinkBlock<'static> {
+fn sidebar_module(
+    items: &[clean::Item],
+    ids: &mut IdMap,
+    module_like: ModuleLike,
+) -> LinkBlock<'static> {
     let item_sections_in_use: FxHashSet<_> = items
         .iter()
         .filter(|it| {
@@ -582,7 +593,7 @@ fn sidebar_module(items: &[clean::Item], ids: &mut IdMap) -> LinkBlock<'static> 
         .map(|it| item_ty_to_section(it.type_()))
         .collect();
 
-    sidebar_module_like(item_sections_in_use, ids, ModuleLike::Module)
+    sidebar_module_like(item_sections_in_use, ids, module_like)
 }
 
 fn sidebar_foreign_type<'a>(
