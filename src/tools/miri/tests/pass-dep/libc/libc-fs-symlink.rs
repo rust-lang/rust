@@ -11,6 +11,11 @@ use std::os::unix::ffi::OsStrExt;
 mod utils;
 
 fn main() {
+    test_readlink();
+    test_nofollow_symlink();
+}
+
+fn test_readlink() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_link_target.txt", bytes);
     let expected_path = path.as_os_str().as_bytes();
@@ -48,4 +53,19 @@ fn main() {
     };
     assert_eq!(res, -1);
     assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+}
+
+fn test_nofollow_symlink() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("test_nofollow_symlink_target.txt", bytes);
+
+    let symlink_path = utils::prepare("test_nofollow_symlink.txt");
+    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+
+    let symlink_cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
+
+    let ret = unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
+    assert_eq!(ret, -1);
+    let err = Error::last_os_error().raw_os_error().unwrap();
+    assert_eq!(err, libc::ELOOP);
 }
