@@ -1,12 +1,16 @@
+use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{higher, is_integer_literal, path_to_local, peel_blocks, peel_blocks_with_stmt, SpanlessEq};
+use clippy_utils::{
+    higher, in_constant, is_integer_literal, path_to_local, peel_blocks, peel_blocks_with_stmt, SpanlessEq,
+};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, HirId, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -71,11 +75,26 @@ declare_clippy_lint! {
     "Check if a variable is smaller than another one and still subtract from it even if smaller"
 }
 
-declare_lint_pass!(ImplicitSaturatingSub => [IMPLICIT_SATURATING_SUB, INVERTED_SATURATING_SUB]);
+pub struct ImplicitSaturatingSub {
+    msrv: Msrv,
+}
+
+impl_lint_pass!(ImplicitSaturatingSub => [IMPLICIT_SATURATING_SUB, INVERTED_SATURATING_SUB]);
+
+impl ImplicitSaturatingSub {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if expr.span.from_expansion() {
+            return;
+        }
+        if in_constant(cx, expr.hir_id) && !self.msrv.meets(msrvs::SATURATING_SUB_CONST) {
             return;
         }
         if let Some(higher::If { cond, then, r#else: None }) = higher::If::hir(expr)
@@ -94,6 +113,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             check_manual_check(cx, expr, cond_op, cond_left, cond_right, if_block, else_block);
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 fn check_manual_check<'tcx>(
