@@ -128,4 +128,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: diff
-        path: full_diff.md
+        if-no-files-found: ignore
+        path: |
+          full_diff.md
+          truncated_diff.md
