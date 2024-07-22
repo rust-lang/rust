@@ -1,8 +1,10 @@
+use crate::errors;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::ValTree;
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Abi;
@@ -47,7 +49,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             },
             // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
             // a constant and write that value back into `Operand`s. This could happen, but is unlikely.
-            // Also: all users of `simd_shuffle` are on unstable and already need to take a lot of care
+            // Also: all use`rs of `simd_shuffle` are on unstable and already need to take a lot of care
             // around intrinsics. For an issue to happen here, it would require a macro expanding to a
             // `simd_shuffle` call without wrapping the constant argument in a `const {}` block, but
             // the user pass through arbitrary expressions.
@@ -64,7 +66,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &Bx,
         constant: &mir::ConstOperand<'tcx>,
-    ) -> (Option<Bx::Value>, Ty<'tcx>) {
+    ) -> (Bx::Value, Ty<'tcx>) {
         let ty = self.monomorphize(constant.ty());
         let val = self
             .eval_unevaluated_mir_constant_to_valtree(constant)
@@ -73,27 +75,70 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .flatten()
             .map(|val| {
                 let field_ty = ty.builtin_index().unwrap();
-                let values: Vec<_> = val
-                    .unwrap_branch()
-                    .iter()
-                    .map(|field| {
-                        if let Some(prim) = field.try_to_scalar() {
-                            let layout = bx.layout_of(field_ty);
-                            let Abi::Scalar(scalar) = layout.abi else {
-                                bug!("from_const: invalid ByVal layout: {:#?}", layout);
-                            };
-                            bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
-                        } else {
-                            bug!("field is not a scalar {:?}", field)
+                let mut values: Vec<Bx::Value> = Vec::new();
+                // For reliably being able to handle either:
+                // pub struct defn(i32, i32)
+                // call(1, 0);
+                // OR
+                // pub struct defn([i32, 2])
+                // call([1, 0]);
+                //
+                // And outputting: @call(<2 x i32> <i32 0, i32 1>)
+                // thus treating them the same if they are a const vector
+                for field in val.unwrap_branch().iter() {
+                    match field {
+                        ValTree::Branch(_) => {
+                            let scalars = self.flatten_branch_to_scalars(bx, field, field_ty);
+                            values.extend(scalars);
                         }
-                    })
-                    .collect();
+                        ValTree::Leaf(_) => {
+                            let scalar = self.extract_scalar(bx, field, field_ty);
+                            values.push(scalar);
+                        }
+                    }
+                }
                 if ty.is_simd() {
                     bx.const_vector(&values)
                 } else {
                     bx.const_struct(&values, false)
                 }
+            })
+            .unwrap_or_else(|| {
+                bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
+                // We've errored, so we don't have to produce working code.
+                let llty = bx.backend_type(bx.layout_of(ty));
+                bx.const_undef(llty)
             });
         (val, ty)
+    }
+
+    fn flatten_branch_to_scalars(
+        &mut self,
+        bx: &Bx,
+        branch: &ValTree<'tcx>,
+        field_ty: Ty<'tcx>,
+    ) -> Vec<Bx::Value> {
+        branch
+            .unwrap_branch()
+            .iter()
+            .map(|field| match field {
+                ValTree::Branch(_) => {
+                    bug!("Cannot have arbitrarily nested const vectors: {:#?}", field)
+                }
+                ValTree::Leaf(_) => self.extract_scalar(bx, field, field_ty),
+            })
+            .collect()
+    }
+
+    fn extract_scalar(&mut self, bx: &Bx, field: &ValTree<'tcx>, field_ty: Ty<'tcx>) -> Bx::Value {
+        if let Some(prim) = field.try_to_scalar() {
+            let layout = bx.layout_of(field_ty);
+            let Abi::Scalar(scalar) = layout.abi else {
+                bug!("from_const: invalid ByVal layout: {:#?}", layout);
+            };
+            bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
+        } else {
+            bug!("field is not a scalar {:?}", field)
+        }
     }
 }
