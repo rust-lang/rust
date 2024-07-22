@@ -49,6 +49,54 @@ impl FileDescription for FileHandle {
         Ok(self.file.write(bytes))
     }
 
+    fn pread<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &mut [u8],
+        offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        // Emulates pread using seek + read + seek to restore cursor position.
+        // Correctness of this emulation relies on sequential nature of Miri execution.
+        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
+        let mut f = || {
+            let cursor_pos = self.file.stream_position()?;
+            self.file.seek(SeekFrom::Start(offset))?;
+            let res = self.file.read(bytes);
+            // Attempt to restore cursor position even if the read has failed
+            self.file
+                .seek(SeekFrom::Start(cursor_pos))
+                .expect("failed to restore file position, this shouldn't be possible");
+            res
+        };
+        Ok(f())
+    }
+
+    fn pwrite<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &[u8],
+        offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        // Emulates pwrite using seek + write + seek to restore cursor position.
+        // Correctness of this emulation relies on sequential nature of Miri execution.
+        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
+        let mut f = || {
+            let cursor_pos = self.file.stream_position()?;
+            self.file.seek(SeekFrom::Start(offset))?;
+            let res = self.file.write(bytes);
+            // Attempt to restore cursor position even if the write has failed
+            self.file
+                .seek(SeekFrom::Start(cursor_pos))
+                .expect("failed to restore file position, this shouldn't be possible");
+            res
+        };
+        Ok(f())
+    }
+
     fn seek<'tcx>(
         &mut self,
         communicate_allowed: bool,
