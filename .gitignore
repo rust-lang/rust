@@ -50,7 +50,6 @@ build/
 /target
 /src/bootstrap/target
 /src/tools/x/target
-/inc-fat/
 # Created by default with `src/ci/docker/run.sh`
 /obj/
 /rustc-ice*

@@ -831,6 +831,10 @@ pre, .rustdoc.src .example-wrap {
 	background: var(--table-alt-row-background-color);
 }
 
+.docblock .stab, .docblock-short .stab {
+	display: inline-block;
+}
+
 /* "where ..." clauses with block display are also smaller */
 div.where {
 	white-space: pre-wrap;
@@ -953,6 +957,7 @@ table,
 	display: table;
 	padding: 0;
 	margin: 0;
+	width: 100%;
 }
 .item-table > li {
 	display: table-row;

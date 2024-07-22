@@ -1,3 +1,9 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:20:15
+   |
+LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl TraitC>>,
+   |               ^
+
 warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/bad-suggestion-on-missing-assoc.rs:1:12
    |
@@ -29,6 +35,6 @@ LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl Trai
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to 3 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0562`.

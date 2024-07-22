@@ -4,7 +4,6 @@ use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
-use crate::str;
 use crate::sys::fd::FileDesc;
 use crate::sys::pal::unix::IsMinusOne;
 use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
@@ -47,7 +46,9 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
     #[cfg(not(target_os = "espidf"))]
     let detail = unsafe {
-        str::from_utf8(CStr::from_ptr(libc::gai_strerror(err)).to_bytes()).unwrap().to_owned()
+        // We can't always expect a UTF-8 environment. When we don't get that luxury,
+        // it's better to give a low-quality error message than none at all.
+        CStr::from_ptr(libc::gai_strerror(err)).to_string_lossy()
     };
 
     #[cfg(target_os = "espidf")]
