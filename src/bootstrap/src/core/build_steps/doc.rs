@@ -1172,6 +1172,12 @@ impl Step for RustcBook {
     /// in the "md-doc" directory in the build output directory. Then
     /// "rustbook" is used to convert it to HTML.
     fn run(self, builder: &Builder<'_>) {
+        // These submodules are required to be checked out to build rustbook
+        // because they have Cargo dependencies that are needed.
+        #[allow(clippy::single_element_loop)] // This will change soon.
+        for path in ["src/doc/book"] {
+            builder.update_submodule(Path::new(path));
+        }
         let out_base = builder.md_doc_out(self.target).join("rustc");
         t!(fs::create_dir_all(&out_base));
         let out_listing = out_base.join("src/lints");
