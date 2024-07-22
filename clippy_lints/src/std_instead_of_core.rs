@@ -1,6 +1,6 @@
 use clippy_config::msrvs::Msrv;
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_attr::{StabilityLevel, StableSince};
 use rustc_errors::Applicability;
@@ -136,14 +136,20 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                 _ => return,
             };
             if first_segment.ident.span != self.prev_span {
-                span_lint_and_sugg(
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(
                     cx,
                     lint,
                     first_segment.ident.span,
                     format!("used import from `{used_mod}` instead of `{replace_with}`"),
-                    format!("consider importing the item from `{replace_with}`"),
-                    replace_with.to_string(),
-                    Applicability::MachineApplicable,
+                    |diag| {
+                        diag.span_suggestion(
+                            first_segment.ident.span,
+                            format!("consider importing the item from `{replace_with}`"),
+                            replace_with.to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    },
                 );
                 self.prev_span = first_segment.ident.span;
             }

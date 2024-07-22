@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, QPath};
@@ -13,14 +13,10 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         && let Some(id) = path_def_id(cx, arg)
         && cx.tcx.is_diagnostic_item(sym::Mutex, id)
     {
-        span_lint_and_help(
-            cx,
-            RC_MUTEX,
-            hir_ty.span,
-            "usage of `Rc<Mutex<_>>`",
-            None,
-            "consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead",
-        );
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(cx, RC_MUTEX, hir_ty.span, "usage of `Rc<Mutex<_>>`", |diag| {
+            diag.help("consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead");
+        });
         return true;
     }
 

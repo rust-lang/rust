@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;
 use rustc_span::Span;
@@ -12,24 +12,36 @@ pub(super) fn check(cx: &EarlyContext<'_>, lit_span: Span, lit_snip: &str, suffi
     // Do not lint when literal is unsuffixed.
     if !suffix.is_empty() {
         if lit_snip.as_bytes()[maybe_last_sep_idx] == b'_' {
-            span_lint_and_sugg(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 SEPARATED_LITERAL_SUFFIX,
                 lit_span,
                 format!("{sugg_type} type suffix should not be separated by an underscore"),
-                "remove the underscore",
-                format!("{}{suffix}", &lit_snip[..maybe_last_sep_idx]),
-                Applicability::MachineApplicable,
+                |diag| {
+                    diag.span_suggestion(
+                        lit_span,
+                        "remove the underscore",
+                        format!("{}{suffix}", &lit_snip[..maybe_last_sep_idx]),
+                        Applicability::MachineApplicable,
+                    );
+                },
             );
         } else {
-            span_lint_and_sugg(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 UNSEPARATED_LITERAL_SUFFIX,
                 lit_span,
                 format!("{sugg_type} type suffix should be separated by an underscore"),
-                "add an underscore",
-                format!("{}_{suffix}", &lit_snip[..=maybe_last_sep_idx]),
-                Applicability::MachineApplicable,
+                |diag| {
+                    diag.span_suggestion(
+                        lit_span,
+                        "add an underscore",
+                        format!("{}_{suffix}", &lit_snip[..=maybe_last_sep_idx]),
+                        Applicability::MachineApplicable,
+                    );
+                },
             );
         }
     }

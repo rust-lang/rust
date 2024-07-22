@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet;
 use rustc_ast::LitKind;
@@ -43,14 +43,19 @@ impl LateLintPass<'_> for ConfusingXorAndPow {
             && NumericLiteral::from_lit_kind(&snippet(cx, lit_right.span, ".."), &lit_right.node)
                 .is_some_and(|x| x.is_decimal())
         {
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 SUSPICIOUS_XOR_USED_AS_POW,
                 expr.span,
                 "`^` is not the exponentiation operator",
-                "did you mean to write",
-                format!("{}.pow({})", lit_left.node, lit_right.node),
-                Applicability::MaybeIncorrect,
+                |diag| {
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        "did you mean to write",
+                        format!("{}.pow({})", lit_left.node, lit_right.node),
+                        Applicability::MaybeIncorrect,
+                    );
+                },
             );
         }
     }
