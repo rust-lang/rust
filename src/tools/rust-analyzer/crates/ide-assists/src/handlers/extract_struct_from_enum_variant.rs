@@ -1,7 +1,7 @@
 use std::iter;
 
 use either::Either;
-use hir::{ImportPathConfig, Module, ModuleDef, Name, Variant};
+use hir::{Module, ModuleDef, Name, Variant};
 use ide_db::{
     defs::Definition,
     helpers::mod_path_to_ast,
@@ -390,11 +390,7 @@ fn process_references(
                     ctx.sema.db,
                     *enum_module_def,
                     ctx.config.insert_use.prefix_kind,
-                    ImportPathConfig {
-                        prefer_no_std: ctx.config.prefer_no_std,
-                        prefer_prelude: ctx.config.prefer_prelude,
-                        prefer_absolute: ctx.config.prefer_absolute,
-                    },
+                    ctx.config.import_path_config(),
                 );
                 if let Some(mut mod_path) = mod_path {
                     mod_path.pop_segment();

@@ -1,4 +1,4 @@
-use hir::{ImportPathConfig, ModuleDef};
+use hir::ModuleDef;
 use ide_db::{
     assists::{AssistId, AssistKind},
     famous_defs::FamousDefs,
@@ -139,11 +139,7 @@ pub(crate) fn desugar_async_into_impl_future(
     let trait_path = module.find_path(
         ctx.db(),
         ModuleDef::Trait(future_trait),
-        ImportPathConfig {
-            prefer_no_std: ctx.config.prefer_no_std,
-            prefer_prelude: ctx.config.prefer_prelude,
-            prefer_absolute: ctx.config.prefer_absolute,
-        },
+        ctx.config.import_path_config(),
     )?;
     let trait_path = trait_path.display(ctx.db());
 
