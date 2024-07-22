@@ -14,6 +14,7 @@
 
 // @has foo/index.html
 // User header
+// @has - '//section[@id="TOC"]/h3' 'Sections'
 // @has - '//section[@id="TOC"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-and-emphasis"]' 'Basic link and emphasis'
 // @count - '//section[@id="TOC"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-and-emphasis"]/em' 0
 // @count - '//section[@id="TOC"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-and-emphasis"]/a' 0
