@@ -36,6 +36,30 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot write to {}", self.name());
     }
 
+    /// Reads as much as possible into the given buffer from a given offset,
+    /// and returns the number of bytes read.
+    fn pread<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _bytes: &mut [u8],
+        _offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        throw_unsup_format!("cannot pread from {}", self.name());
+    }
+
+    /// Writes as much as possible from the given buffer starting at a given offset,
+    /// and returns the number of bytes written.
+    fn pwrite<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _bytes: &[u8],
+        _offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        throw_unsup_format!("cannot pwrite to {}", self.name());
+    }
+
     /// Seeks to the given offset (which can be relative to the beginning, end, or current position).
     /// Returns the new position from the start of the stream.
     fn seek<'tcx>(
@@ -380,7 +404,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok((-1).into())
     }
 
-    fn read(&mut self, fd: i32, buf: Pointer, count: u64) -> InterpResult<'tcx, i64> {
+    /// Read data from `fd` into buffer specified by `buf` and `count`.
+    ///
+    /// If `offset` is `None`, reads data from current cursor position associated with `fd`
+    /// and updates cursor position on completion. Otherwise, reads from the specified offset
+    /// and keeps the cursor unchanged.
+    fn read(
+        &mut self,
+        fd: i32,
+        buf: Pointer,
+        count: u64,
+        offset: Option<i128>,
+    ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -398,25 +433,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let communicate = this.machine.communicate();
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(file_descriptor) = this.machine.fds.dup(fd) else {
+        let Some(fd) = this.machine.fds.dup(fd) else {
             trace!("read: FD not found");
             return this.fd_not_found();
         };
 
-        trace!("read: FD mapped to {:?}", file_descriptor);
+        trace!("read: FD mapped to {fd:?}");
         // We want to read at most `count` bytes. We are sure that `count` is not negative
         // because it was a target's `usize`. Also we are sure that its smaller than
         // `usize::MAX` because it is bounded by the host's `isize`.
         let mut bytes = vec![0; usize::try_from(count).unwrap()];
-        // `File::read` never returns a value larger than `count`,
-        // so this cannot fail.
-        let result = file_descriptor
-            .borrow_mut()
-            .read(communicate, &mut bytes, this)?
-            .map(|c| i64::try_from(c).unwrap());
-        drop(file_descriptor);
+        let result = match offset {
+            None => fd.borrow_mut().read(communicate, &mut bytes, this),
+            Some(offset) => {
+                let Ok(offset) = u64::try_from(offset) else {
+                    let einval = this.eval_libc("EINVAL");
+                    this.set_last_error(einval)?;
+                    return Ok(-1);
+                };
+                fd.borrow_mut().pread(communicate, &mut bytes, offset, this)
+            }
+        };
+        drop(fd);
 
-        match result {
+        // `File::read` never returns a value larger than `count`, so this cannot fail.
+        match result?.map(|c| i64::try_from(c).unwrap()) {
             Ok(read_bytes) => {
                 // If reading to `bytes` did not fail, we write those bytes to the buffer.
                 // Crucially, if fewer than `bytes.len()` bytes were read, only write
@@ -434,7 +475,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn write(&mut self, fd: i32, buf: Pointer, count: u64) -> InterpResult<'tcx, i64> {
+    fn write(
+        &mut self,
+        fd: i32,
+        buf: Pointer,
+        count: u64,
+        offset: Option<i128>,
+    ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -451,16 +498,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(file_descriptor) = this.machine.fds.dup(fd) else {
+        let Some(fd) = this.machine.fds.dup(fd) else {
             return this.fd_not_found();
         };
 
-        let result = file_descriptor
-            .borrow_mut()
-            .write(communicate, &bytes, this)?
-            .map(|c| i64::try_from(c).unwrap());
-        drop(file_descriptor);
+        let result = match offset {
+            None => fd.borrow_mut().write(communicate, &bytes, this),
+            Some(offset) => {
+                let Ok(offset) = u64::try_from(offset) else {
+                    let einval = this.eval_libc("EINVAL");
+                    this.set_last_error(einval)?;
+                    return Ok(-1);
+                };
+                fd.borrow_mut().pwrite(communicate, &bytes, offset, this)
+            }
+        };
+        drop(fd);
 
+        let result = result?.map(|c| i64::try_from(c).unwrap());
         this.try_unwrap_io_result(result)
     }
 }
