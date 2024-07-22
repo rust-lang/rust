@@ -1,4 +1,4 @@
-use crate::spec::{base, CodeModel, Target, TargetOptions};
+use crate::spec::{base, CodeModel, SmallDataThresholdSupport, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -18,6 +18,9 @@ pub fn target() -> Target {
             features: "+m,+a,+f,+d,+c".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmModuleFlag(
+                "SmallDataLimit".into(),
+            ),
             ..base::freebsd::opts()
         },
     }

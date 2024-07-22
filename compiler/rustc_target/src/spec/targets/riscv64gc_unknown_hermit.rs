@@ -1,4 +1,6 @@
-use crate::spec::{base, CodeModel, RelocModel, Target, TargetOptions, TlsModel};
+use crate::spec::{
+    base, CodeModel, RelocModel, SmallDataThresholdSupport, Target, TargetOptions, TlsModel,
+};
 
 pub fn target() -> Target {
     Target {
@@ -20,6 +22,9 @@ pub fn target() -> Target {
             tls_model: TlsModel::LocalExec,
             max_atomic_width: Some(64),
             llvm_abiname: "lp64d".into(),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmModuleFlag(
+                "SmallDataLimit".into(),
+            ),
             ..base::hermit::opts()
         },
     }

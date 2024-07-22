@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, SmallDataThresholdSupport, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::netbsd::opts();
@@ -21,6 +21,9 @@ pub fn target() -> Target {
             features: "+soft-float".into(),
             mcount: "__mcount".into(),
             endian: Endian::Little,
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "mips-ssection-threshold".into(),
+            ),
             ..base
         },
     }

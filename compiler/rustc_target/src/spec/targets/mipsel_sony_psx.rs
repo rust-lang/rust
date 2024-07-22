@@ -1,4 +1,7 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    cvs, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SmallDataThresholdSupport, Target,
+    TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
@@ -37,6 +40,10 @@ pub fn target() -> Target {
             llvm_args: cvs!["-mno-check-zero-division"],
             llvm_abiname: "o32".into(),
             panic_strategy: PanicStrategy::Abort,
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "mips-ssection-threshold".into(),
+            ),
+
             ..Default::default()
         },
     }

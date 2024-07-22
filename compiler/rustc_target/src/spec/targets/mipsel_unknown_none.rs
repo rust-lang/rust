@@ -2,7 +2,10 @@
 //!
 //! Can be used for MIPS M4K core (e.g. on PIC32MX devices)
 
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SmallDataThresholdSupport, Target,
+    TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
@@ -26,6 +29,9 @@ pub fn target() -> Target {
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "mips-ssection-threshold".into(),
+            ),
             ..Default::default()
         },
     }

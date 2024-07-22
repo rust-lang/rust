@@ -1,4 +1,4 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, SmallDataThresholdSupport, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -17,6 +17,13 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".into(),
         arch: "mips64".into(),
-        options: TargetOptions { abi: "abi64".into(), mcount: "_mcount".into(), ..base },
+        options: TargetOptions {
+            abi: "abi64".into(),
+            mcount: "_mcount".into(),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "mips-ssection-threshold".into(),
+            ),
+            ..base
+        },
     }
 }

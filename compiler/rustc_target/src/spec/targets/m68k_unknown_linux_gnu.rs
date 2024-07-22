@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, SmallDataThresholdSupport, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_gnu::opts();
@@ -17,6 +17,13 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "E-m:e-p:32:16:32-i8:8:8-i16:16:16-i32:16:32-n8:16:32-a:0:16-S16".into(),
         arch: "m68k".into(),
-        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".into(), ..base },
+        options: TargetOptions {
+            endian: Endian::Big,
+            mcount: "_mcount".into(),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "m68k-ssection-threshold".into(),
+            ),
+            ..base
+        },
     }
 }

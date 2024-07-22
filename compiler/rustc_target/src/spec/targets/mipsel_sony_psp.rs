@@ -1,4 +1,6 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    cvs, Cc, LinkerFlavor, Lld, RelocModel, SmallDataThresholdSupport, Target, TargetOptions,
+};
 
 // The PSP has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
@@ -36,6 +38,9 @@ pub fn target() -> Target {
             llvm_args: cvs!["-mno-check-zero-division"],
             pre_link_args,
             link_script: Some(LINKER_SCRIPT.into()),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "mips-ssection-threshold".into(),
+            ),
             ..Default::default()
         },
     }

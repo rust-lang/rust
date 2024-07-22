@@ -32,7 +32,9 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName};
 use rustc_span::{Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
-use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
+use rustc_target::spec::{
+    CodeModel, PanicStrategy, RelocModel, RelroLevel, SmallDataThresholdSupport,
+};
 use rustc_target::spec::{
     DebuginfoKind, SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
@@ -1282,6 +1284,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                 stack_protector: sess.opts.unstable_opts.stack_protector,
                 target_triple: &sess.opts.target_triple,
             });
+        }
+    }
+
+    if sess.opts.unstable_opts.small_data_threshold.is_some() {
+        if sess.target.options.small_data_threshold_support == SmallDataThresholdSupport::None {
+            sess.dcx().emit_warn(errors::SmallDataThresholdNotSupportedForTarget {
+                target_triple: &sess.opts.target_triple,
+            })
         }
     }
 

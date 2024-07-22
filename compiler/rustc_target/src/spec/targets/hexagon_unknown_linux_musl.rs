@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Target};
+use crate::spec::{base, Cc, LinkerFlavor, SmallDataThresholdSupport, Target};
 
 pub fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -12,6 +12,9 @@ pub fn target() -> Target {
     base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
 
     base.c_enum_min_bits = Some(8);
+
+    base.small_data_threshold_support =
+        SmallDataThresholdSupport::LlvmArg("hexagon-small-data-threshold".into());
 
     Target {
         llvm_target: "hexagon-unknown-linux-musl".into(),
