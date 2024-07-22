@@ -119,10 +119,10 @@ jobs:
       # https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary
       # That's why we first log to file and then to the summary and logs
       run: |
-        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json >> full_diff.md
         ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --truncate >> truncated_diff.md
         head -c 1024000 truncated_diff.md >> $GITHUB_STEP_SUMMARY
         cat truncated_diff.md
+        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json >> full_diff.md
 
     - name: Upload full diff
       uses: actions/upload-artifact@v4

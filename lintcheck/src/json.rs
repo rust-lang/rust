@@ -82,6 +82,10 @@ pub(crate) fn diff(old_path: &Path, new_path: &Path, truncate: bool) {
     print_summary_table(&lint_warnings);
     println!();
 
+    if lint_warnings.is_empty() {
+        return;
+    }
+
     let truncate_after = if truncate {
         // Max 15 ensures that we at least have five messages per lint
         DEFAULT_LIMIT_PER_LINT
