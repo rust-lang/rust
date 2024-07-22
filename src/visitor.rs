@@ -584,7 +584,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         item.ident,
                         &item.vis,
                         item.span,
-                    );
+                    )
+                    .ok();
                     self.push_rewrite(item.span, rewrite);
                 }
                 ast::ItemKind::Delegation(..) | ast::ItemKind::DelegationMac(..) => {
@@ -683,7 +684,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         // 1 = ;
         let shape = self.shape().saturating_sub_width(1);
-        let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos));
+        let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos).ok());
         // As of v638 of the rustc-ap-* crates, the associated span no longer includes
         // the trailing semicolon. This determines the correct span to ensure scenarios
         // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)

@@ -30,6 +30,23 @@ impl<T: Rewrite> Rewrite for ptr::P<T> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum MacroErrorKind {
+    ParseFailure,
+    ReplaceMacroVariable,
+    Unknown,
+}
+
+impl std::fmt::Display for MacroErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MacroErrorKind::ParseFailure => write!(f, "(parse failure)"),
+            MacroErrorKind::ReplaceMacroVariable => write!(f, "(replacing macro variables with $)"),
+            MacroErrorKind::Unknown => write!(f, ""),
+        }
+    }
+}
+
 #[derive(Clone, Error, Debug)]
 pub(crate) enum RewriteError {
     #[error("Formatting was skipped due to skip attribute or out of file range.")]
@@ -37,6 +54,9 @@ pub(crate) enum RewriteError {
 
     #[error("It exceeds the required width of {configured_width} for the span: {span:?}")]
     ExceedsMaxWidth { configured_width: usize, span: Span },
+
+    #[error("Failed to format given macro{} at: {span:?}", kind)]
+    MacroFailure { kind: MacroErrorKind, span: Span },
 
     /// Format failure that does not fit to above categories.
     #[error("An unknown error occurred during formatting.")]
@@ -46,6 +66,7 @@ pub(crate) enum RewriteError {
 /// Extension trait used to conveniently convert to RewriteError
 pub(crate) trait RewriteErrorExt<T> {
     fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError>;
+    fn macro_error(self, kind: MacroErrorKind, span: Span) -> Result<T, RewriteError>;
     fn unknown_error(self) -> Result<T, RewriteError>;
 }
 
@@ -53,6 +74,13 @@ impl<T> RewriteErrorExt<T> for Option<T> {
     fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError> {
         self.ok_or_else(|| RewriteError::ExceedsMaxWidth {
             configured_width: width,
+            span: span,
+        })
+    }
+
+    fn macro_error(self, kind: MacroErrorKind, span: Span) -> Result<T, RewriteError> {
+        self.ok_or_else(|| RewriteError::MacroFailure {
+            kind: kind,
             span: span,
         })
     }
