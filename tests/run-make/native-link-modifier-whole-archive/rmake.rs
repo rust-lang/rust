@@ -66,7 +66,8 @@ fn main() {
         .crate_type("rlib")
         .arg("-lstatic:-bundle,+whole-archive=c_static_lib_with_constructor")
         .run();
-    // Native lib linked into RLIB via `-l static:-bundle,+whole-archive`, RLIB linked into executable
+    // Native lib linked into RLIB via `-l static:-bundle,+whole-archive`
+    // RLIB linked into executable
     rustc().input("indirectly_linked.rs").run();
 
     // Native lib linked into rlib via `#[link()]` attribute on extern block.

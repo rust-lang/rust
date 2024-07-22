@@ -35,7 +35,6 @@ run-make/macos-deployment-target/Makefile
 run-make/min-global-align/Makefile
 run-make/native-link-modifier-bundle/Makefile
 run-make/no-alloc-shim/Makefile
-run-make/no-builtins-attribute/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
