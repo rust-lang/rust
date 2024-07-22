@@ -857,7 +857,7 @@ impl Config {
             tracing::info!("updating config from JSON: {:#}", json);
             if !(json.is_null() || json.as_object().map_or(false, |it| it.is_empty())) {
                 let mut json_errors = vec![];
-                let detached_files = get_field::<Vec<Utf8PathBuf>>(
+                let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
                     &mut json,
                     &mut json_errors,
                     "detachedFiles",
@@ -2660,7 +2660,7 @@ macro_rules! _config_data {
 
             fn from_json(json: &mut serde_json::Value, error_sink: &mut Vec<(String, serde_json::Error)>) -> Self {
                 Self {$(
-                    $field: get_field(
+                    $field: get_field_json(
                         json,
                         error_sink,
                         stringify!($field),
@@ -2778,7 +2778,7 @@ impl GlobalLocalConfigInput {
     }
 }
 
-fn get_field<T: DeserializeOwned>(
+fn get_field_json<T: DeserializeOwned>(
     json: &mut serde_json::Value,
     error_sink: &mut Vec<(String, serde_json::Error)>,
     field: &'static str,
