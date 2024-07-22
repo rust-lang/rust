@@ -49,10 +49,8 @@ pub struct DirBuilder {}
 impl FileAttr {
     /// Creates a FileAttr by getting data from an opened file.
     fn from_fd(fd: *mut vex_sdk::FIL) -> io::Result<Self> {
-        let size = unsafe {
-            vex_sdk::vexFileSize(fd)
-        };
-    
+        let size = unsafe { vex_sdk::vexFileSize(fd) };
+
         if size >= 0 {
             Ok(Self { size: size as u64 })
         } else {
@@ -295,8 +293,83 @@ impl File {
         Ok(())
     }
 
-    pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
-        todo!();
+    fn tell(&self) -> io::Result<u64> {
+        let position = unsafe { vex_sdk::vexFileTell(self.fd.0) };
+        position.try_into().map_err(|_| {
+            io::Error::new(io::ErrorKind::InvalidData, "Failed to get current location in file")
+        })
+    }
+
+    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+        const SEEK_SET: i32 = 0;
+        const SEEK_CUR: i32 = 1;
+        const SEEK_END: i32 = 2;
+
+        fn try_convert_offset<T: TryInto<u32>>(offset: T) -> io::Result<u32> {
+            offset.try_into().map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Cannot seek to an offset too large to fit in a 32 bit integer",
+                )
+            })
+        }
+
+        match pos {
+            SeekFrom::Start(offset) => unsafe {
+                map_fresult(vex_sdk::vexFileSeek(self.fd.0, try_convert_offset(offset)?, SEEK_SET))?
+            },
+
+            // The VEX SDK does not allow seeking with negative offsets.
+            // That means we need to calculate the offset from the start for both of these.
+            SeekFrom::End(offset) => unsafe {
+                // If our offset is positive, everything is easy
+                if offset >= 0 {
+                    map_fresult(vex_sdk::vexFileSeek(
+                        self.fd.0,
+                        try_convert_offset(offset)?,
+                        SEEK_END,
+                    ))?
+                } else {
+                    // Get the position of the end of the file...
+                    map_fresult(vex_sdk::vexFileSeek(
+                        self.fd.0,
+                        try_convert_offset(offset)?,
+                        SEEK_END,
+                    ))?;
+                    // The number returned by the VEX SDK tell is stored as a 32 bit interger,
+                    // and therefore this conversion cannot fail.
+                    let position = self.tell()? as i64;
+
+                    // Offset from that position
+                    let new_position = position + offset;
+                    map_fresult(vex_sdk::vexFileSeek(
+                        self.fd.0,
+                        try_convert_offset(new_position)?,
+                        SEEK_SET,
+                    ))?
+                }
+            },
+            SeekFrom::Current(offset) => unsafe {
+                if offset >= 0 {
+                    map_fresult(vex_sdk::vexFileSeek(
+                        self.fd.0,
+                        try_convert_offset(offset)?,
+                        SEEK_CUR,
+                    ))?
+                } else {
+                    let position = self.tell()? as i64;
+
+                    let new_position = position + offset;
+                    map_fresult(vex_sdk::vexFileSeek(
+                        self.fd.0,
+                        try_convert_offset(new_position)?,
+                        SEEK_SET,
+                    ))?
+                }
+            },
+        }
+
+        Ok(self.tell()?)
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
