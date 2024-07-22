@@ -1,4 +1,4 @@
-use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, attr, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_errors::{codes::*, struct_span_code_err, DiagMessage, SubdiagMessage};
 use rustc_hir as hir;
@@ -522,6 +522,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         entry.unwrap_or(0),
                     ))
                 })
+            }
+            sym::rustc_intrinsic_const_vector_arg => {
+                let mut indicies: Vec<usize> = Vec::new();
+                if let Some(item_list) = attr.meta_item_list() {
+                    for item in item_list {
+                        match item {
+                            NestedMetaItem::Lit(MetaItemLit {
+                                kind: LitKind::Int(index, _),
+                                ..
+                            }) => {
+                                indicies.push(index.get() as usize);
+                            }
+                            _ => {
+                                tcx.dcx()
+                                    .emit_err(errors::IntrinsicConstVectorArg { span: attr.span });
+                            }
+                        }
+                    }
+                }
+                codegen_fn_attrs.const_vector_indices = Some(indicies);
             }
             _ => {}
         }

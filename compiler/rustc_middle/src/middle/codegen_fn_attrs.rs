@@ -48,6 +48,9 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
+    /// The `#[rustc_intrinsic_const_vector_arg(...)]` attribute. The indices
+    /// of const vector arguments
+    pub const_vector_indices: Option<Vec<usize>>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -148,6 +151,7 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
+            const_vector_indices: None,
         }
     }
 
