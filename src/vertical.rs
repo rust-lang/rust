@@ -24,7 +24,7 @@ use crate::utils::{
 pub(crate) trait AlignedItem {
     fn skip(&self) -> bool;
     fn get_span(&self) -> Span;
-    fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String>;
+    fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult;
     fn rewrite_aligned_item(
         &self,
         context: &RewriteContext<'_>,
@@ -42,15 +42,15 @@ impl AlignedItem for ast::FieldDef {
         self.span()
     }
 
-    fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        let attrs_str = self.attrs.rewrite(context, shape)?;
+    fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        let attrs_str = self.attrs.rewrite_result(context, shape)?;
         let missing_span = if self.attrs.is_empty() {
             mk_sp(self.span.lo(), self.span.lo())
         } else {
             mk_sp(self.attrs.last().unwrap().span.hi(), self.span.lo())
         };
         let attrs_extendable = self.ident.is_none() && is_attributes_extendable(&attrs_str);
-        let field_str = rewrite_struct_field_prefix(context, self).ok()?;
+        let field_str = rewrite_struct_field_prefix(context, self)?;
         combine_strs_with_missing_comments(
             context,
             &attrs_str,
@@ -80,8 +80,8 @@ impl AlignedItem for ast::ExprField {
         self.span()
     }
 
-    fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        let attrs_str = self.attrs.rewrite(context, shape)?;
+    fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        let attrs_str = self.attrs.rewrite_result(context, shape)?;
         let name = rewrite_ident(context, self.ident);
         let missing_span = if self.attrs.is_empty() {
             mk_sp(self.span.lo(), self.span.lo())
@@ -198,7 +198,7 @@ fn struct_field_prefix_max_min_width<T: AlignedItem>(
                 .rewrite_prefix(context, shape)
                 .map(|field_str| trimmed_last_line_width(&field_str))
         })
-        .fold_options((0, ::std::usize::MAX), |(max_len, min_len), len| {
+        .fold_ok((0, ::std::usize::MAX), |(max_len, min_len), len| {
             (cmp::max(max_len, len), cmp::min(min_len, len))
         })
         .unwrap_or((0, 0))

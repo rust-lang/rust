@@ -8,7 +8,7 @@ use rustc_span::BytePos;
 use crate::comment::{find_comment_end, rewrite_comment, FindUncommented};
 use crate::config::lists::*;
 use crate::config::{Config, IndentStyle};
-use crate::rewrite::{RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
+use crate::rewrite::{RewriteContext, RewriteError, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::utils::{
     count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline,
@@ -366,8 +366,8 @@ where
             // Block style in non-vertical mode.
             let block_mode = tactic == DefinitiveListTactic::Horizontal;
             // Width restriction is only relevant in vertical mode.
-            let comment = rewrite_comment(comment, block_mode, formatting.shape, formatting.config)
-                .unknown_error()?;
+            let comment =
+                rewrite_comment(comment, block_mode, formatting.shape, formatting.config)?;
             result.push_str(&comment);
 
             if !inner_item.is_empty() {
@@ -413,8 +413,7 @@ where
                 true,
                 Shape::legacy(formatting.shape.width, Indent::empty()),
                 formatting.config,
-            )
-            .unknown_error()?;
+            )?;
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -465,8 +464,7 @@ where
                 )
             };
 
-            let mut formatted_comment =
-                rewrite_post_comment(&mut item_max_width).unknown_error()?;
+            let mut formatted_comment = rewrite_post_comment(&mut item_max_width)?;
 
             if !starts_with_newline(comment) {
                 if formatting.align_comments {
@@ -479,8 +477,7 @@ where
                         > formatting.config.max_width()
                     {
                         item_max_width = None;
-                        formatted_comment =
-                            rewrite_post_comment(&mut item_max_width).unknown_error()?;
+                        formatted_comment = rewrite_post_comment(&mut item_max_width)?;
                         comment_alignment =
                             post_comment_alignment(item_max_width, unicode_str_width(inner_item));
                     }

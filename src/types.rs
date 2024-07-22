@@ -713,8 +713,7 @@ impl Rewrite for ast::GenericParam {
                 mk_sp(last_attr.span.hi(), param_start),
                 shape,
                 !last_attr.is_doc_comment(),
-            )
-            .unknown_error()?;
+            )?;
         } else {
             // When rewriting generic params, an extra newline should be put
             // if the attributes end with a doc comment
@@ -831,8 +830,7 @@ impl Rewrite for ast::Ty {
                             before_lt_span,
                             shape,
                             true,
-                        )
-                        .unknown_error()?;
+                        )?;
                     } else {
                         result.push_str(&lt_str);
                     }
@@ -851,8 +849,7 @@ impl Rewrite for ast::Ty {
                             before_mut_span,
                             shape,
                             true,
-                        )
-                        .unknown_error()?;
+                        )?;
                     } else {
                         result.push_str(mut_str);
                     }
@@ -868,8 +865,7 @@ impl Rewrite for ast::Ty {
                         before_ty_span,
                         shape,
                         true,
-                    )
-                    .unknown_error()?;
+                    )?;
                 } else {
                     let used_width = last_line_width(&result);
                     let budget = shape
@@ -1182,8 +1178,7 @@ fn join_bounds_inner(
                         is_bound_extendable(bound_str, item),
                         combine_strs_with_missing_comments(
                             context, joiner, bound_str, ls, shape, true,
-                        )
-                        .unknown_error()?,
+                        )?,
                     ),
                     _ => (
                         is_bound_extendable(bound_str, item),
@@ -1200,7 +1195,6 @@ fn join_bounds_inner(
                     shape,
                     true,
                 )
-                .unknown_error()
                 .map(|v| (v, trailing_span, extendable)),
                 _ => Ok((strs + &trailing_str, trailing_span, extendable)),
             }

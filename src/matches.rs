@@ -310,8 +310,7 @@ fn rewrite_match_arm(
         missing_span,
         shape,
         false,
-    )
-    .unknown_error()?;
+    )?;
 
     let arrow_span = mk_sp(
         arm.pat.span.hi(),
@@ -448,7 +447,7 @@ fn rewrite_match_body(
         if comment_str.is_empty() {
             String::new()
         } else {
-            rewrite_comment(comment_str, false, shape, context.config).unknown_error()?
+            rewrite_comment(comment_str, false, shape, context.config)?
         }
     };
 

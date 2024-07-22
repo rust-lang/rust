@@ -267,6 +267,7 @@ impl ChainItemKind {
 }
 
 impl Rewrite for ChainItem {
+    // TODO impl rewrite_result after rebase
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let shape = shape.sub_width(self.tries)?;
         let rewrite = match self.kind {
@@ -294,7 +295,7 @@ impl Rewrite for ChainItem {
             ),
             ChainItemKind::Await => ".await".to_owned(),
             ChainItemKind::Comment(ref comment, _) => {
-                rewrite_comment(comment, false, shape, context.config)?
+                rewrite_comment(comment, false, shape, context.config).ok()?
             }
         };
         Some(format!("{rewrite}{}", "?".repeat(self.tries)))

@@ -133,7 +133,8 @@ impl Rewrite for Pat {
                             mk_sp(lo, p.span.lo()),
                             shape,
                             true,
-                        )?
+                        )
+                        .ok()?
                     }
                     None => "".to_owned(),
                 };
@@ -152,7 +153,8 @@ impl Rewrite for Pat {
                                 mk_sp(lo, hi),
                                 shape,
                                 true,
-                            )?,
+                            )
+                            .ok()?,
                         )
                     }
                     (false, true) => (
@@ -181,7 +183,8 @@ impl Rewrite for Pat {
                                 mk_sp(lo, hi),
                                 shape,
                                 true,
-                            )?,
+                            )
+                            .ok()?,
                         )
                     }
                     (false, true) => (first_lo, first),
@@ -198,7 +201,8 @@ impl Rewrite for Pat {
                         mk_sp(ident.span.hi(), hi),
                         shape,
                         true,
-                    )?
+                    )
+                    .ok()?
                 } else {
                     id_str.to_owned()
                 };
@@ -211,6 +215,7 @@ impl Rewrite for Pat {
                     shape,
                     true,
                 )
+                .ok()
             }
             PatKind::Wild => {
                 if 1 <= shape.width {
@@ -408,6 +413,10 @@ fn rewrite_struct_pat(
 
 impl Rewrite for PatField {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         let hi_pos = if let Some(last) = self.attrs.last() {
             last.span.hi()
         } else {
@@ -417,10 +426,10 @@ impl Rewrite for PatField {
         let attrs_str = if self.attrs.is_empty() {
             String::from("")
         } else {
-            self.attrs.rewrite(context, shape)?
+            self.attrs.rewrite_result(context, shape)?
         };
 
-        let pat_str = self.pat.rewrite(context, shape)?;
+        let pat_str = self.pat.rewrite_result(context, shape)?;
         if self.is_shorthand {
             combine_strs_with_missing_comments(
                 context,
@@ -441,7 +450,7 @@ impl Rewrite for PatField {
                     "{}:\n{}{}",
                     id_str,
                     nested_shape.indent.to_string(context.config),
-                    self.pat.rewrite(context, nested_shape)?
+                    self.pat.rewrite_result(context, nested_shape)?
                 )
             };
             combine_strs_with_missing_comments(

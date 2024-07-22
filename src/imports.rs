@@ -367,6 +367,7 @@ impl UseTree {
                     shape,
                     allow_extend,
                 )
+                .ok()
             }
             _ => Some(use_str),
         }

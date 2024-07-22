@@ -77,8 +77,7 @@ impl Rewrite for ast::Local {
                 ),
                 shape,
                 false,
-            )
-            .unknown_error()?
+            )?
         };
         let let_kw_offset = result.len() - "let ".len();
 
@@ -718,6 +717,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         combine_strs_with_missing_comments(&context, &attrs_str, &variant_body, span, shape, false)
+            .ok()
     }
 
     fn visit_impl_items(&mut self, items: &[ptr::P<ast::AssocItem>]) {
@@ -853,7 +853,7 @@ pub(crate) fn format_impl(
                 context,
                 last_line_width(&result),
             ) {
-                Some(ref missing_comment) if !missing_comment.is_empty() => {
+                Ok(ref missing_comment) if !missing_comment.is_empty() => {
                     result.push_str(missing_comment);
                 }
                 _ => (),
@@ -1260,7 +1260,7 @@ pub(crate) fn format_trait(
                     context,
                     last_line_width(&result),
                 ) {
-                    Some(ref missing_comment) if !missing_comment.is_empty() => {
+                    Ok(ref missing_comment) if !missing_comment.is_empty() => {
                         result.push_str(missing_comment);
                     }
                     _ => (),
@@ -1550,8 +1550,8 @@ fn format_empty_struct_or_tuple(
     // indented shape for proper indenting of multi-line comments
     let shape = Shape::indented(offset.block_indent(context.config), context.config);
     match rewrite_missing_comment(span, shape, context) {
-        Some(ref s) if s.is_empty() => (),
-        Some(ref s) => {
+        Ok(ref s) if s.is_empty() => (),
+        Ok(ref s) => {
             let is_multi_line = !is_single_line(s);
             if is_multi_line || first_line_contains_single_line_comment(s) {
                 let nested_indent_str = offset
@@ -1564,7 +1564,7 @@ fn format_empty_struct_or_tuple(
                 result.push_str(&offset.to_string_with_newline(context.config));
             }
         }
-        None => result.push_str(context.snippet(span)),
+        Err(_) => result.push_str(context.snippet(span)),
     }
     result.push_str(closer);
 }
@@ -1827,7 +1827,8 @@ fn rewrite_ty<R: Rewrite>(
                     comment_span,
                     comment_shape,
                     true,
-                )?
+                )
+                .ok()?
             }
             _ => format!("{result}="),
         };
@@ -1907,8 +1908,7 @@ pub(crate) fn rewrite_struct_field(
         missing_span,
         shape,
         attrs_extendable,
-    )
-    .unknown_error()?;
+    )?;
     let overhead = trimmed_last_line_width(&attr_prefix);
     let lhs_offset = lhs_max_width.saturating_sub(overhead);
     for _ in 0..lhs_offset {
@@ -1940,7 +1940,6 @@ pub(crate) fn rewrite_struct_field(
         &field_str
     };
     combine_strs_with_missing_comments(context, &attrs_str, field_str, missing_span, shape, false)
-        .unknown_error()
 }
 
 pub(crate) struct StaticParts<'a> {
@@ -2074,6 +2073,7 @@ fn rewrite_static(
             comments_span,
             true,
         )
+        .ok()
         .and_then(|res| recover_comment_removed(res, static_parts.span, context))
         .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
@@ -2170,9 +2170,11 @@ fn get_missing_param_comments(
     };
 
     let comment_before_colon = rewrite_missing_comment(span_before_colon, shape, context)
+        .ok()
         .filter(|comment| !comment.is_empty())
         .map_or(String::new(), |comment| format!(" {}", comment));
     let comment_after_colon = rewrite_missing_comment(span_after_colon, shape, context)
+        .ok()
         .filter(|comment| !comment.is_empty())
         .map_or(String::new(), |comment| format!("{} ", comment));
     (comment_before_colon, comment_after_colon)
@@ -2220,8 +2222,7 @@ impl Rewrite for ast::Param {
                 span,
                 shape,
                 !has_multiple_attr_lines && !has_doc_comments,
-            )
-            .unknown_error()?;
+            )?;
 
             if !is_empty_infer(&*self.ty, self.pat.span) {
                 let (before_comment, after_comment) =
@@ -2253,8 +2254,7 @@ impl Rewrite for ast::Param {
                         span,
                         shape,
                         !has_multiple_attr_lines,
-                    )
-                    .unknown_error()?;
+                    )?;
                     result.push_str(&before_comment);
                     result.push_str(colon_spaces(context.config));
                     result.push_str(&after_comment);
@@ -2301,8 +2301,7 @@ fn rewrite_explicit_self(
                         span,
                         shape,
                         !has_multiple_attr_lines,
-                    )
-                    .unknown_error()?)
+                    )?)
                 }
                 None => Ok(combine_strs_with_missing_comments(
                     context,
@@ -2311,8 +2310,7 @@ fn rewrite_explicit_self(
                     span,
                     shape,
                     !has_multiple_attr_lines,
-                )
-                .unknown_error()?),
+                )?),
             }
         }
         ast::SelfKind::Explicit(ref ty, mutability) => {
@@ -2328,8 +2326,7 @@ fn rewrite_explicit_self(
                 span,
                 shape,
                 !has_multiple_attr_lines,
-            )
-            .unknown_error()?)
+            )?)
         }
         ast::SelfKind::Value(mutability) => Ok(combine_strs_with_missing_comments(
             context,
@@ -2338,8 +2335,7 @@ fn rewrite_explicit_self(
             span,
             shape,
             !has_multiple_attr_lines,
-        )
-        .unknown_error()?),
+        )?),
     }
 }
 
@@ -2677,7 +2673,7 @@ fn rewrite_fn_base(
                 context,
                 last_line_width(&result),
             ) {
-                Some(ref missing_comment) if !missing_comment.is_empty() => {
+                Ok(ref missing_comment) if !missing_comment.is_empty() => {
                     result.push_str(missing_comment);
                     force_new_line_for_brace = true;
                 }
@@ -3201,12 +3197,13 @@ fn rewrite_comments_before_after_where(
     span_after_where: Span,
     shape: Shape,
 ) -> Option<(String, String)> {
-    let before_comment = rewrite_missing_comment(span_before_where, shape, context)?;
+    let before_comment = rewrite_missing_comment(span_before_where, shape, context).ok()?;
     let after_comment = rewrite_missing_comment(
         span_after_where,
         shape.block_indent(context.config.tab_spaces()),
         context,
-    )?;
+    )
+    .ok()?;
     Some((before_comment, after_comment))
 }
 
@@ -3229,7 +3226,7 @@ fn format_header(
         .opt_span_before(mk_sp(vis.span.lo(), ident.span.hi()), item_name.trim())
     {
         let missing_span = mk_sp(after_vis, before_item_name);
-        if let Some(result_with_comment) = combine_strs_with_missing_comments(
+        if let Ok(result_with_comment) = combine_strs_with_missing_comments(
             context,
             &result,
             item_name,
@@ -3313,7 +3310,8 @@ fn format_generics(
                 ),
                 shape,
                 context,
-            ),
+            )
+            .ok(),
         )
     };
     // add missing comments
@@ -3446,6 +3444,7 @@ impl Rewrite for ast::ForeignItem {
             shape,
             false,
         )
+        .ok()
     }
 }
 
@@ -3481,6 +3480,7 @@ fn rewrite_attrs(
         shape,
         allow_extend,
     )
+    .ok()
 }
 
 /// Rewrite an inline mod.

@@ -312,8 +312,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                                 let comment_str =
                                     rewrite_comment(other_lines, false, comment_shape, config);
                                 match comment_str {
-                                    Some(ref s) => self.push_str(s),
-                                    None => self.push_str(other_lines),
+                                    Ok(ref s) => self.push_str(s),
+                                    Err(_) => self.push_str(other_lines),
                                 }
                             }
                         }
@@ -342,8 +342,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
                         let comment_str = rewrite_comment(&sub_slice, false, comment_shape, config);
                         match comment_str {
-                            Some(ref s) => self.push_str(s),
-                            None => self.push_str(&sub_slice),
+                            Ok(ref s) => self.push_str(s),
+                            Err(_) => self.push_str(&sub_slice),
                         }
                     }
                 }

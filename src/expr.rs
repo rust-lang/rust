@@ -136,7 +136,9 @@ pub(crate) fn format_expr(
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1).ok()
         }
-        ast::ExprKind::Let(ref pat, ref expr, _span, _) => rewrite_let(context, shape, pat, expr),
+        ast::ExprKind::Let(ref pat, ref expr, _span, _) => {
+            rewrite_let(context, shape, pat, expr).ok()
+        }
         ast::ExprKind::If(..)
         | ast::ExprKind::ForLoop { .. }
         | ast::ExprKind::Loop(..)
@@ -166,7 +168,7 @@ pub(crate) fn format_expr(
                         // Rewrite block without trying to put it in a single line.
                         rw
                     } else {
-                        let prefix = block_prefix(context, block, shape)?;
+                        let prefix = block_prefix(context, block, shape).ok()?;
 
                         rewrite_block_with_visitor(
                             context,
@@ -437,6 +439,7 @@ pub(crate) fn format_expr(
                 expr.span.lo(),
             );
             combine_strs_with_missing_comments(context, &attrs_str, &expr_str, span, shape, false)
+                .ok()
         })
 }
 
@@ -498,17 +501,20 @@ fn rewrite_empty_block(
     None
 }
 
-fn block_prefix(context: &RewriteContext<'_>, block: &ast::Block, shape: Shape) -> Option<String> {
-    Some(match block.rules {
+fn block_prefix(context: &RewriteContext<'_>, block: &ast::Block, shape: Shape) -> RewriteResult {
+    Ok(match block.rules {
         ast::BlockCheckMode::Unsafe(..) => {
             let snippet = context.snippet(block.span);
-            let open_pos = snippet.find_uncommented("{")?;
+            let open_pos = snippet.find_uncommented("{").unknown_error()?;
             // Extract comment between unsafe and block start.
             let trimmed = &snippet[6..open_pos].trim();
 
             if !trimmed.is_empty() {
                 // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
-                let budget = shape.width.checked_sub(9)?;
+                let budget = shape
+                    .width
+                    .checked_sub(9)
+                    .max_width_error(shape.width, block.span)?;
                 format!(
                     "unsafe {} ",
                     rewrite_comment(
@@ -612,7 +618,7 @@ fn rewrite_block_inner(
     context: &RewriteContext<'_>,
     shape: Shape,
 ) -> RewriteResult {
-    let prefix = block_prefix(context, block, shape).unknown_error()?;
+    let prefix = block_prefix(context, block, shape)?;
 
     // shape.width is used only for the single line case: either the empty block `{}`,
     // or an unsafe expression `unsafe { e }`.
@@ -912,7 +918,8 @@ impl<'a> ControlFlow<'a> {
                 RhsTactics::Default,
                 comments_span,
                 true,
-            );
+            )
+            .ok();
         }
 
         let expr_rw = expr.rewrite(context, cond_shape);
@@ -1191,7 +1198,7 @@ fn rewrite_label(opt_label: Option<ast::Label>) -> Cow<'static, str> {
 
 fn extract_comment(span: Span, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
     match rewrite_missing_comment(span, shape, context) {
-        Some(ref comment) if !comment.is_empty() => Some(format!(
+        Ok(ref comment) if !comment.is_empty() => Some(format!(
             "{indent}{comment}{indent}",
             indent = shape.indent.to_string_with_newline(context.config)
         )),
@@ -1300,7 +1307,7 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
         &StringFormat::new(shape.visual_indent(0), context.config),
         shape.width.saturating_sub(2),
     )
-    .max_width_error(shape.width, span) // - 2 ?
+    .max_width_error(shape.width, span)
 }
 
 fn rewrite_int_lit(
@@ -1490,8 +1497,8 @@ pub(crate) fn rewrite_paren(
         // 1 = "(" or ")"
         pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span().lo());
         post_span = mk_sp(subexpr.span.hi(), span.hi() - BytePos(1));
-        pre_comment = rewrite_missing_comment(pre_span, shape, context)?;
-        post_comment = rewrite_missing_comment(post_span, shape, context)?;
+        pre_comment = rewrite_missing_comment(pre_span, shape, context).ok()?;
+        post_comment = rewrite_missing_comment(post_span, shape, context).ok()?;
 
         // Remove nested parens if there are no comments.
         if let ast::ExprKind::Paren(ref subsubexpr) = subexpr.kind {
@@ -1525,8 +1532,8 @@ fn rewrite_paren_in_multi_line(
 ) -> Option<String> {
     let nested_indent = shape.indent.block_indent(context.config);
     let nested_shape = Shape::indented(nested_indent, context.config);
-    let pre_comment = rewrite_missing_comment(pre_span, nested_shape, context)?;
-    let post_comment = rewrite_missing_comment(post_span, nested_shape, context)?;
+    let pre_comment = rewrite_missing_comment(pre_span, nested_shape, context).ok()?;
+    let post_comment = rewrite_missing_comment(post_span, nested_shape, context).ok()?;
     let subexpr_str = subexpr.rewrite(context, nested_shape)?;
 
     let mut result = String::with_capacity(subexpr_str.len() * 2);
@@ -1894,14 +1901,16 @@ fn rewrite_let(
     shape: Shape,
     pat: &ast::Pat,
     expr: &ast::Expr,
-) -> Option<String> {
+) -> RewriteResult {
     let mut result = "let ".to_owned();
 
     // TODO(ytmimi) comments could appear between `let` and the `pat`
 
     // 4 = "let ".len()
-    let pat_shape = shape.offset_left(4)?;
-    let pat_str = pat.rewrite(context, pat_shape)?;
+    let pat_shape = shape
+        .offset_left(4)
+        .max_width_error(shape.width, pat.span)?;
+    let pat_str = pat.rewrite_result(context, pat_shape)?;
     result.push_str(&pat_str);
 
     // TODO(ytmimi) comments could appear between `pat` and `=`
@@ -2121,7 +2130,7 @@ pub(crate) fn rewrite_assign_rhs_with<S: Into<String>, R: Rewrite>(
     Some(lhs + &rhs)
 }
 
-pub(crate) fn rewrite_assign_rhs_with_comments<S: Into<String>, R: Rewrite>(
+pub(crate) fn rewrite_assign_rhs_with_comments<S: Into<String>, R: Rewrite + Spanned>(
     context: &RewriteContext<'_>,
     lhs: S,
     ex: &R,
@@ -2130,21 +2139,23 @@ pub(crate) fn rewrite_assign_rhs_with_comments<S: Into<String>, R: Rewrite>(
     rhs_tactics: RhsTactics,
     between_span: Span,
     allow_extend: bool,
-) -> Option<String> {
+) -> RewriteResult {
     let lhs = lhs.into();
     let contains_comment = contains_comment(context.snippet(between_span));
     let shape = if contains_comment {
-        shape.block_left(context.config.tab_spaces())?
+        shape
+            .block_left(context.config.tab_spaces())
+            .max_width_error(shape.width, between_span.with_hi(ex.span().hi()))?
     } else {
         shape
     };
-    let rhs = rewrite_assign_rhs_expr(context, &lhs, ex, shape, rhs_kind, rhs_tactics)?;
-
+    let rhs =
+        rewrite_assign_rhs_expr(context, &lhs, ex, shape, rhs_kind, rhs_tactics).unknown_error()?;
     if contains_comment {
         let rhs = rhs.trim_start();
         combine_strs_with_missing_comments(context, &lhs, rhs, between_span, shape, allow_extend)
     } else {
-        Some(lhs + &rhs)
+        Ok(lhs + &rhs)
     }
 }
 
