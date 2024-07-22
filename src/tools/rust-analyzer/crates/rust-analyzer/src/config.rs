@@ -2042,8 +2042,8 @@ impl Config {
             debug_single: get("rust-analyzer.debugSingle"),
             show_reference: get("rust-analyzer.showReferences"),
             goto_location: get("rust-analyzer.gotoLocation"),
-            trigger_parameter_hints: get("editor.action.triggerParameterHints"),
-            rename: get("editor.action.rename"),
+            trigger_parameter_hints: get("rust-analyzer.triggerParameterHints"),
+            rename: get("rust-analyzer.rename"),
         }
     }
 
