@@ -35,7 +35,7 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
     }
 }
 
-pub trait NoopVisitItemKind {
+pub trait WalkItemKind {
     fn walk(
         &mut self,
         ctxt: Option<AssocCtxt>,
@@ -1090,7 +1090,7 @@ pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
 }
 
 pub fn walk_item_kind(
-    kind: &mut impl NoopVisitItemKind,
+    kind: &mut impl WalkItemKind,
     ident: Ident,
     span: Span,
     id: NodeId,
@@ -1099,7 +1099,7 @@ pub fn walk_item_kind(
     kind.walk(None, ident, span, id, vis)
 }
 
-impl NoopVisitItemKind for ItemKind {
+impl WalkItemKind for ItemKind {
     fn walk(
         &mut self,
         ctxt: Option<AssocCtxt>,
@@ -1219,7 +1219,7 @@ impl NoopVisitItemKind for ItemKind {
     }
 }
 
-impl NoopVisitItemKind for AssocItemKind {
+impl WalkItemKind for AssocItemKind {
     fn walk(
         &mut self,
         ctxt: Option<AssocCtxt>,
@@ -1320,7 +1320,7 @@ pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
 }
 
 /// Mutates one item, returning the item again.
-pub fn walk_flat_map_item<K: NoopVisitItemKind>(
+pub fn walk_flat_map_item<K: WalkItemKind>(
     visitor: &mut impl MutVisitor,
     mut item: P<Item<K>>,
     ctxt: Option<AssocCtxt>,
@@ -1336,7 +1336,7 @@ pub fn walk_flat_map_item<K: NoopVisitItemKind>(
     smallvec![item]
 }
 
-impl NoopVisitItemKind for ForeignItemKind {
+impl WalkItemKind for ForeignItemKind {
     fn walk(
         &mut self,
         ctxt: Option<AssocCtxt>,
