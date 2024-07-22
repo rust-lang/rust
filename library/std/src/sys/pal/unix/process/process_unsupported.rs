@@ -1,4 +1,3 @@
-use crate::fmt;
 use crate::io;
 use crate::num::NonZero;
 use crate::sys::pal::unix::unsupported::*;
