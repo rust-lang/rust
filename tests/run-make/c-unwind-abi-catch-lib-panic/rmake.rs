@@ -8,7 +8,7 @@
 //@ needs-unwind
 // Reason: this test exercises unwinding a panic
 
-use run_make_support::{cc, is_msvc, llvm_ar, run, rustc};
+use run_make_support::{cc, is_msvc, llvm_ar, run, rustc, static_lib_name};
 
 fn main() {
     // Compile `add.c` into an object file.
@@ -25,9 +25,9 @@ fn main() {
 
     // Now, create an archive using these two objects.
     if is_msvc() {
-        llvm_ar().obj_to_ar().args(&["libadd.a", "add.obj", "panic.o"]).run();
+        llvm_ar().obj_to_ar().args(&[&static_lib_name("add"), "add.obj", "panic.o"]).run();
     } else {
-        llvm_ar().obj_to_ar().args(&["libadd.a", "add.o", "panic.o"]).run();
+        llvm_ar().obj_to_ar().args(&[&static_lib_name("add"), "add.o", "panic.o"]).run();
     };
 
     // Compile `main.rs`, which will link into our library, and run it.
