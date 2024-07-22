@@ -217,14 +217,39 @@ impl fmt::Display for PanicHookInfo<'_> {
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
     () => ({
-        $crate::rt::begin_panic("explicit panic")
+        #[cold]
+        #[track_caller]
+        #[inline(never)]
+        const fn panic_cold_explicit() -> ! {
+            f
+            $crate::rt::begin_panic("explicit panic");
+        }
+        panic_cold_explicit();
+    }),
+    // Special-case for string literal.
+    ($msg:literal $(,)?) => ({
+        #[cold]
+        #[track_caller]
+        #[inline(never)]
+        const fn panic_cold_literal() -> ! {
+            $crate::rt::begin_panic($msg);
+        }
+        panic_cold_literal();
     }),
     ($msg:expr $(,)?) => ({
         $crate::rt::begin_panic($msg);
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
-        $crate::rt::panic_display(&$arg);
+        #[cold]
+        #[track_caller]
+        #[inline(never)]
+        #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
+        #[rustc_do_not_const_check] // hooked by const-eval
+        const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
+            $crate::panicking::panic_display(arg)
+        }
+        panic_cold_display(&$arg);
     }),
     ($fmt:expr, $($arg:tt)+) => ({
         // Semicolon to prevent temporaries inside the formatting machinery from
