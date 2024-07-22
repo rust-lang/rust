@@ -102,13 +102,8 @@ impl IndexingSlicing {
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if (self.suppress_restriction_lint_in_const && cx.tcx.hir().is_inside_const_context(expr.hir_id))
-            || is_from_proc_macro(cx, expr)
-        {
-            return;
-        }
-
         if let ExprKind::Index(array, index, _) = &expr.kind
+            && (!self.suppress_restriction_lint_in_const || !cx.tcx.hir().is_inside_const_context(expr.hir_id))
             && let expr_ty = cx.typeck_results().expr_ty(array)
             && let mut deref = deref_chain(cx, expr_ty)
             && deref.any(|l| {
@@ -116,6 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     || l.peel_refs().is_array()
                     || ty_has_applicable_get_function(cx, l.peel_refs(), expr_ty, expr)
             })
+            && !is_from_proc_macro(cx, expr)
         {
             let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
