@@ -466,7 +466,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 hir::InlineAsmOperand::SymFn { anon_const } => {
                     debug_assert!(matches!(
                         self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
-                        ty::Error(_) | ty::Never | ty::FnDef(..)
+                        ty::Error(_) | ty::FnDef(..)
                     ));
                 }
                 // AST lowering guarantees that SymStatic points to a static.

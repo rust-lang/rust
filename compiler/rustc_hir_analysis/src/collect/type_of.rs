@@ -65,7 +65,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             let ty = tcx.typeck(def_id).node_type(hir_id);
 
             match ty.kind() {
-                ty::Never | ty::Error(_) => ty,
+                ty::Error(_) => ty,
                 ty::FnDef(..) => ty,
                 _ => {
                     tcx.dcx()
@@ -80,7 +80,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     Ty::new_error_with_message(
                         tcx,
                         span,
-                        format!("invalid type for `const` operand"),
+                        format!("invalid type for `sym` operand"),
                     )
                 }
             }
