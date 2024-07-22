@@ -1,11 +1,11 @@
-//! Compilation of native dependencies like LLVM.
+//! Compilation of native dependencies like GCC.
 //!
-//! Native projects like LLVM unfortunately aren't suited just yet for
+//! Native projects like GCC unfortunately aren't suited just yet for
 //! compilation in build scripts that Cargo has. This is because the
 //! compilation takes a *very* long time but also because we don't want to
-//! compile LLVM 3 times as part of a normal bootstrap (we want it cached).
+//! compile GCC 3 times as part of a normal bootstrap (we want it cached).
 //!
-//! LLVM and compiler-rt are essentially just wired up to everything else to
+//! GCC and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
 use std::fs;
@@ -43,7 +43,7 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
     // FIXME (GuillaumeGomez): To be done once gccjit has been built in the CI.
     // builder.config.maybe_download_ci_gcc();
 
-    // Initialize the llvm submodule if not initialized already.
+    // Initialize the gcc submodule if not initialized already.
     builder.update_submodule(&Path::new("src").join("gcc"));
 
     let root = "src/gcc";
@@ -110,7 +110,7 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
 //     };
 
 //     if gcc_sha.is_empty() {
-//         eprintln!("error: could not find commit hash for downloading LLVM");
+//         eprintln!("error: could not find commit hash for downloading GCC");
 //         eprintln!("HELP: maybe your repository history is too shallow?");
 //         eprintln!("HELP: consider disabling `download-ci-gcc`");
 //         eprintln!("HELP: or fetch enough history to include one upstream commit");
@@ -126,9 +126,6 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
 // /// and then verifies if the current HEAD matches the detected GCC SHA head,
 // /// in which case GCC is indicated as not available.
 // pub(crate) fn is_ci_gcc_available(config: &Config, asserts: bool) -> bool {
-//     // This is currently all tier 1 targets and tier 2 targets with host tools
-//     // (since others may not have CI artifacts)
-//     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
 //     let supported_platforms = [
 //         // tier 1
 //         ("x86_64-unknown-linux-gnu", true),
