@@ -52,9 +52,7 @@ use rustc_mir_dataflow::ResultsCursor;
 
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{
-    IntrinsicConstVectorArgNonConst,
-    MoveUnsized,
-    SimdIntrinsicArgConst,
+    IntrinsicConstVectorArgNonConst, MoveUnsized, SimdIntrinsicArgConst,
 };
 use crate::{
     borrow_set::BorrowSet,
@@ -1639,18 +1637,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             {
                 match attr.meta_item_list() {
                     Some(items) => {
-                        items.into_iter().for_each(|item: rustc_ast::NestedMetaItem| match item {
-                            rustc_ast::NestedMetaItem::Lit(rustc_ast::MetaItemLit {
-                                kind: rustc_ast::LitKind::Int(index, _),
-                                ..
-                            }) => {
-                                if index >= args.len() as u128 {
-                                    span_mirbug!(self, term, "index out of bounds");
-                                } else {
-                                    if !matches!(
-                                        args[index.get() as usize],
-                                        Spanned { node: Operand::Constant(_), .. }
-                                    ) {
+                        items.into_iter().for_each(|item| {
+                            if let Some(rustc_ast::LitKind::Int(index, _)) =
+                                item.lit().map(|lit| &lit.kind)
+                            {
+                                if let Some(arg) = args.get::<usize>(index.get() as usize) {
+                                    if !matches!(arg, Spanned { node: Operand::Constant(_), .. }) {
                                         self.tcx().dcx().emit_err(
                                             IntrinsicConstVectorArgNonConst {
                                                 span: term.source_info.span,
@@ -1659,15 +1651,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         );
                                     }
                                 }
-                            }
-                            _ => {
-                                span_mirbug!(self, term, "invalid index");
+                            } else {
+                                span_mirbug!(self, term, "literal kind");
                             }
                         });
                     }
-                    // Error is reported by `rustc_attr!`
                     None => (),
                 }
+                // Error is reported by `rustc_attr!`
             }
         }
         debug!(?func_ty);
