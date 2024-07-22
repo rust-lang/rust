@@ -322,6 +322,8 @@ fn register_builtins(store: &mut LintStore) {
         REFINING_IMPL_TRAIT_INTERNAL
     );
 
+    add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
+
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");
     store.register_renamed("elided_lifetime_in_path", "elided_lifetimes_in_paths");

@@ -1,6 +1,6 @@
 //@ run-rustfix
 
-#![deny(deprecated_safe)]
+#![deny(deprecated_safe_2024)]
 
 use std::env;
 
