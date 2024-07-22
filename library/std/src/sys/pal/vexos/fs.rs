@@ -28,6 +28,7 @@ pub struct OpenOptions {
     read: bool,
     write: bool,
     append: bool,
+    truncate: bool,
     create_new: bool,
 }
 
@@ -46,6 +47,19 @@ pub struct FileType {
 pub struct DirBuilder {}
 
 impl FileAttr {
+    /// Creates a FileAttr by getting data from an opened file.
+    fn from_fd(fd: *mut vex_sdk::FIL) -> io::Result<Self> {
+        let size = unsafe {
+            vex_sdk::vexFileSize(fd)
+        };
+    
+        if size >= 0 {
+            Ok(Self { size: size as u64 })
+        } else {
+            Err(io::Error::new(io::ErrorKind::NotSeekable, "Failed to seek file"))
+        }
+    }
+
     pub fn size(&self) -> u64 {
         self.size
     }
@@ -134,7 +148,7 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { read: false, write: false, append: false, create_new: false }
+        OpenOptions { read: false, write: false, append: false, truncate: false, create_new: false }
     }
 
     pub fn read(&mut self, read: bool) {
@@ -146,7 +160,9 @@ impl OpenOptions {
     pub fn append(&mut self, append: bool) {
         self.append = append;
     }
-    pub fn truncate(&mut self, _truncate: bool) {}
+    pub fn truncate(&mut self, truncate: bool) {
+        self.truncate = truncate;
+    }
     pub fn create(&mut self, create: bool) {
         self.write = create;
     }
@@ -164,6 +180,12 @@ impl File {
             io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
         })?;
 
+        if opts.write && opts.read {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Files cannot be opened with read and write access",
+            ));
+        }
         if opts.create_new {
             let file_exists = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
             if file_exists != 0 {
@@ -178,9 +200,19 @@ impl File {
         } else if opts.write && opts.append {
             // Open in read/write and append mode
             unsafe { vex_sdk::vexFileOpenWrite(path.as_ptr()) }
-        } else if opts.write {
+        } else if opts.write && opts.truncate {
             // Open in read/write mode
             unsafe { vex_sdk::vexFileOpenCreate(path.as_ptr()) }
+        } else if opts.write {
+            // Open in read/write and overwrite mode
+            unsafe {
+                // Open in read/write and append mode
+                let fd = vex_sdk::vexFileOpenWrite(path.as_ptr());
+                // Seek to beginning of the file
+                vex_sdk::vexFileSeek(fd, 0, 0);
+
+                fd
+            }
         } else {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -196,7 +228,7 @@ impl File {
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        todo!()
+        FileAttr::from_fd(self.fd.0)
     }
 
     pub fn fsync(&self) -> io::Result<()> {
@@ -351,25 +383,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let file = File::open(p, &opts)?;
     let fd = file.fd.0;
 
-    const SEEK_END: i32 = 2;
-    const SEEK_SET: i32 = 0;
-
-    let end = unsafe {
-        let cur = vex_sdk::vexFileTell(fd);
-        if cur < 0 {
-            return Err(io::Error::new(io::ErrorKind::NotSeekable, "Failed to seek file"));
-        }
-        map_fresult(vex_sdk::vexFileSeek(fd, 0, SEEK_END))?;
-        let end = vex_sdk::vexFileTell(fd);
-        map_fresult(vex_sdk::vexFileSeek(fd, cur as _, SEEK_SET))?;
-        end
-    };
-
-    if end >= 0 {
-        Ok(FileAttr { size: end as u64 })
-    } else {
-        Err(io::Error::new(io::ErrorKind::NotSeekable, "Failed to seek file"))
-    }
+    FileAttr::from_fd(fd)
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
