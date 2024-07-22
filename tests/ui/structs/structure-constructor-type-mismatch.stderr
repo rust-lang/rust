@@ -68,18 +68,15 @@ error[E0107]: type alias takes 0 generic arguments but 1 generic argument was su
   --> $DIR/structure-constructor-type-mismatch.rs:48:15
    |
 LL |     let pt3 = PointF::<i32> {
-   |               ^^^^^^ expected 0 generic arguments
+   |               ^^^^^^------- help: remove the unnecessary generics
+   |               |
+   |               expected 0 generic arguments
    |
 note: type alias defined here, with 0 generic parameters
   --> $DIR/structure-constructor-type-mismatch.rs:6:6
    |
 LL | type PointF = Point<f32>;
    |      ^^^^^^
-help: remove the unnecessary generics
-   |
-LL -     let pt3 = PointF::<i32> {
-LL +     let pt3 = PointF {
-   |
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:49:12
@@ -107,18 +104,15 @@ error[E0107]: type alias takes 0 generic arguments but 1 generic argument was su
   --> $DIR/structure-constructor-type-mismatch.rs:54:9
    |
 LL |         PointF::<u32> { .. } => {}
-   |         ^^^^^^ expected 0 generic arguments
+   |         ^^^^^^------- help: remove the unnecessary generics
+   |         |
+   |         expected 0 generic arguments
    |
 note: type alias defined here, with 0 generic parameters
   --> $DIR/structure-constructor-type-mismatch.rs:6:6
    |
 LL | type PointF = Point<f32>;
    |      ^^^^^^
-help: remove the unnecessary generics
-   |
-LL -         PointF::<u32> { .. } => {}
-LL +         PointF { .. } => {}
-   |
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:54:9

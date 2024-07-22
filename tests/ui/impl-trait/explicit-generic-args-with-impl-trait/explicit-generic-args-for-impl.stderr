@@ -2,7 +2,9 @@ error[E0107]: function takes 1 generic argument but 2 generic arguments were sup
   --> $DIR/explicit-generic-args-for-impl.rs:4:5
    |
 LL |     foo::<str, String>("".to_string());
-   |     ^^^ expected 1 generic argument
+   |     ^^^      -------- help: remove the unnecessary generic argument
+   |     |
+   |     expected 1 generic argument
    |
 note: function defined here, with 1 generic parameter: `T`
   --> $DIR/explicit-generic-args-for-impl.rs:1:4
@@ -10,11 +12,6 @@ note: function defined here, with 1 generic parameter: `T`
 LL | fn foo<T: ?Sized>(_f: impl AsRef<T>) {}
    |    ^^^ -
    = note: `impl Trait` cannot be explicitly specified as a generic argument
-help: remove the unnecessary generic argument
-   |
-LL -     foo::<str, String>("".to_string());
-LL +     foo::<str>("".to_string());
-   |
 
 error: aborting due to 1 previous error
 

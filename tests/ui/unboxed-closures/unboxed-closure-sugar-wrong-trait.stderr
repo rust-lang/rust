@@ -2,18 +2,15 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:8
    |
 LL | fn f<F:Trait(isize) -> isize>(x: F) {}
-   |        ^^^^^ expected 0 generic arguments
+   |        ^^^^^------- help: remove the unnecessary parenthetical generics
+   |        |
+   |        expected 0 generic arguments
    |
 note: trait defined here, with 0 generic parameters
   --> $DIR/unboxed-closure-sugar-wrong-trait.rs:3:7
    |
 LL | trait Trait {}
    |       ^^^^^
-help: remove the unnecessary parenthetical generics
-   |
-LL - fn f<F:Trait(isize) -> isize>(x: F) {}
-LL + fn f<F:Trait -> isize>(x: F) {}
-   |
 
 error[E0220]: associated type `Output` not found for `Trait`
   --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:24

@@ -2,18 +2,15 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/issue-101421.rs:10:8
    |
 LL |     ().f::<()>(());
-   |        ^ expected 0 generic arguments
+   |        ^------ help: remove the unnecessary generics
+   |        |
+   |        expected 0 generic arguments
    |
 note: method defined here, with 0 generic parameters
   --> $DIR/issue-101421.rs:2:8
    |
 LL |     fn f(&self, _: ());
    |        ^
-help: remove the unnecessary generics
-   |
-LL -     ().f::<()>(());
-LL +     ().f(());
-   |
 
 error: aborting due to 1 previous error
 

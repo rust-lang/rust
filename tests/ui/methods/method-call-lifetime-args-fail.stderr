@@ -20,18 +20,15 @@ error[E0107]: method takes 2 lifetime arguments but 3 lifetime arguments were su
   --> $DIR/method-call-lifetime-args-fail.rs:18:7
    |
 LL |     S.early::<'static, 'static, 'static>();
-   |       ^^^^^ expected 2 lifetime arguments
+   |       ^^^^^                   --------- help: remove the lifetime argument
+   |       |
+   |       expected 2 lifetime arguments
    |
 note: method defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/method-call-lifetime-args-fail.rs:6:8
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
    |        ^^^^^ --  --
-help: remove the lifetime argument
-   |
-LL -     S.early::<'static, 'static, 'static>();
-LL +     S.early::<'static, 'static>();
-   |
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:27:15
@@ -223,18 +220,15 @@ error[E0107]: method takes 2 lifetime arguments but 3 lifetime arguments were su
   --> $DIR/method-call-lifetime-args-fail.rs:65:8
    |
 LL |     S::early::<'static, 'static, 'static>(S);
-   |        ^^^^^ expected 2 lifetime arguments
+   |        ^^^^^                   --------- help: remove the lifetime argument
+   |        |
+   |        expected 2 lifetime arguments
    |
 note: method defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/method-call-lifetime-args-fail.rs:6:8
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
    |        ^^^^^ --  --
-help: remove the lifetime argument
-   |
-LL -     S::early::<'static, 'static, 'static>(S);
-LL +     S::early::<'static, 'static>(S);
-   |
 
 error: aborting due to 18 previous errors
 

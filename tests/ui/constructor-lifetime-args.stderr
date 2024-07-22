@@ -20,18 +20,15 @@ error[E0107]: struct takes 2 lifetime arguments but 3 lifetime arguments were su
   --> $DIR/constructor-lifetime-args.rs:19:5
    |
 LL |     S::<'static, 'static, 'static>(&0, &0);
-   |     ^ expected 2 lifetime arguments
+   |     ^                   --------- help: remove the lifetime argument
+   |     |
+   |     expected 2 lifetime arguments
    |
 note: struct defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/constructor-lifetime-args.rs:9:8
    |
 LL | struct S<'a, 'b>(&'a u8, &'b u8);
    |        ^ --  --
-help: remove the lifetime argument
-   |
-LL -     S::<'static, 'static, 'static>(&0, &0);
-LL +     S::<'static, 'static>(&0, &0);
-   |
 
 error[E0107]: enum takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/constructor-lifetime-args.rs:22:8
@@ -55,18 +52,15 @@ error[E0107]: enum takes 2 lifetime arguments but 3 lifetime arguments were supp
   --> $DIR/constructor-lifetime-args.rs:24:8
    |
 LL |     E::V::<'static, 'static, 'static>(&0);
-   |        ^ expected 2 lifetime arguments
+   |        ^                   --------- help: remove the lifetime argument
+   |        |
+   |        expected 2 lifetime arguments
    |
 note: enum defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/constructor-lifetime-args.rs:10:6
    |
 LL | enum E<'a, 'b> {
    |      ^ --  --
-help: remove the lifetime argument
-   |
-LL -     E::V::<'static, 'static, 'static>(&0);
-LL +     E::V::<'static, 'static>(&0);
-   |
 
 error: aborting due to 4 previous errors
 

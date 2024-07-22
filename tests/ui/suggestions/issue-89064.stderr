@@ -46,18 +46,15 @@ error[E0107]: associated function takes 0 generic arguments but 1 generic argume
   --> $DIR/issue-89064.rs:27:21
    |
 LL |     let _ = A::<S>::foo::<S>();
-   |                     ^^^ expected 0 generic arguments
+   |                     ^^^----- help: remove the unnecessary generics
+   |                     |
+   |                     expected 0 generic arguments
    |
 note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-89064.rs:4:8
    |
 LL |     fn foo() {}
    |        ^^^
-help: remove the unnecessary generics
-   |
-LL -     let _ = A::<S>::foo::<S>();
-LL +     let _ = A::<S>::foo();
-   |
 
 error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-89064.rs:31:16

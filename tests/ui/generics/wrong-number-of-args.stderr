@@ -171,86 +171,71 @@ error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supp
   --> $DIR/wrong-number-of-args.rs:6:14
    |
 LL |     type B = Ty<'static>;
-   |              ^^ expected 0 lifetime arguments
+   |              ^^--------- help: remove the unnecessary generics
+   |              |
+   |              expected 0 lifetime arguments
    |
 note: struct defined here, with 0 lifetime parameters
   --> $DIR/wrong-number-of-args.rs:2:12
    |
 LL |     struct Ty;
    |            ^^
-help: remove the unnecessary generics
-   |
-LL -     type B = Ty<'static>;
-LL +     type B = Ty;
-   |
 
 error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/wrong-number-of-args.rs:10:14
    |
 LL |     type C = Ty<'static, usize>;
-   |              ^^ expected 0 lifetime arguments
+   |              ^^ ------- help: remove the lifetime argument
+   |              |
+   |              expected 0 lifetime arguments
    |
 note: struct defined here, with 0 lifetime parameters
   --> $DIR/wrong-number-of-args.rs:2:12
    |
 LL |     struct Ty;
    |            ^^
-help: remove the lifetime argument
-   |
-LL -     type C = Ty<'static, usize>;
-LL +     type C = Ty<, usize>;
-   |
 
 error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/wrong-number-of-args.rs:10:14
    |
 LL |     type C = Ty<'static, usize>;
-   |              ^^ expected 0 generic arguments
+   |              ^^          ----- help: remove the unnecessary generic argument
+   |              |
+   |              expected 0 generic arguments
    |
 note: struct defined here, with 0 generic parameters
   --> $DIR/wrong-number-of-args.rs:2:12
    |
 LL |     struct Ty;
    |            ^^
-help: remove the unnecessary generic argument
-   |
-LL -     type C = Ty<'static, usize>;
-LL +     type C = Ty<'static, >;
-   |
 
 error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/wrong-number-of-args.rs:16:14
    |
 LL |     type D = Ty<'static, usize, { 0 }>;
-   |              ^^ expected 0 lifetime arguments
+   |              ^^ ------- help: remove the lifetime argument
+   |              |
+   |              expected 0 lifetime arguments
    |
 note: struct defined here, with 0 lifetime parameters
   --> $DIR/wrong-number-of-args.rs:2:12
    |
 LL |     struct Ty;
    |            ^^
-help: remove the lifetime argument
-   |
-LL -     type D = Ty<'static, usize, { 0 }>;
-LL +     type D = Ty<, usize, { 0 }>;
-   |
 
 error[E0107]: struct takes 0 generic arguments but 2 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:16:14
    |
 LL |     type D = Ty<'static, usize, { 0 }>;
-   |              ^^ expected 0 generic arguments
+   |              ^^               ------- help: remove the unnecessary generic arguments
+   |              |
+   |              expected 0 generic arguments
    |
 note: struct defined here, with 0 generic parameters
   --> $DIR/wrong-number-of-args.rs:2:12
    |
 LL |     struct Ty;
    |            ^^
-help: remove the unnecessary generic arguments
-   |
-LL -     type D = Ty<'static, usize, { 0 }>;
-LL +     type D = Ty<'static, usize>;
-   |
 
 error[E0107]: missing generics for struct `type_and_type::Ty`
   --> $DIR/wrong-number-of-args.rs:26:14
@@ -290,18 +275,15 @@ error[E0107]: struct takes 2 generic arguments but 3 generic arguments were supp
   --> $DIR/wrong-number-of-args.rs:36:14
    |
 LL |     type D = Ty<usize, String, char>;
-   |              ^^ expected 2 generic arguments
+   |              ^^              ------ help: remove the unnecessary generic argument
+   |              |
+   |              expected 2 generic arguments
    |
 note: struct defined here, with 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:24:12
    |
 LL |     struct Ty<A, B>(A, B);
    |            ^^ -  -
-help: remove the unnecessary generic argument
-   |
-LL -     type D = Ty<usize, String, char>;
-LL +     type D = Ty<usize, String>;
-   |
 
 error[E0107]: struct takes 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:40:14
@@ -371,35 +353,29 @@ error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were sup
   --> $DIR/wrong-number-of-args.rs:70:14
    |
 LL |     type F = Ty<'static, usize, 'static, usize>;
-   |              ^^ expected 1 lifetime argument
+   |              ^^        ---------------- help: remove the lifetime argument
+   |              |
+   |              expected 1 lifetime argument
    |
 note: struct defined here, with 1 lifetime parameter: `'a`
   --> $DIR/wrong-number-of-args.rs:46:12
    |
 LL |     struct Ty<'a, T>(&'a T);
    |            ^^ --
-help: remove the lifetime argument
-   |
-LL -     type F = Ty<'static, usize, 'static, usize>;
-LL +     type F = Ty<'static, usize>;
-   |
 
 error[E0107]: struct takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:70:14
    |
 LL |     type F = Ty<'static, usize, 'static, usize>;
-   |              ^^ expected 1 generic argument
+   |              ^^               ---------------- help: remove the unnecessary generic argument
+   |              |
+   |              expected 1 generic argument
    |
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/wrong-number-of-args.rs:46:12
    |
 LL |     struct Ty<'a, T>(&'a T);
    |            ^^     -
-help: remove the unnecessary generic argument
-   |
-LL -     type F = Ty<'static, usize, 'static, usize>;
-LL +     type F = Ty<'static, usize>;
-   |
 
 error[E0107]: missing generics for struct `type_and_type_and_type::Ty`
   --> $DIR/wrong-number-of-args.rs:80:14
@@ -439,18 +415,15 @@ error[E0107]: struct takes at most 3 generic arguments but 4 generic arguments w
   --> $DIR/wrong-number-of-args.rs:92:14
    |
 LL |     type E = Ty<usize, String, char, f64>;
-   |              ^^ expected at most 3 generic arguments
+   |              ^^                    ----- help: remove the unnecessary generic argument
+   |              |
+   |              expected at most 3 generic arguments
    |
 note: struct defined here, with at most 3 generic parameters: `A`, `B`, `C`
   --> $DIR/wrong-number-of-args.rs:78:12
    |
 LL |     struct Ty<A, B, C = &'static str>(A, B, C);
    |            ^^ -  -  ----------------
-help: remove the unnecessary generic argument
-   |
-LL -     type E = Ty<usize, String, char, f64>;
-LL +     type E = Ty<usize, String, char>;
-   |
 
 error[E0107]: struct takes at least 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:96:14
@@ -472,35 +445,29 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/wrong-number-of-args.rs:116:22
    |
 LL |     type A = Box<dyn NonGeneric<usize>>;
-   |                      ^^^^^^^^^^ expected 0 generic arguments
+   |                      ^^^^^^^^^^------- help: remove the unnecessary generics
+   |                      |
+   |                      expected 0 generic arguments
    |
 note: trait defined here, with 0 generic parameters
   --> $DIR/wrong-number-of-args.rs:104:11
    |
 LL |     trait NonGeneric {
    |           ^^^^^^^^^^
-help: remove the unnecessary generics
-   |
-LL -     type A = Box<dyn NonGeneric<usize>>;
-LL +     type A = Box<dyn NonGeneric>;
-   |
 
 error[E0107]: trait takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/wrong-number-of-args.rs:125:22
    |
 LL |     type C = Box<dyn GenericLifetime<'static, 'static>>;
-   |                      ^^^^^^^^^^^^^^^ expected 1 lifetime argument
+   |                      ^^^^^^^^^^^^^^^        --------- help: remove the lifetime argument
+   |                      |
+   |                      expected 1 lifetime argument
    |
 note: trait defined here, with 1 lifetime parameter: `'a`
   --> $DIR/wrong-number-of-args.rs:108:11
    |
 LL |     trait GenericLifetime<'a> {
    |           ^^^^^^^^^^^^^^^ --
-help: remove the lifetime argument
-   |
-LL -     type C = Box<dyn GenericLifetime<'static, 'static>>;
-LL +     type C = Box<dyn GenericLifetime<'static>>;
-   |
 
 error[E0107]: missing generics for trait `GenericType`
   --> $DIR/wrong-number-of-args.rs:129:22
@@ -522,18 +489,15 @@ error[E0107]: trait takes 1 generic argument but 2 generic arguments were suppli
   --> $DIR/wrong-number-of-args.rs:133:22
    |
 LL |     type E = Box<dyn GenericType<String, usize>>;
-   |                      ^^^^^^^^^^^ expected 1 generic argument
+   |                      ^^^^^^^^^^^       ------- help: remove the unnecessary generic argument
+   |                      |
+   |                      expected 1 generic argument
    |
 note: trait defined here, with 1 generic parameter: `A`
   --> $DIR/wrong-number-of-args.rs:112:11
    |
 LL |     trait GenericType<A> {
    |           ^^^^^^^^^^^ -
-help: remove the unnecessary generic argument
-   |
-LL -     type E = Box<dyn GenericType<String, usize>>;
-LL +     type E = Box<dyn GenericType<String>>;
-   |
 
 error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:142:22
@@ -555,52 +519,43 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/wrong-number-of-args.rs:153:26
    |
 LL |         type A = Box<dyn NonGenericAT<usize, AssocTy=()>>;
-   |                          ^^^^^^^^^^^^ expected 0 generic arguments
+   |                          ^^^^^^^^^^^^------------------- help: remove the unnecessary generics
+   |                          |
+   |                          expected 0 generic arguments
    |
 note: trait defined here, with 0 generic parameters
   --> $DIR/wrong-number-of-args.rs:149:15
    |
 LL |         trait NonGenericAT {
    |               ^^^^^^^^^^^^
-help: remove the unnecessary generics
-   |
-LL -         type A = Box<dyn NonGenericAT<usize, AssocTy=()>>;
-LL +         type A = Box<dyn NonGenericAT>;
-   |
 
 error[E0107]: trait takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/wrong-number-of-args.rs:168:26
    |
 LL |         type B = Box<dyn GenericLifetimeAT<'static, 'static, AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^ expected 1 lifetime argument
+   |                          ^^^^^^^^^^^^^^^^^        --------- help: remove the lifetime argument
+   |                          |
+   |                          expected 1 lifetime argument
    |
 note: trait defined here, with 1 lifetime parameter: `'a`
   --> $DIR/wrong-number-of-args.rs:159:15
    |
 LL |         trait GenericLifetimeAT<'a> {
    |               ^^^^^^^^^^^^^^^^^ --
-help: remove the lifetime argument
-   |
-LL -         type B = Box<dyn GenericLifetimeAT<'static, 'static, AssocTy=()>>;
-LL +         type B = Box<dyn GenericLifetimeAT<'static, AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/wrong-number-of-args.rs:172:26
    |
 LL |         type C = Box<dyn GenericLifetimeAT<(), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^ expected 0 generic arguments
+   |                          ^^^^^^^^^^^^^^^^^ -- help: remove the unnecessary generic argument
+   |                          |
+   |                          expected 0 generic arguments
    |
 note: trait defined here, with 0 generic parameters
   --> $DIR/wrong-number-of-args.rs:159:15
    |
 LL |         trait GenericLifetimeAT<'a> {
    |               ^^^^^^^^^^^^^^^^^
-help: remove the unnecessary generic argument
-   |
-LL -         type C = Box<dyn GenericLifetimeAT<(), AssocTy=()>>;
-LL +         type C = Box<dyn GenericLifetimeAT<, AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:185:26
@@ -622,35 +577,29 @@ error[E0107]: trait takes 1 generic argument but 2 generic arguments were suppli
   --> $DIR/wrong-number-of-args.rs:189:26
    |
 LL |         type B = Box<dyn GenericTypeAT<(), (), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^ expected 1 generic argument
+   |                          ^^^^^^^^^^^^^   ---- help: remove the unnecessary generic argument
+   |                          |
+   |                          expected 1 generic argument
    |
 note: trait defined here, with 1 generic parameter: `A`
   --> $DIR/wrong-number-of-args.rs:181:15
    |
 LL |         trait GenericTypeAT<A> {
    |               ^^^^^^^^^^^^^ -
-help: remove the unnecessary generic argument
-   |
-LL -         type B = Box<dyn GenericTypeAT<(), (), AssocTy=()>>;
-LL +         type B = Box<dyn GenericTypeAT<(), AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/wrong-number-of-args.rs:193:26
    |
 LL |         type C = Box<dyn GenericTypeAT<'static, AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^ expected 0 lifetime arguments
+   |                          ^^^^^^^^^^^^^--------------------- help: remove the unnecessary generics
+   |                          |
+   |                          expected 0 lifetime arguments
    |
 note: trait defined here, with 0 lifetime parameters
   --> $DIR/wrong-number-of-args.rs:181:15
    |
 LL |         trait GenericTypeAT<A> {
    |               ^^^^^^^^^^^^^
-help: remove the unnecessary generics
-   |
-LL -         type C = Box<dyn GenericTypeAT<'static, AssocTy=()>>;
-LL +         type C = Box<dyn GenericTypeAT>;
-   |
 
 error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:193:26
@@ -704,18 +653,15 @@ error[E0107]: trait takes 1 lifetime argument but 2 lifetime arguments were supp
   --> $DIR/wrong-number-of-args.rs:216:26
    |
 LL |         type C = Box<dyn GenericLifetimeTypeAT<'static, 'static, AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ expected 1 lifetime argument
+   |                          ^^^^^^^^^^^^^^^^^^^^^        --------- help: remove the lifetime argument
+   |                          |
+   |                          expected 1 lifetime argument
    |
 note: trait defined here, with 1 lifetime parameter: `'a`
   --> $DIR/wrong-number-of-args.rs:201:15
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^ --
-help: remove the lifetime argument
-   |
-LL -         type C = Box<dyn GenericLifetimeTypeAT<'static, 'static, AssocTy=()>>;
-LL +         type C = Box<dyn GenericLifetimeTypeAT<'static, AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:216:26
@@ -737,86 +683,71 @@ error[E0107]: trait takes 1 generic argument but 2 generic arguments were suppli
   --> $DIR/wrong-number-of-args.rs:227:26
    |
 LL |         type E = Box<dyn GenericLifetimeTypeAT<(), (), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ expected 1 generic argument
+   |                          ^^^^^^^^^^^^^^^^^^^^^   ---- help: remove the unnecessary generic argument
+   |                          |
+   |                          expected 1 generic argument
    |
 note: trait defined here, with 1 generic parameter: `A`
   --> $DIR/wrong-number-of-args.rs:201:15
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^     -
-help: remove the unnecessary generic argument
-   |
-LL -         type E = Box<dyn GenericLifetimeTypeAT<(), (), AssocTy=()>>;
-LL +         type E = Box<dyn GenericLifetimeTypeAT<(), AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/wrong-number-of-args.rs:234:26
    |
 LL |         type F = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ expected 1 lifetime argument
+   |                          ^^^^^^^^^^^^^^^^^^^^^        --------- help: remove the lifetime argument
+   |                          |
+   |                          expected 1 lifetime argument
    |
 note: trait defined here, with 1 lifetime parameter: `'a`
   --> $DIR/wrong-number-of-args.rs:201:15
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^ --
-help: remove the lifetime argument
-   |
-LL -         type F = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), AssocTy=()>>;
-LL +         type F = Box<dyn GenericLifetimeTypeAT<'static, (), AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:238:26
    |
 LL |         type G = Box<dyn GenericLifetimeTypeAT<'static, (), (), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ expected 1 generic argument
+   |                          ^^^^^^^^^^^^^^^^^^^^^            ---- help: remove the unnecessary generic argument
+   |                          |
+   |                          expected 1 generic argument
    |
 note: trait defined here, with 1 generic parameter: `A`
   --> $DIR/wrong-number-of-args.rs:201:15
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^     -
-help: remove the unnecessary generic argument
-   |
-LL -         type G = Box<dyn GenericLifetimeTypeAT<'static, (), (), AssocTy=()>>;
-LL +         type G = Box<dyn GenericLifetimeTypeAT<'static, (), AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/wrong-number-of-args.rs:242:26
    |
 LL |         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), (), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ expected 1 lifetime argument
+   |                          ^^^^^^^^^^^^^^^^^^^^^        --------- help: remove the lifetime argument
+   |                          |
+   |                          expected 1 lifetime argument
    |
 note: trait defined here, with 1 lifetime parameter: `'a`
   --> $DIR/wrong-number-of-args.rs:201:15
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^ --
-help: remove the lifetime argument
-   |
-LL -         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), (), AssocTy=()>>;
-LL +         type H = Box<dyn GenericLifetimeTypeAT<'static, (), (), AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:242:26
    |
 LL |         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), (), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^ expected 1 generic argument
+   |                          ^^^^^^^^^^^^^^^^^^^^^                     ---- help: remove the unnecessary generic argument
+   |                          |
+   |                          expected 1 generic argument
    |
 note: trait defined here, with 1 generic parameter: `A`
   --> $DIR/wrong-number-of-args.rs:201:15
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^     -
-help: remove the unnecessary generic argument
-   |
-LL -         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), (), AssocTy=()>>;
-LL +         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:254:26
@@ -856,18 +787,15 @@ error[E0107]: trait takes 2 generic arguments but 3 generic arguments were suppl
   --> $DIR/wrong-number-of-args.rs:262:26
    |
 LL |         type C = Box<dyn GenericTypeTypeAT<(), (), (), AssocTy=()>>;
-   |                          ^^^^^^^^^^^^^^^^^ expected 2 generic arguments
+   |                          ^^^^^^^^^^^^^^^^^       ---- help: remove the unnecessary generic argument
+   |                          |
+   |                          expected 2 generic arguments
    |
 note: trait defined here, with 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:250:15
    |
 LL |         trait GenericTypeTypeAT<A, B> {
    |               ^^^^^^^^^^^^^^^^^ -  -
-help: remove the unnecessary generic argument
-   |
-LL -         type C = Box<dyn GenericTypeTypeAT<(), (), (), AssocTy=()>>;
-LL +         type C = Box<dyn GenericTypeTypeAT<(), (), AssocTy=()>>;
-   |
 
 error[E0107]: trait takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/wrong-number-of-args.rs:277:26
@@ -983,13 +911,9 @@ error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supp
   --> $DIR/wrong-number-of-args.rs:318:18
    |
 LL |         type C = HashMap<'static>;
-   |                  ^^^^^^^ expected 0 lifetime arguments
-   |
-help: remove the unnecessary generics
-   |
-LL -         type C = HashMap<'static>;
-LL +         type C = HashMap;
-   |
+   |                  ^^^^^^^--------- help: remove the unnecessary generics
+   |                  |
+   |                  expected 0 lifetime arguments
 
 error[E0107]: struct takes at least 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:318:18
@@ -1006,13 +930,9 @@ error[E0107]: struct takes at most 3 generic arguments but 4 generic arguments w
   --> $DIR/wrong-number-of-args.rs:324:18
    |
 LL |         type D = HashMap<usize, String, char, f64>;
-   |                  ^^^^^^^ expected at most 3 generic arguments
-   |
-help: remove the unnecessary generic argument
-   |
-LL -         type D = HashMap<usize, String, char, f64>;
-LL +         type D = HashMap<usize, String, char>;
-   |
+   |                  ^^^^^^^                    ----- help: remove the unnecessary generic argument
+   |                  |
+   |                  expected at most 3 generic arguments
 
 error[E0107]: struct takes at least 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:328:18
@@ -1053,13 +973,9 @@ error[E0107]: enum takes 0 lifetime arguments but 1 lifetime argument was suppli
   --> $DIR/wrong-number-of-args.rs:342:18
    |
 LL |         type C = Result<'static>;
-   |                  ^^^^^^ expected 0 lifetime arguments
-   |
-help: remove the unnecessary generics
-   |
-LL -         type C = Result<'static>;
-LL +         type C = Result;
-   |
+   |                  ^^^^^^--------- help: remove the unnecessary generics
+   |                  |
+   |                  expected 0 lifetime arguments
 
 error[E0107]: enum takes 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:342:18
@@ -1076,13 +992,9 @@ error[E0107]: enum takes 2 generic arguments but 3 generic arguments were suppli
   --> $DIR/wrong-number-of-args.rs:348:18
    |
 LL |         type D = Result<usize, String, char>;
-   |                  ^^^^^^ expected 2 generic arguments
-   |
-help: remove the unnecessary generic argument
-   |
-LL -         type D = Result<usize, String, char>;
-LL +         type D = Result<usize, String>;
-   |
+   |                  ^^^^^^              ------ help: remove the unnecessary generic argument
+   |                  |
+   |                  expected 2 generic arguments
 
 error[E0107]: enum takes 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:352:18

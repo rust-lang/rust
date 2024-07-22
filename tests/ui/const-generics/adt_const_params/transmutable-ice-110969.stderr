@@ -2,13 +2,9 @@ error[E0107]: trait takes at most 2 generic arguments but 3 generic arguments we
   --> $DIR/transmutable-ice-110969.rs:11:14
    |
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
-   |              ^^^^^^^^^^^^^^^^^^^^^ expected at most 2 generic arguments
-   |
-help: remove the unnecessary generic argument
-   |
-LL -         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
-LL +         Dst: BikeshedIntrinsicFrom<Src, Context>,
-   |
+   |              ^^^^^^^^^^^^^^^^^^^^^             -------- help: remove the unnecessary generic argument
+   |              |
+   |              expected at most 2 generic arguments
 
 error[E0308]: mismatched types
   --> $DIR/transmutable-ice-110969.rs:25:74

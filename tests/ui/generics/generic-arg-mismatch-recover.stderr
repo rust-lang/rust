@@ -2,52 +2,43 @@ error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were sup
   --> $DIR/generic-arg-mismatch-recover.rs:6:5
    |
 LL |     Foo::<'static, 'static, ()>(&0);
-   |     ^^^ expected 1 lifetime argument
+   |     ^^^          --------- help: remove the lifetime argument
+   |     |
+   |     expected 1 lifetime argument
    |
 note: struct defined here, with 1 lifetime parameter: `'a`
   --> $DIR/generic-arg-mismatch-recover.rs:1:8
    |
 LL | struct Foo<'a, T: 'a>(&'a T);
    |        ^^^ --
-help: remove the lifetime argument
-   |
-LL -     Foo::<'static, 'static, ()>(&0);
-LL +     Foo::<'static, ()>(&0);
-   |
 
 error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/generic-arg-mismatch-recover.rs:9:5
    |
 LL |     Bar::<'static, 'static, ()>(&());
-   |     ^^^ expected 1 lifetime argument
+   |     ^^^          --------- help: remove the lifetime argument
+   |     |
+   |     expected 1 lifetime argument
    |
 note: struct defined here, with 1 lifetime parameter: `'a`
   --> $DIR/generic-arg-mismatch-recover.rs:3:8
    |
 LL | struct Bar<'a>(&'a ());
    |        ^^^ --
-help: remove the lifetime argument
-   |
-LL -     Bar::<'static, 'static, ()>(&());
-LL +     Bar::<'static, ()>(&());
-   |
 
 error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/generic-arg-mismatch-recover.rs:9:5
    |
 LL |     Bar::<'static, 'static, ()>(&());
-   |     ^^^ expected 0 generic arguments
+   |     ^^^                     -- help: remove the unnecessary generic argument
+   |     |
+   |     expected 0 generic arguments
    |
 note: struct defined here, with 0 generic parameters
   --> $DIR/generic-arg-mismatch-recover.rs:3:8
    |
 LL | struct Bar<'a>(&'a ());
    |        ^^^
-help: remove the unnecessary generic argument
-   |
-LL -     Bar::<'static, 'static, ()>(&());
-LL +     Bar::<'static, 'static, >(&());
-   |
 
 error: aborting due to 3 previous errors
 

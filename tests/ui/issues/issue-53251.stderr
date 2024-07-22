@@ -2,7 +2,9 @@ error[E0107]: associated function takes 0 generic arguments but 1 generic argume
   --> $DIR/issue-53251.rs:11:20
    |
 LL |                 S::f::<i64>();
-   |                    ^ expected 0 generic arguments
+   |                    ^------- help: remove the unnecessary generics
+   |                    |
+   |                    expected 0 generic arguments
 ...
 LL | impl_add!(a b);
    | -------------- in this macro invocation
@@ -13,17 +15,14 @@ note: associated function defined here, with 0 generic parameters
 LL |     fn f() {}
    |        ^
    = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: remove the unnecessary generics
-   |
-LL -                 S::f::<i64>();
-LL +                 S::f();
-   |
 
 error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-53251.rs:11:20
    |
 LL |                 S::f::<i64>();
-   |                    ^ expected 0 generic arguments
+   |                    ^------- help: remove the unnecessary generics
+   |                    |
+   |                    expected 0 generic arguments
 ...
 LL | impl_add!(a b);
    | -------------- in this macro invocation
@@ -35,11 +34,6 @@ LL |     fn f() {}
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: remove the unnecessary generics
-   |
-LL -                 S::f::<i64>();
-LL +                 S::f();
-   |
 
 error: aborting due to 2 previous errors
 
