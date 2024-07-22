@@ -82,7 +82,7 @@ pub(crate) fn format_expr(
         )
         .ok(),
         ast::ExprKind::Lit(token_lit) => {
-            if let Some(expr_rw) = rewrite_literal(context, token_lit, expr.span, shape) {
+            if let Ok(expr_rw) = rewrite_literal(context, token_lit, expr.span, shape) {
                 Some(expr_rw)
             } else {
                 if let LitKind::StrRaw(_) = token_lit.kind {
@@ -1262,7 +1262,7 @@ pub(crate) fn rewrite_literal(
     token_lit: token::Lit,
     span: Span,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     match token_lit.kind {
         token::LitKind::Str => rewrite_string_lit(context, span, shape),
         token::LitKind::Integer => rewrite_int_lit(context, token_lit, span, shape),
@@ -1270,11 +1270,12 @@ pub(crate) fn rewrite_literal(
             context.snippet(span).to_owned(),
             context.config.max_width(),
             shape,
-        ),
+        )
+        .max_width_error(shape.width, span),
     }
 }
 
-fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) -> Option<String> {
+fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) -> RewriteResult {
     let string_lit = context.snippet(span);
 
     if !context.config.format_strings() {
@@ -1284,9 +1285,10 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
             .all(|line| line.ends_with('\\'))
             && context.config.style_edition() >= StyleEdition::Edition2024
         {
-            return Some(string_lit.to_owned());
+            return Ok(string_lit.to_owned());
         } else {
-            return wrap_str(string_lit.to_owned(), context.config.max_width(), shape);
+            return wrap_str(string_lit.to_owned(), context.config.max_width(), shape)
+                .max_width_error(shape.width, span);
         }
     }
 
@@ -1298,6 +1300,7 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
         &StringFormat::new(shape.visual_indent(0), context.config),
         shape.width.saturating_sub(2),
     )
+    .max_width_error(shape.width, span) // - 2 ?
 }
 
 fn rewrite_int_lit(
@@ -1305,7 +1308,7 @@ fn rewrite_int_lit(
     token_lit: token::Lit,
     span: Span,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let symbol = token_lit.symbol.as_str();
 
     if let Some(symbol_stripped) = symbol.strip_prefix("0x") {
@@ -1323,7 +1326,8 @@ fn rewrite_int_lit(
                 ),
                 context.config.max_width(),
                 shape,
-            );
+            )
+            .max_width_error(shape.width, span);
         }
     }
 
@@ -1332,6 +1336,7 @@ fn rewrite_int_lit(
         context.config.max_width(),
         shape,
     )
+    .max_width_error(shape.width, span)
 }
 
 fn choose_separator_tactic(context: &RewriteContext<'_>, span: Span) -> Option<SeparatorTactic> {

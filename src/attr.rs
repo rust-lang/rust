@@ -11,7 +11,7 @@ use crate::config::IndentStyle;
 use crate::expr::rewrite_literal;
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::overflow;
-use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::types::{rewrite_path, PathContext};
@@ -244,8 +244,14 @@ fn rewrite_initial_doc_comments(
 
 impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self {
-            ast::NestedMetaItem::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
+            ast::NestedMetaItem::MetaItem(ref meta_item) => {
+                meta_item.rewrite_result(context, shape)
+            }
             ast::NestedMetaItem::Lit(ref l) => {
                 rewrite_literal(context, l.as_token_lit(), l.span, shape)
             }
@@ -277,11 +283,7 @@ impl Rewrite for ast::MetaItem {
         self.rewrite_result(context, shape).ok()
     }
 
-    fn rewrite_result(
-        &self,
-        context: &RewriteContext<'_>,
-        shape: Shape,
-    ) -> crate::rewrite::RewriteResult {
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         Ok(match self.kind {
             ast::MetaItemKind::Word => {
                 rewrite_path(context, PathContext::Type, &None, &self.path, shape)?
@@ -317,7 +319,7 @@ impl Rewrite for ast::MetaItem {
                 // is longer than the max width and continue on formatting.
                 // See #2479 for example.
                 let value = rewrite_literal(context, lit.as_token_lit(), lit.span, lit_shape)
-                    .unwrap_or_else(|| context.snippet(lit.span).to_owned());
+                    .unwrap_or_else(|_| context.snippet(lit.span).to_owned());
                 format!("{path} = {value}")
             }
         })
