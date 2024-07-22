@@ -15,8 +15,8 @@ use rustc_span::{BytePos, Span};
 use Context::*;
 
 use crate::errors::{
-    BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ContinueLabeledBlock, OutsideLoop,
-    OutsideLoopSuggestion, UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
+    BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, OutsideLoop, OutsideLoopSuggestion,
+    UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -266,13 +266,9 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.require_label_in_labeled_block(e.span, &destination, "continue");
 
                 match destination.target_id {
-                    Ok(loop_id) => {
-                        if let Node::Block(block) = self.tcx.hir_node(loop_id) {
-                            self.sess.dcx().emit_err(ContinueLabeledBlock {
-                                span: e.span,
-                                block_span: block.span,
-                            });
-                        }
+                    Ok(_loop_id) => {
+                        // We have already insured that the loop exists while lowering the ast.
+                        // See `compiler/rustc_ast_lowering/src/expr.rs::LoweringContext::lower_expr_mut`
                     }
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
                         self.sess.dcx().emit_err(UnlabeledCfInWhileCondition {

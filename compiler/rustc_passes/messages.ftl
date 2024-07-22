@@ -95,11 +95,6 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
-passes_continue_labeled_block =
-    `continue` pointing to a labeled block
-    .label = labeled blocks cannot be `continue`'d
-    .block_label = labeled block the `continue` points to
-
 passes_coverage_not_fn_or_closure =
     attribute should be applied to a function definition or closure
     .label = not a function or closure

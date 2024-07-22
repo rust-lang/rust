@@ -1045,16 +1045,6 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_continue_labeled_block, code = E0696)]
-pub struct ContinueLabeledBlock {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_block_label)]
-    pub block_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_break_inside_closure, code = E0267)]
 pub struct BreakInsideClosure<'a> {
     #[primary_span]
