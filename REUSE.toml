@@ -1,5 +1,17 @@
 version = 1
 
+# Reuse annotations file.
+#
+# This file controls how reuse-tool finds copyright and license notices within
+# source files. As the tool has a habit of picking up random uses of the word
+# 'Copyright' within source code, and because it will complain that other files
+# do not contain any specific copyright and license notifications, we usually
+# just set a blanket license and copyright notice for a whole sub-tree at a
+# time.
+#
+# See https://reuse.software and https://github.com/fsfe/reuse-tool for more
+# details. We currently use reuse-tool version 4.0.3.
+
 [[annotations]]
 path = [
     "compiler/**",
@@ -19,6 +31,7 @@ path = [
     "LICENSE-MIT",
     "README.md",
     "RELEASES.md",
+    "REUSE.toml",
     "rustfmt.toml",
     "rust-bors.toml",
     "triagebot.toml",
