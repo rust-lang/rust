@@ -44,13 +44,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut res = self.lower_res(base_res);
 
         // When we have an `async` kw on a bound, map the trait it resolves to.
-        let mut bound_modifier_allowed_features = None;
         if let Some(TraitBoundModifiers { asyncness: BoundAsyncness::Async(_), .. }) = modifiers {
             match res {
                 Res::Def(DefKind::Trait, def_id) => {
-                    if let Some((async_def_id, features)) = self.map_trait_to_async_trait(def_id) {
+                    if let Some(async_def_id) = self.map_trait_to_async_trait(def_id) {
                         res = Res::Def(DefKind::Trait, async_def_id);
-                        bound_modifier_allowed_features = Some(features);
                     } else {
                         self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span: p.span });
                     }
@@ -66,6 +64,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
         }
+
+        // Ungate the `async_fn_traits` feature in the path if the trait is
+        // named via either `async Fn*()` or `AsyncFn*()`.
+        let bound_modifier_allowed_features = if let Res::Def(DefKind::Trait, async_def_id) = res
+            && self.tcx.async_fn_trait_kind_from_def_id(async_def_id).is_some()
+        {
+            Some(self.allow_async_fn_traits.clone())
+        } else {
+            None
+        };
 
         let path_span_lo = p.span.shrink_to_lo();
         let proj_start = p.segments.len() - unresolved_segments;
@@ -506,14 +514,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// This only needs to be done until we unify `AsyncFn` and `Fn` traits into one
     /// that is generic over `async`ness, if that's ever possible, or modify the
     /// lowering of `async Fn()` bounds to desugar to another trait like `LendingFn`.
-    fn map_trait_to_async_trait(&self, def_id: DefId) -> Option<(DefId, Lrc<[Symbol]>)> {
+    fn map_trait_to_async_trait(&self, def_id: DefId) -> Option<DefId> {
         let lang_items = self.tcx.lang_items();
         if Some(def_id) == lang_items.fn_trait() {
-            Some((lang_items.async_fn_trait()?, self.allow_async_fn_traits.clone()))
+            lang_items.async_fn_trait()
         } else if Some(def_id) == lang_items.fn_mut_trait() {
-            Some((lang_items.async_fn_mut_trait()?, self.allow_async_fn_traits.clone()))
+            lang_items.async_fn_mut_trait()
         } else if Some(def_id) == lang_items.fn_once_trait() {
-            Some((lang_items.async_fn_once_trait()?, self.allow_async_fn_traits.clone()))
+            lang_items.async_fn_once_trait()
         } else {
             None
         }
