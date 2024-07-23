@@ -16,12 +16,9 @@ static mut STATIC: u32 = 42;
 static INTERIOR_MUTABLE_STATIC: SyncUnsafeCell<u32> = SyncUnsafeCell::new(42);
 
 // A static that mutably points to STATIC.
-static PTR: SyncPtr = SyncPtr {
-    foo: unsafe { ptr::addr_of_mut!(STATIC) },
-};
-static INTERIOR_MUTABLE_PTR: SyncPtr = SyncPtr {
-    foo: ptr::addr_of!(INTERIOR_MUTABLE_STATIC) as *mut u32,
-};
+static PTR: SyncPtr = SyncPtr { foo: ptr::addr_of_mut!(STATIC) };
+static INTERIOR_MUTABLE_PTR: SyncPtr =
+    SyncPtr { foo: ptr::addr_of!(INTERIOR_MUTABLE_STATIC) as *mut u32 };
 
 fn main() {
     let ptr = PTR.foo;
