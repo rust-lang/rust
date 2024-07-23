@@ -16,7 +16,6 @@ pub mod itron {
     use super::unsupported;
 }
 
-pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
 pub mod env;

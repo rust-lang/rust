@@ -1,6 +1,5 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
 #[path = "../unsupported/env.rs"]

@@ -17,7 +17,6 @@
 
 use crate::os::raw::c_char;
 
-pub mod alloc;
 pub mod args;
 pub mod env;
 pub mod fd;
