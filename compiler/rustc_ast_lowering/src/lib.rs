@@ -38,6 +38,7 @@
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
+#![recursion_limit = "256"]
 
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
 use rustc_ast::node_id::NodeMap;
@@ -467,7 +468,16 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
 
     // Drop AST to free memory
     drop(ast_index);
-    sess.time("drop_ast", || drop(krate));
+
+    sess.time("drop_ast", || {
+        why_does_this_work_dot_gif(krate);
+    });
+
+    fn why_does_this_work_dot_gif<T: Sync + Send + 'static>(t: T) {
+        std::thread::spawn(|| {
+            drop(t);
+        });
+    }
 
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =

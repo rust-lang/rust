@@ -11,6 +11,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 // tidy-alphabetical-end
+#![recursion_limit = "256"]
 
 use rustc_ast as ast;
 use rustc_ast::token;

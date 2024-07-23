@@ -120,10 +120,10 @@ impl ToAttrTokenStream for AttrTokenStream {
 /// of an actual `TokenStream` until it is needed.
 /// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
-pub struct LazyAttrTokenStream(Lrc<Box<dyn ToAttrTokenStream>>);
+pub struct LazyAttrTokenStream(Lrc<Box<dyn ToAttrTokenStream + Send + Sync>>);
 
 impl LazyAttrTokenStream {
-    pub fn new(inner: impl ToAttrTokenStream + 'static) -> LazyAttrTokenStream {
+    pub fn new(inner: impl ToAttrTokenStream + 'static + Send + Sync) -> LazyAttrTokenStream {
         LazyAttrTokenStream(Lrc::new(Box::new(inner)))
     }
 
