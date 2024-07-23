@@ -347,12 +347,13 @@ pub fn llfn_attrs_from_instance<'ll, 'tcx>(
         OptimizeAttr::Speed => {}
     }
 
-    let inline =
-        if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
-            InlineAttr::Hint
-        } else {
-            codegen_fn_attrs.inline
-        };
+    let inline = if codegen_fn_attrs.inline == InlineAttr::None
+        && cx.tcx.cross_crate_inlinable(instance.def_id())
+    {
+        InlineAttr::Hint
+    } else {
+        codegen_fn_attrs.inline
+    };
     to_add.extend(inline_attr(cx, inline));
 
     // The `uwtable` attribute according to LLVM is:

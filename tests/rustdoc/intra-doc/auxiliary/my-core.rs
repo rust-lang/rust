@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, rustdoc_internals, rustc_attrs)]
+#![feature(no_core, lang_items, rustdoc_internals, rustc_attrs, arbitrary_self_types)]
 #![no_core]
 #![rustc_coherence_is_core]
 #![crate_type="rlib"]
@@ -16,8 +16,13 @@ impl char {
 #[lang = "sized"]
 pub trait Sized {}
 
+#[lang = "receiver"]
+pub trait Receiver {}
+
 #[lang = "clone"]
-pub trait Clone: Sized {}
+pub trait Clone: Sized {
+    fn clone(&self) -> Self;
+}
 
 #[lang = "copy"]
 pub trait Copy: Clone {}

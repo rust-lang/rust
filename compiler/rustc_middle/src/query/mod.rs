@@ -2288,7 +2288,7 @@ rustc_queries! {
     }
 
     query cross_crate_inlinable(def_id: DefId) -> bool {
-        desc { "whether the item should be made inlinable across crates" }
+        desc { |tcx| "deciding whether `{}` should be inlinable across crates", tcx.def_path_str(key) }
         separate_provide_extern
     }
 }

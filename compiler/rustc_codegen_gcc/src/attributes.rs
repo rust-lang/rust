@@ -48,7 +48,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         let inline = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
             InlineAttr::Never
         } else if codegen_fn_attrs.inline == InlineAttr::None
-            && instance.def.requires_inline(cx.tcx)
+            && cx.tcx.cross_crate_inlinable(instance.def_id())
         {
             InlineAttr::Hint
         } else {

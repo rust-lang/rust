@@ -9,6 +9,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
+use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, TyCtxt};
 use rustc_middle::util::Providers;
@@ -96,9 +97,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             // Functions marked with #[inline] are codegened with "internal"
             // linkage and are not exported unless marked with an extern
             // indicator
-            if !Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
-                || tcx.codegen_fn_attrs(def_id.to_def_id()).contains_extern_indicator()
-            {
+            let instance = MonoItem::Fn(Instance::mono(tcx, def_id.to_def_id()));
+            if !matches!(instance.instantiation_mode(tcx), InstantiationMode::LocalCopy) {
                 Some(def_id)
             } else {
                 None

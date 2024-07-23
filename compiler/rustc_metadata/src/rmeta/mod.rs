@@ -401,7 +401,7 @@ define_tables! {
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
-    cross_crate_inlinable: Table<DefIndex, bool>,
+    cross_crate_inlinable: Table<DefIndex, Option<bool>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,

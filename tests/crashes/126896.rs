@@ -4,6 +4,7 @@
 #![feature(type_alias_impl_trait)]
 type Two<'a, 'b> = impl std::fmt::Debug;
 
+#[inline]
 fn set(x: &mut isize) -> isize {
     *x
 }

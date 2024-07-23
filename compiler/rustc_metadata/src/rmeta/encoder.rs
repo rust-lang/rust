@@ -1657,19 +1657,50 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let reachable_set = tcx.reachable_set(());
 
-        let keys_and_jobs = tcx.mir_keys(()).iter().filter_map(|&def_id| {
+        let lang_items = tcx.lang_items();
+        for (trait_def_id, symbol) in [
+            (lang_items.clone_trait(), sym::clone),
+            (lang_items.fn_once_trait(), sym::call_once),
+            (lang_items.fn_mut_trait(), sym::call_mut),
+            (lang_items.fn_trait(), sym::call),
+        ] {
+            if let Some(trait_def_id) = trait_def_id {
+                let fn_def_id = tcx
+                    .associated_items(trait_def_id)
+                    .filter_by_name_unhygienic(symbol)
+                    .next()
+                    .unwrap()
+                    .def_id;
+                if fn_def_id.is_local() {
+                    self.tables
+                        .cross_crate_inlinable
+                        .set(fn_def_id.index, Some(self.tcx.cross_crate_inlinable(fn_def_id)));
+                }
+            }
+        }
+
+        for (symbol, _) in tcx.exported_symbols(LOCAL_CRATE) {
+            use crate::rmeta::ExportedSymbol::*;
+            let (NonGeneric(def_id) | Generic(def_id, _) | ThreadLocalShim(def_id)) = symbol else {
+                continue;
+            };
+            self.tables.cross_crate_inlinable.set(def_id.index, Some(false));
+        }
+
+        for def_id in tcx.mir_keys(()).iter().copied() {
+            self.tables
+                .cross_crate_inlinable
+                .set(def_id.to_def_id().index, Some(self.tcx.cross_crate_inlinable(def_id)));
             let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
-            if encode_const || encode_opt { Some((def_id, encode_const, encode_opt)) } else { None }
-        });
-        for (def_id, encode_const, encode_opt) in keys_and_jobs {
+            if encode_const || encode_opt {
+            } else {
+                continue;
+            }
             debug_assert!(encode_const || encode_opt);
 
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
-                self.tables
-                    .cross_crate_inlinable
-                    .set(def_id.to_def_id().index, self.tcx.cross_crate_inlinable(def_id));
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
@@ -1709,6 +1740,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let instance = ty::InstanceKind::Item(def_id.to_def_id());
             let unused = tcx.unused_generic_params(instance);
             self.tables.unused_generic_params.set(def_id.local_def_index, unused);
+        }
+
+        if let Some(def_id) = tcx.lang_items().drop_in_place_fn() {
+            self.tables.cross_crate_inlinable.set(def_id.index, Some(false));
         }
 
         // Encode all the deduced parameter attributes for everything that has MIR, even for items
