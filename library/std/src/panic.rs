@@ -216,12 +216,16 @@ impl fmt::Display for PanicHookInfo<'_> {
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
+    // For all cases where it is possible, wrap the actual call to the
+    // internal panic implementation function with a local no-inline
+    // cold function. This moves the codegen for setting up the
+    // arguments to the panic implementation function to the
+    // presumably cold panic path.
     () => ({
         #[cold]
         #[track_caller]
         #[inline(never)]
         const fn panic_cold_explicit() -> ! {
-            f
             $crate::rt::begin_panic("explicit panic");
         }
         panic_cold_explicit();
@@ -247,7 +251,7 @@ pub macro panic_2015 {
         #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
         #[rustc_do_not_const_check] // hooked by const-eval
         const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
-            $crate::panicking::panic_display(arg)
+            $crate::rt::panic_display(arg)
         }
         panic_cold_display(&$arg);
     }),
