@@ -764,12 +764,6 @@ Whether to show `Debug` lens. Only applies when
 --
 Whether to show CodeLens in Rust files.
 --
-[[rust-analyzer.lens.forceCustomCommands]]rust-analyzer.lens.forceCustomCommands (default: `true`)::
-+
---
-Internal config: use custom client-side commands even when the
-client doesn't set the corresponding capability.
---
 [[rust-analyzer.lens.implementations.enable]]rust-analyzer.lens.implementations.enable (default: `true`)::
 +
 --

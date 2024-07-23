@@ -655,9 +655,6 @@ config_data! {
         lens_debug_enable: bool            = true,
         /// Whether to show CodeLens in Rust files.
         lens_enable: bool           = true,
-        /// Internal config: use custom client-side commands even when the
-        /// client doesn't set the corresponding capability.
-        lens_forceCustomCommands: bool = true,
         /// Whether to show `Implementations` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_implementations_enable: bool  = true,
@@ -2031,11 +2028,9 @@ impl Config {
     }
 
     pub fn client_commands(&self) -> ClientCommandsConfig {
-        let commands = self.commands();
-        let force = commands.is_none() && *self.lens_forceCustomCommands();
-        let commands = commands.map(|it| it.commands).unwrap_or_default();
+        let commands = self.commands().map(|it| it.commands).unwrap_or_default();
 
-        let get = |name: &str| commands.iter().any(|it| it == name) || force;
+        let get = |name: &str| commands.iter().any(|it| it == name);
 
         ClientCommandsConfig {
             run_single: get("rust-analyzer.runSingle"),

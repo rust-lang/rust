@@ -2141,16 +2141,6 @@
             {
                 "title": "lens",
                 "properties": {
-                    "rust-analyzer.lens.forceCustomCommands": {
-                        "markdownDescription": "Internal config: use custom client-side commands even when the\nclient doesn't set the corresponding capability.",
-                        "default": true,
-                        "type": "boolean"
-                    }
-                }
-            },
-            {
-                "title": "lens",
-                "properties": {
                     "rust-analyzer.lens.implementations.enable": {
                         "markdownDescription": "Whether to show `Implementations` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                         "default": true,
