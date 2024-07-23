@@ -69,9 +69,7 @@ pub struct CanonicalGoalEvaluation<I: Interner> {
 #[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub enum CanonicalGoalEvaluationKind<I: Interner> {
     Overflow,
-    CycleInStack,
-    ProvisionalCacheHit,
-    Evaluation { final_revision: I::CanonicalGoalEvaluationStepRef },
+    Evaluation { final_revision: CanonicalGoalEvaluationStep<I> },
 }
 
 #[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
