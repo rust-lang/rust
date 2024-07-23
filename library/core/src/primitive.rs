@@ -33,7 +33,7 @@
 //!
 //! We also used `::core` instead of `core`, because `core` can be
 //! shadowed, too. Paths, starting with `::`, are searched in
-//! [extern prelude].
+//! the [extern prelude] since Edition 2018.
 //!
 //! [extern prelude]: https://doc.rust-lang.org/nightly/reference/names/preludes.html#extern-prelude
 
