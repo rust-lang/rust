@@ -1,5 +1,5 @@
 error[E0696]: `continue` pointing to a labeled block
-  --> $DIR/cont-in-match-arm-issue-121623.rs:4:13
+  --> $DIR/cont-in-match-arm-issue-121623.rs:6:13
    |
 LL |           _ => 'b: {
    |  ______________-
