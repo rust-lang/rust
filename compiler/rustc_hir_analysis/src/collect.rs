@@ -43,6 +43,7 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
+use crate::check::errs::maybe_method_static_mut;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
 use crate::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
@@ -324,6 +325,7 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
             // depends on typecheck and would therefore hide
             // any further errors in case one typeck fails.
         }
+        maybe_method_static_mut(self.tcx, expr);
         intravisit::walk_expr(self, expr);
     }
 

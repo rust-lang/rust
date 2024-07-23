@@ -6,5 +6,16 @@ LL |         #[linkage = "extern_weak"]
    |
    = note: marking the extern static mutable would allow changing which symbol the static references rather than make the target of the symbol mutable
 
-error: aborting due to 1 previous error
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/linkage-attr-mutable-static.rs:22:20
+   |
+LL |         assert_eq!(WEAK_DEF, 0);
+   |                    ^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
 

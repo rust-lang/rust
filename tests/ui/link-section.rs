@@ -33,5 +33,6 @@ pub fn main() {
     unsafe {
         frobulator = 0x12345678;
         println!("{} {} {}", i_live_in_more_text(), magic, frobulator);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

@@ -14,6 +14,7 @@ impl Drop for A {
     fn drop(&mut self) {
         unsafe {
             ORDER[INDEX] = 1;
+            //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
             INDEX = INDEX + 1;
         }
     }
@@ -24,6 +25,7 @@ impl Drop for B {
     fn drop(&mut self) {
         unsafe {
             ORDER[INDEX] = 2;
+            //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
             INDEX = INDEX + 1;
         }
     }
@@ -34,6 +36,7 @@ impl Drop for C {
     fn drop(&mut self) {
         unsafe {
             ORDER[INDEX] = 3;
+            //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
             INDEX = INDEX + 1;
         }
     }
@@ -53,5 +56,6 @@ fn main() {
     unsafe {
         let expected: &[_] = &[1, 2, 3];
         assert_eq!(expected, ORDER);
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

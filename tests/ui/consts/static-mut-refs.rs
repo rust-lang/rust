@@ -17,7 +17,9 @@ static mut INT_RAW: *mut isize = &mut 1isize as *mut _;
 pub fn main() {
     unsafe {
         TEST[0] += 1;
+        //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
         assert_eq!(TEST[0], 2);
+        //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
         *INT_RAW += 1;
         assert_eq!(*INT_RAW, 2);
     }

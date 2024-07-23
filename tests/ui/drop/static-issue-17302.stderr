@@ -1,0 +1,36 @@
+warning: creating a reference to mutable static is discouraged
+  --> $DIR/static-issue-17302.rs:11:18
+   |
+LL |         unsafe { DROPPED[i] = true; }
+   |                  ^^^^^^^^^^ reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: creating a reference to mutable static is discouraged
+  --> $DIR/static-issue-17302.rs:24:17
+   |
+LL |         assert!(DROPPED[0]);
+   |                 ^^^^^^^^^^ reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+
+warning: creating a reference to mutable static is discouraged
+  --> $DIR/static-issue-17302.rs:26:17
+   |
+LL |         assert!(DROPPED[1]);
+   |                 ^^^^^^^^^^ reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+
+warning: 3 warnings emitted
+

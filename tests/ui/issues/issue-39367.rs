@@ -18,7 +18,7 @@ fn arena() -> &'static ArenaSet<Vec<u8>> {
             use std::mem::transmute;
             static mut DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
 
-            static mut ONCE: Once = Once::new();
+            static ONCE: Once = Once::new();
             ONCE.call_once(|| {
                 DATA = transmute
                     ::<Box<ArenaSet<Vec<u8>>>, *const ArenaSet<Vec<u8>>>
