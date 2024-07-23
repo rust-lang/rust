@@ -1,11 +1,10 @@
-use core::mem::MaybeUninit;
-
+use super::{realloc_fallback, MIN_ALIGN};
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ffi::c_void;
+use crate::mem::MaybeUninit;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys::c;
-use crate::sys::common::alloc::{realloc_fallback, MIN_ALIGN};
 
 #[cfg(test)]
 mod tests;
@@ -113,28 +112,28 @@ fn init_or_get_process_heap() -> c::HANDLE {
 extern "C" fn process_heap_init_and_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`
     flags: u32,
-    dwBytes: usize,
+    bytes: usize,
 ) -> *mut c_void {
     let heap = init_or_get_process_heap();
     if core::intrinsics::unlikely(heap.is_null()) {
         return ptr::null_mut();
     }
     // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`.
-    unsafe { HeapAlloc(heap, flags, dwBytes) }
+    unsafe { HeapAlloc(heap, flags, bytes) }
 }
 
 #[inline(never)]
 fn process_heap_alloc(
     _heap: MaybeUninit<c::HANDLE>, // We pass this argument to match the ABI of `HeapAlloc`,
     flags: u32,
-    dwBytes: usize,
+    bytes: usize,
 ) -> *mut c_void {
     let heap = HEAP.load(Ordering::Relaxed);
     if core::intrinsics::likely(!heap.is_null()) {
         // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`.
-        unsafe { HeapAlloc(heap, flags, dwBytes) }
+        unsafe { HeapAlloc(heap, flags, bytes) }
     } else {
-        process_heap_init_and_alloc(MaybeUninit::uninit(), flags, dwBytes)
+        process_heap_init_and_alloc(MaybeUninit::uninit(), flags, bytes)
     }
 }
 
