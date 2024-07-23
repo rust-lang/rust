@@ -10,7 +10,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{Crate, LINTCHECK_DOWNLOADS, LINTCHECK_SOURCES};
 
-const DEFAULT_DOCS_LINK: &str = "https://docs.rs/{krate}/{version}/src/{krate}/{file}.html#{line}";
+const DEFAULT_DOCS_LINK: &str = "https://docs.rs/{krate}/{version}/src/{krate_}/{file}.html#{line}";
 const DEFAULT_GITHUB_LINK: &str = "{url}/blob/{hash}/src/{file}#L{line}";
 const DEFAULT_PATH_LINK: &str = "{path}/src/{file}:{line}";
 
@@ -39,6 +39,7 @@ struct TomlCrate {
     options: Option<Vec<String>>,
     /// Magic values:
     /// * `{krate}` will be replaced by `self.name`
+    /// * `{krate_}` will be replaced by `self.name` with all `-` replaced by `_`
     /// * `{version}` will be replaced by `self.version`
     /// * `{url}` will be replaced with `self.git_url`
     /// * `{hash}` will be replaced with `self.git_hash`
@@ -55,6 +56,7 @@ impl TomlCrate {
     fn file_link(&self, default: &str) -> String {
         let mut link = self.online_link.clone().unwrap_or_else(|| default.to_string());
         link = link.replace("{krate}", &self.name);
+        link = link.replace("{krate_}", &self.name.replace('-', "_"));
 
         if let Some(version) = &self.version {
             link = link.replace("{version}", version);
