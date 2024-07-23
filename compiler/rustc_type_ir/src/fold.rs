@@ -47,7 +47,7 @@
 
 use rustc_index::{Idx, IndexVec};
 use std::mem;
-use tracing::debug;
+use tracing::instrument;
 
 use crate::data_structures::Lrc;
 use crate::inherent::*;
@@ -414,15 +414,14 @@ pub fn shift_region<I: Interner>(cx: I, region: I::Region, amount: u32) -> I::Re
     }
 }
 
+#[instrument(level = "trace", skip(cx), ret)]
 pub fn shift_vars<I: Interner, T>(cx: I, value: T, amount: u32) -> T
 where
     T: TypeFoldable<I>,
 {
-    debug!("shift_vars(value={:?}, amount={})", value, amount);
-
     if amount == 0 || !value.has_escaping_bound_vars() {
-        return value;
+        value
+    } else {
+        value.fold_with(&mut Shifter::new(cx, amount))
     }
-
-    value.fold_with(&mut Shifter::new(cx, amount))
 }
