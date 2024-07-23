@@ -7,8 +7,6 @@
 // make a resurgence.
 // See https://github.com/rust-lang/rust/pull/17189
 
-//FIXME(Oneirical): test-various
-
 use run_make_support::{rust_lib_name, rustc};
 
 fn main() {
