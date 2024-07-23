@@ -462,8 +462,9 @@
 //! # Or-patterns
 //!
 //! What we have described so far works well if there are no or-patterns. To handle them, if the
-//! first pattern of a row in the matrix is an or-pattern, we expand it by duplicating the rest of
-//! the row as necessary. This is handled automatically in [`Matrix`].
+//! first pattern of any row in the matrix is an or-pattern, we expand it by duplicating the rest of
+//! the row as necessary. For code reuse, this is implemented as "specializing with the `Or`
+//! constructor".
 //!
 //! This makes usefulness tracking subtle, because we also want to compute whether an alternative of
 //! an or-pattern is redundant, e.g. in `Some(_) | Some(0)`. We therefore track usefulness of each
@@ -875,6 +876,11 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
             return Ok((smallvec![Constructor::PrivateUninhabited], vec![]));
         }
 
+        if ctors.clone().any(|c| matches!(c, Constructor::Or)) {
+            // If any constructor is `Or`, we expand or-patterns.
+            return Ok((smallvec![Constructor::Or], vec![]));
+        }
+
         let ctors_for_ty = cx.ctors_for_ty(&self.ty)?;
         debug!(?ctors_for_ty);
 
@@ -968,10 +974,6 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         PatStack { pats: smallvec![PatOrWild::Pat(pat)], relevant: true }
     }
 
-    fn is_empty(&self) -> bool {
-        self.pats.is_empty()
-    }
-
     fn len(&self) -> usize {
         self.pats.len()
     }
@@ -984,10 +986,10 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         self.pats.iter().copied()
     }
 
-    // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
-    // an or-pattern. Panics if `self` is empty.
+    // Expand the first or-pattern into its subpatterns. Only useful if the pattern is an
+    // or-pattern. Panics if `self` is empty.
     fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'_> {
-        self.head().flatten_or_pat().into_iter().map(move |pat| {
+        self.head().expand_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
             new
@@ -1057,10 +1059,6 @@ struct MatrixRow<'p, Cx: PatCx> {
 }
 
 impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
-    fn is_empty(&self) -> bool {
-        self.pats.is_empty()
-    }
-
     fn len(&self) -> usize {
         self.pats.len()
     }
@@ -1073,12 +1071,14 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
         self.pats.iter()
     }
 
-    // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
-    // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat(&self) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'_> {
-        self.pats.expand_or_pat().map(|patstack| MatrixRow {
+    // Expand the first or-pattern (if any) into its subpatterns. Panics if `self` is empty.
+    fn expand_or_pat(
+        &self,
+        parent_row: usize,
+    ) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'_> {
+        self.pats.expand_or_pat().map(move |patstack| MatrixRow {
             pats: patstack,
-            parent_row: self.parent_row,
+            parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
             intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
@@ -1100,7 +1100,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
-            intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
+            intersects: BitSet::new_empty(0), // Initialized in `Matrix::push`.
         })
     }
 }
@@ -1116,7 +1116,7 @@ impl<'p, Cx: PatCx> fmt::Debug for MatrixRow<'p, Cx> {
 /// Invariant: each row must have the same length, and each column must have the same type.
 ///
 /// Invariant: the first column must not contain or-patterns. This is handled by
-/// [`Matrix::expand_and_push`].
+/// [`Matrix::push`].
 ///
 /// In fact each column corresponds to a place inside the scrutinee of the match. E.g. after
 /// specializing `(,)` and `Some` on a pattern of type `(Option<u32>, bool)`, the first column of
@@ -1136,19 +1136,10 @@ struct Matrix<'p, Cx: PatCx> {
 }
 
 impl<'p, Cx: PatCx> Matrix<'p, Cx> {
-    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
-    /// expands it. Internal method, prefer [`Matrix::new`].
-    fn expand_and_push(&mut self, mut row: MatrixRow<'p, Cx>) {
-        if !row.is_empty() && row.head().is_or_pat() {
-            // Expand nested or-patterns.
-            for mut new_row in row.expand_or_pat() {
-                new_row.intersects = BitSet::new_empty(self.rows.len());
-                self.rows.push(new_row);
-            }
-        } else {
-            row.intersects = BitSet::new_empty(self.rows.len());
-            self.rows.push(row);
-        }
+    /// Pushes a new row to the matrix. Internal method, prefer [`Matrix::new`].
+    fn push(&mut self, mut row: MatrixRow<'p, Cx>) {
+        row.intersects = BitSet::new_empty(self.rows.len());
+        self.rows.push(row);
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
@@ -1170,9 +1161,9 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
                 parent_row: arm_id,
                 is_under_guard: arm.has_guard,
                 useful: false,
-                intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
+                intersects: BitSet::new_empty(0), // Initialized in `Matrix::push`.
             };
-            matrix.expand_and_push(v);
+            matrix.push(v);
         }
         matrix
     }
@@ -1209,22 +1200,38 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
     ) -> Result<Matrix<'p, Cx>, Cx::Error> {
-        let subfield_place_info = self.place_info[0].specialize(pcx.cx, ctor);
-        let arity = subfield_place_info.len();
-        let specialized_place_info =
-            subfield_place_info.chain(self.place_info[1..].iter().cloned()).collect();
-        let mut matrix = Matrix {
-            rows: Vec::new(),
-            place_info: specialized_place_info,
-            wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
-        };
-        for (i, row) in self.rows().enumerate() {
-            if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
-                let new_row = row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
-                matrix.expand_and_push(new_row);
+        if matches!(ctor, Constructor::Or) {
+            // Specializing with `Or` means expanding rows with or-patterns.
+            let mut matrix = Matrix {
+                rows: Vec::new(),
+                place_info: self.place_info.clone(),
+                wildcard_row_is_relevant: self.wildcard_row_is_relevant,
+            };
+            for (i, row) in self.rows().enumerate() {
+                for new_row in row.expand_or_pat(i) {
+                    matrix.push(new_row);
+                }
             }
+            Ok(matrix)
+        } else {
+            let subfield_place_info = self.place_info[0].specialize(pcx.cx, ctor);
+            let arity = subfield_place_info.len();
+            let specialized_place_info =
+                subfield_place_info.chain(self.place_info[1..].iter().cloned()).collect();
+            let mut matrix = Matrix {
+                rows: Vec::new(),
+                place_info: specialized_place_info,
+                wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
+            };
+            for (i, row) in self.rows().enumerate() {
+                if ctor.is_covered_by(pcx.cx, row.head().ctor())? {
+                    let new_row =
+                        row.pop_head_constructor(pcx.cx, ctor, arity, ctor_is_relevant, i)?;
+                    matrix.push(new_row);
+                }
+            }
+            Ok(matrix)
         }
-        Ok(matrix)
     }
 
     /// Recover row usefulness and intersection information from a processed specialized matrix.
@@ -1465,7 +1472,9 @@ impl<Cx: PatCx> WitnessMatrix<Cx> {
         missing_ctors: &[Constructor<Cx>],
         ctor: &Constructor<Cx>,
     ) {
-        if self.is_empty() {
+        // The `Or` constructor indicates that we expanded or-patterns. This doesn't affect
+        // witnesses.
+        if self.is_empty() || matches!(ctor, Constructor::Or) {
             return;
         }
         if matches!(ctor, Constructor::Missing) {
@@ -1715,48 +1724,6 @@ pub enum Usefulness<'p, Cx: PatCx> {
     Redundant,
 }
 
-/// Report whether this pattern was found useful, and its subpatterns that were not useful if any.
-fn collect_pattern_usefulness<'p, Cx: PatCx>(
-    useful_subpatterns: &FxHashSet<PatId>,
-    pat: &'p DeconstructedPat<Cx>,
-) -> Usefulness<'p, Cx> {
-    fn pat_is_useful<'p, Cx: PatCx>(
-        useful_subpatterns: &FxHashSet<PatId>,
-        pat: &'p DeconstructedPat<Cx>,
-    ) -> bool {
-        if useful_subpatterns.contains(&pat.uid) {
-            true
-        } else if pat.is_or_pat()
-            && pat.iter_fields().any(|f| pat_is_useful(useful_subpatterns, &f.pat))
-        {
-            // We always expand or patterns in the matrix, so we will never see the actual
-            // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
-            // marked as useful itself, only its children will. We recover this information here.
-            true
-        } else {
-            false
-        }
-    }
-
-    let mut redundant_subpats = Vec::new();
-    pat.walk(&mut |p| {
-        if pat_is_useful(useful_subpatterns, p) {
-            // The pattern is useful, so we recurse to find redundant subpatterns.
-            true
-        } else {
-            // The pattern is redundant.
-            redundant_subpats.push(p);
-            false // stop recursing
-        }
-    });
-
-    if pat_is_useful(useful_subpatterns, pat) {
-        Usefulness::Useful(redundant_subpats)
-    } else {
-        Usefulness::Redundant
-    }
-}
-
 /// The output of checking a match for exhaustiveness and arm usefulness.
 pub struct UsefulnessReport<'p, Cx: PatCx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
@@ -1793,25 +1760,26 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
         .copied()
         .map(|arm| {
             debug!(?arm);
-            let usefulness = collect_pattern_usefulness(&cx.useful_subpatterns, arm.pat);
+            let usefulness = if cx.useful_subpatterns.contains(&arm.pat.uid) {
+                let mut redundant_subpats = Vec::new();
+                arm.pat.walk(&mut |subpat| {
+                    if cx.useful_subpatterns.contains(&subpat.uid) {
+                        true // keep recursing
+                    } else {
+                        redundant_subpats.push(subpat);
+                        false // stop recursing
+                    }
+                });
+                Usefulness::Useful(redundant_subpats)
+            } else {
+                Usefulness::Redundant
+            };
             debug!(?usefulness);
             (arm, usefulness)
         })
         .collect();
 
-    let mut arm_intersections: Vec<_> =
-        arms.iter().enumerate().map(|(i, _)| BitSet::new_empty(i)).collect();
-    for row in matrix.rows() {
-        let arm_id = row.parent_row;
-        for intersection in row.intersects.iter() {
-            // Convert the matrix row ids into arm ids (they can differ because we expand or-patterns).
-            let arm_intersection = matrix.rows[intersection].parent_row;
-            // Note: self-intersection can happen with or-patterns.
-            if arm_intersection != arm_id {
-                arm_intersections[arm_id].insert(arm_intersection);
-            }
-        }
-    }
+    let arm_intersections: Vec<_> = matrix.rows().map(|row| row.intersects.clone()).collect();
 
     Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses, arm_intersections })
 }

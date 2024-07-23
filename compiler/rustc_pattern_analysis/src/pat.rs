@@ -190,7 +190,18 @@ impl<'p, Cx: PatCx> PatOrWild<'p, Cx> {
         }
     }
 
-    /// Expand this (possibly-nested) or-pattern into its alternatives.
+    /// Expand this or-pattern into its alternatives. This only expands one or-pattern; use
+    /// `flatten_or_pat` to recursively expand nested or-patterns.
+    pub(crate) fn expand_or_pat(self) -> SmallVec<[Self; 1]> {
+        match self {
+            PatOrWild::Pat(pat) if pat.is_or_pat() => {
+                pat.iter_fields().map(|ipat| PatOrWild::Pat(&ipat.pat)).collect()
+            }
+            _ => smallvec![self],
+        }
+    }
+
+    /// Recursively expand this (possibly-nested) or-pattern into its alternatives.
     pub(crate) fn flatten_or_pat(self) -> SmallVec<[Self; 1]> {
         match self {
             PatOrWild::Pat(pat) if pat.is_or_pat() => pat
