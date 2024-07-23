@@ -779,7 +779,6 @@ pub struct Config {
     /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
     user_config_path: VfsPath,
 
-    /// FIXME @alibektas : Change this to sth better.
     /// Config node whose values apply to **every** Rust project.
     user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
 
@@ -794,6 +793,12 @@ pub struct Config {
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
+
+    /// Use case : It is an error to have an empty value for `check_command`.
+    /// Since it is a `global` command at the moment, its final value can only be determined by
+    /// traversing through `global` configs and the `client` config. However the non-null value constraint
+    /// is config level agnostic, so this requires an independent error storage
+    validation_errors: ConfigErrors,
 
     detached_files: Vec<AbsPathBuf>,
 }
@@ -824,6 +829,7 @@ impl Config {
     /// The return tuple's bool component signals whether the `GlobalState` should call its `update_configuration()` method.
     fn apply_change_with_sink(&self, change: ConfigChange) -> (Config, bool) {
         let mut config = self.clone();
+        config.validation_errors = ConfigErrors::default();
 
         let mut should_update = false;
 
@@ -852,6 +858,7 @@ impl Config {
 
         if let Some(mut json) = change.client_config_change {
             tracing::info!("updating config from JSON: {:#}", json);
+
             if !(json.is_null() || json.as_object().map_or(false, |it| it.is_empty())) {
                 let mut json_errors = vec![];
                 let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
@@ -867,6 +874,37 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
+                // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
+                config.snippets.clear();
+
+                let snips = self.completion_snippets_custom().to_owned();
+
+                for (name, def) in snips.iter() {
+                    if def.prefix.is_empty() && def.postfix.is_empty() {
+                        continue;
+                    }
+                    let scope = match def.scope {
+                        SnippetScopeDef::Expr => SnippetScope::Expr,
+                        SnippetScopeDef::Type => SnippetScope::Type,
+                        SnippetScopeDef::Item => SnippetScope::Item,
+                    };
+                    match Snippet::new(
+                        &def.prefix,
+                        &def.postfix,
+                        &def.body,
+                        def.description.as_ref().unwrap_or(name),
+                        &def.requires,
+                        scope,
+                    ) {
+                        Some(snippet) => config.snippets.push(snippet),
+                        None => json_errors.push((
+                            name.to_owned(),
+                            <serde_json::Error as serde::de::Error>::custom(format!(
+                                "snippet {name} is invalid or triggers are missing",
+                            )),
+                        )),
+                    }
+                }
                 config.client_config = (
                     FullConfigInput::from_json(json, &mut json_errors),
                     ConfigErrors(
@@ -906,8 +944,15 @@ impl Config {
                     ));
                     should_update = true;
                 }
-                // FIXME
-                Err(_) => (),
+                Err(e) => {
+                    config.root_ratoml = Some((
+                        GlobalLocalConfigInput::from_toml(toml::map::Map::default(), &mut vec![]),
+                        ConfigErrors(vec![ConfigErrorInner::ParseError {
+                            reason: e.message().to_owned(),
+                        }
+                        .into()]),
+                    ));
+                }
             }
         }
 
@@ -942,8 +987,18 @@ impl Config {
                                 ),
                             );
                         }
-                        // FIXME
-                        Err(_) => (),
+                        Err(e) => {
+                            config.root_ratoml = Some((
+                                GlobalLocalConfigInput::from_toml(
+                                    toml::map::Map::default(),
+                                    &mut vec![],
+                                ),
+                                ConfigErrors(vec![ConfigErrorInner::ParseError {
+                                    reason: e.message().to_owned(),
+                                }
+                                .into()]),
+                            ));
+                        }
                     }
                 }
             }
@@ -953,48 +1008,13 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
-        // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
-        config.snippets.clear();
-
-        let snips = self.completion_snippets_custom().to_owned();
-
-        for (name, def) in snips.iter() {
-            if def.prefix.is_empty() && def.postfix.is_empty() {
-                continue;
-            }
-            let scope = match def.scope {
-                SnippetScopeDef::Expr => SnippetScope::Expr,
-                SnippetScopeDef::Type => SnippetScope::Type,
-                SnippetScopeDef::Item => SnippetScope::Item,
-            };
-            #[allow(clippy::single_match)]
-            match Snippet::new(
-                &def.prefix,
-                &def.postfix,
-                &def.body,
-                def.description.as_ref().unwrap_or(name),
-                &def.requires,
-                scope,
-            ) {
-                Some(snippet) => config.snippets.push(snippet),
-                // FIXME
-                // None => error_sink.0.push(ConfigErrorInner::Json {
-                //     config_key: "".to_owned(),
-                //     error: <serde_json::Error as serde::de::Error>::custom(format!(
-                //         "snippet {name} is invalid or triggers are missing",
-                //     )),
-                // }),
-                None => (),
-            }
+        if config.check_command().is_empty() {
+            config.validation_errors.0.push(Arc::new(ConfigErrorInner::Json {
+                config_key: "/check/command".to_owned(),
+                error: serde_json::Error::custom("expected a non-empty string"),
+            }));
         }
 
-        // FIXME: bring this back
-        // if config.check_command().is_empty() {
-        //     error_sink.0.push(ConfigErrorInner::Json {
-        //         config_key: "/check/command".to_owned(),
-        //         error: serde_json::Error::custom("expected a non-empty string"),
-        //     });
-        // }
         (config, should_update)
     }
 
@@ -1012,6 +1032,7 @@ impl Config {
                 .chain(config.root_ratoml.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.ratoml_files.values().flat_map(|it| it.1 .0.iter()))
+                .chain(config.validation_errors.0.iter())
                 .cloned()
                 .collect(),
         );
@@ -1259,9 +1280,10 @@ pub struct ClientCommandsConfig {
 pub enum ConfigErrorInner {
     Json { config_key: String, error: serde_json::Error },
     Toml { config_key: String, error: toml::de::Error },
+    ParseError { reason: String },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ConfigErrors(Vec<Arc<ConfigErrorInner>>);
 
 impl ConfigErrors {
@@ -1283,6 +1305,7 @@ impl fmt::Display for ConfigErrors {
                 f(&": ")?;
                 f(e)
             }
+            ConfigErrorInner::ParseError { reason } => f(reason),
         });
         write!(f, "invalid config value{}:\n{}", if self.0.len() == 1 { "" } else { "s" }, errors)
     }
@@ -1336,6 +1359,7 @@ impl Config {
             root_ratoml: None,
             root_ratoml_path,
             detached_files: Default::default(),
+            validation_errors: Default::default(),
         }
     }
 
@@ -2575,6 +2599,7 @@ macro_rules! _impl_for_config_data {
                         }
                     }
 
+
                     &self.default_config.global.$field
                 }
             )*
@@ -3304,7 +3329,7 @@ fn validate_toml_table(
         ptr.push_str(k);
 
         match v {
-            // This is a table config, any entry in it is therefor valid
+            // This is a table config, any entry in it is therefore valid
             toml::Value::Table(_) if verify(ptr) => (),
             toml::Value::Table(table) => validate_toml_table(known_ptrs, table, ptr, error_sink),
             _ if !verify(ptr) => error_sink

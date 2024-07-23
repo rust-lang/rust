@@ -14,7 +14,7 @@ use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
-use tracing::{span, Level};
+use tracing::{error, span, Level};
 use vfs::{AbsPathBuf, FileId};
 
 use crate::{
@@ -674,7 +674,7 @@ impl GlobalState {
                         self.fetch_workspaces_queue
                             .op_completed(Some((workspaces, force_reload_crate_graph)));
                         if let Err(e) = self.fetch_workspace_error() {
-                            tracing::error!("FetchWorkspaceError:\n{e}");
+                            error!("FetchWorkspaceError:\n{e}");
                         }
                         self.switch_workspaces("fetched workspace".to_owned());
                         (Progress::End, None)
@@ -719,7 +719,7 @@ impl GlobalState {
                     BuildDataProgress::End(build_data_result) => {
                         self.fetch_build_data_queue.op_completed(build_data_result);
                         if let Err(e) = self.fetch_build_data_error() {
-                            tracing::error!("FetchBuildDataError:\n{e}");
+                            error!("FetchBuildDataError:\n{e}");
                         }
 
                         self.switch_workspaces("fetched build data".to_owned());
@@ -937,7 +937,7 @@ impl GlobalState {
                             diag.fix,
                         ),
                         Err(err) => {
-                            tracing::error!(
+                            error!(
                                 "flycheck {id}: File with cargo diagnostic not found in VFS: {}",
                                 err
                             );
