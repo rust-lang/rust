@@ -857,6 +857,7 @@ impl Drop for Dir {
             target_os = "espidf",
             target_os = "fuchsia",
             target_os = "horizon",
+            target_os = "vxworks",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
@@ -1313,7 +1314,12 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
-        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
+        #[cfg(not(any(
+            target_os = "redox",
+            target_os = "espidf",
+            target_os = "horizon",
+            target_os = "vxworks"
+        )))]
         let to_timespec = |time: Option<SystemTime>| match time {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
             Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(
@@ -1327,10 +1333,11 @@ impl File {
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {
+            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "vxworks"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
+                // `futimens` and `UTIME_OMIT` are a work in progress for vxworks.
                 let _ = times;
                 Err(io::const_io_error!(
                     io::ErrorKind::Unsupported,
@@ -1962,11 +1969,18 @@ pub fn fchown(fd: c_int, uid: u32, gid: u32) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "vxworks"))]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::lchown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
             .map(|_| ())
     })
+}
+
+#[cfg(target_os = "vxworks")]
+pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
+    let (_, _, _) = (path, uid, gid);
+    Err(io::const_io_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks",))
 }
 
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
