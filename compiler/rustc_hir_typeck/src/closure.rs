@@ -18,7 +18,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::ArgKind;
-use rustc_trait_selection::error_reporting::traits::InferCtxtExt as _;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
 use std::iter;
@@ -734,13 +733,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .map(|ty| ArgKind::from_expected_ty(*ty, None))
             .collect();
         let (closure_span, closure_arg_span, found_args) =
-            match self.get_fn_like_arguments(expr_map_node) {
+            match self.err_ctxt().get_fn_like_arguments(expr_map_node) {
                 Some((sp, arg_sp, args)) => (Some(sp), arg_sp, args),
                 None => (None, None, Vec::new()),
             };
         let expected_span =
             expected_sig.cause_span.unwrap_or_else(|| self.tcx.def_span(expr_def_id));
         let guar = self
+            .err_ctxt()
             .report_arg_count_mismatch(
                 expected_span,
                 closure_span,
