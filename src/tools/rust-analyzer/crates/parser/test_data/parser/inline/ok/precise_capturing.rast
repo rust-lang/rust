@@ -48,18 +48,19 @@ SOURCE_FILE
           WHITESPACE " "
           PLUS "+"
           WHITESPACE " "
-          USE_KW "use"
-          GENERIC_PARAM_LIST
-            L_ANGLE "<"
-            LIFETIME_PARAM
-              LIFETIME
-                LIFETIME_IDENT "'b"
-            COMMA ","
-            WHITESPACE " "
-            TYPE_PARAM
-              NAME
-                IDENT "T"
-            R_ANGLE ">"
+          TYPE_BOUND
+            USE_KW "use"
+            GENERIC_PARAM_LIST
+              L_ANGLE "<"
+              LIFETIME_PARAM
+                LIFETIME
+                  LIFETIME_IDENT "'b"
+              COMMA ","
+              WHITESPACE " "
+              TYPE_PARAM
+                NAME
+                  IDENT "T"
+              R_ANGLE ">"
     WHITESPACE " "
     BLOCK_EXPR
       STMT_LIST
