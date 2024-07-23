@@ -64,7 +64,7 @@ impl Number {
             return None;
         }
 
-        let mut value = if self.exponent <= F::MAX_EXPONENT_FAST_PATH {
+        let value = if self.exponent <= F::MAX_EXPONENT_FAST_PATH {
             // normal fast path
             let value = F::from_u64(self.mantissa);
             if self.exponent < 0 {

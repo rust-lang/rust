@@ -246,10 +246,8 @@ impl f16 {
     pub(crate) const SIGN_MASK: u16 = 0x8000;
 
     /// Exponent mask
-    #[cfg(not(bootstrap))]
     pub(crate) const EXP_MASK: u16 = 0x7c00;
 
-    #[cfg(not(bootstrap))]
     pub(crate) const MAN_MASK: u16 = 0x03ff;
 
     /// Minimum representable positive value (min subnormal)
