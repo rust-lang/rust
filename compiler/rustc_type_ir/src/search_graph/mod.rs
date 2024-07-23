@@ -301,17 +301,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     // We update both the head of this cycle to rerun its evaluation until
     // we reach a fixpoint and all other cycle participants to make sure that
     // their result does not get moved to the global cache.
-    fn tag_cycle_participants(
-        stack: &mut IndexVec<StackDepth, StackEntry<X>>,
-        usage_kind: Option<UsageKind>,
-        head: StackDepth,
-    ) {
-        if let Some(usage_kind) = usage_kind {
-            stack[head].has_been_used =
-                Some(stack[head].has_been_used.map_or(usage_kind, |prev| prev.merge(usage_kind)));
-        }
-        debug_assert!(stack[head].has_been_used.is_some());
-
+    fn tag_cycle_participants(stack: &mut IndexVec<StackDepth, StackEntry<X>>, head: StackDepth) {
         // The current root of these cycles. Note that this may not be the final
         // root in case a later goal depends on a goal higher up the stack.
         let mut current_root = head;
@@ -404,7 +394,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             // We have a nested goal which is already in the provisional cache, use
             // its result. We do not provide any usage kind as that should have been
             // already set correctly while computing the cache entry.
-            Self::tag_cycle_participants(&mut self.stack, None, entry.head);
+            debug_assert!(self.stack[entry.head].has_been_used.is_some());
+            Self::tag_cycle_participants(&mut self.stack, entry.head);
             return entry.result;
         } else if let Some(stack_depth) = cache_entry.stack_depth {
             debug!("encountered cycle with depth {stack_depth:?}");
@@ -417,11 +408,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             let is_coinductive_cycle = Self::stack_coinductive_from(cx, &self.stack, stack_depth);
             let cycle_kind =
                 if is_coinductive_cycle { CycleKind::Coinductive } else { CycleKind::Inductive };
-            Self::tag_cycle_participants(
-                &mut self.stack,
-                Some(UsageKind::Single(cycle_kind)),
-                stack_depth,
+            let usage_kind = UsageKind::Single(cycle_kind);
+            self.stack[stack_depth].has_been_used = Some(
+                self.stack[stack_depth]
+                    .has_been_used
+                    .map_or(usage_kind, |prev| prev.merge(usage_kind)),
             );
+            Self::tag_cycle_participants(&mut self.stack, stack_depth);
 
             // Return the provisional result or, if we're in the first iteration,
             // start with no constraints.
