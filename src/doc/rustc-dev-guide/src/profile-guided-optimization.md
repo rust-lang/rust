@@ -136,5 +136,6 @@ instrumentation artifacts show up in LLVM IR.
 
 ## Additional Information
 
-Clang's documentation contains a good overview on PGO in LLVM here:
-https://clang.llvm.org/docs/UsersManual.html#profile-guided-optimization
+Clang's documentation contains a good overview on [PGO in LLVM][llvm-pgo].
+
+[llvm-pgo]: https://clang.llvm.org/docs/UsersManual.html#profile-guided-optimization

@@ -34,18 +34,18 @@ the branch we're already using. The steps for this are:
 2. Identify the branch that rustc is currently using. The `src/llvm-project`
    submodule is always pinned to a branch of the
    [rust-lang/llvm-project repository].
-3. Fork the rust-lang/llvm-project repository
-4. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`)
-5. Cherry-pick the upstream commit onto the branch
-6. Push this branch to your fork
+3. Fork the rust-lang/llvm-project repository.
+4. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`).
+5. Cherry-pick the upstream commit onto the branch.
+6. Push this branch to your fork.
 7. Send a Pull Request to rust-lang/llvm-project to the same branch as before.
    Be sure to reference the Rust and/or LLVM issue that you're fixing in the PR
    description.
-8. Wait for the PR to be merged
+8. Wait for the PR to be merged.
 9. Send a PR to rust-lang/rust updating the `src/llvm-project` submodule with
    your bugfix. This can be done locally with `git submodule update --remote
    src/llvm-project` typically.
-10. Wait for PR to be merged
+10. Wait for PR to be merged.
 
 An example PR:
 [#59089](https://github.com/rust-lang/rust/pull/59089)

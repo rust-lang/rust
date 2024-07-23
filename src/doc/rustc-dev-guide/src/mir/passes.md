@@ -53,19 +53,19 @@ this pass into the appropriate list of passes found in a query like
 `mir_built`, `optimized_mir`, etc. (If this is an optimization, it
 should go into the `optimized_mir` list.)
 
-Another example of a simple MIR pass is [`CleanupNonCodegenStatements`][cleanup-pass], which walks
+Another example of a simple MIR pass is [`CleanupPostBorrowck`][cleanup-pass], which walks
 the MIR and removes all statements that are not relevant to code generation. As you can see from
 its [source][cleanup-source], it is defined by first defining a dummy type, a struct with no
 fields:
 
 ```rust
-pub struct CleanupNonCodegenStatements;
+pub struct CleanupPostBorrowck;
 ```
 
 for which we implement the `MirPass` trait:
 
 ```rust
-impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
+impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         ...
     }
@@ -172,11 +172,11 @@ simply loads from a cache the second time).
 [lint1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/check_packed_ref/struct.CheckPackedRef.html
 [lint2]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/check_const_item_mutation/struct.CheckConstItemMutation.html
 [lint3]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/function_item_references/struct.FunctionItemReferences.html
-[opt1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/simplify/struct.SimplifyCfg.html
+[opt1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/simplify/enum.SimplifyCfg.html
 [opt2]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/remove_unneeded_drops/struct.RemoveUnneededDrops.html
 [mirtransform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/
 [`RemoveStorageMarkers`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/remove_storage_markers/struct.RemoveStorageMarkers.html
-[cleanup-pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/cleanup_post_borrowck/struct.CleanupNonCodegenStatements.html
+[cleanup-pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/cleanup_post_borrowck/struct.CleanupPostBorrowck.html
 [cleanup-source]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/rustc_mir_transform/src/cleanup_post_borrowck.rs#L27
 [pass-register]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/rustc_mir_transform/src/lib.rs#L413
 [MIR visitor]: ./visitor.html

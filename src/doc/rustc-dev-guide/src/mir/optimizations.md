@@ -88,9 +88,9 @@ implemented in its own module of the [`rustc_mir_transform`][trans] crate.
 [trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html
 
 Some examples of passes are:
-- `CleanupNonCodegenStatements`: remove some of the info that is only needed for
+- `CleanupPostBorrowck`: Remove some of the info that is only needed for
   analyses, rather than codegen.
-- `ConstProp`: Does [constant propagation][constprop]
+- `ConstProp`: Does [constant propagation][constprop].
 
 You can see the ["Implementors" section of the `MirPass` rustdocs][impl] for more examples.
 

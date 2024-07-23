@@ -37,10 +37,11 @@ code that will execute whenever a `foo` is found. If you want to
 recursively walk the contents of the `foo`, you then invoke the
 `super_foo` method. (NB. You never want to override `super_foo`.)
 
-A very simple example of a visitor can be found in [`LocalUseVisitor`].
-By implementing `visit_local` method, this visitor counts how many times each local is mutably used.
+A very simple example of a visitor can be found in [`LocalFinder`].
+By implementing `visit_local` method, this visitor identifies local variables that
+can be candidates for reordering.
 
-[`LocalUseVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/const_debuginfo/struct.LocalUseVisitor.html
+-[`LocalFinder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/prettify/struct.LocalFinder.html
 
 ## Traversal
 
