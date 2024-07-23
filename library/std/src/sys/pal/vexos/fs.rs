@@ -17,11 +17,18 @@ pub struct File {
 #[derive(Clone)]
 pub struct FileAttr {
     size: u64,
+    is_dir: bool,
 }
 
-pub struct ReadDir(!);
+#[derive(Debug)]
+pub struct ReadDir {
+    entries: Vec<DirEntry>,
+}
 
-pub struct DirEntry(!);
+#[derive(Debug)]
+pub struct DirEntry {
+    path: PathBuf,
+}
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {
@@ -52,9 +59,31 @@ impl FileAttr {
         let size = unsafe { vex_sdk::vexFileSize(fd) };
 
         if size >= 0 {
-            Ok(Self { size: size as u64 })
+            Ok(Self { size: size as u64, is_dir: false })
         } else {
-            Err(io::Error::new(io::ErrorKind::NotSeekable, "Failed to seek file"))
+            Err(io::Error::new(io::ErrorKind::InvalidData, "Failed to get file size"))
+        }
+    }
+
+    fn from_path(path: &Path) -> io::Result<Self> {
+        let c_path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
+            io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
+        })?;
+
+        let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
+        let is_dir = file_type == 3;
+        println!("{is_dir}");
+
+        // We can't get the size if its a directory because we cant open it as a file
+        if is_dir {
+            Ok(Self { size: 0, is_dir: true })
+        } else {
+            let mut opts = OpenOptions::new();
+            opts.read(true);
+            let file = File::open(path, &opts)?;
+            let fd = file.fd.0;
+
+            Self::from_fd(fd)
         }
     }
 
@@ -67,7 +96,7 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType { is_dir: false }
+        FileType { is_dir: self.is_dir }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -112,35 +141,32 @@ impl FileType {
     }
 }
 
-impl fmt::Debug for ReadDir {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
-    }
-}
-
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        self.0
+        self.entries.pop().map(Ok)
     }
 }
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.0
+        self.path.clone()
     }
 
     pub fn file_name(&self) -> OsString {
-        self.0
+        self.path
+            .file_name()
+            .unwrap_or(crate::ffi::OsStr::new(""))
+            .to_os_string()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        self.0
+        stat(&self.path)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        self.0
+        Ok(self.metadata()?.file_type())
     }
 }
 
@@ -406,8 +432,43 @@ impl Drop for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    todo!()
+pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    if !stat(p)?.file_type().is_dir() {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Given directory was not a path"));
+    }
+
+    // getting directory entries does not work with trailing slashes
+    let path = p
+        .to_str()
+        .ok_or(io::Error::new(io::ErrorKind::InvalidInput, "Path contained invalid characters"))?
+        .trim_end_matches("/");
+    let path = CString::new(path.as_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Path contained a null byte"))?;
+
+    //TODO: Figure out if there is any way to check the number of entries in a directory/the needed length
+    let mut filenames_buffer = [0u8; 1000];
+    unsafe {
+        vex_sdk::vexFileDirectoryGet(
+            path.as_ptr(),
+            filenames_buffer.as_mut_ptr().cast(),
+            filenames_buffer.len() as _,
+        );
+    }
+    let filenames_buffer = filenames_buffer.to_vec();
+    // stop at null-terminator
+    let filenames = match filenames_buffer.split(|&e| e == 0).next() {
+        Some(filenames) => filenames,
+        None => &filenames_buffer
+    };
+    let filenames = String::from_utf8(filenames.to_vec()).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
+    let paths = filenames.split('\n').map(|filename| {
+        let mut path = PathBuf::new();
+        path.push(p);
+        path.push(filename);
+        DirEntry { path }
+    }).collect::<Vec<_>>();
+
+    Ok(ReadDir { entries: paths })
 }
 
 pub fn unlink(_p: &Path) -> io::Result<()> {
@@ -451,12 +512,7 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let mut opts = OpenOptions::new();
-    opts.read(true);
-    let file = File::open(p, &opts)?;
-    let fd = file.fd.0;
-
-    FileAttr::from_fd(fd)
+    FileAttr::from_path(p)
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
