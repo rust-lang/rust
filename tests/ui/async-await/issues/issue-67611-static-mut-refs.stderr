@@ -1,0 +1,25 @@
+warning: creating a reference to mutable static is discouraged
+  --> $DIR/issue-67611-static-mut-refs.rs:11:22
+   |
+LL |     let u = unsafe { A[async { 1 }.await] };
+   |                      ^^^^^^^^^^^^^^^^^^^^ reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: creating a reference to mutable static is discouraged
+  --> $DIR/issue-67611-static-mut-refs.rs:24:26
+   |
+LL |         let u = unsafe { A[async { 1 }.await] };
+   |                          ^^^^^^^^^^^^^^^^^^^^ reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+
+warning: 2 warnings emitted
+

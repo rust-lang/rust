@@ -1,0 +1,13 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/link-section.rs:35:60
+   |
+LL |         println!("{} {} {}", i_live_in_more_text(), magic, frobulator);
+   |                                                            ^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: 1 warning emitted
+

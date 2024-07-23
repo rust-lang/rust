@@ -1,0 +1,170 @@
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:36:18
+   |
+LL |         let _y = &X;
+   |                  ^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+note: the lint level is defined here
+  --> $DIR/ref-to-mut-static.rs:6:9
+   |
+LL | #![deny(static_mut_refs)]
+   |         ^^^^^^^^^^^^^^^
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |         let _y = addr_of!(X);
+   |                  ~~~~~~~~~ +
+
+error: creating a mutable reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:40:18
+   |
+LL |         let _y = &mut X;
+   |                  ^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+help: use `addr_of_mut!` instead to create a raw pointer
+   |
+LL |         let _y = addr_of_mut!(X);
+   |                  ~~~~~~~~~~~~~ +
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:48:22
+   |
+LL |         let ref _a = X;
+   |                      ^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:52:25
+   |
+LL |         let (_b, _c) = (&X, &Y);
+   |                         ^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |         let (_b, _c) = (addr_of!(X), &Y);
+   |                         ~~~~~~~~~ +
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:52:29
+   |
+LL |         let (_b, _c) = (&X, &Y);
+   |                             ^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |         let (_b, _c) = (&X, addr_of!(Y));
+   |                             ~~~~~~~~~ +
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:58:13
+   |
+LL |         foo(&X);
+   |             ^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |         foo(addr_of!(X));
+   |             ~~~~~~~~~ +
+
+error: creating a reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:67:17
+   |
+LL |         let _ = Z[0];
+   |                 ^^^^ reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:70:33
+   |
+LL |         let _ = format!("{:?}", Z);
+   |                                 ^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:74:18
+   |
+LL |         let _v = &A.value;
+   |                  ^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |         let _v = addr_of!(A.value);
+   |                  ~~~~~~~~~       +
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:78:18
+   |
+LL |         let _s = &A.s.value;
+   |                  ^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |         let _s = addr_of!(A.s.value);
+   |                  ~~~~~~~~~         +
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:82:22
+   |
+LL |         let ref _v = A.value;
+   |                      ^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+
+error: creating a mutable reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:14:14
+   |
+LL |         &mut ($x.0)
+   |              ^^^^^^ mutable reference to mutable static
+...
+LL |         let _x = bar!(FOO);
+   |                  --------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: mutable references to mutable statics are dangerous since if there's any other pointer used or reference created for that static while the reference lives, that's undefined behavior
+   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: creating a shared reference to mutable static is discouraged
+  --> $DIR/ref-to-mut-static.rs:64:17
+   |
+LL |         let _ = Z.len();
+   |                 ^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+
+error: aborting due to 13 previous errors
+

@@ -9,6 +9,7 @@ impl Drop for A {
     fn drop(&mut self) {
         let A(i) = *self;
         unsafe { DROPPED[i] = true; }
+        //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
     }
 }
 
@@ -21,6 +22,8 @@ fn main() {
     }
     unsafe {
         assert!(DROPPED[0]);
+        //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
         assert!(DROPPED[1]);
+        //~^ WARN creating a reference to mutable static is discouraged [static_mut_refs]
     }
 }

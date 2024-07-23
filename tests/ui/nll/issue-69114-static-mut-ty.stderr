@@ -1,5 +1,46 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-69114-static-mut-ty.rs:9:27
+   |
+LL |         println!("{} {}", BAR, BAR_ELIDED);
+   |                           ^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-69114-static-mut-ty.rs:9:32
+   |
+LL |         println!("{} {}", BAR, BAR_ELIDED);
+   |                                ^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-69114-static-mut-ty.rs:14:27
+   |
+LL |         println!("{} {}", BAR, BAR_ELIDED);
+   |                           ^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-69114-static-mut-ty.rs:14:32
+   |
+LL |         println!("{} {}", BAR, BAR_ELIDED);
+   |                                ^^^^^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
+
 error[E0597]: `n` does not live long enough
-  --> $DIR/issue-69114-static-mut-ty.rs:19:15
+  --> $DIR/issue-69114-static-mut-ty.rs:23:15
    |
 LL |     let n = 42;
    |         - binding `n` declared here
@@ -14,7 +55,7 @@ LL | }
    | - `n` dropped here while still borrowed
 
 error[E0597]: `n` does not live long enough
-  --> $DIR/issue-69114-static-mut-ty.rs:27:22
+  --> $DIR/issue-69114-static-mut-ty.rs:31:22
    |
 LL |     let n = 42;
    |         - binding `n` declared here
@@ -28,6 +69,6 @@ LL |         BAR_ELIDED = &n;
 LL | }
    | - `n` dropped here while still borrowed
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0597`.

@@ -6,7 +6,7 @@ LL |     let rb = &B;
    |
    = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
    = note: this will be a hard error in the 2024 edition
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `addr_of!` instead to create a raw pointer
    |
@@ -21,7 +21,7 @@ LL |     let xrb = &XB;
    |
    = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
    = note: this will be a hard error in the 2024 edition
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: shared references to mutable statics are dangerous since if there's any kind of mutation of, or mutable reference created for, that static while the reference lives, that's undefined behavior
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |     let xrb = addr_of!(XB);
