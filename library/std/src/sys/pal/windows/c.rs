@@ -9,7 +9,6 @@
 use crate::ffi::CStr;
 use crate::mem;
 use crate::os::raw::{c_uint, c_ulong, c_ushort, c_void};
-use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
 pub(super) mod windows_targets;
@@ -111,89 +110,6 @@ pub struct MOUNT_POINT_REPARSE_BUFFER {
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
     pub const EXCEPTION_CONTINUE_SEARCH: i32 = 0;
-}
-}
-
-pub unsafe extern "system" fn WriteFileEx(
-    hFile: BorrowedHandle<'_>,
-    lpBuffer: *mut ::core::ffi::c_void,
-    nNumberOfBytesToWrite: u32,
-    lpOverlapped: *mut OVERLAPPED,
-    lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
-) -> BOOL {
-    windows_sys::WriteFileEx(
-        hFile.as_raw_handle(),
-        lpBuffer.cast::<u8>(),
-        nNumberOfBytesToWrite,
-        lpOverlapped,
-        lpCompletionRoutine,
-    )
-}
-
-pub unsafe extern "system" fn ReadFileEx(
-    hFile: BorrowedHandle<'_>,
-    lpBuffer: *mut ::core::ffi::c_void,
-    nNumberOfBytesToRead: u32,
-    lpOverlapped: *mut OVERLAPPED,
-    lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
-) -> BOOL {
-    windows_sys::ReadFileEx(
-        hFile.as_raw_handle(),
-        lpBuffer.cast::<u8>(),
-        nNumberOfBytesToRead,
-        lpOverlapped,
-        lpCompletionRoutine,
-    )
-}
-
-cfg_if::cfg_if! {
-if #[cfg(not(target_vendor = "uwp"))] {
-pub unsafe fn NtReadFile(
-    filehandle: BorrowedHandle<'_>,
-    event: HANDLE,
-    apcroutine: PIO_APC_ROUTINE,
-    apccontext: *mut c_void,
-    iostatusblock: &mut IO_STATUS_BLOCK,
-    buffer: *mut crate::mem::MaybeUninit<u8>,
-    length: u32,
-    byteoffset: Option<&i64>,
-    key: Option<&u32>,
-) -> NTSTATUS {
-    windows_sys::NtReadFile(
-        filehandle.as_raw_handle(),
-        event,
-        apcroutine,
-        apccontext,
-        iostatusblock,
-        buffer.cast::<c_void>(),
-        length,
-        byteoffset.map(|o| o as *const i64).unwrap_or(ptr::null()),
-        key.map(|k| k as *const u32).unwrap_or(ptr::null()),
-    )
-}
-pub unsafe fn NtWriteFile(
-    filehandle: BorrowedHandle<'_>,
-    event: HANDLE,
-    apcroutine: PIO_APC_ROUTINE,
-    apccontext: *mut c_void,
-    iostatusblock: &mut IO_STATUS_BLOCK,
-    buffer: *const u8,
-    length: u32,
-    byteoffset: Option<&i64>,
-    key: Option<&u32>,
-) -> NTSTATUS {
-    windows_sys::NtWriteFile(
-        filehandle.as_raw_handle(),
-        event,
-        apcroutine,
-        apccontext,
-        iostatusblock,
-        buffer.cast::<c_void>(),
-        length,
-        byteoffset.map(|o| o as *const i64).unwrap_or(ptr::null()),
-        key.map(|k| k as *const u32).unwrap_or(ptr::null()),
-    )
-}
 }
 }
 
@@ -331,29 +247,29 @@ compat_fn_with_fallback! {
     }
     #[cfg(target_vendor = "uwp")]
     pub fn NtReadFile(
-        filehandle: BorrowedHandle<'_>,
+        filehandle: HANDLE,
         event: HANDLE,
         apcroutine: PIO_APC_ROUTINE,
-        apccontext: *mut c_void,
-        iostatusblock: &mut IO_STATUS_BLOCK,
-        buffer: *mut crate::mem::MaybeUninit<u8>,
+        apccontext: *const core::ffi::c_void,
+        iostatusblock: *mut IO_STATUS_BLOCK,
+        buffer: *mut core::ffi::c_void,
         length: u32,
-        byteoffset: Option<&i64>,
-        key: Option<&u32>
+        byteoffset: *const i64,
+        key: *const u32
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }
     #[cfg(target_vendor = "uwp")]
     pub fn NtWriteFile(
-        filehandle: BorrowedHandle<'_>,
+        filehandle: HANDLE,
         event: HANDLE,
         apcroutine: PIO_APC_ROUTINE,
-        apccontext: *mut c_void,
-        iostatusblock: &mut IO_STATUS_BLOCK,
-        buffer: *const u8,
+        apccontext: *const core::ffi::c_void,
+        iostatusblock: *mut IO_STATUS_BLOCK,
+        buffer: *const core::ffi::c_void,
         length: u32,
-        byteoffset: Option<&i64>,
-        key: Option<&u32>
+        byteoffset: *const i64,
+        key: *const u32
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }
