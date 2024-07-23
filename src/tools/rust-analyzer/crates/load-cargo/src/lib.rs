@@ -243,23 +243,25 @@ impl ProjectFolders {
         for ws in workspaces.iter() {
             let mut file_set_roots: Vec<VfsPath> = vec![];
             let mut entries = vec![];
-            let mut register = false;
 
             if let Some(manifest) = ws.manifest().map(ManifestPath::as_ref) {
                 file_set_roots.push(VfsPath::from(manifest.to_owned()));
                 entries.push(manifest.to_owned());
-                register = true;
             }
 
             // In case of detached files we do **not** look for a rust-analyzer.toml.
             if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
                 let ws_root = ws.workspace_root();
-                file_set_roots.push(VfsPath::from(ws_root.to_owned()));
-                entries.push(ws_root.to_owned());
-                register = true;
+                let ratoml_path = {
+                    let mut p = ws_root.to_path_buf();
+                    p.push("rust-analyzer.toml");
+                    p
+                };
+                file_set_roots.push(VfsPath::from(ratoml_path.to_owned()));
+                entries.push(ratoml_path.to_owned());
             }
 
-            if register {
+            if !file_set_roots.is_empty() {
                 let entry = vfs::loader::Entry::Files(entries);
                 res.watch.push(res.load.len());
                 res.load.push(entry);
