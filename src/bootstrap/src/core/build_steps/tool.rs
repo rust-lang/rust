@@ -589,8 +589,7 @@ impl Step for Rustdoc {
                 .arg("--")
                 .arg(librustdoc_src)
                 .arg(rustdoc_src)
-                .run(builder)
-                .is_success();
+                .run(builder);
 
             if !has_changes {
                 let precompiled_rustdoc = builder

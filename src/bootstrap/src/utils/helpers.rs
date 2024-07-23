@@ -534,7 +534,7 @@ pub fn get_closest_merge_base_commit(
     author: &str,
     target_paths: &[PathBuf],
 ) -> Result<String, String> {
-    let mut git = git(source_dir).capture_stdout();
+    let mut git = git(source_dir);
 
     let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
 
