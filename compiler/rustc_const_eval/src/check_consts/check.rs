@@ -634,10 +634,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         trace!(
             "visit_projection_elem: place_ref={:?} elem={:?} \
             context={:?} location={:?}",
-            place_ref,
-            elem,
-            context,
-            location,
+            place_ref, elem, context, location,
         );
 
         self.super_projection_elem(place_ref, elem, context, location);

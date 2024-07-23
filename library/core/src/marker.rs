@@ -1060,7 +1060,6 @@ pub trait FnPtr: Copy + Clone {
 }
 
 /// Derive macro generating impls of traits related to smart pointers.
-#[cfg(not(bootstrap))]
 #[rustc_builtin_macro]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
 #[unstable(feature = "derive_smart_pointer", issue = "123430")]
@@ -1078,7 +1077,6 @@ pub macro SmartPointer($item:item) {
     reason = "internal module for implementing effects"
 )]
 #[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
-#[cfg(not(bootstrap))]
 pub mod effects {
     #[lang = "EffectsNoRuntime"]
     pub struct NoRuntime;

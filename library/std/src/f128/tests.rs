@@ -1,4 +1,3 @@
-#![cfg(not(bootstrap))]
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(reliable_f128)]
 

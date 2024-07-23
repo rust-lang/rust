@@ -431,8 +431,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             trace!(
                 "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
-                caller_abi,
-                callee_abi
+                caller_abi, callee_abi
             );
             return Ok(false);
         }
