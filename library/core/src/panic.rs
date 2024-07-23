@@ -184,12 +184,12 @@ pub macro unreachable_2021 {
         #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
         #[rustc_do_not_const_check] // hooked by const-eval
         const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
-            $crate::panicking::panic_fmt("internal error: entered unreachable code: {}", *arg);
+            $crate::panicking::panic_fmt($crate::::format_args!("internal error: entered unreachable code: {}", *arg));
         }
         panic_cold_display(&$arg);
     }),
     ($($t:tt)+) => (
-        $crate::panic!("internal error: entered unreachable code: {}", $crate::format_args!($($t)+))
+        $crate::panic!("internal error: entered unreachable code: {}", $crate::const_format_args!($($t)+))
     ),
 }
 
