@@ -423,7 +423,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         //
         // * `#[inline]`
         // * `#[track_caller]`
-        // * `#[target_feature]`
         // * `#[test]`, `#[ignore]`, `#[should_panic]`
         //
         // NOTE: when making changes to this list, check that `error_codes/E0736.md` remains accurate
@@ -452,6 +451,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::instruction_set,
             // code generation
             sym::cold,
+            sym::target_feature,
             // documentation
             sym::doc,
         ];

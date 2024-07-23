@@ -231,6 +231,12 @@ pub unsafe extern "C" fn compatible_codegen_attributes() {
     asm!("", options(noreturn, att_syntax));
 }
 
+#[target_feature(enable = "sse2")]
+#[naked]
+pub unsafe extern "C" fn compatible_target_feature() {
+    asm!("", options(noreturn));
+}
+
 #[doc = "foo bar baz"]
 #[naked]
 pub unsafe extern "C" fn compatible_doc_attributes() {
