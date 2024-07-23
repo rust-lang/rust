@@ -159,7 +159,7 @@ pub macro unreachable_2015 {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
-#[allow_internal_unstable(panic_internals)]
+#[allow_internal_unstable(panic_internals, const_format_args)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2021 {
     // For all cases where it is possible, wrap the actual call to the
