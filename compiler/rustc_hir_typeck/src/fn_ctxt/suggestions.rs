@@ -622,6 +622,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for (sp, label) in spans_and_labels {
                     multi_span.push_span_label(sp, label);
                 }
+                for (sp, label) in upvars.iter().take(4).map(|(var_hir_id, _)| {
+                    let var_name = self.tcx.hir().name(*var_hir_id).to_string();
+                    let span = self.tcx.hir().span(*var_hir_id);
+                    let msg = format!("`{var_name}` declared here");
+                    (span, msg)
+                }) {
+                    multi_span.push_span_label(sp, label);
+                }
                 err.span_note(
                     multi_span,
                     "closures can only be coerced to `fn` types if they do not capture any variables"

@@ -13,6 +13,8 @@ LL |     call_bare(f)
 note: closures can only be coerced to `fn` types if they do not capture any variables
   --> $DIR/closure-reform-bad.rs:10:43
    |
+LL |     let string = "world!";
+   |         ------ `string` declared here
 LL |     let f = |s: &str| println!("{}{}", s, string);
    |                                           ^^^^^^ `string` captured here
 note: function defined here

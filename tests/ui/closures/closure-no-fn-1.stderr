@@ -11,6 +11,8 @@ LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
 note: closures can only be coerced to `fn` types if they do not capture any variables
   --> $DIR/closure-no-fn-1.rs:6:39
    |
+LL |     let mut a = 0u8;
+   |         ----- `a` declared here
 LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
    |                                       ^ `a` captured here
 

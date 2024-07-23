@@ -16,6 +16,9 @@ LL | |     };
 note: closures can only be coerced to `fn` types if they do not capture any variables
   --> $DIR/closure-no-fn-4.rs:5:26
    |
+LL |     let b = 2;
+   |         - `b` declared here
+...
 LL |         false => |a| a - b,
    |                          ^ `b` captured here
 

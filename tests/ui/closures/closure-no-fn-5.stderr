@@ -11,6 +11,15 @@ LL |     let bar: fn() -> u8 = || { a; b; c; d; e };
 note: closures can only be coerced to `fn` types if they do not capture any variables
   --> $DIR/closure-no-fn-5.rs:10:32
    |
+LL |     let a = 0u8;
+   |         - `a` declared here
+LL |     let b = 0u8;
+   |         - `b` declared here
+LL |     let c = 0u8;
+   |         - `c` declared here
+LL |     let d = 0u8;
+   |         - `d` declared here
+LL |     let e = 0u8;
 LL |     let bar: fn() -> u8 = || { a; b; c; d; e };
    |                                ^  ^  ^  ^ `d` captured here
    |                                |  |  |
