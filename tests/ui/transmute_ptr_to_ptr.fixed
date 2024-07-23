@@ -60,6 +60,11 @@ fn transmute_ptr_to_ptr() {
     let _: &GenericParam<&LifetimeParam<'static>> = unsafe { transmute(&GenericParam { t: &lp }) };
 }
 
+fn lifetime_to_static(v: *mut &()) -> *const &'static () {
+    unsafe { v as *const &() }
+    //~^ transmute_ptr_to_ptr
+}
+
 // dereferencing raw pointers in const contexts, should not lint as it's unstable (issue 5959)
 const _: &() = {
     struct Zst;

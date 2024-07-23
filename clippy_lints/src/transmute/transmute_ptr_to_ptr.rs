@@ -5,7 +5,7 @@ use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 /// Checks for `transmute_ptr_to_ptr` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
@@ -42,6 +42,7 @@ pub(super) fn check<'tcx>(
                                 (ty::Mutability::Mut, ty::Mutability::Not) => Some("cast_const"),
                                 _ => None,
                             }
+                            && !from_pointee_ty.has_erased_regions()
                             && msrv.meets(msrvs::POINTER_CAST_CONSTNESS)
                         {
                             diag.span_suggestion_verbose(
