@@ -77,11 +77,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                         .with_help("`sym` operands must refer to either a function or a static")
                         .emit();
 
-                    Ty::new_error_with_message(
-                        tcx,
-                        span,
-                        format!("invalid type for `sym` operand"),
-                    )
+                    Ty::new_error_with_message(tcx, span, format!("invalid type for `sym` operand"))
                 }
             }
         }
