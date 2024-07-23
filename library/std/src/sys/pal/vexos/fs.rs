@@ -155,10 +155,7 @@ impl DirEntry {
     }
 
     pub fn file_name(&self) -> OsString {
-        self.path
-            .file_name()
-            .unwrap_or(crate::ffi::OsStr::new(""))
-            .to_os_string()
+        self.path.file_name().unwrap_or(crate::ffi::OsStr::new("")).to_os_string()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -433,16 +430,21 @@ impl Drop for File {
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    // getting directory entries does not work with trailing slashes
+    let p = Path::new(
+        p.to_str()
+            .ok_or(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Path contained invalid characters",
+            ))?
+            .trim_end_matches("/"),
+    );
+    
     if !stat(p)?.file_type().is_dir() {
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "Given directory was not a path"));
     }
 
-    // getting directory entries does not work with trailing slashes
-    let path = p
-        .to_str()
-        .ok_or(io::Error::new(io::ErrorKind::InvalidInput, "Path contained invalid characters"))?
-        .trim_end_matches("/");
-    let path = CString::new(path.as_bytes())
+    let path = CString::new(p.as_os_str().as_encoded_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Path contained a null byte"))?;
 
     //TODO: Figure out if there is any way to check the number of entries in a directory/the needed length
@@ -458,15 +460,19 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     // stop at null-terminator
     let filenames = match filenames_buffer.split(|&e| e == 0).next() {
         Some(filenames) => filenames,
-        None => &filenames_buffer
+        None => &filenames_buffer,
     };
-    let filenames = String::from_utf8(filenames.to_vec()).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
-    let paths = filenames.split('\n').map(|filename| {
-        let mut path = PathBuf::new();
-        path.push(p);
-        path.push(filename);
-        DirEntry { path }
-    }).collect::<Vec<_>>();
+    let filenames = String::from_utf8(filenames.to_vec())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
+    let paths = filenames
+        .split('\n')
+        .map(|filename| {
+            let mut path = PathBuf::new();
+            path.push(p);
+            path.push(filename);
+            DirEntry { path }
+        })
+        .collect::<Vec<_>>();
 
     Ok(ReadDir { entries: paths })
 }
