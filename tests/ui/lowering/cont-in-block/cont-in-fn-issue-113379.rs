@@ -1,8 +1,5 @@
 // Fixes: #113379
 
-#![allow(incomplete_features)]
-#![feature(adt_const_params)]
-
 trait Trait<const S: usize> {}
 
 struct Bug<T>

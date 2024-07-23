@@ -1,5 +1,5 @@
 error[E0696]: `continue` pointing to a labeled block
-  --> $DIR/cont-in-fn-issue-113379.rs:14:17
+  --> $DIR/cont-in-fn-issue-113379.rs:11:17
    |
 LL | /             'b: {
 LL | |
@@ -9,7 +9,7 @@ LL | |             }
    | |_____________- labeled block the `continue` points to
 
 error[E0696]: `continue` pointing to a labeled block
-  --> $DIR/cont-in-fn-issue-113379.rs:24:9
+  --> $DIR/cont-in-fn-issue-113379.rs:21:9
    |
 LL | /     'b: {
 LL | |         continue 'b;
@@ -19,7 +19,7 @@ LL | |     }
    | |_____- labeled block the `continue` points to
 
 error[E0308]: mismatched types
-  --> $DIR/cont-in-fn-issue-113379.rs:12:13
+  --> $DIR/cont-in-fn-issue-113379.rs:9:13
    |
 LL | /             'b: {
 LL | |
