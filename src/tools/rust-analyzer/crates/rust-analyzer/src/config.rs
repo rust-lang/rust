@@ -801,8 +801,7 @@ pub struct Config {
     /// Since it is a `global` command at the moment, its final value can only be determined by
     /// traversing through `global` configs and the `client` config. However the non-null value constraint
     /// is config level agnostic, so this requires an independent error storage
-    /// FIXME : bad name I know...
-    other_errors: ConfigErrors,
+    validation_errors: ConfigErrors,
 
     detached_files: Vec<AbsPathBuf>,
 }
@@ -833,7 +832,7 @@ impl Config {
     /// The return tuple's bool component signals whether the `GlobalState` should call its `update_configuration()` method.
     fn apply_change_with_sink(&self, change: ConfigChange) -> (Config, bool) {
         let mut config = self.clone();
-        config.other_errors = ConfigErrors::default();
+        config.validation_errors = ConfigErrors::default();
 
         let mut should_update = false;
 
@@ -1013,7 +1012,7 @@ impl Config {
         }
 
         if config.check_command().is_empty() {
-            config.other_errors.0.push(Arc::new(ConfigErrorInner::Json {
+            config.validation_errors.0.push(Arc::new(ConfigErrorInner::Json {
                 config_key: "/check/command".to_owned(),
                 error: serde_json::Error::custom("expected a non-empty string"),
             }));
@@ -1036,7 +1035,7 @@ impl Config {
                 .chain(config.root_ratoml.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.ratoml_files.values().flat_map(|it| it.1 .0.iter()))
-                .chain(config.other_errors.0.iter())
+                .chain(config.validation_errors.0.iter())
                 .cloned()
                 .collect(),
         );
@@ -1363,7 +1362,7 @@ impl Config {
             root_ratoml: None,
             root_ratoml_path,
             detached_files: Default::default(),
-            other_errors: Default::default(),
+            validation_errors: Default::default(),
         }
     }
 
