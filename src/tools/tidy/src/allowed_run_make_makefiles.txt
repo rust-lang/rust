@@ -34,7 +34,6 @@ run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
 run-make/issue-88756-default-output/Makefile
-run-make/issue-97463-abi-param-passing/Makefile
 run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/libtest-json/Makefile
@@ -70,7 +69,6 @@ run-make/remap-path-prefix-dwarf/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
-run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
@@ -80,7 +78,6 @@ run-make/simd-ffi/Makefile
 run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
 run-make/static-dylib-by-default/Makefile
-run-make/staticlib-blank-lib/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
