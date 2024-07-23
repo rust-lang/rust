@@ -248,7 +248,7 @@ pub macro panic_2015 {
         #[cold]
         #[track_caller]
         #[inline(never)]
-        const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
+        fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
             $crate::rt::panic_display(arg)
         }
         panic_cold_display(&$arg);
