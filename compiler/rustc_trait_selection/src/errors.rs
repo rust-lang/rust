@@ -1585,10 +1585,7 @@ pub enum TypeErrorAdditionalDiags {
         span: Span,
         code: String,
     },
-    #[multipart_suggestion(
-        trait_selection_meant_str_literal,
-        applicability = "machine-applicable"
-    )]
+    #[multipart_suggestion(trait_selection_meant_str_literal, applicability = "machine-applicable")]
     MeantStrLiteral {
         #[suggestion_part(code = "\"")]
         start: Span,
