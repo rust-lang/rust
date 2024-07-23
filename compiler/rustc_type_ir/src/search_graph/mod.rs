@@ -43,6 +43,19 @@ pub trait Cx: Copy {
 
 pub trait Delegate {
     type Cx: Cx;
+    type ValidationScope;
+    /// Returning `Some` disables the global cache for the current goal.
+    ///
+    /// The `ValidationScope` is used when fuzzing the search graph to track
+    /// for which goals the global cache has been disabled. This is necessary
+    /// as we may otherwise ignore the global cache entry for some goal `G`
+    /// only to later use it, failing to detect a cycle goal and potentially
+    /// changing the result.
+    fn enter_validation_scope(
+        cx: Self::Cx,
+        input: <Self::Cx as Cx>::Input,
+    ) -> Option<Self::ValidationScope>;
+
     const FIXPOINT_STEP_LIMIT: usize;
 
     type ProofTreeBuilder;
@@ -357,11 +370,21 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             return D::on_stack_overflow(cx, inspect, input);
         };
 
-        if D::inspect_is_noop(inspect) {
-            if let Some(result) = self.lookup_global_cache(cx, input, available_depth) {
-                return result;
-            }
-        }
+        let validate_cache = if !D::inspect_is_noop(inspect) {
+            None
+        } else if let Some(scope) = D::enter_validation_scope(cx, input) {
+            // When validating the global cache we need to track the goals for which the
+            // global cache has been disabled as it may otherwise change the result for
+            // cyclic goals. We don't care about goals which are not on the current stack
+            // so it's fine to drop their scope eagerly.
+            self.lookup_global_cache_untracked(cx, input, available_depth)
+                .inspect(|expected| debug!(?expected, "validate cache entry"))
+                .map(|r| (scope, r))
+        } else if let Some(result) = self.lookup_global_cache(cx, input, available_depth) {
+            return result;
+        } else {
+            None
+        };
 
         // Check whether the goal is in the provisional cache.
         // The provisional result may rely on the path to its cycle roots,
@@ -453,6 +476,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // do not remove it from the provisional cache and update its provisional result.
         // We only add the root of cycles to the global cache.
         if let Some(head) = final_entry.non_root_cycle_participant {
+            debug_assert!(validate_cache.is_none());
             let coinductive_stack = Self::stack_coinductive_from(cx, &self.stack, head);
 
             let entry = self.provisional_cache.get_mut(&input).unwrap();
@@ -464,14 +488,27 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             }
         } else {
             self.provisional_cache.remove(&input);
-            if D::inspect_is_noop(inspect) {
+            if let Some((_scope, expected)) = validate_cache {
+                // Do not try to move a goal into the cache again if we're testing
+                // the global cache.
+                assert_eq!(result, expected, "input={input:?}");
+            } else if D::inspect_is_noop(inspect) {
                 self.insert_global_cache(cx, input, final_entry, result, dep_node)
             }
         }
 
-        self.check_invariants();
-
         result
+    }
+
+    fn lookup_global_cache_untracked(
+        &self,
+        cx: X,
+        input: X::Input,
+        available_depth: AvailableDepth,
+    ) -> Option<X::Result> {
+        cx.with_global_cache(self.mode, |cache| {
+            cache.get(cx, input, &self.stack, available_depth).map(|c| c.result)
+        })
     }
 
     /// Try to fetch a previously computed result from the global cache,
@@ -497,7 +534,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             let reached_depth = self.stack.next_index().plus(additional_depth);
             self.update_parent_goal(reached_depth, encountered_overflow);
 
-            debug!("global cache hit");
+            debug!(?additional_depth, "global cache hit");
             Some(result)
         })
     }
@@ -519,6 +556,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         dep_node: X::DepNodeIndex,
     ) {
         let additional_depth = final_entry.reached_depth.as_usize() - self.stack.len();
+        debug!(?final_entry, ?result, "insert global cache");
         cx.with_global_cache(self.mode, |cache| {
             cache.insert(
                 cx,
