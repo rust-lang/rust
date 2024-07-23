@@ -248,8 +248,6 @@ pub macro panic_2015 {
         #[cold]
         #[track_caller]
         #[inline(never)]
-        #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
-        #[rustc_do_not_const_check] // hooked by const-eval
         const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
             $crate::rt::panic_display(arg)
         }
