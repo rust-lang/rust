@@ -1570,11 +1570,22 @@ impl Config {
         let mut is_user_configured_rust_channel = false;
 
         if let Some(rust) = toml.rust {
-            config.download_rustc_commit =
-                config.download_ci_rustc_commit(rust.download_rustc.clone());
+            if let Some(commit) = config.download_ci_rustc_commit(rust.download_rustc.clone()) {
+                // Primarily used by CI runners to avoid handling download-rustc incompatible
+                // options one by one on shell scripts.
+                let disable_ci_rustc_if_incompatible =
+                    env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                        .is_some_and(|s| s == "1" || s == "true");
 
-            if config.download_rustc_commit.is_some() {
-                check_incompatible_options_for_ci_rustc(&rust);
+                if let Err(e) = check_incompatible_options_for_ci_rustc(&rust) {
+                    if disable_ci_rustc_if_incompatible {
+                        config.download_rustc_commit = None;
+                    } else {
+                        panic!("{}", e);
+                    }
+                } else {
+                    config.download_rustc_commit = Some(commit);
+                }
             }
 
             let Rust {
@@ -2612,14 +2623,15 @@ impl Config {
 
 /// Checks the CI rustc incompatible options by destructuring the `Rust` instance
 /// and makes sure that no rust options from config.toml are missed.
-fn check_incompatible_options_for_ci_rustc(rust: &Rust) {
+fn check_incompatible_options_for_ci_rustc(rust: &Rust) -> Result<(), String> {
     macro_rules! err {
         ($name:expr) => {
-            assert!(
-                $name.is_none(),
-                "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
-                stringify!($name).replace("_", "-")
-            );
+            if $name.is_some() {
+                return Err(format!(
+                    "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
+                    stringify!($name).replace("_", "-")
+                ));
+            }
         };
     }
 
@@ -2715,6 +2727,8 @@ fn check_incompatible_options_for_ci_rustc(rust: &Rust) {
     warn!(channel);
     warn!(description);
     warn!(incremental);
+
+    Ok(())
 }
 
 fn set<T>(field: &mut T, val: Option<T>) {
