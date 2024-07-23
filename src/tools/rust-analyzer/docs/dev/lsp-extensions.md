@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 278250dba58cd879
+lsp/ext.rs hash: f41950db4c7b3a5a
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -615,25 +615,6 @@ Reloads project information (that is, re-executes `cargo metadata`).
 **Response:** `null`
 
 Rebuilds build scripts and proc-macros, and runs the build scripts to reseed the build data.
-
-## Unindexed Project
-
-**Experimental Client Capability:** `{ "unindexedProject": boolean }`
-
-**Method:** `rust-analyzer/unindexedProject`
-
-**Notification:**
-
-```typescript
-interface UnindexedProjectParams {
-    /// A list of documents that rust-analyzer has determined are not indexed.
-    textDocuments: lc.TextDocumentIdentifier[]
-}
-```
-
-This notification is sent from the server to the client. The client is expected
-to determine the appropriate owners of `textDocuments` and update `linkedProjects`
-if an owner can be determined successfully.
 
 ## Server Status
 

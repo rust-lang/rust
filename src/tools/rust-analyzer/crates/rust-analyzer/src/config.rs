@@ -679,9 +679,6 @@ config_data! {
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = true,
 
-        /// Whether to send an UnindexedProject notification to the client.
-        notifications_unindexedProject: bool      = false,
-
         /// How many worker threads in the main loop. The default `null` means to pick automatically.
         numThreads: Option<NumThreads> = None,
 
@@ -1236,7 +1233,6 @@ pub enum FilesWatcher {
 #[derive(Debug, Clone)]
 pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
-    pub unindexed_project: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1800,7 +1796,6 @@ impl Config {
     pub fn notifications(&self) -> NotificationsConfig {
         NotificationsConfig {
             cargo_toml_not_found: self.notifications_cargoTomlNotFound().to_owned(),
-            unindexed_project: self.notifications_unindexedProject().to_owned(),
         }
     }
 
