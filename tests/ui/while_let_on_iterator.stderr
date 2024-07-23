@@ -160,8 +160,14 @@ LL |         while let Some(x) = it.next() {
 error: this loop could be written as a `for` loop
   --> tests/ui/while_let_on_iterator.rs:461:5
    |
+LL |     'label: while let Some(n) = it.next() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'label: for n in it`
+
+error: this loop could be written as a `for` loop
+  --> tests/ui/while_let_on_iterator.rs:470:5
+   |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`
 
-error: aborting due to 27 previous errors
+error: aborting due to 28 previous errors
 

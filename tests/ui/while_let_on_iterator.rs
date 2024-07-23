@@ -456,6 +456,15 @@ fn fn_once_closure() {
     });
 }
 
+fn issue13123() {
+    let mut it = 0..20;
+    'label: while let Some(n) = it.next() {
+        if n % 25 == 0 {
+            break 'label;
+        }
+    }
+}
+
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {

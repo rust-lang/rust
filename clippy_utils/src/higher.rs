@@ -367,6 +367,7 @@ pub struct WhileLet<'hir> {
     pub let_expr: &'hir Expr<'hir>,
     /// `while let` loop body
     pub if_then: &'hir Expr<'hir>,
+    pub label: Option<ast::Label>,
     /// `while let PAT = EXPR`
     ///        ^^^^^^^^^^^^^^
     pub let_span: Span,
@@ -399,7 +400,7 @@ impl<'hir> WhileLet<'hir> {
                     }),
                 ..
             },
-            _,
+            label,
             LoopSource::While,
             _,
         ) = expr.kind
@@ -408,6 +409,7 @@ impl<'hir> WhileLet<'hir> {
                 let_pat,
                 let_expr,
                 if_then,
+                label,
                 let_span,
             });
         }
