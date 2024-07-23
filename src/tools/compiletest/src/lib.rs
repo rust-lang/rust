@@ -25,7 +25,7 @@ use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use core::panic;
 use getopts::Options;
 use std::collections::HashSet;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -225,6 +225,29 @@ pub fn parse_config(args: Vec<String>) -> Config {
         // Avoid spawning an external command when we know tidy won't be used.
         false
     };
+    let filters = if mode == Mode::RunMake {
+        matches
+            .free
+            .iter()
+            .map(|f| {
+                let path = Path::new(f);
+                let mut iter = path.iter().skip(1);
+
+                // We skip the test folder and check if the user passed `rmake.rs` or `Makefile`.
+                if iter
+                    .next()
+                    .is_some_and(|s| s == OsStr::new("rmake.rs") || s == OsStr::new("Makefile"))
+                    && iter.next().is_none()
+                {
+                    path.parent().unwrap().to_str().unwrap().to_string()
+                } else {
+                    f.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+    } else {
+        matches.free.clone()
+    };
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -249,7 +272,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         debugger: None,
         run_ignored,
         with_debug_assertions,
-        filters: matches.free.clone(),
+        filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode| {
