@@ -105,6 +105,7 @@ pub enum UsageKind {
 impl UsageKind {
     fn merge(self, other: Self) -> Self {
         match (self, other) {
+            (UsageKind::Mixed, _) | (_, UsageKind::Mixed) => UsageKind::Mixed,
             (UsageKind::Single(lhs), UsageKind::Single(rhs)) => {
                 if lhs == rhs {
                     UsageKind::Single(lhs)
@@ -112,9 +113,6 @@ impl UsageKind {
                     UsageKind::Mixed
                 }
             }
-            (UsageKind::Mixed, UsageKind::Mixed)
-            | (UsageKind::Mixed, UsageKind::Single(_))
-            | (UsageKind::Single(_), UsageKind::Mixed) => UsageKind::Mixed,
         }
     }
 }
@@ -459,7 +457,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             for _ in 0..D::FIXPOINT_STEP_LIMIT {
                 match self.fixpoint_step_in_task(cx, input, inspect, &mut prove_goal) {
                     StepResult::Done(final_entry, result) => return (final_entry, result),
-                    StepResult::HasChanged => debug!("fixpoint changed provisional results"),
+                    StepResult::HasChanged => {}
                 }
             }
 
@@ -624,6 +622,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         if D::reached_fixpoint(cx, usage_kind, input, stack_entry.provisional_result, result) {
             StepResult::Done(stack_entry, result)
         } else {
+            debug!(?result, "fixpoint changed provisional results");
             let depth = self.stack.push(StackEntry {
                 has_been_used: None,
                 provisional_result: Some(result),
