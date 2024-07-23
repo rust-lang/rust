@@ -385,12 +385,3 @@ impl MaybeCause {
         }
     }
 }
-
-#[derive(derivative::Derivative)]
-#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
-pub struct CacheData<I: Interner> {
-    pub result: QueryResult<I>,
-    pub proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
-    pub additional_depth: usize,
-    pub encountered_overflow: bool,
-}

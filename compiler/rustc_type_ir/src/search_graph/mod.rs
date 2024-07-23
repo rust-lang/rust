@@ -21,7 +21,6 @@ mod validate;
 /// about `Input` and `Result` as they are implementation details
 /// of the search graph.
 pub trait Cx: Copy {
-    type ProofTree: Debug + Copy;
     type Input: Debug + Eq + Hash + Copy;
     type Result: Debug + Eq + Hash + Copy;
 
@@ -42,17 +41,12 @@ pub trait Cx: Copy {
     ) -> R;
 }
 
-pub trait ProofTreeBuilder<X: Cx> {
-    fn try_apply_proof_tree(&mut self, proof_tree: X::ProofTree) -> bool;
-    fn on_provisional_cache_hit(&mut self);
-    fn on_cycle_in_stack(&mut self);
-    fn finalize_canonical_goal_evaluation(&mut self, cx: X) -> X::ProofTree;
-}
-
 pub trait Delegate {
     type Cx: Cx;
     const FIXPOINT_STEP_LIMIT: usize;
-    type ProofTreeBuilder: ProofTreeBuilder<Self::Cx>;
+
+    type ProofTreeBuilder;
+    fn inspect_is_noop(inspect: &mut Self::ProofTreeBuilder) -> bool;
 
     fn recursion_limit(cx: Self::Cx) -> usize;
 
@@ -363,8 +357,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             return D::on_stack_overflow(cx, inspect, input);
         };
 
-        if let Some(result) = self.lookup_global_cache(cx, input, available_depth, inspect) {
-            return result;
+        if D::inspect_is_noop(inspect) {
+            if let Some(result) = self.lookup_global_cache(cx, input, available_depth) {
+                return result;
+            }
         }
 
         // Check whether the goal is in the provisional cache.
@@ -387,7 +383,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             // We have a nested goal which is already in the provisional cache, use
             // its result. We do not provide any usage kind as that should have been
             // already set correctly while computing the cache entry.
-            inspect.on_provisional_cache_hit();
             Self::tag_cycle_participants(&mut self.stack, None, entry.head);
             return entry.result;
         } else if let Some(stack_depth) = cache_entry.stack_depth {
@@ -398,8 +393,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             //
             // Finally we can return either the provisional response or the initial response
             // in case we're in the first fixpoint iteration for this goal.
-            inspect.on_cycle_in_stack();
-
             let is_coinductive_cycle = Self::stack_coinductive_from(cx, &self.stack, stack_depth);
             let cycle_kind =
                 if is_coinductive_cycle { CycleKind::Coinductive } else { CycleKind::Inductive };
@@ -454,8 +447,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             (current_entry, result)
         });
 
-        let proof_tree = inspect.finalize_canonical_goal_evaluation(cx);
-
         self.update_parent_goal(final_entry.reached_depth, final_entry.encountered_overflow);
 
         // We're now done with this goal. In case this goal is involved in a larger cycle
@@ -472,28 +463,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 entry.with_inductive_stack = Some(DetachedEntry { head, result });
             }
         } else {
-            // When encountering a cycle, both inductive and coinductive, we only
-            // move the root into the global cache. We also store all other cycle
-            // participants involved.
-            //
-            // We must not use the global cache entry of a root goal if a cycle
-            // participant is on the stack. This is necessary to prevent unstable
-            // results. See the comment of `StackEntry::nested_goals` for
-            // more details.
             self.provisional_cache.remove(&input);
-            let additional_depth = final_entry.reached_depth.as_usize() - self.stack.len();
-            cx.with_global_cache(self.mode, |cache| {
-                cache.insert(
-                    cx,
-                    input,
-                    result,
-                    proof_tree,
-                    dep_node,
-                    additional_depth,
-                    final_entry.encountered_overflow,
-                    &final_entry.nested_goals,
-                )
-            })
+            if D::inspect_is_noop(inspect) {
+                self.insert_global_cache(cx, input, final_entry, result, dep_node)
+            }
         }
 
         self.check_invariants();
@@ -509,24 +482,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx: X,
         input: X::Input,
         available_depth: AvailableDepth,
-        inspect: &mut D::ProofTreeBuilder,
     ) -> Option<X::Result> {
         cx.with_global_cache(self.mode, |cache| {
             let CacheData {
                 result,
-                proof_tree,
                 additional_depth,
                 encountered_overflow,
                 nested_goals: _, // FIXME: consider nested goals here.
             } = cache.get(cx, input, &self.stack, available_depth)?;
-
-            // If we're building a proof tree and the current cache entry does not
-            // contain a proof tree, we do not use the entry but instead recompute
-            // the goal. We simply overwrite the existing entry once we're done,
-            // caching the proof tree.
-            if !inspect.try_apply_proof_tree(proof_tree) {
-                return None;
-            }
 
             // Update the reached depth of the current goal to make sure
             // its state is the same regardless of whether we've used the
@@ -536,6 +499,36 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
             debug!("global cache hit");
             Some(result)
+        })
+    }
+
+    /// When encountering a cycle, both inductive and coinductive, we only
+    /// move the root into the global cache. We also store all other cycle
+    /// participants involved.
+    ///
+    /// We must not use the global cache entry of a root goal if a cycle
+    /// participant is on the stack. This is necessary to prevent unstable
+    /// results. See the comment of `StackEntry::nested_goals` for
+    /// more details.
+    fn insert_global_cache(
+        &mut self,
+        cx: X,
+        input: X::Input,
+        final_entry: StackEntry<X>,
+        result: X::Result,
+        dep_node: X::DepNodeIndex,
+    ) {
+        let additional_depth = final_entry.reached_depth.as_usize() - self.stack.len();
+        cx.with_global_cache(self.mode, |cache| {
+            cache.insert(
+                cx,
+                input,
+                result,
+                dep_node,
+                additional_depth,
+                final_entry.encountered_overflow,
+                &final_entry.nested_goals,
+            )
         })
     }
 }

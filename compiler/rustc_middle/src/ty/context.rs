@@ -112,8 +112,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_predefined_opaques_in_body(data)
     }
     type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
-    type CanonicalGoalEvaluationStepRef =
-        &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -280,13 +278,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn debug_assert_args_compatible(self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) {
         self.debug_assert_args_compatible(def_id, args);
-    }
-
-    fn intern_canonical_goal_evaluation_step(
-        self,
-        step: solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>,
-    ) -> &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>> {
-        self.arena.alloc(step)
     }
 
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
