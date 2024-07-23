@@ -38,7 +38,7 @@ error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:8:5
    |
 LL | use _::*;
-   |     ^ maybe a missing crate `_`?
+   |     ^ you might be missing crate `_`
    |
    = help: consider adding `extern crate _` to use the `_` crate
 
@@ -46,7 +46,7 @@ error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:5:5
    |
 LL | use _::a;
-   |     ^ maybe a missing crate `_`?
+   |     ^ you might be missing crate `_`
    |
    = help: consider adding `extern crate _` to use the `_` crate
 
@@ -54,7 +54,7 @@ error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:13:9
    |
 LL |     use _::a;
-   |         ^ maybe a missing crate `_`?
+   |         ^ you might be missing crate `_`
    |
    = help: consider adding `extern crate _` to use the `_` crate
 
@@ -62,7 +62,7 @@ error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:16:9
    |
 LL |     use _::*;
-   |         ^ maybe a missing crate `_`?
+   |         ^ you might be missing crate `_`
    |
    = help: consider adding `extern crate _` to use the `_` crate
 
