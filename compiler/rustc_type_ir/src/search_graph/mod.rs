@@ -117,6 +117,11 @@ impl UsageKind {
     }
 }
 
+enum StepResult<X: Cx> {
+    Done(StackEntry<X>, X::Result),
+    HasChanged,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct AvailableDepth(usize);
 impl AvailableDepth {
@@ -560,14 +565,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             )
         })
     }
-}
 
-enum StepResult<X: Cx> {
-    Done(StackEntry<X>, X::Result),
-    HasChanged,
-}
-
-impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// When we encounter a coinductive cycle, we have to fetch the
     /// result of that cycle while we are still computing it. Because
     /// of this we continuously recompute the cycle until the result
