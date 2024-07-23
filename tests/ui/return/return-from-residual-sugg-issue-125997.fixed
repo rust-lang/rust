@@ -33,6 +33,25 @@ macro_rules! mac {
     };
 }
 
+struct A;
+
+impl A {
+    fn test4(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut _file = File::create("foo.txt")?;
+        //~^ ERROR the `?` operator can only be used in a method
+    
+    Ok(())
+}
+
+    fn test5(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut _file = File::create("foo.txt")?;
+        //~^ ERROR the `?` operator can only be used in a method
+        println!();
+    
+    Ok(())
+}
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut _file = File::create("foo.txt")?;
     //~^ ERROR the `?` operator can only be used in a function
