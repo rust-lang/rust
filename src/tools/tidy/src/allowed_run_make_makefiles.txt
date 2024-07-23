@@ -13,7 +13,6 @@ run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/emit-to-stdout/Makefile
 run-make/export-executable-symbols/Makefile
-run-make/extern-flag-disambiguates/Makefile
 run-make/extern-fn-reachable/Makefile
 run-make/fmt-write-bloat/Makefile
 run-make/foreign-double-unwind/Makefile
