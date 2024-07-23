@@ -73,9 +73,7 @@ pub(crate) fn handle_did_open_text_document(
 
         tracing::info!("New file content set {:?}", params.text_document.text);
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
-        if state.config.discover_workspace_config().is_some()
-            || state.config.notifications().unindexed_project
-        {
+        if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
             let _ = state
                 .deferred_task_queue

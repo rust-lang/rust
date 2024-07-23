@@ -6,16 +6,12 @@ import { type CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
-import type { JsonProject } from "./rust_project";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
-// This API is not stable and may break in between minor releases.
 export interface RustAnalyzerExtensionApi {
+    // FIXME: this should be non-optional
     readonly client?: lc.LanguageClient;
-
-    setWorkspaces(workspaces: JsonProject[]): void;
-    notifyRustAnalyzer(): Promise<void>;
 }
 
 export async function deactivate() {

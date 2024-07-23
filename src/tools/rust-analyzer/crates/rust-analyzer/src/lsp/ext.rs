@@ -834,16 +834,3 @@ pub struct CompletionImport {
 pub struct ClientCommandOptions {
     pub commands: Vec<String>,
 }
-
-pub enum UnindexedProject {}
-
-impl Notification for UnindexedProject {
-    type Params = UnindexedProjectParams;
-    const METHOD: &'static str = "rust-analyzer/unindexedProject";
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct UnindexedProjectParams {
-    pub text_documents: Vec<TextDocumentIdentifier>,
-}

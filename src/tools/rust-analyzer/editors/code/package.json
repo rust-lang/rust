@@ -2268,16 +2268,6 @@
                 }
             },
             {
-                "title": "notifications",
-                "properties": {
-                    "rust-analyzer.notifications.unindexedProject": {
-                        "markdownDescription": "Whether to send an UnindexedProject notification to the client.",
-                        "default": false,
-                        "type": "boolean"
-                    }
-                }
-            },
-            {
                 "title": "general",
                 "properties": {
                     "rust-analyzer.numThreads": {

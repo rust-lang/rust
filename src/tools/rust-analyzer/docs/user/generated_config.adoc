@@ -830,11 +830,6 @@ Sets the LRU capacity of the specified queries.
 --
 Whether to show `can't find Cargo.toml` error message.
 --
-[[rust-analyzer.notifications.unindexedProject]]rust-analyzer.notifications.unindexedProject (default: `false`)::
-+
---
-Whether to send an UnindexedProject notification to the client.
---
 [[rust-analyzer.numThreads]]rust-analyzer.numThreads (default: `null`)::
 +
 --

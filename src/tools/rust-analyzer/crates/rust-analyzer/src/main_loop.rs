@@ -90,7 +90,6 @@ pub(crate) enum QueuedTask {
 pub(crate) enum Task {
     Response(lsp_server::Response),
     DiscoverLinkedProjects(DiscoverProjectParam),
-    ClientNotification(lsp_ext::UnindexedProjectParams),
     Retry(lsp_server::Request),
     Diagnostics(DiagnosticsGeneration, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     DiscoverTest(lsp_ext::DiscoverTestResults),
@@ -642,9 +641,6 @@ impl GlobalState {
     fn handle_task(&mut self, prime_caches_progress: &mut Vec<PrimeCachesProgress>, task: Task) {
         match task {
             Task::Response(response) => self.respond(response),
-            Task::ClientNotification(params) => {
-                self.send_notification::<lsp_ext::UnindexedProject>(params)
-            }
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
             Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
             Task::Retry(_) => (),
@@ -825,12 +821,7 @@ impl GlobalState {
                                     from_proto::abs_path(&uri).expect("Unable to get AbsPath");
                                 let arg = DiscoverProjectParam::Path(path);
                                 sender.send(Task::DiscoverLinkedProjects(arg)).unwrap();
-                            } else if snap.config.notifications().unindexed_project {
-                                let params = lsp_ext::UnindexedProjectParams {
-                                    text_documents: vec![lsp_types::TextDocumentIdentifier { uri }],
-                                };
-                                sender.send(Task::ClientNotification(params)).unwrap();
-                            };
+                            }
                         } else {
                             tracing::debug!(?uri, "is indexed");
                         }
