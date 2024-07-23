@@ -39,7 +39,6 @@ run-make/pgo-gen-lto/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
-run-make/redundant-libs/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
