@@ -88,7 +88,7 @@ impl Target {
         let gz = tarball_variant(builder, &base_path, "gz");
         let xz = tarball_variant(builder, &base_path, "xz");
 
-        if gz.is_none() {
+        if gz.is_none() && xz.is_none() {
             return Self::unavailable();
         }
 
