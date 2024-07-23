@@ -9,8 +9,6 @@
 //
 // This is regression test for https://github.com/rust-lang/rust/issues/67276.
 
-//FIXME(Oneirical): ignore-cross-compile
-
 use run_make_support::rustc;
 
 fn main() {

@@ -2,14 +2,13 @@
 // attached extern block,
 // so they may be linked against without linking against an import library.
 // To learn more, read https://github.com/rust-lang/rfcs/blob/master/text/2627-raw-dylib-kind.md
-// `#[link_ordinal(n)]` allows Rust to link against DLLs that export symbols by ordinal rather
-// than by name. As long as the ordinal matches, the name of the function in Rust is not
-// required to match the name of the corresponding function in the exporting DLL.
-// This test is a sanity check for this feature, done by comparing its output against expected
-// output.
-// See https://github.com/rust-lang/rust/pull/89025
+// Almost identical to `raw-dylib-link-ordinal`, but with the addition of calling conventions,
+// such as stdcall.
+// See https://github.com/rust-lang/rust/pull/90782
 
+//@ only-x86
 //@ only-windows
+// Reason: this test specifically exercises a 32bit Windows calling convention.
 
 use run_make_support::{cc, diff, is_msvc, run, rustc};
 
@@ -22,13 +21,21 @@ fn main() {
     if is_msvc() {
         cc().arg("-c").out_exe("exporter").input("exporter.c").run();
         cc().input("exporter.obj")
-            .arg("exporter.def")
+            .arg("exporter-msvc.def")
             .args(&["-link", "-dll", "-noimplib", "-out:exporter.dll"])
             .run();
     } else {
         cc().arg("-v").arg("-c").out_exe("exporter.obj").input("exporter.c").run();
-        cc().input("exporter.obj").arg("exporter.def").arg("-shared").output("exporter.dll").run();
+        cc().input("exporter.obj")
+            .arg("exporter-gnu.def")
+            .arg("-shared")
+            .output("exporter.dll")
+            .run();
     };
     let out = run("driver").stdout_utf8();
-    diff().expected_file("output.txt").actual_text("actual", out).normalize(r#"\r"#, "").run();
+    diff()
+        .expected_file("expected_output.txt")
+        .actual_text("actual", out)
+        .normalize(r#"\r"#, "")
+        .run();
 }

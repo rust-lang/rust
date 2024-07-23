@@ -3,12 +3,13 @@
 // so they may be linked against without linking against an import library.
 // To learn more, read https://github.com/rust-lang/rfcs/blob/master/text/2627-raw-dylib-kind.md
 // This test uses this feature alongside `import_name_type`, which allows for customization
-// of how Windows symbols will be named. The correctness of this feature is checked by comparison
+// of how Windows symbols will be named. A sanity check of this feature is done by comparison
 // with expected output.
 // See https://github.com/rust-lang/rust/pull/100732
 
 //@ only-x86
 //@ only-windows
+// Reason: this test specifically exercises a 32bit Windows calling convention.
 
 use run_make_support::{cc, diff, is_msvc, run, rustc};
 
@@ -32,5 +33,5 @@ fn main() {
             .run();
     };
     let out = run("driver").stdout_utf8();
-    diff().expected_file("output.txt").actual_text("actual", out).run();
+    diff().expected_file("output.txt").actual_text("actual", out).normalize(r#"\r"#, "").run();
 }
