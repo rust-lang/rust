@@ -20,9 +20,13 @@ fn main() {
     rustc().crate_type("bin").input("driver.rs").run();
     build_native_dynamic_lib("extern");
     let out = run("driver").stdout_utf8();
-    diff().expected_file("output.txt").actual_text("actual", out).run();
+    diff().expected_file("output.txt").actual_text("actual", out).normalize(r#"\r"#, "").run();
     if is_msvc() {
         let out_msvc = run_with_args("driver", &["true"]).stdout_utf8();
-        diff().expected_file("output.msvc.txt").actual_text("actual", out_msvc).run();
+        diff()
+            .expected_file("output.msvc.txt")
+            .actual_text("actual", out_msvc)
+            .normalize(r#"\r"#, "")
+            .run();
     }
 }

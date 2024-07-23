@@ -25,5 +25,5 @@ fn main() {
         .actual_text("actual", out_driver)
         .normalize(r#"\r"#, "")
         .run();
-    diff().expected_file("output.txt").actual_text("actual", out_raw).run();
+    diff().expected_file("output.txt").actual_text("actual", out_raw).normalize(r#"\r"#, "").run();
 }
