@@ -1502,14 +1502,17 @@ pub struct OnlyCurrentTraitsPointerSugg<'a> {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_static_mut_ref, code = E0796)]
-#[note]
 pub struct StaticMutRef<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: MutRefSugg,
-    pub shared: &'a str,
+    pub sugg: Option<MutRefSugg>,
+    pub shared_label: &'a str,
+    #[note(hir_analysis_shared_note)]
+    pub shared_note: bool,
+    #[note(hir_analysis_mut_note)]
+    pub mut_note: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -1538,17 +1541,20 @@ pub enum MutRefSugg {
     },
 }
 
-// STATIC_MUT_REF lint
+// `STATIC_MUT_REF` lint
 #[derive(LintDiagnostic)]
 #[diag(hir_analysis_static_mut_refs_lint)]
 #[note]
-#[note(hir_analysis_why_note)]
 pub struct RefOfMutStatic<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: MutRefSugg,
-    pub shared: &'a str,
+    pub sugg: Option<MutRefSugg>,
+    pub shared_label: &'a str,
+    #[note(hir_analysis_shared_note)]
+    pub shared_note: bool,
+    #[note(hir_analysis_mut_note)]
+    pub mut_note: bool,
 }
 
 #[derive(Diagnostic)]

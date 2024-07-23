@@ -10,7 +10,7 @@ fn main() {
     unsafe {
         let gen_index = #[coroutine]
         static || {
-            let u = A[{
+            let u = A[{ //~ WARN creating a reference to mutable static is discouraged [static_mut_refs]
                 yield;
                 1
             }];

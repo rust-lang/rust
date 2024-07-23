@@ -1,3 +1,6 @@
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static mut X: usize = 5;

@@ -1,4 +1,6 @@
 #![allow(unused)]
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
 
 #[derive(Debug)]
 struct Foo;
