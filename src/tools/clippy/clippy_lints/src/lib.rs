@@ -8,7 +8,6 @@
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]

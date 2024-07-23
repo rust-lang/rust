@@ -1,5 +1,4 @@
 //@ compile-flags: -Z unstable-options
-//@ ignore-stage1 (can be removed after beta bump, #[cfg(bootstrap)])
 #![feature(rustc_private)]
 #![deny(rustc::non_glob_import_of_type_ir_inherent)]
 

@@ -193,8 +193,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(c_unwind))]
-#![cfg_attr(bootstrap, feature(effects))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
