@@ -920,16 +920,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 module,
                 error_implied_by_parse_error: _,
+                item_type,
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment_name),
+                            segment: segment_name,
                             label,
                             suggestion,
                             module,
+                            item_type,
                         },
                     );
                 }

@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: there are too many leading `super` keywords
+error[E0433]: cannot find module `super` in this scope
   --> $DIR/impl-items-vis-unresolved.rs:21:13
    |
 LL |         pub(super) fn new() {}
-   |             ^^^^^ there are too many leading `super` keywords
+   |             ^^^^^ can't use `super` on the crate root, there are no further modules to go "up" to
 
 error: aborting due to 1 previous error
 

@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
+error[E0433]: cannot find item `doesnt_exist` in module `inner`
   --> $DIR/diagnostics-cross-crate.rs:18:23
    |
 LL |     cfged_out::inner::doesnt_exist::hello();

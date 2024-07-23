@@ -1,8 +1,8 @@
 struct ErrorKind;
 struct Error(ErrorKind);
 
-impl From<nope::Thing> for Error { //~ ERROR failed to resolve
-    fn from(_: nope::Thing) -> Self { //~ ERROR failed to resolve
+impl From<nope::Thing> for Error { //~ ERROR cannot find item
+    fn from(_: nope::Thing) -> Self { //~ ERROR cannot find item
         unimplemented!()
     }
 }

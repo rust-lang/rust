@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: partially resolved path in a macro
+error[E0433]: cannot find macro `Ok` in this scope
   --> $DIR/macro-path-prelude-fail-2.rs:3:9
    |
 LL |         Result::Ok!();

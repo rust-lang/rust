@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: `Self` cannot be used in imports
+error[E0433]: cannot find item `Self` in this scope
   --> $DIR/use-self-type.rs:7:16
    |
 LL |         pub(in Self::f) struct Z;

@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: partially resolved path in a macro
+error[E0433]: cannot find macro `bar` in this scope
   --> $DIR/extern-macro.rs:5:13
    |
 LL |     let _ = Foo::bar!();

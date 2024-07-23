@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: unresolved import
+error[E0433]: cannot find item `bar` in the crate root
   --> $DIR/suggest-import-issue-120074.rs:12:35
    |
 LL |     println!("Hello, {}!", crate::bar::do_the_thing);

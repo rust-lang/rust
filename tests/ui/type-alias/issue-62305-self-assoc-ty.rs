@@ -1,4 +1,4 @@
 type Alias = Self::Target;
-//~^ ERROR failed to resolve: `Self`
+//~^ ERROR cannot find item `Self` in this scope
 
 fn main() {}

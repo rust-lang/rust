@@ -39,13 +39,13 @@ LL | static FOO_S: Self = 0;
    |        |
    |        `Self` not allowed in a static item
 
-error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+error[E0433]: cannot find item `Self` in this scope
   --> $DIR/issue-24968.rs:21:19
    |
 LL | const FOO2: u32 = Self::bar();
    |                   ^^^^ `Self` is only available in impls, traits, and type definitions
 
-error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+error[E0433]: cannot find item `Self` in this scope
   --> $DIR/issue-24968.rs:27:22
    |
 LL | static FOO_S2: u32 = Self::bar();

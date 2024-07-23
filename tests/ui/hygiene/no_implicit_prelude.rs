@@ -8,7 +8,7 @@ mod foo {
 #[no_implicit_prelude]
 mod bar {
     pub macro m() {
-        Vec::new(); //~ ERROR failed to resolve
+        Vec::new(); //~ ERROR cannot find item
         ().clone() //~ ERROR no method named `clone` found
     }
     fn f() {

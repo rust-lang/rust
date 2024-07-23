@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: `clippy` is a tool module, not a module
+error[E0433]: cannot find module `clippy` in this scope
   --> $DIR/tool-import.rs:3:5
    |
 LL | use clippy::time::Instant;

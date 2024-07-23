@@ -43,12 +43,12 @@
 
 struct Foo {
     #[should_panic::skip]
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     //~| ERROR `#[should_panic::skip]` only has an effect on functions
     pub field: u8,
 
     #[should_panic::a::b::c]
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     //~| ERROR `#[should_panic::a::b::c]` only has an effect on functions
     pub field2: u8,
 }
@@ -57,6 +57,6 @@ fn foo() {}
 
 fn main() {
     #[deny::skip]
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     foo();
 }

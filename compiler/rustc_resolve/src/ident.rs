@@ -1,7 +1,7 @@
 use Determinacy::*;
 use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::{bug, ty};
 use rustc_session::lint::BuiltinLintDiag;
@@ -1483,13 +1483,42 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             Some(ModuleOrUniformRoot::Module(self.resolve_self(&mut ctxt, parent)));
                         continue;
                     }
+                    let mut item_type = "module";
+                    if path.len() == 1
+                        && let Some(ribs) = ribs
+                        && let RibKind::Normal = ribs[ValueNS][ribs[ValueNS].len() - 1].kind
+                    {
+                        item_type = "item";
+                    }
                     return PathResult::failed(
                         ident,
                         false,
                         finalize.is_some(),
                         module_had_parse_errors,
                         module,
-                        || ("there are too many leading `super` keywords".to_string(), None),
+                        || {
+                            let mut suggestion = None;
+                            let label = if path.len() == 1
+                                && let Some(ribs) = ribs
+                                && let RibKind::Normal = ribs[ValueNS][ribs[ValueNS].len() - 1].kind
+                            {
+                                suggestion = Some((
+                                    vec![(ident.span.shrink_to_lo(), "r#".to_string())],
+                                    "if you still want to call your identifier `super`, use the \
+                                     raw identifier format"
+                                        .to_string(),
+                                    Applicability::MachineApplicable,
+                                ));
+                                "can't use `super` as an identifier"
+                            } else if segment_idx == 0 {
+                                "can't use `super` on the crate root, there are no further modules \
+                                 to go \"up\" to"
+                            } else {
+                                "there are too many leading `super` keywords"
+                            };
+                            (label.to_string(), suggestion)
+                        },
+                        item_type,
                     );
                 }
                 if segment_idx == 0 {
@@ -1547,6 +1576,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         };
                         (label, None)
                     },
+                    "module",
                 );
             }
 
@@ -1651,6 +1681,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 );
                                 (label, None)
                             },
+                            "module",
                         );
                     }
                 }
@@ -1684,6 +1715,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 segment_idx,
                                 ident,
                             )
+                        },
+                        match opt_ns {
+                            Some(ValueNS) if path.len() == 1 => "item or value",
+                            Some(ns) if path.len() - 1 == segment_idx => ns.descr(),
+                            Some(_) | None => "item",
                         },
                     );
                 }

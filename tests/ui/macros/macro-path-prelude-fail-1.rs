@@ -1,7 +1,7 @@
 mod m {
     fn check() {
-        Vec::clone!(); //~ ERROR failed to resolve: `Vec` is a struct, not a module
-        u8::clone!(); //~ ERROR failed to resolve: `u8` is a builtin type, not a module
+        Vec::clone!(); //~ ERROR cannot find module `Vec`
+        u8::clone!(); //~ ERROR cannot find module `u8`
     }
 }
 

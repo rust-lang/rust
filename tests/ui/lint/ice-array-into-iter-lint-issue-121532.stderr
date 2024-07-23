@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+error[E0433]: cannot find item `Self` in this scope
   --> $DIR/ice-array-into-iter-lint-issue-121532.rs:7:12
    |
 LL | fn func(a: Self::ItemsIterator) {

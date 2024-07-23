@@ -9,5 +9,5 @@ pub mod foo {
 }
 
 fn main() {
-    println!("Hello, {}!", crate::bar::do_the_thing); //~ ERROR failed to resolve: unresolved import
+    println!("Hello, {}!", crate::bar::do_the_thing); //~ ERROR cannot find item `bar`
 }

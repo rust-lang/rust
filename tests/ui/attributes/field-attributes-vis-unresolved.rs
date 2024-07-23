@@ -14,12 +14,12 @@ mod internal {
 
 struct S {
     #[rustfmt::skip]
-    pub(in nonexistent) field: u8 //~ ERROR failed to resolve
+    pub(in nonexistent) field: u8 //~ ERROR cannot find item `nonexistent` in this scope
 }
 
 struct Z(
     #[rustfmt::skip]
-    pub(in nonexistent) u8 //~ ERROR failed to resolve
+    pub(in nonexistent) u8 //~ ERROR cannot find item `nonexistent` in this scope
 );
 
 fn main() {}

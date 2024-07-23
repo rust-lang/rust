@@ -4696,14 +4696,16 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 module,
                 segment_name,
                 error_implied_by_parse_error: _,
+                item_type,
             } => {
                 return Err(respan(
                     span,
                     ResolutionError::FailedToResolve {
-                        segment: Some(segment_name),
+                        segment: segment_name,
                         label,
                         suggestion,
                         module,
+                        item_type,
                     },
                 ));
             }

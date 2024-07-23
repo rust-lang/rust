@@ -3,6 +3,6 @@ pub trait Trait {
 }
 
 pub type Alias = dyn Trait<A = Self::A>;
-//~^ ERROR failed to resolve: `Self`
+//~^ ERROR cannot find item `Self` in this scope
 
 fn main() {}

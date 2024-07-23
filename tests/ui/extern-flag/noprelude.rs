@@ -3,5 +3,5 @@
 //@ edition:2018
 
 fn main() {
-    somedep::somefun();  //~ ERROR failed to resolve
+    somedep::somefun();  //~ ERROR cannot find item
 }
