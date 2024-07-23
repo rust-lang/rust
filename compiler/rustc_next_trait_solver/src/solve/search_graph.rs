@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::marker::PhantomData;
 
 use rustc_type_ir::inherent::*;
@@ -21,6 +22,14 @@ where
     I: Interner,
 {
     type Cx = D::Interner;
+
+    type ValidationScope = Infallible;
+    fn enter_validation_scope(
+        _cx: Self::Cx,
+        _input: <Self::Cx as search_graph::Cx>::Input,
+    ) -> Option<Self::ValidationScope> {
+        None
+    }
 
     const FIXPOINT_STEP_LIMIT: usize = FIXPOINT_STEP_LIMIT;
 
