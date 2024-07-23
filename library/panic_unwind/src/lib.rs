@@ -24,7 +24,6 @@
 #![feature(rustc_attrs)]
 #![panic_runtime]
 #![feature(panic_runtime)]
-#![cfg_attr(bootstrap, feature(c_unwind))]
 // `real_imp` is unused with Miri, so silence warnings.
 #![cfg_attr(miri, allow(dead_code))]
 #![allow(internal_features)]

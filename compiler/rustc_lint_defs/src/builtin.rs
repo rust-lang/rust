@@ -615,8 +615,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![cfg_attr(bootstrap, feature(lint_reasons))]
-    ///
     /// #[expect(unused_variables)]
     /// let x = 10;
     /// println!("{}", x);
