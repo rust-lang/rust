@@ -24,7 +24,8 @@ The resulting binaries are in ELF format.
 
 ## Building the target
 
-The target can be build by the standard compiler of Rust.
+The target can be built by the standard compiler of Rust.
+
 ## Building Rust programs
 
 Rust does not yet ship pre-compiled artifacts for this target. To compile for
