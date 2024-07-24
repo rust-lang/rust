@@ -9,10 +9,15 @@ use crate::errors;
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::LangItem;
+use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::ExistentialPredicateStableCmpExt;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, ErrorGuaranteed};
+use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_type_ir::elaborate;
 
 mod builtin;
 mod inherent_impls;
@@ -223,5 +228,106 @@ fn check_object_overlap<'tcx>(
             }
         }
     }
+
+    even_cooler_object_overlap(tcx, impl_def_id, trait_ref.def_id);
+
     Ok(())
+}
+
+fn even_cooler_object_overlap<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_def_id: LocalDefId,
+    trait_def_id: DefId,
+) {
+    if !tcx.is_object_safe(trait_def_id) {
+        return;
+    }
+
+    let infcx = &tcx.infer_ctxt().with_next_trait_solver(true).intercrate(true).build();
+
+    let def_span = tcx.def_span(impl_def_id);
+    let impl_args = infcx.fresh_args_for_item(def_span, impl_def_id.to_def_id());
+    let trait_ref =
+        tcx.impl_trait_ref(impl_def_id).expect("impl of trait").instantiate(tcx, impl_args);
+
+    let principal = ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+    ));
+    let mut assoc_tys = elaborate::supertraits(tcx, ty::Binder::dummy(trait_ref))
+        .flat_map(|trait_ref| {
+            tcx.associated_items(trait_ref.def_id())
+                .in_definition_order()
+                .filter(|assoc_item| assoc_item.kind == ty::AssocKind::Type)
+                .filter(|assoc_item| !tcx.generics_require_sized_self(assoc_item.def_id))
+                .map(move |assoc_item| {
+                    trait_ref.map_bound(|trait_ref| {
+                        ty::ExistentialPredicate::Projection(
+                            ty::ExistentialProjection::erase_self_ty(
+                                tcx,
+                                ty::ProjectionPredicate {
+                                    projection_term: ty::AliasTerm::new(
+                                        tcx,
+                                        assoc_item.def_id,
+                                        trait_ref.args,
+                                    ),
+                                    term: infcx.next_ty_var(def_span).into(),
+                                },
+                            ),
+                        )
+                    })
+                })
+        })
+        .collect::<Vec<_>>();
+    assoc_tys.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+
+    let dyn_ty = Ty::new_dynamic(
+        tcx,
+        tcx.mk_poly_existential_predicates_from_iter([principal].into_iter().chain(assoc_tys)),
+        infcx.next_region_var(RegionVariableOrigin::MiscVariable(def_span)),
+        ty::Dyn,
+    );
+
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let cause = ObligationCause::misc(def_span, impl_def_id);
+    let Ok(()) = ocx.eq(&cause, ty::ParamEnv::empty(), trait_ref.self_ty(), dyn_ty) else {
+        return;
+    };
+
+    ocx.register_obligations(
+        tcx.predicates_of(impl_def_id)
+            .instantiate(tcx, impl_args)
+            .into_iter()
+            .map(|(clause, _)| Obligation::new(tcx, cause.clone(), ty::ParamEnv::empty(), clause)),
+    );
+
+    let errors_and_ambiguities = ocx.select_all_or_error();
+    // We only care about the obligations that are *definitely* true errors.
+    // Ambiguities do not prove the disjointness of two impls.
+    let (true_errors, _ambiguities): (Vec<_>, Vec<_>) =
+        errors_and_ambiguities.into_iter().partition(|error| error.is_true_error());
+
+    if true_errors.is_empty() {
+        let associated_type_spans: Vec<_> = tcx
+            .associated_items(impl_def_id)
+            .in_definition_order()
+            .filter(|assoc_item| assoc_item.kind == ty::AssocKind::Type)
+            .map(|assoc_item| tcx.def_span(assoc_item.def_id))
+            .collect();
+        if !associated_type_spans.is_empty() {
+            tcx.dcx()
+                .struct_span_err(
+                    def_span,
+                    format!(
+                        "this impl overlaps with built-in trait impl for `{}`",
+                        infcx.resolve_vars_if_possible(dyn_ty)
+                    ),
+                )
+                .with_span_note(
+                    associated_type_spans,
+                    "this impl may be unsound because it could provide different values \
+                    for these associated types",
+                )
+                .emit();
+        }
+    }
 }
