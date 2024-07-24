@@ -1980,12 +1980,18 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
 #[cfg(target_os = "vxworks")]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     let (_, _, _) = (path, uid, gid);
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks",))
+    Err(io::const_io_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
 }
 
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     run_path_with_cstr(dir, &|dir| cvt(unsafe { libc::chroot(dir.as_ptr()) }).map(|_| ()))
+}
+
+#[cfg(target_os = "vxworks")]
+pub fn chroot(dir: &Path) -> io::Result<()> {
+    let _ = dir;
+    Err(io::const_io_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
 pub use remove_dir_impl::remove_dir_all;
