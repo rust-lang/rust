@@ -84,6 +84,7 @@ pub fn provide(providers: &mut Providers) {
         coroutine_kind,
         coroutine_for_closure,
         is_type_alias_impl_trait,
+        rendered_precise_capturing_args,
         ..*providers
     };
 }
@@ -1881,4 +1882,24 @@ fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool
         }
         _ => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
     }
+}
+
+fn rendered_precise_capturing_args<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> Option<&'tcx [Symbol]> {
+    if let Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) =
+        tcx.opt_rpitit_info(def_id.to_def_id())
+    {
+        return tcx.rendered_precise_capturing_args(opaque_def_id);
+    }
+
+    tcx.hir_node_by_def_id(def_id).expect_item().expect_opaque_ty().bounds.iter().find_map(
+        |bound| match bound {
+            hir::GenericBound::Use(args, ..) => {
+                Some(&*tcx.arena.alloc_from_iter(args.iter().map(|arg| arg.name())))
+            }
+            _ => None,
+        },
+    )
 }

@@ -34,7 +34,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::cell::Cell;

@@ -8,7 +8,7 @@
 
 use crate::ffi::CStr;
 use crate::mem;
-use crate::os::raw::{c_char, c_int, c_uint, c_ulong, c_ushort, c_void};
+use crate::os::raw::{c_uint, c_ulong, c_ushort, c_void};
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
@@ -18,12 +18,6 @@ mod windows_sys;
 pub use windows_sys::*;
 
 pub type WCHAR = u16;
-
-pub type socklen_t = c_int;
-pub type ADDRESS_FAMILY = c_ushort;
-pub use FD_SET as fd_set;
-pub use LINGER as linger;
-pub use TIMEVAL as timeval;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::without_provenance_mut(-1i32 as _);
 
@@ -42,20 +36,6 @@ pub const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { Ptr: ptr::null_mut() };
 pub const OBJ_DONT_REPARSE: u32 = windows_sys::OBJ_DONT_REPARSE as u32;
 pub const FRS_ERR_SYSVOL_POPULATE_TIMEOUT: u32 =
     windows_sys::FRS_ERR_SYSVOL_POPULATE_TIMEOUT as u32;
-pub const AF_INET: c_int = windows_sys::AF_INET as c_int;
-pub const AF_INET6: c_int = windows_sys::AF_INET6 as c_int;
-
-#[repr(C)]
-pub struct ip_mreq {
-    pub imr_multiaddr: in_addr,
-    pub imr_interface: in_addr,
-}
-
-#[repr(C)]
-pub struct ipv6_mreq {
-    pub ipv6mr_multiaddr: in6_addr,
-    pub ipv6mr_interface: c_uint,
-}
 
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
@@ -127,45 +107,6 @@ pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub PathBuffer: WCHAR,
 }
 
-#[repr(C)]
-pub struct SOCKADDR_STORAGE_LH {
-    pub ss_family: ADDRESS_FAMILY,
-    pub __ss_pad1: [c_char; 6],
-    pub __ss_align: i64,
-    pub __ss_pad2: [c_char; 112],
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct sockaddr_in {
-    pub sin_family: ADDRESS_FAMILY,
-    pub sin_port: c_ushort,
-    pub sin_addr: in_addr,
-    pub sin_zero: [c_char; 8],
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct sockaddr_in6 {
-    pub sin6_family: ADDRESS_FAMILY,
-    pub sin6_port: c_ushort,
-    pub sin6_flowinfo: c_ulong,
-    pub sin6_addr: in6_addr,
-    pub sin6_scope_id: c_ulong,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct in_addr {
-    pub s_addr: u32,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct in6_addr {
-    pub s6_addr: [u8; 16],
-}
-
 // Desktop specific functions & types
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
@@ -203,42 +144,6 @@ pub unsafe extern "system" fn ReadFileEx(
         lpOverlapped,
         lpCompletionRoutine,
     )
-}
-
-// POSIX compatibility shims.
-pub unsafe fn recv(socket: SOCKET, buf: *mut c_void, len: c_int, flags: c_int) -> c_int {
-    windows_sys::recv(socket, buf.cast::<u8>(), len, flags)
-}
-pub unsafe fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int {
-    windows_sys::send(socket, buf.cast::<u8>(), len, flags)
-}
-pub unsafe fn recvfrom(
-    socket: SOCKET,
-    buf: *mut c_void,
-    len: c_int,
-    flags: c_int,
-    addr: *mut SOCKADDR,
-    addrlen: *mut c_int,
-) -> c_int {
-    windows_sys::recvfrom(socket, buf.cast::<u8>(), len, flags, addr, addrlen)
-}
-pub unsafe fn sendto(
-    socket: SOCKET,
-    buf: *const c_void,
-    len: c_int,
-    flags: c_int,
-    addr: *const SOCKADDR,
-    addrlen: c_int,
-) -> c_int {
-    windows_sys::sendto(socket, buf.cast::<u8>(), len, flags, addr, addrlen)
-}
-pub unsafe fn getaddrinfo(
-    node: *const c_char,
-    service: *const c_char,
-    hints: *const ADDRINFOA,
-    res: *mut *mut ADDRINFOA,
-) -> c_int {
-    windows_sys::getaddrinfo(node.cast::<u8>(), service.cast::<u8>(), hints, res)
 }
 
 cfg_if::cfg_if! {

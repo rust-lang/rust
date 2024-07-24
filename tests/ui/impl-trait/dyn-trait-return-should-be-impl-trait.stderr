@@ -48,10 +48,14 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bap() -> Trait { Struct }
    |             ^^^^^ doesn't have a size known at compile-time
    |
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn bap() -> Box<Trait> { Box::new(Struct) }
-   |             ++++     +   +++++++++      +
+LL | fn bap() -> impl Trait { Struct }
+   |             ++++
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn bap() -> Box<dyn Trait> { Box::new(Struct) }
+   |             +++++++      +   +++++++++      +
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:13
@@ -59,11 +63,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn ban() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn ban() -> impl Trait { Struct }
    |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL | fn ban() -> Box<dyn Trait> { Box::new(Struct) }
    |             ++++         +   +++++++++      +
@@ -74,11 +78,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bak() -> dyn Trait { unimplemented!() }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn bak() -> impl Trait { unimplemented!() }
    |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL | fn bak() -> Box<dyn Trait> { Box::new(unimplemented!()) }
    |             ++++         +   +++++++++                +
@@ -89,10 +93,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bal() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
-   |
-LL | fn bal() -> impl Trait {
-   |             ~~~~
+   = help: if there were a single returned type, you could use `impl Trait` instead
 help: box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bal() -> Box<dyn Trait> {
@@ -108,10 +109,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bax() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
-   |
-LL | fn bax() -> impl Trait {
-   |             ~~~~
+   = help: if there were a single returned type, you could use `impl Trait` instead
 help: box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bax() -> Box<dyn Trait> {
@@ -263,10 +261,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
-   |
-LL | fn bat() -> impl Trait {
-   |             ~~~~
+   = help: if there were a single returned type, you could use `impl Trait` instead
 help: box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bat() -> Box<dyn Trait> {
@@ -282,10 +277,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bay() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
-   |
-LL | fn bay() -> impl Trait {
-   |             ~~~~
+   = help: if there were a single returned type, you could use `impl Trait` instead
 help: box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bay() -> Box<dyn Trait> {

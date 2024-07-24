@@ -161,7 +161,7 @@ mod tests;
 use crate::any::Any;
 use crate::cell::{Cell, OnceCell, UnsafeCell};
 use crate::env;
-use crate::ffi::{CStr, CString};
+use crate::ffi::CStr;
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
@@ -487,11 +487,7 @@ impl Builder {
             amt
         });
 
-        let my_thread = name.map_or_else(Thread::new_unnamed, |name| unsafe {
-            Thread::new(
-                CString::new(name).expect("thread name may not contain interior null bytes"),
-            )
-        });
+        let my_thread = name.map_or_else(Thread::new_unnamed, Thread::new);
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -1299,9 +1295,50 @@ impl ThreadId {
 /// The internal representation of a `Thread`'s name.
 enum ThreadName {
     Main,
-    Other(CString),
+    Other(ThreadNameString),
     Unnamed,
 }
+
+// This module ensures private fields are kept private, which is necessary to enforce the safety requirements.
+mod thread_name_string {
+    use super::ThreadName;
+    use crate::ffi::{CStr, CString};
+    use core::str;
+
+    /// Like a `String` it's guaranteed UTF-8 and like a `CString` it's null terminated.
+    pub(crate) struct ThreadNameString {
+        inner: CString,
+    }
+    impl core::ops::Deref for ThreadNameString {
+        type Target = CStr;
+        fn deref(&self) -> &CStr {
+            &self.inner
+        }
+    }
+    impl From<String> for ThreadNameString {
+        fn from(s: String) -> Self {
+            Self {
+                inner: CString::new(s).expect("thread name may not contain interior null bytes"),
+            }
+        }
+    }
+    impl ThreadName {
+        pub fn as_cstr(&self) -> Option<&CStr> {
+            match self {
+                ThreadName::Main => Some(c"main"),
+                ThreadName::Other(other) => Some(other),
+                ThreadName::Unnamed => None,
+            }
+        }
+
+        pub fn as_str(&self) -> Option<&str> {
+            // SAFETY: `as_cstr` can only return `Some` for a fixed CStr or a `ThreadNameString`,
+            // which is guaranteed to be UTF-8.
+            self.as_cstr().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
+        }
+    }
+}
+pub(crate) use thread_name_string::ThreadNameString;
 
 /// The internal representation of a `Thread` handle
 struct Inner {
@@ -1342,25 +1379,20 @@ pub struct Thread {
 
 impl Thread {
     /// Used only internally to construct a thread object without spawning.
-    ///
-    /// # Safety
-    /// `name` must be valid UTF-8.
-    pub(crate) unsafe fn new(name: CString) -> Thread {
-        unsafe { Self::new_inner(ThreadName::Other(name)) }
+    pub(crate) fn new(name: String) -> Thread {
+        Self::new_inner(ThreadName::Other(name.into()))
     }
 
     pub(crate) fn new_unnamed() -> Thread {
-        unsafe { Self::new_inner(ThreadName::Unnamed) }
+        Self::new_inner(ThreadName::Unnamed)
     }
 
     // Used in runtime to construct main thread
     pub(crate) fn new_main() -> Thread {
-        unsafe { Self::new_inner(ThreadName::Main) }
+        Self::new_inner(ThreadName::Main)
     }
 
-    /// # Safety
-    /// If `name` is `ThreadName::Other(_)`, the contained string must be valid UTF-8.
-    unsafe fn new_inner(name: ThreadName) -> Thread {
+    fn new_inner(name: ThreadName) -> Thread {
         // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
@@ -1483,15 +1515,11 @@ impl Thread {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn name(&self) -> Option<&str> {
-        self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
+        self.inner.name.as_str()
     }
 
     fn cname(&self) -> Option<&CStr> {
-        match &self.inner.name {
-            ThreadName::Main => Some(c"main"),
-            ThreadName::Other(other) => Some(&other),
-            ThreadName::Unnamed => None,
-        }
+        self.inner.name.as_cstr()
     }
 }
 

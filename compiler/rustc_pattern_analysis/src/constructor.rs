@@ -904,7 +904,7 @@ impl<Cx: PatCx> Constructor<Cx> {
             // be careful to detect strings here. However a string literal pattern will never
             // be reported as a non-exhaustiveness witness, so we can ignore this issue.
             Ref => {
-                write!(f, "&{:?}", &fields.next().unwrap())?;
+                write!(f, "&{:?}", fields.next().unwrap())?;
             }
             Slice(slice) => {
                 write!(f, "[")?;

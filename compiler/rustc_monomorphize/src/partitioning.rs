@@ -112,9 +112,9 @@ use rustc_middle::mir::mono::{
     CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
     Visibility,
 };
-use rustc_middle::query::Providers;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
 use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceKind, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
@@ -1314,4 +1314,6 @@ pub fn provide(providers: &mut Providers) {
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };
+
+    collector::provide(providers);
 }

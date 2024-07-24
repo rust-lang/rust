@@ -1,7 +1,9 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use rustc_errors::Applicability;
 use rustc_errors::{codes::*, struct_span_code_err, Diag, DiagCtxtHandle};
+use rustc_hir as hir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -382,13 +384,35 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         yield_span: Span,
     ) -> Diag<'infcx> {
         let coroutine_kind = self.body.coroutine.as_ref().unwrap().coroutine_kind;
-        struct_span_code_err!(
+        let mut diag = struct_span_code_err!(
             self.dcx(),
             span,
             E0626,
             "borrow may still be in use when {coroutine_kind:#} yields",
-        )
-        .with_span_label(yield_span, "possible yield occurs here")
+        );
+        diag.span_label(
+            self.infcx.tcx.def_span(self.body.source.def_id()),
+            format!("within this {coroutine_kind:#}"),
+        );
+        diag.span_label(yield_span, "possible yield occurs here");
+        if matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_)) {
+            let hir::Closure { capture_clause, fn_decl_span, .. } = self
+                .infcx
+                .tcx
+                .hir_node_by_def_id(self.body.source.def_id().expect_local())
+                .expect_closure();
+            let span = match capture_clause {
+                rustc_hir::CaptureBy::Value { move_kw } => move_kw.shrink_to_lo(),
+                rustc_hir::CaptureBy::Ref => fn_decl_span.shrink_to_lo(),
+            };
+            diag.span_suggestion_verbose(
+                span,
+                "add `static` to mark this coroutine as unmovable",
+                "static ",
+                Applicability::MaybeIncorrect,
+            );
+        }
+        diag
     }
 
     pub(crate) fn cannot_borrow_across_destructor(&self, borrow_span: Span) -> Diag<'infcx> {

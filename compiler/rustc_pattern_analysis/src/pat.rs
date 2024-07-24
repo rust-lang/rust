@@ -11,7 +11,7 @@ use crate::{PatCx, PrivateUninhabitedField};
 use self::Constructor::*;
 
 /// A globally unique id to distinguish patterns.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct PatId(u32);
 impl PatId {
     fn new() -> Self {
@@ -147,6 +147,21 @@ impl<Cx: PatCx> fmt::Debug for DeconstructedPat<Cx> {
     }
 }
 
+/// Delegate to `uid`.
+impl<Cx: PatCx> PartialEq for DeconstructedPat<Cx> {
+    fn eq(&self, other: &Self) -> bool {
+        self.uid == other.uid
+    }
+}
+/// Delegate to `uid`.
+impl<Cx: PatCx> Eq for DeconstructedPat<Cx> {}
+/// Delegate to `uid`.
+impl<Cx: PatCx> std::hash::Hash for DeconstructedPat<Cx> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.uid.hash(state);
+    }
+}
+
 /// Represents either a pattern obtained from user input or a wildcard constructed during the
 /// algorithm. Do not use `Wild` to represent a wildcard pattern comping from user input.
 ///
@@ -190,7 +205,18 @@ impl<'p, Cx: PatCx> PatOrWild<'p, Cx> {
         }
     }
 
-    /// Expand this (possibly-nested) or-pattern into its alternatives.
+    /// Expand this or-pattern into its alternatives. This only expands one or-pattern; use
+    /// `flatten_or_pat` to recursively expand nested or-patterns.
+    pub(crate) fn expand_or_pat(self) -> SmallVec<[Self; 1]> {
+        match self {
+            PatOrWild::Pat(pat) if pat.is_or_pat() => {
+                pat.iter_fields().map(|ipat| PatOrWild::Pat(&ipat.pat)).collect()
+            }
+            _ => smallvec![self],
+        }
+    }
+
+    /// Recursively expand this (possibly-nested) or-pattern into its alternatives.
     pub(crate) fn flatten_or_pat(self) -> SmallVec<[Self; 1]> {
         match self {
             PatOrWild::Pat(pat) if pat.is_or_pat() => pat

@@ -3,7 +3,7 @@
 //@ compile-flags: -Zmir-enable-passes=+RemoveZsts
 // Verify that we can pretty print invalid constants.
 
-#![feature(adt_const_params)]
+#![feature(adt_const_params, unsized_const_params)]
 #![allow(incomplete_features)]
 
 #[derive(Copy, Clone)]

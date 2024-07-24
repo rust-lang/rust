@@ -26,7 +26,6 @@ use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
 
 use crate::utils::exec::command;
 use build_helper::ci::CiEnv;
-use build_helper::git::get_git_merge_base;
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -154,26 +153,18 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        // We proceed in 2 steps. First we get the closest commit that is actually upstream. Then we
-        // walk back further to the last bors merge commit that actually changed LLVM. The first
-        // step will fail on CI because only the `auto` branch exists; we just fall back to `HEAD`
-        // in that case.
-        let closest_upstream = get_git_merge_base(&config.git_config(), Some(&config.src))
-            .unwrap_or_else(|_| "HEAD".into());
-        let mut rev_list = helpers::git(Some(&config.src));
-        rev_list.args(&[
-            PathBuf::from("rev-list"),
-            format!("--author={}", config.stage0_metadata.config.git_merge_commit_email).into(),
-            "-n1".into(),
-            "--first-parent".into(),
-            closest_upstream.into(),
-            "--".into(),
-            config.src.join("src/llvm-project"),
-            config.src.join("src/bootstrap/download-ci-llvm-stamp"),
-            // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-            config.src.join("src/version"),
-        ]);
-        output(rev_list.as_command_mut()).trim().to_owned()
+        helpers::get_closest_merge_base_commit(
+            Some(&config.src),
+            &config.git_config(),
+            &config.stage0_metadata.config.git_merge_commit_email,
+            &[
+                config.src.join("src/llvm-project"),
+                config.src.join("src/bootstrap/download-ci-llvm-stamp"),
+                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+                config.src.join("src/version"),
+            ],
+        )
+        .unwrap()
     } else if let Some(info) = channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
     } else {
@@ -1411,7 +1402,7 @@ impl Step for Libunwind {
                 }
             }
         }
-        assert_eq!(cpp_len, count, "Can't get object files from {:?}", &out_dir);
+        assert_eq!(cpp_len, count, "Can't get object files from {out_dir:?}");
 
         cc_cfg.compile("unwind");
         out_dir

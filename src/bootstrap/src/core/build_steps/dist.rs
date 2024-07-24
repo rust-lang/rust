@@ -472,6 +472,11 @@ impl Step for Rustc {
                     );
                 }
             }
+            if builder.build_wasm_component_ld() {
+                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+                let ld = exe("wasm-component-ld", compiler.host);
+                builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld));
+            }
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
@@ -1040,6 +1045,8 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./src/tools/opt-dist/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rustc-perf/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./src/tools/rustbook/Cargo.toml"))
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")

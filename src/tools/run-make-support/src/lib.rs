@@ -3,6 +3,10 @@
 //! notably is built via cargo: this means that if your test wants some non-trivial utility, such
 //! as `object` or `wasmparser`, they can be re-exported and be made available through this library.
 
+// We want to control use declaration ordering and spacing (and preserve use group comments), so
+// skip rustfmt on this file.
+#![cfg_attr(rustfmt, rustfmt::skip)]
+
 mod command;
 mod macros;
 mod util;
@@ -18,6 +22,8 @@ pub mod scoped_run;
 pub mod string;
 pub mod targets;
 
+// Internally we call our fs-related support module as `fs`, but re-export its content as `rfs`
+// to tests to avoid colliding with commonly used `use std::fs;`.
 mod fs;
 
 /// [`std::fs`] wrappers and assorted filesystem-related helpers. Public to tests as `rfs` to not be

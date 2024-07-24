@@ -1,6 +1,6 @@
 use std::{borrow::Cow, rc::Rc};
 
-use askama::Template;
+use rinja::Template;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{def::CtorKind, def_id::DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};

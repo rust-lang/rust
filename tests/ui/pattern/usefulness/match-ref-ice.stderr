@@ -1,8 +1,10 @@
 error: unreachable pattern
   --> $DIR/match-ref-ice.rs:13:9
    |
+LL |         [1, ref _madoka, 3] => (),
+   |         ------------------- matches all the values already
 LL |         [1, 2, 3] => (),
-   |         ^^^^^^^^^
+   |         ^^^^^^^^^ unreachable pattern
    |
 note: the lint level is defined here
   --> $DIR/match-ref-ice.rs:1:9

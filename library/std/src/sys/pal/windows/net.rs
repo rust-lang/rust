@@ -17,14 +17,100 @@ use crate::time::Duration;
 
 use core::ffi::{c_int, c_long, c_ulong, c_ushort};
 
+#[allow(non_camel_case_types)]
 pub type wrlen_t = i32;
 
 pub mod netc {
-    pub use crate::sys::c::ADDRESS_FAMILY as sa_family_t;
-    pub use crate::sys::c::ADDRINFOA as addrinfo;
-    pub use crate::sys::c::SOCKADDR as sockaddr;
-    pub use crate::sys::c::SOCKADDR_STORAGE_LH as sockaddr_storage;
-    pub use crate::sys::c::*;
+    //! BSD socket compatibility shim
+    //!
+    //! Some Windows API types are not quite what's expected by our cross-platform
+    //! net code. E.g. naming differences or different pointer types.
+    use crate::sys::c::{self, ADDRESS_FAMILY, ADDRINFOA, SOCKADDR, SOCKET};
+    use core::ffi::{c_char, c_int, c_uint, c_ulong, c_ushort, c_void};
+
+    // re-exports from Windows API bindings.
+    pub use crate::sys::c::{
+        bind, connect, freeaddrinfo, getpeername, getsockname, getsockopt, listen, setsockopt,
+        ADDRESS_FAMILY as sa_family_t, ADDRINFOA as addrinfo, IPPROTO_IP, IPPROTO_IPV6,
+        IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_LOOP, IPV6_V6ONLY,
+        IP_ADD_MEMBERSHIP, IP_DROP_MEMBERSHIP, IP_MULTICAST_LOOP, IP_MULTICAST_TTL, IP_TTL,
+        SOCKADDR as sockaddr, SOCKADDR_STORAGE as sockaddr_storage, SOCK_DGRAM, SOCK_STREAM,
+        SOL_SOCKET, SO_BROADCAST, SO_RCVTIMEO, SO_SNDTIMEO,
+    };
+
+    #[allow(non_camel_case_types)]
+    pub type socklen_t = c_int;
+
+    pub const AF_INET: i32 = c::AF_INET as i32;
+    pub const AF_INET6: i32 = c::AF_INET6 as i32;
+
+    // The following two structs use a union in the generated bindings but
+    // our cross-platform code expects a normal field so it's redefined here.
+    // As a consequence, we also need to redefine other structs that use this struct.
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct in_addr {
+        pub s_addr: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct in6_addr {
+        pub s6_addr: [u8; 16],
+    }
+
+    #[repr(C)]
+    pub struct ip_mreq {
+        pub imr_multiaddr: in_addr,
+        pub imr_interface: in_addr,
+    }
+
+    #[repr(C)]
+    pub struct ipv6_mreq {
+        pub ipv6mr_multiaddr: in6_addr,
+        pub ipv6mr_interface: c_uint,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct sockaddr_in {
+        pub sin_family: ADDRESS_FAMILY,
+        pub sin_port: c_ushort,
+        pub sin_addr: in_addr,
+        pub sin_zero: [c_char; 8],
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct sockaddr_in6 {
+        pub sin6_family: ADDRESS_FAMILY,
+        pub sin6_port: c_ushort,
+        pub sin6_flowinfo: c_ulong,
+        pub sin6_addr: in6_addr,
+        pub sin6_scope_id: c_ulong,
+    }
+
+    pub unsafe fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int {
+        unsafe { c::send(socket, buf.cast::<u8>(), len, flags) }
+    }
+    pub unsafe fn sendto(
+        socket: SOCKET,
+        buf: *const c_void,
+        len: c_int,
+        flags: c_int,
+        addr: *const SOCKADDR,
+        addrlen: c_int,
+    ) -> c_int {
+        unsafe { c::sendto(socket, buf.cast::<u8>(), len, flags, addr, addrlen) }
+    }
+    pub unsafe fn getaddrinfo(
+        node: *const c_char,
+        service: *const c_char,
+        hints: *const ADDRINFOA,
+        res: *mut *mut ADDRINFOA,
+    ) -> c_int {
+        unsafe { c::getaddrinfo(node.cast::<u8>(), service.cast::<u8>(), hints, res) }
+    }
 }
 
 pub struct Socket(OwnedSocket);
@@ -102,8 +188,8 @@ where
 impl Socket {
     pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
         let family = match *addr {
-            SocketAddr::V4(..) => c::AF_INET,
-            SocketAddr::V6(..) => c::AF_INET6,
+            SocketAddr::V4(..) => netc::AF_INET,
+            SocketAddr::V6(..) => netc::AF_INET6,
         };
         let socket = unsafe {
             c::WSASocketW(
@@ -157,7 +243,7 @@ impl Socket {
                     return Err(io::Error::ZERO_TIMEOUT);
                 }
 
-                let mut timeout = c::timeval {
+                let mut timeout = c::TIMEVAL {
                     tv_sec: cmp::min(timeout.as_secs(), c_long::MAX as u64) as c_long,
                     tv_usec: timeout.subsec_micros() as c_long,
                 };
@@ -167,7 +253,7 @@ impl Socket {
                 }
 
                 let fds = {
-                    let mut fds = unsafe { mem::zeroed::<c::fd_set>() };
+                    let mut fds = unsafe { mem::zeroed::<c::FD_SET>() };
                     fds.fd_count = 1;
                     fds.fd_array[0] = self.as_raw();
                     fds
@@ -295,8 +381,8 @@ impl Socket {
         buf: &mut [u8],
         flags: c_int,
     ) -> io::Result<(usize, SocketAddr)> {
-        let mut storage = unsafe { mem::zeroed::<c::SOCKADDR_STORAGE_LH>() };
-        let mut addrlen = mem::size_of_val(&storage) as c::socklen_t;
+        let mut storage = unsafe { mem::zeroed::<c::SOCKADDR_STORAGE>() };
+        let mut addrlen = mem::size_of_val(&storage) as netc::socklen_t;
         let length = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
 
         // On unix when a socket is shut down all further reads return 0, so we
@@ -399,7 +485,7 @@ impl Socket {
     }
 
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
-        let linger = c::linger {
+        let linger = c::LINGER {
             l_onoff: linger.is_some() as c_ushort,
             l_linger: linger.unwrap_or_default().as_secs() as c_ushort,
         };
@@ -408,7 +494,7 @@ impl Socket {
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
-        let val: c::linger = net::getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)?;
+        let val: c::LINGER = net::getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)?;
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }

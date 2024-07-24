@@ -64,11 +64,17 @@ jobs:
       - name: cargo update
         # Remove first line that always just says "Updating crates.io index"
         run: cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+      - name: cargo update rustbook
+        run: |
+          echo -e "\nrustbook dependencies:" >> cargo_update.log
+          cargo update --manifest-path src/tools/rustbook 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v4
         with:
           name: Cargo-lock
-          path: Cargo.lock
+          path: |
+            Cargo.lock
+            src/tools/rustbook/Cargo.lock
           retention-days: 1
       - name: upload cargo-update log artifact for use in PR
         uses: actions/upload-artifact@v4
@@ -113,7 +119,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git switch --force-create cargo_update
-          git add ./Cargo.lock
+          git add ./Cargo.lock ./src/tools/rustbook/Cargo.lock
           git commit --no-verify --file=commit.txt
 
       - name: push

@@ -2763,7 +2763,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let res = match kind {
                 RibKind::Item(..) | RibKind::AssocItem => Res::Def(def_kind, def_id.to_def_id()),
                 RibKind::Normal => {
-                    if self.r.tcx.features().non_lifetime_binders {
+                    // FIXME(non_lifetime_binders): Stop special-casing
+                    // const params to error out here.
+                    if self.r.tcx.features().non_lifetime_binders
+                        && matches!(param.kind, GenericParamKind::Type { .. })
+                    {
                         Res::Def(def_kind, def_id.to_def_id())
                     } else {
                         Res::Err

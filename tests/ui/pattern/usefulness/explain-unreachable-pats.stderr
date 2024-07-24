@@ -1,0 +1,104 @@
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:11:9
+   |
+LL |         (1 | 2,) => {}
+   |         -------- matches all the values already
+LL |
+LL |         (2,) => {}
+   |         ^^^^ unreachable pattern
+   |
+note: the lint level is defined here
+  --> $DIR/explain-unreachable-pats.rs:3:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:22:9
+   |
+LL |         (1 | 2,) => {}
+   |         ^^^^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/explain-unreachable-pats.rs:22:9
+   |
+LL |         (1,) => {}
+   |         ---- matches some of the same values
+LL |
+LL |         (2,) => {}
+   |         ---- matches some of the same values
+LL |
+LL |         (1 | 2,) => {}
+   |         ^^^^^^^^ collectively making this unreachable
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:33:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^
+   |
+   = note: this pattern matches no values because `!` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:46:9
+   |
+LL |         (Err(_), Err(_)) => {}
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern matches no values because `Void2` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:52:9
+   |
+LL |         (Err(_), Err(_)) => {}
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern matches no values because `Void1` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:61:11
+   |
+LL |     if let (0
+   |             - matches all the values already
+LL |
+LL |         | 0, _) = (0, 0) {}
+   |           ^ unreachable pattern
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:71:9
+   |
+LL |         (_, true) => {}
+   |         ^^^^^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/explain-unreachable-pats.rs:71:9
+   |
+LL |         (true, _) => {}
+   |         --------- matches some of the same values
+LL |
+LL |         (false, _) => {}
+   |         ---------- matches some of the same values
+LL |
+LL |         (_, true) => {}
+   |         ^^^^^^^^^ collectively making this unreachable
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:84:9
+   |
+LL |         (true, _) => {}
+   |         --------- matches all the values already
+...
+LL |         (true, true) => {}
+   |         ^^^^^^^^^^^^ unreachable pattern
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:96:9
+   |
+LL |         (_, true, 0..10) => {}
+   |         ---------------- matches all the values already
+...
+LL |         (_, true, 3) => {}
+   |         ^^^^^^^^^^^^ unreachable pattern
+
+error: aborting due to 9 previous errors
+

@@ -99,6 +99,10 @@ hir_analysis_const_param_ty_impl_on_non_adt =
     the trait `ConstParamTy` may not be implemented for this type
     .label = type is not a structure or enumeration
 
+hir_analysis_const_param_ty_impl_on_unsized =
+    the trait `ConstParamTy` may not be implemented for this type
+    .label = type is not `Sized`
+
 hir_analysis_const_specialize = cannot specialize on const impl with non-const impl
 
 hir_analysis_copy_impl_on_non_adt =

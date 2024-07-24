@@ -1990,7 +1990,7 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Res
         }
     }
 }
-
+#[diagnostic::do_not_recommend]
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
     #[inline]

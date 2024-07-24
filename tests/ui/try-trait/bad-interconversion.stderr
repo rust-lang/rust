@@ -23,9 +23,7 @@ LL |     Some(3)?;
    |            ^ use `.ok_or(...)?` to provide an error compatible with `Result<u64, String>`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u64, String>`
-   = help: the following other types implement trait `FromResidual<R>`:
-             `Result<T, F>` implements `FromResidual<Result<Infallible, E>>`
-             `Result<T, F>` implements `FromResidual<Yeet<E>>`
+   = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
 
 error[E0277]: the `?` operator can only be used on `Result`s in a function that returns `Result`
   --> $DIR/bad-interconversion.rs:17:31
@@ -36,9 +34,7 @@ LL |     Ok(ControlFlow::Break(123)?)
    |                               ^ this `?` produces `ControlFlow<{integer}, Infallible>`, which is incompatible with `Result<u64, String>`
    |
    = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Result<u64, String>`
-   = help: the following other types implement trait `FromResidual<R>`:
-             `Result<T, F>` implements `FromResidual<Result<Infallible, E>>`
-             `Result<T, F>` implements `FromResidual<Yeet<E>>`
+   = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
 
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/bad-interconversion.rs:22:22
@@ -49,9 +45,7 @@ LL |     Some(Err("hello")?)
    |                      ^ use `.ok()?` if you want to discard the `Result<Infallible, &str>` error information
    |
    = help: the trait `FromResidual<Result<Infallible, &str>>` is not implemented for `Option<u16>`
-   = help: the following other types implement trait `FromResidual<R>`:
-             `Option<T>` implements `FromResidual<Yeet<()>>`
-             `Option<T>` implements `FromResidual`
+   = help: the trait `FromResidual` is implemented for `Option<T>`
 
 error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
   --> $DIR/bad-interconversion.rs:27:33
@@ -62,9 +56,7 @@ LL |     Some(ControlFlow::Break(123)?)
    |                                 ^ this `?` produces `ControlFlow<{integer}, Infallible>`, which is incompatible with `Option<u64>`
    |
    = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Option<u64>`
-   = help: the following other types implement trait `FromResidual<R>`:
-             `Option<T>` implements `FromResidual<Yeet<()>>`
-             `Option<T>` implements `FromResidual`
+   = help: the trait `FromResidual` is implemented for `Option<T>`
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
   --> $DIR/bad-interconversion.rs:32:39

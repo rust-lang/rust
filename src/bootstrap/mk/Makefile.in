@@ -51,6 +51,7 @@ check-aux:
 	$(Q)$(BOOTSTRAP) test --stage 2 \
 		src/tools/cargo \
 		src/tools/cargotest \
+		src/etc/test-float-parse \
 		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
 	$(Q)BOOTSTRAP_SKIP_TARGET_SANITY=1 \

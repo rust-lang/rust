@@ -12,7 +12,6 @@ use rustc_hir::HirId;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
@@ -34,6 +33,7 @@ use rustc_span::edit_distance::{
 };
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;

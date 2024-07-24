@@ -695,7 +695,7 @@ fn copy_sanitizers(
             || target == "x86_64-apple-ios"
         {
             // Update the library’s install name to reflect that it has been renamed.
-            apple_darwin_update_library_name(builder, &dst, &format!("@rpath/{}", &runtime.name));
+            apple_darwin_update_library_name(builder, &dst, &format!("@rpath/{}", runtime.name));
             // Upon renaming the install name, the code signature of the file will invalidate,
             // so we will sign it again.
             apple_darwin_sign_file(builder, &dst);
@@ -1820,12 +1820,14 @@ impl Step for Assemble {
                     &self_contained_lld_dir.join(exe(name, target_compiler.host)),
                 );
             }
+        }
 
-            // In addition to `rust-lld` also install `wasm-component-ld` when
-            // LLD is enabled. This is a relatively small binary that primarily
-            // delegates to the `rust-lld` binary for linking and then runs
-            // logic to create the final binary. This is used by the
-            // `wasm32-wasip2` target of Rust.
+        // In addition to `rust-lld` also install `wasm-component-ld` when
+        // LLD is enabled. This is a relatively small binary that primarily
+        // delegates to the `rust-lld` binary for linking and then runs
+        // logic to create the final binary. This is used by the
+        // `wasm32-wasip2` target of Rust.
+        if builder.build_wasm_component_ld() {
             let wasm_component_ld_exe =
                 builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
                     compiler: build_compiler,

@@ -439,7 +439,7 @@ impl Build {
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
-            let rust_submodules = ["src/doc/book", "library/backtrace", "library/stdarch"];
+            let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
                 build.update_submodule(Path::new(s));
             }
@@ -1412,6 +1412,19 @@ Executed at: {executed_at}"#,
         }
 
         None
+    }
+
+    /// Returns whether it's requested that `wasm-component-ld` is built as part
+    /// of the sysroot. This is done either with the `extended` key in
+    /// `config.toml` or with the `tools` set.
+    fn build_wasm_component_ld(&self) -> bool {
+        if self.config.extended {
+            return true;
+        }
+        match &self.config.tools {
+            Some(set) => set.contains("wasm-component-ld"),
+            None => false,
+        }
     }
 
     /// Returns the root of the "rootfs" image that this target will be using,
