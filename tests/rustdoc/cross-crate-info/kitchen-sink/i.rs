@@ -1,7 +1,7 @@
-//@ aux-build:q.rs
 //@ aux-build:r.rs
-//@ aux-build:s.rs
+//@ aux-build:q.rs
 //@ aux-build:t.rs
+//@ aux-build:s.rs
 //@ build-aux-docs
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
@@ -28,5 +28,3 @@
 //@ hasraw type.impl/s/struct.Sierra.js 'Romeo'
 
 // document everything in the default mode
-
-

@@ -16,7 +16,6 @@
 
 // document two crates in the same way that cargo does, writing them both
 // into the same output directory
-
 extern crate f;
 pub enum Echo {}
 impl f::Foxtrot for Echo {}

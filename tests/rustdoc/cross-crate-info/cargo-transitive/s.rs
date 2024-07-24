@@ -19,7 +19,6 @@
 
 // We document multiple crates into the same output directory, which
 // merges the cross-crate information. Everything is available.
-
 extern crate t;
 pub struct Sierra;
 impl t::Tango for Sierra {}

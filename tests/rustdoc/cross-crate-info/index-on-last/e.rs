@@ -15,7 +15,6 @@
 //@ hasraw search-index.js 'Echo'
 
 // only declare --enable-index-page to the last rustdoc invocation
-
 extern crate f;
 pub enum Echo {}
 impl f::Foxtrot for Echo {}

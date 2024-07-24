@@ -7,5 +7,4 @@
 
 // where will --scrape-examples-output-path resolve the path to be?
 // should be the root output directory
-
 pub struct Quebec;
