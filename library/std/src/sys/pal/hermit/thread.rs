@@ -3,7 +3,7 @@
 use super::hermit_abi;
 use crate::ffi::CStr;
 use crate::io;
-use crate::mem;
+use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
 use crate::ptr;
 use crate::time::Duration;
@@ -90,9 +90,7 @@ impl Thread {
 
     #[inline]
     pub fn into_id(self) -> Tid {
-        let id = self.tid;
-        mem::forget(self);
-        id
+        ManuallyDrop::new(self).tid
     }
 }
 

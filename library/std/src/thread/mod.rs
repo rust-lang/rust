@@ -165,7 +165,7 @@ use crate::ffi::CStr;
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem::{self, forget};
+use crate::mem::{self, forget, ManuallyDrop};
 use crate::num::NonZero;
 use crate::panic;
 use crate::panicking;
@@ -510,11 +510,10 @@ impl Builder {
                 MaybeDangling(mem::MaybeUninit::new(x))
             }
             fn into_inner(self) -> T {
-                // SAFETY: we are always initialized.
-                let ret = unsafe { self.0.assume_init_read() };
                 // Make sure we don't drop.
-                mem::forget(self);
-                ret
+                let this = ManuallyDrop::new(self);
+                // SAFETY: we are always initialized.
+                unsafe { this.0.assume_init_read() }
             }
         }
         impl<T> Drop for MaybeDangling<T> {
