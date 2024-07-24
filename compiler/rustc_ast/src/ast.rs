@@ -2264,6 +2264,42 @@ bitflags::bitflags! {
     }
 }
 
+impl InlineAsmOptions {
+    pub fn human_readable_names(&self) -> Vec<&'static str> {
+        let mut options = vec![];
+
+        if self.contains(InlineAsmOptions::PURE) {
+            options.push("pure");
+        }
+        if self.contains(InlineAsmOptions::NOMEM) {
+            options.push("nomem");
+        }
+        if self.contains(InlineAsmOptions::READONLY) {
+            options.push("readonly");
+        }
+        if self.contains(InlineAsmOptions::PRESERVES_FLAGS) {
+            options.push("preserves_flags");
+        }
+        if self.contains(InlineAsmOptions::NORETURN) {
+            options.push("noreturn");
+        }
+        if self.contains(InlineAsmOptions::NOSTACK) {
+            options.push("nostack");
+        }
+        if self.contains(InlineAsmOptions::ATT_SYNTAX) {
+            options.push("att_syntax");
+        }
+        if self.contains(InlineAsmOptions::RAW) {
+            options.push("raw");
+        }
+        if self.contains(InlineAsmOptions::MAY_UNWIND) {
+            options.push("may_unwind");
+        }
+
+        options
+    }
+}
+
 impl std::fmt::Debug for InlineAsmOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         bitflags::parser::to_writer(self, f)
