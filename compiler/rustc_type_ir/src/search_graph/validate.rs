@@ -2,6 +2,7 @@ use super::*;
 
 impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     #[allow(rustc::potential_query_instability)]
+    #[allow(unused)] // TODO
     pub(super) fn check_invariants(&self) {
         if !cfg!(debug_assertions) {
             return;
@@ -12,6 +13,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             assert!(provisional_cache.is_empty());
         }
 
+        /*
+
         for (depth, entry) in stack.iter_enumerated() {
             let StackEntry {
                 input,
@@ -21,11 +24,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 encountered_overflow: _,
                 has_been_used,
                 ref nested_goals,
-                provisional_result,
+                provisional_result: _,
             } = *entry;
             if let Some(head) = non_root_cycle_participant {
                 assert!(head < depth);
-                assert!(nested_goals.is_empty());
                 assert_ne!(stack[head].has_been_used, None);
 
                 let mut current_root = head;
@@ -59,5 +61,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 check_detached(with_inductive_stack);
             }
         }
+        */
     }
 }

@@ -2,12 +2,12 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::search_graph::{self, CycleKind, UsageKind};
+use rustc_type_ir::search_graph::{self, CycleKind};
 use rustc_type_ir::solve::{CanonicalInput, Certainty, QueryResult};
 use rustc_type_ir::Interner;
 
 use super::inspect::ProofTreeBuilder;
-use super::FIXPOINT_STEP_LIMIT;
+use super::{has_no_inference_or_external_constraints, FIXPOINT_STEP_LIMIT};
 use crate::delegate::SolverDelegate;
 
 /// This type is never constructed. We only use it to implement `search_graph::Delegate`
@@ -26,7 +26,7 @@ where
     type ValidationScope = Infallible;
     fn enter_validation_scope(
         _cx: Self::Cx,
-        _input: <Self::Cx as search_graph::Cx>::Input,
+        _input: CanonicalInput<I>,
     ) -> Option<Self::ValidationScope> {
         None
     }
@@ -53,24 +53,16 @@ where
         }
     }
 
-    fn reached_fixpoint(
-        cx: I,
-        kind: UsageKind,
+    fn is_initial_provisional_result(
+        cx: Self::Cx,
+        kind: CycleKind,
         input: CanonicalInput<I>,
-        provisional_result: Option<QueryResult<I>>,
         result: QueryResult<I>,
     ) -> bool {
-        if let Some(r) = provisional_result {
-            r == result
-        } else {
-            match kind {
-                UsageKind::Single(CycleKind::Coinductive) => {
-                    response_no_constraints(cx, input, Certainty::Yes) == result
-                }
-                UsageKind::Single(CycleKind::Inductive) => {
-                    response_no_constraints(cx, input, Certainty::overflow(false)) == result
-                }
-                UsageKind::Mixed => false,
+        match kind {
+            CycleKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes) == result,
+            CycleKind::Inductive => {
+                response_no_constraints(cx, input, Certainty::overflow(false)) == result
             }
         }
     }
@@ -86,6 +78,22 @@ where
 
     fn on_fixpoint_overflow(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
         response_no_constraints(cx, input, Certainty::overflow(false))
+    }
+
+    fn is_ambiguous_result(result: QueryResult<I>) -> bool {
+        result.is_ok_and(|response| {
+            has_no_inference_or_external_constraints(response)
+                && matches!(response.value.certainty, Certainty::Maybe(_))
+        })
+    }
+
+    fn propagate_ambiguity(
+        cx: I,
+        for_input: CanonicalInput<I>,
+        from_result: QueryResult<I>,
+    ) -> QueryResult<I> {
+        let certainty = from_result.unwrap().value.certainty;
+        response_no_constraints(cx, for_input, certainty)
     }
 
     fn step_is_coinductive(cx: I, input: CanonicalInput<I>) -> bool {
