@@ -333,7 +333,7 @@ pub(super) fn transcribe<'a>(
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
             mbe::TokenTree::Delimited(mut span, spacing, delimited) => {
-                mut_visit::visit_delim_span(&mut span, &mut marker);
+                mut_visit::visit_delim_span(&mut marker, &mut span);
                 stack.push(Frame::new_delimited(delimited, span, *spacing));
                 result_stack.push(mem::take(&mut result));
             }
@@ -342,7 +342,7 @@ pub(super) fn transcribe<'a>(
             // preserve syntax context.
             mbe::TokenTree::Token(token) => {
                 let mut token = token.clone();
-                mut_visit::visit_token(&mut token, &mut marker);
+                mut_visit::visit_token(&mut marker, &mut token);
                 let tt = TokenTree::Token(token, Spacing::Alone);
                 result.push(tt);
             }
