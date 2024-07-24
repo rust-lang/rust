@@ -2463,6 +2463,7 @@ Windows.Win32.System.LibraryLoader.GetProcAddress
 Windows.Win32.System.Performance.QueryPerformanceCounter
 Windows.Win32.System.Performance.QueryPerformanceFrequency
 Windows.Win32.System.Pipes.CreateNamedPipeW
+Windows.Win32.System.Pipes.CreatePipe
 Windows.Win32.System.Pipes.NAMED_PIPE_MODE
 Windows.Win32.System.Pipes.PIPE_ACCEPT_REMOTE_CLIENTS
 Windows.Win32.System.Pipes.PIPE_CLIENT_END

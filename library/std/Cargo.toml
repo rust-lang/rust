@@ -20,8 +20,12 @@ core = { path = "../core", public = true }
 compiler_builtins = { version = "0.1.105" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.14", default-features = false, features = ['rustc-dep-of-std'] }
-std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
+hashbrown = { version = "0.14", default-features = false, features = [
+    'rustc-dep-of-std',
+] }
+std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = [
+    'rustc-dep-of-std',
+] }
 
 # Dependencies of the `backtrace` crate
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
@@ -31,13 +35,27 @@ miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
 addr2line = { version = "0.22.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
+libc = { version = "0.2.153", default-features = false, features = [
+    'rustc-dep-of-std',
+], public = true }
 
 [target.'cfg(all(not(target_os = "aix"), not(all(windows, target_env = "msvc", not(target_vendor = "uwp")))))'.dependencies]
-object = { version = "0.36.0", default-features = false, optional = true, features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive'] }
+object = { version = "0.36.0", default-features = false, optional = true, features = [
+    'read_core',
+    'elf',
+    'macho',
+    'pe',
+    'unaligned',
+    'archive',
+] }
 
 [target.'cfg(target_os = "aix")'.dependencies]
-object = { version = "0.36.0", default-features = false, optional = true, features = ['read_core', 'xcoff', 'unaligned', 'archive'] }
+object = { version = "0.36.0", default-features = false, optional = true, features = [
+    'read_core',
+    'xcoff',
+    'unaligned',
+    'archive',
+] }
 
 [dev-dependencies]
 rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
@@ -47,13 +65,19 @@ rand_xorshift = "0.3.0"
 dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.5.0", features = ['rustc-dep-of-std'], public = true }
+fortanix-sgx-abi = { version = "0.5.0", features = [
+    'rustc-dep-of-std',
+], public = true }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
-hermit-abi = { version = "0.4.0", features = ['rustc-dep-of-std'], public = true }
+hermit-abi = { version = "0.4.0", features = [
+    'rustc-dep-of-std',
+], public = true }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
-wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }
+wasi = { version = "0.11.0", features = [
+    'rustc-dep-of-std',
+], default-features = false }
 
 [target.'cfg(target_os = "uefi")'.dependencies]
 r-efi = { version = "4.5.0", features = ['rustc-dep-of-std'] }
@@ -61,9 +85,9 @@ r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
 
 [features]
 backtrace = [
-  'addr2line/rustc-dep-of-std',
-  'object/rustc-dep-of-std',
-  'miniz_oxide/rustc-dep-of-std',
+    'addr2line/rustc-dep-of-std',
+    'object/rustc-dep-of-std',
+    'miniz_oxide/rustc-dep-of-std',
 ]
 
 panic-unwind = ["panic_unwind"]
@@ -77,7 +101,10 @@ llvm-libunwind = ["unwind/llvm-libunwind"]
 system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 
 # Make panics and failed asserts immediately abort without formatting any message
-panic_immediate_abort = ["core/panic_immediate_abort", "alloc/panic_immediate_abort"]
+panic_immediate_abort = [
+    "core/panic_immediate_abort",
+    "alloc/panic_immediate_abort",
+]
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 
@@ -96,6 +123,11 @@ windows_raw_dylib = []
 threads = 125
 # Maximum heap size
 heap_size = 0x8000000
+
+[[test]]
+name = "pipe-subprocess"
+path = "tests/pipe_subprocess.rs"
+harness = false
 
 [[bench]]
 name = "stdbenches"

@@ -591,6 +591,8 @@ pub mod panic;
 #[unstable(feature = "core_pattern_types", issue = "none")]
 pub mod pat;
 pub mod path;
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+pub mod pipe;
 pub mod process;
 pub mod sync;
 pub mod time;
