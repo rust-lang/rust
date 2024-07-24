@@ -65,15 +65,13 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
 
         match self {
             Param(param) => write!(f, "{param:?}"),
-            Infer(var) => write!(f, "{:?}", &var),
+            Infer(var) => write!(f, "{var:?}"),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Unevaluated(uv) => {
-                write!(f, "{:?}", &uv)
-            }
-            Value(ty, valtree) => write!(f, "({valtree:?}: {:?})", &ty),
+            Unevaluated(uv) => write!(f, "{uv:?}"),
+            Value(ty, valtree) => write!(f, "({valtree:?}: {ty:?})"),
             Error(_) => write!(f, "{{const error}}"),
-            Expr(expr) => write!(f, "{:?}", &expr),
+            Expr(expr) => write!(f, "{expr:?}"),
         }
     }
 }

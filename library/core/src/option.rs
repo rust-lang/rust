@@ -2507,6 +2507,7 @@ impl<T> ops::FromResidual for Option<T> {
     }
 }
 
+#[diagnostic::do_not_recommend]
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
     #[inline]

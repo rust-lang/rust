@@ -328,7 +328,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::link_section => {
                 if let Some(val) = attr.value_str() {
                     if val.as_str().bytes().any(|b| b == 0) {
-                        let msg = format!("illegal null byte in link_section value: `{}`", &val);
+                        let msg = format!("illegal null byte in link_section value: `{val}`");
                         tcx.dcx().span_err(attr.span, msg);
                     } else {
                         codegen_fn_attrs.link_section = Some(val);
@@ -726,7 +726,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         if *ordinal <= u16::MAX as u128 {
             Some(ordinal.get() as u16)
         } else {
-            let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
+            let msg = format!("ordinal value in `link_ordinal` is too large: `{ordinal}`");
             tcx.dcx()
                 .struct_span_err(attr.span, msg)
                 .with_note("the value may not exceed `u16::MAX`")

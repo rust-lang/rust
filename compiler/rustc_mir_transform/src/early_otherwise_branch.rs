@@ -106,11 +106,11 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             let parent = BasicBlock::from_usize(i);
             let Some(opt_data) = evaluate_candidate(tcx, body, parent) else { continue };
 
-            if !tcx.consider_optimizing(|| format!("EarlyOtherwiseBranch {:?}", &opt_data)) {
+            if !tcx.consider_optimizing(|| format!("EarlyOtherwiseBranch {opt_data:?}")) {
                 break;
             }
 
-            trace!("SUCCESS: found optimization possibility to apply: {:?}", &opt_data);
+            trace!("SUCCESS: found optimization possibility to apply: {opt_data:?}");
 
             should_cleanup = true;
 

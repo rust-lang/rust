@@ -7,6 +7,7 @@ use crate::rmeta::*;
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::{Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
@@ -83,12 +84,12 @@ pub(crate) struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxHashMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
+    trait_impls: FxIndexMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
     /// or `#[rustc_allow_incoherent_impl]`.
-    incoherent_impls: FxHashMap<SimplifiedType, LazyArray<DefIndex>>,
+    incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<DefIndex>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.

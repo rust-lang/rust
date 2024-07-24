@@ -44,7 +44,6 @@
 //!
 //! [`BorrowedFd<'a>`]: crate::os::solid::io::BorrowedFd
 
-#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "solid_ext", issue = "none")]
 
 use crate::fmt;

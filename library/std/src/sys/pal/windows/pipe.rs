@@ -1,7 +1,7 @@
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsStr;
-use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::path::Path;
 use crate::ptr;
@@ -37,6 +37,23 @@ impl FromInner<Handle> for AnonPipe {
 pub struct Pipes {
     pub ours: AnonPipe,
     pub theirs: AnonPipe,
+}
+
+/// Create true unnamed anonymous pipe.
+pub fn unnamed_anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+    let mut read_pipe = c::INVALID_HANDLE_VALUE;
+    let mut write_pipe = c::INVALID_HANDLE_VALUE;
+
+    let ret = unsafe { c::CreatePipe(&mut read_pipe, &mut write_pipe, ptr::null_mut(), 0) };
+
+    if ret == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok((
+            AnonPipe::from_inner(unsafe { Handle::from_raw_handle(read_pipe) }),
+            AnonPipe::from_inner(unsafe { Handle::from_raw_handle(write_pipe) }),
+        ))
+    }
 }
 
 /// Although this looks similar to `anon_pipe` in the Unix module it's actually
@@ -181,7 +198,7 @@ pub fn spawn_pipe_relay(
     their_handle_inheritable: bool,
 ) -> io::Result<AnonPipe> {
     // We need this handle to live for the lifetime of the thread spawned below.
-    let source = source.duplicate()?;
+    let source = source.try_clone()?;
 
     // create a new pair of anon pipes.
     let Pipes { theirs, ours } = anon_pipe(ours_readable, their_handle_inheritable)?;
@@ -237,7 +254,8 @@ impl AnonPipe {
     pub fn into_handle(self) -> Handle {
         self.inner
     }
-    fn duplicate(&self) -> io::Result<Self> {
+
+    pub fn try_clone(&self) -> io::Result<Self> {
         self.inner.duplicate(0, false, c::DUPLICATE_SAME_ACCESS).map(|inner| AnonPipe { inner })
     }
 

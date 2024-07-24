@@ -53,8 +53,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
-use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
@@ -2574,7 +2572,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
     ) {
-        let Some(output_ty) = self.get_impl_future_output_ty(ty) else {
+        let Some(output_ty) = self.err_ctxt().get_impl_future_output_ty(ty) else {
             err.span_label(field_ident.span, "unknown field");
             return;
         };

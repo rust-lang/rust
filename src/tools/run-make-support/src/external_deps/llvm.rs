@@ -229,6 +229,8 @@ impl LlvmAr {
         Self { cmd }
     }
 
+    /// Automatically pass the commonly used arguments `rcus`, used for combining one or more
+    /// input object files into one output static library file.
     pub fn obj_to_ar(&mut self) -> &mut Self {
         self.cmd.arg("rcus");
         self

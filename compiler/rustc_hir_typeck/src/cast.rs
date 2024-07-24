@@ -495,6 +495,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     err.span_label(self.span, "invalid cast");
                 }
 
+                fcx.suggest_no_capture_closure(&mut err, self.cast_ty, self.expr_ty);
                 self.try_suggest_collection_to_bool(fcx, &mut err);
 
                 err.emit();

@@ -20,10 +20,10 @@ Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated
 Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
 Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
 
-Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
-</span>.
-Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
-</span>.
+Finally, you can use `quz` only on <span class="stab portability" data-span="1"><code>Unix or x86-64
+</code></span>.
+Finally, you can use `quz` only on <span class="stab portability" data-span="2"><code>Unix or x86-64
+</code></span>.
 */
 
 use std::convert::AsRef;
@@ -613,4 +613,18 @@ pub mod private {
         #[doc(hidden)]
         B,
     }
+}
+
+pub mod trait_bounds {
+    pub trait OneBound: Sized {}
+    pub trait TwoBounds: Sized + Copy {}
+    pub trait ThreeBounds: Sized + Copy + Eq {}
+}
+
+pub mod short_docs {
+    /// mult_vec_num(x: &[f64], y: f64)
+    pub fn mult_vec_num() {}
+
+    /// subt_vec_num(x: &[f64], y: f64)
+    pub fn subt_vec_num() {}
 }

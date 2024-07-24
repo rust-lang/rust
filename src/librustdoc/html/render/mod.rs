@@ -46,7 +46,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str;
 
-use askama::Template;
+use rinja::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

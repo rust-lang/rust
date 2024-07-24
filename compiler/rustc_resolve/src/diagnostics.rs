@@ -149,7 +149,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     BuiltinLintDiag::AmbiguousGlobImports { diag },
                 );
             } else {
-                let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", &diag.msg);
+                let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", diag.msg);
                 report_ambiguity_error(&mut err, diag);
                 err.emit();
             }
@@ -798,7 +798,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             ResolutionError::FailedToResolve { segment, label, suggestion, module } => {
                 let mut err =
-                    struct_span_code_err!(self.dcx(), span, E0433, "failed to resolve: {}", &label);
+                    struct_span_code_err!(self.dcx(), span, E0433, "failed to resolve: {label}");
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
@@ -2893,7 +2893,7 @@ fn show_candidates(
                     ""
                 };
                 candidate.0 =
-                    format!("{add_use}{}{append}{trailing}{additional_newline}", &candidate.0);
+                    format!("{add_use}{}{append}{trailing}{additional_newline}", candidate.0);
             }
 
             match mode {

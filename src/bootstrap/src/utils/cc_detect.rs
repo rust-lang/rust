@@ -142,15 +142,15 @@ pub fn find_target(build: &Build, target: TargetSelection) {
         build.cxx.borrow_mut().insert(target, compiler);
     }
 
-    build.verbose(|| println!("CC_{} = {:?}", &target.triple, build.cc(target)));
-    build.verbose(|| println!("CFLAGS_{} = {:?}", &target.triple, cflags));
+    build.verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
+    build.verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
         let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
-        build.verbose(|| println!("CXX_{} = {:?}", &target.triple, cxx));
-        build.verbose(|| println!("CXXFLAGS_{} = {:?}", &target.triple, cxxflags));
+        build.verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
+        build.verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }
     if let Some(ar) = ar {
-        build.verbose(|| println!("AR_{} = {:?}", &target.triple, ar));
+        build.verbose(|| println!("AR_{} = {ar:?}", target.triple));
         build.ar.borrow_mut().insert(target, ar);
     }
 

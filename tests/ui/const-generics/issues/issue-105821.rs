@@ -4,7 +4,7 @@
 // a failing test, we just started masking the bug.
 
 #![allow(incomplete_features)]
-#![feature(adt_const_params, generic_const_exprs)]
+#![feature(adt_const_params, unsized_const_params, generic_const_exprs)]
 #![allow(dead_code)]
 
 const fn catone<const M: usize>(_a: &[u8; M]) -> [u8; M + 1]

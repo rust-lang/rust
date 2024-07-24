@@ -19,7 +19,6 @@ use rustc_hir_analysis::hir_ty_lowering::{
     GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
-use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -37,7 +36,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };

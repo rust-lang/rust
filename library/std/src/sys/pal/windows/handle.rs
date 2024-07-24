@@ -17,6 +17,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
 /// All methods are inherited through a `Deref` impl to `RawHandle`
+#[derive(Debug)]
 pub struct Handle(OwnedHandle);
 
 impl Handle {
@@ -134,6 +135,12 @@ impl Handle {
 
             Err(e) => Err(e),
         }
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+
+        Read::read_to_end(&mut me, buf)
     }
 
     pub unsafe fn read_overlapped(

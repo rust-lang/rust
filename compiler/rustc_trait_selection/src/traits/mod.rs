@@ -22,7 +22,7 @@ mod util;
 pub mod vtable;
 pub mod wf;
 
-use crate::error_reporting::traits::TypeErrCtxtExt as _;
+use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;

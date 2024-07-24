@@ -1840,6 +1840,19 @@ supported_targets! {
 
     ("x86_64-unknown-linux-none", x86_64_unknown_linux_none),
 
+    ("thumbv6m-nuttx-eabi", thumbv6m_nuttx_eabi),
+    ("thumbv7m-nuttx-eabi", thumbv7m_nuttx_eabi),
+    ("thumbv7em-nuttx-eabi", thumbv7em_nuttx_eabi),
+    ("thumbv7em-nuttx-eabihf", thumbv7em_nuttx_eabihf),
+    ("thumbv8m.base-nuttx-eabi", thumbv8m_base_nuttx_eabi),
+    ("thumbv8m.main-nuttx-eabi", thumbv8m_main_nuttx_eabi),
+    ("thumbv8m.main-nuttx-eabihf", thumbv8m_main_nuttx_eabihf),
+    ("riscv32imc-unknown-nuttx-elf", riscv32imc_unknown_nuttx_elf),
+    ("riscv32imac-unknown-nuttx-elf", riscv32imac_unknown_nuttx_elf),
+    ("riscv32imafc-unknown-nuttx-elf", riscv32imafc_unknown_nuttx_elf),
+    ("riscv64imac-unknown-nuttx-elf", riscv64imac_unknown_nuttx_elf),
+    ("riscv64gc-unknown-nuttx-elf", riscv64gc_unknown_nuttx_elf),
+
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>

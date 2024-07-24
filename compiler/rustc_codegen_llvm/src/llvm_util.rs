@@ -14,7 +14,7 @@ use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
-use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
+use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
 
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::fmt::Write;
@@ -321,6 +321,10 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             }
         })
         .filter(|feature| {
+            // skip checking special features, as LLVM may not understands them
+            if RUSTC_SPECIAL_FEATURES.contains(feature) {
+                return true;
+            }
             // check that all features in a given smallvec are enabled
             for llvm_feature in to_llvm_features(sess, feature) {
                 let cstr = SmallCStr::new(llvm_feature);
@@ -546,6 +550,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
     // -Ctarget-features
     let supported_features = sess.target.supported_target_features();
+    let (llvm_major, _, _) = get_version();
     let mut featsmap = FxHashMap::default();
     let feats = sess
         .opts
@@ -602,6 +607,13 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
             // rustc-specific features do not get passed down to LLVM…
             if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+                return None;
+            }
+
+            // if the target-feature is "backchain" and LLVM version is greater than 18
+            // then we also need to add "+backchain" to the target-features attribute.
+            // otherwise, we will only add the naked `backchain` attribute to the attribute-group.
+            if feature == "backchain" && llvm_major < 18 {
                 return None;
             }
             // ... otherwise though we run through `to_llvm_features` when

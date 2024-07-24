@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 #![allow(missing_docs, nonstandard_style)]
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 pub mod abi;
 

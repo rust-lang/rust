@@ -1,4 +1,4 @@
-use crate::marker::ConstParamTy;
+use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 
 /// Are values of a type transmutable into values of another type?
 ///
@@ -39,7 +39,9 @@ pub struct Assume {
 }
 
 #[unstable(feature = "transmutability", issue = "99571")]
-impl ConstParamTy for Assume {}
+impl ConstParamTy_ for Assume {}
+#[unstable(feature = "transmutability", issue = "99571")]
+impl UnsizedConstParamTy for Assume {}
 
 impl Assume {
     /// Do not assume that *you* have ensured any safety properties are met.
