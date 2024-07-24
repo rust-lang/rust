@@ -264,7 +264,7 @@ few days before we promote nightly to beta.
 More information is available in the [toolstate documentation].
 
 [rust-toolstate]: https://rust-lang-nursery.github.io/rust-toolstate
-[toolstate documentation]: ../toolstate.md
+[toolstate documentation]: https://forge.rust-lang.org/infra/toolstate.html
 
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
