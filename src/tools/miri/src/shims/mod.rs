@@ -17,7 +17,7 @@ pub mod panic;
 pub mod time;
 pub mod tls;
 
-pub use unix::{DirTable, FdTable};
+pub use self::unix::{DirTable, FdTable};
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.
 pub enum EmulateItemResult {

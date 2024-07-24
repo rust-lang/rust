@@ -5,10 +5,10 @@ use crate::machine::SIGRTMAX;
 use crate::machine::SIGRTMIN;
 use crate::shims::unix::*;
 use crate::*;
-use shims::unix::linux::epoll::EvalContextExt as _;
-use shims::unix::linux::eventfd::EvalContextExt as _;
-use shims::unix::linux::mem::EvalContextExt as _;
-use shims::unix::linux::sync::futex;
+use self::shims::unix::linux::epoll::EvalContextExt as _;
+use self::shims::unix::linux::eventfd::EvalContextExt as _;
+use self::shims::unix::linux::mem::EvalContextExt as _;
+use self::shims::unix::linux::sync::futex;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "statx")
