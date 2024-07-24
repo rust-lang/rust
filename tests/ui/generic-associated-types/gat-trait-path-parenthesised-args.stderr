@@ -43,7 +43,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^---- help: remove these generics
+   |                           ^---- help: remove the unnecessary generics
    |                           |
    |                           expected 0 generic arguments
    |
@@ -74,7 +74,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^---- help: remove these generics
+   |                           ^---- help: remove the unnecessary generics
    |                           |
    |                           expected 0 generic arguments
    |
@@ -106,7 +106,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^---- help: remove these generics
+   |                           ^---- help: remove the unnecessary generics
    |                           |
    |                           expected 0 generic arguments
    |

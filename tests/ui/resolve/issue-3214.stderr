@@ -12,7 +12,7 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/issue-3214.rs:6:22
    |
 LL |     impl<T> Drop for Foo<T> {
-   |                      ^^^--- help: remove these generics
+   |                      ^^^--- help: remove the unnecessary generics
    |                      |
    |                      expected 0 generic arguments
    |

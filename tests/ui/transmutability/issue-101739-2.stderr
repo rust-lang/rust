@@ -3,11 +3,13 @@ error[E0107]: trait takes at most 2 generic arguments but 5 generic arguments we
    |
 LL |           Dst: BikeshedIntrinsicFrom<
    |                ^^^^^^^^^^^^^^^^^^^^^ expected at most 2 generic arguments
-...
-LL | /             ASSUME_LIFETIMES,
+LL |               Src,
+LL |               ASSUME_ALIGNMENT,
+   |  _____________________________-
+LL | |             ASSUME_LIFETIMES,
 LL | |             ASSUME_VALIDITY,
 LL | |             ASSUME_VISIBILITY,
-   | |_____________________________- help: remove these generic arguments
+   | |_____________________________- help: remove the unnecessary generic arguments
 
 error: aborting due to 1 previous error
 

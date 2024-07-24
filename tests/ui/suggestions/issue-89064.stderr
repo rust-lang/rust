@@ -14,7 +14,7 @@ help: consider moving this generic argument to the `A` trait, which takes up to 
 LL -     let _ = A::foo::<S>();
 LL +     let _ = A::<S>::foo();
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     let _ = A::foo::<S>();
 LL +     let _ = A::foo();
@@ -36,7 +36,7 @@ help: consider moving these generic arguments to the `B` trait, which takes up t
 LL -     let _ = B::bar::<S, S>();
 LL +     let _ = B::<S, S>::bar();
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     let _ = B::bar::<S, S>();
 LL +     let _ = B::bar();
@@ -46,7 +46,7 @@ error[E0107]: associated function takes 0 generic arguments but 1 generic argume
   --> $DIR/issue-89064.rs:27:21
    |
 LL |     let _ = A::<S>::foo::<S>();
-   |                     ^^^----- help: remove these generics
+   |                     ^^^----- help: remove the unnecessary generics
    |                     |
    |                     expected 0 generic arguments
    |
@@ -66,7 +66,7 @@ help: consider moving this generic argument to the `Into` trait, which takes up 
    |
 LL |     let _ = Into::<Option<_>>::into(42);
    |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     let _ = 42.into::<Option<_>>();
 LL +     let _ = 42.into();
