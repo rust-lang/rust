@@ -589,11 +589,11 @@ ul.block, .block li, .block ul {
 	background-clip: border-box;
 }
 
-.hide-toc #TOC, .hide-toc .in-crate {
+.hide-toc #rustdoc-toc, .hide-toc .in-crate {
 	display: none;
 }
 
-.hide-modnav #ModNav {
+.hide-modnav #rustdoc-modnav {
 	display: none;
 }
 

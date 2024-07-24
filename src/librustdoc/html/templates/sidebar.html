@@ -6,7 +6,7 @@
     {% endif %}
 
     {% if self.should_render_blocks() %}
-        <section id="TOC">
+        <section id="rustdoc-toc">
             {% if !title.is_empty() %}
             <h2 class="location"> {# #}
                 <a href="#">{{title_prefix}}{{title|wrapped|safe}}</a> {# #}
@@ -53,7 +53,7 @@
             {% endfor %}
         </section>
     {% endif %}
-    <div id="ModNav">
+    <div id="rustdoc-modnav">
     {% if !path.is_empty() %}
         <h2{% if parent_is_crate +%} class="in-crate"{% endif %}> {# #}
             <a href="{% if is_mod %}../{% endif %}index.html">In {{+ path|wrapped|safe}}</a> {# #}

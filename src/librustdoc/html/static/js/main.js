@@ -499,7 +499,7 @@ function preLoadCss(cssUrl) {
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
-        const sidebar = document.getElementById("ModNav");
+        const sidebar = document.getElementById("rustdoc-modnav");
 
         /**
          * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
@@ -885,7 +885,7 @@ function preLoadCss(cssUrl) {
         if (!window.ALL_CRATES) {
             return;
         }
-        const sidebarElems = document.getElementById("ModNav");
+        const sidebarElems = document.getElementById("rustdoc-modnav");
         if (!sidebarElems) {
             return;
         }
