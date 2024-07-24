@@ -1004,11 +1004,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (args, None)
         };
 
-        let const_vec_arg_indexes = if let Some(def) = def
-            && bx.tcx().get_attr(def.def_id(), sym::rustc_intrinsic_const_vector_arg).is_some()
-        {
+        let const_vec_arg_indexes = if let Some(def) = def {
             let val = bx.tcx().codegen_fn_attrs(def.def_id());
-            val.const_vector_indices.as_ref().unwrap()
+            let const_vector_indices = &val.const_vector_indices;
+            if let Some(const_vector_i) = const_vector_indices {
+                &const_vector_i.as_ref()
+            } else {
+                &Vec::<usize>::new()
+            }
         } else {
             &Vec::<usize>::new()
         };
