@@ -56,6 +56,30 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
+//! ## Pointer to reference conversion
+//! When converting a pointer to a reference using `&*`, there are several
+//! rules that must be followed:
+//! * The pointer must be properly aligned.
+//!
+//! * It must be "dereferenceable" in the sense defined above
+//!
+//! * The pointer must point to an initialized instance of `T`.
+//!
+//! * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+//!   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+//!   In particular, while this reference exists, the memory the pointer points to must
+//!   not get accessed (read or written) through any other pointer.
+//!
+//! If a pointer follows all of these rules, it is said to be
+//! *convertable to a reference*.
+//!
+//! These apply even if the result is unused!
+//! (The part about being initialized is not yet fully decided, but until
+//! it is, the only safe approach is to ensure that they are indeed initialized.)
+//!
+//! An example of the implications of the above rules is that an expression such
+//! as `unsafe { &*(0 as *const u8) }` is Immediate Undefined Behavior.
+//!
 //! ## Allocated object
 //!
 //! An *allocated object* is a subset of program memory which is addressable
