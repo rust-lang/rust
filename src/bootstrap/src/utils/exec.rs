@@ -50,7 +50,7 @@ impl OutputMode {
 /// If you want to delay failures until the end of bootstrap, use [delay_failure].
 ///
 /// By default, the command will print its stdout/stderr to stdout/stderr of bootstrap ([OutputMode::Print]).
-/// If you want to handle the output programmatically, use [BootstrapCommand::capture].
+/// If you want to handle the output programmatically, use [BootstrapCommand::run_capture].
 ///
 /// Bootstrap will print a debug log to stdout if the command fails and failure is not allowed.
 ///
