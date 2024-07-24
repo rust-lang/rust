@@ -15,7 +15,9 @@ use ide_db::{
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
-use project_model::{CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace};
+use project_model::{
+    CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace, ProjectWorkspaceKind,
+};
 use span::Span;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
@@ -238,15 +240,34 @@ impl ProjectFolders {
 
         // register the workspace manifest as well, note that this currently causes duplicates for
         // non-virtual cargo workspaces! We ought to fix that
-        for manifest in workspaces.iter().filter_map(|ws| ws.manifest().map(ManifestPath::as_ref)) {
-            let file_set_roots: Vec<VfsPath> = vec![VfsPath::from(manifest.to_owned())];
+        for ws in workspaces.iter() {
+            let mut file_set_roots: Vec<VfsPath> = vec![];
+            let mut entries = vec![];
 
-            let entry = vfs::loader::Entry::Files(vec![manifest.to_owned()]);
+            if let Some(manifest) = ws.manifest().map(ManifestPath::as_ref) {
+                file_set_roots.push(VfsPath::from(manifest.to_owned()));
+                entries.push(manifest.to_owned());
+            }
 
-            res.watch.push(res.load.len());
-            res.load.push(entry);
-            local_filesets.push(fsc.len() as u64);
-            fsc.add_file_set(file_set_roots)
+            // In case of detached files we do **not** look for a rust-analyzer.toml.
+            if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
+                let ws_root = ws.workspace_root();
+                let ratoml_path = {
+                    let mut p = ws_root.to_path_buf();
+                    p.push("rust-analyzer.toml");
+                    p
+                };
+                file_set_roots.push(VfsPath::from(ratoml_path.to_owned()));
+                entries.push(ratoml_path.to_owned());
+            }
+
+            if !file_set_roots.is_empty() {
+                let entry = vfs::loader::Entry::Files(entries);
+                res.watch.push(res.load.len());
+                res.load.push(entry);
+                local_filesets.push(fsc.len() as u64);
+                fsc.add_file_set(file_set_roots)
+            }
         }
 
         let fsc = fsc.build();
