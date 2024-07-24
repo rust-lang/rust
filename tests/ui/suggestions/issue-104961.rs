@@ -2,12 +2,12 @@
 
 fn foo(x: &str) -> bool {
     x.starts_with("hi".to_string() + " you")
-    //~^ ERROR the trait bound `String: Pattern<'_>` is not satisfied [E0277]
+    //~^ ERROR the trait bound `String: Pattern` is not satisfied [E0277]
 }
 
 fn foo2(x: &str) -> bool {
     x.starts_with("hi".to_string())
-    //~^ ERROR the trait bound `String: Pattern<'_>` is not satisfied [E0277]
+    //~^ ERROR the trait bound `String: Pattern` is not satisfied [E0277]
 }
 
 fn main() {
