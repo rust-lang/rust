@@ -230,7 +230,7 @@ impl RawFloat for f16 {
     }
 
     fn classify(self) -> FpCategory {
-        todo!()
+        self.classify()
     }
 }
 
