@@ -598,6 +598,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
+        if let Err(guar) = unsatisfied_predicates.error_reported() {
+            return guar;
+        }
+
         let similar_candidate = no_match_data.similar_candidate;
         let item_kind = if is_method {
             "method"

@@ -14,6 +14,13 @@ LL | impl<K> ContainsKey<K> for KeyHolder<K> {}
    |      |
    |      help: consider changing this type parameter to a const parameter: `const K: u8`
 
-error: aborting due to 2 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/kind_mismatch.rs:22:29
+   |
+LL |     let map: KeyHolder<0> = remove_key::<_, _>();
+   |                             ^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `K` declared on the function `remove_key`
 
-For more information about this error, try `rustc --explain E0747`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0747.
+For more information about an error, try `rustc --explain E0282`.

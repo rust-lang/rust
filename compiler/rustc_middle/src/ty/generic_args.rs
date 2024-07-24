@@ -13,6 +13,7 @@ use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::ErrorGuaranteed;
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
@@ -298,6 +299,14 @@ impl<'tcx> GenericArg<'tcx> {
             // FIXME: This shouldn't return numerical/float.
             GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
+        }
+    }
+
+    pub fn to_error(self, tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
+        match self.unpack() {
+            ty::GenericArgKind::Lifetime(_) => ty::Region::new_error(tcx, guar).into(),
+            ty::GenericArgKind::Type(_) => Ty::new_error(tcx, guar).into(),
+            ty::GenericArgKind::Const(_) => ty::Const::new_error(tcx, guar).into(),
         }
     }
 }

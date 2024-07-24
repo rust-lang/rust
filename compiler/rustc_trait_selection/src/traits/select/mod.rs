@@ -2828,6 +2828,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
         let predicates = tcx.predicates_of(def_id);
+        if let Err(guar) = predicates.errored_due_to_unconstrained_params {
+            self.infcx.set_tainted_by_errors(guar);
+            // Constrain any inference variables to their error variant to ensure unconstrained
+            // generic parameters don't leak as they'll never get constrained.
+            for arg in args {
+                let _ = self.infcx.at(cause, param_env).eq(
+                    DefineOpaqueTypes::Yes,
+                    arg,
+                    arg.to_error(tcx, guar),
+                );
+            }
+        }
         assert_eq!(predicates.parent, None);
         let predicates = predicates.instantiate_own(tcx, args);
         let mut obligations = PredicateObligations::with_capacity(predicates.len());

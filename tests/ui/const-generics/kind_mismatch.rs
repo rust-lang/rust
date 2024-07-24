@@ -20,4 +20,5 @@ pub fn remove_key<K, S: SubsetExcept<K>>() -> S {
 
 fn main() {
     let map: KeyHolder<0> = remove_key::<_, _>();
+    //~^ ERROR: type annotations needed
 }
