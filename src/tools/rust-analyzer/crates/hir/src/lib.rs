@@ -3724,6 +3724,10 @@ impl Impl {
         inherent.all_impls().chain(trait_.all_impls()).map(Self::from).collect()
     }
 
+    pub fn all_in_module(db: &dyn HirDatabase, module: Module) -> Vec<Impl> {
+        module.id.def_map(db.upcast())[module.id.local_id].scope.impls().map(Into::into).collect()
+    }
+
     pub fn all_for_type(db: &dyn HirDatabase, Type { ty, env }: Type) -> Vec<Impl> {
         let def_crates = match method_resolution::def_crates(db, &ty, env.krate) {
             Some(def_crates) => def_crates,
