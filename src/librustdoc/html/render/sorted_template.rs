@@ -134,3 +134,6 @@ impl fmt::Display for Error {
         write!(f, "invalid template")
     }
 }
+
+#[cfg(test)]
+mod tests;
