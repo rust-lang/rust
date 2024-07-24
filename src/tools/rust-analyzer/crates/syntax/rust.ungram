@@ -629,7 +629,7 @@ TypeBoundList =
 TypeBound =
   Lifetime
 | ('~' 'const' | 'const')? 'async'? '?'? Type
-| 'use' GenericParamList?
+| 'use' GenericParamList
 
 //************************//
 //        Patterns        //
