@@ -68,13 +68,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::ConstOperand<'tcx>,
     ) -> (Bx::Value, Ty<'tcx>) {
         let ty = self.monomorphize(constant.ty());
+        let ty_is_simd = ty.is_simd();
+        let field_ty = if ty_is_simd {
+            ty.simd_size_and_type(bx.tcx()).1
+        } else {
+            ty.builtin_index().unwrap()
+        };
         let val = self
             .eval_unevaluated_mir_constant_to_valtree(constant)
             .ok()
             .map(|x| x.ok())
             .flatten()
             .map(|val| {
-                let field_ty = ty.builtin_index().unwrap();
                 let mut values: Vec<Bx::Value> = Vec::new();
                 // For reliably being able to handle either:
                 // pub struct defn(i32, i32)
@@ -88,20 +93,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 for field in val.unwrap_branch().iter() {
                     match field {
                         ValTree::Branch(_) => {
-                            let scalars = self.flatten_branch_to_scalars(bx, field, field_ty);
+                            let scalars = self.flatten_branch_to_scalars(bx, &field, field_ty);
                             values.extend(scalars);
                         }
                         ValTree::Leaf(_) => {
-                            let scalar = self.extract_scalar(bx, field, field_ty);
+                            let scalar = self.extract_scalar(bx, &field, field_ty);
                             values.push(scalar);
                         }
                     }
                 }
-                if ty.is_simd() {
-                    bx.const_vector(&values)
-                } else {
-                    bx.const_struct(&values, false)
-                }
+                if ty_is_simd { bx.const_vector(&values) } else { bx.const_struct(&values, false) }
             })
             .unwrap_or_else(|| {
                 bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
