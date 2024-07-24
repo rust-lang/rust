@@ -2,11 +2,11 @@
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
-//@ hasraw search-index.js 'Quebec'
-//@ has index.html '//ul[@class="all-items"]//a[@href="q/index.html"]' 'q'
-//@ has index.html '//h1' 'List of all crates'
 //@ has index.html
+//@ has index.html '//h1' 'List of all crates'
+//@ has index.html '//ul[@class="all-items"]//a[@href="q/index.html"]' 'q'
 //@ has q/struct.Quebec.html
+//@ hasraw search-index.js 'Quebec'
 
 // there's nothing cross-crate going on here
 

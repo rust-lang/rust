@@ -1,16 +1,17 @@
 //@ aux-build:t.rs
 //@ build-aux-docs
 
-//@ has t/trait.Tango.html
-//@ hasraw search-index.js 'Quebec'
-//@ hasraw trait.impl/t/trait.Tango.js 'struct.Sierra.html'
-//@ hasraw s/struct.Sierra.html 'Tango'
-//@ hasraw search-index.js 'Sierra'
-//@ hasraw search-index.js 'Tango'
 //@ has q/struct.Quebec.html
 //@ has s/struct.Sierra.html
+//@ has t/trait.Tango.html
+//@ hasraw s/struct.Sierra.html 'Tango'
+//@ hasraw trait.impl/t/trait.Tango.js 'struct.Sierra.html'
+//@ hasraw search-index.js 'Tango'
+//@ hasraw search-index.js 'Sierra'
+//@ hasraw search-index.js 'Quebec'
 
-// We document multiple crates into the same output directory, which merges the cross-crate information. Everything is available.
+// We document multiple crates into the same output directory, which
+// merges the cross-crate information. Everything is available.
 
 extern crate t;
 pub struct Sierra;

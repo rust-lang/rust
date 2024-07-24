@@ -3,16 +3,16 @@
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
-//@ hasraw search-index.js 'Echo'
-//@ hasraw search-index.js 'Foxtrot'
-//@ has index.html '//ul[@class="all-items"]//a[@href="e/index.html"]' 'e'
-//@ has index.html '//ul[@class="all-items"]//a[@href="f/index.html"]' 'f'
-//@ hasraw trait.impl/f/trait.Foxtrot.js 'enum.Echo.html'
-//@ has f/trait.Foxtrot.html
-//@ has index.html '//h1' 'List of all crates'
-//@ has e/enum.Echo.html
 //@ has index.html
+//@ has index.html '//h1' 'List of all crates'
+//@ has index.html '//ul[@class="all-items"]//a[@href="f/index.html"]' 'f'
+//@ has index.html '//ul[@class="all-items"]//a[@href="e/index.html"]' 'e'
+//@ has e/enum.Echo.html
+//@ has f/trait.Foxtrot.html
 //@ hasraw e/enum.Echo.html 'Foxtrot'
+//@ hasraw trait.impl/f/trait.Foxtrot.js 'enum.Echo.html'
+//@ hasraw search-index.js 'Foxtrot'
+//@ hasraw search-index.js 'Echo'
 
 // only declare --enable-index-page to the last rustdoc invocation
 

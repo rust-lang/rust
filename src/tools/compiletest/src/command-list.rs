@@ -9,7 +9,6 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "aux-codegen-backend",
     "aux-crate",
     "build-aux-docs",
-    "unique-doc-out-dir",
     "build-fail",
     "build-pass",
     "check-fail",
@@ -227,6 +226,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "should-ice",
     "stderr-per-bitwidth",
     "test-mir-pass",
+    "unique-doc-out-dir",
     "unset-exec-env",
     "unset-rustc-env",
     // Used by the tidy check `unknown_revision`.
