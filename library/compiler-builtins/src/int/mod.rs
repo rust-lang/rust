@@ -12,7 +12,6 @@ pub mod shift;
 pub mod udiv;
 
 pub use big::{i256, u256};
-pub use leading_zeros::__clzsi2;
 
 public_test_dep! {
 /// Minimal integer implementations needed on all integer types, including wide integers.

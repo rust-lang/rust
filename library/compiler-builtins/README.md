@@ -157,6 +157,9 @@ rely on CI.
 - [x] bswapdi2.c
 - [x] bswapsi2.c
 - [x] bswapti2.c
+- [x] clzdi2.c
+- [x] clzsi2.c
+- [x] clzti2.c
 - [x] comparedf2.c
 - [x] comparesf2.c
 - [x] divdf3.c
@@ -325,9 +328,6 @@ These builtins are never called by LLVM.
 - ~~arm/switch32.S~~
 - ~~arm/switch8.S~~
 - ~~arm/switchu8.S~~
-- ~~clzdi2.c~~
-- ~~clzsi2.c~~
-- ~~clzti2.c~~
 - ~~cmpdi2.c~~
 - ~~cmpti2.c~~
 - ~~ctzdi2.c~~
