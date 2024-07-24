@@ -111,7 +111,7 @@ unsafe extern "C" fn invalid_options() {
 unsafe extern "C" fn invalid_options_continued() {
     asm!("", options(readonly, nostack), options(pure));
     //~^ ERROR asm with the `pure` option must have at least one output
-    //~| ERROR asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
+    //~| ERROR asm options unsupported in naked functions: `pure`, `readonly`, `nostack`
     //~| ERROR asm in naked functions must use `noreturn` option
 }
 
