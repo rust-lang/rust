@@ -135,6 +135,12 @@ LL |     m!('a', 'A'..='z', 'a'..='z');
 error: unreachable pattern
   --> $DIR/reachability.rs:50:9
    |
+LL |         5..=8 => {},
+   |         ^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/reachability.rs:50:9
+   |
 LL |         5 => {},
    |         - matches some of the same values
 LL |         6 => {},
@@ -144,9 +150,15 @@ LL |         7 => {},
 LL |         8 => {},
    |         - matches some of the same values
 LL |         5..=8 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ collectively making this unreachable
 
 error: unreachable pattern
+  --> $DIR/reachability.rs:56:9
+   |
+LL |         5..15 => {},
+   |         ^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
   --> $DIR/reachability.rs:56:9
    |
 LL |         0..10 => {},
@@ -154,9 +166,15 @@ LL |         0..10 => {},
 LL |         10..20 => {},
    |         ------ matches some of the same values
 LL |         5..15 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ collectively making this unreachable
 
 error: unreachable pattern
+  --> $DIR/reachability.rs:63:9
+   |
+LL |         5..25 => {},
+   |         ^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
   --> $DIR/reachability.rs:63:9
    |
 LL |         0..10 => {},
@@ -166,9 +184,15 @@ LL |         10..20 => {},
 LL |         20..30 => {},
    |         ------ matches some of the same values
 LL |         5..25 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ collectively making this unreachable
 
 error: unreachable pattern
+  --> $DIR/reachability.rs:71:9
+   |
+LL |         5..25 => {},
+   |         ^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
   --> $DIR/reachability.rs:71:9
    |
 LL |         0..10 => {},
@@ -180,9 +204,15 @@ LL |         11..=23 => {},
 LL |         19..30 => {},
    |         ------ matches some of the same values
 LL |         5..25 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ collectively making this unreachable
 
 error: unreachable pattern
+  --> $DIR/reachability.rs:77:9
+   |
+LL |         5..15 => {},
+   |         ^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
   --> $DIR/reachability.rs:77:9
    |
 LL |         0..10 => {},
@@ -190,7 +220,7 @@ LL |         0..10 => {},
 LL |         10..20 => {},
    |         ------ matches some of the same values
 LL |         5..15 => {},
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^ collectively making this unreachable
 
 error: unreachable pattern
   --> $DIR/reachability.rs:84:9
@@ -203,12 +233,18 @@ LL |         '\u{D7FF}'..='\u{E000}' => {},
 error: unreachable pattern
   --> $DIR/reachability.rs:89:9
    |
+LL |         '\u{D7FF}'..='\u{E000}' => {},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/reachability.rs:89:9
+   |
 LL |         '\u{0}'..='\u{D7FF}' => {},
    |         -------------------- matches some of the same values
 LL |         '\u{E000}'..='\u{10_FFFF}' => {},
    |         -------------------------- matches some of the same values
 LL |         '\u{D7FF}'..='\u{E000}' => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
   --> $DIR/reachability.rs:105:9

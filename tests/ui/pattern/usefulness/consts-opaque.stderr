@@ -122,12 +122,18 @@ LL |         BAZ => {}
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:87:9
    |
+LL |         _ => {} // should not be emitting unreachable warning
+   |         ^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/consts-opaque.rs:87:9
+   |
 LL |         BAZ => {}
    |         --- matches some of the same values
 LL |         Baz::Baz2 => {}
    |         --------- matches some of the same values
 LL |         _ => {} // should not be emitting unreachable warning
-   |         ^ unreachable pattern
+   |         ^ collectively making this unreachable
 
 error: aborting due to 17 previous errors
 

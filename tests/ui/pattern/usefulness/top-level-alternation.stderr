@@ -72,12 +72,18 @@ LL |         None => {}
 error: unreachable pattern
   --> $DIR/top-level-alternation.rs:49:9
    |
+LL |         None | Some(_) => {}
+   |         ^^^^^^^^^^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/top-level-alternation.rs:49:9
+   |
 LL |         Some(_) => {}
    |         ------- matches some of the same values
 LL |         None => {}
    |         ---- matches some of the same values
 LL |         None | Some(_) => {}
-   |         ^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
   --> $DIR/top-level-alternation.rs:53:9

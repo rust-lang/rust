@@ -22,6 +22,8 @@ fn main() {
         (1 | 2,) => {}
         //~^ ERROR unreachable pattern
         //~| NOTE unreachable pattern
+        //~| NOTE these patterns collectively make the last one unreachable
+        //~| NOTE collectively making this unreachable
         _ => {}
     }
 
@@ -69,6 +71,8 @@ fn main() {
         (_, true) => {}
         //~^ ERROR unreachable pattern
         //~| NOTE unreachable pattern
+        //~| NOTE these patterns collectively make the last one unreachable
+        //~| NOTE collectively making this unreachable
     }
 
     match (true, true) {

@@ -23,12 +23,18 @@ LL |         (2,) => {}
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:19:9
    |
+LL |         (1 | 2,) => {}
+   |         ^^^^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:19:9
+   |
 LL |         (1,) => {}
    |         ---- matches some of the same values
 LL |         (2,) => {}
    |         ---- matches some of the same values
 LL |         (1 | 2,) => {}
-   |         ^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:24:9
@@ -68,13 +74,19 @@ LL |         (2 | 1, 4) => {}
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:29:9
    |
+LL |         (1, 4 | 5) => {}
+   |         ^^^^^^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:29:9
+   |
 LL |         (1 | 2, 3 | 4) => {}
    |         -------------- matches some of the same values
 ...
 LL |         (1, 5 | 6) => {}
    |         ---------- matches some of the same values
 LL |         (1, 4 | 5) => {}
-   |         ^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:34:13
@@ -177,10 +189,16 @@ LL |         (true, 0 | 0) => {}
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:84:17
    |
+LL |         (_, 0 | 0) => {}
+   |                 ^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:84:17
+   |
 LL |         (true, 0 | 0) => {}
    |                - matches some of the same values
 LL |         (_, 0 | 0) => {}
-   |             -   ^ unreachable pattern
+   |             -   ^ collectively making this unreachable
    |             |
    |             matches some of the same values
 
@@ -203,12 +221,18 @@ LL |         [true
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:111:36
    |
+LL |         (true | false, None | Some(true
+   |                                    ^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:111:36
+   |
 LL |         (true, Some(_)) => {}
    |                     - matches some of the same values
 LL |         (false, Some(true)) => {}
    |                      ---- matches some of the same values
 LL |         (true | false, None | Some(true
-   |                                    ^^^^ unreachable pattern
+   |                                    ^^^^ collectively making this unreachable
 
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:116:14
@@ -216,13 +240,21 @@ error: unreachable pattern
 LL |             (true
    |              ^^^^ unreachable pattern
 ...
+LL |         (true | false, None | Some(t_or_f!())) => {}
+   |                                    --------- in this macro invocation
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:116:14
+   |
+LL |             (true
+   |              ^^^^ collectively making this unreachable
+...
 LL |         (true, Some(_)) => {}
    |                     - matches some of the same values
 LL |         (false, Some(true)) => {}
    |                      ---- matches some of the same values
 LL |         (true | false, None | Some(t_or_f!())) => {}
    |                                    --------- in this macro invocation
-   |
    = note: this error originates in the macro `t_or_f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unreachable pattern
@@ -245,15 +277,27 @@ LL |                 | false) => {}
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:154:15
    |
+LL |             | true) => {}
+   |               ^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:154:15
+   |
 LL |         (false, true) => {}
    |                 ---- matches some of the same values
 LL |         (true, true) => {}
    |                ---- matches some of the same values
 LL |         (false | true, false
 LL |             | true) => {}
-   |               ^^^^ unreachable pattern
+   |               ^^^^ collectively making this unreachable
 
 error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:160:15
+   |
+LL |             | true,
+   |               ^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
   --> $DIR/exhaustiveness-unreachable-pattern.rs:160:15
    |
 LL |         (true, false) => {}
@@ -262,7 +306,7 @@ LL |         (true, true) => {}
    |          ---- matches some of the same values
 LL |         (false
 LL |             | true,
-   |               ^^^^ unreachable pattern
+   |               ^^^^ collectively making this unreachable
 
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:165:15

@@ -1,4 +1,5 @@
 use crate::errors::*;
+use crate::fluent_generated as fluent;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
@@ -944,8 +945,16 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.covered_by_one = Some(covering_pat.data().span);
         }
         covering_pats => {
-            let covering_spans = covering_pats.iter().map(|p| p.data().span).collect();
-            lint.covered_by_many = Some(UnreachableCoveredByMany(covering_spans));
+            let mut multispan = MultiSpan::from_span(pat_span);
+            for p in covering_pats {
+                multispan.push_span_label(
+                    p.data().span,
+                    fluent::mir_build_unreachable_matches_same_values,
+                );
+            }
+            multispan
+                .push_span_label(pat_span, fluent::mir_build_unreachable_making_this_unreachable);
+            lint.covered_by_many = Some(multispan);
         }
     }
     cx.tcx.emit_node_span_lint(UNREACHABLE_PATTERNS, hir_id, pat_span, lint);

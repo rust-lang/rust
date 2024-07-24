@@ -591,28 +591,14 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) covered_by_catchall: Option<Span>,
     #[label(mir_build_unreachable_covered_by_one)]
     pub(crate) covered_by_one: Option<Span>,
-    #[subdiagnostic]
-    pub(crate) covered_by_many: Option<UnreachableCoveredByMany>,
+    #[note(mir_build_unreachable_covered_by_many)]
+    pub(crate) covered_by_many: Option<MultiSpan>,
 }
 
 #[derive(Subdiagnostic)]
 #[note(mir_build_unreachable_matches_no_values)]
 pub(crate) struct UnreachableMatchesNoValues<'tcx> {
     pub(crate) ty: Ty<'tcx>,
-}
-
-pub(crate) struct UnreachableCoveredByMany(pub(crate) Vec<Span>);
-
-impl Subdiagnostic for UnreachableCoveredByMany {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
-        for span in self.0 {
-            diag.span_label(span, fluent::mir_build_unreachable_covered_by_many);
-        }
-    }
 }
 
 #[derive(Diagnostic)]
