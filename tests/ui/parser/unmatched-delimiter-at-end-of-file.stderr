@@ -2,7 +2,7 @@ error: this file contains an unclosed delimiter
   --> $DIR/unmatched-delimiter-at-end-of-file.rs:11:63
    |
 LL | fn foo() {
-   |          - unclosed delimiter                                 ^
+   |          - unclosed delimiter                                ^
 
 error: aborting due to 1 previous error
 

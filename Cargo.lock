@@ -3882,7 +3882,6 @@ dependencies = [
  "termcolor",
  "termize",
  "tracing",
- "unicode-width",
  "windows",
 ]
 
