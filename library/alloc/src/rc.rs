@@ -259,7 +259,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, align_of_val_raw, forget, ManuallyDrop};
+use core::mem::{self, align_of_val_raw, ManuallyDrop};
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
@@ -908,19 +908,18 @@ impl<T, A: Allocator> Rc<T, A> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         if Rc::strong_count(&this) == 1 {
-            unsafe {
-                let val = ptr::read(&*this); // copy the contained object
-                let alloc = ptr::read(&this.alloc); // copy the allocator
+            let this = ManuallyDrop::new(this);
 
-                // Indicate to Weaks that they can't be promoted by decrementing
-                // the strong count, and then remove the implicit "strong weak"
-                // pointer while also handling drop logic by just crafting a
-                // fake Weak.
-                this.inner().dec_strong();
-                let _weak = Weak { ptr: this.ptr, alloc };
-                forget(this);
-                Ok(val)
-            }
+            let val: T = unsafe { ptr::read(&**this) }; // copy the contained object
+            let alloc: A = unsafe { ptr::read(&this.alloc) }; // copy the allocator
+
+            // Indicate to Weaks that they can't be promoted by decrementing
+            // the strong count, and then remove the implicit "strong weak"
+            // pointer while also handling drop logic by just crafting a
+            // fake Weak.
+            this.inner().dec_strong();
+            let _weak = Weak { ptr: this.ptr, alloc };
+            Ok(val)
         } else {
             Err(this)
         }
@@ -1354,9 +1353,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[stable(feature = "rc_raw", since = "1.17.0")]
     #[rustc_never_returns_null_ptr]
     pub fn into_raw(this: Self) -> *const T {
-        let ptr = Self::as_ptr(&this);
-        mem::forget(this);
-        ptr
+        let this = ManuallyDrop::new(this);
+        Self::as_ptr(&*this)
     }
 
     /// Consumes the `Rc`, returning the wrapped pointer and allocator.
@@ -2127,7 +2125,7 @@ impl<T> Rc<[T]> {
             }
 
             // All clear. Forget the guard so it doesn't free the new RcBox.
-            forget(guard);
+            mem::forget(guard);
 
             Self::from_ptr(ptr)
         }
@@ -3080,9 +3078,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
-        let result = self.as_ptr();
-        mem::forget(self);
-        result
+        mem::ManuallyDrop::new(self).as_ptr()
     }
 
     /// Consumes the `Weak<T>`, returning the wrapped pointer and allocator.
@@ -3762,10 +3758,11 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
     /// # Safety
     ///
     /// The data must have been initialized (by writing to [`Self::data_ptr()`]).
-    unsafe fn into_rc(mut self) -> Rc<T, A> {
-        let ptr = self.ptr;
-        let alloc = self.alloc.take().unwrap();
-        mem::forget(self);
+    unsafe fn into_rc(self) -> Rc<T, A> {
+        let mut this = ManuallyDrop::new(self);
+        let ptr = this.ptr;
+        let alloc = this.alloc.take().unwrap();
+
         // SAFETY: The pointer is valid as per `UniqueRcUninit::new`, and the caller is responsible
         // for having initialized the data.
         unsafe { Rc::from_ptr_in(ptr.as_ptr(), alloc) }

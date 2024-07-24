@@ -1064,7 +1064,7 @@ pub fn lchown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io:
 /// }
 /// ```
 #[stable(feature = "unix_chroot", since = "1.56.0")]
-#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
+#[cfg(not(target_os = "fuchsia"))]
 pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
     sys::fs::chroot(dir.as_ref())
 }

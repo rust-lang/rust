@@ -1,7 +1,7 @@
 //! Buffer management for same-process client<->server communication.
 
 use std::io::{self, Write};
-use std::mem;
+use std::mem::{self, ManuallyDrop};
 use std::ops::{Deref, DerefMut};
 use std::slice;
 
@@ -129,17 +129,16 @@ impl Drop for Buffer {
 }
 
 impl From<Vec<u8>> for Buffer {
-    fn from(mut v: Vec<u8>) -> Self {
+    fn from(v: Vec<u8>) -> Self {
+        let mut v = ManuallyDrop::new(v);
         let (data, len, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
-        mem::forget(v);
 
         // This utility function is nested in here because it can *only*
         // be safely called on `Buffer`s created by *this* `proc_macro`.
         fn to_vec(b: Buffer) -> Vec<u8> {
             unsafe {
-                let Buffer { data, len, capacity, .. } = b;
-                mem::forget(b);
-                Vec::from_raw_parts(data, len, capacity)
+                let b = ManuallyDrop::new(b);
+                Vec::from_raw_parts(b.data, b.len, b.capacity)
             }
         }
 

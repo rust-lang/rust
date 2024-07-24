@@ -7,7 +7,7 @@ use crate::fmt;
 use crate::fs;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem::{forget, ManuallyDrop};
+use crate::mem::ManuallyDrop;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -319,9 +319,7 @@ impl AsRawHandle for OwnedHandle {
 impl IntoRawHandle for OwnedHandle {
     #[inline]
     fn into_raw_handle(self) -> RawHandle {
-        let handle = self.handle;
-        forget(self);
-        handle
+        ManuallyDrop::new(self).handle
     }
 }
 

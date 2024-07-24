@@ -1,9 +1,7 @@
-use core::convert::TryInto;
-
 use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
-use crate::mem;
+use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
 use crate::ptr;
 use crate::sys::os;
@@ -115,11 +113,9 @@ impl Thread {
 
     /// must join, because no pthread_detach supported
     pub fn join(self) {
-        unsafe {
-            let ret = libc::pthread_join(self.id, ptr::null_mut());
-            mem::forget(self);
-            assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
-        }
+        let id = self.into_id();
+        let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
+        assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
     }
 
     pub fn id(&self) -> libc::pthread_t {
@@ -127,9 +123,7 @@ impl Thread {
     }
 
     pub fn into_id(self) -> libc::pthread_t {
-        let id = self.id;
-        mem::forget(self);
-        id
+        ManuallyDrop::new(self).id
     }
 }
 

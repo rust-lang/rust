@@ -73,7 +73,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                 span: $DIR/cfg-eval-inner.rs:19:40: 19:54 (#0),
                             },
                         ],
-                        span: $DIR/cfg-eval-inner.rs:19:5: 19:6 (#0),
+                        span: $DIR/cfg-eval-inner.rs:19:7: 19:56 (#0),
                     },
                     Punct {
                         ch: '#',
@@ -168,7 +168,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                                         span: $DIR/cfg-eval-inner.rs:23:48: 23:70 (#0),
                                                     },
                                                 ],
-                                                span: $DIR/cfg-eval-inner.rs:23:13: 23:14 (#0),
+                                                span: $DIR/cfg-eval-inner.rs:23:15: 23:72 (#0),
                                             },
                                             Literal {
                                                 kind: Integer,
@@ -233,7 +233,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         span: $DIR/cfg-eval-inner.rs:32:40: 32:56 (#0),
                     },
                 ],
-                span: $DIR/cfg-eval-inner.rs:32:5: 32:6 (#0),
+                span: $DIR/cfg-eval-inner.rs:32:7: 32:58 (#0),
             },
             Ident {
                 ident: "fn",
