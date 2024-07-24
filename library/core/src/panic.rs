@@ -131,9 +131,9 @@ pub macro unreachable_2015 {
     // cold function. This moves the codegen for setting up the
     // arguments to the panic implementation function to the
     // presumably cold panic path.
-    () => ({
-        $crate::panicking::unreachable_cold_explicit();
-    }),
+    () => (
+        $crate::panicking::unreachable_cold_explicit()
+    ),
     ($msg:literal $(,)?) => ({
         #[cold]
         #[track_caller]
@@ -165,9 +165,9 @@ pub macro unreachable_2015 {
 )]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2021 {
-    () => ({
-        $crate::panicking::unreachable_cold_explicit();
-    }),
+    () => (
+        $crate::panicking::unreachable_cold_explicit()
+    ),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
         #[cold]

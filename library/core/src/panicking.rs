@@ -261,6 +261,7 @@ pub const fn panic_str_2015(expr: &str) -> ! {
 #[cold]
 #[track_caller]
 #[inline(never)]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_cold_explicit() -> ! {
     panic("explicit panic");
 }
@@ -268,6 +269,7 @@ pub const fn panic_cold_explicit() -> ! {
 #[cold]
 #[track_caller]
 #[inline(never)]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn unreachable_cold_explicit() -> ! {
     panic("internal error: entered unreachable code");
 }

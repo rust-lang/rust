@@ -37,13 +37,5 @@ error: initializer for `thread_local` value can be made `const`
 LL |         static PEEL_ME_MANY: i32 = { let x = 1; x * x };
    |                                    ^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { { let x = 1; x * x } }`
 
-error: initializer for `thread_local` value can be made `const`
-  --> tests/ui/missing_const_for_thread_local.rs:64:55
-   |
-LL |         static STATE_12637_UNREACHABLE: Cell<usize> = unreachable!();
-   |                                                       ^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::panic::unreachable_2021` which comes from the expansion of the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
