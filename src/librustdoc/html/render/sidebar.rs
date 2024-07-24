@@ -7,13 +7,12 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefIdSet;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::{
-    clean,
-    formats::{item_type::ItemType, Impl},
-    html::{format::Buffer, markdown::IdMap, markdown::MarkdownWithToc},
-};
-
 use super::{item_ty_to_section, Context, ItemSection};
+use crate::clean;
+use crate::formats::item_type::ItemType;
+use crate::formats::Impl;
+use crate::html::format::Buffer;
+use crate::html::markdown::{IdMap, MarkdownWithToc};
 
 #[derive(Clone, Copy)]
 pub(crate) enum ModuleLike {
