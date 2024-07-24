@@ -7,7 +7,7 @@ Rust, as well as publications about Rust.
 ## Type system
 
 * [Alias burying](https://dl.acm.org/doi/10.1002/spe.370) - We tried something similar and abandoned it.
-* [External uniqueness is unique enough](http://www.cs.uu.nl/research/techreps/UU-CS-2002-048.html)
+* [External uniqueness is unique enough](https://lirias.kuleuven.be/retrieve/35835)
 * [Macros that work together](https://www.cs.utah.edu/plt/publications/jfp12-draft-fcdf.pdf)
 * [Making ad-hoc polymorphism less ad hoc](https://dl.acm.org/doi/10.1145/75277.75283)
 * [Region based memory management in Cyclone](https://www.cs.umd.edu/projects/cyclone/papers/cyclone-regions.pdf)
@@ -84,7 +84,7 @@ Rust, as well as publications about Rust.
 * [Rust-Bio: a fast and safe bioinformatics library](https://academic.oup.com/bioinformatics/article/32/3/444/1743419). Johannes Köster
 * [Safe, Correct, and Fast Low-Level Networking](https://octarineparrot.com/assets/msci_paper.pdf). Robert Clipsham's master's thesis.
 * [Formalizing Rust traits](https://open.library.ubc.ca/cIRcle/collections/ubctheses/24/items/1.0220521). Jonatan Milewski's master's thesis.
-* [Rust as a Language for High Performance GC Implementation](https://users.cecs.anu.edu.au/~steveb/downloads/pdf/rust-ismm-2016.pdf)
+* [Rust as a Language for High Performance GC Implementation](https://dl.acm.org/doi/pdf/10.1145/3241624.2926707)
 * [Simple Verification of Rust Programs via Functional Purification](https://github.com/Kha/electrolysis). Sebastian Ullrich's master's thesis.
 * [Writing parsers like it is 2017](http://spw17.langsec.org/papers/chifflier-parsing-in-2017.pdf) Pierre Chifflier and Geoffroy Couprie for the Langsec Workshop
 * [The Case for Writing a Kernel in Rust](https://www.tockos.org/assets/papers/rust-kernel-apsys2017.pdf)

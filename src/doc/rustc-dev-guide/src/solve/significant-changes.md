@@ -31,7 +31,7 @@ the responses of multiple candidates. However, canonicalizing goals during evalu
 forces the new implementation to use a fixpoint algorithm when encountering cycles
 during trait solving: [source][cycle-fixpoint].
 
-[canoncalization]: ./canonicalization.md
+[canonicalization]: ./canonicalization.md
 [evaluate_stack]: https://github.com/rust-lang/rust/blob/47dd709bedda8127e8daec33327e0a9d0cdae845/compiler/rustc_trait_selection/src/traits/select/mod.rs#L1232-L1237
 [cycle-fixpoint]: https://github.com/rust-lang/rust/blob/df8ac8f1d74cffb96a93ae702d16e224f5b9ee8c/compiler/rustc_trait_selection/src/solve/search_graph.rs#L382-L387
 
@@ -98,7 +98,7 @@ e.g. [trait-system-refactor-initiative#76].
 
 ### `NormalizesTo` goals are a function
 
-See the [normalizaton] chapter. We replace the expected term with an unconstrained
+See the [normalization] chapter. We replace the expected term with an unconstrained
 inference variable before computing `NormalizesTo` goals to prevent it from affecting
 normalization. This means that `NormalizesTo` goals are handled somewhat differently
 from all other goal kinds and need some additional solver support. Most notably,

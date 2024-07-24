@@ -41,7 +41,7 @@ A very simple example of a visitor can be found in [`LocalFinder`].
 By implementing `visit_local` method, this visitor identifies local variables that
 can be candidates for reordering.
 
--[`LocalFinder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/prettify/struct.LocalFinder.html
+[`LocalFinder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/prettify/struct.LocalFinder.html
 
 ## Traversal
 

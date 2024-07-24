@@ -77,7 +77,7 @@ implementation:
 
 Sanitizers are validated by code generation tests in
 [`tests/codegen/sanitize*.rs`][test-cg] and end-to-end functional tests in
-[`tests/ui/sanitize/`][test-ui] directory.
+[`tests/ui/sanitizer/`][test-ui] directory.
 
 Testing sanitizer functionality requires the sanitizer runtimes (built when
 `sanitizer = true` in `config.toml`) and target providing support for particular
@@ -86,7 +86,7 @@ be ignored. This behaviour is controlled by compiletest `needs-sanitizer-*`
 directives.
 
 [test-cg]: https://github.com/rust-lang/rust/tree/master/tests/codegen
-[test-ui]: https://github.com/rust-lang/rust/tree/master/tests/ui/sanitize
+[test-ui]: https://github.com/rust-lang/rust/tree/master/tests/ui/sanitizer
 
 ## Enabling sanitizer on a new target
 

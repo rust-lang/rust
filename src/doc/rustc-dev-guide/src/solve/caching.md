@@ -13,7 +13,7 @@ check whether it's in the global cache. If so, we reuse that entry. If not, we
 compute the goal and then store its result in the cache.
 
 To handle incremental compilation the computation of a goal happens inside of
-[`DepGraph::with_anon_task`] which creates a new `DepNode` which depends on all queries
+[`DepGraph::with_anon_task`][`with_anon_task`] which creates a new `DepNode` which depends on all queries
 used inside of this computation. When accessing the global cache we then read this
 `DepNode`, manually adding a dependency edge to all the queries used: [source][wdn].
 

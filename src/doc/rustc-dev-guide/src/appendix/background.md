@@ -243,7 +243,8 @@ use in lambda calculus evaluation (see [this Wikipedia article][wikideb] for
 more). In `rustc`, we use de Bruijn indices to [represent generic types][sub].
 
 [wikideb]: https://en.wikipedia.org/wiki/De_Bruijn_index
-[sub]: ../generics.md
+[sub]: ../ty_module/generic_arguments.md
+
 
 Here is a basic example of how de Bruijn indices might be used for closures (we
 don't actually do this in `rustc` though!):

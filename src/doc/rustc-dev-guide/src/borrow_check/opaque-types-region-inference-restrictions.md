@@ -201,7 +201,7 @@ behave more like existential lifetimes in that the relations between them are no
 time, instead their values are inferred just like existential lifetimes and the requirements are
 propagated back to the parent fn. This breaks the member constraints algorithm as described above:
 > In order for the algorithm to pick the right choice, the complete set of “outlives” relationships
-between the choice regions ['static, '?1] must already be known before doing the region inference
+between the choice regions `['static, '?1]` must already be known before doing the region inference
 
 Here is an example that details how :
 

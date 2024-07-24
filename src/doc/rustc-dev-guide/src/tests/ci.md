@@ -209,7 +209,7 @@ override the cache for the others. Instead, we store the images under different
 tags, identifying them with a custom hash made from the contents of all the
 Dockerfiles and related scripts.
 
-[ghcr.io]: https://ghcr.io/rust-lang-ci/rust-ci
+[ghcr.io]: https://github.com/rust-lang-ci/rust/pkgs/container/rust-ci
 [Docker registry caching]: https://docs.docker.com/build/cache/backends/registry/
 
 ### LLVM caching with sccache

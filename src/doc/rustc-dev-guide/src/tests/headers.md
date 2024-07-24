@@ -293,7 +293,7 @@ described below:
 - `{{target}}`: The target the test is compiling for
   - Example: `x86_64-unknown-linux-gnu`
 
-See [`tests/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/commandline-argfile.rs)
+See [`tests/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
 for an example of a test that uses this substitution.
 
 [output normalization]: ui.md#normalization
