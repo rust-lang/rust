@@ -667,3 +667,27 @@ mod issue_10371 {
         }
     }
 }
+
+mod issue_13092 {
+    use std::cell::RefCell;
+    macro_rules! macro_inner_item {
+        ($ty:ty) => {
+            fn foo(_: $ty) {
+                fn inner(_: $ty) {}
+            }
+        };
+    }
+
+    #[derive(Default)]
+    struct MyStruct;
+
+    impl MyStruct {
+        macro_inner_item!(MyStruct);
+    }
+
+    impl MyStruct {
+        thread_local! {
+            static SPECIAL: RefCell<MyStruct> = RefCell::default();
+        }
+    }
+}
