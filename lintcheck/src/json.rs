@@ -1,8 +1,7 @@
-use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-use itertools::EitherOrBoth;
+use itertools::{EitherOrBoth, Itertools};
 use serde::{Deserialize, Serialize};
 
 use crate::ClippyWarning;
@@ -23,7 +22,7 @@ struct LintJson {
 
 impl LintJson {
     fn key(&self) -> impl Ord + '_ {
-        (self.file_name.as_str(), self.byte_pos, self.lint.as_str())
+        (self.lint.as_str(), self.file_name.as_str(), self.byte_pos)
     }
 
     fn info_text(&self, action: &str) -> String {
@@ -61,23 +60,35 @@ pub(crate) fn diff(old_path: &Path, new_path: &Path, truncate: bool) {
     let old_warnings = load_warnings(old_path);
     let new_warnings = load_warnings(new_path);
 
-    let mut added = Vec::new();
-    let mut removed = Vec::new();
-    let mut changed = Vec::new();
+    let mut lint_warnings = vec![];
 
-    for change in itertools::merge_join_by(old_warnings, new_warnings, |old, new| old.key().cmp(&new.key())) {
-        match change {
-            EitherOrBoth::Both(old, new) => {
-                if old.rendered != new.rendered {
-                    changed.push((old, new));
-                }
-            },
-            EitherOrBoth::Left(old) => removed.push(old),
-            EitherOrBoth::Right(new) => added.push(new),
+    for (name, changes) in &itertools::merge_join_by(old_warnings, new_warnings, |old, new| old.key().cmp(&new.key()))
+        .chunk_by(|change| change.as_ref().into_left().lint.to_string())
+    {
+        let mut added = Vec::new();
+        let mut removed = Vec::new();
+        let mut changed = Vec::new();
+        for change in changes {
+            match change {
+                EitherOrBoth::Both(old, new) => {
+                    if old.rendered != new.rendered {
+                        changed.push((old, new));
+                    }
+                },
+                EitherOrBoth::Left(old) => removed.push(old),
+                EitherOrBoth::Right(new) => added.push(new),
+            }
+        }
+
+        if !added.is_empty() || !removed.is_empty() || !changed.is_empty() {
+            lint_warnings.push(LintWarnings {
+                name,
+                added,
+                removed,
+                changed,
+            });
         }
     }
-
-    let lint_warnings = group_by_lint(added, removed, changed);
 
     print_summary_table(&lint_warnings);
     println!();
@@ -110,60 +121,12 @@ struct LintWarnings {
     changed: Vec<(LintJson, LintJson)>,
 }
 
-fn group_by_lint(
-    mut added: Vec<LintJson>,
-    mut removed: Vec<LintJson>,
-    mut changed: Vec<(LintJson, LintJson)>,
-) -> Vec<LintWarnings> {
-    /// Collects items from an iterator while the condition is met
-    fn collect_while<T, F>(iter: &mut std::iter::Peekable<impl Iterator<Item = T>>, mut condition: F) -> Vec<T>
-    where
-        F: FnMut(&T) -> bool,
-    {
-        let mut items = vec![];
-        while iter.peek().map_or(false, &mut condition) {
-            items.push(iter.next().unwrap());
-        }
-        items
-    }
-
-    // Sort
-    added.sort_unstable_by(|a, b| a.lint.cmp(&b.lint));
-    removed.sort_unstable_by(|a, b| a.lint.cmp(&b.lint));
-    changed.sort_unstable_by(|(a, _), (b, _)| a.lint.cmp(&b.lint));
-
-    // Collect lint names
-    let lint_names: BTreeSet<_> = added
-        .iter()
-        .chain(removed.iter())
-        .chain(changed.iter().map(|(a, _)| a))
-        .map(|warning| &warning.lint)
-        .cloned()
-        .collect();
-
-    let mut added_iter = added.into_iter().peekable();
-    let mut removed_iter = removed.into_iter().peekable();
-    let mut changed_iter = changed.into_iter().peekable();
-
-    let mut lints = vec![];
-    for name in lint_names {
-        lints.push(LintWarnings {
-            added: collect_while(&mut added_iter, |warning| warning.lint == name),
-            removed: collect_while(&mut removed_iter, |warning| warning.lint == name),
-            changed: collect_while(&mut changed_iter, |(warning, _)| warning.lint == name),
-            name,
-        });
-    }
-
-    lints
-}
-
 fn print_lint_warnings(lint: &LintWarnings, truncate_after: usize) {
     let name = &lint.name;
     let html_id = to_html_id(name);
 
     // The additional anchor is added for non GH viewers that don't prefix ID's
-    println!(r#"## `{name}` <a id="user-content-{html_id}"/>"#);
+    println!(r#"## `{name}` <a id="user-content-{html_id}"></a>"#);
     println!();
 
     print!(
@@ -264,7 +227,7 @@ fn truncate<T>(list: &[T], truncate_after: usize) -> &[T] {
 fn print_h3(lint: &str, title: &str) {
     let html_id = to_html_id(lint);
     // We have to use HTML here to be able to manually add an id.
-    println!(r#"### {title} <a id="user-content-{html_id}-{title}"/>"#);
+    println!(r#"### {title} <a id="user-content-{html_id}-{title}"></a>"#);
 }
 
 /// GitHub's markdown parsers doesn't like IDs with `::` and `_`. This simplifies
