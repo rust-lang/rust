@@ -48,31 +48,33 @@ type ExceptionList = &'static [(&'static str, &'static str)];
 /// * Optionally a tuple of:
 ///     * A list of crates for which dependencies need to be explicitly allowed.
 ///     * The list of allowed dependencies.
+/// * Submodules required for the workspace.
 // FIXME auto detect all cargo workspaces
-pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>)] = &[
+pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>, &[&str])] = &[
     // The root workspace has to be first for check_rustfix to work.
-    (".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES))),
+    (".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES)), &[]),
     // Outside of the alphabetical section because rustfmt formats it using multiple lines.
     (
         "compiler/rustc_codegen_cranelift",
         EXCEPTIONS_CRANELIFT,
         Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
+        &[],
     ),
     // tidy-alphabetical-start
-    ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None),
+    ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
     //("library/backtrace", &[], None), // FIXME uncomment once rust-lang/backtrace#562 has been synced back to the rust repo
     //("library/portable-simd", &[], None), // FIXME uncomment once rust-lang/portable-simd#363 has been synced back to the rust repo
     //("library/stdarch", EXCEPTIONS_STDARCH, None), // FIXME uncomment once rust-lang/stdarch#1462 has been synced back to the rust repo
-    ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None),
-    ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None),
-    ("src/etc/test-float-parse", EXCEPTIONS, None),
-    ("src/tools/cargo", EXCEPTIONS_CARGO, None),
+    ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
+    ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
+    ("src/etc/test-float-parse", EXCEPTIONS, None, &[]),
+    ("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
-    ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None),
-    ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None),
-    ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None),
-    ("src/tools/x", &[], None),
+    ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
+    ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book"]),
+    ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
+    ("src/tools/x", &[], None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -531,16 +533,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let mut checked_runtime_licenses = false;
 
-    let submodules = build_helper::util::parse_gitmodules(root);
-    for &(workspace, exceptions, permitted_deps) in WORKSPACES {
-        // Skip if it's a submodule, not in a CI environment, and not initialized.
-        //
-        // This prevents enforcing developers to fetch submodules for tidy.
-        if submodules.contains(&workspace.into())
-            && !CiEnv::is_ci()
-            // If the directory is empty, we can consider it as an uninitialized submodule.
-            && read_dir(root.join(workspace)).unwrap().next().is_none()
-        {
+    for &(workspace, exceptions, permitted_deps, submodules) in WORKSPACES {
+        if has_missing_submodule(root, submodules) {
             continue;
         }
 
@@ -571,6 +565,17 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     // Sanity check to ensure we don't accidentally remove the workspace containing the runtime
     // crates.
     assert!(checked_runtime_licenses);
+}
+
+/// Used to skip a check if a submodule is not checked out, and not in a CI environment.
+///
+/// This helps prevent enforcing developers to fetch submodules for tidy.
+pub fn has_missing_submodule(root: &Path, submodules: &[&str]) -> bool {
+    !CiEnv::is_ci()
+        && submodules.iter().any(|submodule| {
+            // If the directory is empty, we can consider it as an uninitialized submodule.
+            read_dir(root.join(submodule)).unwrap().next().is_none()
+        })
 }
 
 /// Check that all licenses of runtime dependencies are in the valid list in `LICENSES`.
