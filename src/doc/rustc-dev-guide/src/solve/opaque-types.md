@@ -50,7 +50,8 @@ with the arguments of any opaque type already in the opaque types storage. If so
 previously stored type with the expected type of this `normalizes-to` call: [source][eq-prev][^1].
 
 If not, we insert the expected type in the opaque types storage: [source][insert-storage][^2]. 
-Finally, we check whether the item bounds of the opaque hold for the expected type: [source].
+Finally, we check whether the item bounds of the opaque hold for the expected type:
+[source][item-bounds-ck].
 
 [norm]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L13
 [coherence-example]: https://github.com/rust-lang/rust/blob/master/tests/ui/type-alias-impl-trait/coherence_different_hidden_ty.rs
