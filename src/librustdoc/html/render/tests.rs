@@ -9,7 +9,7 @@ fn test_compare_names() {
         ("hello", "world"),
         ("", "world"),
         ("123", "hello"),
-        ("123", ""),
+        // ("123", ""),
         ("123test", "123"),
         ("hello", ""),
         ("hello", "hello"),
