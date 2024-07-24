@@ -492,15 +492,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(target_os = "redox")]
+#[cfg(any(target_os = "redox", target_os = "rtems"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
 
-#[cfg(target_os = "rtems")]
-pub fn current_exe() -> io::Result<PathBuf> {
-    crate::fs::read_to_string("sys:exe").map(PathBuf::from)
-}
 #[cfg(target_os = "l4re")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
