@@ -329,7 +329,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/extra_arguments.rs:53:3
    |
 LL |   one_arg(1, panic!());
-   |   ^^^^^^^    -------- unexpected argument #2
+   |   ^^^^^^^    -------- unexpected argument #2 of type `!`
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4

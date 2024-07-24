@@ -2,6 +2,6 @@ fn main() {
     &panic!()
     //~^ ERROR mismatched types
     //~| expected unit type `()`
-    //~| found reference `&_`
-    //~| expected `()`, found `&_`
+    //~| found reference `&!`
+    //~| expected `()`, found `&!`
 }

@@ -33,7 +33,15 @@ fn main() {
                                             lit.set_span(crate::Span::recover_proc_macro_span(2));
                                             lit
                                         } else {
-                                           ::core::panicking::panic("internal error: entered unreachable code")
+                                           {
+                                               #[cold]
+                                               #[track_caller]
+                                               #[inline(never)]
+                                               const fn unreachable_cold_explicit() -> ! {
+                                                   ::core::panicking::panic("internal error: entered unreachable code");
+                                               }
+                                               unreachable_cold_explicit();
+                                           }
                                        }
                                 })),
                         crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new(';',

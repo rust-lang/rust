@@ -1,15 +1,15 @@
-// MIR doesn't generate an error because the assignment isn't reachable. This
-// is OK because the test is here to check that the compiler doesn't ICE (cf.
-// #5500).
-
-//@ check-pass
+// the test is here to check that the compiler doesn't ICE (cf. #5500).
 
 struct TrieMapIterator<'a> {
-    node: &'a usize
+    node: &'a usize,
 }
 
 fn main() {
     let a = 5;
-    let _iter = TrieMapIterator{node: &a};
+    let _iter = TrieMapIterator { node: &a };
     _iter.node = &panic!()
+    //~^ ERROR mismatched types
+    //~| expected `&usize`, found `&!`
+    //~| expected reference `&usize`
+    //~| found reference `&!`
 }
