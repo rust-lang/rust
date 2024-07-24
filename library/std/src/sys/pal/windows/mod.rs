@@ -1,5 +1,5 @@
 #![allow(missing_docs, nonstandard_style)]
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::ErrorKind;
