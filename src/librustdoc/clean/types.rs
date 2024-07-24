@@ -128,7 +128,7 @@ pub(crate) struct ExternalCrate {
 }
 
 impl ExternalCrate {
-    const LOCAL: Self = Self { crate_num: LOCAL_CRATE };
+    pub(crate) const LOCAL: Self = Self { crate_num: LOCAL_CRATE };
 
     #[inline]
     pub(crate) fn def_id(&self) -> DefId {
