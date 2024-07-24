@@ -1397,19 +1397,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .attributes
             .get(self, id)
-            .unwrap_or_else(|| {
+            .or_else(|| {
                 // Structure and variant constructors don't have any attributes encoded for them,
                 // but we assume that someone passing a constructor ID actually wants to look at
                 // the attributes on the corresponding struct or variant.
                 let def_key = self.def_key(id);
-                assert_eq!(def_key.disambiguated_data.data, DefPathData::Ctor);
-                let parent_id = def_key.parent.expect("no parent for a constructor");
-                self.root
-                    .tables
-                    .attributes
-                    .get(self, parent_id)
-                    .expect("no encoded attributes for a structure or variant")
+                if def_key.disambiguated_data.data == DefPathData::Ctor {
+                    let parent_id = def_key.parent.expect("no parent for a constructor");
+                    self.root.tables.attributes.get(self, parent_id)
+                } else {
+                    None
+                }
             })
+            .unwrap_or_default()
             .decode((self, sess))
     }
 
