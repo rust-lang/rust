@@ -21,6 +21,7 @@ pub mod run;
 pub mod scoped_run;
 pub mod string;
 pub mod targets;
+pub mod symbols;
 
 // Internally we call our fs-related support module as `fs`, but re-export its content as `rfs`
 // to tests to avoid colliding with commonly used `use std::fs;`.
