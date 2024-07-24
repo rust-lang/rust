@@ -336,7 +336,7 @@ fn main() {
     {
         fn takes_writer<T: std::io::Write>(_: T) {}
 
-        fn f(mut buffer: &mut Vec<u8>) {
+        fn issue_12856(mut buffer: &mut Vec<u8>) {
             takes_writer(&mut buffer); // Don't lint, would make buffer unavailable later
             buffer.extend(b"\n");
         }
