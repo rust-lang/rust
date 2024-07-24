@@ -95,7 +95,7 @@ pub macro panic_2021 {
     // cold function. This moves the codegen for setting up the
     // arguments to the panic implementation function to the
     // presumably cold panic path.
-    // TODO: It would be nice to handle literals here, but there are
+    // It would be nice to handle literals here, but there are
     // some issues handling embedded format arguments.
     () => ({
         // Create a function so that the argument for `track_caller`

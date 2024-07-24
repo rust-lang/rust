@@ -229,7 +229,7 @@ pub macro panic_2015 {
     // cold function. This moves the codegen for setting up the
     // arguments to the panic implementation function to the
     // presumably cold panic path.
-    // TODO: It would be nice to handle literals here specially with a
+    // It would be nice to handle literals here specially with a
     // wrapper function, but unfortunately it results in unclear error
     // messages when using panic(<non-str>).
     () => ({
