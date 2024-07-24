@@ -8,10 +8,10 @@ use crate::sys::handle::Handle;
 use crate::sys::pipe::unnamed_anon_pipe;
 use crate::sys_common::{FromInner, IntoInner};
 
-pub(crate) type AnonPipe = Handle;
+pub type AnonPipe = Handle;
 
 #[inline]
-pub(crate) fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+pub fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     unnamed_anon_pipe().map(|(rx, wx)| (rx.into_inner(), wx.into_inner()))
 }
 
@@ -31,7 +31,7 @@ impl AsRawHandle for PipeReader {
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl FromRawHandle for PipeReader {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        Self(Handle::from_raw_handle(raw_handle))
+        unsafe { Self(Handle::from_raw_handle(raw_handle)) }
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
@@ -70,7 +70,7 @@ impl AsRawHandle for PipeWriter {
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl FromRawHandle for PipeWriter {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        Self(Handle::from_raw_handle(raw_handle))
+        unsafe { Self(Handle::from_raw_handle(raw_handle)) }
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
