@@ -544,7 +544,13 @@ fn resolver_for_lowering_raw<'tcx>(
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
-    let mut resolver = Resolver::new(tcx, &pre_configured_attrs, krate.spans.inner_span, &arenas);
+    let mut resolver = Resolver::new(
+        tcx,
+        &pre_configured_attrs,
+        krate.spans.inner_span,
+        krate.spans.inject_use_span,
+        &arenas,
+    );
     let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
 
     // Make sure we don't mutate the cstore from here on.
