@@ -258,6 +258,20 @@ pub const fn panic_str_2015(expr: &str) -> ! {
     panic_display(&expr);
 }
 
+#[cold]
+#[track_caller]
+#[inline(never)]
+pub const fn panic_cold_explicit() -> ! {
+    panic("explicit panic");
+}
+
+#[cold]
+#[track_caller]
+#[inline(never)]
+pub const fn unreachable_cold_explicit() -> ! {
+    panic("internal error: entered unreachable code");
+}
+
 #[inline]
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval

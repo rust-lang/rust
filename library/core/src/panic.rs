@@ -36,13 +36,7 @@ pub macro panic_2015 {
     // arguments to the panic implementation function to the
     // presumably cold panic path.
     () => ({
-        #[cold]
-        #[track_caller]
-        #[inline(never)]
-        const fn panic_cold_explicit() -> ! {
-            $crate::panicking::panic("explicit panic");
-        }
-        panic_cold_explicit();
+        $crate::panicking::panic_cold_explicit();
     }),
     // Special-case for string literal.
     ($msg:literal $(,)?) => ({
@@ -98,15 +92,7 @@ pub macro panic_2021 {
     // It would be nice to handle literals here, but there are
     // some issues handling embedded format arguments.
     () => ({
-        // Create a function so that the argument for `track_caller`
-        // can be moved inside if possible.
-        #[cold]
-        #[track_caller]
-        #[inline(never)]
-        const fn panic_cold_explicit() -> ! {
-            $crate::panicking::panic_explicit()
-        }
-        panic_cold_explicit();
+        $crate::panicking::panic_cold_explicit();
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
@@ -146,13 +132,7 @@ pub macro unreachable_2015 {
     // arguments to the panic implementation function to the
     // presumably cold panic path.
     () => ({
-        #[cold]
-        #[track_caller]
-        #[inline(never)]
-        const fn unreachable_cold_explicit() -> ! {
-            $crate::panicking::panic("internal error: entered unreachable code");
-        }
-        unreachable_cold_explicit();
+        $crate::panicking::unreachable_cold_explicit();
     }),
     ($msg:literal $(,)?) => ({
         #[cold]
@@ -186,13 +166,7 @@ pub macro unreachable_2015 {
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2021 {
     () => ({
-        #[cold]
-        #[track_caller]
-        #[inline(never)]
-        const fn unreachable_cold_explicit() -> ! {
-            $crate::panicking::panic("internal error: entered unreachable code");
-        }
-        unreachable_cold_explicit();
+        $crate::panicking::unreachable_cold_explicit();
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
