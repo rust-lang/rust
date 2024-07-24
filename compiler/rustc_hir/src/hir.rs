@@ -763,7 +763,7 @@ impl<'hir> Generics<'hir> {
         )
     }
 
-    fn span_for_predicate_removal(&self, pos: usize) -> Span {
+    pub fn span_for_predicate_removal(&self, pos: usize) -> Span {
         let predicate = &self.predicates[pos];
         let span = predicate.span();
 
@@ -806,15 +806,21 @@ impl<'hir> Generics<'hir> {
             return self.span_for_predicate_removal(predicate_pos);
         }
 
-        let span = bounds[bound_pos].span();
-        if bound_pos == 0 {
-            // where T: ?Sized + Bar, Foo: Bar,
-            //          ^^^^^^^^^
-            span.to(bounds[1].span().shrink_to_lo())
+        let bound_span = bounds[bound_pos].span();
+        if bound_pos < bounds.len() - 1 {
+            // If there's another bound after the current bound
+            // include the following '+' e.g.:
+            //
+            //  `T: Foo + CurrentBound + Bar`
+            //            ^^^^^^^^^^^^^^^
+            bound_span.to(bounds[bound_pos + 1].span().shrink_to_lo())
         } else {
-            // where T: Bar + ?Sized, Foo: Bar,
-            //             ^^^^^^^^^
-            bounds[bound_pos - 1].span().shrink_to_hi().to(span)
+            // If the current bound is the last bound
+            // include the preceding '+' E.g.:
+            //
+            //  `T: Foo + Bar + CurrentBound`
+            //               ^^^^^^^^^^^^^^^
+            bound_span.with_lo(bounds[bound_pos - 1].span().hi())
         }
     }
 }

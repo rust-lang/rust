@@ -192,22 +192,14 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 #[macro_use]
 mod local;
 
-cfg_if::cfg_if! {
-    if #[cfg(test)] {
-        // Avoid duplicating the global state associated with thread-locals between this crate and
-        // realstd. Miri relies on this.
-        pub use realstd::thread::{local_impl, AccessError, LocalKey};
-    } else {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use self::local::{AccessError, LocalKey};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::local::{AccessError, LocalKey};
 
-        // Implementation details used by the thread_local!{} macro.
-        #[doc(hidden)]
-        #[unstable(feature = "thread_local_internals", issue = "none")]
-        pub mod local_impl {
-            pub use crate::sys::thread_local::*;
-        }
-    }
+// Implementation details used by the thread_local!{} macro.
+#[doc(hidden)]
+#[unstable(feature = "thread_local_internals", issue = "none")]
+pub mod local_impl {
+    pub use crate::sys::thread_local::*;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

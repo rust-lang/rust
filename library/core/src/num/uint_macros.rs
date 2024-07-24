@@ -765,6 +765,67 @@ macro_rules! uint_impl {
             }
         }
 
+        #[doc = concat!(
+            "Checked integer subtraction. Computes `self - rhs` and checks if the result fits into an [`",
+            stringify!($SignedT), "`], returning `None` if overflow occurred."
+        )]
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(unsigned_signed_diff)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_signed_diff(2), Some(8));")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_signed_diff(10), Some(-8));")]
+        #[doc = concat!(
+            "assert_eq!(",
+            stringify!($SelfT),
+            "::MAX.checked_signed_diff(",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            "), None);"
+        )]
+        #[doc = concat!(
+            "assert_eq!((",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            ").checked_signed_diff(",
+            stringify!($SelfT),
+            "::MAX), Some(",
+            stringify!($SignedT),
+            "::MIN));"
+        )]
+        #[doc = concat!(
+            "assert_eq!((",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            " + 1).checked_signed_diff(0), None);"
+        )]
+        #[doc = concat!(
+            "assert_eq!(",
+            stringify!($SelfT),
+            "::MAX.checked_signed_diff(",
+            stringify!($SelfT),
+            "::MAX), Some(0));"
+        )]
+        /// ```
+        #[unstable(feature = "unsigned_signed_diff", issue = "126041")]
+        #[inline]
+        pub const fn checked_signed_diff(self, rhs: Self) -> Option<$SignedT> {
+            let res = self.wrapping_sub(rhs) as $SignedT;
+            let overflow = (self >= rhs) == (res < 0);
+
+            if !overflow {
+                Some(res)
+            } else {
+                None
+            }
+        }
+
         /// Checked integer multiplication. Computes `self * rhs`, returning
         /// `None` if overflow occurred.
         ///

@@ -188,31 +188,60 @@ fn suggest_changing_unsized_bound(
             continue;
         };
 
-        for (pos, bound) in predicate.bounds.iter().enumerate() {
-            let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound else {
-                continue;
-            };
-            if poly.trait_ref.trait_def_id() != def_id {
-                continue;
-            }
-            if predicate.origin == PredicateOrigin::ImplTrait && predicate.bounds.len() == 1 {
-                // For `impl ?Sized` with no other bounds, suggest `impl Sized` instead.
-                let bound_span = bound.span();
-                if bound_span.can_be_used_for_suggestions() {
-                    let question_span = bound_span.with_hi(bound_span.lo() + BytePos(1));
-                    suggestions.push((
+        let unsized_bounds = predicate
+            .bounds
+            .iter()
+            .enumerate()
+            .filter(|(_, bound)| {
+                if let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound
+                    && poly.trait_ref.trait_def_id() == def_id
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if unsized_bounds.is_empty() {
+            continue;
+        }
+
+        let mut push_suggestion = |sp, msg| suggestions.push((sp, String::new(), msg));
+
+        if predicate.bounds.len() == unsized_bounds.len() {
+            // All the bounds are unsized bounds, e.g.
+            // `T: ?Sized + ?Sized` or `_: impl ?Sized + ?Sized`,
+            // so in this case:
+            // - if it's an impl trait predicate suggest changing the
+            //   the first bound to sized and removing the rest
+            // - Otherwise simply suggest removing the entire predicate
+            if predicate.origin == PredicateOrigin::ImplTrait {
+                let first_bound = unsized_bounds[0].1;
+                let first_bound_span = first_bound.span();
+                if first_bound_span.can_be_used_for_suggestions() {
+                    let question_span =
+                        first_bound_span.with_hi(first_bound_span.lo() + BytePos(1));
+                    push_suggestion(
                         question_span,
-                        String::new(),
                         SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized,
-                    ));
+                    );
+
+                    for (pos, _) in unsized_bounds.iter().skip(1) {
+                        let sp = generics.span_for_bound_removal(where_pos, *pos);
+                        push_suggestion(sp, SuggestChangingConstraintsMessage::RemoveMaybeUnsized);
+                    }
                 }
             } else {
+                let sp = generics.span_for_predicate_removal(where_pos);
+                push_suggestion(sp, SuggestChangingConstraintsMessage::RemoveMaybeUnsized);
+            }
+        } else {
+            // Some of the bounds are other than unsized.
+            // So push separate removal suggestion for each unsized bound
+            for (pos, _) in unsized_bounds {
                 let sp = generics.span_for_bound_removal(where_pos, pos);
-                suggestions.push((
-                    sp,
-                    String::new(),
-                    SuggestChangingConstraintsMessage::RemoveMaybeUnsized,
-                ));
+                push_suggestion(sp, SuggestChangingConstraintsMessage::RemoveMaybeUnsized);
             }
         }
     }

@@ -428,7 +428,7 @@ impl<'a> ContextBuilder<'a> {
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`Wake`]: ../../alloc/task/trait.Wake.html
-#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
+#[repr(transparent)]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Waker {
     waker: RawWaker,
@@ -692,7 +692,7 @@ impl fmt::Debug for Waker {
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`local_waker`]: core::task::Context::local_waker
 #[unstable(feature = "local_waker", issue = "118959")]
-#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
+#[repr(transparent)]
 pub struct LocalWaker {
     waker: RawWaker,
 }
