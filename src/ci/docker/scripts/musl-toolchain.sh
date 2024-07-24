@@ -43,6 +43,11 @@ shift
 # debuggers can't walk the stack, etc. Fixes #90103.
 export CFLAGS="-fPIC -g1 $CFLAGS"
 
+# The versions of the libc crate from 0.2.145 provide LFS64 aliases to their non-LFS64
+# counterparts. Configure the builtin musl to still provide LFS64 symbols to not break
+# pre-0.2.145 versions until enough of the ecosystem has updated.
+export CFLAGS="-D_LARGEFILE64_SOURCE $CFLAGS"
+
 git clone https://github.com/richfelker/musl-cross-make # -b v0.9.9
 cd musl-cross-make
 # A version that includes support for building musl 1.2.5
