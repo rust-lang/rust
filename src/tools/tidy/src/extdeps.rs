@@ -1,7 +1,6 @@
 //! Check for external package sources. Allow only vendorable packages.
 
-use build_helper::ci::CiEnv;
-use std::fs::{self, read_dir};
+use std::fs;
 use std::path::Path;
 
 /// List of allowed sources for packages.
@@ -14,16 +13,8 @@ const ALLOWED_SOURCES: &[&str] = &[
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
 pub fn check(root: &Path, bad: &mut bool) {
-    let submodules = build_helper::util::parse_gitmodules(root);
-    for &(workspace, _, _) in crate::deps::WORKSPACES {
-        // Skip if it's a submodule, not in a CI environment, and not initialized.
-        //
-        // This prevents enforcing developers to fetch submodules for tidy.
-        if submodules.contains(&workspace.into())
-            && !CiEnv::is_ci()
-            // If the directory is empty, we can consider it as an uninitialized submodule.
-            && read_dir(root.join(workspace)).unwrap().next().is_none()
-        {
+    for &(workspace, _, _, submodules) in crate::deps::WORKSPACES {
+        if crate::deps::has_missing_submodule(root, submodules) {
             continue;
         }
 
