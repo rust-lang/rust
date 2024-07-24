@@ -1846,7 +1846,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Determine if the associated item with the given DefId matches
     /// the desired name via a doc alias.
     fn matches_by_doc_alias(&self, def_id: DefId) -> bool {
-        let Some(name) = self.method_name else {
+        let Some(method) = self.method_name else {
             return false;
         };
         let Some(local_def_id) = def_id.as_local() else {
@@ -1863,7 +1863,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // #[rustc_confusables("foo", "bar"))]
                 for n in confusables {
                     if let Some(lit) = n.lit()
-                        && name.as_str() == lit.symbol.as_str()
+                        && method.name == lit.symbol
                     {
                         return true;
                     }
@@ -1883,14 +1883,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     // #[doc(alias("foo", "bar"))]
                     for n in nested {
                         if let Some(lit) = n.lit()
-                            && name.as_str() == lit.symbol.as_str()
+                            && method.name == lit.symbol
                         {
                             return true;
                         }
                     }
                 } else if let Some(meta) = v.meta_item()
                     && let Some(lit) = meta.name_value_literal()
-                    && name.as_str() == lit.symbol.as_str()
+                    && method.name == lit.symbol
                 {
                     // #[doc(alias = "foo")]
                     return true;
