@@ -98,11 +98,12 @@ cfg_if::cfg_if! {
             not(all(target_vendor = "apple", not(target_os = "watchos"))),
             not(target_os = "netbsd"),
         ))] {
-        // ARM EHABI personality routine.
-        // https://web.archive.org/web/20190728160938/https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
-        //
-        // Apple 32-bit ARM (but not watchOS) uses the default routine instead
-        // since it uses SjLj unwinding.
+        /// personality fn called by [ARM EHABI][armeabi-eh]
+        ///
+        /// Apple 32-bit ARM (but not watchOS) uses the default routine instead
+        /// since it uses "setjmp-longjmp" unwinding.
+        ///
+        /// [armeabi-eh]: https://web.archive.org/web/20190728160938/https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
         #[lang = "eh_personality"]
         unsafe extern "C" fn rust_eh_personality(
             state: uw::_Unwind_State,
@@ -200,8 +201,8 @@ cfg_if::cfg_if! {
             }
         }
     } else {
-        // Default personality routine, which is used directly on most targets
-        // and indirectly on Windows x86_64 via SEH.
+        /// Default personality routine, which is used directly on most targets
+        /// and indirectly on Windows x86_64 and AArch64 via SEH.
         unsafe extern "C" fn rust_eh_personality_impl(
             version: c_int,
             actions: uw::_Unwind_Action,
@@ -246,8 +247,12 @@ cfg_if::cfg_if! {
 
         cfg_if::cfg_if! {
             if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
-                // On x86_64 MinGW targets, the unwinding mechanism is SEH however the unwind
-                // handler data (aka LSDA) uses GCC-compatible encoding.
+                /// personality fn called by [Windows Structured Exception Handling][windows-eh]
+                ///
+                /// On x86_64 and AArch64 MinGW targets, the unwinding mechanism is SEH,
+                /// however the unwind handler data (aka LSDA) uses GCC-compatible encoding
+                ///
+                /// [windows-eh]: https://learn.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170
                 #[lang = "eh_personality"]
                 #[allow(nonstandard_style)]
                 unsafe extern "C" fn rust_eh_personality(
@@ -256,6 +261,9 @@ cfg_if::cfg_if! {
                     contextRecord: *mut uw::CONTEXT,
                     dispatcherContext: *mut uw::DISPATCHER_CONTEXT,
                 ) -> uw::EXCEPTION_DISPOSITION {
+                    // SAFETY: the cfg is still target_os = "windows" and target_env = "gnu",
+                    // which means that this is the correct function to call, passing our impl fn
+                    // as the callback which gets actually used
                     unsafe {
                         uw::_GCC_specific_handler(
                             exceptionRecord,
@@ -267,7 +275,19 @@ cfg_if::cfg_if! {
                     }
                 }
             } else {
-                // The personality routine for most of our targets.
+                /// personality fn called by [Itanium C++ ABI Exception Handling][itanium-eh]
+                ///
+                /// The personality routine for most non-Windows targets. This will be called by
+                /// the unwinding library:
+                /// - "In the search phase, the framework repeatedly calls the personality routine,
+                ///   with the _UA_SEARCH_PHASE flag as described below, first for the current PC
+                ///   and register state, and then unwinding a frame to a new PC at each step..."
+                /// - "If the search phase reports success, the framework restarts in the cleanup
+                ///    phase. Again, it repeatedly calls the personality routine, with the
+                ///   _UA_CLEANUP_PHASE flag as described below, first for the current PC and
+                ///   register state, and then unwinding a frame to a new PC at each step..."i
+                ///
+                /// [itanium-eh]: https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
                 #[lang = "eh_personality"]
                 unsafe extern "C" fn rust_eh_personality(
                     version: c_int,
@@ -276,6 +296,8 @@ cfg_if::cfg_if! {
                     exception_object: *mut uw::_Unwind_Exception,
                     context: *mut uw::_Unwind_Context,
                 ) -> uw::_Unwind_Reason_Code {
+                    // SAFETY: the platform support must modify the cfg for the inner fn
+                    // if it needs something different than what is currently invoked.
                     unsafe {
                         rust_eh_personality_impl(
                             version,
