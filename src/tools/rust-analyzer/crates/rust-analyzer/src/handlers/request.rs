@@ -111,6 +111,13 @@ pub(crate) fn handle_analyzer_status(
             .status(file_id)
             .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
     );
+
+    buf.push_str("\nVersion: \n");
+    format_to!(buf, "{}", crate::version());
+
+    buf.push_str("\nConfiguration: \n");
+    format_to!(buf, "{:?}", snap.config);
+
     Ok(buf)
 }
 
