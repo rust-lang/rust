@@ -4,7 +4,9 @@
 
 //@normalize-stderr-test: "using [A-Za-z]+ heap deallocation operation" -> "using PLATFORM heap deallocation operation"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
-//@normalize-stderr-test: "libc::free\([^()]*\)|unsafe \{ HeapFree\([^}]*\};" -> "FREE();"
+//@normalize-stderr-test: "unsafe \{ libc::free\([^()]*\) \}|unsafe \{ HeapFree\([^}]*\};" -> "FREE();"
+//@normalize-stderr-test: "alloc::[A-Za-z]+::" -> "alloc::PLATFORM::"
+//@normalize-stderr-test: "alloc/[A-Za-z]+.rs" -> "alloc/PLATFORM.rs"
 
 #![feature(allocator_api, slice_ptr_get)]
 
