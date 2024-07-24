@@ -14,7 +14,6 @@ fn hello() -> Box<impl Trait + ?Sized> {
         //[next]~^ ERROR: type mismatch resolving `impl Trait + ?Sized <: dyn Send`
         let y: Box<dyn Send> = x;
         //[old]~^ ERROR: the size for values of type `impl Trait + ?Sized` cannot be know
-        //[old]~| ERROR: cannot check whether the hidden type of opaque type satisfies auto traits
     }
     Box::new(1u32)
     //[next]~^ ERROR: mismatched types

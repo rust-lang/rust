@@ -12,7 +12,6 @@
 
 mod helper {
     pub type Foo = impl Sized;
-    //[string,atomic]~^ ERROR cycle detected
 
     #[cfg(string)]
     pub const FOO: Foo = String::new();
@@ -28,11 +27,11 @@ use helper::*;
 const BAR: () = {
     let _: &'static _ = &FOO;
     //[string,atomic]~^ ERROR: destructor of `helper::Foo` cannot be evaluated at compile-time
-    //[string,atomic]~| ERROR: cannot borrow here
+    //[atomic]~| ERROR: cannot borrow here
 };
 
 const BAZ: &Foo = &FOO;
-//[string,atomic]~^ ERROR: constants cannot refer to interior mutable data
+//[atomic]~^ ERROR: constants cannot refer to interior mutable data
 
 fn main() {
     let _: &'static _ = &FOO;
