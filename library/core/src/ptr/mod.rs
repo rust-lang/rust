@@ -69,9 +69,12 @@
 //!
 //! * It must be "dereferenceable" in the sense defined above.
 //!
-//! * The pointer must point to a valid instance of `T`.
+//! * The pointer must point to a valid value of type `T`.
 //!   This means that the created reference can only refer to
-//!   uninitialized memory through careful use of `MaybeUninit`.
+//!   uninitialized memory through careful use of `MaybeUninit`,
+//!   or if the uninitialized memory is entirly contained within
+//!   padding bytes, since
+//!   [padding has the same validity invariant as `MaybeUninit`][ucg-pad].
 //!
 //! * You must enforce Rust's aliasing rules, since the lifetime of the
 //!   created reference is arbitrarily chosen,
@@ -79,10 +82,9 @@
 //!   In particular, while this reference exists,
 //!   the memory the pointer points to must
 //!   not get accessed (read or written) through any raw pointer,
-//!   except for data inside an `UnsafeCell`
-// ^ previous documentation was somewhat unclear on if modifications through
-// an UnsafeCell are safe even if they would seemingly violate the exclusivity
-// of a mut ref.
+//!   except for data inside an `UnsafeCell`.
+//!   Note that aliased writes are always UB for mutable references,
+//!   even if they only modify `UnsafeCell` data.
 //!
 //! If a pointer follows all of these rules, it is said to be
 //! *convertable to a reference*.
@@ -97,6 +99,8 @@
 //!
 //! An example of the implications of the above rules is that an expression such
 //! as `unsafe { &*(0 as *const u8) }` is Immediate Undefined Behavior.
+//!
+//! [ucgpad]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#padding
 //!
 //! ## Allocated object
 //!
