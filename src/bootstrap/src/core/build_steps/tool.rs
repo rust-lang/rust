@@ -241,6 +241,7 @@ macro_rules! bootstrap_tool {
         $(,is_external_tool = $external:expr)*
         $(,is_unstable_tool = $unstable:expr)*
         $(,allow_features = $allow_features:expr)?
+        $(,submodules = $submodules:expr)?
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
@@ -287,6 +288,11 @@ macro_rules! bootstrap_tool {
             }
 
             fn run(self, builder: &Builder<'_>) -> PathBuf {
+                $(
+                    for submodule in $submodules {
+                        builder.update_submodule(Path::new(submodule));
+                    }
+                )*
                 builder.ensure(ToolBuild {
                     compiler: self.compiler,
                     target: self.target,
@@ -314,7 +320,7 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook";
+    Rustbook, "src/tools/rustbook", "rustbook", submodules = SUBMODULES_FOR_RUSTBOOK;
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
@@ -339,6 +345,10 @@ bootstrap_tool!(
     RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
     WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
 );
+
+/// These are the submodules that are required for rustbook to work due to
+/// depending on mdbook plugins.
+pub static SUBMODULES_FOR_RUSTBOOK: &[&str] = &["src/doc/book"];
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct OptimizedDist {
