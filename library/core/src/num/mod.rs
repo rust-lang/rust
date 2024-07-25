@@ -43,6 +43,7 @@ mod uint_macros; // import uint_impl!
 
 mod error;
 mod int_log10;
+mod int_sqrt;
 mod nonzero;
 mod overflow_panic;
 mod saturating;

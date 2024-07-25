@@ -1580,7 +1580,18 @@ macro_rules! int_impl {
             if self < 0 {
                 None
             } else {
-                Some((self as $UnsignedT).isqrt() as Self)
+                let result = crate::num::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+
+                // SAFETY: Inform the optimizer that square roots of
+                // nonnegative integers are nonnegative and what the maximum
+                // result is.
+                unsafe {
+                    crate::hint::assert_unchecked(result >= 0);
+                    const MAX_RESULT: $SelfT = crate::num::int_sqrt::$ActualT($ActualT::MAX) as $SelfT;
+                    crate::hint::assert_unchecked(result <= MAX_RESULT);
+                }
+
+                Some(result)
             }
         }
 
@@ -2766,14 +2777,21 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            // I would like to implement it as
-            // ```
-            // self.checked_isqrt().expect("argument of integer square root must be non-negative")
-            // ```
-            // but `expect` is not yet stable as a `const fn`.
-            match self.checked_isqrt() {
-                Some(sqrt) => sqrt,
-                None => panic!("argument of integer square root must be non-negative"),
+            if self < 0 {
+                crate::num::int_sqrt::panic_for_negative_argument();
+            } else {
+                let result = crate::num::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+
+                // SAFETY: Inform the optimizer that square roots of
+                // nonnegative integers are nonnegative and what the maximum
+                // result is.
+                unsafe {
+                    crate::hint::assert_unchecked(result >= 0);
+                    const MAX_RESULT: $SelfT = crate::num::int_sqrt::$ActualT($ActualT::MAX) as $SelfT;
+                    crate::hint::assert_unchecked(result <= MAX_RESULT);
+                }
+
+                result
             }
         }
 
