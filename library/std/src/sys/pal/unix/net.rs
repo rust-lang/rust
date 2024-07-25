@@ -214,16 +214,25 @@ impl Socket {
                 }
                 0 => {}
                 _ => {
-                    // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
-                    // for POLLHUP rather than read readiness
-                    if pollfd.revents & libc::POLLHUP != 0 {
-                        let e = self.take_error()?.unwrap_or_else(|| {
-                            io::const_io_error!(
-                                io::ErrorKind::Uncategorized,
-                                "no error set after POLLHUP",
-                            )
-                        });
-                        return Err(e);
+                    if cfg!(target_os = "vxworks") {
+                        // VxWorks poll does not return  POLLHUP or POLLERR in revents. Check if the
+                        // connnection actually succeeded and return ok only when the socket is
+                        // ready and no errors were found.
+                        if let Some(e) = self.take_error()? {
+                            return Err(e);
+                        }
+                    } else {
+                        // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
+                        // for POLLHUP or POLLERR rather than read readiness
+                        if pollfd.revents & (libc::POLLHUP | libc::POLLERR) != 0 {
+                            let e = self.take_error()?.unwrap_or_else(|| {
+                                io::const_io_error!(
+                                    io::ErrorKind::Uncategorized,
+                                    "no error set after POLLHUP",
+                                )
+                            });
+                            return Err(e);
+                        }
                     }
 
                     return Ok(());

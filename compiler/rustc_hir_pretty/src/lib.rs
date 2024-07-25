@@ -1298,35 +1298,7 @@ impl<'a> State<'a> {
             AsmArg::Options(opts) => {
                 s.word("options");
                 s.popen();
-                let mut options = vec![];
-                if opts.contains(ast::InlineAsmOptions::PURE) {
-                    options.push("pure");
-                }
-                if opts.contains(ast::InlineAsmOptions::NOMEM) {
-                    options.push("nomem");
-                }
-                if opts.contains(ast::InlineAsmOptions::READONLY) {
-                    options.push("readonly");
-                }
-                if opts.contains(ast::InlineAsmOptions::PRESERVES_FLAGS) {
-                    options.push("preserves_flags");
-                }
-                if opts.contains(ast::InlineAsmOptions::NORETURN) {
-                    options.push("noreturn");
-                }
-                if opts.contains(ast::InlineAsmOptions::NOSTACK) {
-                    options.push("nostack");
-                }
-                if opts.contains(ast::InlineAsmOptions::ATT_SYNTAX) {
-                    options.push("att_syntax");
-                }
-                if opts.contains(ast::InlineAsmOptions::RAW) {
-                    options.push("raw");
-                }
-                if opts.contains(ast::InlineAsmOptions::MAY_UNWIND) {
-                    options.push("may_unwind");
-                }
-                s.commasep(Inconsistent, &options, |s, &opt| {
+                s.commasep(Inconsistent, &opts.human_readable_names(), |s, &opt| {
                     s.word(opt);
                 });
                 s.pclose();

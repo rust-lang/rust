@@ -5,6 +5,11 @@ lint_ambiguous_glob_reexport = ambiguous glob re-exports
     .label_first_reexport = the name `{$name}` in the {$namespace} namespace is first re-exported here
     .label_duplicate_reexport = but the name `{$name}` in the {$namespace} namespace is also re-exported here
 
+lint_ambiguous_negative_literals = `-` has lower precedence than method calls, which might be unexpected
+    .example = e.g. `-4.abs()` equals `-4`; while `(-4).abs()` equals `4`
+    .negative_literal = add parentheses around the `-` and the literal to call the method on a negative literal
+    .current_behavior = add parentheses around the literal and the method call to keep the current behavior
+
 lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
     .addr_metadata_suggestion = use explicit `std::ptr::eq` method to compare metadata and addresses
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
