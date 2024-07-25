@@ -28,7 +28,7 @@ What format do binaries use by default? ELF, PE, something else?
 ## Building the target
 
 If Rust doesn't build the target by default, how can users build it? Can users
-just add it to the `target` list in `config.toml`?
+just add it to the `target` list in `bootstrap.toml`?
 
 ## Building Rust programs
 

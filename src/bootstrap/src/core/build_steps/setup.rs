@@ -2,8 +2,8 @@
 //!
 //! These are build-and-run steps for `./x.py setup`, which allows quickly setting up the directory
 //! for modifying, building, and running the compiler and library. Running arbitrary configuration
-//! allows setting up things that cannot be simply captured inside the config.toml, in addition to
-//! leading people away from manually editing most of the config.toml values.
+//! allows setting up things that cannot be simply captured inside the bootstrap.toml, in addition to
+//! leading people away from manually editing most of the bootstrap.toml values.
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::t;
@@ -50,7 +50,7 @@ static RUST_ANALYZER_SETTINGS: &str = include_str!("../../../../etc/rust_analyze
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
-        PathBuf::from(format!("{}/{PROFILE_DIR}/config.{}.toml", src_path.display(), self))
+        PathBuf::from(format!("{}/{PROFILE_DIR}/bootstrap.{}.toml", src_path.display(), self))
     }
 
     pub fn all() -> impl Iterator<Item = Self> {
@@ -66,7 +66,7 @@ impl Profile {
             Compiler => "Contribute to the compiler itself",
             Tools => "Contribute to tools which depend on the compiler, but do not modify it directly (e.g. rustdoc, clippy, miri)",
             Dist => "Install Rust from source",
-            None => "Do not modify `config.toml`"
+            None => "Do not modify `bootstrap.toml`"
         }
         .to_string()
     }
@@ -132,7 +132,7 @@ impl Step for Profile {
             return;
         }
 
-        let path = &run.builder.config.config.clone().unwrap_or(PathBuf::from("config.toml"));
+        let path = &run.builder.config.config.clone().unwrap_or(PathBuf::from("bootstrap.toml"));
         if path.exists() {
             eprintln!();
             eprintln!(
@@ -218,7 +218,7 @@ pub fn setup(config: &Config, profile: Profile) {
         )
     }
 
-    let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
+    let path = &config.config.clone().unwrap_or(PathBuf::from("bootstrap.toml"));
     setup_config_toml(path, profile, config);
 }
 

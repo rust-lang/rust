@@ -210,4 +210,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "the `wasm-component-ld` tool is now built as part of `build.extended` and can be a member of `build.tools`",
     },
+    ChangeInfo {
+        change_id: 126875,
+        severity: ChangeSeverity::Info,
+        summary: "Rename the bootstrap configuration file from `config.toml` to `bootstrap.toml`.",
+    },
 ];

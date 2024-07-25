@@ -12,7 +12,7 @@ pub fn perf(builder: &Builder<'_>) {
 
     if builder.build.config.rust_debuginfo_level_rustc == DebuginfoLevel::None {
         builder.info(r#"WARNING: You are compiling rustc without debuginfo, this will make profiling less useful.
-Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
+Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
     }
 
     let compiler = builder.compiler(builder.top_stage, builder.config.build);

@@ -195,8 +195,8 @@ if '--help' in sys.argv or '-h' in sys.argv:
             print('\t{:30} {}'.format('--enable-{}'.format(option.name), option.desc))
     print('')
     print('This configure script is a thin configuration shim over the true')
-    print('configuration system, `config.toml`. You can explore the comments')
-    print('in `config.example.toml` next to this configure script to see')
+    print('configuration system, `bootstrap.toml`. You can explore the comments')
+    print('in `bootstrap.example.toml` next to this configure script to see')
     print('more information about what each option is. Additionally you can')
     print('pass `--set` as an argument to set arbitrary key/value pairs')
     print('in the TOML configuration if desired')
@@ -381,8 +381,8 @@ def apply_args(known_args, option_checking, config):
         else:
             raise RuntimeError("unhandled option {}".format(option.name))
 
-# "Parse" the `config.example.toml` file into the various sections, and we'll
-# use this as a template of a `config.toml` to write out which preserves
+# "Parse" the `bootstrap.example.toml` file into the various sections, and we'll
+# use this as a template of a `bootstrap.toml` to write out which preserves
 # all the various comments and whatnot.
 #
 # Note that the `target` section is handled separately as we'll duplicate it
@@ -395,7 +395,7 @@ def parse_example_config(known_args, config):
     targets = {}
     top_level_keys = []
 
-    with open(rust_dir + '/config.example.toml') as example_config:
+    with open(rust_dir + '/bootstrap.example.toml') as example_config:
         example_lines = example_config.read().split("\n")
     for line in example_lines:
         if cur_section is None:
@@ -549,7 +549,8 @@ def quit_if_file_exists(file):
         err(msg)
 
 if __name__ == "__main__":
-    # If 'config.toml' already exists, exit the script at this point
+    # If 'bootstrap.toml' or 'config.toml' already exists, exit the script at this point
+    quit_if_file_exists('bootstrap.toml')
     quit_if_file_exists('config.toml')
 
     if "GITHUB_ACTIONS" in os.environ:
@@ -563,8 +564,8 @@ if __name__ == "__main__":
     # Now that we've built up our `config.toml`, write it all out in the same
     # order that we read it in.
     p("")
-    p("writing `config.toml` in current directory")
-    with bootstrap.output('config.toml') as f:
+    p("writing `bootstrap.toml` in current directory")
+    with bootstrap.output('bootstrap.toml') as f:
         write_config_toml(f, section_order, targets, sections)
 
     with bootstrap.output('Makefile') as f:

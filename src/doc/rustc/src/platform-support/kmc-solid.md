@@ -32,7 +32,7 @@ The target can be built by enabling it for a `rustc` build.
 target = ["aarch64-kmc-solid_asp3"]
 ```
 
-Make sure `aarch64-kmc-elf-gcc` is included in `$PATH`. Alternatively, you can use GNU Arm Embedded Toolchain by adding the following to `config.toml`:
+Make sure `aarch64-kmc-elf-gcc` is included in `$PATH`. Alternatively, you can use GNU Arm Embedded Toolchain by adding the following to `bootstrap.toml`:
 
 ```toml
 [target.aarch64-kmc-solid_asp3]

@@ -163,7 +163,7 @@ compiler, which will then build the bootstrap binary written in Rust.
 
 Because there are two separate codebases behind `x.py`, they need to
 be kept in sync. In particular, both `bootstrap.py` and the bootstrap binary
-parse `config.toml` and read the same command line arguments. `bootstrap.py`
+parse `bootstrap.toml` and read the same command line arguments. `bootstrap.py`
 keeps these in sync by setting various environment variables, and the
 programs sometimes have to add arguments that are explicitly ignored, to be
 read by the other.
@@ -185,7 +185,7 @@ Some general areas that you may be interested in modifying are:
 If you make a major change on bootstrap configuration, please remember to:
 
 + Update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
-* Update `change-id = {pull-request-id}` in `config.example.toml`.
+* Update `change-id = {pull-request-id}` in `bootstrap.example.toml`.
 
 A 'major change' includes
 

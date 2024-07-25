@@ -65,7 +65,7 @@ fn detect_src_and_out() {
         let expected_src = manifest_dir.ancestors().nth(2).unwrap();
         assert_eq!(&cfg.src, expected_src);
 
-        // test if build-dir was manually given in config.toml
+        // test if build-dir was manually given in bootstrap.toml
         if let Some(custom_build_dir) = build_dir {
             assert_eq!(&cfg.out, Path::new(custom_build_dir));
         }
@@ -217,10 +217,10 @@ fn override_toml_duplicate() {
 fn profile_user_dist() {
     fn get_toml(file: &Path) -> TomlConfig {
         let contents =
-            if file.ends_with("config.toml") || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some() {
+            if file.ends_with("bootstrap.toml") || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some() {
                 "profile = \"user\"".to_owned()
             } else {
-                assert!(file.ends_with("config.dist.toml"));
+                assert!(file.ends_with("bootstrap.dist.toml"));
                 std::fs::read_to_string(file).unwrap()
             };
 

@@ -126,7 +126,7 @@ pub enum GitRepo {
 /// organize).
 #[derive(Clone)]
 pub struct Build {
-    /// User-specified configuration from `config.toml`.
+    /// User-specified configuration from `bootstrap.toml`.
     config: Config,
 
     // Version information
@@ -1869,7 +1869,7 @@ Couldn't find required command: ninja (or ninja-build)
 
 You should install ninja as described at
 <https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages>,
-or set `ninja = false` in the `[llvm]` section of `config.toml`.
+or set `ninja = false` in the `[llvm]` section of `bootstrap.toml`.
 Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "

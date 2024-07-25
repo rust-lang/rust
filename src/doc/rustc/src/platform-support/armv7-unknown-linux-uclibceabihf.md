@@ -22,7 +22,7 @@ If you don't already have a suitable toolchain, download one [here](https://tool
 
 ### Configure rust
 
-The target can be built by enabling it for a `rustc` build, by placing the following in `config.toml`:
+The target can be built by enabling it for a `rustc` build, by placing the following in `bootstrap.toml`:
 
 ```toml
 [build]

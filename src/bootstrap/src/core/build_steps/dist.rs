@@ -986,7 +986,7 @@ impl Step for PlainSourceTarball {
             "RELEASES.md",
             "configure",
             "x.py",
-            "config.example.toml",
+            "bootstrap.example.toml",
             "Cargo.toml",
             "Cargo.lock",
             ".gitmodules",

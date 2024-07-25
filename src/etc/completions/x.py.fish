@@ -1,5 +1,5 @@
 complete -c x.py -n "__fish_use_subcommand" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_use_subcommand" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_use_subcommand" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_use_subcommand" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_use_subcommand" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_use_subcommand" -l target -d 'target targets to build' -r -f
@@ -15,12 +15,12 @@ complete -c x.py -n "__fish_use_subcommand" -s j -l jobs -d 'number of jobs to r
 complete -c x.py -n "__fish_use_subcommand" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_use_subcommand" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_use_subcommand" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_use_subcommand" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_use_subcommand" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_use_subcommand" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_use_subcommand" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_use_subcommand" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_use_subcommand" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_use_subcommand" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_use_subcommand" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -50,7 +50,7 @@ complete -c x.py -n "__fish_use_subcommand" -f -a "suggest" -d 'Suggest a subset
 complete -c x.py -n "__fish_use_subcommand" -f -a "vendor" -d 'Vendor dependencies'
 complete -c x.py -n "__fish_use_subcommand" -f -a "perf" -d 'Perform profiling and benchmarking of the compiler using the `rustc-perf-wrapper` tool'
 complete -c x.py -n "__fish_seen_subcommand_from build" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from build" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from build" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from build" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -l target -d 'target targets to build' -r -f
@@ -66,12 +66,12 @@ complete -c x.py -n "__fish_seen_subcommand_from build" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_seen_subcommand_from build" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from build" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from build" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from build" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from build" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from build" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from build" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -84,7 +84,7 @@ complete -c x.py -n "__fish_seen_subcommand_from build" -l enable-bolt-settings 
 complete -c x.py -n "__fish_seen_subcommand_from build" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from build" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from check" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from check" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from check" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from check" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l target -d 'target targets to build' -r -f
@@ -100,12 +100,12 @@ complete -c x.py -n "__fish_seen_subcommand_from check" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_seen_subcommand_from check" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from check" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from check" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from check" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from check" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l all-targets -d 'Check all targets'
 complete -c x.py -n "__fish_seen_subcommand_from check" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from check" -s i -l incremental -d 'use incremental compilation'
@@ -123,7 +123,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clippy" -s D -d 'clippy lints t
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s W -d 'clippy lints to warn on' -r
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s F -d 'clippy lints to forbid' -r
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from clippy" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l target -d 'target targets to build' -r -f
@@ -139,12 +139,12 @@ complete -c x.py -n "__fish_seen_subcommand_from clippy" -s j -l jobs -d 'number
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from clippy" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l fix
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l allow-dirty
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l allow-staged
@@ -160,7 +160,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clippy" -l enable-bolt-settings
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from fix" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l target -d 'target targets to build' -r -f
@@ -176,12 +176,12 @@ complete -c x.py -n "__fish_seen_subcommand_from fix" -s j -l jobs -d 'number of
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from fix" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -194,7 +194,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fix" -l enable-bolt-settings -d
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from fmt" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l target -d 'target targets to build' -r -f
@@ -210,12 +210,12 @@ complete -c x.py -n "__fish_seen_subcommand_from fmt" -s j -l jobs -d 'number of
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from fmt" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l check -d 'check formatting instead of applying'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l all -d 'apply to all appropriate files, not just those that have been modified'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
@@ -230,7 +230,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fmt" -l enable-bolt-settings -d
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from doc" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l target -d 'target targets to build' -r -f
@@ -246,12 +246,12 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -s j -l jobs -d 'number of
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from doc" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l open -d 'open the docs in a browser'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l json -d 'render the documentation in JSON format in addition to the usual HTML format'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
@@ -272,7 +272,7 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -l compare-mode -d 'mode 
 complete -c x.py -n "__fish_seen_subcommand_from test" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l run -d 'whether to execute run-* tests' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from test" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from test" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from test" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l target -d 'target targets to build' -r -f
@@ -288,12 +288,12 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_seen_subcommand_from test" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from test" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from test" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from test" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l no-fail-fast -d 'run all tests regardless of failure'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l no-doc -d 'do not run doc tests'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l doc -d 'only run doc tests'
@@ -315,7 +315,7 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -s h -l help -d 'Print he
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l rustc-args -d 'extra options to pass the compiler when running tests' -r
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from miri" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from miri" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l target -d 'target targets to build' -r -f
@@ -331,12 +331,12 @@ complete -c x.py -n "__fish_seen_subcommand_from miri" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from miri" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from miri" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from miri" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from miri" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l no-fail-fast -d 'run all tests regardless of failure'
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l no-doc -d 'do not run doc tests'
 complete -c x.py -n "__fish_seen_subcommand_from miri" -l doc -d 'only run doc tests'
@@ -353,7 +353,7 @@ complete -c x.py -n "__fish_seen_subcommand_from miri" -l skip-stage0-validation
 complete -c x.py -n "__fish_seen_subcommand_from miri" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l test-args -r
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from bench" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l target -d 'target targets to build' -r -f
@@ -369,12 +369,12 @@ complete -c x.py -n "__fish_seen_subcommand_from bench" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from bench" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -388,7 +388,7 @@ complete -c x.py -n "__fish_seen_subcommand_from bench" -l skip-stage0-validatio
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l stage -d 'Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used' -r
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l target -d 'target targets to build' -r -f
@@ -403,12 +403,12 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l all -d 'Clean the entire build directory (not used by default)'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s i -l incremental -d 'use incremental compilation'
@@ -422,7 +422,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -l enable-bolt-settings 
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from dist" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l target -d 'target targets to build' -r -f
@@ -438,12 +438,12 @@ complete -c x.py -n "__fish_seen_subcommand_from dist" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from dist" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -456,7 +456,7 @@ complete -c x.py -n "__fish_seen_subcommand_from dist" -l enable-bolt-settings -
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from install" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from install" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from install" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from install" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -l target -d 'target targets to build' -r -f
@@ -472,12 +472,12 @@ complete -c x.py -n "__fish_seen_subcommand_from install" -s j -l jobs -d 'numbe
 complete -c x.py -n "__fish_seen_subcommand_from install" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from install" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from install" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from install" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from install" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from install" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from install" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -491,7 +491,7 @@ complete -c x.py -n "__fish_seen_subcommand_from install" -l skip-stage0-validat
 complete -c x.py -n "__fish_seen_subcommand_from install" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from run" -l args -d 'arguments for the tool' -r
 complete -c x.py -n "__fish_seen_subcommand_from run" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from run" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from run" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from run" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -l target -d 'target targets to build' -r -f
@@ -507,12 +507,12 @@ complete -c x.py -n "__fish_seen_subcommand_from run" -s j -l jobs -d 'number of
 complete -c x.py -n "__fish_seen_subcommand_from run" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from run" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from run" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from run" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from run" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from run" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from run" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -525,7 +525,7 @@ complete -c x.py -n "__fish_seen_subcommand_from run" -l enable-bolt-settings -d
 complete -c x.py -n "__fish_seen_subcommand_from run" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from run" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from setup" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l target -d 'target targets to build' -r -f
@@ -541,12 +541,12 @@ complete -c x.py -n "__fish_seen_subcommand_from setup" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from setup" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -559,7 +559,7 @@ complete -c x.py -n "__fish_seen_subcommand_from setup" -l enable-bolt-settings 
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from suggest" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l target -d 'target targets to build' -r -f
@@ -575,12 +575,12 @@ complete -c x.py -n "__fish_seen_subcommand_from suggest" -s j -l jobs -d 'numbe
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from suggest" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l run -d 'run suggested tests'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -s i -l incremental -d 'use incremental compilation'
@@ -595,7 +595,7 @@ complete -c x.py -n "__fish_seen_subcommand_from suggest" -l skip-stage0-validat
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l sync -d 'Additional `Cargo.toml` to sync and vendor' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from vendor" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from vendor" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l target -d 'target targets to build' -r -f
@@ -611,12 +611,12 @@ complete -c x.py -n "__fish_seen_subcommand_from vendor" -s j -l jobs -d 'number
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from vendor" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from vendor" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from vendor" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from vendor" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l versioned-dirs -d 'Always include version in subdir name'
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -s i -l incremental -d 'use incremental compilation'
@@ -630,7 +630,7 @@ complete -c x.py -n "__fish_seen_subcommand_from vendor" -l enable-bolt-settings
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l build -d 'build target of the stage0 compiler' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l host -d 'host targets to build' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l target -d 'target targets to build' -r -f
@@ -646,12 +646,12 @@ complete -c x.py -n "__fish_seen_subcommand_from perf" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in bootstrap.toml' -r -f -a "{true	'',false	''}"
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from perf" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from perf" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from perf" -l include-default-paths -d 'include default paths in addition to the provided ones'

@@ -64,7 +64,7 @@ This target does not support `panic=unwind` at this time.
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml`, and the target also requires `lld` to be built to work.
+list in `bootstrap.toml`, and the target also requires `lld` to be built to work.
 
 ```toml
 [build]

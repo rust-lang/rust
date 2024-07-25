@@ -635,7 +635,7 @@ class RustBuild(object):
 
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
-        on NixOS or if config.toml has `build.patch-binaries-for-nix` set.
+        on NixOS or if bootstrap.toml has `build.patch-binaries-for-nix` set.
         """
         if self._should_fix_bins_and_dylibs is not None:
             return self._should_fix_bins_and_dylibs
@@ -676,7 +676,7 @@ class RustBuild(object):
                 in_nix_shell = os.getenv('IN_NIX_SHELL')
                 if in_nix_shell:
                     eprint("The IN_NIX_SHELL environment variable is `{}`;".format(in_nix_shell),
-                          "you may need to set `patch-binaries-for-nix=true` in config.toml")
+                          "you may need to set `patch-binaries-for-nix=true` in bootstrap.toml")
 
             return is_nixos
 
@@ -778,7 +778,7 @@ class RustBuild(object):
         return os.path.join(self.build_dir, self.build, subdir)
 
     def get_toml(self, key, section=None):
-        """Returns the value of the given key in config.toml, otherwise returns None
+        """Returns the value of the given key in bootstrap.toml, otherwise returns None
 
         >>> rb = RustBuild()
         >>> rb.config_toml = 'key1 = "value1"\\nkey2 = "value2"'
@@ -1107,17 +1107,21 @@ def bootstrap(args):
                "git clone nor distributed tarball.\nThis build may fail due to missing submodules "
                "unless you put them in place manually.")
 
-    # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
-    # then `config.toml` in the root directory.
+    # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./bootstrap.toml` or
+    # `./config.toml`, then `bootstrap.toml` or `config.toml` in the root directory.
     toml_path = args.config or os.getenv('RUST_BOOTSTRAP_CONFIG')
     using_default_path = toml_path is None
     if using_default_path:
-        toml_path = 'config.toml'
+        toml_path = 'bootstrap.toml'
         if not os.path.exists(toml_path):
-            toml_path = os.path.join(rust_root, toml_path)
+            toml_path = 'config.toml'
+            if not os.path.exists(toml_path):
+                toml_path = os.path.join(rust_root, 'bootstrap.toml')
+                if not os.path.exists(toml_path):
+                    toml_path = os.path.join(rust_root, 'config.toml')
 
     # Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
-    # but not if `config.toml` hasn't been created.
+    # but not if `bootstrap.toml` hasn't been created.
     if not using_default_path or os.path.exists(toml_path):
         with open(toml_path) as config:
             config_toml = config.read()
@@ -1132,7 +1136,7 @@ def bootstrap(args):
         profile_aliases = {
             "user": "dist"
         }
-        include_file = 'config.{}.toml'.format(profile_aliases.get(profile) or profile)
+        include_file = 'bootstrap.{}.toml'.format(profile_aliases.get(profile) or profile)
         include_dir = os.path.join(rust_root, 'src', 'bootstrap', 'defaults')
         include_path = os.path.join(include_dir, include_file)
 

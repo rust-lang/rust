@@ -1,6 +1,6 @@
 //! Serialized configuration of a build.
 //!
-//! This module implements parsing `config.toml` configuration files to tweak
+//! This module implements parsing `bootstrap.toml` configuration files to tweak
 //! how the build runs.
 
 use std::cell::{Cell, RefCell};
@@ -143,12 +143,12 @@ impl LldMode {
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
-/// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
+/// This structure is parsed from `bootstrap.toml`, and some of the fields are inferred from `git` or build-time parameters.
 ///
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
 /// each field, see the corresponding fields in
-/// `config.example.toml`.
+/// `bootstrap.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {
     pub change_id: Option<usize>,
@@ -192,7 +192,7 @@ pub struct Config {
     pub keep_stage: Vec<u32>,
     pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
-    /// defaults to `config.toml`
+    /// defaults to `bootstrap.toml`
     pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
@@ -401,7 +401,7 @@ impl std::str::FromStr for SplitDebuginfo {
 
 impl SplitDebuginfo {
     /// Returns the default `-Csplit-debuginfo` value for the current target. See the comment for
-    /// `rust.split-debuginfo` in `config.example.toml`.
+    /// `rust.split-debuginfo` in `bootstrap.example.toml`.
     fn default_for_platform(target: TargetSelection) -> Self {
         if target.contains("apple") {
             SplitDebuginfo::Unpacked
@@ -576,7 +576,7 @@ impl Target {
         target
     }
 }
-/// Structure of the `config.toml` file that configuration is read from.
+/// Structure of the `bootstrap.toml` file that configuration is read from.
 ///
 /// This structure uses `Decodable` to automatically decode a TOML configuration
 /// file into this format, and then this is traversed and written into the above
@@ -1305,22 +1305,29 @@ impl Config {
 
         config.stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
 
-        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./bootstrap.toml` or `./config.toml`,
+        // then `bootstrap.toml` or `config.toml` in the root directory.
         let toml_path = flags
             .config
             .clone()
             .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
         let using_default_path = toml_path.is_none();
-        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("config.toml"));
+        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("bootstrap.toml"));
         if using_default_path && !toml_path.exists() {
-            toml_path = config.src.join(toml_path);
+            toml_path = PathBuf::from("config.toml");
+            if !toml_path.exists() {
+                toml_path = config.src.join(PathBuf::from("bootstrap.toml"));
+                if !toml_path.exists() {
+                    toml_path = config.src.join(PathBuf::from("config.toml"));
+                }
+            }
         }
 
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
 
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
-        // but not if `config.toml` hasn't been created.
+        // but not if `bootstrap.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
             config.config = Some(toml_path.clone());
             get_toml(&toml_path)
@@ -1334,7 +1341,7 @@ impl Config {
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
             // don't do that, bootstrap will use its own detection logic to find a suitable rustc
             // and Cargo, which doesn't work when the caller is specìfying a custom local rustc or
-            // Cargo in their config.toml.
+            // Cargo in their bootstrap.toml.
             let build = toml.build.get_or_insert_with(Default::default);
             build.rustc = build.rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
             build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
@@ -1353,7 +1360,7 @@ impl Config {
             include_path.push("src");
             include_path.push("bootstrap");
             include_path.push("defaults");
-            include_path.push(format!("config.{include}.toml"));
+            include_path.push(format!("bootstrap.{include}.toml"));
             let included_toml = get_toml(&include_path);
             toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
         }
@@ -1755,7 +1762,7 @@ impl Config {
         config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
-        // This is because if the compiler uses a different channel than the one specified in config.toml,
+        // This is because if the compiler uses a different channel than the one specified in bootstrap.toml,
         // tests may fail due to using a different channel than the one used by the compiler during tests.
         if let Some(commit) = &config.download_rustc_commit {
             if is_user_configured_rust_channel {

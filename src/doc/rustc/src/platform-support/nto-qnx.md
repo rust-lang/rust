@@ -94,7 +94,7 @@ For conditional compilation, following QNX Neutrino specific attributes are defi
 
 ## Building the target
 
-1. Create a `config.toml`
+1. Create a `bootstrap.toml`
 
 Example content:
 

@@ -39,7 +39,7 @@ scripts.
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml`:
+list in `bootstrap.toml`:
 
 ```toml
 [build]

@@ -33,9 +33,9 @@ use clap::ValueEnum;
 mod tests;
 
 /// Builds and performs different [`Self::kind`]s of stuff and actions, taking
-/// into account build configuration from e.g. config.toml.
+/// into account build configuration from e.g. bootstrap.toml.
 pub struct Builder<'a> {
-    /// Build configuration from e.g. config.toml.
+    /// Build configuration from e.g. bootstrap.toml.
     pub build: &'a Build,
 
     /// The stage to use. Either implicitly determined based on subcommand, or
@@ -310,7 +310,7 @@ impl PathSet {
 }
 
 const PATH_REMAP: &[(&str, &[&str])] = &[
-    // config.toml uses `rust-analyzer-proc-macro-srv`, but the
+    // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
@@ -2518,7 +2518,7 @@ impl Cargo {
         // dynamic libraries. We use this by default on Unix platforms to ensure
         // that our nightlies behave the same on Windows, that is they work out
         // of the box. This can be disabled by setting `rpath = false` in `[rust]`
-        // table of `config.toml`
+        // table of `bootstrap.toml`
         //
         // Ok, so the astute might be wondering "why isn't `-C rpath` used
         // here?" and that is indeed a good question to ask. This codegen
