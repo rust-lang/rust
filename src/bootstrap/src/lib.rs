@@ -470,7 +470,6 @@ impl Build {
         build
     }
 
-    // modified from `check_submodule` and `update_submodule` in bootstrap.py
     /// Given a path to the directory of a submodule, update it.
     ///
     /// `relative_path` should be relative to the root of the git repository, not an absolute path.
