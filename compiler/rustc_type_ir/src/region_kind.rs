@@ -1,3 +1,6 @@
+#![allow(clippy::derived_hash_with_manual_eq)]
+
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -124,8 +127,7 @@ rustc_index::newtype_index! {
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
+#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
@@ -193,6 +195,7 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
     }
 }
 
+// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
 // This is manually implemented because a derive would require `I: PartialEq`
 impl<I: Interner> PartialEq for RegionKind<I> {
     #[inline]

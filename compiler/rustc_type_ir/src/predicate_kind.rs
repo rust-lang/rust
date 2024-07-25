@@ -1,3 +1,6 @@
+#![allow(clippy::derived_hash_with_manual_eq)]
+
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
@@ -7,8 +10,7 @@ use crate::{self as ty, Interner};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
+#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ClauseKind<I: Interner> {
@@ -38,6 +40,7 @@ pub enum ClauseKind<I: Interner> {
     ConstEvaluatable(I::Const),
 }
 
+// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
 impl<I: Interner> PartialEq for ClauseKind<I> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -53,14 +56,7 @@ impl<I: Interner> PartialEq for ClauseKind<I> {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum PredicateKind<I: Interner> {

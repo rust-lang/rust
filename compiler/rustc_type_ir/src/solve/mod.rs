@@ -3,6 +3,7 @@ pub mod inspect;
 use std::fmt;
 use std::hash::Hash;
 
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
@@ -89,15 +90,12 @@ pub struct NoSolution;
 ///
 /// Most of the time the `param_env` contains the `where`-bounds of the function
 /// we're currently typechecking while the `predicate` is some trait bound.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "P: Clone"),
-    Copy(bound = "P: Copy"),
-    Hash(bound = "P: Hash"),
-    PartialEq(bound = "P: PartialEq"),
-    Eq(bound = "P: Eq"),
-    Debug(bound = "P: fmt::Debug")
-)]
+#[derive_where(Clone; I: Interner, P: Clone)]
+#[derive_where(Copy; I: Interner, P: Copy)]
+#[derive_where(Hash; I: Interner, P: Hash)]
+#[derive_where(PartialEq; I: Interner, P: PartialEq)]
+#[derive_where(Eq; I: Interner, P: Eq)]
+#[derive_where(Debug; I: Interner, P: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct Goal<I: Interner, P> {
@@ -140,15 +138,12 @@ pub enum GoalSource {
     InstantiateHigherRanked,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "Goal<I, P>: Clone"),
-    Copy(bound = "Goal<I, P>: Copy"),
-    Hash(bound = "Goal<I, P>: Hash"),
-    PartialEq(bound = "Goal<I, P>: PartialEq"),
-    Eq(bound = "Goal<I, P>: Eq"),
-    Debug(bound = "Goal<I, P>: fmt::Debug")
-)]
+#[derive_where(Clone; I: Interner, Goal<I, P>: Clone)]
+#[derive_where(Copy; I: Interner, Goal<I, P>: Copy)]
+#[derive_where(Hash; I: Interner, Goal<I, P>: Hash)]
+#[derive_where(PartialEq; I: Interner, Goal<I, P>: PartialEq)]
+#[derive_where(Eq; I: Interner, Goal<I, P>: Eq)]
+#[derive_where(Debug; I: Interner, Goal<I, P>: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct QueryInput<I: Interner, P> {
@@ -157,15 +152,7 @@ pub struct QueryInput<I: Interner, P> {
 }
 
 /// Opaques that are defined in the inference context before a query is called.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = ""),
-    Default(bound = "")
-)]
+#[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct PredefinedOpaquesData<I: Interner> {
@@ -173,15 +160,7 @@ pub struct PredefinedOpaquesData<I: Interner> {
 }
 
 /// Possible ways the given goal can be proven.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 pub enum CandidateSource<I: Interner> {
     /// A user written impl.
     ///
@@ -265,15 +244,7 @@ pub enum BuiltinImplSource {
     TupleUnsizing,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Response<I: Interner> {
@@ -284,15 +255,7 @@ pub struct Response<I: Interner> {
 }
 
 /// Additional constraints returned on success.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = ""),
-    Default(bound = "")
-)]
+#[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
@@ -301,15 +264,7 @@ pub struct ExternalConstraintsData<I: Interner> {
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = ""),
-    Default(bound = "")
-)]
+#[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
@@ -386,8 +341,7 @@ impl MaybeCause {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+#[derive_where(PartialEq, Eq, Debug; I: Interner)]
 pub struct CacheData<I: Interner> {
     pub result: QueryResult<I>,
     pub proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,

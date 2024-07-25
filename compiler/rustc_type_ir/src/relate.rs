@@ -1,5 +1,6 @@
 use std::iter;
 
+use derive_where::derive_where;
 use rustc_ast_ir::Mutability;
 use tracing::{instrument, trace};
 
@@ -17,19 +18,11 @@ pub type RelateResult<I, T> = Result<T, TypeError<I>>;
 /// a miscompilation or unsoundness.
 ///
 /// When in doubt, use `VarianceDiagInfo::default()`
-#[derive(derivative::Derivative)]
-#[derivative(
-    Copy(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    Default(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Debug, Default; I: Interner)]
 pub enum VarianceDiagInfo<I: Interner> {
     /// No additional information - this is the default.
     /// We will not add any additional information to error messages.
-    #[derivative(Default)]
+    #[derive_where(default)]
     None,
     /// We switched our variance because a generic argument occurs inside
     /// the invariant generic argument of another type.
