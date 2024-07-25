@@ -40,7 +40,7 @@ pub struct FunctionData {
     pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub abi: Option<Symbol>,
-    pub legacy_const_generics_indices: Box<[u32]>,
+    pub legacy_const_generics_indices: Option<Box<Box<[u32]>>>,
     pub rustc_allow_incoherent_impl: bool,
     flags: FnFlags,
 }
@@ -91,7 +91,8 @@ impl FunctionData {
             .tt_values()
             .next()
             .map(parse_rustc_legacy_const_generics)
-            .unwrap_or_default();
+            .filter(|it| !it.is_empty())
+            .map(Box::new);
         let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
 
         Arc::new(FunctionData {
