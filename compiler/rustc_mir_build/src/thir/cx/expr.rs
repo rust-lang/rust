@@ -3,7 +3,6 @@ use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use itertools::Itertools;
-use rustc_ast::LitKind;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -22,8 +21,7 @@ use rustc_middle::ty::{
     self, AdtKind, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs, UserType,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{sym, Span};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use tracing::{debug, info, instrument, trace};
 
@@ -899,14 +897,10 @@ impl<'tcx> Cx<'tcx> {
                 let hir_id = self.tcx.local_def_id_to_hir_id(def_id.expect_local());
                 let generics = self.tcx.generics_of(hir_id.owner);
                 let Some(&index) = generics.param_def_id_to_index.get(&def_id) else {
-                    let guar = self.tcx.dcx().has_errors().unwrap();
-                    // We already errored about a late bound const
-
-                    let lit = self
-                        .tcx
-                        .hir_arena
-                        .alloc(Spanned { span: DUMMY_SP, node: LitKind::Err(guar) });
-                    return ExprKind::Literal { lit, neg: false };
+                    span_bug!(
+                        expr.span,
+                        "Should have already errored about late bound consts: {def_id:?}"
+                    );
                 };
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);
