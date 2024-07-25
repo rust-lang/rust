@@ -300,12 +300,15 @@ impl<'a> State<'a> {
                     self.word_space("dyn");
                 }
                 let mut first = true;
-                for bound in bounds {
+                for (bound, modifier) in bounds {
                     if first {
                         first = false;
                     } else {
                         self.nbsp();
                         self.word_space("+");
+                    }
+                    if *modifier == TraitBoundModifier::Maybe {
+                        self.word("?");
                     }
                     self.print_poly_trait_ref(bound);
                 }
