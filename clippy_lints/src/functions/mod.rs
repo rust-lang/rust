@@ -393,7 +393,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.80.0"]
     pub RENAMED_FUNCTION_PARAMS,
     restriction,
     "renamed function parameters in trait implementation"
