@@ -475,7 +475,7 @@ impl Build {
     ///
     /// `relative_path` should be relative to the root of the git repository, not an absolute path.
     pub(crate) fn update_submodule(&self, relative_path: &Path) {
-        if !self.config.submodules(self.rust_info()) {
+        if !self.config.submodules() {
             return;
         }
 
@@ -585,7 +585,7 @@ impl Build {
     fn update_existing_submodules(&self) {
         // Avoid running git when there isn't a git checkout, or the user has
         // explicitly disabled submodules in `config.toml`.
-        if !self.config.submodules(self.rust_info()) {
+        if !self.config.submodules() {
             return;
         }
         let output = helpers::git(Some(&self.src))
@@ -609,7 +609,7 @@ impl Build {
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
     pub fn update_existing_submodule(&self, submodule: &Path) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(self.rust_info()) {
+        if !self.config.submodules() {
             return;
         }
 

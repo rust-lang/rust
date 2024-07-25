@@ -2404,8 +2404,11 @@ impl Config {
             .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
     }
 
-    pub fn submodules(&self, rust_info: &GitInfo) -> bool {
-        self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
+    /// Returns whether or not submodules should be managed by bootstrap.
+    pub fn submodules(&self) -> bool {
+        // If not specified in config, the default is to only manage
+        // submodules if we're currently inside a git repository.
+        self.submodules.unwrap_or(self.rust_info.is_managed_git_subrepository())
     }
 
     pub fn codegen_backends(&self, target: TargetSelection) -> &[String] {
