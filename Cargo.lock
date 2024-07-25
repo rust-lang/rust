@@ -573,7 +573,7 @@ checksum = "4b82cf0babdbd58558212896d1a4272303a57bdb245c2bf1147185fb45640e70"
 
 [[package]]
 name = "clippy"
-version = "0.1.81"
+version = "0.1.82"
 dependencies = [
  "anstream",
  "clippy_config",
@@ -594,13 +594,13 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.23.0",
+ "ui_test 0.24.0",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_config"
-version = "0.1.81"
+version = "0.1.82"
 dependencies = [
  "rustc-semver",
  "serde",
@@ -623,7 +623,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.81"
+version = "0.1.82"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -648,7 +648,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.81"
+version = "0.1.82"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -969,7 +969,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.81"
+version = "0.1.82"
 dependencies = [
  "itertools",
  "quote",
@@ -2974,6 +2974,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ff1fec61082821f8236cf6c0c14e8172b62ce8a72a0eedc30d3b247bb68dc11"
 dependencies = [
  "ansi_term",
+ "pad",
+]
+
+[[package]]
+name = "prettydiff"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abec3fb083c10660b3854367697da94c674e9e82aa7511014dc958beeb7215e9"
+dependencies = [
+ "owo-colors",
  "pad",
 ]
 
@@ -5824,7 +5834,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "levenshtein",
- "prettydiff",
+ "prettydiff 0.6.4",
  "regex",
  "rustc_version",
  "rustfix 0.6.1",
@@ -5835,9 +5845,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29e5f4ffcbab82453958fbf59990e981b8e8a177dcd60c2bd8f9b52c3036a6e1"
+checksum = "bc1c6c78d55482388711c8d417b8e547263046a607512278fed274c54633bbe4"
 dependencies = [
  "annotate-snippets 0.11.4",
  "anyhow",
@@ -5851,14 +5861,13 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "levenshtein",
- "prettydiff",
+ "prettydiff 0.7.0",
  "regex",
  "rustc_version",
  "rustfix 0.8.1",
  "serde",
  "serde_json",
  "spanned",
- "tempfile",
 ]
 
 [[package]]
