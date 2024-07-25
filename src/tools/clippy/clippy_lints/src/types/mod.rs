@@ -9,6 +9,7 @@ mod type_complexity;
 mod utils;
 mod vec_box;
 
+use clippy_config::Conf;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -446,11 +447,11 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 }
 
 impl Types {
-    pub fn new(vec_box_size_threshold: u64, type_complexity_threshold: u64, avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            vec_box_size_threshold,
-            type_complexity_threshold,
-            avoid_breaking_exported_api,
+            vec_box_size_threshold: conf.vec_box_size_threshold,
+            type_complexity_threshold: conf.type_complexity_threshold,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
         }
     }
 

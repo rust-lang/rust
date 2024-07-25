@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_entrypoint_fn;
-use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
+use rustc_hir::{Expr, ExprKind, Item, ItemKind, OwnerNode};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -47,8 +47,8 @@ impl<'tcx> LateLintPass<'tcx> for Exit {
             && let ExprKind::Path(ref path) = path_expr.kind
             && let Some(def_id) = cx.qpath_res(path, path_expr.hir_id).opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::process_exit, def_id)
-            && let parent = cx.tcx.hir().get_parent_item(e.hir_id).def_id
-            && let Node::Item(Item{kind: ItemKind::Fn(..), ..}) = cx.tcx.hir_node_by_def_id(parent)
+            && let parent = cx.tcx.hir().get_parent_item(e.hir_id)
+            && let OwnerNode::Item(Item{kind: ItemKind::Fn(..), ..}) = cx.tcx.hir_owner_node(parent)
             // If the next item up is a function we check if it is an entry point
             // and only then emit a linter warning
             && !is_entrypoint_fn(cx, parent.to_def_id())

@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
 // This is not a complete resolver for paths. It works on all the paths currently used in the paths
 // module.  That's all it does and all it needs to do.
 pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
-    if !def_path_res(cx, path).is_empty() {
+    if !def_path_res(cx.tcx, path).is_empty() {
         return true;
     }
 

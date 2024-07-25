@@ -24,6 +24,7 @@ mod utils;
 mod zero_ptr;
 
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::is_hir_ty_cfg_dependant;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -658,11 +659,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// let _: (0.0_f32 / 0.0) as u64;
+    /// let _ = (0.0_f32 / 0.0) as u64;
     /// ```
     /// Use instead:
     /// ```rust,ignore
-    /// let _: = 0_u64;
+    /// let _ = 0_u64;
     /// ```
     #[clippy::version = "1.66.0"]
     pub CAST_NAN_TO_INT,
@@ -722,9 +723,10 @@ pub struct Casts {
 }
 
 impl Casts {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -761,45 +763,45 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             return;
         }
 
-        if let ExprKind::Cast(cast_expr, cast_to_hir) = expr.kind {
+        if let ExprKind::Cast(cast_from_expr, cast_to_hir) = expr.kind {
             if is_hir_ty_cfg_dependant(cx, cast_to_hir) {
                 return;
             }
             let (cast_from, cast_to) = (
-                cx.typeck_results().expr_ty(cast_expr),
+                cx.typeck_results().expr_ty(cast_from_expr),
                 cx.typeck_results().expr_ty(expr),
             );
 
-            if !expr.span.from_expansion() && unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
+            if !expr.span.from_expansion() && unnecessary_cast::check(cx, expr, cast_from_expr, cast_from, cast_to) {
                 return;
             }
-            cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, &self.msrv);
-            ptr_cast_constness::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
-            as_ptr_cast_mut::check(cx, expr, cast_expr, cast_to);
-            fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
-            fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
-            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
-            zero_ptr::check(cx, expr, cast_expr, cast_to_hir);
+            cast_slice_from_raw_parts::check(cx, expr, cast_from_expr, cast_to, &self.msrv);
+            ptr_cast_constness::check(cx, expr, cast_from_expr, cast_from, cast_to, &self.msrv);
+            as_ptr_cast_mut::check(cx, expr, cast_from_expr, cast_to);
+            fn_to_numeric_cast_any::check(cx, expr, cast_from_expr, cast_from, cast_to);
+            fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
+            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to);
+            zero_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
 
             if cast_to.is_numeric() {
-                cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to, cast_to_hir.span);
+                cast_possible_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to, cast_to_hir.span);
                 if cast_from.is_numeric() {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
-                    cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
-                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
-                    cast_nan_to_int::check(cx, expr, cast_expr, cast_from, cast_to);
+                    cast_sign_loss::check(cx, expr, cast_from_expr, cast_from, cast_to);
+                    cast_abs_to_unsigned::check(cx, expr, cast_from_expr, cast_from, cast_to, &self.msrv);
+                    cast_nan_to_int::check(cx, expr, cast_from_expr, cast_from, cast_to);
                 }
-                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, cast_to_hir, &self.msrv);
-                cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
+                cast_lossless::check(cx, expr, cast_from_expr, cast_from, cast_to, cast_to_hir, &self.msrv);
+                cast_enum_constructor::check(cx, expr, cast_from_expr, cast_from);
             }
 
             as_underscore::check(cx, expr, cast_to_hir);
 
             if self.msrv.meets(msrvs::PTR_FROM_REF) {
-                ref_as_ptr::check(cx, expr, cast_expr, cast_to_hir);
+                ref_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
             } else if self.msrv.meets(msrvs::BORROW_AS_PTR) {
-                borrow_as_ptr::check(cx, expr, cast_expr, cast_to_hir);
+                borrow_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
             }
         }
 

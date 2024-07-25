@@ -1,6 +1,8 @@
 #![allow(unused_assignments)]
 #![warn(clippy::unnecessary_to_owned)]
 
+//@no-rustfix: need to change the suggestion to a multipart suggestion
+
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
 enum FileType {

@@ -1,5 +1,6 @@
 use std::{cmp, iter};
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
@@ -14,7 +15,7 @@ use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, No
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, RegionKind};
+use rustc_middle::ty::{self, RegionKind, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
@@ -103,7 +104,6 @@ declare_clippy_lint! {
     "functions taking large arguments by value"
 }
 
-#[derive(Copy, Clone)]
 pub struct PassByRefOrValue {
     ref_min_size: u64,
     value_max_size: u64,
@@ -111,14 +111,9 @@ pub struct PassByRefOrValue {
 }
 
 impl<'tcx> PassByRefOrValue {
-    pub fn new(
-        ref_min_size: Option<u64>,
-        value_max_size: u64,
-        avoid_breaking_exported_api: bool,
-        pointer_width: u32,
-    ) -> Self {
-        let ref_min_size = ref_min_size.unwrap_or_else(|| {
-            let bit_width = u64::from(pointer_width);
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
+        let ref_min_size = conf.trivial_copy_size_limit.unwrap_or_else(|| {
+            let bit_width = u64::from(tcx.sess.target.pointer_width);
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
@@ -130,8 +125,8 @@ impl<'tcx> PassByRefOrValue {
 
         Self {
             ref_min_size,
-            value_max_size,
-            avoid_breaking_exported_api,
+            value_max_size: conf.pass_by_value_size_limit,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
         }
     }
 

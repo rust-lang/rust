@@ -1,6 +1,8 @@
 #![deny(clippy::index_refutable_slice)]
 #![allow(clippy::uninlined_format_args)]
 
+//@no-rustfix: need to change the suggestion to a multipart suggestion
+
 enum SomeEnum<T> {
     One(T),
     Two(T),

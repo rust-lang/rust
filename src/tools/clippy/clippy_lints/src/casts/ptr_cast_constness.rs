@@ -4,7 +4,7 @@ use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use super::PTR_CAST_CONSTNESS;
 
@@ -24,6 +24,7 @@ pub(super) fn check<'tcx>(
             (Mutability::Not, Mutability::Mut) | (Mutability::Mut, Mutability::Not)
         )
         && from_ty == to_ty
+        && !from_ty.has_erased_regions()
     {
         let sugg = Sugg::hir(cx, cast_expr, "_");
         let constness = match *to_mutbl {

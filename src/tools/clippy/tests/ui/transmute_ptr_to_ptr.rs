@@ -1,17 +1,19 @@
 #![warn(clippy::transmute_ptr_to_ptr)]
 #![allow(clippy::borrow_as_ptr, clippy::missing_transmute_annotations)]
 
+use std::mem::transmute;
+
 // Make sure we can modify lifetimes, which is one of the recommended uses
 // of transmute
 
 // Make sure we can do static lifetime transmutes
 unsafe fn transmute_lifetime_to_static<'a, T>(t: &'a T) -> &'static T {
-    std::mem::transmute::<&'a T, &'static T>(t)
+    transmute::<&'a T, &'static T>(t)
 }
 
 // Make sure we can do non-static lifetime transmutes
 unsafe fn transmute_lifetime<'a, 'b, T>(t: &'a T, u: &'b T) -> &'b T {
-    std::mem::transmute::<&'a T, &'b T>(t)
+    transmute::<&'a T, &'b T>(t)
 }
 
 struct LifetimeParam<'a> {
@@ -27,39 +29,40 @@ fn transmute_ptr_to_ptr() {
     let mut_ptr = &mut 1u32 as *mut u32;
     unsafe {
         // pointer-to-pointer transmutes; bad
-        let _: *const f32 = std::mem::transmute(ptr);
-        //~^ ERROR: transmute from a pointer to a pointer
-        //~| NOTE: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
-        let _: *mut f32 = std::mem::transmute(mut_ptr);
-        //~^ ERROR: transmute from a pointer to a pointer
+        let _: *const f32 = transmute(ptr);
+        //~^ transmute_ptr_to_ptr
+        let _: *mut f32 = transmute(mut_ptr);
+        //~^ transmute_ptr_to_ptr
         // ref-ref transmutes; bad
-        let _: &f32 = std::mem::transmute(&1u32);
-        //~^ ERROR: transmute from a reference to a reference
-        let _: &f32 = std::mem::transmute(&1f64);
-        //~^ ERROR: transmute from a reference to a reference
+        let _: &f32 = transmute(&1u32);
+        //~^ transmute_ptr_to_ptr
+        let _: &f32 = transmute(&1f64);
+        //~^ transmute_ptr_to_ptr
         //:^ this test is here because both f32 and f64 are the same TypeVariant, but they are not
         // the same type
-        let _: &mut f32 = std::mem::transmute(&mut 1u32);
-        //~^ ERROR: transmute from a reference to a reference
-        let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
-        //~^ ERROR: transmute from a reference to a reference
+        let _: &mut f32 = transmute(&mut 1u32);
+        //~^ transmute_ptr_to_ptr
+        let _: &GenericParam<f32> = transmute(&GenericParam { t: 1u32 });
+        //~^ transmute_ptr_to_ptr
         let u64_ref: &u64 = &0u64;
-        let u8_ref: &u8 = unsafe { std::mem::transmute(u64_ref) };
-        //~^ ERROR: transmute from a reference to a reference
+        let u8_ref: &u8 = transmute(u64_ref);
+        //~^ transmute_ptr_to_ptr
+        let _: *const u32 = transmute(mut_ptr);
+        //~^ transmute_ptr_to_ptr
+        let _: *mut u32 = transmute(ptr);
+        //~^ transmute_ptr_to_ptr
     }
-
-    // these are recommendations for solving the above; if these lint we need to update
-    // those suggestions
-    let _ = ptr as *const f32;
-    let _ = mut_ptr as *mut f32;
-    let _ = unsafe { &*(&1u32 as *const u32 as *const f32) };
-    let _ = unsafe { &mut *(&mut 1u32 as *mut u32 as *mut f32) };
 
     // transmute internal lifetimes, should not lint
     let s = "hello world".to_owned();
     let lp = LifetimeParam { s: &s };
-    let _: &LifetimeParam<'static> = unsafe { std::mem::transmute(&lp) };
-    let _: &GenericParam<&LifetimeParam<'static>> = unsafe { std::mem::transmute(&GenericParam { t: &lp }) };
+    let _: &LifetimeParam<'static> = unsafe { transmute(&lp) };
+    let _: &GenericParam<&LifetimeParam<'static>> = unsafe { transmute(&GenericParam { t: &lp }) };
+}
+
+fn lifetime_to_static(v: *mut &()) -> *const &'static () {
+    unsafe { transmute(v) }
+    //~^ transmute_ptr_to_ptr
 }
 
 // dereferencing raw pointers in const contexts, should not lint as it's unstable (issue 5959)
@@ -67,7 +70,37 @@ const _: &() = {
     struct Zst;
     let zst = &Zst;
 
-    unsafe { std::mem::transmute::<&'static Zst, &'static ()>(zst) }
+    unsafe { transmute::<&'static Zst, &'static ()>(zst) }
 };
+
+#[clippy::msrv = "1.37"]
+fn msrv_1_37(ptr: *const u8) {
+    unsafe {
+        let _: *const i8 = transmute(ptr);
+    }
+}
+
+#[clippy::msrv = "1.38"]
+fn msrv_1_38(ptr: *const u8) {
+    unsafe {
+        let _: *const i8 = transmute(ptr);
+    }
+}
+
+#[clippy::msrv = "1.64"]
+fn msrv_1_64(ptr: *const u8, mut_ptr: *mut u8) {
+    unsafe {
+        let _: *mut u8 = transmute(ptr);
+        let _: *const u8 = transmute(mut_ptr);
+    }
+}
+
+#[clippy::msrv = "1.65"]
+fn msrv_1_65(ptr: *const u8, mut_ptr: *mut u8) {
+    unsafe {
+        let _: *mut u8 = transmute(ptr);
+        let _: *const u8 = transmute(mut_ptr);
+    }
+}
 
 fn main() {}
