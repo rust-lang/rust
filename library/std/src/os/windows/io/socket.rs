@@ -6,8 +6,7 @@ use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem;
-use crate::mem::forget;
+use crate::mem::{self, ManuallyDrop};
 use crate::sys;
 #[cfg(not(target_vendor = "uwp"))]
 use crate::sys::cvt;
@@ -191,9 +190,7 @@ impl AsRawSocket for OwnedSocket {
 impl IntoRawSocket for OwnedSocket {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        let socket = self.socket;
-        forget(self);
-        socket
+        ManuallyDrop::new(self).socket
     }
 }
 

@@ -37,8 +37,7 @@ use thin_vec::ThinVec;
 #[derive(Debug, Clone)]
 pub enum Annotatable {
     Item(P<ast::Item>),
-    TraitItem(P<ast::AssocItem>),
-    ImplItem(P<ast::AssocItem>),
+    AssocItem(P<ast::AssocItem>, AssocCtxt),
     ForeignItem(P<ast::ForeignItem>),
     Stmt(P<ast::Stmt>),
     Expr(P<ast::Expr>),
@@ -56,8 +55,7 @@ impl Annotatable {
     pub fn span(&self) -> Span {
         match self {
             Annotatable::Item(item) => item.span,
-            Annotatable::TraitItem(trait_item) => trait_item.span,
-            Annotatable::ImplItem(impl_item) => impl_item.span,
+            Annotatable::AssocItem(assoc_item, _) => assoc_item.span,
             Annotatable::ForeignItem(foreign_item) => foreign_item.span,
             Annotatable::Stmt(stmt) => stmt.span,
             Annotatable::Expr(expr) => expr.span,
@@ -75,8 +73,7 @@ impl Annotatable {
     pub fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         match self {
             Annotatable::Item(item) => item.visit_attrs(f),
-            Annotatable::TraitItem(trait_item) => trait_item.visit_attrs(f),
-            Annotatable::ImplItem(impl_item) => impl_item.visit_attrs(f),
+            Annotatable::AssocItem(assoc_item, _) => assoc_item.visit_attrs(f),
             Annotatable::ForeignItem(foreign_item) => foreign_item.visit_attrs(f),
             Annotatable::Stmt(stmt) => stmt.visit_attrs(f),
             Annotatable::Expr(expr) => expr.visit_attrs(f),
@@ -94,8 +91,7 @@ impl Annotatable {
     pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) -> V::Result {
         match self {
             Annotatable::Item(item) => visitor.visit_item(item),
-            Annotatable::TraitItem(item) => visitor.visit_assoc_item(item, AssocCtxt::Trait),
-            Annotatable::ImplItem(item) => visitor.visit_assoc_item(item, AssocCtxt::Impl),
+            Annotatable::AssocItem(item, ctxt) => visitor.visit_assoc_item(item, *ctxt),
             Annotatable::ForeignItem(foreign_item) => visitor.visit_foreign_item(foreign_item),
             Annotatable::Stmt(stmt) => visitor.visit_stmt(stmt),
             Annotatable::Expr(expr) => visitor.visit_expr(expr),
@@ -113,9 +109,7 @@ impl Annotatable {
     pub fn to_tokens(&self) -> TokenStream {
         match self {
             Annotatable::Item(node) => TokenStream::from_ast(node),
-            Annotatable::TraitItem(node) | Annotatable::ImplItem(node) => {
-                TokenStream::from_ast(node)
-            }
+            Annotatable::AssocItem(node, _) => TokenStream::from_ast(node),
             Annotatable::ForeignItem(node) => TokenStream::from_ast(node),
             Annotatable::Stmt(node) => {
                 assert!(!matches!(node.kind, ast::StmtKind::Empty));
@@ -142,14 +136,14 @@ impl Annotatable {
 
     pub fn expect_trait_item(self) -> P<ast::AssocItem> {
         match self {
-            Annotatable::TraitItem(i) => i,
+            Annotatable::AssocItem(i, AssocCtxt::Trait) => i,
             _ => panic!("expected Item"),
         }
     }
 
     pub fn expect_impl_item(self) -> P<ast::AssocItem> {
         match self {
-            Annotatable::ImplItem(i) => i,
+            Annotatable::AssocItem(i, AssocCtxt::Impl) => i,
             _ => panic!("expected Item"),
         }
     }

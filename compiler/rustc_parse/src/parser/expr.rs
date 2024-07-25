@@ -10,7 +10,7 @@ use super::{
 
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use ast::mut_visit::{noop_visit_expr, MutVisitor};
+use ast::mut_visit::{self, MutVisitor};
 use ast::token::IdentIsRaw;
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
 use core::mem;
@@ -3939,14 +3939,14 @@ impl MutVisitor for CondChecker<'_> {
                 }
             }
             ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, _, _) => {
-                noop_visit_expr(e, self);
+                mut_visit::walk_expr(self, e);
             }
             ExprKind::Binary(Spanned { node: BinOpKind::Or, span: or_span }, _, _)
                 if let None | Some(NotSupportedOr(_)) = self.forbid_let_reason =>
             {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason = Some(NotSupportedOr(or_span));
-                noop_visit_expr(e, self);
+                mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Paren(ref inner)
@@ -3954,7 +3954,7 @@ impl MutVisitor for CondChecker<'_> {
             {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason = Some(NotSupportedParentheses(inner.span));
-                noop_visit_expr(e, self);
+                mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Assign(ref lhs, _, span) => {
@@ -3972,7 +3972,7 @@ impl MutVisitor for CondChecker<'_> {
                 }
                 let comparison = self.comparison;
                 self.comparison = Some(errors::MaybeComparison { span: span.shrink_to_hi() });
-                noop_visit_expr(e, self);
+                mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
                 self.missing_let = missing_let;
                 self.comparison = comparison;
@@ -3992,7 +3992,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Paren(_) => {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason = Some(OtherForbidden);
-                noop_visit_expr(e, self);
+                mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Cast(ref mut op, _) | ExprKind::Type(ref mut op, _) => {

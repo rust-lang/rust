@@ -165,7 +165,7 @@ use crate::ffi::CStr;
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem::{self, forget};
+use crate::mem::{self, forget, ManuallyDrop};
 use crate::num::NonZero;
 use crate::panic;
 use crate::panicking;
@@ -192,22 +192,14 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 #[macro_use]
 mod local;
 
-cfg_if::cfg_if! {
-    if #[cfg(test)] {
-        // Avoid duplicating the global state associated with thread-locals between this crate and
-        // realstd. Miri relies on this.
-        pub use realstd::thread::{local_impl, AccessError, LocalKey};
-    } else {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use self::local::{AccessError, LocalKey};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::local::{AccessError, LocalKey};
 
-        // Implementation details used by the thread_local!{} macro.
-        #[doc(hidden)]
-        #[unstable(feature = "thread_local_internals", issue = "none")]
-        pub mod local_impl {
-            pub use crate::sys::thread_local::*;
-        }
-    }
+// Implementation details used by the thread_local!{} macro.
+#[doc(hidden)]
+#[unstable(feature = "thread_local_internals", issue = "none")]
+pub mod local_impl {
+    pub use crate::sys::thread_local::*;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,11 +502,10 @@ impl Builder {
                 MaybeDangling(mem::MaybeUninit::new(x))
             }
             fn into_inner(self) -> T {
-                // SAFETY: we are always initialized.
-                let ret = unsafe { self.0.assume_init_read() };
                 // Make sure we don't drop.
-                mem::forget(self);
-                ret
+                let this = ManuallyDrop::new(self);
+                // SAFETY: we are always initialized.
+                unsafe { this.0.assume_init_read() }
             }
         }
         impl<T> Drop for MaybeDangling<T> {

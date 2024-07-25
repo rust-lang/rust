@@ -23,7 +23,7 @@ use crate::ops::{Deref, DerefMut};
     target_os = "uefi",
     windows,
 ))]
-#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
+#[repr(transparent)]
 #[lang = "va_list"]
 pub struct VaListImpl<'f> {
     ptr: *mut c_void,
@@ -115,7 +115,7 @@ pub struct VaListImpl<'f> {
 }
 
 /// A wrapper for a `va_list`
-#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct VaList<'a, 'f: 'a> {
     #[cfg(any(

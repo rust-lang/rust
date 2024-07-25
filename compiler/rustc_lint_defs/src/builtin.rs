@@ -1424,7 +1424,7 @@ declare_lint! {
     Deny,
     "detects missing fragment specifiers in unused `macro_rules!` patterns",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
     };
 }

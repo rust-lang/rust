@@ -191,7 +191,7 @@ mod c_long_definition {
 //     be UB.
 #[doc = include_str!("c_void.md")]
 #[lang = "c_void"]
-#[cfg_attr(not(doc), repr(u8))] // work around https://github.com/rust-lang/rust/issues/90435
+#[cfg_attr(not(doc), repr(u8))] // An implementation detail we don't want to show up in rustdoc
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {
     #[unstable(

@@ -51,6 +51,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestCase::Never => TestKind::Never,
 
+            // Or-patterns are not tested directly; instead they are expanded into subcandidates,
+            // which are then distinguished by testing whatever non-or patterns they contain.
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
 
             TestCase::Irrefutable { .. } => span_bug!(
@@ -544,6 +546,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .enumerate()
             .find(|&(_, mp)| mp.place == Some(test_place))?;
 
+        // If true, the match pair is completely entailed by its corresponding test
+        // branch, so it can be removed. If false, the match pair is _compatible_
+        // with its test branch, but still needs a more specific test.
         let fully_matched;
         let ret = match (&test.kind, &match_pair.test_case) {
             // If we are performing a variant switch, then this
@@ -565,8 +570,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (TestKind::SwitchInt, &TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
-                // Beware: there might be some ranges sorted into the failure case; we must not add
-                // a success case that could be matched by one of these ranges.
+                // An important invariant of candidate sorting is that a candidate
+                // must not match in multiple branches. For `SwitchInt` tests, adding
+                // a new value might invalidate that property for range patterns that
+                // have already been sorted into the failure arm, so we must take care
+                // not to add such values here.
                 let is_covering_range = |test_case: &TestCase<'_, 'tcx>| {
                     test_case.as_range().is_some_and(|range| {
                         matches!(range.contains(value, self.tcx, self.param_env), None | Some(true))
@@ -591,6 +599,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             (TestKind::SwitchInt, TestCase::Range(range)) => {
+                // When performing a `SwitchInt` test, a range pattern can be
+                // sorted into the failure arm if it doesn't contain _any_ of
+                // the values being tested. (This restricts what values can be
+                // added to the test by subsequent candidates.)
                 fully_matched = false;
                 let not_contained =
                     sorted_candidates.keys().filter_map(|br| br.as_constant()).copied().all(

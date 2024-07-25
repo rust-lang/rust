@@ -2,7 +2,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:8
    |
 LL | fn f<F:Trait(isize) -> isize>(x: F) {}
-   |        ^^^^^------- help: remove these parenthetical generics
+   |        ^^^^^------- help: remove the unnecessary parenthetical generics
    |        |
    |        expected 0 generic arguments
    |

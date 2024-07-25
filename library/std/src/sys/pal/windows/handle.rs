@@ -3,16 +3,17 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, Read};
-use crate::mem;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::ptr;
 use crate::sys::c;
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use core::cmp;
+use core::ffi::c_void;
+use core::mem;
+use core::ptr;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
@@ -250,15 +251,15 @@ impl Handle {
         // the provided `len`.
         let status = unsafe {
             c::NtReadFile(
-                self.as_handle(),
+                self.as_raw_handle(),
                 ptr::null_mut(),
                 None,
                 ptr::null_mut(),
                 &mut io_status,
-                buf,
+                buf.cast::<c_void>(),
                 len,
-                offset.map(|n| n as _).as_ref(),
-                None,
+                offset.as_ref().map(|n| ptr::from_ref(n).cast::<i64>()).unwrap_or(ptr::null()),
+                ptr::null(),
             )
         };
 
@@ -300,15 +301,15 @@ impl Handle {
         let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
         let status = unsafe {
             c::NtWriteFile(
-                self.as_handle(),
+                self.as_raw_handle(),
                 ptr::null_mut(),
                 None,
                 ptr::null_mut(),
                 &mut io_status,
-                buf.as_ptr(),
+                buf.as_ptr().cast::<c_void>(),
                 len,
-                offset.map(|n| n as _).as_ref(),
-                None,
+                offset.as_ref().map(|n| ptr::from_ref(n).cast::<i64>()).unwrap_or(ptr::null()),
+                ptr::null(),
             )
         };
         let status = if status == c::STATUS_PENDING {

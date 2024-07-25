@@ -5,7 +5,7 @@ use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::convert::TryInto;
 use crate::intrinsics;
-use crate::mem;
+use crate::mem::{self, ManuallyDrop};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
 use crate::ptr::{self, NonNull};
 use crate::slice;
@@ -176,6 +176,7 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
 /// are used solely to indicate intent: a mutable reference is for writing to
 /// user memory, an immutable reference for reading from user memory.
 #[unstable(feature = "sgx_platform", issue = "56975")]
+#[repr(transparent)]
 pub struct UserRef<T: ?Sized>(UnsafeCell<T>);
 /// An owned type in userspace memory. `User<T>` is equivalent to `Box<T>` in
 /// enclave memory. Access to the memory is only allowed by copying to avoid
@@ -266,9 +267,7 @@ where
     /// Converts this value into a raw pointer. The value will no longer be
     /// automatically freed.
     pub fn into_raw(self) -> *mut T {
-        let ret = self.0;
-        mem::forget(self);
-        ret.as_ptr() as _
+        ManuallyDrop::new(self).0.as_ptr() as _
     }
 }
 

@@ -4,13 +4,10 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 #![allow(clippy::style)]
-#![allow(unsafe_op_in_unsafe_fn)]
 
-use crate::ffi::CStr;
-use crate::mem;
-use crate::os::raw::{c_uint, c_ulong, c_ushort, c_void};
-use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
-use crate::ptr;
+use core::ffi::{c_uint, c_ulong, c_ushort, c_void, CStr};
+use core::mem;
+use core::ptr;
 
 pub(super) mod windows_targets;
 
@@ -114,89 +111,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
 }
 }
 
-pub unsafe extern "system" fn WriteFileEx(
-    hFile: BorrowedHandle<'_>,
-    lpBuffer: *mut ::core::ffi::c_void,
-    nNumberOfBytesToWrite: u32,
-    lpOverlapped: *mut OVERLAPPED,
-    lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
-) -> BOOL {
-    windows_sys::WriteFileEx(
-        hFile.as_raw_handle(),
-        lpBuffer.cast::<u8>(),
-        nNumberOfBytesToWrite,
-        lpOverlapped,
-        lpCompletionRoutine,
-    )
-}
-
-pub unsafe extern "system" fn ReadFileEx(
-    hFile: BorrowedHandle<'_>,
-    lpBuffer: *mut ::core::ffi::c_void,
-    nNumberOfBytesToRead: u32,
-    lpOverlapped: *mut OVERLAPPED,
-    lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
-) -> BOOL {
-    windows_sys::ReadFileEx(
-        hFile.as_raw_handle(),
-        lpBuffer.cast::<u8>(),
-        nNumberOfBytesToRead,
-        lpOverlapped,
-        lpCompletionRoutine,
-    )
-}
-
-cfg_if::cfg_if! {
-if #[cfg(not(target_vendor = "uwp"))] {
-pub unsafe fn NtReadFile(
-    filehandle: BorrowedHandle<'_>,
-    event: HANDLE,
-    apcroutine: PIO_APC_ROUTINE,
-    apccontext: *mut c_void,
-    iostatusblock: &mut IO_STATUS_BLOCK,
-    buffer: *mut crate::mem::MaybeUninit<u8>,
-    length: u32,
-    byteoffset: Option<&i64>,
-    key: Option<&u32>,
-) -> NTSTATUS {
-    windows_sys::NtReadFile(
-        filehandle.as_raw_handle(),
-        event,
-        apcroutine,
-        apccontext,
-        iostatusblock,
-        buffer.cast::<c_void>(),
-        length,
-        byteoffset.map(|o| o as *const i64).unwrap_or(ptr::null()),
-        key.map(|k| k as *const u32).unwrap_or(ptr::null()),
-    )
-}
-pub unsafe fn NtWriteFile(
-    filehandle: BorrowedHandle<'_>,
-    event: HANDLE,
-    apcroutine: PIO_APC_ROUTINE,
-    apccontext: *mut c_void,
-    iostatusblock: &mut IO_STATUS_BLOCK,
-    buffer: *const u8,
-    length: u32,
-    byteoffset: Option<&i64>,
-    key: Option<&u32>,
-) -> NTSTATUS {
-    windows_sys::NtWriteFile(
-        filehandle.as_raw_handle(),
-        event,
-        apcroutine,
-        apccontext,
-        iostatusblock,
-        buffer.cast::<c_void>(),
-        length,
-        byteoffset.map(|o| o as *const i64).unwrap_or(ptr::null()),
-        key.map(|k| k as *const u32).unwrap_or(ptr::null()),
-    )
-}
-}
-}
-
 // Use raw-dylib to import ProcessPrng as we can't rely on there being an import library.
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "win7"))] {
@@ -220,26 +134,26 @@ compat_fn_with_fallback! {
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
     pub fn SetThreadDescription(hthread: HANDLE, lpthreaddescription: PCWSTR) -> HRESULT {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL
+        unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL }
     }
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getthreaddescription
     pub fn GetThreadDescription(hthread: HANDLE, lpthreaddescription: *mut PWSTR) -> HRESULT {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL
+        unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL }
     }
 
     // >= Win8 / Server 2012
     // https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
     #[cfg(target_vendor = "win7")]
     pub fn GetSystemTimePreciseAsFileTime(lpsystemtimeasfiletime: *mut FILETIME) -> () {
-        GetSystemTimeAsFileTime(lpsystemtimeasfiletime)
+        unsafe { GetSystemTimeAsFileTime(lpsystemtimeasfiletime) }
     }
 
     // >= Win11 / Server 2022
     // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppath2a
     pub fn GetTempPath2W(bufferlength: u32, buffer: PWSTR) -> u32 {
-        GetTempPathW(bufferlength, buffer)
+        unsafe {  GetTempPathW(bufferlength, buffer) }
     }
 }
 
@@ -272,12 +186,12 @@ extern "system" {
 compat_fn_optional! {
     crate::sys::compat::load_synch_functions();
     pub fn WaitOnAddress(
-        address: *const ::core::ffi::c_void,
-        compareaddress: *const ::core::ffi::c_void,
+        address: *const c_void,
+        compareaddress: *const c_void,
         addresssize: usize,
         dwmilliseconds: u32
     ) -> BOOL;
-    pub fn WakeByAddressSingle(address: *const ::core::ffi::c_void);
+    pub fn WakeByAddressSingle(address: *const c_void);
 }
 
 #[cfg(any(target_vendor = "win7", target_vendor = "uwp"))]
@@ -324,36 +238,36 @@ compat_fn_with_fallback! {
         shareaccess: FILE_SHARE_MODE,
         createdisposition: NTCREATEFILE_CREATE_DISPOSITION,
         createoptions: NTCREATEFILE_CREATE_OPTIONS,
-        eabuffer: *const ::core::ffi::c_void,
+        eabuffer: *const c_void,
         ealength: u32
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }
     #[cfg(target_vendor = "uwp")]
     pub fn NtReadFile(
-        filehandle: BorrowedHandle<'_>,
+        filehandle: HANDLE,
         event: HANDLE,
         apcroutine: PIO_APC_ROUTINE,
-        apccontext: *mut c_void,
-        iostatusblock: &mut IO_STATUS_BLOCK,
-        buffer: *mut crate::mem::MaybeUninit<u8>,
+        apccontext: *const c_void,
+        iostatusblock: *mut IO_STATUS_BLOCK,
+        buffer: *mut c_void,
         length: u32,
-        byteoffset: Option<&i64>,
-        key: Option<&u32>
+        byteoffset: *const i64,
+        key: *const u32
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }
     #[cfg(target_vendor = "uwp")]
     pub fn NtWriteFile(
-        filehandle: BorrowedHandle<'_>,
+        filehandle: HANDLE,
         event: HANDLE,
         apcroutine: PIO_APC_ROUTINE,
-        apccontext: *mut c_void,
-        iostatusblock: &mut IO_STATUS_BLOCK,
-        buffer: *const u8,
+        apccontext: *const c_void,
+        iostatusblock: *mut IO_STATUS_BLOCK,
+        buffer: *const c_void,
         length: u32,
-        byteoffset: Option<&i64>,
-        key: Option<&u32>
+        byteoffset: *const i64,
+        key: *const u32
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }

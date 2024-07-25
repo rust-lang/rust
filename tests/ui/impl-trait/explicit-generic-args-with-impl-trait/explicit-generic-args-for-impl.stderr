@@ -2,7 +2,7 @@ error[E0107]: function takes 1 generic argument but 2 generic arguments were sup
   --> $DIR/explicit-generic-args-for-impl.rs:4:5
    |
 LL |     foo::<str, String>("".to_string());
-   |     ^^^        ------ help: remove this generic argument
+   |     ^^^      -------- help: remove the unnecessary generic argument
    |     |
    |     expected 1 generic argument
    |

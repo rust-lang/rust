@@ -37,7 +37,7 @@ windows_targets::link!("kernel32.dll" "system" fn GetProcessHeap() -> c::HANDLE)
 // Note that `dwBytes` is allowed to be zero, contrary to some other allocators.
 //
 // See https://docs.microsoft.com/windows/win32/api/heapapi/nf-heapapi-heapalloc
-windows_targets::link!("kernel32.dll" "system" fn HeapAlloc(hheap: c::HANDLE, dwflags: u32, dwbytes: usize) -> *mut core::ffi::c_void);
+windows_targets::link!("kernel32.dll" "system" fn HeapAlloc(hheap: c::HANDLE, dwflags: u32, dwbytes: usize) -> *mut c_void);
 
 // Reallocate a block of memory behind a given pointer `lpMem` from a given heap `hHeap`,
 // to a block of at least `dwBytes` bytes, either shrinking the block in place,
@@ -61,9 +61,9 @@ windows_targets::link!("kernel32.dll" "system" fn HeapAlloc(hheap: c::HANDLE, dw
 windows_targets::link!("kernel32.dll" "system" fn HeapReAlloc(
     hheap: c::HANDLE,
     dwflags : u32,
-    lpmem: *const core::ffi::c_void,
+    lpmem: *const c_void,
     dwbytes: usize
-) -> *mut core::ffi::c_void);
+) -> *mut c_void);
 
 // Free a block of memory behind a given pointer `lpMem` from a given heap `hHeap`.
 // Returns a nonzero value if the operation is successful, and zero if the operation fails.
@@ -79,7 +79,7 @@ windows_targets::link!("kernel32.dll" "system" fn HeapReAlloc(
 // Note that `lpMem` is allowed to be null, which will not cause the operation to fail.
 //
 // See https://docs.microsoft.com/windows/win32/api/heapapi/nf-heapapi-heapfree
-windows_targets::link!("kernel32.dll" "system" fn HeapFree(hheap: c::HANDLE, dwflags: u32, lpmem: *const core::ffi::c_void) -> c::BOOL);
+windows_targets::link!("kernel32.dll" "system" fn HeapFree(hheap: c::HANDLE, dwflags: u32, lpmem: *const c_void) -> c::BOOL);
 
 // Cached handle to the default heap of the current process.
 // Either a non-null handle returned by `GetProcessHeap`, or null when not yet initialized or `GetProcessHeap` failed.

@@ -1,4 +1,7 @@
-//@ known-bug: #119272
+//! used to ICE: #119272
+
+//@ check-pass
+
 #![feature(type_alias_impl_trait)]
 mod defining_scope {
     use super::*;

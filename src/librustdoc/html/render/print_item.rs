@@ -316,7 +316,8 @@ trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + fmt::Display {
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     write!(w, "{}", document(cx, item, None, HeadingOffset::H2));
 
-    let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
+    let mut not_stripped_items =
+        items.iter().filter(|i| !i.is_stripped()).enumerate().collect::<Vec<_>>();
 
     // the order of item types in the listing
     fn reorder(ty: ItemType) -> u8 {
@@ -338,37 +339,29 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         }
     }
 
-    fn cmp(
-        i1: &clean::Item,
-        i2: &clean::Item,
-        idx1: usize,
-        idx2: usize,
-        tcx: TyCtxt<'_>,
-    ) -> Ordering {
-        let ty1 = i1.type_();
-        let ty2 = i2.type_();
-        if item_ty_to_section(ty1) != item_ty_to_section(ty2)
-            || (ty1 != ty2 && (ty1 == ItemType::ExternCrate || ty2 == ItemType::ExternCrate))
-        {
-            return (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2));
+    fn cmp(i1: &clean::Item, i2: &clean::Item, tcx: TyCtxt<'_>) -> Ordering {
+        let rty1 = reorder(i1.type_());
+        let rty2 = reorder(i2.type_());
+        if rty1 != rty2 {
+            return rty1.cmp(&rty2);
         }
-        let s1 = i1.stability(tcx).as_ref().map(|s| s.level);
-        let s2 = i2.stability(tcx).as_ref().map(|s| s.level);
-        if let (Some(a), Some(b)) = (s1, s2) {
-            match (a.is_stable(), b.is_stable()) {
-                (true, true) | (false, false) => {}
-                (false, true) => return Ordering::Greater,
-                (true, false) => return Ordering::Less,
-            }
+        let is_stable1 = i1.stability(tcx).as_ref().map(|s| s.level.is_stable()).unwrap_or(true);
+        let is_stable2 = i2.stability(tcx).as_ref().map(|s| s.level.is_stable()).unwrap_or(true);
+        if is_stable1 != is_stable2 {
+            // true is bigger than false in the standard bool ordering,
+            // but we actually want stable items to come first
+            return is_stable2.cmp(&is_stable1);
         }
         let lhs = i1.name.unwrap_or(kw::Empty);
         let rhs = i2.name.unwrap_or(kw::Empty);
         compare_names(lhs.as_str(), rhs.as_str())
     }
 
+    let tcx = cx.tcx();
+
     match cx.shared.module_sorting {
         ModuleSorting::Alphabetical => {
-            indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2, cx.tcx()));
+            not_stripped_items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
         }
         ModuleSorting::DeclarationOrder => {}
     }
@@ -391,24 +384,19 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
     // can be identical even if the elements are different (mostly in imports).
     // So in case this is an import, we keep everything by adding a "unique id"
     // (which is the position in the vector).
-    indices.dedup_by_key(|i| {
+    not_stripped_items.dedup_by_key(|(idx, i)| {
         (
-            items[*i].item_id,
-            if items[*i].name.is_some() { Some(full_path(cx, &items[*i])) } else { None },
-            items[*i].type_(),
-            if items[*i].is_import() { *i } else { 0 },
+            i.item_id,
+            if i.name.is_some() { Some(full_path(cx, i)) } else { None },
+            i.type_(),
+            if i.is_import() { *idx } else { 0 },
         )
     });
 
-    debug!("{indices:?}");
+    debug!("{not_stripped_items:?}");
     let mut last_section = None;
 
-    for &idx in &indices {
-        let myitem = &items[idx];
-        if myitem.is_stripped() {
-            continue;
-        }
-
+    for (_, myitem) in &not_stripped_items {
         let my_section = item_ty_to_section(myitem.type_());
         if Some(my_section) != last_section {
             if last_section.is_some() {
@@ -424,7 +412,6 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             );
         }
 
-        let tcx = cx.tcx();
         match *myitem.kind {
             clean::ExternCrateItem { ref src } => {
                 use crate::html::format::anchor;
@@ -453,7 +440,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 let stab_tags = if let Some(import_def_id) = import.source.did {
                     // Just need an item with the correct def_id and attrs
                     let import_item =
-                        clean::Item { item_id: import_def_id.into(), ..myitem.clone() };
+                        clean::Item { item_id: import_def_id.into(), ..(*myitem).clone() };
 
                     let stab_tags = Some(extra_info_tags(&import_item, item, tcx).to_string());
                     stab_tags
@@ -2010,40 +1997,102 @@ fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
 }
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
-pub(crate) fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
-    /// Takes a non-numeric and a numeric part from the given &str.
-    fn take_parts<'a>(s: &mut &'a str) -> (&'a str, &'a str) {
-        let i = s.find(|c: char| c.is_ascii_digit());
-        let (a, b) = s.split_at(i.unwrap_or(s.len()));
-        let i = b.find(|c: char| !c.is_ascii_digit());
-        let (b, c) = b.split_at(i.unwrap_or(b.len()));
-        *s = c;
-        (a, b)
-    }
+///
+/// This code is copied from [`rustfmt`], and should probably be released as a crate at some point.
+///
+/// [`rustfmt`]:https://github.com/rust-lang/rustfmt/blob/rustfmt-2.0.0-rc.2/src/formatting/reorder.rs#L32
+pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
+    let mut left = left.chars().peekable();
+    let mut right = right.chars().peekable();
 
-    while !lhs.is_empty() || !rhs.is_empty() {
-        let (la, lb) = take_parts(&mut lhs);
-        let (ra, rb) = take_parts(&mut rhs);
-        // First process the non-numeric part.
-        match la.cmp(ra) {
-            Ordering::Equal => (),
-            x => return x,
-        }
-        // Then process the numeric part, if both sides have one (and they fit in a u64).
-        if let (Ok(ln), Ok(rn)) = (lb.parse::<u64>(), rb.parse::<u64>()) {
-            match ln.cmp(&rn) {
-                Ordering::Equal => (),
-                x => return x,
+    loop {
+        // The strings are equal so far and not inside a number in both sides
+        let (l, r) = match (left.next(), right.next()) {
+            // Is this the end of both strings?
+            (None, None) => return Ordering::Equal,
+            // If for one, the shorter one is considered smaller
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(l), Some(r)) => (l, r),
+        };
+        let next_ordering = match (l.to_digit(10), r.to_digit(10)) {
+            // If neither is a digit, just compare them
+            (None, None) => Ord::cmp(&l, &r),
+            // The one with shorter non-digit run is smaller
+            // For `strverscmp` it's smaller iff next char in longer is greater than digits
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            // If both start numbers, we have to compare the numbers
+            (Some(l), Some(r)) => {
+                if l == 0 || r == 0 {
+                    // Fraction mode: compare as if there was leading `0.`
+                    let ordering = Ord::cmp(&l, &r);
+                    if ordering != Ordering::Equal {
+                        return ordering;
+                    }
+                    loop {
+                        // Get next pair
+                        let (l, r) = match (left.peek(), right.peek()) {
+                            // Is this the end of both strings?
+                            (None, None) => return Ordering::Equal,
+                            // If for one, the shorter one is considered smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            (Some(l), Some(r)) => (l, r),
+                        };
+                        // Are they digits?
+                        match (l.to_digit(10), r.to_digit(10)) {
+                            // If out of digits, use the stored ordering due to equal length
+                            (None, None) => break Ordering::Equal,
+                            // If one is shorter, it's smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            // If both are digits, consume them and take into account
+                            (Some(l), Some(r)) => {
+                                left.next();
+                                right.next();
+                                let ordering = Ord::cmp(&l, &r);
+                                if ordering != Ordering::Equal {
+                                    return ordering;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Integer mode
+                    let mut same_length_ordering = Ord::cmp(&l, &r);
+                    loop {
+                        // Get next pair
+                        let (l, r) = match (left.peek(), right.peek()) {
+                            // Is this the end of both strings?
+                            (None, None) => return same_length_ordering,
+                            // If for one, the shorter one is considered smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            (Some(l), Some(r)) => (l, r),
+                        };
+                        // Are they digits?
+                        match (l.to_digit(10), r.to_digit(10)) {
+                            // If out of digits, use the stored ordering due to equal length
+                            (None, None) => break same_length_ordering,
+                            // If one is shorter, it's smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            // If both are digits, consume them and take into account
+                            (Some(l), Some(r)) => {
+                                left.next();
+                                right.next();
+                                same_length_ordering = same_length_ordering.then(Ord::cmp(&l, &r));
+                            }
+                        }
+                    }
+                }
             }
-        }
-        // Then process the numeric part again, but this time as strings.
-        match lb.cmp(rb) {
-            Ordering::Equal => (),
-            x => return x,
+        };
+        if next_ordering != Ordering::Equal {
+            return next_ordering;
         }
     }
-
-    Ordering::Equal
 }
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {

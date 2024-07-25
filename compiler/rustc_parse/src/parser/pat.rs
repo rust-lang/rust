@@ -12,7 +12,7 @@ use crate::errors::{
 };
 use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
+use rustc_ast::mut_visit::{walk_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
 use rustc_ast::{
@@ -810,7 +810,7 @@ impl<'a> Parser<'a> {
                     self.0 = true;
                     *m = Mutability::Mut;
                 }
-                noop_visit_pat(pat, self);
+                walk_pat(self, pat);
             }
         }
 

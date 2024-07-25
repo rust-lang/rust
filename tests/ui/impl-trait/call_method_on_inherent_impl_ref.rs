@@ -13,7 +13,6 @@ where
 }
 
 fn my_foo() -> impl std::fmt::Debug {
-    //[current]~^ cycle
     if false {
         let x = my_foo();
         //[next]~^ type annotations needed

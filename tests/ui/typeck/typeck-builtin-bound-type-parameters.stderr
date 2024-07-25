@@ -2,7 +2,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/typeck-builtin-bound-type-parameters.rs:1:11
    |
 LL | fn foo1<T:Copy<U>, U>(x: T) {}
-   |           ^^^^--- help: remove these generics
+   |           ^^^^--- help: remove the unnecessary generics
    |           |
    |           expected 0 generic arguments
 
@@ -10,7 +10,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
    |
 LL | trait Trait: Copy<dyn Send> {}
-   |              ^^^^---------- help: remove these generics
+   |              ^^^^---------- help: remove the unnecessary generics
    |              |
    |              expected 0 generic arguments
 
@@ -18,7 +18,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
    |
 LL | trait Trait: Copy<dyn Send> {}
-   |              ^^^^---------- help: remove these generics
+   |              ^^^^---------- help: remove the unnecessary generics
    |              |
    |              expected 0 generic arguments
    |
@@ -28,7 +28,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
    |
 LL | trait Trait: Copy<dyn Send> {}
-   |              ^^^^---------- help: remove these generics
+   |              ^^^^---------- help: remove the unnecessary generics
    |              |
    |              expected 0 generic arguments
    |
@@ -38,7 +38,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/typeck-builtin-bound-type-parameters.rs:9:21
    |
 LL | struct MyStruct1<T: Copy<T>>(T);
-   |                     ^^^^--- help: remove these generics
+   |                     ^^^^--- help: remove the unnecessary generics
    |                     |
    |                     expected 0 generic arguments
 
@@ -46,7 +46,7 @@ error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was suppl
   --> $DIR/typeck-builtin-bound-type-parameters.rs:12:25
    |
 LL | struct MyStruct2<'a, T: Copy<'a>>(&'a T);
-   |                         ^^^^---- help: remove these generics
+   |                         ^^^^---- help: remove the unnecessary generics
    |                         |
    |                         expected 0 lifetime arguments
 
@@ -54,7 +54,7 @@ error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was suppl
   --> $DIR/typeck-builtin-bound-type-parameters.rs:15:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |               ^^^^ -- help: remove this lifetime argument
+   |               ^^^^ -- help: remove the lifetime argument
    |               |
    |               expected 0 lifetime arguments
 
@@ -62,7 +62,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/typeck-builtin-bound-type-parameters.rs:15:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |               ^^^^     - help: remove this generic argument
+   |               ^^^^     - help: remove the unnecessary generic argument
    |               |
    |               expected 0 generic arguments
 
