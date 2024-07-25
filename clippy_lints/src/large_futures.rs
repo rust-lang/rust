@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
@@ -39,14 +40,15 @@ declare_clippy_lint! {
     "large future may lead to unexpected stack overflows"
 }
 
-#[derive(Copy, Clone)]
 pub struct LargeFuture {
     future_size_threshold: u64,
 }
 
 impl LargeFuture {
-    pub fn new(future_size_threshold: u64) -> Self {
-        Self { future_size_threshold }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            future_size_threshold: conf.future_size_threshold,
+        }
     }
 }
 

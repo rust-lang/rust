@@ -281,7 +281,7 @@ fn update_res(cx: &LateContext<'_>, parent_certainty: Certainty, path_segment: &
     {
         let mut def_path = cx.get_def_path(def_id);
         def_path.push(path_segment.ident.name);
-        let reses = def_path_res(cx, &def_path.iter().map(Symbol::as_str).collect::<Vec<_>>());
+        let reses = def_path_res(cx.tcx, &def_path.iter().map(Symbol::as_str).collect::<Vec<_>>());
         if let [res] = reses.as_slice() { Some(*res) } else { None }
     } else {
         None

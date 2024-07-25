@@ -65,13 +65,13 @@ declare_lint_pass!(InconsistentStructConstructor => [INCONSISTENT_STRUCT_CONSTRU
 
 impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !expr.span.from_expansion()
-            && let ExprKind::Struct(qpath, fields, base) = expr.kind
+        if let ExprKind::Struct(qpath, fields, base) = expr.kind
+            && fields.iter().all(|f| f.is_shorthand)
+            && !expr.span.from_expansion()
             && let ty = cx.typeck_results().expr_ty(expr)
             && let Some(adt_def) = ty.ty_adt_def()
             && adt_def.is_struct()
             && let Some(variant) = adt_def.variants().iter().next()
-            && fields.iter().all(|f| f.is_shorthand)
         {
             let mut def_order_map = FxHashMap::default();
             for (idx, field) in variant.fields.iter().enumerate() {

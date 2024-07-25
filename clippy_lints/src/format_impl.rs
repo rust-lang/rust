@@ -97,7 +97,6 @@ struct FormatTraitNames {
     formatter_name: Option<Symbol>,
 }
 
-#[derive(Default)]
 pub struct FormatImpl {
     format_args: FormatArgsStorage,
     // Whether we are inside Display or Debug trait impl - None for neither

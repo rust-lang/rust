@@ -90,13 +90,14 @@ use std::hash::BuildHasherDefault;
 use std::iter::{once, repeat};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
+use clippy_config::types::DisallowedPath;
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
@@ -678,7 +679,7 @@ fn item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Re
 /// would have both a [`DefKind::Mod`] and [`DefKind::Macro`].
 ///
 /// This function is expensive and should be used sparingly.
-pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Vec<Res> {
+pub fn def_path_res(tcx: TyCtxt<'_>, path: &[&str]) -> Vec<Res> {
     fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> impl Iterator<Item = DefId> + '_ {
         tcx.crates(())
             .iter()
@@ -686,8 +687,6 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Vec<Res> {
             .filter(move |&num| tcx.crate_name(num) == name)
             .map(CrateNum::as_def_id)
     }
-
-    let tcx = cx.tcx;
 
     let (base, mut path) = match *path {
         [primitive] => {
@@ -739,16 +738,28 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Vec<Res> {
 }
 
 /// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
-pub fn def_path_def_ids(cx: &LateContext<'_>, path: &[&str]) -> impl Iterator<Item = DefId> {
-    def_path_res(cx, path).into_iter().filter_map(|res| res.opt_def_id())
+pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> {
+    def_path_res(tcx, path).into_iter().filter_map(|res| res.opt_def_id())
+}
+
+/// Creates a map of disallowed items to the reason they were disallowed.
+pub fn create_disallowed_map(
+    tcx: TyCtxt<'_>,
+    disallowed: &'static [DisallowedPath],
+) -> DefIdMap<(&'static str, Option<&'static str>)> {
+    disallowed
+        .iter()
+        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x.reason()))
+        .flat_map(|(name, path, reason)| def_path_def_ids(tcx, &path).map(move |id| (id, (name, reason))))
+        .collect()
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
 /// It could be a trait or trait alias.
 ///
 /// This function is expensive and should be used sparingly.
-pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
-    def_path_res(cx, path).into_iter().find_map(|res| match res {
+pub fn get_trait_def_id(tcx: TyCtxt<'_>, path: &[&str]) -> Option<DefId> {
+    def_path_res(tcx, path).into_iter().find_map(|res| match res {
         Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
         _ => None,
     })
@@ -1411,7 +1422,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
                 ExprKind::Closure { .. } | ExprKind::Loop(..) => return Some(e),
                 _ => (),
             },
-            Node::Stmt(_) | Node::Block(_) | Node::LetStmt(_) | Node::Arm(_) => (),
+            Node::Stmt(_) | Node::Block(_) | Node::LetStmt(_) | Node::Arm(_) | Node::ExprField(_) => (),
             _ => break,
         }
     }

@@ -109,23 +109,36 @@ pub fn for_each_expr_without_closures<'tcx, B, C: Continue>(
         res: Option<B>,
     }
     impl<'tcx, B, C: Continue, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B, C>> Visitor<'tcx> for V<B, F> {
-        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
+        type Result = ControlFlow<()>;
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) -> ControlFlow<()> {
             if self.res.is_some() {
-                return;
+                return ControlFlow::Break(());
             }
             match (self.f)(e) {
                 ControlFlow::Continue(c) if c.descend() => walk_expr(self, e),
-                ControlFlow::Break(b) => self.res = Some(b),
-                ControlFlow::Continue(_) => (),
+                ControlFlow::Break(b) => {
+                    self.res = Some(b);
+                    ControlFlow::Break(())
+                },
+                ControlFlow::Continue(_) => ControlFlow::Continue(()),
             }
         }
 
         // Avoid unnecessary `walk_*` calls.
-        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) {}
-        fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) {}
-        fn visit_qpath(&mut self, _: &'tcx QPath<'tcx>, _: HirId, _: Span) {}
+        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) -> ControlFlow<()> {
+            ControlFlow::Continue(())
+        }
+        fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) -> ControlFlow<()> {
+            ControlFlow::Continue(())
+        }
+        fn visit_qpath(&mut self, _: &'tcx QPath<'tcx>, _: HirId, _: Span) -> ControlFlow<()> {
+            ControlFlow::Continue(())
+        }
         // Avoid monomorphising all `visit_*` functions.
-        fn visit_nested_item(&mut self, _: ItemId) {}
+        fn visit_nested_item(&mut self, _: ItemId) -> ControlFlow<()> {
+            ControlFlow::Continue(())
+        }
     }
     let mut v = V { f, res: None };
     node.visit(&mut v);

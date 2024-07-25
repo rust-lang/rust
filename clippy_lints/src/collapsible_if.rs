@@ -93,20 +93,14 @@ declare_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
 
 impl EarlyLintPass for CollapsibleIf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        if !expr.span.from_expansion() {
-            check_if(cx, expr);
-        }
-    }
-}
-
-fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
-    if let ast::ExprKind::If(check, then, else_) = &expr.kind {
-        if let Some(else_) = else_ {
-            check_collapsible_maybe_if_let(cx, then.span, else_);
-        } else if let ast::ExprKind::Let(..) = check.kind {
-            // Prevent triggering on `if let a = b { if c { .. } }`.
-        } else {
-            check_collapsible_no_if_let(cx, expr, check, then);
+        if let ast::ExprKind::If(cond, then, else_) = &expr.kind
+            && !expr.span.from_expansion()
+        {
+            if let Some(else_) = else_ {
+                check_collapsible_maybe_if_let(cx, then.span, else_);
+            } else if !matches!(cond.kind, ast::ExprKind::Let(..)) {
+                check_collapsible_no_if_let(cx, expr, cond, then);
+            }
         }
     }
 }
@@ -189,13 +183,10 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
 
 /// If the block contains only one expression, return it.
 fn expr_block(block: &ast::Block) -> Option<&ast::Expr> {
-    let mut it = block.stmts.iter();
-
-    if let (Some(stmt), None) = (it.next(), it.next()) {
-        match stmt.kind {
-            ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => Some(expr),
-            _ => None,
-        }
+    if let [stmt] = &*block.stmts
+        && let ast::StmtKind::Expr(expr) | ast::StmtKind::Semi(expr) = &stmt.kind
+    {
+        Some(expr)
     } else {
         None
     }

@@ -5,7 +5,7 @@
 
 use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::spanned::Spanned;
-use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, Mode, OutputConflictHandling};
+use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, OutputConflictHandling};
 
 use std::collections::BTreeMap;
 use std::env::{self, set_var, var_os};
@@ -122,7 +122,8 @@ fn base_config(test_dir: &str) -> (Config, Args) {
         out_dir: target_dir.join("ui_test"),
         ..Config::rustc(Path::new("tests").join(test_dir))
     };
-    config.comment_defaults.base().mode = Some(Spanned::dummy(Mode::Yolo)).into();
+    config.comment_defaults.base().exit_status = None.into();
+    config.comment_defaults.base().require_annotations = None.into();
     config
         .comment_defaults
         .base()
@@ -267,15 +268,6 @@ fn run_ui_cargo() {
 }
 
 fn main() {
-    // Support being run by cargo nextest - https://nexte.st/book/custom-test-harnesses.html
-    if env::args().any(|arg| arg == "--list") {
-        if !env::args().any(|arg| arg == "--ignored") {
-            println!("compile_test: test");
-        }
-
-        return;
-    }
-
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
     // The SPEEDTEST_* env variables can be used to check Clippy's performance on your PR. It runs the
     // affected test 1000 times and gets the average.

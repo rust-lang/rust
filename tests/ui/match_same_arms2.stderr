@@ -1,5 +1,5 @@
 error: this match arm has an identical body to the `_` wildcard arm
-  --> tests/ui/match_same_arms2.rs:16:9
+  --> tests/ui/match_same_arms2.rs:19:9
    |
 LL | /         42 => {
 LL | |             foo();
@@ -12,7 +12,7 @@ LL | |         _ => {
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
-  --> tests/ui/match_same_arms2.rs:25:9
+  --> tests/ui/match_same_arms2.rs:28:9
    |
 LL | /         _ => {
 LL | |             foo();
@@ -26,7 +26,7 @@ LL | |         },
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:39:9
+  --> tests/ui/match_same_arms2.rs:42:9
    |
 LL |         51 => foo(),
    |         ^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL -         42 => foo(),
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:45:9
+  --> tests/ui/match_same_arms2.rs:48:9
    |
 LL |         None => 24,
    |         ^^^^^^^^^^
@@ -58,7 +58,7 @@ LL -         Some(_) => 24,
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:67:9
+  --> tests/ui/match_same_arms2.rs:70:9
    |
 LL |         (None, Some(a)) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ LL -         (Some(a), None) => bar(a),
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:81:9
+  --> tests/ui/match_same_arms2.rs:84:9
    |
 LL |         (None, Some(a)) if a == 42 => a,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL -         (Some(a), None) if a == 42 => a,
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:86:9
+  --> tests/ui/match_same_arms2.rs:89:9
    |
 LL |         (Some(a), ..) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -106,7 +106,7 @@ LL -         (.., Some(a)) => bar(a),
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:120:9
+  --> tests/ui/match_same_arms2.rs:123:9
    |
 LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +122,7 @@ LL -         (Ok(_), Some(x)) => println!("ok {}", x),
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:136:9
+  --> tests/ui/match_same_arms2.rs:139:9
    |
 LL |         Ok(_) => println!("ok"),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ LL -         Ok(3) => println!("ok"),
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:163:9
+  --> tests/ui/match_same_arms2.rs:166:9
    |
 LL | /         1 => {
 LL | |             empty!(0);
@@ -158,7 +158,7 @@ LL -         },
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:214:9
+  --> tests/ui/match_same_arms2.rs:217:9
    |
 LL |         Foo::X(0) => 1,
    |         ^^^^^^^^^^^^^^
@@ -174,7 +174,7 @@ LL -         Foo::Z(_) => 1,
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:224:9
+  --> tests/ui/match_same_arms2.rs:227:9
    |
 LL |         Foo::Z(_) => 1,
    |         ^^^^^^^^^^^^^^
@@ -190,7 +190,7 @@ LL -         Foo::X(0) => 1,
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:247:9
+  --> tests/ui/match_same_arms2.rs:250:9
    |
 LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +206,7 @@ LL -         Some(Bar { x: 0, y: 5, .. }) => 1,
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:261:9
+  --> tests/ui/match_same_arms2.rs:264:9
    |
 LL |         1 => cfg!(not_enable),
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -222,7 +222,7 @@ LL -         0 => cfg!(not_enable),
    |
 
 error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:277:17
+  --> tests/ui/match_same_arms2.rs:280:17
    |
 LL |                 MaybeStaticStr::Borrowed(s) => s,
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

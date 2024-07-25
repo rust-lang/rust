@@ -1,8 +1,6 @@
-use std::iter::once;
-use std::ops::ControlFlow;
-
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::token::LitKind;
 use rustc_errors::Applicability;
@@ -10,6 +8,8 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, Span};
+use std::iter::once;
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -61,22 +61,27 @@ pub struct RawStrings {
     pub allow_one_hash_in_raw_strings: bool,
 }
 
+impl RawStrings {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            allow_one_hash_in_raw_strings: conf.allow_one_hash_in_raw_strings,
+        }
+    }
+}
+
 impl EarlyLintPass for RawStrings {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if !in_external_macro(cx.sess(), expr.span)
-            && let ExprKind::Lit(lit) = expr.kind
-            && let LitKind::StrRaw(max) | LitKind::ByteStrRaw(max) | LitKind::CStrRaw(max) = lit.kind
+        if let ExprKind::Lit(lit) = expr.kind
+            && let (prefix, max) = match lit.kind {
+                LitKind::StrRaw(max) => ("r", max),
+                LitKind::ByteStrRaw(max) => ("br", max),
+                LitKind::CStrRaw(max) => ("cr", max),
+                _ => return,
+            }
+            && !in_external_macro(cx.sess(), expr.span)
+            && expr.span.check_source_text(cx, |src| src.starts_with(prefix))
         {
             let str = lit.symbol.as_str();
-            let prefix = match lit.kind {
-                LitKind::StrRaw(..) => "r",
-                LitKind::ByteStrRaw(..) => "br",
-                LitKind::CStrRaw(..) => "cr",
-                _ => unreachable!(),
-            };
-            if !snippet(cx, expr.span, prefix).trim().starts_with(prefix) {
-                return;
-            }
             let descr = lit.kind.descr();
 
             if !str.contains(['\\', '"']) {
@@ -86,7 +91,7 @@ impl EarlyLintPass for RawStrings {
                     expr.span,
                     "unnecessary raw string literal",
                     |diag| {
-                        let (start, end) = hash_spans(expr.span, prefix, 0, max);
+                        let (start, end) = hash_spans(expr.span, prefix.len(), 0, max);
 
                         // BytePos: skip over the `b` in `br`, we checked the prefix appears in the source text
                         let r_pos = expr.span.lo() + BytePos::from_usize(prefix.len() - 1);
@@ -148,7 +153,7 @@ impl EarlyLintPass for RawStrings {
                     expr.span,
                     "unnecessary hashes around raw string literal",
                     |diag| {
-                        let (start, end) = hash_spans(expr.span, prefix, req, max);
+                        let (start, end) = hash_spans(expr.span, prefix.len(), req, max);
 
                         let message = match max - req {
                             _ if req == 0 => format!("remove all the hashes around the {descr} literal"),
@@ -174,11 +179,11 @@ impl EarlyLintPass for RawStrings {
 /// r###".."###
 ///   ^^    ^^
 /// ```
-fn hash_spans(literal_span: Span, prefix: &str, req: u8, max: u8) -> (Span, Span) {
+fn hash_spans(literal_span: Span, prefix_len: usize, req: u8, max: u8) -> (Span, Span) {
     let literal_span = literal_span.data();
 
     // BytePos: we checked prefix appears literally in the source text
-    let hash_start = literal_span.lo + BytePos::from_usize(prefix.len());
+    let hash_start = literal_span.lo + BytePos::from_usize(prefix_len);
     let hash_end = literal_span.hi;
 
     // BytePos: req/max are counts of the ASCII character #

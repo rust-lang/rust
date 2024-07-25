@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
@@ -91,17 +92,16 @@ declare_clippy_lint! {
     "annotating safe code with a safety comment"
 }
 
-#[derive(Copy, Clone)]
 pub struct UndocumentedUnsafeBlocks {
     accept_comment_above_statement: bool,
     accept_comment_above_attributes: bool,
 }
 
 impl UndocumentedUnsafeBlocks {
-    pub fn new(accept_comment_above_statement: bool, accept_comment_above_attributes: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            accept_comment_above_statement,
-            accept_comment_above_attributes,
+            accept_comment_above_statement: conf.accept_comment_above_statement,
+            accept_comment_above_attributes: conf.accept_comment_above_attributes,
         }
     }
 }

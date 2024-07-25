@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_opt;
@@ -17,12 +18,21 @@ use rustc_session::impl_lint_pass;
 use rustc_span::{sym, DesugaringKind, Span};
 
 #[expect(clippy::module_name_repetitions)]
-#[derive(Clone)]
 pub struct UselessVec {
-    pub too_large_for_stack: u64,
-    pub msrv: Msrv,
-    pub span_to_lint_map: BTreeMap<Span, Option<(HirId, SuggestedType, String, Applicability)>>,
-    pub allow_in_test: bool,
+    too_large_for_stack: u64,
+    msrv: Msrv,
+    span_to_lint_map: BTreeMap<Span, Option<(HirId, SuggestedType, String, Applicability)>>,
+    allow_in_test: bool,
+}
+impl UselessVec {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            too_large_for_stack: conf.too_large_for_stack,
+            msrv: conf.msrv.clone(),
+            span_to_lint_map: BTreeMap::new(),
+            allow_in_test: conf.allow_useless_vec_in_tests,
+        }
+    }
 }
 
 declare_clippy_lint! {

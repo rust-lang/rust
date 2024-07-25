@@ -36,15 +36,12 @@ declare_lint_pass!(ErrorImplError => [ERROR_IMPL_ERROR]);
 
 impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error) else {
-            return;
-        };
-
         match item.kind {
             ItemKind::TyAlias(..)
                 if item.ident.name == sym::Error
                     && is_visible_outside_module(cx, item.owner_id.def_id)
                     && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                    && let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error)
                     && implements_trait(cx, ty, error_def_id, &[]) =>
             {
                 span_lint(
@@ -56,9 +53,9 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
             },
             ItemKind::Impl(imp)
                 if let Some(trait_def_id) = imp.of_trait.and_then(|t| t.trait_def_id())
+                    && let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error)
                     && error_def_id == trait_def_id
                     && let Some(def_id) = path_res(cx, imp.self_ty).opt_def_id().and_then(DefId::as_local)
-                    && let hir_id = cx.tcx.local_def_id_to_hir_id(def_id)
                     && let Some(ident) = cx.tcx.opt_item_ident(def_id.to_def_id())
                     && ident.name == sym::Error
                     && is_visible_outside_module(cx, def_id) =>
@@ -66,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                 span_lint_hir_and_then(
                     cx,
                     ERROR_IMPL_ERROR,
-                    hir_id,
+                    cx.tcx.local_def_id_to_hir_id(def_id),
                     ident.span,
                     "exported type named `Error` that implements `Error`",
                     |diag| {

@@ -59,9 +59,9 @@ static COLLECTIONS: [Symbol; 9] = [
 
 impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
-        // Look for local variables whose type is a container. Search surrounding bock for read access.
-        if match_acceptable_type(cx, local, &COLLECTIONS)
-            && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
+        // Look for local variables whose type is a container. Search surrounding block for read access.
+        if let PatKind::Binding(_, local_id, _, _) = local.pat.kind
+            && match_acceptable_type(cx, local, &COLLECTIONS)
             && let Some(enclosing_block) = get_enclosing_block(cx, local.hir_id)
             && has_no_read_access(cx, local_id, enclosing_block)
         {
