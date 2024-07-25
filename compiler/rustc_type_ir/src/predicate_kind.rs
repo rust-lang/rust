@@ -1,5 +1,3 @@
-#![allow(clippy::derived_hash_with_manual_eq)]
-
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
@@ -10,7 +8,7 @@ use crate::{self as ty, Interner};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
-#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ClauseKind<I: Interner> {
@@ -38,22 +36,6 @@ pub enum ClauseKind<I: Interner> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(I::Const),
-}
-
-// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
-impl<I: Interner> PartialEq for ClauseKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Trait(l0), Self::Trait(r0)) => l0 == r0,
-            (Self::RegionOutlives(l0), Self::RegionOutlives(r0)) => l0 == r0,
-            (Self::TypeOutlives(l0), Self::TypeOutlives(r0)) => l0 == r0,
-            (Self::Projection(l0), Self::Projection(r0)) => l0 == r0,
-            (Self::ConstArgHasType(l0, l1), Self::ConstArgHasType(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::WellFormed(l0), Self::WellFormed(r0)) => l0 == r0,
-            (Self::ConstEvaluatable(l0), Self::ConstEvaluatable(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]

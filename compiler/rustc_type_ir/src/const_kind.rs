@@ -1,5 +1,3 @@
-#![allow(clippy::derived_hash_with_manual_eq)]
-
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -10,10 +8,8 @@ use std::fmt;
 
 use crate::{self as ty, DebruijnIndex, Interner};
 
-use self::ConstKind::*;
-
 /// Represents a constant in Rust.
-#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
@@ -43,23 +39,6 @@ pub enum ConstKind<I: Interner> {
     /// Unevaluated non-const-item, used by `feature(generic_const_exprs)` to represent
     /// const arguments such as `N + 1` or `foo(N)`
     Expr(I::ExprConst),
-}
-
-// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
-impl<I: Interner> PartialEq for ConstKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Param(l0), Param(r0)) => l0 == r0,
-            (Infer(l0), Infer(r0)) => l0 == r0,
-            (Bound(l0, l1), Bound(r0, r1)) => l0 == r0 && l1 == r1,
-            (Placeholder(l0), Placeholder(r0)) => l0 == r0,
-            (Unevaluated(l0), Unevaluated(r0)) => l0 == r0,
-            (Value(l0, l1), Value(r0, r1)) => l0 == r0 && l1 == r1,
-            (Error(l0), Error(r0)) => l0 == r0,
-            (Expr(l0), Expr(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
 }
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {

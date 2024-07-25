@@ -1,5 +1,3 @@
-#![allow(clippy::derived_hash_with_manual_eq)]
-
 use derive_where::derive_where;
 
 #[cfg(feature = "nightly")]
@@ -68,7 +66,7 @@ impl AliasTyKind {
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
-#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -256,92 +254,6 @@ impl<I: Interner> TyKind<I> {
     #[inline]
     pub fn is_primitive(&self) -> bool {
         matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
-    }
-}
-
-// This is manually implemented for `TyKind` because `std::mem::discriminant`
-// returns an opaque value that is `PartialEq` but not `PartialOrd`
-#[inline]
-const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
-    match value {
-        Bool => 0,
-        Char => 1,
-        Int(_) => 2,
-        Uint(_) => 3,
-        Float(_) => 4,
-        Adt(_, _) => 5,
-        Foreign(_) => 6,
-        Str => 7,
-        Array(_, _) => 8,
-        Slice(_) => 9,
-        RawPtr(_, _) => 10,
-        Ref(_, _, _) => 11,
-        FnDef(_, _) => 12,
-        FnPtr(_) => 13,
-        Dynamic(..) => 14,
-        Closure(_, _) => 15,
-        CoroutineClosure(_, _) => 16,
-        Coroutine(_, _) => 17,
-        CoroutineWitness(_, _) => 18,
-        Never => 19,
-        Tuple(_) => 20,
-        Pat(_, _) => 21,
-        Alias(_, _) => 22,
-        Param(_) => 23,
-        Bound(_, _) => 24,
-        Placeholder(_) => 25,
-        Infer(_) => 26,
-        Error(_) => 27,
-    }
-}
-
-// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
-// This is manually implemented because a derive would require `I: PartialEq`
-impl<I: Interner> PartialEq for TyKind<I> {
-    #[inline]
-    fn eq(&self, other: &TyKind<I>) -> bool {
-        // You might expect this `match` to be preceded with this:
-        //
-        //   tykind_discriminant(self) == tykind_discriminant(other) &&
-        //
-        // but the data patterns in practice are such that a comparison
-        // succeeds 99%+ of the time, and it's faster to omit it.
-        match (self, other) {
-            (Int(a_i), Int(b_i)) => a_i == b_i,
-            (Uint(a_u), Uint(b_u)) => a_u == b_u,
-            (Float(a_f), Float(b_f)) => a_f == b_f,
-            (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
-            (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
-            (Pat(a_t, a_c), Pat(b_t, b_c)) => a_t == b_t && a_c == b_c,
-            (Slice(a_t), Slice(b_t)) => a_t == b_t,
-            (RawPtr(a_t, a_m), RawPtr(b_t, b_m)) => a_t == b_t && a_m == b_m,
-            (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
-            (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
-            (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                a_p == b_p && a_r == b_r && a_repr == b_repr
-            }
-            (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (CoroutineClosure(a_d, a_s), CoroutineClosure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Coroutine(a_d, a_s), Coroutine(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
-            (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
-            (Param(a_p), Param(b_p)) => a_p == b_p,
-            (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d == b_d && a_b == b_b,
-            (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
-            (Infer(a_t), Infer(b_t)) => a_t == b_t,
-            (Error(a_e), Error(b_e)) => a_e == b_e,
-            (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => true,
-            _ => {
-                debug_assert!(
-                    tykind_discriminant(self) != tykind_discriminant(other),
-                    "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
-                );
-                false
-            }
-        }
     }
 }
 
