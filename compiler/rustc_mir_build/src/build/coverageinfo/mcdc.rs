@@ -106,22 +106,27 @@ impl MCDCState {
             }),
         };
 
-        let parent_condition = decision_ctx.decision_stack.pop_back().unwrap_or_default();
-        let lhs_id = if parent_condition.condition_id == ConditionId::NONE {
+        let parent_condition = decision_ctx.decision_stack.pop_back().unwrap_or_else(|| {
+            assert_eq!(
+                decision.num_conditions, 0,
+                "decision stack must be empty only for empty decision"
+            );
             decision.num_conditions += 1;
-            ConditionId::from(decision.num_conditions)
-        } else {
-            parent_condition.condition_id
-        };
+            ConditionInfo {
+                condition_id: ConditionId::START,
+                true_next_id: None,
+                false_next_id: None,
+            }
+        });
+        let lhs_id = parent_condition.condition_id;
 
-        decision.num_conditions += 1;
         let rhs_condition_id = ConditionId::from(decision.num_conditions);
-
+        decision.num_conditions += 1;
         let (lhs, rhs) = match op {
             LogicalOp::And => {
                 let lhs = ConditionInfo {
                     condition_id: lhs_id,
-                    true_next_id: rhs_condition_id,
+                    true_next_id: Some(rhs_condition_id),
                     false_next_id: parent_condition.false_next_id,
                 };
                 let rhs = ConditionInfo {
@@ -135,7 +140,7 @@ impl MCDCState {
                 let lhs = ConditionInfo {
                     condition_id: lhs_id,
                     true_next_id: parent_condition.true_next_id,
-                    false_next_id: rhs_condition_id,
+                    false_next_id: Some(rhs_condition_id),
                 };
                 let rhs = ConditionInfo {
                     condition_id: rhs_condition_id,
@@ -164,10 +169,10 @@ impl MCDCState {
         let Some(decision) = decision_ctx.processing_decision.as_mut() else {
             bug!("Processing decision should have been created before any conditions are taken");
         };
-        if condition_info.true_next_id == ConditionId::NONE {
+        if condition_info.true_next_id.is_none() {
             decision.end_markers.push(true_marker);
         }
-        if condition_info.false_next_id == ConditionId::NONE {
+        if condition_info.false_next_id.is_none() {
             decision.end_markers.push(false_marker);
         }
 
