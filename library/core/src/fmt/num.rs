@@ -208,11 +208,46 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
       8081828384858687888990919293949596979899";
 
 macro_rules! impl_Display {
-    ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
+    ($($t:ident => $size:literal $(as $positive:ident in $other:ident)? => named $name:ident,)* ; as $u:ident via $conv_fn:ident named $gen_name:ident) => {
+
+        $(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Display for $t {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // If it's a signed integer.
+                $(
+                    let is_nonnegative = *self >= 0;
+
+                    #[cfg(not(feature = "optimize_for_size"))]
+                    {
+                        if !is_nonnegative {
+                            // convert the negative num to positive by summing 1 to its 2s complement
+                            return $other((!self as $positive).wrapping_add(1), false, f);
+                        }
+                    }
+                    #[cfg(feature = "optimize_for_size")]
+                    {
+                        if !is_nonnegative {
+                            // convert the negative num to positive by summing 1 to its 2s complement
+                            return $other((!self.$conv_fn()).wrapping_add(1), false, f);
+                        }
+                    }
+                )?
+                // If it's a positive integer.
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    $name(*self, true, f)
+                }
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    $gen_name(*self, true, f)
+                }
+            }
+        }
+
         #[cfg(not(feature = "optimize_for_size"))]
-        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
-            let mut buf = [MaybeUninit::<u8>::uninit(); 39];
+        fn $name(mut n: $t, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let mut buf = [MaybeUninit::<u8>::uninit(); $size];
             let mut curr = buf.len();
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
@@ -226,22 +261,26 @@ macro_rules! impl_Display {
             // is safe to access.
             unsafe {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
-                assert!(crate::mem::size_of::<$u>() >= 2);
+                #[allow(overflowing_literals)]
+                #[allow(unused_comparisons)]
+                // This block will be removed for smaller types at compile time and in the worst
+                // case, it will prevent to have the `10000` literal to overflow for `i8` and `u8`.
+                if core::mem::size_of::<$t>() >= 2 {
+                    // eagerly decode 4 characters at a time
+                    while n >= 10000 {
+                        let rem = (n % 10000) as usize;
+                        n /= 10000;
 
-                // eagerly decode 4 characters at a time
-                while n >= 10000 {
-                    let rem = (n % 10000) as usize;
-                    n /= 10000;
+                        let d1 = (rem / 100) << 1;
+                        let d2 = (rem % 100) << 1;
+                        curr -= 4;
 
-                    let d1 = (rem / 100) << 1;
-                    let d2 = (rem % 100) << 1;
-                    curr -= 4;
-
-                    // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
-                    // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
-                    // which is `10^40 > 2^128 > n`.
-                    ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
-                    ptr::copy_nonoverlapping(lut_ptr.add(d2), buf_ptr.add(curr + 2), 2);
+                        // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
+                        // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
+                        // which is `10^40 > 2^128 > n`.
+                        ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(curr), 2);
+                        ptr::copy_nonoverlapping(lut_ptr.add(d2 as usize), buf_ptr.add(curr + 2), 2);
+                    }
                 }
 
                 // if we reach here numbers are <= 9999, so at most 4 chars long
@@ -255,6 +294,8 @@ macro_rules! impl_Display {
                     ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
                 }
 
+                // if we reach here numbers are <= 100, so at most 2 chars long
+                // The biggest it can be is 99, and 99 << 1 == 198, so a `u8` is enough.
                 // decode last 1 or 2 chars
                 if n < 10 {
                     curr -= 1;
@@ -273,11 +314,10 @@ macro_rules! impl_Display {
                     slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
             };
             f.pad_integral(is_nonnegative, "", buf_slice)
-        }
+        })*
 
         #[cfg(feature = "optimize_for_size")]
-        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
+        fn $gen_name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len();
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
@@ -306,21 +346,6 @@ macro_rules! impl_Display {
             };
             f.pad_integral(is_nonnegative, "", buf_slice)
         }
-
-        $(#[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Display for $t {
-            #[allow(unused_comparisons)]
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let is_nonnegative = *self >= 0;
-                let n = if is_nonnegative {
-                    self.$conv_fn()
-                } else {
-                    // convert the negative num to positive by summing 1 to it's 2 complement
-                    (!self.$conv_fn()).wrapping_add(1)
-                };
-                $name(n, is_nonnegative, f)
-            }
-        })*
     };
 }
 
@@ -374,7 +399,6 @@ macro_rules! impl_Exp {
                 (n, exponent, exponent, added_precision)
             };
 
-            // 39 digits (worst case u128) + . = 40
             // Since `curr` always decreases by the number of digits copied, this means
             // that `curr >= 0`.
             let mut buf = [MaybeUninit::<u8>::uninit(); 40];
@@ -469,7 +493,7 @@ macro_rules! impl_Exp {
                     let n = if is_nonnegative {
                         self.$conv_fn()
                     } else {
-                        // convert the negative num to positive by summing 1 to it's 2 complement
+                        // convert the negative num to positive by summing 1 to its 2s complement
                         (!self.$conv_fn()).wrapping_add(1)
                     };
                     $name(n, is_nonnegative, false, f)
@@ -484,7 +508,7 @@ macro_rules! impl_Exp {
                     let n = if is_nonnegative {
                         self.$conv_fn()
                     } else {
-                        // convert the negative num to positive by summing 1 to it's 2 complement
+                        // convert the negative num to positive by summing 1 to its 2s complement
                         (!self.$conv_fn()).wrapping_add(1)
                     };
                     $name(n, is_nonnegative, true, f)
@@ -499,8 +523,17 @@ macro_rules! impl_Exp {
 mod imp {
     use super::*;
     impl_Display!(
-        i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
-            as u64 via to_u64 named fmt_u64
+        i8 => 3 as u8 in fmt_u8 => named fmt_i8,
+        u8 => 3 => named fmt_u8,
+        i16 => 5 as u16 in fmt_u16 => named fmt_i16,
+        u16 => 5 => named fmt_u16,
+        i32 => 10 as u32 in fmt_u32 => named fmt_i32,
+        u32 => 10 => named fmt_u32,
+        i64 => 19 as u64 in fmt_u64 => named fmt_i64,
+        u64 => 20 => named fmt_u64,
+        isize => 19 as usize in fmt_usize => named fmt_isize,
+        usize => 20 => named fmt_usize,
+        ; as u64 via to_u64 named fmt_u64
     );
     impl_Exp!(
         i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
@@ -511,8 +544,21 @@ mod imp {
 #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
 mod imp {
     use super::*;
-    impl_Display!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named fmt_u32);
-    impl_Display!(i64, u64 as u64 via to_u64 named fmt_u64);
+    impl_Display!(
+        i8 => 3 as u8 in fmt_u8 => named fmt_i8,
+        u8 => 3 => named fmt_u8,
+        i16 => 5 as u16 in fmt_u16 => named fmt_i16,
+        u16 => 5 => named fmt_u16,
+        i32 => 10 as u32 in fmt_u32 => named fmt_i32,
+        u32 => 10 => named fmt_u32,
+        isize => 10 as usize in fmt_usize => named fmt_isize,
+        usize => 10 => named fmt_usize,
+        ; as u32 via to_u32 named fmt_u32);
+    impl_Display!(
+        i64 => 19 as u64 in fmt_u64 => named fmt_i64,
+        u64 => 20 => named fmt_u64,
+        ; as u64 via to_u64 named fmt_u64);
+
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
     impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
@@ -619,7 +665,7 @@ impl fmt::Display for i128 {
         let n = if is_nonnegative {
             self.to_u128()
         } else {
-            // convert the negative num to positive by summing 1 to it's 2 complement
+            // convert the negative num to positive by summing 1 to its 2s complement
             (!self.to_u128()).wrapping_add(1)
         };
         fmt_u128(n, is_nonnegative, f)
