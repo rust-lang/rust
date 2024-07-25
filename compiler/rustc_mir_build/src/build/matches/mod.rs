@@ -646,12 +646,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Optimize the case of `let x: T = ...` to write directly
             // into `x` and then require that `T == typeof(x)`.
-            //
-            // Weirdly, this is needed to prevent the
-            // `intrinsic-move-val.rs` test case from crashing. That
-            // test works with uninitialized values in a rather
-            // dubious way, so it may be that the test is kind of
-            // broken.
             PatKind::AscribeUserType {
                 subpattern:
                     box Pat {
