@@ -15,7 +15,7 @@ env:
   CARGO_NET_RETRY: 10
   CI: 1
   RUST_BACKTRACE: short
-  RUSTFLAGS: "-D warnings -W unreachable-pub -W bare-trait-objects"
+  RUSTFLAGS: "-D warnings -D elided_lifetimes_in_paths -D explicit_outlives_requirements -D unsafe_op_in_unsafe_fn -D unused_extern_crates -D unused_lifetimes -D unreachable_pub"
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
