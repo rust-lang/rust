@@ -1610,6 +1610,8 @@ impl<'test> TestCx<'test> {
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
+                // use root_testpaths here, because aux-builds should have the
+                // same --out-dir and auxiliary directory.
                 let auxres = aux_cx.document(&root_out_dir, root_testpaths);
                 if !auxres.status.success() {
                     return auxres;
@@ -1624,14 +1626,7 @@ impl<'test> TestCx<'test> {
         // actual --out-dir given to the auxiliary or test, as opposed to the root out dir for the entire
         // test
         let out_dir: Cow<'_, Path> = if self.props.unique_doc_out_dir {
-            let file_name = self
-                .testpaths
-                .file
-                .file_name()
-                .expect("file name should not be empty")
-                .to_str()
-                .expect("file name utf8")
-                .trim_end_matches(".rs");
+            let file_name = self.testpaths.file.file_stem().expect("file name should not be empty");
             let out_dir = PathBuf::from_iter([
                 root_out_dir,
                 Path::new("docs"),
