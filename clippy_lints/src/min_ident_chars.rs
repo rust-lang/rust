@@ -139,11 +139,11 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
                 return;
             }
 
-            // `struct Awa<T>(T)`
-            //                ^
+            // `struct Array<T, const N: usize>([T; N])`
+            //                                   ^  ^
             if let Node::PathSegment(path) = node {
                 if let Res::Def(def_kind, ..) = path.res
-                    && let DefKind::TyParam = def_kind
+                    && let DefKind::TyParam | DefKind::ConstParam = def_kind
                 {
                     return;
                 }

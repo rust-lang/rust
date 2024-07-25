@@ -15,6 +15,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use std::ops::Deref;
 
 declare_clippy_lint! {
@@ -159,7 +160,7 @@ impl NoEffect {
                                 // Remove `impl Future<Output = T>` to get `T`
                                 if cx.tcx.ty_is_opaque_future(ret_ty)
                                     && let Some(true_ret_ty) =
-                                        cx.tcx.infer_ctxt().build().get_impl_future_output_ty(ret_ty)
+                                        cx.tcx.infer_ctxt().build().err_ctxt().get_impl_future_output_ty(ret_ty)
                                 {
                                     ret_ty = true_ret_ty;
                                 }

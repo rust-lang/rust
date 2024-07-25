@@ -5,7 +5,7 @@ use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{ArrayLen, ExprKind, Node};
+use rustc_hir::{ArrayLen, ConstArgKind, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
@@ -61,7 +61,8 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
         // the const item depends on `#[cfg]s` and has different values in different compilation
         // sessions).
         else if let ExprKind::Repeat(inner_expr, length) = expr.kind
-            && let ArrayLen::Body(anon_const) = length
+            && let ArrayLen::Body(const_arg) = length
+            && let ConstArgKind::Anon(anon_const) = const_arg.kind
             && let length_expr = hir_map.body(anon_const.body).value
             && !length_expr.span.from_expansion()
             && let ExprKind::Lit(literal) = length_expr.kind
