@@ -46,7 +46,6 @@ pub mod body;
 pub mod resolver;
 
 pub mod nameres;
-mod trace;
 
 pub mod child_by_source;
 pub mod src;

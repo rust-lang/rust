@@ -6,10 +6,8 @@ use la_arena::ArenaMap;
 use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
-    data::adt::lower_struct,
     db::DefDatabase,
-    item_tree::{FieldParent, ItemTreeNode},
-    trace::Trace,
+    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
     GenericDefId, ItemTreeLoc, LocalFieldId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
     UseId, VariantId,
 };
@@ -156,8 +154,49 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 )
             }
         };
-        let mut trace = Trace::new_for_map();
-        lower_struct(db, &mut trace, &src, container.krate, &item_tree, parent);
-        src.with_value(trace.into_map())
+
+        let mut map = ArenaMap::new();
+        match &src.value {
+            ast::StructKind::Tuple(fl) => {
+                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let mut idx = 0;
+                for (i, fd) in fl.fields().enumerate() {
+                    let attrs = item_tree.attrs(
+                        db,
+                        container.krate,
+                        AttrOwner::make_field_indexed(parent, i),
+                    );
+                    if !attrs.is_cfg_enabled(cfg_options) {
+                        continue;
+                    }
+                    map.insert(
+                        LocalFieldId::from_raw(la_arena::RawIdx::from(idx)),
+                        Either::Left(fd.clone()),
+                    );
+                    idx += 1;
+                }
+            }
+            ast::StructKind::Record(fl) => {
+                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let mut idx = 0;
+                for (i, fd) in fl.fields().enumerate() {
+                    let attrs = item_tree.attrs(
+                        db,
+                        container.krate,
+                        AttrOwner::make_field_indexed(parent, i),
+                    );
+                    if !attrs.is_cfg_enabled(cfg_options) {
+                        continue;
+                    }
+                    map.insert(
+                        LocalFieldId::from_raw(la_arena::RawIdx::from(idx)),
+                        Either::Right(fd.clone()),
+                    );
+                    idx += 1;
+                }
+            }
+            _ => (),
+        }
+        InFile::new(src.file_id, map)
     }
 }

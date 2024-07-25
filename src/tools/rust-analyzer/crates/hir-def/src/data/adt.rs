@@ -5,14 +5,10 @@ use bitflags::bitflags;
 use cfg::CfgOptions;
 use either::Either;
 
-use hir_expand::{
-    name::{AsName, Name},
-    InFile,
-};
+use hir_expand::name::Name;
 use intern::{sym, Interned};
 use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
-use syntax::ast::{self, HasName, HasVisibility};
 use triomphe::Arc;
 
 use crate::{
@@ -22,9 +18,7 @@ use crate::{
         AttrOwner, Field, FieldParent, FieldsShape, ItemTree, ModItem, RawVisibilityId, TreeId,
     },
     lang_item::LangItem,
-    lower::LowerCtx,
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
-    trace::Trace,
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
@@ -407,64 +401,6 @@ pub enum StructKind {
     Tuple,
     Record,
     Unit,
-}
-
-// FIXME This is only used for mapping back source now?
-pub(crate) fn lower_struct(
-    db: &dyn DefDatabase,
-    trace: &mut Trace<FieldData, Either<ast::TupleField, ast::RecordField>>,
-    ast: &InFile<ast::StructKind>,
-    krate: CrateId,
-    item_tree: &ItemTree,
-    parent: FieldParent,
-) -> StructKind {
-    let ctx = LowerCtx::new(db, ast.file_id);
-
-    match &ast.value {
-        ast::StructKind::Tuple(fl) => {
-            let cfg_options = &db.crate_graph()[krate].cfg_options;
-            for (i, fd) in fl.fields().enumerate() {
-                let attrs = item_tree.attrs(db, krate, AttrOwner::make_field_indexed(parent, i));
-                if !attrs.is_cfg_enabled(cfg_options) {
-                    continue;
-                }
-
-                trace.alloc(
-                    || Either::Left(fd.clone()),
-                    || FieldData {
-                        name: Name::new_tuple_field(i),
-                        type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
-                        visibility: RawVisibility::from_ast(db, fd.visibility(), &mut |range| {
-                            ctx.span_map().span_for_range(range).ctx
-                        }),
-                    },
-                );
-            }
-            StructKind::Tuple
-        }
-        ast::StructKind::Record(fl) => {
-            let cfg_options = &db.crate_graph()[krate].cfg_options;
-            for (i, fd) in fl.fields().enumerate() {
-                let attrs = item_tree.attrs(db, krate, AttrOwner::make_field_indexed(parent, i));
-                if !attrs.is_cfg_enabled(cfg_options) {
-                    continue;
-                }
-
-                trace.alloc(
-                    || Either::Right(fd.clone()),
-                    || FieldData {
-                        name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
-                        type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
-                        visibility: RawVisibility::from_ast(db, fd.visibility(), &mut |range| {
-                            ctx.span_map().span_for_range(range).ctx
-                        }),
-                    },
-                );
-            }
-            StructKind::Record
-        }
-        _ => StructKind::Unit,
-    }
 }
 
 fn lower_fields(
