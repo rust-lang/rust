@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::{is_from_proc_macro, is_in_test_function};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
@@ -66,13 +67,19 @@ pub enum CallState {
     Multiple,
 }
 
-#[derive(Clone)]
 pub struct SingleCallFn {
-    pub avoid_breaking_exported_api: bool,
-    pub def_id_to_usage: FxIndexMap<LocalDefId, CallState>,
+    avoid_breaking_exported_api: bool,
+    def_id_to_usage: FxIndexMap<LocalDefId, CallState>,
 }
 
 impl SingleCallFn {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            def_id_to_usage: FxIndexMap::default(),
+        }
+    }
+
     fn is_function_allowed(
         &self,
         cx: &LateContext<'_>,

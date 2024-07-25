@@ -91,5 +91,11 @@ error: float has excessive precision
 LL |     let _ = 1.000_000_000_000_001e-324_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0_f64`
 
-error: aborting due to 15 previous errors
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:83:20
+   |
+LL |     const _: f64 = 3.0000000000000000e+00;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `3.0`
+
+error: aborting due to 16 previous errors
 

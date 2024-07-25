@@ -131,8 +131,8 @@ mod waker_clone_wake;
 mod wrong_self_convention;
 mod zst_offset;
 
-use bind_instead_of_map::BindInsteadOfMap;
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
@@ -4131,27 +4131,20 @@ pub struct Methods {
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
-    allowed_dotfiles: FxHashSet<String>,
+    allowed_dotfiles: FxHashSet<&'static str>,
     format_args: FormatArgsStorage,
 }
 
 impl Methods {
-    #[must_use]
-    pub fn new(
-        avoid_breaking_exported_api: bool,
-        msrv: Msrv,
-        allow_expect_in_tests: bool,
-        allow_unwrap_in_tests: bool,
-        mut allowed_dotfiles: FxHashSet<String>,
-        format_args: FormatArgsStorage,
-    ) -> Self {
-        allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES.iter().map(ToString::to_string));
+    pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
+        let mut allowed_dotfiles: FxHashSet<_> = conf.allowed_dotfiles.iter().map(|s| &**s).collect();
+        allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES);
 
         Self {
-            avoid_breaking_exported_api,
-            msrv,
-            allow_expect_in_tests,
-            allow_unwrap_in_tests,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            msrv: conf.msrv.clone(),
+            allow_expect_in_tests: conf.allow_expect_in_tests,
+            allow_unwrap_in_tests: conf.allow_unwrap_in_tests,
             allowed_dotfiles,
             format_args,
         }
@@ -4512,8 +4505,8 @@ impl Methods {
                     }
                 },
                 ("and_then", [arg]) => {
-                    let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, recv, arg);
-                    let biom_result_linted = bind_instead_of_map::ResultAndThenOk::check(cx, expr, recv, arg);
+                    let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
+                    let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
                     if !biom_option_linted && !biom_result_linted {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                     }
@@ -4853,7 +4846,7 @@ impl Methods {
                     open_options::check(cx, expr, recv);
                 },
                 ("or_else", [arg]) => {
-                    if !bind_instead_of_map::ResultOrElseErrInfo::check(cx, expr, recv, arg) {
+                    if !bind_instead_of_map::check_or_else_err(cx, expr, recv, arg) {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
                     }
                 },

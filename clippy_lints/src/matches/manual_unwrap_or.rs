@@ -35,6 +35,17 @@ pub(super) fn check_if_let<'tcx>(
     else_expr: &'tcx Expr<'_>,
 ) {
     let ty = cx.typeck_results().expr_ty(let_expr);
+    let then_ty = cx.typeck_results().expr_ty(then_expr);
+    // The signature is `fn unwrap_or<T>(self: Option<T>, default: T) -> T`.
+    // When `expr_adjustments(then_expr).is_empty()`, `T` should equate to `default`'s type.
+    // Otherwise, type error will occur.
+    if cx.typeck_results().expr_adjustments(then_expr).is_empty()
+        && let rustc_middle::ty::Adt(_did, args) = ty.kind()
+        && let Some(some_ty) = args.first().and_then(|arg| arg.as_type())
+        && some_ty != then_ty
+    {
+        return;
+    }
     check_and_lint(cx, expr, let_pat, let_expr, then_expr, peel_blocks(else_expr), ty);
 }
 

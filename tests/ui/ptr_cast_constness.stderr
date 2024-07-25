@@ -32,13 +32,13 @@ LL |     let _ = mut_ptr as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:64:13
+  --> tests/ui/ptr_cast_constness.rs:68:13
    |
 LL |     let _ = ptr as *mut u32;
    |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:65:13
+  --> tests/ui/ptr_cast_constness.rs:69:13
    |
 LL |     let _ = mut_ptr as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
