@@ -12,14 +12,14 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags};
-use rustc_session::config::{DebugInfo, OptLevel};
+use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::cost_checker::CostChecker;
-use crate::simplify::simplify_cfg;
+use crate::simplify::{preserve_debug_even_if_never_generated, simplify_cfg};
 use crate::util;
 use crate::validate::validate_types;
 use std::iter;
@@ -719,14 +719,7 @@ impl<'tcx> Inliner<'tcx> {
         // Insert all of the (mapped) parts of the callee body into the caller.
         caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
         caller_body.source_scopes.extend(&mut callee_body.source_scopes.drain(..));
-        if self
-            .tcx
-            .sess
-            .opts
-            .unstable_opts
-            .inline_mir_preserve_debug
-            .unwrap_or(self.tcx.sess.opts.debuginfo != DebugInfo::None)
-        {
+        if preserve_debug_even_if_never_generated(self.tcx) {
             // Note that we need to preserve these in the standard library so that
             // people working on rust can build with or without debuginfo while
             // still getting consistent results from the mir-opt tests.

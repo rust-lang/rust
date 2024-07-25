@@ -1,5 +1,5 @@
-- // MIR for `if_const` before SingleUseConsts
-+ // MIR for `if_const` after SingleUseConsts
+- // MIR for `if_const` before SingleUseConsts-initial
++ // MIR for `if_const` after SingleUseConsts-initial
   
   fn if_const() -> i32 {
       let mut _0: i32;

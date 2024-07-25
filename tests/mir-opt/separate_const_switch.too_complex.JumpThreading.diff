@@ -55,7 +55,6 @@
   
       bb5: {
           StorageLive(_8);
-          _8 = ((_2 as Break).0: usize);
           _0 = const Option::<i32>::None;
           StorageDead(_8);
           goto -> bb7;

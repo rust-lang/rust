@@ -1,5 +1,5 @@
-- // MIR for `keep_parameter` before SingleUseConsts
-+ // MIR for `keep_parameter` after SingleUseConsts
+- // MIR for `keep_parameter` before SingleUseConsts-initial
++ // MIR for `keep_parameter` after SingleUseConsts-initial
   
   fn keep_parameter(_1: i32) -> () {
       debug other => _1;
