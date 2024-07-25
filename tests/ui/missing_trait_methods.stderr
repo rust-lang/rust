@@ -24,5 +24,41 @@ help: implement the method
 LL |     fn b<'a, T: AsRef<[u8]>>(a: &'a T) -> &'a [u8] {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: missing trait method provided by default: `one`
+  --> tests/ui/missing_trait_methods.rs:58:1
+   |
+LL | impl MissingMultiple for Partial {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:53:5
+   |
+LL |     fn one() {}
+   |     ^^^^^^^^
+
+error: missing trait method provided by default: `two`
+  --> tests/ui/missing_trait_methods.rs:58:1
+   |
+LL | impl MissingMultiple for Partial {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:54:5
+   |
+LL |     fn two() {}
+   |     ^^^^^^^^
+
+error: missing trait method provided by default: `three`
+  --> tests/ui/missing_trait_methods.rs:58:1
+   |
+LL | impl MissingMultiple for Partial {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: implement the method
+  --> tests/ui/missing_trait_methods.rs:55:5
+   |
+LL |     fn three() {}
+   |     ^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
