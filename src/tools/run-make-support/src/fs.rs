@@ -1,5 +1,5 @@
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 // FIXME(jieyouxu): modify create_symlink to panic on windows.
 
@@ -175,4 +175,17 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: std::fs::Permissions) {
         "the file's permissions in path \"{}\" could not be changed",
         path.as_ref().display()
     ));
+}
+
+/// A function which prints all file names in the directory `dir` similarly to Unix's `ls`.
+/// Useful for debugging.
+/// Usage: `eprintln!("{:#?}", shallow_find_dir_entries(some_dir));`
+#[track_caller]
+pub fn shallow_find_dir_entries<P: AsRef<Path>>(dir: P) -> Vec<PathBuf> {
+    let paths = read_dir(dir);
+    let mut output = Vec::new();
+    for path in paths {
+        output.push(path.unwrap().path());
+    }
+    output
 }
