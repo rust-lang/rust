@@ -8,11 +8,11 @@ use rustc_codegen_ssa::back::archive::{
     try_extract_macho_fat_archive, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
     ArchiveBuilderBuilder, ObjectReader, UnknownArchiveKind, DEFAULT_OBJECT_READER,
 };
+use rustc_codegen_ssa::common;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use tracing::trace;
 
-use crate::common;
 use crate::errors::{
     DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary, ErrorWritingDEFFile,
 };
