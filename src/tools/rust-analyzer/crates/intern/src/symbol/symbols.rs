@@ -56,6 +56,7 @@ macro_rules! define_symbols {
 define_symbols! {
     @WITH_NAME:
 
+    dotdotdot = "...",
     INTEGER_0 = "0",
     INTEGER_1 = "1",
     INTEGER_2 = "2",

@@ -261,7 +261,7 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                 .iter()
                 .map(|name| format_ident!("{}", to_upper_snake_case(&name.name.to_string())))
                 .collect();
-
+            let nodes = nodes.iter().map(|node| format_ident!("{}", node.name));
             (
                 quote! {
                     #[pretty_doc_comment_placeholder_workaround]
@@ -294,6 +294,15 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                             &self.syntax
                         }
                     }
+
+                    #(
+                        impl From<#nodes> for #name {
+                            #[inline]
+                            fn from(node: #nodes) -> #name {
+                                #name { syntax: node.syntax }
+                            }
+                        }
+                    )*
                 },
             )
         })

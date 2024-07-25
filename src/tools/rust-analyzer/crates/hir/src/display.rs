@@ -114,7 +114,10 @@ impl HirDisplay for Function {
         }
 
         if data.is_varargs() {
-            f.write_str(", ...")?;
+            if !first {
+                f.write_str(", ")?;
+            }
+            f.write_str("...")?;
         }
 
         f.write_char(')')?;

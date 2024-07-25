@@ -7,6 +7,7 @@ use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
 use intern::{sym, Interned, Symbol};
+use la_arena::{Idx, RawIdx};
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
 use triomphe::Arc;
@@ -58,35 +59,29 @@ impl FunctionData {
 
         let crate_graph = db.crate_graph();
         let cfg_options = &crate_graph[krate].cfg_options;
-        let enabled_params = func
-            .params
-            .clone()
-            .filter(|&param| item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options));
-
-        // If last cfg-enabled param is a `...` param, it's a varargs function.
-        let is_varargs = enabled_params
-            .clone()
-            .next_back()
-            .map_or(false, |param| item_tree[param].type_ref.is_none());
+        let attr_owner = |idx| {
+            item_tree::AttrOwner::Param(loc.id.value, Idx::from_raw(RawIdx::from(idx as u32)))
+        };
 
         let mut flags = func.flags;
-        if is_varargs {
-            flags |= FnFlags::IS_VARARGS;
-        }
         if flags.contains(FnFlags::HAS_SELF_PARAM) {
             // If there's a self param in the syntax, but it is cfg'd out, remove the flag.
-            let is_cfgd_out = match func.params.clone().next() {
-                Some(param) => {
-                    !item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options)
-                }
-                None => {
-                    stdx::never!("fn HAS_SELF_PARAM but no parameters allocated");
-                    true
-                }
-            };
+            let is_cfgd_out =
+                !item_tree.attrs(db, krate, attr_owner(0usize)).is_cfg_enabled(cfg_options);
             if is_cfgd_out {
                 cov_mark::hit!(cfgd_out_self_param);
                 flags.remove(FnFlags::HAS_SELF_PARAM);
+            }
+        }
+        if flags.contains(FnFlags::IS_VARARGS) {
+            if let Some((_, param)) = func.params.iter().enumerate().rev().find(|&(idx, _)| {
+                item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
+            }) {
+                if param.type_ref.is_some() {
+                    flags.remove(FnFlags::IS_VARARGS);
+                }
+            } else {
+                flags.remove(FnFlags::IS_VARARGS);
             }
         }
 
@@ -101,9 +96,14 @@ impl FunctionData {
 
         Arc::new(FunctionData {
             name: func.name.clone(),
-            params: enabled_params
-                .clone()
-                .filter_map(|id| item_tree[id].type_ref.clone())
+            params: func
+                .params
+                .iter()
+                .enumerate()
+                .filter(|&(idx, _)| {
+                    item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
+                })
+                .filter_map(|(_, param)| param.type_ref.clone())
                 .collect(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
@@ -629,7 +629,8 @@ impl<'a> AssocItemCollector<'a> {
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
                 self.diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
-                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).erase()),
+                    tree_id,
+                    ModItem::from(item).into(),
                     attrs.cfg().unwrap(),
                     self.expander.cfg_options().clone(),
                 ));
