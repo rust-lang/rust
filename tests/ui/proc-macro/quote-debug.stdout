@@ -32,9 +32,7 @@ fn main() {
                                                 (iter.next(), iter.next()) {
                                             lit.set_span(crate::Span::recover_proc_macro_span(2));
                                             lit
-                                        } else {
-                                           { ::core::panicking::unreachable_cold_explicit(); }
-                                       }
+                                        } else { ::core::panicking::unreachable_cold_explicit() }
                                 })),
                         crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new(';',
                                     crate::Spacing::Alone)))].iter().cloned().collect::<crate::TokenStream>()
