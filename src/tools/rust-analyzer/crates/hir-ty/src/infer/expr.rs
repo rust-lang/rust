@@ -1950,25 +1950,25 @@ impl InferenceContext<'_> {
         };
 
         let data = self.db.function_data(func);
-        if data.legacy_const_generics_indices.is_empty() {
+        let Some(legacy_const_generics_indices) = &data.legacy_const_generics_indices else {
             return Default::default();
-        }
+        };
 
         // only use legacy const generics if the param count matches with them
-        if data.params.len() + data.legacy_const_generics_indices.len() != args.len() {
+        if data.params.len() + legacy_const_generics_indices.len() != args.len() {
             if args.len() <= data.params.len() {
                 return Default::default();
             } else {
                 // there are more parameters than there should be without legacy
                 // const params; use them
-                let mut indices = data.legacy_const_generics_indices.clone();
+                let mut indices = legacy_const_generics_indices.as_ref().clone();
                 indices.sort();
                 return indices;
             }
         }
 
         // check legacy const parameters
-        for (subst_idx, arg_idx) in data.legacy_const_generics_indices.iter().copied().enumerate() {
+        for (subst_idx, arg_idx) in legacy_const_generics_indices.iter().copied().enumerate() {
             let arg = match subst.at(Interner, subst_idx).constant(Interner) {
                 Some(c) => c,
                 None => continue, // not a const parameter?
@@ -1981,7 +1981,7 @@ impl InferenceContext<'_> {
             self.infer_expr(args[arg_idx as usize], &expected);
             // FIXME: evaluate and unify with the const
         }
-        let mut indices = data.legacy_const_generics_indices.clone();
+        let mut indices = legacy_const_generics_indices.as_ref().clone();
         indices.sort();
         indices
     }
