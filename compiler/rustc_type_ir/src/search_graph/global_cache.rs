@@ -3,15 +3,8 @@ use rustc_index::IndexVec;
 use super::{AvailableDepth, Cx, StackDepth, StackEntry};
 use crate::data_structures::{HashMap, HashSet};
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""), Copy(bound = ""))]
-struct QueryData<X: Cx> {
-    result: X::Result,
-    proof_tree: X::ProofTree,
-}
-
 struct Success<X: Cx> {
-    data: X::Tracked<QueryData<X>>,
+    result: X::Tracked<X::Result>,
     additional_depth: usize,
 }
 
@@ -29,14 +22,13 @@ struct CacheEntry<X: Cx> {
     /// See the doc comment of `StackEntry::cycle_participants` for more
     /// details.
     nested_goals: HashSet<X::Input>,
-    with_overflow: HashMap<usize, X::Tracked<QueryData<X>>>,
+    with_overflow: HashMap<usize, X::Tracked<X::Result>>,
 }
 
 #[derive(derivative::Derivative)]
 #[derivative(Debug(bound = ""))]
 pub(super) struct CacheData<'a, X: Cx> {
     pub(super) result: X::Result,
-    pub(super) proof_tree: X::ProofTree,
     pub(super) additional_depth: usize,
     pub(super) encountered_overflow: bool,
     // FIXME: This is currently unused, but impacts the design
@@ -58,20 +50,19 @@ impl<X: Cx> GlobalCache<X> {
         input: X::Input,
 
         result: X::Result,
-        proof_tree: X::ProofTree,
         dep_node: X::DepNodeIndex,
 
         additional_depth: usize,
         encountered_overflow: bool,
         nested_goals: &HashSet<X::Input>,
     ) {
-        let data = cx.mk_tracked(QueryData { result, proof_tree }, dep_node);
+        let result = cx.mk_tracked(result, dep_node);
         let entry = self.map.entry(input).or_default();
         entry.nested_goals.extend(nested_goals);
         if encountered_overflow {
-            entry.with_overflow.insert(additional_depth, data);
+            entry.with_overflow.insert(additional_depth, result);
         } else {
-            entry.success = Some(Success { data, additional_depth });
+            entry.success = Some(Success { result, additional_depth });
         }
     }
 
@@ -93,10 +84,8 @@ impl<X: Cx> GlobalCache<X> {
 
         if let Some(ref success) = entry.success {
             if available_depth.cache_entry_is_applicable(success.additional_depth) {
-                let QueryData { result, proof_tree } = cx.get_tracked(&success.data);
                 return Some(CacheData {
-                    result,
-                    proof_tree,
+                    result: cx.get_tracked(&success.result),
                     additional_depth: success.additional_depth,
                     encountered_overflow: false,
                     nested_goals: &entry.nested_goals,
@@ -104,15 +93,11 @@ impl<X: Cx> GlobalCache<X> {
             }
         }
 
-        entry.with_overflow.get(&available_depth.0).map(|e| {
-            let QueryData { result, proof_tree } = cx.get_tracked(e);
-            CacheData {
-                result,
-                proof_tree,
-                additional_depth: available_depth.0,
-                encountered_overflow: true,
-                nested_goals: &entry.nested_goals,
-            }
+        entry.with_overflow.get(&available_depth.0).map(|e| CacheData {
+            result: cx.get_tracked(e),
+            additional_depth: available_depth.0,
+            encountered_overflow: true,
+            nested_goals: &entry.nested_goals,
         })
     }
 }

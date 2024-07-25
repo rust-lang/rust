@@ -72,9 +72,7 @@ pub struct CanonicalGoalEvaluation<I: Interner> {
 #[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
 pub enum CanonicalGoalEvaluationKind<I: Interner> {
     Overflow,
-    CycleInStack,
-    ProvisionalCacheHit,
-    Evaluation { final_revision: I::CanonicalGoalEvaluationStepRef },
+    Evaluation { final_revision: CanonicalGoalEvaluationStep<I> },
 }
 
 #[derive(derivative::Derivative)]

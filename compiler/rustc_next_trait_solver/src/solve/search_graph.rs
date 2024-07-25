@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::marker::PhantomData;
 
 use rustc_type_ir::inherent::*;
@@ -5,7 +6,7 @@ use rustc_type_ir::search_graph::{self, CycleKind, UsageKind};
 use rustc_type_ir::solve::{CanonicalInput, Certainty, QueryResult};
 use rustc_type_ir::Interner;
 
-use super::inspect::{self, ProofTreeBuilder};
+use super::inspect::ProofTreeBuilder;
 use super::FIXPOINT_STEP_LIMIT;
 use crate::delegate::SolverDelegate;
 
@@ -22,9 +23,20 @@ where
 {
     type Cx = D::Interner;
 
+    type ValidationScope = Infallible;
+    fn enter_validation_scope(
+        _cx: Self::Cx,
+        _input: <Self::Cx as search_graph::Cx>::Input,
+    ) -> Option<Self::ValidationScope> {
+        None
+    }
+
     const FIXPOINT_STEP_LIMIT: usize = FIXPOINT_STEP_LIMIT;
 
     type ProofTreeBuilder = ProofTreeBuilder<D>;
+    fn inspect_is_noop(inspect: &mut Self::ProofTreeBuilder) -> bool {
+        inspect.is_noop()
+    }
 
     fn recursion_limit(cx: I) -> usize {
         cx.recursion_limit()
@@ -68,7 +80,7 @@ where
         inspect: &mut ProofTreeBuilder<D>,
         input: CanonicalInput<I>,
     ) -> QueryResult<I> {
-        inspect.canonical_goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::Overflow);
+        inspect.canonical_goal_evaluation_overflow();
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
 

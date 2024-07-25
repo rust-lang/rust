@@ -23,8 +23,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 ref nested_goals,
                 provisional_result,
             } = *entry;
-            let cache_entry = provisional_cache.get(&entry.input).unwrap();
-            assert_eq!(cache_entry.stack_depth, Some(depth));
             if let Some(head) = non_root_cycle_participant {
                 assert!(head < depth);
                 assert!(nested_goals.is_empty());
@@ -45,19 +43,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             }
         }
 
-        for (&input, entry) in &self.provisional_cache {
-            let ProvisionalCacheEntry { stack_depth, with_coinductive_stack, with_inductive_stack } =
-                entry;
-            assert!(
-                stack_depth.is_some()
-                    || with_coinductive_stack.is_some()
-                    || with_inductive_stack.is_some()
-            );
-
-            if let &Some(stack_depth) = stack_depth {
-                assert_eq!(stack[stack_depth].input, input);
-            }
-
+        for (&_input, entry) in &self.provisional_cache {
+            let ProvisionalCacheEntry { with_coinductive_stack, with_inductive_stack } = entry;
+            assert!(with_coinductive_stack.is_some() || with_inductive_stack.is_some());
             let check_detached = |detached_entry: &DetachedEntry<X>| {
                 let DetachedEntry { head, result: _ } = *detached_entry;
                 assert_ne!(stack[head].has_been_used, None);
