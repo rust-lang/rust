@@ -4,7 +4,7 @@ error: this file contains an unclosed delimiter
 LL | struct S {
    |          - unclosed delimiter
 LL |     x: [u8; R
-   |        -      ^
+   |        -     ^
    |        |
    |        unclosed delimiter
 
