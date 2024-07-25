@@ -380,7 +380,7 @@ impl<'a> Ctx<'a> {
                     }
                 };
                 let type_ref = Interned::new(self_type);
-                params.push(Param { type_ref });
+                params.push(Param { type_ref: Some(type_ref) });
                 has_self_param = true;
             }
             for param in param_list.params() {
@@ -388,12 +388,12 @@ impl<'a> Ctx<'a> {
                 let param = match param.dotdotdot_token() {
                     Some(_) => {
                         has_var_args = true;
-                        Param { type_ref: Interned::new(TypeRef::Error) }
+                        Param { type_ref: None }
                     }
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        Param { type_ref: ty }
+                        Param { type_ref: Some(ty) }
                     }
                 };
                 params.push(param);

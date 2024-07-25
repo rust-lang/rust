@@ -73,6 +73,17 @@ impl FunctionData {
                 flags.remove(FnFlags::HAS_SELF_PARAM);
             }
         }
+        if flags.contains(FnFlags::IS_VARARGS) {
+            if let Some((_, param)) = func.params.iter().enumerate().rev().find(|&(idx, _)| {
+                item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
+            }) {
+                if param.type_ref.is_some() {
+                    flags.remove(FnFlags::IS_VARARGS);
+                }
+            } else {
+                flags.remove(FnFlags::IS_VARARGS);
+            }
+        }
 
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let legacy_const_generics_indices = attrs
@@ -92,7 +103,7 @@ impl FunctionData {
                 .filter(|&(idx, _)| {
                     item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
                 })
-                .map(|(_, param)| param.type_ref.clone())
+                .filter_map(|(_, param)| param.type_ref.clone())
                 .collect(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),

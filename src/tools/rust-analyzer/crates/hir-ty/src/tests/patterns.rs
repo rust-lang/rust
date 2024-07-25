@@ -1126,6 +1126,23 @@ fn var_args() {
 pub struct VaListImpl<'f>;
 fn my_fn(foo: ...) {}
        //^^^ VaListImpl<'?>
+fn my_fn2(bar: u32, foo: ...) {}
+                  //^^^ VaListImpl<'?>
+"#,
+    );
+}
+
+#[test]
+fn var_args_cond() {
+    check_types(
+        r#"
+#[lang = "va_list"]
+pub struct VaListImpl<'f>;
+fn my_fn(bar: u32, #[cfg(FALSE)] foo: ..., #[cfg(not(FALSE))] foo: u32) {
+    foo;
+  //^^^ u32
+
+}
 "#,
     );
 }

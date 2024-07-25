@@ -99,13 +99,7 @@ impl HirDisplay for Function {
         }
 
         // FIXME: Use resolved `param.ty` once we no longer discard lifetimes
-        for (type_ref, param) in data
-            .params
-            .iter()
-            .zip(self.assoc_fn_params(db))
-            .take(data.params.len() - data.is_varargs() as usize)
-            .skip(skip_self)
-        {
+        for (type_ref, param) in data.params.iter().zip(self.assoc_fn_params(db)).skip(skip_self) {
             let local = param.as_local(db).map(|it| it.name(db));
             if !first {
                 f.write_str(", ")?;

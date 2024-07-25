@@ -291,7 +291,7 @@ impl Printer<'_> {
                             if idx == 0 && flags.contains(FnFlags::HAS_SELF_PARAM) {
                                 w!(this, "self: ");
                             }
-                            if idx != params.len() {
+                            if let Some(type_ref) = type_ref {
                                 this.print_type_ref(type_ref);
                             } else {
                                 wln!(this, "...");

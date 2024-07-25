@@ -741,7 +741,7 @@ pub struct Function {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: Option<Interned<TypeRef>>,
 }
 
 bitflags::bitflags! {
