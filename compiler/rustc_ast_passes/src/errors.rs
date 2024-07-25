@@ -657,15 +657,6 @@ pub enum TildeConstReason {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_incompatible_trait_bound_modifiers)]
-pub struct IncompatibleTraitBoundModifiers {
-    #[primary_span]
-    pub span: Span,
-    pub left: &'static str,
-    pub right: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_const_and_async)]
 pub struct ConstAndAsync {
     #[primary_span]

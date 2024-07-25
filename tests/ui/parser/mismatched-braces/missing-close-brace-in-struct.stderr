@@ -5,7 +5,7 @@ LL | pub(crate) struct Bar<T> {
    |                          - unclosed delimiter
 ...
 LL | fn main() {}
-   |                                                                 ^
+   |                                                                ^
 
 error: aborting due to 1 previous error
 

@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: maybe a missing crate `unresolved_crate`?
+error[E0433]: failed to resolve: you might be missing crate `unresolved_crate`
   --> $DIR/unresolved-import-recovery.rs:3:5
    |
 LL | use unresolved_crate::module::Name;
-   |     ^^^^^^^^^^^^^^^^ maybe a missing crate `unresolved_crate`?
+   |     ^^^^^^^^^^^^^^^^ you might be missing crate `unresolved_crate`
    |
    = help: consider adding `extern crate unresolved_crate` to use the `unresolved_crate` crate
 

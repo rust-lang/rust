@@ -2,7 +2,7 @@ error[E0432]: unresolved import `spam`
   --> $DIR/import-from-missing-star.rs:1:5
    |
 LL | use spam::*;
-   |     ^^^^ maybe a missing crate `spam`?
+   |     ^^^^ you might be missing crate `spam`
    |
    = help: consider adding `extern crate spam` to use the `spam` crate
 

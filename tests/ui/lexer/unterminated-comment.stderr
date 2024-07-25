@@ -2,7 +2,7 @@ error[E0758]: unterminated block comment
   --> $DIR/unterminated-comment.rs:1:1
    |
 LL | /*
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

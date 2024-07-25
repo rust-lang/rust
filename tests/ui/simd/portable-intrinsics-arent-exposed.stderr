@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/portable-intrinsics-arent-exposed.rs:4:5
    |
 LL | use core::simd::intrinsics;
    |     ^^^^
    |     |
-   |     maybe a missing crate `core`?
+   |     you might be missing crate `core`
    |     help: try using `std` instead of `core`: `std`
 
 error[E0432]: unresolved import `std::simd::intrinsics`

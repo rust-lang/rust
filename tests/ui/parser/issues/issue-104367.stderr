@@ -20,7 +20,7 @@ LL |         #![cfg] {
 LL |             #![w,)
    |                  - missing open `(` for this delimiter
 LL |
-   |                                                                       ^
+   |                                                                      ^
 
 error: aborting due to 2 previous errors
 
