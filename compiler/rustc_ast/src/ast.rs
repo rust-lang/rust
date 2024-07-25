@@ -36,6 +36,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
 use std::mem;
@@ -2272,7 +2273,7 @@ impl std::fmt::Debug for InlineAsmOptions {
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub enum InlineAsmTemplatePiece {
-    String(String),
+    String(Cow<'static, str>),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
 }
 
