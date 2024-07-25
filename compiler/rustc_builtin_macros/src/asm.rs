@@ -365,10 +365,14 @@ fn parse_options<'a>(
 
         'blk: {
             for (symbol, option) in OPTIONS {
-                let expect =
-                    !is_global_asm || ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option);
+                let kw_matched =
+                    if !is_global_asm || ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option) {
+                        p.eat_keyword(symbol)
+                    } else {
+                        p.eat_keyword_noexpect(symbol)
+                    };
 
-                if if expect { p.eat_keyword(symbol) } else { p.eat_keyword_noexpect(symbol) } {
+                if kw_matched {
                     try_set_option(p, args, is_global_asm, symbol, option);
                     break 'blk;
                 }
