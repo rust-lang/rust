@@ -1,3 +1,6 @@
+//@revisions: old next
+//@[next] compile-flags: -Znext-solver
+
 //! used to ICE: #119272
 
 #![feature(type_alias_impl_trait)]
@@ -6,6 +9,7 @@ mod defining_scope {
     pub type Alias<T> = impl Sized;
 
     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
+        //[next]~^ ERROR: type annotations needed
         x
     }
 }

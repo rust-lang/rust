@@ -1,0 +1,19 @@
+error[E0119]: conflicting implementations of trait `Trait<_>`
+  --> $DIR/opaque_type_candidate_selection.rs:28:1
+   |
+LL | impl<T> Trait<T> for T {
+   | ---------------------- first implementation here
+...
+LL | impl<T> Trait<T> for defining_scope::Alias<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error[E0282]: type annotations needed
+  --> $DIR/opaque_type_candidate_selection.rs:11:23
+   |
+LL |     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0282.
+For more information about an error, try `rustc --explain E0119`.
