@@ -9,7 +9,6 @@ use rustc_codegen_ssa::back::archive::{
     ArchiveBuilderBuilder, ObjectReader, UnknownArchiveKind, DEFAULT_OBJECT_READER,
 };
 use rustc_codegen_ssa::common;
-use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use tracing::trace;
 
@@ -119,25 +118,11 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         &self,
         sess: &Session,
         lib_name: &str,
-        dll_imports: &[DllImport],
+        import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
         output_path: &Path,
     ) {
         let target = &sess.target;
         let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(target);
-
-        let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
-            .iter()
-            .map(|import: &DllImport| {
-                if sess.target.arch == "x86" {
-                    (
-                        common::i686_decorated_name(import, mingw_gnu_toolchain, false),
-                        import.ordinal(),
-                    )
-                } else {
-                    (import.name.to_string(), import.ordinal())
-                }
-            })
-            .collect();
 
         if mingw_gnu_toolchain {
             // The binutils linker used on -windows-gnu targets cannot read the import
@@ -236,9 +221,9 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             trace!("  output_path {}", output_path.display());
             trace!(
                 "  import names: {}",
-                dll_imports
+                import_name_and_ordinal_vector
                     .iter()
-                    .map(|import| import.name.to_string())
+                    .map(|(name, _ordinal)| name.clone())
                     .collect::<Vec<_>>()
                     .join(", "),
             );

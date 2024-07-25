@@ -9,7 +9,6 @@ use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
-use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use tempfile::Builder as TempFileBuilder;
@@ -30,7 +29,7 @@ pub trait ArchiveBuilderBuilder {
         &self,
         sess: &Session,
         lib_name: &str,
-        dll_imports: &[DllImport],
+        import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
         output_path: &Path,
     );
 

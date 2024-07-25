@@ -51,7 +51,8 @@ use super::linker::{self, Linker};
 use super::metadata::{create_wrapper_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
 use crate::{
-    errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
+    common, errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo,
+    NativeLib,
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -497,10 +498,26 @@ fn create_dll_import_libs<'a>(
             let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
             let output_path = tmpdir.join(format!("{raw_dylib_name}{name_suffix}.lib"));
 
+            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
+
+            let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = raw_dylib_imports
+                .iter()
+                .map(|import: &DllImport| {
+                    if sess.target.arch == "x86" {
+                        (
+                            common::i686_decorated_name(import, mingw_gnu_toolchain, false),
+                            import.ordinal(),
+                        )
+                    } else {
+                        (import.name.to_string(), import.ordinal())
+                    }
+                })
+                .collect();
+
             archive_builder_builder.create_dll_import_lib(
                 sess,
                 &raw_dylib_name,
-                &raw_dylib_imports,
+                import_name_and_ordinal_vector,
                 &output_path,
             );
 
