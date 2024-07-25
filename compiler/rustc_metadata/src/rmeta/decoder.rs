@@ -1728,6 +1728,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     source_len,
                     lines,
                     multibyte_chars,
+                    non_narrow_chars,
                     normalized_pos,
                     stable_id,
                     ..
@@ -1779,6 +1780,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     self.cnum,
                     lines,
                     multibyte_chars,
+                    non_narrow_chars,
                     normalized_pos,
                     source_file_index,
                 );

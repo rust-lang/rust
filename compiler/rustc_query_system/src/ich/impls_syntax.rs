@@ -73,6 +73,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             source_len: _,
             lines: _,
             ref multibyte_chars,
+            ref non_narrow_chars,
             ref normalized_pos,
         } = *self;
 
@@ -94,6 +95,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         // We only hash the relative position within this source_file
         multibyte_chars.len().hash_stable(hcx, hasher);
         for &char_pos in multibyte_chars.iter() {
+            char_pos.hash_stable(hcx, hasher);
+        }
+
+        non_narrow_chars.len().hash_stable(hcx, hasher);
+        for &char_pos in non_narrow_chars.iter() {
             char_pos.hash_stable(hcx, hasher);
         }
 

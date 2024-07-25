@@ -232,6 +232,7 @@ fn t10() {
         source_len,
         lines,
         multibyte_chars,
+        non_narrow_chars,
         normalized_pos,
         stable_id,
         ..
@@ -245,6 +246,7 @@ fn t10() {
         CrateNum::ZERO,
         FreezeLock::new(lines.read().clone()),
         multibyte_chars,
+        non_narrow_chars,
         normalized_pos,
         0,
     );
