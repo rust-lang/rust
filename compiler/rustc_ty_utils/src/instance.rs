@@ -191,11 +191,22 @@ fn resolve_associated_item<'tcx>(
 
             // Any final impl is required to define all associated items.
             if !leaf_def.item.defaultness(tcx).has_value() {
-                let guard = tcx.dcx().span_delayed_bug(
+                let guar = tcx.dcx().span_delayed_bug(
                     tcx.def_span(leaf_def.item.def_id),
                     "missing value for assoc item in impl",
                 );
-                return Err(guard);
+                return Err(guar);
+            }
+
+            // Make sure that we're projecting to an item that has compatible args.
+            // This may happen if we are resolving an instance before codegen, such
+            // as during inlining. This check is also done in projection.
+            if !tcx.check_args_compatible(leaf_def.item.def_id, args) {
+                let guar = tcx.dcx().span_delayed_bug(
+                    tcx.def_span(leaf_def.item.def_id),
+                    "missing value for assoc item in impl",
+                );
+                return Err(guar);
             }
 
             let args = tcx.erase_regions(args);
