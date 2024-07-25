@@ -41,8 +41,8 @@ impl Number {
             && !self.many_digits
     }
 
-    /// The fast path algorithm to turn into an exact float representation, using machine-sized
-    /// integers and floats.
+    /// Try turning the decimal into an exact float representation, using machine-sized integers
+    /// and floats.
     ///
     /// This is extracted into a separate function so that it can be attempted before constructing
     /// a Decimal. This only works if both the mantissa and the exponent

@@ -1,10 +1,10 @@
 //! Helper trait for generic float types.
 
+use core::f64;
+
 use crate::fmt::{Debug, LowerExp};
 use crate::num::FpCategory;
 use crate::ops::{self, Add, Div, Mul, Neg};
-
-use core::f64;
 
 pub trait CastInto<T: Copy>: Copy {
     fn cast(self) -> T;
