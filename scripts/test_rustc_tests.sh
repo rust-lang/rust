@@ -134,6 +134,8 @@ rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation war
 # bugs in the test suite
 # ======================
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm tests/ui/backtrace/synchronized-panic-handler.rs # missing needs-unwind annotation
+rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
@@ -157,8 +159,8 @@ index ea06b620c4c..b969d0009c6 100644
  RUSTDOC := \$(RUSTDOC) -Clinker='\$(RUSTC_LINKER)'
 diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-support/src/rustdoc.rs
 index 9607ff02f96..b7d97caf9a2 100644
---- a/src/tools/run-make-support/src/rustdoc.rs
-+++ b/src/tools/run-make-support/src/rustdoc.rs
+--- a/src/tools/run-make-support/src/external_deps/rustdoc.rs
++++ b/src/tools/run-make-support/src/external_deps/rustdoc.rs
 @@ -34,8 +34,6 @@ pub fn bare() -> Self {
      #[track_caller]
      pub fn new() -> Self {
