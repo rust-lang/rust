@@ -60,10 +60,6 @@ impl AttrWrapper {
     pub fn is_empty(&self) -> bool {
         self.attrs.is_empty()
     }
-
-    pub fn is_complete(&self) -> bool {
-        crate::parser::attr::is_complete(&self.attrs)
-    }
 }
 
 /// Returns `true` if `attrs` contains a `cfg` or `cfg_attr` attribute
@@ -205,7 +201,7 @@ impl<'a> Parser<'a> {
         //   tokens by definition).
         let needs_collection = matches!(force_collect, ForceCollect::Yes)
             // - Any of our outer attributes require tokens.
-            || !attrs.is_complete()
+            || !crate::parser::attr::is_complete(&attrs.attrs)
             // - Our target supports custom inner attributes (custom
             //   inner attribute invocation might require token capturing).
             || R::SUPPORTS_CUSTOM_INNER_ATTRS
@@ -261,9 +257,9 @@ impl<'a> Parser<'a> {
         // - We are force collecting tokens.
         let needs_collection = matches!(force_collect, ForceCollect::Yes)
             // - Any of our outer *or* inner attributes require tokens.
-            //   (`attrs` was just outer attributes, but `ret.attrs()` is outer
-            //   and inner attributes. So this check is more precise than the
-            //   earlier `attrs.is_complete()` check, and we don't need to
+            //   (`attr.attrs` was just outer attributes, but `ret.attrs()` is
+            //   outer and inner attributes. So this check is more precise than
+            //   the earlier `is_complete()` check, and we don't need to
             //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
             || !crate::parser::attr::is_complete(ret.attrs())
             // - We are in `capture_cfg` mode and there are `#[cfg]` or
