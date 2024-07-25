@@ -1087,8 +1087,6 @@ macro_rules! tool_extended {
 
 // NOTE: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
 // to make `./x.py build <tool>` work.
-// NOTE: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
-// invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
     CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
