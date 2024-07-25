@@ -121,7 +121,7 @@ pub enum TypeRef {
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
     Fn(
-        Vec<(Option<Name>, TypeRef)>,
+        Box<[(Option<Name>, TypeRef)]>,
         bool,           /*varargs*/
         bool,           /*is_unsafe*/
         Option<Symbol>, /* abi */
@@ -228,7 +228,7 @@ impl TypeRef {
                         })
                         .collect()
                 } else {
-                    Vec::new()
+                    Vec::with_capacity(1)
                 };
                 fn lower_abi(abi: ast::Abi) -> Symbol {
                     match abi.abi_string() {
@@ -240,7 +240,7 @@ impl TypeRef {
 
                 let abi = inner.abi().map(lower_abi);
                 params.push((None, ret_ty));
-                TypeRef::Fn(params, is_varargs, inner.unsafe_token().is_some(), abi)
+                TypeRef::Fn(params.into(), is_varargs, inner.unsafe_token().is_some(), abi)
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
@@ -396,7 +396,7 @@ impl TypeBound {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConstRef {
-    Scalar(LiteralConstRef),
+    Scalar(Box<LiteralConstRef>),
     Path(Name),
     Complex(AstId<ast::ConstArg>),
 }
@@ -408,7 +408,7 @@ impl ConstRef {
                 return Self::from_expr(expr, Some(lower_ctx.ast_id(&arg)));
             }
         }
-        Self::Scalar(LiteralConstRef::Unknown)
+        Self::Scalar(Box::new(LiteralConstRef::Unknown))
     }
 
     pub(crate) fn from_const_param(
@@ -452,10 +452,10 @@ impl ConstRef {
             ast::Expr::PathExpr(p) if is_path_ident(&p) => {
                 match p.path().and_then(|it| it.segment()).and_then(|it| it.name_ref()) {
                     Some(it) => Self::Path(it.as_name()),
-                    None => Self::Scalar(LiteralConstRef::Unknown),
+                    None => Self::Scalar(Box::new(LiteralConstRef::Unknown)),
                 }
             }
-            ast::Expr::Literal(literal) => Self::Scalar(match literal.kind() {
+            ast::Expr::Literal(literal) => Self::Scalar(Box::new(match literal.kind() {
                 ast::LiteralKind::IntNumber(num) => {
                     num.value().map(LiteralConstRef::UInt).unwrap_or(LiteralConstRef::Unknown)
                 }
@@ -464,12 +464,12 @@ impl ConstRef {
                 }
                 ast::LiteralKind::Bool(f) => LiteralConstRef::Bool(f),
                 _ => LiteralConstRef::Unknown,
-            }),
+            })),
             _ => {
                 if let Some(ast_id) = ast_id {
                     Self::Complex(ast_id)
                 } else {
-                    Self::Scalar(LiteralConstRef::Unknown)
+                    Self::Scalar(Box::new(LiteralConstRef::Unknown))
                 }
             }
         }
