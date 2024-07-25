@@ -2,7 +2,7 @@ error[E0432]: unresolved import `abc`
   --> $DIR/issue-33464.rs:3:5
    |
 LL | use abc::one_el;
-   |     ^^^ maybe a missing crate `abc`?
+   |     ^^^ you might be missing crate `abc`
    |
    = help: consider adding `extern crate abc` to use the `abc` crate
 
@@ -10,7 +10,7 @@ error[E0432]: unresolved import `abc`
   --> $DIR/issue-33464.rs:5:5
    |
 LL | use abc::{a, bbb, cccccc};
-   |     ^^^ maybe a missing crate `abc`?
+   |     ^^^ you might be missing crate `abc`
    |
    = help: consider adding `extern crate abc` to use the `abc` crate
 
@@ -18,7 +18,7 @@ error[E0432]: unresolved import `a_very_long_name`
   --> $DIR/issue-33464.rs:7:5
    |
 LL | use a_very_long_name::{el, el2};
-   |     ^^^^^^^^^^^^^^^^ maybe a missing crate `a_very_long_name`?
+   |     ^^^^^^^^^^^^^^^^ you might be missing crate `a_very_long_name`
    |
    = help: consider adding `extern crate a_very_long_name` to use the `a_very_long_name` crate
 

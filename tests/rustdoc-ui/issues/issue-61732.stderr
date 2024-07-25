@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: maybe a missing crate `r#mod`?
+error[E0433]: failed to resolve: you might be missing crate `r#mod`
   --> $DIR/issue-61732.rs:3:15
    |
 LL | pub(in crate::r#mod) fn main() {}
-   |               ^^^^^ maybe a missing crate `r#mod`?
+   |               ^^^^^ you might be missing crate `r#mod`
    |
    = help: consider adding `extern crate r#mod` to use the `r#mod` crate
 

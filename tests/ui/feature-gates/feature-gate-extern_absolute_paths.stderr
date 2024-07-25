@@ -4,14 +4,14 @@ error[E0432]: unresolved import `core`
 LL | use core::default;
    |     ^^^^
    |     |
-   |     maybe a missing crate `core`?
+   |     you might be missing crate `core`
    |     help: try using `std` instead of `core`: `std`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/feature-gate-extern_absolute_paths.rs:4:19
    |
 LL |     let _: u8 = ::core::default::Default();
-   |                   ^^^^ maybe a missing crate `core`?
+   |                   ^^^^ you might be missing crate `core`
    |
 help: try using `std` instead of `core`
    |

@@ -1,21 +1,25 @@
-use foo::bar; //~ ERROR unresolved import `foo` [E0432]
-              //~^ maybe a missing crate `foo`?
-              //~| HELP consider adding `extern crate foo` to use the `foo` crate
+use foo::bar;
+//~^ ERROR unresolved import `foo` [E0432]
+//~| NOTE you might be missing crate `foo`
+//~| HELP consider adding `extern crate foo` to use the `foo` crate
 
-use bar::Baz as x; //~ ERROR unresolved import `bar::Baz` [E0432]
-                   //~| no `Baz` in `bar`
-                   //~| HELP a similar name exists in the module
-                   //~| SUGGESTION Bar
+use bar::Baz as x;
+//~^ ERROR unresolved import `bar::Baz` [E0432]
+//~| NOTE no `Baz` in `bar`
+//~| HELP a similar name exists in the module
+//~| SUGGESTION Bar
 
-use food::baz; //~ ERROR unresolved import `food::baz`
-               //~| no `baz` in `food`
-               //~| HELP a similar name exists in the module
-               //~| SUGGESTION bag
+use food::baz;
+//~^ ERROR unresolved import `food::baz`
+//~| NOTE no `baz` in `food`
+//~| HELP a similar name exists in the module
+//~| SUGGESTION bag
 
-use food::{beens as Foo}; //~ ERROR unresolved import `food::beens` [E0432]
-                          //~| no `beens` in `food`
-                          //~| HELP a similar name exists in the module
-                          //~| SUGGESTION beans
+use food::{beens as Foo};
+//~^ ERROR unresolved import `food::beens` [E0432]
+//~| NOTE no `beens` in `food`
+//~| HELP a similar name exists in the module
+//~| SUGGESTION beans
 
 mod bar {
     pub struct Bar;
@@ -36,9 +40,10 @@ mod m {
         MyVariant
     }
 
-    use MyEnum::*; //~ ERROR unresolved import `MyEnum` [E0432]
-                   //~| HELP a similar path exists
-                   //~| SUGGESTION self::MyEnum
+    use MyEnum::*;
+    //~^ ERROR unresolved import `MyEnum` [E0432]
+    //~| HELP a similar path exists
+    //~| SUGGESTION self::MyEnum
 }
 
 mod items {
@@ -46,9 +51,10 @@ mod items {
         Variant
     }
 
-    use Enum::*; //~ ERROR unresolved import `Enum` [E0432]
-                 //~| HELP a similar path exists
-                 //~| SUGGESTION self::Enum
+    use Enum::*;
+    //~^ ERROR unresolved import `Enum` [E0432]
+    //~| HELP a similar path exists
+    //~| SUGGESTION self::Enum
 
     fn item() {}
 }

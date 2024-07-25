@@ -2,7 +2,7 @@ error[E0432]: unresolved import `not_existing_crate`
   --> $DIR/unresolved-asterisk-imports.rs:1:5
    |
 LL | use not_existing_crate::*;
-   |     ^^^^^^^^^^^^^^^^^^ maybe a missing crate `not_existing_crate`?
+   |     ^^^^^^^^^^^^^^^^^^ you might be missing crate `not_existing_crate`
    |
    = help: consider adding `extern crate not_existing_crate` to use the `not_existing_crate` crate
 
