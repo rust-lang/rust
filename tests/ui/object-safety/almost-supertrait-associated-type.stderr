@@ -1,0 +1,55 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/almost-supertrait-associated-type.rs:21:20
+   |
+LL | impl<T, U> Dyn for dyn Foo<T, U> + '_ {
+   |                    ^^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/almost-supertrait-associated-type.rs:33:34
+   |
+LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
+   |       --- this trait cannot be made into an object...
+...
+LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
+   = help: consider moving `transmute` to another trait
+   = help: only type `std::marker::PhantomData<T>` implements the trait, consider using it directly instead
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/almost-supertrait-associated-type.rs:7:27
+   |
+LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
+   |                           ^^^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/almost-supertrait-associated-type.rs:33:34
+   |
+LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
+   |       --- this trait cannot be made into an object...
+...
+LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
+   = help: consider moving `transmute` to another trait
+   = help: only type `std::marker::PhantomData<T>` implements the trait, consider using it directly instead
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/almost-supertrait-associated-type.rs:7:6
+   |
+LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
+   |      ^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/almost-supertrait-associated-type.rs:33:34
+   |
+LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
+   |       --- this trait cannot be made into an object...
+...
+LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
+   = help: consider moving `transmute` to another trait
+   = help: only type `std::marker::PhantomData<T>` implements the trait, consider using it directly instead
+   = note: required for the cast from `&PhantomData<T>` to `&dyn Foo<T, U>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.
