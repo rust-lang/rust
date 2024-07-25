@@ -117,6 +117,12 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             // Otherwise, the feature is unknown. Record it as a lib feature.
             // It will be checked later.
             features.set_declared_lib_feature(name, mi.span());
+
+            // Similar to above, detect internal lib features to suppress
+            // the ICE message that asks for a report.
+            if features.internal(name) && ![sym::core, sym::alloc, sym::std].contains(&crate_name) {
+                sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
         }
     }
 
