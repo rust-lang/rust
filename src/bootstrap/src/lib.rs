@@ -582,7 +582,7 @@ impl Build {
 
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
-    pub fn update_existing_submodules(&self) {
+    fn update_existing_submodules(&self) {
         // Avoid running git when there isn't a git checkout.
         if !self.config.submodules(self.rust_info()) {
             return;
