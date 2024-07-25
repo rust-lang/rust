@@ -379,6 +379,7 @@ impl TypeBound {
                     None => TypeBound::Error,
                 }
             }
+            ast::TypeBoundKind::Use(_) => TypeBound::Error,
             ast::TypeBoundKind::Lifetime(lifetime) => {
                 TypeBound::Lifetime(LifetimeRef::new(&lifetime))
             }
