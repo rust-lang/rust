@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
         //   tokens by definition).
         let needs_collection = matches!(force_collect, ForceCollect::Yes)
             // - Any of our outer attributes require tokens.
-            || !crate::parser::attr::is_complete(&attrs.attrs)
+            || !is_complete(&attrs.attrs)
             // - Our target supports custom inner attributes (custom
             //   inner attribute invocation might require token capturing).
             || R::SUPPORTS_CUSTOM_INNER_ATTRS
@@ -261,7 +261,7 @@ impl<'a> Parser<'a> {
             //   outer and inner attributes. So this check is more precise than
             //   the earlier `is_complete()` check, and we don't need to
             //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
-            || !crate::parser::attr::is_complete(ret.attrs())
+            || !is_complete(ret.attrs())
             // - We are in `capture_cfg` mode and there are `#[cfg]` or
             //   `#[cfg_attr]` attributes. (During normal non-`capture_cfg`
             //   parsing, we don't need any special capturing for those
@@ -455,6 +455,17 @@ fn make_attr_token_stream(
         }
     }
     AttrTokenStream::new(stack_top.inner)
+}
+
+/// The attributes are complete if all attributes are either a doc comment or a
+/// builtin attribute other than `cfg_attr`.
+fn is_complete(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().all(|attr| {
+        attr.is_doc_comment()
+            || attr.ident().is_some_and(|ident| {
+                ident.name != sym::cfg_attr && rustc_feature::is_builtin_attr_name(ident.name)
+            })
+    })
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
