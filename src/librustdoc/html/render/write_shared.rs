@@ -15,7 +15,6 @@
 
 use std::any::Any;
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::ffi::OsString;
 use std::fs::File;
 use std::io::BufWriter;
@@ -52,7 +51,7 @@ use crate::html::layout;
 use crate::html::render::search_index::build_index;
 use crate::html::render::search_index::SerializedSearchIndex;
 use crate::html::render::sorted_json::{EscapedJson, SortedJson};
-use crate::html::render::sorted_template::{self, SortedTemplate};
+use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
 use crate::html::render::{AssocItemLink, ImplRenderingParameters};
 use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
@@ -78,33 +77,29 @@ pub(crate) fn write_shared(
     let crate_name = krate.name(cx.tcx());
     let crate_name = crate_name.as_str(); // rand
     let crate_name_json = SortedJson::serialize(crate_name); // "rand"
-    let external_crates = hack_get_external_crate_names(cx)?;
+    let external_crates = hack_get_external_crate_names(&cx.dst)?;
     let info = CrateInfo {
         src_files_js: SourcesPart::get(cx, &crate_name_json)?,
-        search_index_js: SearchIndexPart::get(cx, index)?,
+        search_index_js: SearchIndexPart::get(index, &cx.shared.resource_suffix)?,
         all_crates: AllCratesPart::get(crate_name_json.clone())?,
         crates_index: CratesIndexPart::get(&crate_name, &external_crates)?,
         trait_impl: TraitAliasPart::get(cx, &crate_name_json)?,
         type_impl: TypeAliasPart::get(cx, krate, &crate_name_json)?,
     };
 
-    let crates_info = vec![info]; // we have info from just one crate
+    let crates = vec![info]; // we have info from just one crate. rest will found in out dir
 
     write_static_files(cx, &opt)?;
     let dst = &cx.dst;
     if opt.emit.is_empty() || opt.emit.contains(&EmitType::InvocationSpecific) {
         if cx.include_sources {
-            write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, &crates_info)?;
+            write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, &crates)?;
         }
-        write_rendered_cci::<SearchIndexPart, _>(
-            SearchIndexPart::blank,
-            dst,
-            &crates_info,
-        )?;
-        write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, &crates_info)?;
+        write_rendered_cci::<SearchIndexPart, _>(SearchIndexPart::blank, dst, &crates)?;
+        write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, &crates)?;
     }
-    write_rendered_cci::<TraitAliasPart, _>(TraitAliasPart::blank, dst, &crates_info)?;
-    write_rendered_cci::<TypeAliasPart, _>(TypeAliasPart::blank, dst, &crates_info)?;
+    write_rendered_cci::<TraitAliasPart, _>(TraitAliasPart::blank, dst, &crates)?;
+    write_rendered_cci::<TypeAliasPart, _>(TypeAliasPart::blank, dst, &crates)?;
     match &opt.index_page {
         Some(index_page) if opt.enable_index_page => {
             let mut md_opts = opt.clone();
@@ -119,7 +114,7 @@ pub(crate) fn write_shared(
             write_rendered_cci::<CratesIndexPart, _>(
                 || CratesIndexPart::blank(cx),
                 dst,
-                &crates_info,
+                &crates,
             )?;
         }
         _ => {} // they don't want an index page
@@ -189,7 +184,8 @@ fn write_search_desc(
         let path = path.join(filename);
         let part = SortedJson::serialize(&part);
         let part = format!("searchState.loadedDescShard({encoded_crate_name}, {i}, {part})");
-        write_create_parents(&path, part)?;
+        create_parents(&path)?;
+        try_err!(fs::write(&path, part), &path);
     }
     Ok(())
 }
@@ -286,8 +282,11 @@ else if (window.initSearch) window.initSearch(searchIndex);",
         )
     }
 
-    fn get(cx: &Context<'_>, search_index: SortedJson) -> Result<PartsAndLocations<Self>, Error> {
-        let path = suffix_path("search-index.js", &cx.shared.resource_suffix);
+    fn get(
+        search_index: SortedJson,
+        resource_suffix: &str,
+    ) -> Result<PartsAndLocations<Self>, Error> {
+        let path = suffix_path("search-index.js", resource_suffix);
         let search_index = EscapedJson::from(search_index);
         Ok(PartsAndLocations::with(path, search_index))
     }
@@ -319,8 +318,8 @@ impl AllCratesPart {
 ///
 /// This is to match the current behavior of rustdoc, which allows you to get all crates
 /// on the index page, even if --enable-index-page is only passed to the last crate.
-fn hack_get_external_crate_names(cx: &Context<'_>) -> Result<Vec<String>, Error> {
-    let path = cx.dst.join("crates.js");
+fn hack_get_external_crate_names(doc_root: &Path) -> Result<Vec<String>, Error> {
+    let path = doc_root.join("crates.js");
     let Ok(content) = fs::read_to_string(&path) else {
         // they didn't emit invocation specific, so we just say there were no crates
         return Ok(Vec::default());
@@ -361,7 +360,7 @@ impl CratesIndexPart {
         match SortedTemplate::magic(&template, MAGIC) {
             Ok(template) => template,
             Err(e) => panic!(
-                "{e}: Object Replacement Character (U+FFFC) should not appear in the --index-page"
+                "Object Replacement Character (U+FFFC) should not appear in the --index-page: {e}"
             ),
         }
     }
@@ -860,6 +859,21 @@ impl Serialize for AliasSerializableImpl {
     }
 }
 
+fn get_path_parts<T: CciPart>(
+    dst: &Path,
+    crates_info: &[CrateInfo],
+) -> FxHashMap<PathBuf, Vec<String>> {
+    let mut templates: FxHashMap<PathBuf, Vec<String>> = FxHashMap::default();
+    crates_info.iter().map(|crate_info| crate_info.get::<T>().parts.iter()).flatten().for_each(
+        |(path, part)| {
+            let path = dst.join(&path);
+            let part = part.to_string();
+            templates.entry(path).or_default().push(part);
+        },
+    );
+    templates
+}
+
 /// Create all parents
 fn create_parents(path: &Path) -> Result<(), Error> {
     let parent = path.parent().expect("should not have an empty path here");
@@ -867,20 +881,13 @@ fn create_parents(path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-/// Create parents and then write
-fn write_create_parents(path: &Path, content: String) -> Result<(), Error> {
-    create_parents(path)?;
-    try_err!(fs::write(path, content), path);
-    Ok(())
-}
-
 /// Returns a blank template unless we could find one to append to
-fn read_template_or_blank<F, T: CciPart>(
+fn read_template_or_blank<F, T: FileFormat>(
     mut make_blank: F,
     path: &Path,
-) -> Result<SortedTemplate<T::FileFormat>, Error>
+) -> Result<SortedTemplate<T>, Error>
 where
-    F: FnMut() -> SortedTemplate<T::FileFormat>,
+    F: FnMut() -> SortedTemplate<T>,
 {
     match fs::read_to_string(&path) {
         Ok(template) => Ok(try_err!(SortedTemplate::from_str(&template), &path)),
@@ -898,27 +905,14 @@ fn write_rendered_cci<T: CciPart, F>(
 where
     F: FnMut() -> SortedTemplate<T::FileFormat>,
 {
-    // read parts from disk
-    let path_parts =
-        crates_info.iter().map(|crate_info| crate_info.get::<T>().parts.iter()).flatten();
-    // read previous rendered cci from storage, append to them
-    let mut templates: FxHashMap<PathBuf, SortedTemplate<T::FileFormat>> = Default::default();
-    for (path, part) in path_parts {
-        let part = format!("{part}");
-        let path = dst.join(&path);
-        match templates.entry(path.clone()) {
-            Entry::Vacant(entry) => {
-                let template = read_template_or_blank::<_, T>(&mut make_blank, &path)?;
-                let template = entry.insert(template);
-                template.append(part);
-            }
-            Entry::Occupied(mut t) => t.get_mut().append(part),
-        }
-    }
-
     // write the merged cci to disk
-    for (path, template) in templates {
+    for (path, parts) in get_path_parts::<T>(dst, crates_info) {
         create_parents(&path)?;
+        // read previous rendered cci from storage, append to them
+        let mut template = read_template_or_blank::<_, T::FileFormat>(&mut make_blank, &path)?;
+        for part in parts {
+            template.append(part);
+        }
         let file = try_err!(File::create(&path), &path);
         let mut file = BufWriter::new(file);
         try_err!(write!(file, "{template}"), &path);
@@ -926,3 +920,6 @@ where
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

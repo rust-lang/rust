@@ -80,3 +80,6 @@ impl fmt::Display for EscapedJson {
         write!(f, "{}", json)
     }
 }
+
+#[cfg(test)]
+mod tests;
