@@ -244,22 +244,19 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             self.tcx.dcx().emit_err(NakedFunctionsOperands { unsupported_operands });
         }
 
-        let unsupported_options: Vec<&'static str> = [
-            (InlineAsmOptions::MAY_UNWIND, "`may_unwind`"),
-            (InlineAsmOptions::NOMEM, "`nomem`"),
-            (InlineAsmOptions::NOSTACK, "`nostack`"),
-            (InlineAsmOptions::PRESERVES_FLAGS, "`preserves_flags`"),
-            (InlineAsmOptions::PURE, "`pure`"),
-            (InlineAsmOptions::READONLY, "`readonly`"),
-        ]
-        .iter()
-        .filter_map(|&(option, name)| if asm.options.contains(option) { Some(name) } else { None })
-        .collect();
+        let supported_options =
+            InlineAsmOptions::RAW | InlineAsmOptions::NORETURN | InlineAsmOptions::ATT_SYNTAX;
+        let unsupported_options = asm.options.difference(supported_options);
 
         if !unsupported_options.is_empty() {
             self.tcx.dcx().emit_err(NakedFunctionsAsmOptions {
                 span,
-                unsupported_options: unsupported_options.join(", "),
+                unsupported_options: unsupported_options
+                    .human_readable_names()
+                    .into_iter()
+                    .map(|name| format!("`{name}`"))
+                    .collect::<Vec<_>>()
+                    .join(", "),
             });
         }
 
