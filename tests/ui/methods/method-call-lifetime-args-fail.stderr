@@ -20,7 +20,7 @@ error[E0107]: method takes 2 lifetime arguments but 3 lifetime arguments were su
   --> $DIR/method-call-lifetime-args-fail.rs:18:7
    |
 LL |     S.early::<'static, 'static, 'static>();
-   |       ^^^^^                     ------- help: remove this lifetime argument
+   |       ^^^^^                   --------- help: remove the lifetime argument
    |       |
    |       expected 2 lifetime arguments
    |
@@ -220,7 +220,7 @@ error[E0107]: method takes 2 lifetime arguments but 3 lifetime arguments were su
   --> $DIR/method-call-lifetime-args-fail.rs:65:8
    |
 LL |     S::early::<'static, 'static, 'static>(S);
-   |        ^^^^^                     ------- help: remove this lifetime argument
+   |        ^^^^^                   --------- help: remove the lifetime argument
    |        |
    |        expected 2 lifetime arguments
    |

@@ -2,7 +2,7 @@ error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supp
   --> $DIR/issue-18423.rs:4:8
    |
 LL |     x: Box<'a, isize>
-   |        ^^^ -- help: remove this lifetime argument
+   |        ^^^ -- help: remove the lifetime argument
    |        |
    |        expected 0 lifetime arguments
 

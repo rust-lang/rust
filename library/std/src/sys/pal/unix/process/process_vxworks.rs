@@ -3,8 +3,8 @@ use crate::io::{self, ErrorKind};
 use crate::num::NonZero;
 use crate::sys;
 use crate::sys::cvt;
+use crate::sys::pal::unix::thread;
 use crate::sys::process::process_common::*;
-use crate::sys_common::thread;
 use libc::RTP_ID;
 use libc::{self, c_char, c_int};
 
@@ -68,7 +68,12 @@ impl Command {
                 .as_ref()
                 .map(|c| c.as_ptr())
                 .unwrap_or_else(|| *sys::os::environ() as *const _);
-            let stack_size = thread::min_stack();
+            let stack_size = crate::cmp::max(
+                crate::env::var_os("RUST_MIN_STACK")
+                    .and_then(|s| s.to_str().and_then(|s| s.parse().ok()))
+                    .unwrap_or(thread::DEFAULT_MIN_STACK_SIZE),
+                libc::PTHREAD_STACK_MIN,
+            );
 
             // ensure that access to the environment is synchronized
             let _lock = sys::os::env_read_lock();

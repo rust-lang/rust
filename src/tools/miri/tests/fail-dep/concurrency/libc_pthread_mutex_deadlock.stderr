@@ -10,7 +10,7 @@ LL |             assert_eq!(libc::pthread_mutex_lock(lock_copy.0.get() as *mut _
 error: deadlock: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
    |
-LL |             let ret = libc::pthread_join(self.id, ptr::null_mut());
+LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
    |                                                                  ^ the evaluated program deadlocked
    |
    = note: BACKTRACE:

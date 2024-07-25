@@ -2,7 +2,7 @@ error[E0107]: type alias takes 1 lifetime argument but 2 lifetime arguments were
   --> $DIR/mismatched_arg_count.rs:7:29
    |
 LL | fn bar<'a, T: Trait<'a>>(_: Alias<'a, 'a, T>) {}
-   |                             ^^^^^     -- help: remove this lifetime argument
+   |                             ^^^^^   ---- help: remove the lifetime argument
    |                             |
    |                             expected 1 lifetime argument
    |

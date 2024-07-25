@@ -2,7 +2,7 @@ error[E0107]: struct takes 2 lifetime arguments but 3 lifetime arguments were su
   --> $DIR/noisy-follow-up-erro.rs:12:30
    |
 LL |     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
-   |                              ^^^         -- help: remove this lifetime argument
+   |                              ^^^       ---- help: remove the lifetime argument
    |                              |
    |                              expected 2 lifetime arguments
    |

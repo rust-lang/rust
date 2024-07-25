@@ -65,8 +65,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = 0b01001100", stringify!($SelfT), ";")]
-        ///
         /// assert_eq!(n.count_ones(), 3);
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.count_ones(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        /// assert_eq!(zero.count_ones(), 0);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -86,7 +91,11 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 0);")]
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        #[doc = concat!("assert_eq!(zero.count_zeros(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        /// assert_eq!(max.count_zeros(), 0);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -108,8 +117,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = ", stringify!($SelfT), "::MAX >> 2;")]
-        ///
         /// assert_eq!(n.leading_zeros(), 2);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        #[doc = concat!("assert_eq!(zero.leading_zeros(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        /// assert_eq!(max.leading_zeros(), 0);
         /// ```
         #[doc = concat!("[`ilog2`]: ", stringify!($SelfT), "::ilog2")]
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -130,8 +144,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = 0b0101000", stringify!($SelfT), ";")]
-        ///
         /// assert_eq!(n.trailing_zeros(), 3);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        #[doc = concat!("assert_eq!(zero.trailing_zeros(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.trailing_zeros(), 0);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -150,8 +169,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = !(", stringify!($SelfT), "::MAX >> 2);")]
-        ///
         /// assert_eq!(n.leading_ones(), 2);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        /// assert_eq!(zero.leading_ones(), 0);
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.leading_ones(), ", stringify!($BITS), ");")]
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
@@ -171,8 +195,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = 0b1010111", stringify!($SelfT), ";")]
-        ///
         /// assert_eq!(n.trailing_ones(), 3);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        /// assert_eq!(zero.trailing_ones(), 0);
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.trailing_ones(), ", stringify!($BITS), ");")]
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
@@ -733,6 +762,67 @@ macro_rules! uint_impl {
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
                 intrinsics::unchecked_sub(self, rhs)
+            }
+        }
+
+        #[doc = concat!(
+            "Checked integer subtraction. Computes `self - rhs` and checks if the result fits into an [`",
+            stringify!($SignedT), "`], returning `None` if overflow occurred."
+        )]
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(unsigned_signed_diff)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_signed_diff(2), Some(8));")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_signed_diff(10), Some(-8));")]
+        #[doc = concat!(
+            "assert_eq!(",
+            stringify!($SelfT),
+            "::MAX.checked_signed_diff(",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            "), None);"
+        )]
+        #[doc = concat!(
+            "assert_eq!((",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            ").checked_signed_diff(",
+            stringify!($SelfT),
+            "::MAX), Some(",
+            stringify!($SignedT),
+            "::MIN));"
+        )]
+        #[doc = concat!(
+            "assert_eq!((",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            " + 1).checked_signed_diff(0), None);"
+        )]
+        #[doc = concat!(
+            "assert_eq!(",
+            stringify!($SelfT),
+            "::MAX.checked_signed_diff(",
+            stringify!($SelfT),
+            "::MAX), Some(0));"
+        )]
+        /// ```
+        #[unstable(feature = "unsigned_signed_diff", issue = "126041")]
+        #[inline]
+        pub const fn checked_signed_diff(self, rhs: Self) -> Option<$SignedT> {
+            let res = self.wrapping_sub(rhs) as $SignedT;
+            let overflow = (self >= rhs) == (res < 0);
+
+            if !overflow {
+                Some(res)
+            } else {
+                None
             }
         }
 

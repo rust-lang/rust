@@ -20,7 +20,7 @@ error[E0107]: function takes 1 lifetime argument but 2 lifetime arguments were s
   --> $DIR/foreign-generic-mismatch.rs:8:31
    |
 LL |     foreign_generic_mismatch::lt_arg::<'static, 'static>();
-   |                               ^^^^^^            ------- help: remove this lifetime argument
+   |                               ^^^^^^          --------- help: remove the lifetime argument
    |                               |
    |                               expected 1 lifetime argument
    |

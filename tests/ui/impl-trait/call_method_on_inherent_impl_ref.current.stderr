@@ -1,5 +1,5 @@
 error[E0599]: no method named `my_debug` found for opaque type `impl Debug` in the current scope
-  --> $DIR/call_method_on_inherent_impl_ref.rs:20:11
+  --> $DIR/call_method_on_inherent_impl_ref.rs:19:11
    |
 LL |     fn my_debug(&self);
    |        -------- the method is available for `&impl Debug` here
@@ -14,27 +14,6 @@ note: `MyDebug` defines an item `my_debug`, perhaps you need to implement it
 LL | trait MyDebug {
    | ^^^^^^^^^^^^^
 
-error[E0391]: cycle detected when computing type of opaque `my_foo::{opaque#0}`
-  --> $DIR/call_method_on_inherent_impl_ref.rs:15:16
-   |
-LL | fn my_foo() -> impl std::fmt::Debug {
-   |                ^^^^^^^^^^^^^^^^^^^^
-   |
-note: ...which requires type-checking `my_foo`...
-  --> $DIR/call_method_on_inherent_impl_ref.rs:20:9
-   |
-LL |         x.my_debug();
-   |         ^
-   = note: ...which requires evaluating trait selection obligation `my_foo::{opaque#0}: core::marker::Unpin`...
-   = note: ...which again requires computing type of opaque `my_foo::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `my_foo::{opaque#0}`
-  --> $DIR/call_method_on_inherent_impl_ref.rs:15:16
-   |
-LL | fn my_foo() -> impl std::fmt::Debug {
-   |                ^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0391, E0599.
-For more information about an error, try `rustc --explain E0391`.
+For more information about this error, try `rustc --explain E0599`.

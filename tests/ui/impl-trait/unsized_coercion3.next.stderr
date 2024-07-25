@@ -5,7 +5,7 @@ LL |         let x = hello();
    |                 ^^^^^^^ types differ
 
 error[E0308]: mismatched types
-  --> $DIR/unsized_coercion3.rs:19:14
+  --> $DIR/unsized_coercion3.rs:18:14
    |
 LL | fn hello() -> Box<impl Trait + ?Sized> {
    |                   ------------------- the expected opaque type
@@ -21,7 +21,7 @@ note: associated function defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
 error[E0277]: the size for values of type `impl Trait + ?Sized` cannot be known at compilation time
-  --> $DIR/unsized_coercion3.rs:19:14
+  --> $DIR/unsized_coercion3.rs:18:14
    |
 LL |     Box::new(1u32)
    |     -------- ^^^^ doesn't have a size known at compile-time

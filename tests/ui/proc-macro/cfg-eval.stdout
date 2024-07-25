@@ -60,7 +60,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         span: $DIR/cfg-eval.rs:22:36: 22:38 (#0),
                     },
                 ],
-                span: $DIR/cfg-eval.rs:22:5: 22:6 (#0),
+                span: $DIR/cfg-eval.rs:22:6: 22:40 (#0),
             },
             Ident {
                 ident: "field_true",
@@ -99,7 +99,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 span: $DIR/cfg-eval.rs:35:62: 35:73 (#0),
             },
         ],
-        span: $DIR/cfg-eval.rs:35:39: 35:40 (#0),
+        span: $DIR/cfg-eval.rs:35:40: 35:75 (#0),
     },
     Group {
         delimiter: Parenthesis,

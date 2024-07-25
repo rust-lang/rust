@@ -20,7 +20,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, align_of_val_raw};
+use core::mem::{self, align_of_val_raw, ManuallyDrop};
 use core::ops::{CoerceUnsized, Deref, DerefPure, DispatchFromDyn, Receiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::Pin;
@@ -960,16 +960,14 @@ impl<T, A: Allocator> Arc<T, A> {
 
         acquire!(this.inner().strong);
 
-        unsafe {
-            let elem = ptr::read(&this.ptr.as_ref().data);
-            let alloc = ptr::read(&this.alloc); // copy the allocator
+        let this = ManuallyDrop::new(this);
+        let elem: T = unsafe { ptr::read(&this.ptr.as_ref().data) };
+        let alloc: A = unsafe { ptr::read(&this.alloc) }; // copy the allocator
 
-            // Make a weak pointer to clean up the implicit strong-weak reference
-            let _weak = Weak { ptr: this.ptr, alloc };
-            mem::forget(this);
+        // Make a weak pointer to clean up the implicit strong-weak reference
+        let _weak = Weak { ptr: this.ptr, alloc };
 
-            Ok(elem)
-        }
+        Ok(elem)
     }
 
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
@@ -1493,9 +1491,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[stable(feature = "rc_raw", since = "1.17.0")]
     #[rustc_never_returns_null_ptr]
     pub fn into_raw(this: Self) -> *const T {
-        let ptr = Self::as_ptr(&this);
-        mem::forget(this);
-        ptr
+        let this = ManuallyDrop::new(this);
+        Self::as_ptr(&*this)
     }
 
     /// Consumes the `Arc`, returning the wrapped pointer and allocator.
@@ -2801,9 +2798,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
-        let result = self.as_ptr();
-        mem::forget(self);
-        result
+        ManuallyDrop::new(self).as_ptr()
     }
 
     /// Consumes the `Weak<T>`, returning the wrapped pointer and allocator.
@@ -3875,13 +3870,14 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
     /// # Safety
     ///
     /// The data must have been initialized (by writing to [`Self::data_ptr()`]).
-    unsafe fn into_arc(mut self) -> Arc<T, A> {
-        let ptr = self.ptr;
-        let alloc = self.alloc.take().unwrap();
-        mem::forget(self);
+    unsafe fn into_arc(self) -> Arc<T, A> {
+        let mut this = ManuallyDrop::new(self);
+        let ptr = this.ptr.as_ptr();
+        let alloc = this.alloc.take().unwrap();
+
         // SAFETY: The pointer is valid as per `UniqueArcUninit::new`, and the caller is responsible
         // for having initialized the data.
-        unsafe { Arc::from_ptr_in(ptr.as_ptr(), alloc) }
+        unsafe { Arc::from_ptr_in(ptr, alloc) }
     }
 }
 

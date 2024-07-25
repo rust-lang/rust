@@ -2,7 +2,7 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/issue-104287.rs:10:5
    |
 LL |     foo::<()>(x);
-   |     ^^^------ help: remove these generics
+   |     ^^^------ help: remove the unnecessary generics
    |     |
    |     expected 0 generic arguments
    |

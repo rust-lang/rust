@@ -20,7 +20,7 @@ fn not_gooder() -> Foo {
     // while we could know this from the hidden type, it would
     // need extra roundabout logic to support it.
     is_send::<Foo>();
-    //~^ ERROR: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
+    //~^ ERROR: type annotations needed: cannot satisfy `Foo: Send`
 
     x
 }

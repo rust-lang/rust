@@ -46,9 +46,11 @@ use thin_vec::{thin_vec, ThinVec};
 fn parse_expr(psess: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
 
-    let mut p = unwrap_or_emit_fatal(
-        new_parser_from_source_str(psess, FileName::Custom(src_as_string.clone()), src_as_string)
-    );
+    let mut p = unwrap_or_emit_fatal(new_parser_from_source_str(
+        psess,
+        FileName::Custom(src_as_string.clone()),
+        src_as_string,
+    ));
     p.parse_expr().map_err(|e| e.cancel()).ok()
 }
 
@@ -181,10 +183,9 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             18 => {
                 let pat =
                     P(Pat { id: DUMMY_NODE_ID, kind: PatKind::Wild, span: DUMMY_SP, tokens: None });
-                iter_exprs(
-                    depth - 1,
-                    &mut |e| g(ExprKind::Let(pat.clone(), e, DUMMY_SP, Recovered::No))
-                )
+                iter_exprs(depth - 1, &mut |e| {
+                    g(ExprKind::Let(pat.clone(), e, DUMMY_SP, Recovered::No))
+                })
             }
             _ => panic!("bad counter value in iter_exprs"),
         }
@@ -202,7 +203,7 @@ impl MutVisitor for RemoveParens {
             ExprKind::Paren(inner) => *e = inner,
             _ => {}
         };
-        mut_visit::noop_visit_expr(e, self);
+        mut_visit::walk_expr(self, e);
     }
 }
 
@@ -211,7 +212,7 @@ struct AddParens;
 
 impl MutVisitor for AddParens {
     fn visit_expr(&mut self, e: &mut P<Expr>) {
-        mut_visit::noop_visit_expr(e, self);
+        mut_visit::walk_expr(self, e);
         visit_clobber(e, |e| {
             P(Expr {
                 id: DUMMY_NODE_ID,

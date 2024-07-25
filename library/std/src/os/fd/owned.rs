@@ -8,7 +8,7 @@ use crate::fmt;
 use crate::fs;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem::forget;
+use crate::mem::ManuallyDrop;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx", target_os = "hermit")))]
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -148,9 +148,7 @@ impl AsRawFd for OwnedFd {
 impl IntoRawFd for OwnedFd {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        let fd = self.fd;
-        forget(self);
-        fd
+        ManuallyDrop::new(self).fd
     }
 }
 

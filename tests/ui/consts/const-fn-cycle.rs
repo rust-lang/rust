@@ -7,6 +7,8 @@
 /// to end up revealing opaque types (the RPIT in `many`'s return type),
 /// which can quickly lead to cycles.
 
+//@ check-pass
+
 pub struct Parser<H>(H);
 
 impl<H, T> Parser<H>
@@ -18,7 +20,6 @@ where
     }
 
     pub const fn many<'s>(&'s self) -> Parser<impl for<'a> Fn(&'a str) -> Vec<T> + 's> {
-        //~^ ERROR: cycle detected
         Parser::new(|_| unimplemented!())
     }
 }

@@ -23,7 +23,7 @@ error[E0107]: struct takes 2 generic arguments but 3 generic arguments were supp
   --> $DIR/infer-arg-test.rs:18:10
    |
 LL |   let a: All<_, _, _>;
-   |          ^^^       - help: remove this generic argument
+   |          ^^^     --- help: remove the unnecessary generic argument
    |          |
    |          expected 2 generic arguments
    |
