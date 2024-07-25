@@ -33,7 +33,7 @@ fn main() {
     <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
     <u8 as E>::N::NN; //~ ERROR expected trait, found enum `E`
     <u8 as A>::N::NN; //~ ERROR expected trait, found type alias `A`
-    let _: <u8 as Tr>::Y::NN; //~ ERROR ambiguous associated type
+    let _: <u8 as Tr>::Y::NN; //~ ERROR associated type `NN` not found for `<u8 as Tr>::Y`
     let _: <u8 as E>::Y::NN; //~ ERROR expected trait, found enum `E`
     <u8 as Tr>::Y::NN; //~ ERROR no associated item named `NN` found for type `u16`
     <u8 as E>::Y::NN; //~ ERROR expected trait, found enum `E`

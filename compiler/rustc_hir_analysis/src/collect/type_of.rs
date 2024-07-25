@@ -173,11 +173,12 @@ fn const_arg_anon_type_of<'tcx>(tcx: TyCtxt<'tcx>, arg_hir_id: HirId, span: Span
             ..
         }) => {
             let body_owner = tcx.hir().enclosing_body_owner(arg_hir_id);
-            let tables = tcx.typeck(body_owner);
+            let typeck_results = tcx.typeck(body_owner);
             // This may fail in case the method/path does not actually exist.
             // As there is no relevant param for `def_id`, we simply return
             // `None` here.
-            let Some(type_dependent_def) = tables.type_dependent_def_id(parent_node_id) else {
+            let Some(type_dependent_def) = typeck_results.type_dependent_def_id(parent_node_id)
+            else {
                 return Ty::new_error_with_message(
                     tcx,
                     span,

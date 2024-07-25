@@ -136,6 +136,7 @@ pub mod pattern;
 pub mod print;
 pub mod relate;
 pub mod trait_def;
+pub mod typeck_results;
 pub mod util;
 pub mod visit;
 pub mod vtable;
@@ -163,7 +164,6 @@ mod rvalue_scopes;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
-mod typeck_results;
 
 // Data types
 
