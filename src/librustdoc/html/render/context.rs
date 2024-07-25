@@ -722,7 +722,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         );
         shared.fs.write(help_file, v)?;
 
-        // if to avoid writing files to doc root unless we're on the final invocation
         if shared.layout.scrape_examples_extension {
             page.title = "About scraped examples";
             page.description = "How the scraped examples feature works in Rustdoc";

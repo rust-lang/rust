@@ -730,6 +730,7 @@ impl Options {
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
         let html_no_source = matches.opt_present("html-no-source");
+
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
             dcx.fatal(
                 "--generate-link-to-definition option can only be used with HTML output format",
