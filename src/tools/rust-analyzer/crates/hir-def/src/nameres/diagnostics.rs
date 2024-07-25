@@ -4,12 +4,12 @@ use std::ops::Not;
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::{attrs::AttrId, ErasedAstId, MacroCallKind};
+use hir_expand::{attrs::AttrId, MacroCallKind};
 use la_arena::Idx;
 use syntax::ast;
 
 use crate::{
-    item_tree::{self, ItemTreeId},
+    item_tree::{self, AttrOwner, ItemTreeId, TreeId},
     nameres::LocalModuleId,
     path::ModPath,
     AstId,
@@ -29,7 +29,8 @@ pub enum DefDiagnosticKind {
         index: Idx<ast::UseTree>,
     },
     UnconfiguredCode {
-        ast: ErasedAstId,
+        tree: TreeId,
+        item: AttrOwner,
         cfg: CfgExpr,
         opts: CfgOptions,
     },
@@ -116,11 +117,15 @@ impl DefDiagnostic {
 
     pub fn unconfigured_code(
         container: LocalModuleId,
-        ast: ErasedAstId,
+        tree: TreeId,
+        item: AttrOwner,
         cfg: CfgExpr,
         opts: CfgOptions,
     ) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } }
+        Self {
+            in_module: container,
+            kind: DefDiagnosticKind::UnconfiguredCode { tree, item, cfg, opts },
+        }
     }
 
     pub fn unresolved_proc_macro(

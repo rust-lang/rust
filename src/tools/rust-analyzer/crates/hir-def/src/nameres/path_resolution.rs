@@ -17,7 +17,7 @@ use triomphe::Arc;
 use crate::{
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, BUILTIN_SCOPE},
-    item_tree::Fields,
+    item_tree::FieldsShape,
     nameres::{sub_namespace_match, BlockInfo, BuiltinShadowMode, DefMap, MacroSubNs},
     path::{ModPath, PathKind},
     per_ns::PerNs,
@@ -381,11 +381,11 @@ impl DefMap {
                     .iter()
                     .find_map(|&variant| {
                         let variant_data = &tree[variant.lookup(db).id.value];
-                        (variant_data.name == *segment).then(|| match variant_data.fields {
-                            Fields::Record(_) => {
+                        (variant_data.name == *segment).then(|| match variant_data.shape {
+                            FieldsShape::Record => {
                                 PerNs::types(variant.into(), Visibility::Public, None)
                             }
-                            Fields::Tuple(_) | Fields::Unit => PerNs::both(
+                            FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
                                 variant.into(),
                                 variant.into(),
                                 Visibility::Public,

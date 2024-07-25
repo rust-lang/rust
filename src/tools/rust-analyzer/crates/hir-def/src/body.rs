@@ -11,7 +11,7 @@ use std::ops::{Deref, Index};
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{name::Name, InFile};
-use la_arena::{Arena, ArenaMap};
+use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::MacroFileId;
@@ -24,6 +24,7 @@ use crate::{
     hir::{
         dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId, RecordFieldPat,
     },
+    item_tree::AttrOwner,
     nameres::DefMap,
     path::{ModPath, Path},
     src::HasSource,
@@ -136,16 +137,23 @@ impl Body {
                     let data = db.function_data(f);
                     let f = f.lookup(db);
                     let src = f.source(db);
-                    params = src.value.param_list().map(|param_list| {
+                    params = src.value.param_list().map(move |param_list| {
                         let item_tree = f.id.item_tree(db);
                         let func = &item_tree[f.id.value];
                         let krate = f.container.module(db).krate;
                         let crate_graph = db.crate_graph();
                         (
                             param_list,
-                            func.params.clone().map(move |param| {
+                            (0..func.params.len()).map(move |idx| {
                                 item_tree
-                                    .attrs(db, krate, param.into())
+                                    .attrs(
+                                        db,
+                                        krate,
+                                        AttrOwner::Param(
+                                            f.id.value,
+                                            Idx::from_raw(RawIdx::from(idx as u32)),
+                                        ),
+                                    )
                                     .is_cfg_enabled(&crate_graph[krate].cfg_options)
                             }),
                         )

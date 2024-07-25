@@ -44,7 +44,7 @@ use hir_def::{
     data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
-    item_tree::ItemTreeNode,
+    item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
@@ -81,7 +81,7 @@ use rustc_hash::FxHashSet;
 use span::{Edition, EditionedFileId, FileId, MacroCallId};
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, HasAttrs as _, HasName},
+    ast::{self, HasAttrs as _, HasGenericParams, HasName},
     format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr, T,
 };
 use triomphe::Arc;
@@ -906,12 +906,90 @@ fn emit_def_diagnostic_(
             );
         }
 
-        DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
-            let item = ast.to_ptr(db.upcast());
-            acc.push(
-                InactiveCode { node: ast.with_value(item), cfg: cfg.clone(), opts: opts.clone() }
+        DefDiagnosticKind::UnconfiguredCode { tree, item, cfg, opts } => {
+            let item_tree = tree.item_tree(db.upcast());
+            let ast_id_map = db.ast_id_map(tree.file_id());
+            // FIXME: This parses... We could probably store relative ranges for the children things
+            // here in the item tree?
+            (|| {
+                let process_field_list =
+                    |field_list: Option<_>, idx: ItemTreeFieldId| match field_list? {
+                        ast::FieldList::RecordFieldList(it) => Some(SyntaxNodePtr::new(
+                            it.fields().nth(idx.into_raw().into_u32() as usize)?.syntax(),
+                        )),
+                        ast::FieldList::TupleFieldList(it) => Some(SyntaxNodePtr::new(
+                            it.fields().nth(idx.into_raw().into_u32() as usize)?.syntax(),
+                        )),
+                    };
+                let ptr = match *item {
+                    AttrOwner::ModItem(it) => {
+                        ast_id_map.get(it.ast_id(&item_tree)).syntax_node_ptr()
+                    }
+                    AttrOwner::TopLevel => ast_id_map.root(),
+                    AttrOwner::Variant(it) => {
+                        ast_id_map.get(item_tree[it].ast_id).syntax_node_ptr()
+                    }
+                    AttrOwner::Field(FieldParent::Variant(parent), idx) => process_field_list(
+                        ast_id_map
+                            .get(item_tree[parent].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .field_list(),
+                        idx,
+                    )?,
+                    AttrOwner::Field(FieldParent::Struct(parent), idx) => process_field_list(
+                        ast_id_map
+                            .get(item_tree[parent.index()].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .field_list(),
+                        idx,
+                    )?,
+                    AttrOwner::Field(FieldParent::Union(parent), idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(item_tree[parent.index()].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .record_field_list()?
+                            .fields()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                    AttrOwner::Param(parent, idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(item_tree[parent.index()].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .param_list()?
+                            .params()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                    AttrOwner::TypeOrConstParamData(parent, idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(parent.ast_id(&item_tree))
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .generic_param_list()?
+                            .type_or_const_params()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                    AttrOwner::LifetimeParamData(parent, idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(parent.ast_id(&item_tree))
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .generic_param_list()?
+                            .lifetime_params()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                };
+                acc.push(
+                    InactiveCode {
+                        node: InFile::new(tree.file_id(), ptr),
+                        cfg: cfg.clone(),
+                        opts: opts.clone(),
+                    }
                     .into(),
-            );
+                );
+                Some(())
+            })();
         }
         DefDiagnosticKind::UnresolvedProcMacro { ast, krate } => {
             let (node, precise_location, macro_name, kind) = precise_macro_call_location(ast, db);

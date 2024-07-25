@@ -23,7 +23,7 @@ use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, EditionedFileId, ErasedFileAstId, FileAstId, SyntaxContextId};
+use span::{Edition, EditionedFileId, FileAstId, SyntaxContextId};
 use syntax::ast;
 use triomphe::Arc;
 
@@ -32,8 +32,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
-        self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
-        Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
+        self, AttrOwner, ExternCrate, FieldsShape, FileItemTreeId, ImportKind, ItemTree,
+        ItemTreeId, ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
     macro_call_as_call_id, macro_call_as_call_id_with_eager,
     nameres::{
@@ -1580,10 +1580,7 @@ impl ModCollector<'_, '_> {
             let attrs = self.item_tree.attrs(db, krate, item.into());
             if let Some(cfg) = attrs.cfg() {
                 if !self.is_cfg_enabled(&cfg) {
-                    self.emit_unconfigured_diagnostic(
-                        InFile::new(self.file_id(), item.ast_id(self.item_tree).erase()),
-                        &cfg,
-                    );
+                    self.emit_unconfigured_diagnostic(self.tree_id, item.into(), &cfg);
                     return;
                 }
             }
@@ -1699,7 +1696,7 @@ impl ModCollector<'_, '_> {
                             .into(),
                         &it.name,
                         vis,
-                        !matches!(it.fields, Fields::Record(_)),
+                        !matches!(it.shape, FieldsShape::Record),
                     );
                 }
                 ModItem::Union(id) => {
@@ -1737,10 +1734,8 @@ impl ModCollector<'_, '_> {
                             match is_enabled {
                                 Err(cfg) => {
                                     self.emit_unconfigured_diagnostic(
-                                        InFile::new(
-                                            self.file_id(),
-                                            self.item_tree[variant.index()].ast_id.erase(),
-                                        ),
+                                        self.tree_id,
+                                        variant.into(),
                                         &cfg,
                                     );
                                     None
@@ -1956,7 +1951,8 @@ impl ModCollector<'_, '_> {
                         match is_enabled {
                             Err(cfg) => {
                                 self.emit_unconfigured_diagnostic(
-                                    ast_id.map(|it| it.erase()),
+                                    self.tree_id,
+                                    AttrOwner::TopLevel,
                                     &cfg,
                                 );
                             }
@@ -2402,10 +2398,11 @@ impl ModCollector<'_, '_> {
         self.def_collector.cfg_options.check(cfg) != Some(false)
     }
 
-    fn emit_unconfigured_diagnostic(&mut self, ast_id: InFile<ErasedFileAstId>, cfg: &CfgExpr) {
+    fn emit_unconfigured_diagnostic(&mut self, tree_id: TreeId, item: AttrOwner, cfg: &CfgExpr) {
         self.def_collector.def_map.diagnostics.push(DefDiagnostic::unconfigured_code(
             self.module_id,
-            ast_id,
+            tree_id,
+            item,
             cfg.clone(),
             self.def_collector.cfg_options.clone(),
         ));

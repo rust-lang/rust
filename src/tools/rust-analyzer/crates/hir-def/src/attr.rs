@@ -20,7 +20,7 @@ use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,
-    item_tree::{AttrOwner, Fields, ItemTreeNode},
+    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
@@ -76,40 +76,36 @@ impl Attrs {
         let mut res = ArenaMap::default();
 
         let crate_graph = db.crate_graph();
-        let (fields, item_tree, krate) = match v {
+        let item_tree;
+        let (parent, fields, krate) = match v {
             VariantId::EnumVariantId(it) => {
                 let loc = it.lookup(db);
                 let krate = loc.parent.lookup(db).container.krate;
-                let item_tree = loc.id.item_tree(db);
+                item_tree = loc.id.item_tree(db);
                 let variant = &item_tree[loc.id.value];
-                (variant.fields.clone(), item_tree, krate)
+                (FieldParent::Variant(loc.id.value), &variant.fields, krate)
             }
             VariantId::StructId(it) => {
                 let loc = it.lookup(db);
                 let krate = loc.container.krate;
-                let item_tree = loc.id.item_tree(db);
+                item_tree = loc.id.item_tree(db);
                 let struct_ = &item_tree[loc.id.value];
-                (struct_.fields.clone(), item_tree, krate)
+                (FieldParent::Struct(loc.id.value), &struct_.fields, krate)
             }
             VariantId::UnionId(it) => {
                 let loc = it.lookup(db);
                 let krate = loc.container.krate;
-                let item_tree = loc.id.item_tree(db);
+                item_tree = loc.id.item_tree(db);
                 let union_ = &item_tree[loc.id.value];
-                (union_.fields.clone(), item_tree, krate)
+                (FieldParent::Union(loc.id.value), &union_.fields, krate)
             }
-        };
-
-        let fields = match fields {
-            Fields::Record(fields) | Fields::Tuple(fields) => fields,
-            Fields::Unit => return Arc::new(res),
         };
 
         let cfg_options = &crate_graph[krate].cfg_options;
 
         let mut idx = 0;
-        for field in fields {
-            let attrs = item_tree.attrs(db, krate, field.into());
+        for (id, _field) in fields.iter().enumerate() {
+            let attrs = item_tree.attrs(db, krate, AttrOwner::make_field_indexed(parent, id));
             if attrs.is_cfg_enabled(cfg_options) {
                 res.insert(Idx::from_raw(RawIdx::from(idx)), attrs);
                 idx += 1;
