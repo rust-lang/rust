@@ -927,8 +927,12 @@ impl<'a> Parser<'a> {
     /// If no modifiers are present, this does not consume any tokens.
     ///
     /// ```ebnf
-    /// TRAIT_BOUND_MODIFIERS = [["~"] "const"] ["async"] ["?" | "!"]
+    /// CONSTNESS = [["~"] "const"]
+    /// ASYNCNESS = ["async"]
+    /// POLARITY = ["?" | "!"]
     /// ```
+    ///
+    /// See `parse_generic_ty_bound` for the complete grammar of trait bound modifiers.
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
         let modifier_lo = self.token.span;
         let constness = if self.eat(&token::Tilde) {
@@ -1007,7 +1011,7 @@ impl<'a> Parser<'a> {
     /// Parses a type bound according to:
     /// ```ebnf
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    /// TY_BOUND_NOPAREN = [for<LT_PARAM_DEFS>] [TRAIT_BOUND_MODIFIERS] SIMPLE_PATH
+    /// TY_BOUND_NOPAREN = [for<GENERIC_PARAMS> CONSTNESS ASYNCNESS | POLARITY] SIMPLE_PATH
     /// ```
     ///
     /// For example, this grammar accepts `for<'a: 'b> ~const ?m::Trait<'a>`.
