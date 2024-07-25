@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
         //   tokens by definition).
         let needs_collection = matches!(force_collect, ForceCollect::Yes)
             // - Any of our outer attributes require tokens.
-            || !is_complete(&attrs.attrs)
+            || needs_tokens(&attrs.attrs)
             // - Our target supports custom inner attributes (custom
             //   inner attribute invocation might require token capturing).
             || R::SUPPORTS_CUSTOM_INNER_ATTRS
@@ -259,9 +259,9 @@ impl<'a> Parser<'a> {
             // - Any of our outer *or* inner attributes require tokens.
             //   (`attr.attrs` was just outer attributes, but `ret.attrs()` is
             //   outer and inner attributes. So this check is more precise than
-            //   the earlier `is_complete()` check, and we don't need to
+            //   the earlier `needs_tokens` check, and we don't need to
             //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
-            || !is_complete(ret.attrs())
+            || needs_tokens(ret.attrs())
             // - We are in `capture_cfg` mode and there are `#[cfg]` or
             //   `#[cfg_attr]` attributes. (During normal non-`capture_cfg`
             //   parsing, we don't need any special capturing for those
@@ -457,14 +457,16 @@ fn make_attr_token_stream(
     AttrTokenStream::new(stack_top.inner)
 }
 
-/// The attributes are complete if all attributes are either a doc comment or a
-/// builtin attribute other than `cfg_attr`.
-fn is_complete(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().all(|attr| {
-        attr.is_doc_comment()
-            || attr.ident().is_some_and(|ident| {
-                ident.name != sym::cfg_attr && rustc_feature::is_builtin_attr_name(ident.name)
-            })
+/// Tokens are needed if:
+/// - any non-single-segment attributes (other than doc comments) are present; or
+/// - any `cfg_attr` attributes are present;
+/// - any single-segment, non-builtin attributes are present.
+fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().any(|attr| match attr.ident() {
+        None => !attr.is_doc_comment(),
+        Some(ident) => {
+            ident.name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(ident.name)
+        }
     })
 }
 
