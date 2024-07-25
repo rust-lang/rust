@@ -4,10 +4,6 @@
 // thin LTO.
 // See https://github.com/rust-lang/rust/pull/53031
 
-// ignore windows due to libLLVM being present in PATH and the PATH and library path being the same
-// (so fixing it is harder). See #57765 for context
-//FIXME(Oneirical): ignore-windows
-
 use run_make_support::{
     cwd, has_extension, has_prefix, has_suffix, llvm_ar, rfs, rustc, shallow_find_files,
     static_lib_name,
@@ -22,7 +18,7 @@ fn main() {
         .codegen_units(1)
         .output(static_lib_name("staticlib"))
         .run();
-    llvm_ar().arg("x").arg(static_lib_name("staticlib")).run();
+    llvm_ar().extract().arg(static_lib_name("staticlib")).run();
     // Ensure the upstream object file was included.
     assert_eq!(
         shallow_find_files(cwd(), |path| {
@@ -50,7 +46,7 @@ fn main() {
         .arg("-Clto=thin")
         .output(static_lib_name("staticlib"))
         .run();
-    llvm_ar().arg("x").arg(static_lib_name("staticlib")).run();
+    llvm_ar().extract().arg(static_lib_name("staticlib")).run();
     assert_eq!(
         shallow_find_files(cwd(), |path| {
             has_prefix(path, "upstream.") && has_suffix(path, ".rcgu.o")

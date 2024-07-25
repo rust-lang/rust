@@ -43,7 +43,7 @@ fn main() {
         return;
     }
 
-    let rustc = env::var_os("RUSTC").unwrap_or("rustc".into());
+    let rustc = env::var_os("RUSTC").unwrap();
     let me_as_linker = format!("linker={}", env::current_exe().unwrap().display());
     for i in (1..).map(|i| i * 100) {
         println!("attempt: {}", i);
