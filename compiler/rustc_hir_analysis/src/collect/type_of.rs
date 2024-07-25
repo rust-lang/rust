@@ -68,7 +68,8 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 ty::Error(_) => ty,
                 ty::FnDef(..) => ty,
                 _ => {
-                    tcx.dcx()
+                    let guar = tcx
+                        .dcx()
                         .struct_span_err(op_sp, "invalid `sym` operand")
                         .with_span_label(
                             tcx.def_span(anon_const.def_id),
@@ -77,7 +78,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                         .with_help("`sym` operands must refer to either a function or a static")
                         .emit();
 
-                    Ty::new_error_with_message(tcx, span, format!("invalid type for `sym` operand"))
+                    Ty::new_error(tcx, guar)
                 }
             }
         }
@@ -91,7 +92,8 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 ty::Error(_) => ty,
                 ty::Int(_) | ty::Uint(_) => ty,
                 _ => {
-                    tcx.dcx()
+                    let guar = tcx
+                        .dcx()
                         .struct_span_err(op_sp, "invalid type for `const` operand")
                         .with_span_label(
                             tcx.def_span(anon_const.def_id),
@@ -100,11 +102,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                         .with_help("`const` operands must be of an integer type")
                         .emit();
 
-                    Ty::new_error_with_message(
-                        tcx,
-                        span,
-                        format!("invalid type for `const` operand"),
-                    )
+                    Ty::new_error(tcx, guar)
                 }
             }
         }
