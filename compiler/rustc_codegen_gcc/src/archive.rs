@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use rustc_codegen_ssa::back::archive::{
     ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder, DEFAULT_OBJECT_READER,
@@ -18,9 +18,8 @@ impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
         _sess: &Session,
         _lib_name: &str,
         _dll_imports: &[DllImport],
-        _tmpdir: &Path,
-        _is_direct_dependency: bool,
-    ) -> PathBuf {
+        _output_path: &Path,
+    ) {
         unimplemented!("creating dll imports is not yet supported");
     }
 }

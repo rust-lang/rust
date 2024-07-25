@@ -31,9 +31,8 @@ pub trait ArchiveBuilderBuilder {
         sess: &Session,
         lib_name: &str,
         dll_imports: &[DllImport],
-        tmpdir: &Path,
-        is_direct_dependency: bool,
-    ) -> PathBuf;
+        output_path: &Path,
+    );
 
     fn extract_bundled_libs<'a>(
         &'a self,

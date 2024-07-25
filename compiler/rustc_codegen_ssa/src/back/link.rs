@@ -494,13 +494,17 @@ fn create_dll_import_libs<'a>(
     Ok(collate_raw_dylibs(sess, used_libraries)?
         .into_iter()
         .map(|(raw_dylib_name, raw_dylib_imports)| {
+            let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
+            let output_path = tmpdir.join(format!("{raw_dylib_name}{name_suffix}.lib"));
+
             archive_builder_builder.create_dll_import_lib(
                 sess,
                 &raw_dylib_name,
                 &raw_dylib_imports,
-                tmpdir,
-                is_direct_dependency,
-            )
+                &output_path,
+            );
+
+            output_path
         })
         .collect())
 }
