@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
@@ -290,7 +290,7 @@ macro_rules! bootstrap_tool {
             fn run(self, builder: &Builder<'_>) -> PathBuf {
                 $(
                     for submodule in $submodules {
-                        builder.update_submodule(Path::new(submodule));
+                        builder.require_and_update_submodule(submodule, None);
                     }
                 )*
                 builder.ensure(ToolBuild {
@@ -373,7 +373,7 @@ impl Step for OptimizedDist {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
         // the tool requires it to be in place to run.
-        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+        builder.require_and_update_submodule("src/tools/rustc-perf", None);
 
         builder.ensure(ToolBuild {
             compiler: self.compiler,
@@ -414,7 +414,7 @@ impl Step for RustcPerf {
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         // We need to ensure the rustc-perf submodule is initialized.
-        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+        builder.require_and_update_submodule("src/tools/rustc-perf", None);
 
         let tool = ToolBuild {
             compiler: self.compiler,
@@ -715,7 +715,7 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.build.update_submodule(Path::new("src/tools/cargo"));
+        builder.build.require_and_update_submodule("src/tools/cargo", None);
 
         builder.ensure(ToolBuild {
             compiler: self.compiler,

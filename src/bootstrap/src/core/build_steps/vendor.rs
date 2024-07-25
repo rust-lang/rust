@@ -1,6 +1,6 @@
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::exec::command;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
@@ -35,8 +35,8 @@ impl Step for Vendor {
         }
 
         // These submodules must be present for `x vendor` to work.
-        for path in ["src/tools/cargo", "src/doc/book"] {
-            builder.build.update_submodule(Path::new(path));
+        for submodule in ["src/tools/cargo", "src/doc/book"] {
+            builder.build.require_and_update_submodule(submodule, None);
         }
 
         // Sync these paths by default.

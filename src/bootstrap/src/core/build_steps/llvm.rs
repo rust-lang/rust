@@ -110,7 +110,7 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
     }
 
     // Initialize the llvm submodule if not initialized already.
-    builder.update_submodule(&Path::new("src").join("llvm-project"));
+    builder.require_and_update_submodule("src/llvm-project", None);
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
@@ -1197,7 +1197,7 @@ impl Step for CrtBeginEnd {
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(Path::new("src/llvm-project"));
+        builder.require_and_update_submodule("src/llvm-project", None);
 
         let out_dir = builder.native_dir(self.target).join("crt");
 
@@ -1270,7 +1270,7 @@ impl Step for Libunwind {
 
     /// Build libunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(Path::new("src/llvm-project"));
+        builder.require_and_update_submodule("src/llvm-project", None);
 
         if builder.config.dry_run() {
             return PathBuf::new();

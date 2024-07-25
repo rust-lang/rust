@@ -473,7 +473,13 @@ impl Build {
     /// Given a path to the directory of a submodule, update it.
     ///
     /// `relative_path` should be relative to the root of the git repository, not an absolute path.
-    pub(crate) fn update_submodule(&self, relative_path: &Path) {
+    ///
+    /// This *does not* update the submodule if `config.toml` explicitly says
+    /// not to, or if we're not in a git repository (like a plain source
+    /// tarball). Typically [`Build::require_and_update_submodule`] should be
+    /// used instead to provide a nice error to the user if the submodule is
+    /// missing.
+    fn update_submodule(&self, relative_path: &Path) {
         if !self.config.submodules() {
             return;
         }
@@ -576,6 +582,45 @@ impl Build {
 
         if has_local_modifications {
             submodule_git().args(["stash", "pop"]).run(self);
+        }
+    }
+
+    /// Updates a submodule, and exits with a failure if submodule management
+    /// is disabled and the submodule does not exist.
+    ///
+    /// The given `err_hint` will be shown to the user if the submodule is not
+    /// checked out.
+    pub fn require_and_update_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        // When testing bootstrap itself, it is much faster to ignore
+        // submodules. Almost all Steps work fine without their submodules.
+        if cfg!(test) && !self.config.submodules() {
+            return;
+        }
+        let relative_path = Path::new(submodule);
+        self.update_submodule(relative_path);
+        let absolute_path = self.config.src.join(relative_path);
+        if dir_is_empty(&absolute_path) {
+            let maybe_enable = if !self.config.submodules()
+                && self.config.rust_info.is_managed_git_subrepository()
+            {
+                "\nConsider setting `build.submodules = true` or manually initializing the submodules."
+            } else {
+                ""
+            };
+            let err_hint = err_hint.map_or_else(String::new, |e| format!("\n{e}"));
+            eprintln!(
+                "submodule {submodule} does not appear to be checked out, \
+                 but it is required for this step{maybe_enable}{err_hint}"
+            );
+            exit!(1);
+        }
+    }
+
+    /// Updates all submodules, and exits with an error if submodule
+    /// management is disabled and the submodule does not exist.
+    pub fn require_and_update_all_submodules(&self) {
+        for submodule in build_helper::util::parse_gitmodules(&self.src) {
+            self.require_and_update_submodule(submodule, None);
         }
     }
 

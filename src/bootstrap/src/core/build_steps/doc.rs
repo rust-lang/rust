@@ -16,7 +16,7 @@ use crate::core::build_steps::tool::{self, prepare_tool_cargo, SourceType, Tool}
 use crate::core::builder::{self, crate_description};
 use crate::core::builder::{Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
-use crate::utils::helpers::{dir_is_empty, symlink_dir, t, up_to_date};
+use crate::utils::helpers::{symlink_dir, t, up_to_date};
 use crate::Mode;
 
 macro_rules! submodule_helper {
@@ -53,8 +53,8 @@ macro_rules! book {
 
             fn run(self, builder: &Builder<'_>) {
                 $(
-                    let path = Path::new(submodule_helper!( $path, submodule $( = $submodule )? ));
-                    builder.update_submodule(&path);
+                    let path = submodule_helper!( $path, submodule $( = $submodule )? );
+                    builder.require_and_update_submodule(path, None);
                 )?
                 builder.ensure(RustbookSrc {
                     target: self.target,
@@ -217,22 +217,14 @@ impl Step for TheBook {
     /// * Index page
     /// * Redirect pages
     fn run(self, builder: &Builder<'_>) {
-        let relative_path = Path::new("src").join("doc").join("book");
-        builder.update_submodule(&relative_path);
+        builder.require_and_update_submodule("src/doc/book", None);
 
         let compiler = self.compiler;
         let target = self.target;
 
-        let absolute_path = builder.src.join(&relative_path);
+        let absolute_path = builder.src.join("src/doc/book");
         let redirect_path = absolute_path.join("redirects");
-        if !absolute_path.exists()
-            || !redirect_path.exists()
-            || dir_is_empty(&absolute_path)
-            || dir_is_empty(&redirect_path)
-        {
-            eprintln!("Please checkout submodule: {}", relative_path.display());
-            crate::exit!(1);
-        }
+
         // build book
         builder.ensure(RustbookSrc {
             target,
@@ -932,8 +924,8 @@ macro_rules! tool_doc {
                     let _ = source_type; // silence the "unused variable" warning
                     let source_type = SourceType::Submodule;
 
-                    let path = Path::new(submodule_helper!( $path, submodule $( = $submodule )? ));
-                    builder.update_submodule(&path);
+                    let path = submodule_helper!( $path, submodule $( = $submodule )? );
+                    builder.require_and_update_submodule(path, None);
                 )?
 
                 let stage = builder.top_stage;

@@ -21,7 +21,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
         rust_codegen_backends: vec![],
         ..Config::parse(&["check".to_owned()])
     });
-    submodule_build.update_submodule(Path::new("src/doc/book"));
+    submodule_build.require_and_update_submodule("src/doc/book", None);
     config.submodules = Some(false);
 
     config.ninja_in_file = false;

@@ -182,11 +182,14 @@ impl Step for Std {
             return;
         }
 
-        builder.update_submodule(&Path::new("library").join("stdarch"));
+        builder.require_and_update_submodule("library/stdarch", None);
 
         // Profiler information requires LLVM's compiler-rt
         if builder.config.profiler {
-            builder.update_submodule(Path::new("src/llvm-project"));
+            builder.require_and_update_submodule(
+                "src/llvm-project",
+                Some("The `build.profiler` config option requires compiler-rt sources."),
+            );
         }
 
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
@@ -456,13 +459,15 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         // That's probably ok? At least, the difference wasn't enforced before. There's a comment in
         // the compiler_builtins build script that makes me nervous, though:
         // https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
+        builder.require_and_update_submodule(
+            "src/llvm-project",
+            Some(
+                "need LLVM sources available to build `compiler-rt`, but they weren't present; \
+                 consider disabling `optimized-compiler-builtins`",
+            ),
+        );
         let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-        if !compiler_builtins_root.exists() {
-            panic!(
-                "need LLVM sources available to build `compiler-rt`, but they weren't present; consider enabling `build.submodules = true` or disabling `optimized-compiler-builtins`"
-            );
-        }
+        assert!(compiler_builtins_root.exists());
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);

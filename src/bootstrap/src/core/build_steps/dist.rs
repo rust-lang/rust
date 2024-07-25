@@ -907,7 +907,7 @@ impl Step for Src {
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         if !builder.config.dry_run() {
-            builder.update_submodule(Path::new("src/llvm-project"));
+            builder.require_and_update_submodule("src/llvm-project", None);
         }
 
         let tarball = Tarball::new_targetless(builder, "rust-src");
@@ -1022,10 +1022,7 @@ impl Step for PlainSourceTarball {
             // FIXME: This code looks _very_ similar to what we have in `src/core/build_steps/vendor.rs`
             // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
 
-            // Ensure we have all submodules from src and other directories checked out.
-            for submodule in build_helper::util::parse_gitmodules(&builder.src) {
-                builder.update_submodule(Path::new(submodule));
-            }
+            builder.require_and_update_all_submodules();
 
             // Vendor all Cargo dependencies
             let mut cmd = command(&builder.initial_cargo);
