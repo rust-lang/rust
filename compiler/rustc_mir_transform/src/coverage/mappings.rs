@@ -38,10 +38,7 @@ pub(super) struct MCDCBranch {
     pub(super) span: Span,
     pub(super) true_bcb: BasicCoverageBlock,
     pub(super) false_bcb: BasicCoverageBlock,
-    /// If `None`, this actually represents a normal branch mapping inserted
-    /// for code that was too complex for MC/DC.
-    pub(super) condition_info: Option<ConditionInfo>,
-    pub(super) decision_depth: u16,
+    pub(super) condition_info: ConditionInfo,
 }
 
 /// Associates an MC/DC decision with its join BCBs.
@@ -50,7 +47,6 @@ pub(super) struct MCDCDecision {
     pub(super) span: Span,
     pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
     pub(super) bitmap_idx: u32,
-    pub(super) num_conditions: u16,
     pub(super) decision_depth: u16,
 }
 
@@ -63,8 +59,8 @@ pub(super) struct ExtractedMappings {
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
     pub(super) mcdc_bitmap_bytes: u32,
-    pub(super) mcdc_branches: Vec<MCDCBranch>,
-    pub(super) mcdc_decisions: Vec<MCDCDecision>,
+    pub(super) mcdc_degraded_branches: Vec<MCDCBranch>,
+    pub(super) mcdc_mappings: Vec<(MCDCDecision, Vec<MCDCBranch>)>,
 }
 
 /// Extracts coverage-relevant spans from MIR, and associates them with
@@ -78,8 +74,8 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
     let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
     let mut mcdc_bitmap_bytes = 0;
-    let mut mcdc_branches = vec![];
-    let mut mcdc_decisions = vec![];
+    let mut mcdc_degraded_branches = vec![];
+    let mut mcdc_mappings = vec![];
 
     if hir_info.is_async_fn || tcx.sess.coverage_no_mir_spans() {
         // An async function desugars into a function that returns a future,
@@ -105,8 +101,8 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
         hir_info.body_span,
         basic_coverage_blocks,
         &mut mcdc_bitmap_bytes,
-        &mut mcdc_branches,
-        &mut mcdc_decisions,
+        &mut mcdc_degraded_branches,
+        &mut mcdc_mappings,
     );
 
     ExtractedMappings {
@@ -114,8 +110,8 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bytes,
-        mcdc_branches,
-        mcdc_decisions,
+        mcdc_degraded_branches,
+        mcdc_mappings,
     }
 }
 
@@ -127,8 +123,8 @@ impl ExtractedMappings {
             code_mappings,
             branch_pairs,
             mcdc_bitmap_bytes: _,
-            mcdc_branches,
-            mcdc_decisions,
+            mcdc_degraded_branches,
+            mcdc_mappings,
         } = self;
 
         // Identify which BCBs have one or more mappings.
@@ -144,7 +140,10 @@ impl ExtractedMappings {
             insert(true_bcb);
             insert(false_bcb);
         }
-        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_branches {
+        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_degraded_branches
+            .iter()
+            .chain(mcdc_mappings.iter().map(|(_, branches)| branches.into_iter()).flatten())
+        {
             insert(true_bcb);
             insert(false_bcb);
         }
@@ -152,8 +151,8 @@ impl ExtractedMappings {
         // MC/DC decisions refer to BCBs, but don't require those BCBs to have counters.
         if bcbs_with_counter_mappings.is_empty() {
             debug_assert!(
-                mcdc_decisions.is_empty(),
-                "A function with no counter mappings shouldn't have any decisions: {mcdc_decisions:?}",
+                mcdc_mappings.is_empty(),
+                "A function with no counter mappings shouldn't have any decisions: {mcdc_mappings:?}",
             );
         }
 
@@ -233,8 +232,8 @@ pub(super) fn extract_mcdc_mappings(
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
     mcdc_bitmap_bytes: &mut u32,
-    mcdc_branches: &mut impl Extend<MCDCBranch>,
-    mcdc_decisions: &mut impl Extend<MCDCDecision>,
+    mcdc_degraded_branches: &mut impl Extend<MCDCBranch>,
+    mcdc_mappings: &mut impl Extend<(MCDCDecision, Vec<MCDCBranch>)>,
 ) {
     let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return };
 
@@ -257,43 +256,39 @@ pub(super) fn extract_mcdc_mappings(
             Some((span, true_bcb, false_bcb))
         };
 
-    mcdc_branches.extend(coverage_info_hi.mcdc_branch_spans.iter().filter_map(
-        |&mir::coverage::MCDCBranchSpan {
-             span: raw_span,
-             condition_info,
-             true_marker,
-             false_marker,
-             decision_depth,
-         }| {
-            let (span, true_bcb, false_bcb) =
-                check_branch_bcb(raw_span, true_marker, false_marker)?;
-            Some(MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth })
-        },
-    ));
+    let to_mcdc_branch = |&mir::coverage::MCDCBranchSpan {
+                              span: raw_span,
+                              condition_info,
+                              true_marker,
+                              false_marker,
+                          }| {
+        let (span, true_bcb, false_bcb) = check_branch_bcb(raw_span, true_marker, false_marker)?;
+        Some(MCDCBranch { span, true_bcb, false_bcb, condition_info })
+    };
+    mcdc_degraded_branches
+        .extend(coverage_info_hi.mcdc_degraded_branch_spans.iter().filter_map(to_mcdc_branch));
 
-    mcdc_decisions.extend(coverage_info_hi.mcdc_decision_spans.iter().filter_map(
-        |decision: &mir::coverage::MCDCDecisionSpan| {
-            let span = unexpand_into_body_span(decision.span, body_span)?;
+    mcdc_mappings.extend(coverage_info_hi.mcdc_spans.iter().filter_map(|(decision, branches)| {
+        let span = unexpand_into_body_span(decision.span, body_span)?;
 
-            let end_bcbs = decision
-                .end_markers
-                .iter()
-                .map(|&marker| bcb_from_marker(marker))
-                .collect::<Option<_>>()?;
+        let end_bcbs = decision
+            .end_markers
+            .iter()
+            .map(|&marker| bcb_from_marker(marker))
+            .collect::<Option<_>>()?;
+        let branch_mappings: Vec<_> = branches.into_iter().filter_map(to_mcdc_branch).collect();
+        if branch_mappings.len() != branches.len() {
+            mcdc_degraded_branches.extend(branch_mappings);
+            return None;
+        }
+        // Each decision containing N conditions needs 2^N bits of space in
+        // the bitmap, rounded up to a whole number of bytes.
+        // The decision's "bitmap index" points to its first byte in the bitmap.
+        let bitmap_idx = *mcdc_bitmap_bytes;
+        *mcdc_bitmap_bytes += (1_u32 << decision.num_conditions).div_ceil(8);
 
-            // Each decision containing N conditions needs 2^N bits of space in
-            // the bitmap, rounded up to a whole number of bytes.
-            // The decision's "bitmap index" points to its first byte in the bitmap.
-            let bitmap_idx = *mcdc_bitmap_bytes;
-            *mcdc_bitmap_bytes += (1_u32 << decision.num_conditions).div_ceil(8);
-
-            Some(MCDCDecision {
-                span,
-                end_bcbs,
-                bitmap_idx,
-                num_conditions: decision.num_conditions as u16,
-                decision_depth: decision.decision_depth,
-            })
-        },
-    ));
+        let decision =
+            MCDCDecision { span, end_bcbs, bitmap_idx, decision_depth: decision.decision_depth };
+        Some((decision, branch_mappings))
+    }));
 }
