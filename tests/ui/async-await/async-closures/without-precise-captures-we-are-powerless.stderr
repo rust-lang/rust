@@ -56,11 +56,6 @@ LL |     outlives::<'a>(call_once(c));
 LL |
 LL |     let c = async move || { println!("{}", *x.0); };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ move out of `x` occurs here
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     let c = async || { println!("{}", *x.0); }.clone();
-   |                                               ++++++++
 
 error[E0597]: `c` does not live long enough
   --> $DIR/without-precise-captures-we-are-powerless.rs:33:20
