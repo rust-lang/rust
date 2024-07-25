@@ -217,7 +217,10 @@ where
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
 
-        ty::CoroutineClosure(..) => Err(NoSolution),
+        // impl Copy/Clone for CoroutineClosure where Self::TupledUpvars: Copy/Clone
+        ty::CoroutineClosure(_, args) => {
+            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+        }
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
         // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
