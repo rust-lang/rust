@@ -1512,7 +1512,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             // We reduce the `running` counter by one. The
                             // `tokens.truncate()` below will take care of
                             // giving the Token back.
-                            debug_assert!(running_with_own_token > 0);
+                            assert!(running_with_own_token > 0);
                             running_with_own_token -= 1;
                             main_thread_state = MainThreadState::Lending;
                         }
