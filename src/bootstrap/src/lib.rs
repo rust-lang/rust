@@ -1005,7 +1005,7 @@ Executed at: {executed_at}"#,
             \nIt was not possible to execute the command: {e:?}"
                 )
                 .unwrap();
-                CommandOutput::did_not_start()
+                CommandOutput::did_not_start(stdout, stderr)
             }
         };
         if !output.is_success() {
