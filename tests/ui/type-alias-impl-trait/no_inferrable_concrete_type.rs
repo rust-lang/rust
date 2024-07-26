@@ -3,18 +3,17 @@
 
 #![feature(type_alias_impl_trait)]
 
-mod foo {
-    pub type Foo = impl Copy;
+pub type Foo = impl Copy;
 
-    // make compiler happy about using 'Foo'
-    pub fn bar(x: Foo) -> Foo {
-        //~^ ERROR: item does not constrain `Foo::{opaque#0}`
-        x
-    }
+// make compiler happy about using 'Foo'
+#[define_opaque(Foo)]
+pub fn bar(x: Foo) -> Foo {
+    //~^ ERROR: item does not constrain `Foo::{opaque#0}`
+    x
 }
 
 fn main() {
     unsafe {
-        let _: foo::Foo = std::mem::transmute(0u8);
+        let _: Foo = std::mem::transmute(0u8);
     }
 }

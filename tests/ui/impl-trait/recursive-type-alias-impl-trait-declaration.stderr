@@ -1,5 +1,5 @@
 error[E0277]: can't compare `Bar` with `(Foo, i32)`
-  --> $DIR/recursive-type-alias-impl-trait-declaration.rs:13:13
+  --> $DIR/recursive-type-alias-impl-trait-declaration.rs:14:13
    |
 LL | fn foo() -> Foo {
    |             ^^^ no implementation for `Bar == (Foo, i32)`

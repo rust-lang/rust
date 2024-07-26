@@ -8,6 +8,7 @@ pub struct Foo {
 
 pub type Tait = impl Sized;
 
+#[define_opaque(Tait)]
 pub fn ice_cold(beverage: Tait) {
     // Must destructure at least one field of `Foo`
     let Foo { field } = beverage;
@@ -16,6 +17,5 @@ pub fn ice_cold(beverage: Tait) {
 
     let _ = field; //~ ERROR non-binding let on a type that has a destructor
 }
-
 
 pub fn main() {}

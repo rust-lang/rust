@@ -15,6 +15,7 @@ async fn operation(_: &mut ()) -> () {
     //~^ ERROR: expected generic lifetime parameter, found `'any`
 }
 
+#[define_opaque(FutNothing)]
 async fn call<F>(_f: F)
 //~^ ERROR item does not constrain
 where

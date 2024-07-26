@@ -6,6 +6,7 @@ fn main() {}
 
 type Two<T, U> = impl Debug;
 
+#[define_opaque(Two)]
 fn three<T: Debug, U>(t: T) -> Two<T, U> {
     (t, 5i8)
 }
@@ -20,6 +21,7 @@ impl Bar for u32 {
     const FOO: i32 = 42;
 }
 
+#[define_opaque(Two)]
 fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
     (t, <U as Bar>::FOO)
     //~^ ERROR concrete type differs

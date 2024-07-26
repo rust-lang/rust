@@ -1,12 +1,12 @@
 error[E0283]: type annotations needed: cannot satisfy `Bar: Send`
-  --> $DIR/in-where-clause.rs:12:9
+  --> $DIR/in-where-clause.rs:13:9
    |
 LL |     [0; 1 + 2]
    |         ^^^^^
    |
    = note: cannot satisfy `Bar: Send`
 note: required by a bound in `foo`
-  --> $DIR/in-where-clause.rs:10:10
+  --> $DIR/in-where-clause.rs:11:10
    |
 LL | fn foo() -> Bar
    |    --- required by a bound in this function
@@ -21,7 +21,7 @@ LL | type Bar = impl Sized;
    |            ^^^^^^^^^^
    |
 note: ...which requires type-checking `foo`...
-  --> $DIR/in-where-clause.rs:8:1
+  --> $DIR/in-where-clause.rs:9:1
    |
 LL | / fn foo() -> Bar
 LL | | where

@@ -9,21 +9,17 @@
 
 extern crate core;
 
-mod defining_module {
+pub type Type1 = impl Send;
 
-    pub type Type1 = impl Send;
-
-    pub fn foo<'a>()
-    where
-        Type1: 'static,
-    {
-        pub struct Foo<'a>(&'a i32);
-        pub struct Bar<'a, 'b>(&'a i32, &'b Foo<'b>);
-        let _: Type1 = Bar;
-    }
+#[define_opaque(Type1)]
+pub fn foo<'a>()
+where
+    Type1: 'static,
+{
+    pub struct Foo<'a>(&'a i32);
+    pub struct Bar<'a, 'b>(&'a i32, &'b Foo<'b>);
+    let _: Type1 = Bar;
 }
-
-use defining_module::*;
 
 pub fn foo1(_: Type1) {}
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}

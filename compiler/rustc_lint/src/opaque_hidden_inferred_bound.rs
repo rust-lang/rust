@@ -43,6 +43,7 @@ declare_lint! {
     ///
     /// type Tait = impl Sized;
     ///
+    /// #[define_opaque(Tait)]
     /// fn test() -> impl Trait<Assoc = Tait> {
     ///     42
     /// }

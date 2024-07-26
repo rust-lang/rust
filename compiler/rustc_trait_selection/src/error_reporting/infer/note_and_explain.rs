@@ -395,11 +395,28 @@ impl<T> Trait<T> for X {
                             let sp = tcx
                                 .def_ident_span(body_owner_def_id)
                                 .unwrap_or_else(|| tcx.def_span(body_owner_def_id));
-                            diag.span_note(
-                                sp,
-                                "this item must have the opaque type in its signature in order to \
-                                 be able to register hidden types",
-                            );
+                            let mut alias_def_id = opaque_ty.def_id;
+                            while let DefKind::OpaqueTy = tcx.def_kind(alias_def_id) {
+                                alias_def_id = tcx.parent(alias_def_id);
+                            }
+                            let opaque_path = tcx.def_path_str(alias_def_id);
+                            // FIXME(type_alias_impl_trait): make this a structured suggestion
+                            match tcx.opaque_ty_origin(opaque_ty.def_id) {
+                                rustc_hir::OpaqueTyOrigin::FnReturn { .. } => {}
+                                rustc_hir::OpaqueTyOrigin::AsyncFn { .. } => {}
+                                rustc_hir::OpaqueTyOrigin::TyAlias {
+                                    in_assoc_ty: false, ..
+                                } => {
+                                    diag.span_note(
+                                        sp,
+                                        format!("this item must have a `#[define_opaque({opaque_path})]` \
+                                        attribute to be able to define hidden types"),
+                                    );
+                                }
+                                rustc_hir::OpaqueTyOrigin::TyAlias {
+                                    in_assoc_ty: true, ..
+                                } => {}
+                            }
                         }
                         // If two if arms can be coerced to a trait object, provide a structured
                         // suggestion.

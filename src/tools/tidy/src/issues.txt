@@ -4058,7 +4058,6 @@ ui/type-alias-enum-variants/issue-63151-dead-code-lint-fields-in-patterns.rs
 ui/type-alias-impl-trait/issue-101750.rs
 ui/type-alias-impl-trait/issue-104817.rs
 ui/type-alias-impl-trait/issue-109054.rs
-ui/type-alias-impl-trait/issue-52843-closure-constrain.rs
 ui/type-alias-impl-trait/issue-52843.rs
 ui/type-alias-impl-trait/issue-53092-2.rs
 ui/type-alias-impl-trait/issue-53092.rs

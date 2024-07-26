@@ -1040,6 +1040,7 @@ impl<'a> MethodDef<'a> {
                 generics: fn_generics,
                 contract: None,
                 body: Some(body_block),
+                define_opaque: None,
             })),
             tokens: None,
         })

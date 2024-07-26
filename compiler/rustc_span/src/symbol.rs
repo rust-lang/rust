@@ -779,6 +779,7 @@ symbols! {
         default_method_body_is_const,
         default_type_parameter_fallback,
         default_type_params,
+        define_opaque,
         delayed_bug_from_inside_query,
         deny,
         deprecated,

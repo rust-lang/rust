@@ -1,14 +1,13 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem, def};
+use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem, def, intravisit};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{TaitForwardCompat, TaitForwardCompat2, UnconstrainedOpaqueType};
+use crate::errors::{TaitForwardCompat2, UnconstrainedOpaqueType};
 
 /// Checks "defining uses" of opaque `impl Trait` in associated types.
 /// These can only be defined by associated items of the same trait.
@@ -82,38 +81,9 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
 /// ```
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let scope = tcx.hir_get_defining_scope(hir_id);
     let mut locator = TaitConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
-    debug!(?scope);
-
-    if scope == hir::CRATE_HIR_ID {
-        tcx.hir_walk_toplevel_module(&mut locator);
-    } else {
-        trace!("scope={:#?}", tcx.hir_node(scope));
-        match tcx.hir_node(scope) {
-            // We explicitly call `visit_*` methods, instead of using `intravisit::walk_*` methods
-            // This allows our visitor to process the defining item itself, causing
-            // it to pick up any 'sibling' defining uses.
-            //
-            // For example, this code:
-            // ```
-            // fn foo() {
-            //     type Blah = impl Debug;
-            //     let my_closure = || -> Blah { true };
-            // }
-            // ```
-            //
-            // requires us to explicitly process `foo()` in order
-            // to notice the defining usage of `Blah`.
-            Node::Item(it) => locator.visit_item(it),
-            Node::ImplItem(it) => locator.visit_impl_item(it),
-            Node::TraitItem(it) => locator.visit_trait_item(it),
-            Node::ForeignItem(it) => locator.visit_foreign_item(it),
-            other => bug!("{:?} is not a valid scope for an opaque type item", other),
-        }
-    }
+    tcx.hir_walk_toplevel_module(&mut locator);
 
     if let Some(hidden) = locator.found {
         // Only check against typeck if we didn't already error
@@ -137,12 +107,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
             name: tcx.item_ident(parent_def_id.to_def_id()),
-            what: match tcx.hir_node(scope) {
-                _ if scope == hir::CRATE_HIR_ID => "module",
-                Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",
-                Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }) => "impl",
-                _ => "item",
-            },
+            what: "crate",
         });
         Ty::new_error(tcx, reported)
     }
@@ -173,6 +138,13 @@ impl TaitConstraintLocator<'_> {
         // Don't try to check items that cannot possibly constrain the type.
         if !self.tcx.has_typeck_results(item_def_id) {
             debug!("no constraint: no typeck results");
+            return;
+        }
+
+        let opaque_types_defined_by = self.tcx.opaque_types_defined_by(item_def_id);
+        // Don't try to check items that cannot possibly constrain the type.
+        if !opaque_types_defined_by.contains(&self.def_id) {
+            debug!("no constraint: no opaque types defined");
             return;
         }
 
@@ -215,8 +187,6 @@ impl TaitConstraintLocator<'_> {
             return;
         }
 
-        let opaque_types_defined_by = self.tcx.opaque_types_defined_by(item_def_id);
-
         let mut constrained = false;
         for (&opaque_type_key, &hidden_type) in &tables.concrete_opaque_types {
             if opaque_type_key.def_id != self.def_id {
@@ -224,20 +194,6 @@ impl TaitConstraintLocator<'_> {
             }
             constrained = true;
 
-            if !opaque_types_defined_by.contains(&self.def_id) {
-                let guar = self.tcx.dcx().emit_err(TaitForwardCompat {
-                    span: hidden_type.span,
-                    item_span: self
-                        .tcx
-                        .def_ident_span(item_def_id)
-                        .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
-                });
-                // Avoid "opaque type not constrained" errors on the opaque itself.
-                self.found = Some(ty::OpaqueHiddenType {
-                    span: DUMMY_SP,
-                    ty: Ty::new_error(self.tcx, guar),
-                });
-            }
             let concrete_type =
                 self.tcx.erase_regions(hidden_type.remap_generic_params_to_declaration_params(
                     opaque_type_key,
@@ -309,19 +265,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
     }
     fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
         trace!(?it.owner_id);
-        // The opaque type itself or its children are not within its reveal scope.
-        if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
-            intravisit::walk_item(self, it);
-        }
+        self.check(it.owner_id.def_id);
+        intravisit::walk_item(self, it);
     }
     fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
         trace!(?it.owner_id);
-        // The opaque type itself or its children are not within its reveal scope.
-        if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
-            intravisit::walk_impl_item(self, it);
-        }
+        self.check(it.owner_id.def_id);
+        intravisit::walk_impl_item(self, it);
     }
     fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
         trace!(?it.owner_id);

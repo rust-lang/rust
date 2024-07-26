@@ -5,6 +5,7 @@ impl Foo for () {}
 impl Foo for i32 {}
 
 type Bar<T: Foo> = impl std::fmt::Debug;
+#[define_opaque(Bar)]
 fn defining_use<T: Foo>() -> Bar<T> {
     42
 }
@@ -18,6 +19,7 @@ impl Bop for Bar<i32> {}
 //~^ ERROR conflicting implementations
 
 type Barr = impl std::fmt::Debug;
+#[define_opaque(Barr)]
 fn defining_use2() -> Barr {
     42
 }

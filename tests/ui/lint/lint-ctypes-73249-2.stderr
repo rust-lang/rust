@@ -1,5 +1,5 @@
 error: `extern` block uses type `Qux`, which is not FFI-safe
-  --> $DIR/lint-ctypes-73249-2.rs:26:21
+  --> $DIR/lint-ctypes-73249-2.rs:27:21
    |
 LL |     fn lint_me() -> A<()>;
    |                     ^^^^^ not FFI-safe
