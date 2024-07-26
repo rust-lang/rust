@@ -43,4 +43,3 @@ pub fn f(x: bool) {
 // CHECK: bb2:
 // CHECK: path_a
 // CHECK: ![[NUM]] = !{!"branch_weights", i32 1, i32 2000}
-
