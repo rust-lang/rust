@@ -112,9 +112,9 @@
 // cdb-check:j                : High (0x10) [Type: msvc_pretty_enums::CStyleEnum]
 //
 // cdb-command: dx k
-// cdb-check:k                : Some [Type: enum2$<core::option::Option<alloc::string::String> >]
-// cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
-//
+// cdb-check:k                : Some [Type: enum2$<core::option::Option<alloc::string::string::String<alloc::alloc::Global> > >]
+// cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::string::String<alloc::alloc::Global>]
+
 // cdb-command: dx l
 // cdb-check:l                : Ok [Type: enum2$<core::result::Result<u32,enum2$<msvc_pretty_enums::Empty> > >]
 // cdb-check:    [+0x000] __0              : 0x2a [Type: unsigned int]
