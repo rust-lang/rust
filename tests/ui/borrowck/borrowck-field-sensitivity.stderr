@@ -52,9 +52,8 @@ LL |     drop(**p);
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     let p = &x.b;
-LL +     let p = x.b.clone();
-   |
+LL |     let p = &x.b.clone();
+   |                 ++++++++
 
 error[E0505]: cannot move out of `x.b` because it is borrowed
   --> $DIR/borrowck-field-sensitivity.rs:41:14
@@ -70,9 +69,8 @@ LL |     drop(**p);
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     let p = &x.b;
-LL +     let p = x.b.clone();
-   |
+LL |     let p = &x.b.clone();
+   |                 ++++++++
 
 error[E0499]: cannot borrow `x.a` as mutable more than once at a time
   --> $DIR/borrowck-field-sensitivity.rs:48:13

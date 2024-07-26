@@ -38,7 +38,7 @@ help: if `T` implemented `Clone`, you could clone the value
 LL | fn bar<T: std::fmt::Display>(x: T) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     let a = &x;
-   |             -- you could clone this value
+   |              - you could clone this value
 help: consider further restricting this bound
    |
 LL | fn bar<T: std::fmt::Display + Clone>(x: T) {
@@ -66,7 +66,7 @@ LL | struct A;
    | ^^^^^^^^ consider implementing `Clone` for this type
 LL | fn qux(x: A) {
 LL |     let a = &x;
-   |             -- you could clone this value
+   |              - you could clone this value
 help: consider annotating `A` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

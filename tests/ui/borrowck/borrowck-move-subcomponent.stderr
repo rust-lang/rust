@@ -17,7 +17,7 @@ LL | struct S {
    | ^^^^^^^^ consider implementing `Clone` for this type
 ...
 LL |   let pb = &a;
-   |            -- you could clone this value
+   |             - you could clone this value
 
 error: aborting due to 1 previous error
 

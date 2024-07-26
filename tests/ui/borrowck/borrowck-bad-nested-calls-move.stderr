@@ -14,7 +14,7 @@ LL |         a);
 help: consider cloning the value if the performance cost is acceptable
    |
 LL -         &*a,
-LL +         a.clone(),
+LL +         &a.clone(),
    |
 
 error[E0505]: cannot move out of `a` because it is borrowed
@@ -32,7 +32,7 @@ LL |         a);
 help: consider cloning the value if the performance cost is acceptable
    |
 LL -         &*a,
-LL +         a.clone(),
+LL +         &a.clone(),
    |
 
 error: aborting due to 2 previous errors

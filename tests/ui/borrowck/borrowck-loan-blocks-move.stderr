@@ -12,9 +12,8 @@ LL |     w.use_ref();
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     let w = &v;
-LL +     let w = v.clone();
-   |
+LL |     let w = &v.clone();
+   |               ++++++++
 
 error: aborting due to 1 previous error
 

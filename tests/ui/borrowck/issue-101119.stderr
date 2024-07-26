@@ -18,14 +18,6 @@ LL | fn fill_segment(_: &mut State) {}
    |    ------------    ^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
-note: if `State` implemented `Clone`, you could clone the value
-  --> $DIR/issue-101119.rs:1:1
-   |
-LL | struct State;
-   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |             fill_segment(state);
-   |                          ----- you could clone this value
 
 error: aborting due to 1 previous error
 

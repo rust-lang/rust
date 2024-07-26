@@ -12,9 +12,8 @@ LL | }
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     let _map = BTreeMap::from_iter([((), PrintOnDrop(&s))]);
-LL +     let _map = BTreeMap::from_iter([((), PrintOnDrop(s.clone()))]);
-   |
+LL |     let _map = BTreeMap::from_iter([((), PrintOnDrop(&s.clone()))]);
+   |                                                        ++++++++
 
 error: aborting due to 1 previous error
 
