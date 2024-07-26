@@ -232,6 +232,10 @@ impl GlobalStateInner {
     pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_>) {
         self.root_ptr_tags.retain(|id, _| allocs.is_live(*id));
     }
+
+    pub fn borrow_tracker_method(&self) -> BorrowTrackerMethod {
+        self.borrow_tracker_method
+    }
 }
 
 /// Which borrow tracking method to use
