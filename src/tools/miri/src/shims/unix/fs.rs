@@ -16,8 +16,6 @@ use crate::shims::unix::*;
 use crate::*;
 use shims::time::system_time_to_duration;
 
-use self::fd::FileDescriptor;
-
 #[derive(Debug)]
 struct FileHandle {
     file: File,
@@ -452,10 +450,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(-1);
         }
 
-        let fd = options.open(path).map(|file| {
-            let fh = &mut this.machine.fds;
-            fh.insert_fd(FileDescriptor::new(FileHandle { file, writable }))
-        });
+        let fd = options
+            .open(path)
+            .map(|file| this.machine.fds.insert_fd(FileHandle { file, writable }));
 
         this.try_unwrap_io_result(fd)
     }
@@ -1547,9 +1544,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             match file {
                 Ok(f) => {
-                    let fh = &mut this.machine.fds;
-                    let fd =
-                        fh.insert_fd(FileDescriptor::new(FileHandle { file: f, writable: true }));
+                    let fd = this.machine.fds.insert_fd(FileHandle { file: f, writable: true });
                     return Ok(fd);
                 }
                 Err(e) =>
