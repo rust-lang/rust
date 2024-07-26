@@ -302,7 +302,7 @@ since it will not be called), and adds a new `FunctionCoverage`, with
 test suite.)](./tests/compiletest.md#coverage-tests)
 
 Coverage instrumentation in the MIR is validated by a `mir-opt` test:
-[`tests/mir-opt/instrument_coverage.rs`].
+[`tests/mir-opt/coverage/instrument_coverage.rs`].
 
 Coverage instrumentation in LLVM IR is validated by the [`tests/coverage`]
 test suite in `coverage-map` mode.
@@ -321,7 +321,7 @@ human-readable coverage report.
 > directive, so they will be skipped if the profiler runtime has not been
 > [enabled in `config.toml`](#recommended-configtoml-settings).
 
-Finally, the [`coverage-llvmir`] test compiles a simple Rust program
+Finally, the [`tests/codegen/instrument-coverage/testprog.rs`] test compiles a simple Rust program
 with `-C instrument-coverage` and compares the compiled program's LLVM IR to
 expected LLVM IR instructions and structured data for a coverage-enabled
 program, including various checks for Coverage Map-related metadata and the LLVM
@@ -336,25 +336,24 @@ and `mir-opt` tests can be refreshed by running:
 ./x test tests/mir-opt --bless
 ```
 
-[`tests/mir-opt/instrument_coverage.rs`]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/instrument_coverage.rs
+[`tests/mir-opt/coverage/instrument_coverage.rs`]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/coverage/instrument_coverage.rs
 [`tests/coverage`]: https://github.com/rust-lang/rust/tree/master/tests/coverage
 [`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
 [`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-run-rustdoc
-[`coverage-llvmir`]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage-llvmir
+[`tests/codegen/instrument-coverage/testprog.rs`]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/coverage/instrument_coverage.rs
 
 ## Implementation Details of the `InstrumentCoverage` MIR Pass
 
 The bulk of the implementation of the `InstrumentCoverage` MIR pass is performed
-by the [`Instrumentor`][instrumentor]. For each MIR (each non-const, non-inlined
-function, generic, or closure), the `Instrumentor`'s constructor prepares a
-[`CoverageGraph`][coverage-graph] and then executes
-[`inject_counters()`][inject-counters].
+by [`instrument_function_for_coverage`]. For each eligible MIR body, the instrumentor:
 
-```rust
-Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
-```
+- Prepares a [coverage graph]
+- Extracts mapping information from MIR
+- Prepares counters for each relevant node/edge in the coverage graph
+- Creates mapping data to be embedded in side-tables attached to the MIR body
+- Injects counters and other coverage statements into MIR
 
-The `CoverageGraph` is a coverage-specific simplification of the MIR control
+The [coverage graph] is a coverage-specific simplification of the MIR control
 flow graph (CFG). Its nodes are [`BasicCoverageBlock`s][bcb], which
 encompass one or more sequentially-executed MIR `BasicBlock`s
 (with no internal branching).
@@ -362,37 +361,11 @@ encompass one or more sequentially-executed MIR `BasicBlock`s
 Nodes and edges in the graph can have associated [`BcbCounter`]s, which are
 stored in [`CoverageCounters`].
 
-The `Instrumentor`'s `inject_counters()` uses the `CoverageGraph` to
-compute the best places to inject coverage counters, as MIR `Statement`s,
-with the following steps:
-
-1. [`generate_coverage_spans()`][generate-coverage-spans] computes the minimum set of distinct,
-   non-branching code regions, from the MIR. These `CoverageSpan`s
-   represent a span of code that must be counted.
-2. [`make_bcb_counters()`][make-bcb-counters] generates `BcbCounter::Counter`s and
-   `BcbCounter::Expression`s for each `CoverageSpan`, plus additional
-   _intermediate expressions_[^intermediate-expressions] that are not associated
-   with any `CodeRegion`, but
-   are required to compute a final `Expression` value for a `CodeRegion`.
-3. Inject the new counters into the MIR, as new `StatementKind::Coverage`
-   statements.
-4. Attach all other necessary coverage information to the function's body as
-  [`FunctionCoverageInfo`].
-
-[^intermediate-expressions]: Intermediate expressions are sometimes required
-because `Expression`s are limited to binary additions or subtractions. For
-example, `A + (B - C)` might represent an `Expression` count computed from three
-other counters, `A`, `B`, and `C`, but computing that value requires an
-intermediate expression for `B - C`.
-
-[instrumentor]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/struct.Instrumentor.html
-[coverage-graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.CoverageGraph.html
-[inject-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/struct.Instrumentor.html#method.inject_counters
+[`instrument_function_for_coverage`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/fn.instrument_function_for_coverage.html
+[coverage graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.CoverageGraph.html
 [bcb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.BasicCoverageBlock.html
 [`BcbCounter`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/enum.BcbCounter.html
 [`CoverageCounters`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/struct.CoverageCounters.html
-[generate-coverage-spans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/spans/struct.CoverageSpans.html#method.generate_coverage_spans
-[make-bcb-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/struct.BcbCounters.html#method.make_bcb_counters
 
 ### The `CoverageGraph`
 
@@ -445,37 +418,16 @@ The BCB CFG is critical to simplifying the coverage analysis by ensuring graph p
 queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
 significance.
 
-[directed-graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/trait.DirectedGraph.html
+[directed-graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/trait.DirectedGraph.html_bogus
 [graph-traits]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/index.html#traits
 [mir-dev-guide]: mir/index.md
 [compute-basic-coverage-blocks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.CoverageGraph.html#method.compute_basic_coverage_blocks
 [simplify-cfg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/simplify/enum.SimplifyCfg.html
 [rust-lang/rust#78544]: https://github.com/rust-lang/rust/issues/78544
 
-### `CoverageSpans`
-
-The `struct` [`CoverageSpans`][coverage-spans] builds and refines a final set of
-[`CoverageSpan`][coverage-span]s, each representing the largest contiguous `Span`
-of source within a single BCB. By definition--since each `Span` falls within a
-BCB, the `Span` is also non-branching; so if any code in that `Span` has executed,
-all code in the `Span` will have executed, the same number of times.
-
-[`CoverageSpans::generate_coverage_spans()`][generate-coverage-spans] constructs
-an initial set of `CoverageSpan`s from the `Span`s associated with each MIR
-`Statement` and `Terminator`.
-
-The final stage of `generate_coverage_spans()` is handled by
-[`to_refined_spans()`][to-refined-spans], which iterates through the `CoverageSpan`s,
-merges and de-duplicates them, and returns an optimal, minimal set of `CoverageSpan`s
-that can be used to assign coverage `Counter`s or `Expression`s, one-for-one.
-
-[coverage-spans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/spans/struct.CoverageSpans.html
-[coverage-span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/spans/struct.CoverageSpan.html
-[to-refined-spans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/spans/struct.CoverageSpans.html#method.to_refined_spans
-
 ### `make_bcb_counters()`
 
-[`make_bcb_counters()`][make-bcb-counters] traverses the `CoverageGraph` and adds a
+[`make_bcb_counters`] traverses the `CoverageGraph` and adds a
 `Counter` or `Expression` to every BCB. It uses _Control Flow Analysis_
 to determine where an `Expression` can be used in place of a `Counter`.
 `Expressions` have no runtime overhead, so if a viable expression (adding or
@@ -534,5 +486,6 @@ of `Counter` vs. `Expression` also depends on the order of counter
 assignments, and whether a BCB or incoming edge counter already has
 its `Counter` or `Expression`.
 
+[`make_bcb_counters`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/struct.CoverageCounters.html#method.make_bcb_counters
 [bcb-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/struct.BcbCounters.html
 [traverse-coverage-graph-with-loops]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.TraverseCoverageGraphWithLoops.html
