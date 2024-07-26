@@ -1442,7 +1442,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             // See `tests/ui/moves/needs-clone-through-deref.rs`
             return false;
         }
+        // We don't want to suggest `.clone()` in a move closure, since the value has already been captured.
         if self.in_move_closure(expr) {
+            return false;
+        }
+        // We also don't want to suggest cloning a closure itself, since the value has already been captured.
+        if let hir::ExprKind::Closure(_) = expr.kind {
             return false;
         }
         // Try to find predicates on *generic params* that would allow copying `ty`
