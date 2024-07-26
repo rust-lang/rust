@@ -2788,19 +2788,30 @@ impl<T> [T] {
         F: FnMut(&'a T) -> Ordering,
     {
         // INVARIANTS:
-        // - 0 <= left <= left + size = right <= self.len()
+        // - 0 <= left <= mid <= right <= self.len()
         // - f returns Less for everything in self[..left]
         // - f returns Greater for everything in self[right..]
-        let mut size = self.len();
         let mut left = 0;
-        let mut right = size;
-        while left < right {
-            let mid = left + size / 2;
+        let mut right = self.len();
+        while left != right {
+            // These 2 expressions are arithmetically equivalent, except if
+            // `left + right` overflows. This can't happen for non-ZST slices
+            // since such allocations cannot exceed `isize::MAX` bytes.
+            let mid = if T::IS_ZST {
+                let size = right - left;
+                left + size / 2
+            } else {
+                (left + right) / 2
+            };
 
-            // SAFETY: the while condition means `size` is strictly positive, so
-            // `size/2 < size`. Thus `left + size/2 < left + size`, which
-            // coupled with the `left + size <= self.len()` invariant means
-            // we have `left + size/2 < self.len()`, and this is in-bounds.
+            // SAFETY:
+            // - the calculation of `mid` guarantees `left <= mid <= right`.
+            // - `left` only gets bigger and can't get larger than `right`.
+            // - `right` only gets smaller and can't get smaller than `left`.
+            // - `left` and `right` can't move "past" each other because only
+            //   one of them is updated on each loop iteration.
+            // - This means that `left`, `mid` and `right` are always between
+            //   `0` and `self.len()`, which means the access is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
             // This control flow produces conditional moves, which results in
@@ -2814,8 +2825,6 @@ impl<T> [T] {
                 unsafe { hint::assert_unchecked(mid < self.len()) };
                 return Ok(mid);
             }
-
-            size = right - left;
         }
 
         // SAFETY: directly true from the overall invariant.
