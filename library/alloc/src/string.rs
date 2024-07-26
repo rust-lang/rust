@@ -42,6 +42,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::cmp::Ordering;
 use core::error::Error;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
@@ -58,6 +59,7 @@ use core::{fmt, hash, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Allocator;
+use crate::alloc::Global;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
@@ -356,11 +358,10 @@ use crate::vec::{self, Vec};
 /// [Deref]: core::ops::Deref "ops::Deref"
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
-#[derive(PartialEq, PartialOrd, Eq, Ord)]
-#[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), lang = "String")]
-pub struct String {
-    vec: Vec<u8>,
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct String<#[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+    vec: Vec<u8, A>,
 }
 
 /// A possible error value when converting a `String` from a UTF-8 byte vector.
@@ -396,10 +397,31 @@ pub struct String {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
-#[derive(Debug, PartialEq, Eq)]
-pub struct FromUtf8Error {
-    bytes: Vec<u8>,
+pub struct FromUtf8Error<
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    bytes: Vec<u8, A>,
     error: Utf8Error,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Allocator> Eq for FromUtf8Error<A> {} // FIXME(zachs18): Structural(Partial)Eq?
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Allocator> PartialEq for FromUtf8Error<A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.bytes == other.bytes && self.error == other.error
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Allocator> fmt::Debug for FromUtf8Error<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FromUtf8Error")
+            .field("bytes", &self.bytes)
+            .field("error", &self.error)
+            .finish()
+    }
 }
 
 /// A possible error value when converting a `String` from a UTF-16 byte slice.
@@ -513,6 +535,86 @@ impl String {
     pub fn from_str(_: &str) -> String {
         panic!("not available with cfg(test)");
     }
+}
+
+impl<A: Allocator> String<A> {
+    /// Creates a new empty `String<A>` with the provided allocator.
+    ///
+    /// Given that the `String` is empty, this will not allocate any initial
+    /// buffer. While that means that this initial operation is very
+    /// inexpensive, it may cause excessive allocation later when you add
+    /// data. If you have an idea of how much data the `String` will hold,
+    /// consider the [`with_capacity_in`] method to prevent excessive
+    /// re-allocation.
+    ///
+    /// [`with_capacity_in`]: String::with_capacity_in
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let s = String::new_in(System);
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    pub const fn new_in(alloc: A) -> String<A> {
+        String { vec: Vec::new_in(alloc) }
+    }
+
+    /// Creates a new empty `String` with at least the specified capacity with the provided allocator.
+    ///
+    /// `String`s have an internal buffer to hold their data. The capacity is
+    /// the length of that buffer, and can be queried with the [`capacity`]
+    /// method. This method creates an empty `String`, but one with an initial
+    /// buffer that can hold at least `capacity` bytes. This is useful when you
+    /// may be appending a bunch of data to the `String`, reducing the number of
+    /// reallocations it needs to do.
+    ///
+    /// [`capacity`]: String::capacity
+    ///
+    /// If the given capacity is `0`, no allocation will occur, and this method
+    /// is identical to the [`new_in`] method.
+    ///
+    /// [`new_in`]: String::new_in
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let mut s = String::with_capacity_in(10, System);
+    ///
+    /// // The String contains no chars, even though it has capacity for more
+    /// assert_eq!(s.len(), 0);
+    ///
+    /// // These are all done without reallocating...
+    /// let cap = s.capacity();
+    /// for _ in 0..10 {
+    ///     s.push('a');
+    /// }
+    ///
+    /// assert_eq!(s.capacity(), cap);
+    ///
+    /// // ...but this may make the string reallocate
+    /// s.push('a');
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> String<A> {
+        String { vec: Vec::with_capacity_in(capacity, alloc) }
+    }
 
     /// Converts a vector of bytes to a `String`.
     ///
@@ -573,13 +675,121 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "string_from_utf8")]
-    pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
+    pub fn from_utf8(vec: Vec<u8, A>) -> Result<String<A>, FromUtf8Error<A>> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),
             Err(e) => Err(FromUtf8Error { bytes: vec, error: e }),
         }
     }
 
+    /// Decomposes a `String` into its raw components.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the string (in bytes), the allocated capacity of the data
+    /// (in bytes), and the allocator. These are the same arguments in the same order as
+    /// the arguments to [`from_raw_parts_in`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `String`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `String` with the [`from_raw_parts_in`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts_in`]: String::from_raw_parts_in
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts)]
+    /// #![feature(allocator_api)]
+    /// use std::alloc::System;
+    /// let mut s = String::new_in(System);
+    /// s.push_str("hello");
+    ///
+    /// let (ptr, len, cap, alloc) = s.into_raw_parts_with_alloc();
+    ///
+    /// let rebuilt = unsafe { String::from_raw_parts_in(ptr, len, cap, alloc) };
+    /// assert_eq!(rebuilt, "hello");
+    /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts_with_alloc(self) -> (*mut u8, usize, usize, A) {
+        self.vec.into_raw_parts_with_alloc()
+    }
+
+    /// Creates a new `String` from a length, capacity, pointer, and allocator.
+    ///
+    /// # Safety
+    ///
+    /// This is highly unsafe, due to the number of invariants that aren't
+    /// checked:
+    ///
+    /// * The memory at `buf` needs to have been previously allocated by the
+    ///   allocator `alloc`, with a required alignment of exactly 1.
+    /// * `length` needs to be less than or equal to `capacity`.
+    /// * `capacity` needs to be the correct value.
+    /// * The first `length` bytes at `buf` need to be valid UTF-8.
+    ///
+    /// Violating these may cause problems like corrupting the allocator's
+    /// internal data structures. For example, it is normally **not** safe to
+    /// build a `String` from a pointer to a C `char` array containing UTF-8
+    /// _unless_ you are certain that array was originally allocated by `alloc`.
+    ///
+    /// The ownership of `buf` is effectively transferred to the
+    /// `String` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::mem;
+    /// use std::alloc::System;
+    ///
+    /// unsafe {
+    ///     let mut s = String::new_in(System);
+    ///     s.push_str("hello");
+    ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
+    ///     // Prevent automatically dropping the String's data
+    ///     let mut s = mem::ManuallyDrop::new(s);
+    ///
+    ///     let ptr = s.as_mut_ptr();
+    ///     let len = s.len();
+    ///     let capacity = s.capacity();
+    ///     let alloc = s.allocator().clone();
+    ///
+    ///     let s = String::from_raw_parts_in(ptr, len, capacity, alloc);
+    ///
+    ///     assert_eq!("hello", s);
+    /// }
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub unsafe fn from_raw_parts_in(
+        buf: *mut u8,
+        length: usize,
+        capacity: usize,
+        alloc: A,
+    ) -> String<A> {
+        unsafe { String { vec: Vec::from_raw_parts_in(buf, length, capacity, alloc) } }
+    }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.vec.allocator()
+    }
+}
+
+impl String {
     /// Converts a slice of bytes to a string, including invalid characters.
     ///
     /// Strings are made of bytes ([`u8`]), and a slice of bytes
@@ -1010,7 +1220,9 @@ impl String {
     pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
         unsafe { String { vec: Vec::from_raw_parts(buf, length, capacity) } }
     }
+}
 
+impl<A: Allocator> String<A> {
     /// Converts a vector of bytes to a `String` without checking that the
     /// string contains valid UTF-8.
     ///
@@ -1040,7 +1252,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
+    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8, A>) -> String<A> {
         String { vec: bytes }
     }
 
@@ -1060,7 +1272,7 @@ impl String {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
-    pub const fn into_bytes(self) -> Vec<u8> {
+    pub const fn into_bytes(self) -> Vec<u8, A> {
         self.vec
     }
 
@@ -1640,13 +1852,13 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        struct SetLenOnDrop<'a> {
-            s: &'a mut String,
+        struct SetLenOnDrop<'a, A: Allocator> {
+            s: &'a mut String<A>,
             idx: usize,
             del_bytes: usize,
         }
 
-        impl<'a> Drop for SetLenOnDrop<'a> {
+        impl<'a, A: Allocator> Drop for SetLenOnDrop<'a, A> {
             fn drop(&mut self) {
                 let new_len = self.idx - self.del_bytes;
                 debug_assert!(new_len <= self.s.len());
@@ -1794,7 +2006,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
-    pub const unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
+    pub const unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8, A> {
         &mut self.vec
     }
 
@@ -1867,7 +2079,10 @@ impl String {
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
     #[must_use = "use `.truncate()` if you don't need the other half"]
-    pub fn split_off(&mut self, at: usize) -> String {
+    pub fn split_off(&mut self, at: usize) -> String<A>
+    where
+        A: Clone,
+    {
         assert!(self.is_char_boundary(at));
         let other = self.vec.split_off(at);
         unsafe { String::from_utf8_unchecked(other) }
@@ -1929,7 +2144,7 @@ impl String {
     /// assert_eq!(s, "");
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<'_>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, A>
     where
         R: RangeBounds<usize>,
     {
@@ -2077,7 +2292,7 @@ impl String {
     #[stable(feature = "box_str", since = "1.4.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_boxed_str(self) -> Box<str> {
+    pub fn into_boxed_str(self) -> Box<str, A> {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
@@ -2108,13 +2323,16 @@ impl String {
     /// ```
     #[stable(feature = "string_leak", since = "1.72.0")]
     #[inline]
-    pub fn leak<'a>(self) -> &'a mut str {
+    pub fn leak<'a>(self) -> &'a mut str
+    where
+        A: 'a,
+    {
         let slice = self.vec.leak();
         unsafe { from_utf8_unchecked_mut(slice) }
     }
 }
 
-impl FromUtf8Error {
+impl<A: Allocator> FromUtf8Error<A> {
     /// Returns a slice of [`u8`]s bytes that were attempted to convert to a `String`.
     ///
     /// # Examples
@@ -2199,7 +2417,7 @@ impl FromUtf8Error {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(self) -> Vec<u8, A> {
         self.bytes
     }
 
@@ -2232,7 +2450,7 @@ impl FromUtf8Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for FromUtf8Error {
+impl<A: Allocator> fmt::Display for FromUtf8Error<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.error, f)
     }
@@ -2246,7 +2464,7 @@ impl fmt::Display for FromUtf16Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Error for FromUtf8Error {
+impl<A: Allocator> Error for FromUtf8Error<A> {
     #[allow(deprecated)]
     fn description(&self) -> &str {
         "invalid utf-8"
@@ -2263,7 +2481,7 @@ impl Error for FromUtf16Error {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Clone for String {
+impl<A: Allocator + Clone> Clone for String<A> {
     fn clone(&self) -> Self {
         String { vec: self.vec.clone() }
     }
@@ -2358,7 +2576,7 @@ impl<'a> FromIterator<Cow<'a, str>> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Extend<char> for String {
+impl<A: Allocator> Extend<char> for String<A> {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
         let iterator = iter.into_iter();
         let (lower_bound, _) = iterator.size_hint();
@@ -2379,7 +2597,7 @@ impl Extend<char> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a> Extend<&'a char> for String {
+impl<'a, A: Allocator> Extend<&'a char> for String<A> {
     fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
@@ -2397,7 +2615,7 @@ impl<'a> Extend<&'a char> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Extend<&'a str> for String {
+impl<'a, A: Allocator> Extend<&'a str> for String<A> {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(s));
     }
@@ -2410,28 +2628,28 @@ impl<'a> Extend<&'a str> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl<A: Allocator> Extend<Box<str, A>> for String {
-    fn extend<I: IntoIterator<Item = Box<str, A>>>(&mut self, iter: I) {
+impl<A1: Allocator, A2: Allocator> Extend<Box<str, A2>> for String<A1> {
+    fn extend<I: IntoIterator<Item = Box<str, A2>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_string", since = "1.4.0")]
-impl Extend<String> for String {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+impl<A1: Allocator, A2: Allocator> Extend<String<A2>> for String<A1> {
+    fn extend<I: IntoIterator<Item = String<A2>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 
     #[inline]
-    fn extend_one(&mut self, s: String) {
+    fn extend_one(&mut self, s: String<A2>) {
         self.push_str(&s);
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
-impl<'a> Extend<Cow<'a, str>> for String {
+impl<'a, A: Allocator> Extend<Cow<'a, str>> for String<A> {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
@@ -2454,7 +2672,7 @@ impl<'a> Extend<Cow<'a, str>> for String {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'b> Pattern for &'b String {
+impl<'b, A: Allocator> Pattern for &'b String<A> {
     type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
 
     fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {
@@ -2498,11 +2716,42 @@ impl<'b> Pattern for &'b String {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Allocator, B: Allocator> PartialEq<String<B>> for String<A> {
+    #[inline]
+    fn eq(&self, other: &String<B>) -> bool {
+        PartialEq::eq(&self[..], &other[..])
+    }
+    #[inline]
+    fn ne(&self, other: &String<B>) -> bool {
+        PartialEq::ne(&self[..], &other[..])
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Allocator> Eq for String<A> {} // FIXME(zachs18): Structural(Partial)Eq?
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Allocator, B: Allocator> PartialOrd<String<B>> for String<A> {
+    #[inline]
+    fn partial_cmp(&self, other: &String<B>) -> Option<Ordering> {
+        str::partial_cmp(&self[..], &other[..])
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Allocator> Ord for String<A> {
+    #[inline]
+    fn cmp(&self, other: &String<A>) -> Ordering {
+        str::cmp(&self[..], &other[..])
+    }
+}
+
 macro_rules! impl_eq {
-    ($lhs:ty, $rhs: ty) => {
+    ([$($vars:tt)*] $lhs:ty, $rhs: ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(unused_lifetimes)]
-        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+        impl<'a, 'b, $($vars)*> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 PartialEq::eq(&self[..], &other[..])
@@ -2515,7 +2764,7 @@ macro_rules! impl_eq {
 
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(unused_lifetimes)]
-        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+        impl<'a, 'b, $($vars)*> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 PartialEq::eq(&self[..], &other[..])
@@ -2528,14 +2777,14 @@ macro_rules! impl_eq {
     };
 }
 
-impl_eq! { String, str }
-impl_eq! { String, &'a str }
+impl_eq! { [A: Allocator] String<A>, str }
+impl_eq! { [A: Allocator] String<A>, &'a str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { Cow<'a, str>, str }
+impl_eq! { [] Cow<'a, str>, str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { Cow<'a, str>, &'b str }
+impl_eq! { [] Cow<'a, str>, &'b str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { Cow<'a, str>, String }
+impl_eq! { [A: Allocator] Cow<'a, str>, String<A> }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
@@ -2547,7 +2796,7 @@ impl Default for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for String {
+impl<A: Allocator> fmt::Display for String<A> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
@@ -2555,7 +2804,7 @@ impl fmt::Display for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for String {
+impl<A: Allocator> fmt::Debug for String<A> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
@@ -2563,7 +2812,7 @@ impl fmt::Debug for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl hash::Hash for String {
+impl<A: Allocator> hash::Hash for String<A> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
         (**self).hash(hasher)
@@ -2609,11 +2858,11 @@ impl hash::Hash for String {
 /// ```
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Add<&str> for String {
-    type Output = String;
+impl<A: Allocator> Add<&str> for String<A> {
+    type Output = String<A>;
 
     #[inline]
-    fn add(mut self, other: &str) -> String {
+    fn add(mut self, other: &str) -> String<A> {
         self.push_str(other);
         self
     }
@@ -2624,7 +2873,7 @@ impl Add<&str> for String {
 /// This has the same behavior as the [`push_str`][String::push_str] method.
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "stringaddassign", since = "1.12.0")]
-impl AddAssign<&str> for String {
+impl<A: Allocator> AddAssign<&str> for String<A> {
     #[inline]
     fn add_assign(&mut self, other: &str) {
         self.push_str(other);
@@ -2632,9 +2881,10 @@ impl AddAssign<&str> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ops::Index<I> for String
+impl<I, A> ops::Index<I> for String<A>
 where
     I: slice::SliceIndex<str>,
+    A: Allocator,
 {
     type Output = I::Output;
 
@@ -2645,9 +2895,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ops::IndexMut<I> for String
+impl<I, A> ops::IndexMut<I> for String<A>
 where
     I: slice::SliceIndex<str>,
+    A: Allocator,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
@@ -2656,7 +2907,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Deref for String {
+impl<A: Allocator> ops::Deref for String<A> {
     type Target = str;
 
     #[inline]
@@ -2666,10 +2917,10 @@ impl ops::Deref for String {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
-unsafe impl ops::DerefPure for String {}
+unsafe impl<A: Allocator> ops::DerefPure for String<A> {}
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
-impl ops::DerefMut for String {
+impl<A: Allocator> ops::DerefMut for String<A> {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
         self.as_mut_str()
@@ -2881,10 +3132,10 @@ impl SpecToString for Cow<'_, str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl SpecToString for String {
+impl<A: Allocator> SpecToString for String<A> {
     #[inline]
     fn spec_to_string(&self) -> String {
-        self.to_owned()
+        self[..].to_owned()
     }
 }
 
@@ -2897,7 +3148,7 @@ impl SpecToString for fmt::Arguments<'_> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<str> for String {
+impl<A: Allocator> AsRef<str> for String<A> {
     #[inline]
     fn as_ref(&self) -> &str {
         self
@@ -2905,7 +3156,7 @@ impl AsRef<str> for String {
 }
 
 #[stable(feature = "string_as_mut", since = "1.43.0")]
-impl AsMut<str> for String {
+impl<A: Allocator> AsMut<str> for String<A> {
     #[inline]
     fn as_mut(&mut self) -> &mut str {
         self
@@ -2913,7 +3164,7 @@ impl AsMut<str> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<[u8]> for String {
+impl<A: Allocator> AsRef<[u8]> for String<A> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
@@ -2959,7 +3210,7 @@ impl From<&String> for String {
 // note: test pulls in std, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
-impl From<Box<str>> for String {
+impl<A: Allocator> From<Box<str, A>> for String<A> {
     /// Converts the given boxed `str` slice to a [`String`].
     /// It is notable that the `str` slice is owned.
     ///
@@ -2972,7 +3223,7 @@ impl From<Box<str>> for String {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
-    fn from(s: Box<str>) -> String {
+    fn from(s: Box<str, A>) -> String<A> {
         s.into_string()
     }
 }
@@ -2980,6 +3231,7 @@ impl From<Box<str>> for String {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_str", since = "1.20.0")]
 impl From<String> for Box<str> {
+    // FIXME(zachs18): Can't add allocator because of orphan rules?
     /// Converts the given [`String`] to a boxed `str` slice that is owned.
     ///
     /// # Examples
@@ -3066,7 +3318,7 @@ impl<'a> From<String> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
-impl<'a> From<&'a String> for Cow<'a, str> {
+impl<'a, A: Allocator> From<&'a String<A>> for Cow<'a, str> {
     /// Converts a [`String`] reference into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
@@ -3081,7 +3333,7 @@ impl<'a> From<&'a String> for Cow<'a, str> {
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a String) -> Cow<'a, str> {
+    fn from(s: &'a String<A>) -> Cow<'a, str> {
         Cow::Borrowed(s.as_str())
     }
 }
@@ -3111,7 +3363,7 @@ impl<'a> FromIterator<String> for Cow<'a, str> {
 }
 
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
-impl From<String> for Vec<u8> {
+impl<A: Allocator> From<String<A>> for Vec<u8, A> {
     /// Converts the given [`String`] to a vector [`Vec`] that holds values of type [`u8`].
     ///
     /// # Examples
@@ -3124,14 +3376,14 @@ impl From<String> for Vec<u8> {
     ///     println!("{b}");
     /// }
     /// ```
-    fn from(string: String) -> Vec<u8> {
+    fn from(string: String<A>) -> Vec<u8, A> {
         string.into_bytes()
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Write for String {
+impl<A: Allocator> fmt::Write for String<A> {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push_str(s);
@@ -3280,9 +3532,10 @@ impl FusedIterator for IntoChars {}
 ///
 /// [`drain`]: String::drain
 #[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<'a> {
+pub struct Drain<'a, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global>
+{
     /// Will be used as &'a mut String in the destructor
-    string: *mut String,
+    string: *mut String<A>,
     /// Start of part to remove
     start: usize,
     /// End of part to remove
@@ -3292,19 +3545,19 @@ pub struct Drain<'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl fmt::Debug for Drain<'_> {
+impl<A: Allocator> fmt::Debug for Drain<'_, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain").field(&self.as_str()).finish()
     }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl Sync for Drain<'_> {}
+unsafe impl<A: Allocator> Sync for Drain<'_, A> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl Send for Drain<'_> {}
+unsafe impl<A: Allocator> Send for Drain<'_, A> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl Drop for Drain<'_> {
+impl<A: Allocator> Drop for Drain<'_, A> {
     fn drop(&mut self) {
         unsafe {
             // Use Vec::drain. "Reaffirm" the bounds checks to avoid
@@ -3317,7 +3570,7 @@ impl Drop for Drain<'_> {
     }
 }
 
-impl<'a> Drain<'a> {
+impl<'a, A: Allocator> Drain<'a, A> {
     /// Returns the remaining (sub)string of this iterator as a slice.
     ///
     /// # Examples
@@ -3337,21 +3590,21 @@ impl<'a> Drain<'a> {
 }
 
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
-impl<'a> AsRef<str> for Drain<'a> {
+impl<'a, A: Allocator> AsRef<str> for Drain<'a, A> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
-impl<'a> AsRef<[u8]> for Drain<'a> {
+impl<'a, A: Allocator> AsRef<[u8]> for Drain<'a, A> {
     fn as_ref(&self) -> &[u8] {
         self.as_str().as_bytes()
     }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl Iterator for Drain<'_> {
+impl<A: Allocator> Iterator for Drain<'_, A> {
     type Item = char;
 
     #[inline]
@@ -3370,7 +3623,7 @@ impl Iterator for Drain<'_> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl DoubleEndedIterator for Drain<'_> {
+impl<A: Allocator> DoubleEndedIterator for Drain<'_, A> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
         self.iter.next_back()
@@ -3378,7 +3631,7 @@ impl DoubleEndedIterator for Drain<'_> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl FusedIterator for Drain<'_> {}
+impl<A: Allocator> FusedIterator for Drain<'_, A> {}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_char_for_string", since = "1.46.0")]
