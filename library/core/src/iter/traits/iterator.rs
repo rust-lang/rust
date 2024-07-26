@@ -823,7 +823,7 @@ pub trait Iterator {
     ///
     /// Given an element the closure must return `true` or `false`. The returned
     /// iterator will yield only the elements for which the closure returns
-    /// true.
+    /// `true`.
     ///
     /// # Examples
     ///
