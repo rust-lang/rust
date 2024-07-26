@@ -968,6 +968,22 @@ pub const unsafe fn assume(b: bool) {
     }
 }
 
+/// Hints to the compiler that current code path is cold.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg(not(bootstrap))]
+#[rustc_nounwind]
+#[cold]
+pub const fn cold_path() {}
+
 /// Hints to the compiler that branch condition is likely to be true.
 /// Returns the value passed to it.
 ///
@@ -984,8 +1000,15 @@ pub const unsafe fn assume(b: bool) {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
+#[inline(always)]
 pub const fn likely(b: bool) -> bool {
-    b
+    if b {
+        true
+    } else {
+        #[cfg(not(bootstrap))]
+        cold_path();
+        false
+    }
 }
 
 /// Hints to the compiler that branch condition is likely to be false.
@@ -1004,8 +1027,15 @@ pub const fn likely(b: bool) -> bool {
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
+#[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
-    b
+    if b {
+        #[cfg(not(bootstrap))]
+        cold_path();
+        true
+    } else {
+        false
+    }
 }
 
 /// Returns either `true_val` or `false_val` depending on condition `b` with a

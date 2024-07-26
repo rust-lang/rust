@@ -6,11 +6,11 @@
 fn cold_path() {}
 
 #[inline(always)]
-fn likely(x: bool) -> bool {
+fn unlikely(x: bool) -> bool {
     if x {
+        cold_path();
         true
     } else {
-        cold_path();
         false
     }
 }
@@ -29,7 +29,7 @@ pub fn path_b() {
 
 #[no_mangle]
 pub fn f(x: bool) {
-    if likely(x) {
+    if unlikely(x) {
         path_a();
     } else {
         path_b();
@@ -37,10 +37,10 @@ pub fn f(x: bool) {
 }
 
 // CHECK-LABEL: @f(
-// CHECK: br i1 %x, label %bb2, label %bb3, !prof ![[NUM:[0-9]+]]
-// CHECK: bb3:
+// CHECK: br i1 %x, label %bb2, label %bb4, !prof ![[NUM:[0-9]+]]
+// CHECK: bb4:
 // CHECK: path_b
 // CHECK: bb2:
 // CHECK: path_a
-// CHECK: ![[NUM]] = !{!"branch_weights", i32 2000, i32 1}
+// CHECK: ![[NUM]] = !{!"branch_weights", i32 1, i32 2000}
 
