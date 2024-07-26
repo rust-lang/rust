@@ -53,18 +53,18 @@ jobs:
       id: cache-json
       uses: actions/cache@v4
       with:
-        path: lintcheck-logs/lintcheck_crates_logs.json
+        path: lintcheck-logs/ci_crates_logs.json
         key: ${{ steps.key.outputs.key }}
 
     - name: Run lintcheck
       if: steps.cache-json.outputs.cache-hit != 'true'
-      run: ./target/debug/lintcheck --format json --warn-all
+      run: ./target/debug/lintcheck --format json --warn-all --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload base JSON
       uses: actions/upload-artifact@v4
       with:
         name: base
-        path: lintcheck-logs/lintcheck_crates_logs.json
+        path: lintcheck-logs/ci_crates_logs.json
 
   # Runs lintcheck on the PR and stores the results as an artifact
   head:
@@ -86,13 +86,13 @@ jobs:
       run: cargo build --manifest-path=lintcheck/Cargo.toml
 
     - name: Run lintcheck
-      run: ./target/debug/lintcheck --format json --warn-all
+      run: ./target/debug/lintcheck --format json --warn-all --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload head JSON
       uses: actions/upload-artifact@v4
       with:
         name: head
-        path: lintcheck-logs/lintcheck_crates_logs.json
+        path: lintcheck-logs/ci_crates_logs.json
 
   # Retrieves the head and base JSON results and prints the diff to the GH actions step summary
   diff:
@@ -115,4 +115,20 @@ jobs:
       uses: actions/download-artifact@v4
 
     - name: Diff results
-      run: ./target/debug/lintcheck diff {base,head}/lintcheck_crates_logs.json >> $GITHUB_STEP_SUMMARY
+      # GH's summery has a maximum size of 1024k:
+      # https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary
+      # That's why we first log to file and then to the summary and logs
+      run: |
+        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --truncate >> truncated_diff.md
+        head -c 1024000 truncated_diff.md >> $GITHUB_STEP_SUMMARY
+        cat truncated_diff.md
+        ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json >> full_diff.md
+
+    - name: Upload full diff
+      uses: actions/upload-artifact@v4
+      with:
+        name: diff
+        if-no-files-found: ignore
+        path: |
+          full_diff.md
+          truncated_diff.md

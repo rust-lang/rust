@@ -37,22 +37,21 @@ declare_lint_pass!(IgnoredUnitPatterns => [IGNORED_UNIT_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
-        if pat.span.from_expansion() {
-            return;
-        }
-
-        match cx.tcx.parent_hir_node(pat.hir_id) {
-            Node::Param(param) if matches!(cx.tcx.parent_hir_node(param.hir_id), Node::Item(_)) => {
-                // Ignore function parameters
-                return;
-            },
-            Node::LetStmt(local) if local.ty.is_some() => {
-                // Ignore let bindings with explicit type
-                return;
-            },
-            _ => {},
-        }
-        if matches!(pat.kind, PatKind::Wild) && cx.typeck_results().pat_ty(pat).peel_refs().is_unit() {
+        if matches!(pat.kind, PatKind::Wild)
+            && !pat.span.from_expansion()
+            && cx.typeck_results().pat_ty(pat).peel_refs().is_unit()
+        {
+            match cx.tcx.parent_hir_node(pat.hir_id) {
+                Node::Param(param) if matches!(cx.tcx.parent_hir_node(param.hir_id), Node::Item(_)) => {
+                    // Ignore function parameters
+                    return;
+                },
+                Node::LetStmt(local) if local.ty.is_some() => {
+                    // Ignore let bindings with explicit type
+                    return;
+                },
+                _ => {},
+            }
             span_lint_and_sugg(
                 cx,
                 IGNORED_UNIT_PATTERNS,

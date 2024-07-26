@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
@@ -86,16 +87,17 @@ declare_clippy_lint! {
     "check if the same trait bounds are specified more than once during a generic declaration"
 }
 
-#[derive(Clone)]
 pub struct TraitBounds {
     max_trait_bounds: u64,
     msrv: Msrv,
 }
 
 impl TraitBounds {
-    #[must_use]
-    pub fn new(max_trait_bounds: u64, msrv: Msrv) -> Self {
-        Self { max_trait_bounds, msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            max_trait_bounds: conf.max_trait_bounds,
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 

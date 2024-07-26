@@ -1,5 +1,6 @@
 //! lint when there is a large size difference between variants on an enum
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{approx_ty_size, is_copy, AdtVariantInfo};
@@ -59,16 +60,14 @@ declare_clippy_lint! {
     "large size difference between variants on an enum"
 }
 
-#[derive(Copy, Clone)]
 pub struct LargeEnumVariant {
     maximum_size_difference_allowed: u64,
 }
 
 impl LargeEnumVariant {
-    #[must_use]
-    pub fn new(maximum_size_difference_allowed: u64) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            maximum_size_difference_allowed,
+            maximum_size_difference_allowed: conf.enum_variant_size_threshold,
         }
     }
 }

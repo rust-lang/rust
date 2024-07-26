@@ -23,6 +23,7 @@ mod verbose_bit_mask;
 
 pub(crate) mod arithmetic_side_effects;
 
+use clippy_config::Conf;
 use rustc_hir::{Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -841,6 +842,16 @@ pub struct Operators {
     verbose_bit_mask_threshold: u64,
     modulo_arithmetic_allow_comparison_to_zero: bool,
 }
+impl Operators {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            arithmetic_context: numeric_arithmetic::Context::default(),
+            verbose_bit_mask_threshold: conf.verbose_bit_mask_threshold,
+            modulo_arithmetic_allow_comparison_to_zero: conf.allow_comparison_to_zero,
+        }
+    }
+}
+
 impl_lint_pass!(Operators => [
     ABSURD_EXTREME_COMPARISONS,
     ARITHMETIC_SIDE_EFFECTS,
@@ -869,15 +880,7 @@ impl_lint_pass!(Operators => [
     PTR_EQ,
     SELF_ASSIGNMENT,
 ]);
-impl Operators {
-    pub fn new(verbose_bit_mask_threshold: u64, modulo_arithmetic_allow_comparison_to_zero: bool) -> Self {
-        Self {
-            arithmetic_context: numeric_arithmetic::Context::default(),
-            verbose_bit_mask_threshold,
-            modulo_arithmetic_allow_comparison_to_zero,
-        }
-    }
-}
+
 impl<'tcx> LateLintPass<'tcx> for Operators {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         eq_op::check_assert(cx, e);

@@ -1,5 +1,6 @@
 //! lint on indexing and slicing operations
 
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
@@ -87,28 +88,22 @@ declare_clippy_lint! {
 
 impl_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
-#[derive(Copy, Clone)]
 pub struct IndexingSlicing {
     suppress_restriction_lint_in_const: bool,
 }
 
 impl IndexingSlicing {
-    pub fn new(suppress_restriction_lint_in_const: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            suppress_restriction_lint_in_const,
+            suppress_restriction_lint_in_const: conf.suppress_restriction_lint_in_const,
         }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if (self.suppress_restriction_lint_in_const && cx.tcx.hir().is_inside_const_context(expr.hir_id))
-            || is_from_proc_macro(cx, expr)
-        {
-            return;
-        }
-
         if let ExprKind::Index(array, index, _) = &expr.kind
+            && (!self.suppress_restriction_lint_in_const || !cx.tcx.hir().is_inside_const_context(expr.hir_id))
             && let expr_ty = cx.typeck_results().expr_ty(array)
             && let mut deref = deref_chain(cx, expr_ty)
             && deref.any(|l| {
@@ -116,6 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     || l.peel_refs().is_array()
                     || ty_has_applicable_get_function(cx, l.peel_refs(), expr_ty, expr)
             })
+            && !is_from_proc_macro(cx, expr)
         {
             let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();

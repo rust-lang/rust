@@ -50,12 +50,9 @@ declare_lint_pass!(ElseIfWithoutElse => [ELSE_IF_WITHOUT_ELSE]);
 
 impl EarlyLintPass for ElseIfWithoutElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
-        if in_external_macro(cx.sess(), item.span) {
-            return;
-        }
-
         if let ExprKind::If(_, _, Some(ref els)) = item.kind
             && let ExprKind::If(_, _, None) = els.kind
+            && !in_external_macro(cx.sess(), item.span)
         {
             span_lint_and_help(
                 cx,

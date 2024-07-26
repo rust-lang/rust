@@ -1,6 +1,7 @@
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
@@ -288,6 +289,7 @@ mod partial_pub_fields;
 mod partialeq_ne_impl;
 mod partialeq_to_none;
 mod pass_by_ref_or_value;
+mod pathbuf_init_then_push;
 mod pattern_type_mismatch;
 mod permissions_set_readonly_false;
 mod precedence;
@@ -394,7 +396,6 @@ use clippy_config::{get_configuration_metadata, Conf};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
-use std::collections::BTreeMap;
 
 /// Register all pre expansion lints
 ///
@@ -406,9 +407,7 @@ use std::collections::BTreeMap;
 /// Used in `./src/driver.rs`.
 pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
-    let msrv = || conf.msrv.clone();
-
-    store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes { msrv: msrv() }));
+    store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes::new(conf)));
 }
 
 #[derive(Default)]
@@ -534,88 +533,6 @@ fn register_categories(store: &mut rustc_lint::LintStore) {
 /// Used in `./src/driver.rs`.
 #[expect(clippy::too_many_lines)]
 pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
-    let Conf {
-        ref absolute_paths_allowed_crates,
-        absolute_paths_max_segments,
-        accept_comment_above_attributes,
-        accept_comment_above_statement,
-        allow_dbg_in_tests,
-        allow_expect_in_tests,
-        allow_mixed_uninlined_format_args,
-        allow_one_hash_in_raw_strings,
-        allow_panic_in_tests,
-        allow_print_in_tests,
-        allow_private_module_inception,
-        allow_unwrap_in_tests,
-        allow_useless_vec_in_tests,
-        ref allowed_dotfiles,
-        ref allowed_idents_below_min_chars,
-        ref allowed_scripts,
-        ref allowed_wildcard_imports,
-        ref arithmetic_side_effects_allowed_binary,
-        ref arithmetic_side_effects_allowed_unary,
-        ref arithmetic_side_effects_allowed,
-        array_size_threshold,
-        avoid_breaking_exported_api,
-        ref await_holding_invalid_types,
-        cargo_ignore_publish,
-        cognitive_complexity_threshold,
-        ref disallowed_macros,
-        ref disallowed_methods,
-        ref disallowed_names,
-        ref disallowed_types,
-        ref doc_valid_idents,
-        enable_raw_pointer_heuristic_for_send,
-        enforce_iter_loop_reborrow,
-        ref enforced_import_renames,
-        enum_variant_name_threshold,
-        enum_variant_size_threshold,
-        excessive_nesting_threshold,
-        future_size_threshold,
-        ref ignore_interior_mutability,
-        large_error_threshold,
-        literal_representation_threshold,
-        matches_for_let_else,
-        max_fn_params_bools,
-        max_include_file_size,
-        max_struct_bools,
-        max_suggested_slice_pattern_length,
-        max_trait_bounds,
-        min_ident_chars_threshold,
-        missing_docs_in_crate_items,
-        ref msrv,
-        pass_by_value_size_limit,
-        semicolon_inside_block_ignore_singleline,
-        semicolon_outside_block_ignore_multiline,
-        single_char_binding_names_threshold,
-        stack_size_threshold,
-        ref standard_macro_braces,
-        struct_field_name_threshold,
-        suppress_restriction_lint_in_const,
-        too_large_for_stack,
-        too_many_arguments_threshold,
-        too_many_lines_threshold,
-        trivial_copy_size_limit,
-        type_complexity_threshold,
-        unnecessary_box_size,
-        unreadable_literal_lint_fractions,
-        upper_case_acronyms_aggressive,
-        vec_box_size_threshold,
-        verbose_bit_mask_threshold,
-        warn_on_all_wildcard_imports,
-        check_private_items,
-        pub_underscore_fields_behavior,
-        ref allowed_duplicate_crates,
-        allow_comparison_to_zero,
-        ref allowed_prefixes,
-        ref allow_renamed_params_for,
-
-        blacklisted_names: _,
-        cyclomatic_complexity_threshold: _,
-        warn_unsafe_macro_metavars_in_private_macros,
-    } = *conf;
-    let msrv = || msrv.clone();
-
     register_removed_non_tool_lints(store);
     register_categories(store);
 
@@ -660,35 +577,12 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         });
     }
 
-    store.register_late_pass(move |_| {
-        Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(
-            arithmetic_side_effects_allowed
-                .iter()
-                .flat_map(|el| [[el.clone(), "*".to_string()], ["*".to_string(), el.clone()]])
-                .chain(arithmetic_side_effects_allowed_binary.clone())
-                .collect(),
-            arithmetic_side_effects_allowed
-                .iter()
-                .chain(arithmetic_side_effects_allowed_unary.iter())
-                .cloned()
-                .collect(),
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(conf)));
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|_| Box::new(utils::author::Author));
-    store.register_late_pass(move |_| {
-        Box::new(await_holding_invalid::AwaitHolding::new(
-            await_holding_invalid_types.clone(),
-        ))
-    });
+    store.register_late_pass(move |tcx| Box::new(await_holding_invalid::AwaitHolding::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(serde_api::SerdeApi));
-    store.register_late_pass(move |_| {
-        Box::new(types::Types::new(
-            vec_box_size_threshold,
-            type_complexity_threshold,
-            avoid_breaking_exported_api,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(types::Types::new(conf)));
     store.register_late_pass(|_| Box::new(booleans::NonminimalBool));
     store.register_late_pass(|_| Box::new(enum_clike::UnportableVariant));
     store.register_late_pass(|_| Box::new(float_literal::FloatLiteral));
@@ -702,7 +596,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(mut_reference::UnnecessaryMutPassed));
     store.register_late_pass(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default());
     store.register_late_pass(|_| Box::new(len_zero::LenZero));
-    store.register_late_pass(move |_| Box::new(attrs::Attributes::new(msrv())));
+    store.register_late_pass(move |_| Box::new(attrs::Attributes::new(conf)));
     store.register_late_pass(|_| Box::new(blocks_in_conditions::BlocksInConditions));
     store.register_late_pass(|_| Box::new(unicode::Unicode));
     store.register_late_pass(|_| Box::new(uninit_vec::UninitVec));
@@ -714,44 +608,30 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(inconsistent_struct_constructor::InconsistentStructConstructor));
     store.register_late_pass(|_| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
     store.register_early_pass(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports));
-    store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(msrv())));
+    store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(conf)));
     let format_args = format_args_storage.clone();
-    store.register_late_pass(move |_| {
-        Box::new(methods::Methods::new(
-            avoid_breaking_exported_api,
-            msrv(),
-            allow_expect_in_tests,
-            allow_unwrap_in_tests,
-            allowed_dotfiles.clone(),
-            format_args.clone(),
-        ))
-    });
-    store.register_late_pass(move |_| Box::new(matches::Matches::new(msrv())));
-    store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveStruct::new(msrv())));
-    store.register_late_pass(move |_| Box::new(manual_non_exhaustive::ManualNonExhaustiveEnum::new(msrv())));
-    store.register_late_pass(move |_| Box::new(manual_strip::ManualStrip::new(msrv())));
-    store.register_early_pass(move || Box::new(redundant_static_lifetimes::RedundantStaticLifetimes::new(msrv())));
-    store.register_early_pass(move || Box::new(redundant_field_names::RedundantFieldNames::new(msrv())));
-    store.register_late_pass(move |_| Box::new(checked_conversions::CheckedConversions::new(msrv())));
-    store.register_late_pass(move |_| Box::new(mem_replace::MemReplace::new(msrv())));
-    store.register_late_pass(move |_| Box::new(ranges::Ranges::new(msrv())));
-    store.register_late_pass(move |_| Box::new(from_over_into::FromOverInto::new(msrv())));
-    store.register_late_pass(move |_| Box::new(use_self::UseSelf::new(msrv())));
-    store.register_late_pass(move |_| Box::new(missing_const_for_fn::MissingConstForFn::new(msrv())));
+    store.register_late_pass(move |_| Box::new(methods::Methods::new(conf, format_args.clone())));
+    store.register_late_pass(move |_| Box::new(matches::Matches::new(conf)));
+    store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveStruct::new(conf)));
+    store.register_late_pass(move |_| Box::new(manual_non_exhaustive::ManualNonExhaustiveEnum::new(conf)));
+    store.register_late_pass(move |_| Box::new(manual_strip::ManualStrip::new(conf)));
+    store.register_early_pass(move || Box::new(redundant_static_lifetimes::RedundantStaticLifetimes::new(conf)));
+    store.register_early_pass(move || Box::new(redundant_field_names::RedundantFieldNames::new(conf)));
+    store.register_late_pass(move |_| Box::new(checked_conversions::CheckedConversions::new(conf)));
+    store.register_late_pass(move |_| Box::new(mem_replace::MemReplace::new(conf)));
+    store.register_late_pass(move |_| Box::new(ranges::Ranges::new(conf)));
+    store.register_late_pass(move |_| Box::new(from_over_into::FromOverInto::new(conf)));
+    store.register_late_pass(move |_| Box::new(use_self::UseSelf::new(conf)));
+    store.register_late_pass(move |_| Box::new(missing_const_for_fn::MissingConstForFn::new(conf)));
     store.register_late_pass(move |_| Box::new(needless_question_mark::NeedlessQuestionMark));
-    store.register_late_pass(move |_| Box::new(casts::Casts::new(msrv())));
-    store.register_early_pass(move || Box::new(unnested_or_patterns::UnnestedOrPatterns::new(msrv())));
+    store.register_late_pass(move |_| Box::new(casts::Casts::new(conf)));
+    store.register_early_pass(move || Box::new(unnested_or_patterns::UnnestedOrPatterns::new(conf)));
     store.register_late_pass(|_| Box::new(size_of_in_element_count::SizeOfInElementCount));
     store.register_late_pass(|_| Box::new(same_name_method::SameNameMethod));
-    store.register_late_pass(move |_| {
-        Box::new(index_refutable_slice::IndexRefutableSlice::new(
-            max_suggested_slice_pattern_length,
-            msrv(),
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(index_refutable_slice::IndexRefutableSlice::new(conf)));
     store.register_late_pass(|_| Box::<shadow::Shadow>::default());
     store.register_late_pass(|_| Box::new(unit_types::UnitTypes));
-    store.register_late_pass(move |_| Box::new(loops::Loops::new(msrv(), enforce_iter_loop_reborrow)));
+    store.register_late_pass(move |_| Box::new(loops::Loops::new(conf)));
     store.register_late_pass(|_| Box::<main_recursion::MainRecursion>::default());
     store.register_late_pass(|_| Box::new(lifetimes::Lifetimes));
     store.register_late_pass(|_| Box::new(entry::HashMapPass));
@@ -763,75 +643,49 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(borrow_deref_ref::BorrowDerefRef));
     store.register_late_pass(|_| Box::<no_effect::NoEffect>::default());
     store.register_late_pass(|_| Box::new(temporary_assignment::TemporaryAssignment));
-    store.register_late_pass(move |_| Box::new(transmute::Transmute::new(msrv())));
-    store.register_late_pass(move |_| {
-        Box::new(cognitive_complexity::CognitiveComplexity::new(
-            cognitive_complexity_threshold,
-        ))
-    });
-    store.register_late_pass(move |_| Box::new(escape::BoxedLocal { too_large_for_stack }));
-    store.register_late_pass(move |_| {
-        Box::new(vec::UselessVec {
-            too_large_for_stack,
-            msrv: msrv(),
-            span_to_lint_map: BTreeMap::new(),
-            allow_in_test: allow_useless_vec_in_tests,
-        })
-    });
-    store.register_late_pass(move |_| Box::new(panic_unimplemented::PanicUnimplemented { allow_panic_in_tests }));
+    store.register_late_pass(move |_| Box::new(transmute::Transmute::new(conf)));
+    store.register_late_pass(move |_| Box::new(cognitive_complexity::CognitiveComplexity::new(conf)));
+    store.register_late_pass(move |_| Box::new(escape::BoxedLocal::new(conf)));
+    store.register_late_pass(move |_| Box::new(vec::UselessVec::new(conf)));
+    store.register_late_pass(move |_| Box::new(panic_unimplemented::PanicUnimplemented::new(conf)));
     store.register_late_pass(|_| Box::new(strings::StringLitAsBytes));
     store.register_late_pass(|_| Box::new(derive::Derive));
-    store.register_late_pass(move |_| Box::new(derivable_impls::DerivableImpls::new(msrv())));
+    store.register_late_pass(move |_| Box::new(derivable_impls::DerivableImpls::new(conf)));
     store.register_late_pass(|_| Box::new(drop_forget_ref::DropForgetRef));
     store.register_late_pass(|_| Box::new(empty_enum::EmptyEnum));
     store.register_late_pass(|_| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
     store.register_late_pass(|_| Box::<regex::Regex>::default());
-    store.register_late_pass(move |_| Box::new(copies::CopyAndPaste::new(ignore_interior_mutability.clone())));
+    store.register_late_pass(move |tcx| Box::new(copies::CopyAndPaste::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(copy_iterator::CopyIterator));
     let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| Box::new(format::UselessFormat::new(format_args.clone())));
     store.register_late_pass(|_| Box::new(swap::Swap));
     store.register_late_pass(|_| Box::new(panicking_overflow_checks::PanickingOverflowChecks));
     store.register_late_pass(|_| Box::<new_without_default::NewWithoutDefault>::default());
-    store.register_late_pass(move |_| Box::new(disallowed_names::DisallowedNames::new(disallowed_names)));
-    store.register_late_pass(move |_| {
-        Box::new(functions::Functions::new(
-            too_many_arguments_threshold,
-            too_many_lines_threshold,
-            large_error_threshold,
-            avoid_breaking_exported_api,
-            allow_renamed_params_for.clone(),
-        ))
-    });
-    store.register_late_pass(move |_| Box::new(doc::Documentation::new(doc_valid_idents, check_private_items)));
+    store.register_late_pass(move |_| Box::new(disallowed_names::DisallowedNames::new(conf)));
+    store.register_late_pass(move |tcx| Box::new(functions::Functions::new(tcx, conf)));
+    store.register_late_pass(move |_| Box::new(doc::Documentation::new(conf)));
     store.register_late_pass(|_| Box::new(neg_multiply::NegMultiply));
     store.register_late_pass(|_| Box::new(let_if_seq::LetIfSeq));
     store.register_late_pass(|_| Box::new(mixed_read_write_in_expression::EvalOrderDependence));
-    store.register_late_pass(move |_| Box::new(missing_doc::MissingDoc::new(missing_docs_in_crate_items)));
+    store.register_late_pass(move |_| Box::new(missing_doc::MissingDoc::new(conf)));
     store.register_late_pass(|_| Box::new(missing_inline::MissingInline));
     store.register_late_pass(move |_| Box::new(exhaustive_items::ExhaustiveItems));
     store.register_late_pass(|_| Box::new(match_result_ok::MatchResultOk));
     store.register_late_pass(|_| Box::new(partialeq_ne_impl::PartialEqNeImpl));
     store.register_late_pass(|_| Box::new(unused_io_amount::UnusedIoAmount));
-    store.register_late_pass(move |_| Box::new(large_enum_variant::LargeEnumVariant::new(enum_variant_size_threshold)));
+    store.register_late_pass(move |_| Box::new(large_enum_variant::LargeEnumVariant::new(conf)));
     let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| Box::new(explicit_write::ExplicitWrite::new(format_args.clone())));
     store.register_late_pass(|_| Box::new(needless_pass_by_value::NeedlessPassByValue));
-    store.register_late_pass(move |tcx| {
-        Box::new(pass_by_ref_or_value::PassByRefOrValue::new(
-            trivial_copy_size_limit,
-            pass_by_value_size_limit,
-            avoid_breaking_exported_api,
-            tcx.sess.target.pointer_width,
-        ))
-    });
+    store.register_late_pass(move |tcx| Box::new(pass_by_ref_or_value::PassByRefOrValue::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(ref_option_ref::RefOptionRef));
     store.register_late_pass(|_| Box::new(infinite_iter::InfiniteIter));
     store.register_late_pass(|_| Box::new(inline_fn_without_body::InlineFnWithoutBody));
     store.register_late_pass(|_| Box::<useless_conversion::UselessConversion>::default());
     store.register_late_pass(|_| Box::new(implicit_hasher::ImplicitHasher));
     store.register_late_pass(|_| Box::new(fallible_impl_from::FallibleImplFrom));
-    store.register_late_pass(move |_| Box::new(question_mark::QuestionMark::new(msrv(), matches_for_let_else)));
+    store.register_late_pass(move |_| Box::new(question_mark::QuestionMark::new(conf)));
     store.register_late_pass(|_| Box::new(question_mark_used::QuestionMarkUsed));
     store.register_early_pass(|| Box::new(suspicious_operation_groupings::SuspiciousOperationGroupings));
     store.register_late_pass(|_| Box::new(suspicious_trait_impl::SuspiciousImpl));
@@ -839,22 +693,18 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(inherent_impl::MultipleInherentImpl));
     store.register_late_pass(|_| Box::new(neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd));
     store.register_late_pass(|_| Box::new(unwrap::Unwrap));
-    store.register_late_pass(move |_| {
-        Box::new(indexing_slicing::IndexingSlicing::new(
-            suppress_restriction_lint_in_const,
-        ))
-    });
-    store.register_late_pass(move |_| Box::new(non_copy_const::NonCopyConst::new(ignore_interior_mutability.clone())));
+    store.register_late_pass(move |_| Box::new(indexing_slicing::IndexingSlicing::new(conf)));
+    store.register_late_pass(move |tcx| Box::new(non_copy_const::NonCopyConst::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));
     store.register_late_pass(|_| Box::new(slow_vector_initialization::SlowVectorInit));
-    store.register_late_pass(move |_| Box::new(unnecessary_wraps::UnnecessaryWraps::new(avoid_breaking_exported_api)));
+    store.register_late_pass(move |_| Box::new(unnecessary_wraps::UnnecessaryWraps::new(conf)));
     store.register_late_pass(|_| Box::new(assertions_on_constants::AssertionsOnConstants));
     store.register_late_pass(|_| Box::new(assertions_on_result_states::AssertionsOnResultStates));
     store.register_late_pass(|_| Box::new(inherent_to_string::InherentToString));
-    store.register_late_pass(move |_| Box::new(trait_bounds::TraitBounds::new(max_trait_bounds, msrv())));
+    store.register_late_pass(move |_| Box::new(trait_bounds::TraitBounds::new(conf)));
     store.register_late_pass(|_| Box::new(comparison_chain::ComparisonChain));
-    store.register_late_pass(move |_| Box::new(mut_key::MutableKeyType::new(ignore_interior_mutability.clone())));
+    store.register_late_pass(move |tcx| Box::new(mut_key::MutableKeyType::new(tcx, conf)));
     store.register_early_pass(|| Box::new(reference::DerefAddrOf));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
     let format_args = format_args_storage.clone();
@@ -875,80 +725,45 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(redundant_else::RedundantElse));
     store.register_late_pass(|_| Box::new(create_dir::CreateDir));
     store.register_early_pass(|| Box::new(needless_arbitrary_self_type::NeedlessArbitrarySelfType));
-    store.register_early_pass(move || {
-        Box::new(literal_representation::LiteralDigitGrouping::new(
-            unreadable_literal_lint_fractions,
-        ))
-    });
-    store.register_early_pass(move || {
-        Box::new(literal_representation::DecimalLiteralRepresentation::new(
-            literal_representation_threshold,
-        ))
-    });
-    store.register_late_pass(move |_| {
-        Box::new(item_name_repetitions::ItemNameRepetitions::new(
-            enum_variant_name_threshold,
-            struct_field_name_threshold,
-            avoid_breaking_exported_api,
-            allow_private_module_inception,
-            allowed_prefixes,
-        ))
-    });
+    store.register_early_pass(move || Box::new(literal_representation::LiteralDigitGrouping::new(conf)));
+    store.register_early_pass(move || Box::new(literal_representation::DecimalLiteralRepresentation::new(conf)));
+    store.register_late_pass(move |_| Box::new(item_name_repetitions::ItemNameRepetitions::new(conf)));
     store.register_early_pass(|| Box::new(tabs_in_doc_comments::TabsInDocComments));
-    store.register_late_pass(move |_| {
-        Box::new(upper_case_acronyms::UpperCaseAcronyms::new(
-            avoid_breaking_exported_api,
-            upper_case_acronyms_aggressive,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(upper_case_acronyms::UpperCaseAcronyms::new(conf)));
     store.register_late_pass(|_| Box::<default::Default>::default());
-    store.register_late_pass(move |_| Box::new(unused_self::UnusedSelf::new(avoid_breaking_exported_api)));
+    store.register_late_pass(move |_| Box::new(unused_self::UnusedSelf::new(conf)));
     store.register_late_pass(|_| Box::new(mutable_debug_assertion::DebugAssertWithMutCall));
     store.register_late_pass(|_| Box::new(exit::Exit));
     store.register_late_pass(|_| Box::new(to_digit_is_some::ToDigitIsSome));
-    store.register_late_pass(move |_| Box::new(large_stack_arrays::LargeStackArrays::new(array_size_threshold.into())));
-    store.register_late_pass(move |_| Box::new(large_const_arrays::LargeConstArrays::new(array_size_threshold.into())));
+    store.register_late_pass(move |_| Box::new(large_stack_arrays::LargeStackArrays::new(conf)));
+    store.register_late_pass(move |_| Box::new(large_const_arrays::LargeConstArrays::new(conf)));
     store.register_late_pass(|_| Box::new(floating_point_arithmetic::FloatingPointArithmetic));
     store.register_late_pass(|_| Box::new(as_conversions::AsConversions));
     store.register_late_pass(|_| Box::new(let_underscore::LetUnderscore));
     store.register_early_pass(|| Box::<single_component_path_imports::SingleComponentPathImports>::default());
-    store.register_late_pass(move |_| {
-        Box::new(excessive_bools::ExcessiveBools::new(
-            max_struct_bools,
-            max_fn_params_bools,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(excessive_bools::ExcessiveBools::new(conf)));
     store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
-    store.register_late_pass(move |_| {
-        Box::new(wildcard_imports::WildcardImports::new(
-            warn_on_all_wildcard_imports,
-            allowed_wildcard_imports.clone(),
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(conf)));
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
     store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
     store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());
     store.register_late_pass(|_| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|_| Box::new(future_not_send::FutureNotSend));
-    store.register_late_pass(move |_| Box::new(large_futures::LargeFuture::new(future_size_threshold)));
+    store.register_late_pass(move |_| Box::new(large_futures::LargeFuture::new(conf)));
     store.register_late_pass(|_| Box::new(if_let_mutex::IfLetMutex));
     store.register_late_pass(|_| Box::new(if_not_else::IfNotElse));
     store.register_late_pass(|_| Box::new(equatable_if_let::PatternEquality));
     store.register_late_pass(|_| Box::new(manual_async_fn::ManualAsyncFn));
     store.register_late_pass(|_| Box::new(panic_in_result_fn::PanicInResultFn));
-    store.register_early_pass(move || {
-        Box::new(non_expressive_names::NonExpressiveNames {
-            single_char_binding_names_threshold,
-        })
-    });
-    store.register_early_pass(move || Box::new(nonstandard_macro_braces::MacroBraces::new(standard_macro_braces)));
+    store.register_early_pass(move || Box::new(non_expressive_names::NonExpressiveNames::new(conf)));
+    store.register_early_pass(move || Box::new(nonstandard_macro_braces::MacroBraces::new(conf)));
     store.register_late_pass(|_| Box::<macro_use::MacroUseImports>::default());
     store.register_late_pass(|_| Box::new(pattern_type_mismatch::PatternTypeMismatch));
     store.register_late_pass(|_| Box::new(unwrap_in_result::UnwrapInResult));
     store.register_late_pass(|_| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|_| Box::new(async_yields_async::AsyncYieldsAsync));
-    store.register_late_pass(move |_| Box::new(disallowed_macros::DisallowedMacros::new(disallowed_macros.clone())));
-    store.register_late_pass(move |_| Box::new(disallowed_methods::DisallowedMethods::new(disallowed_methods.clone())));
+    store.register_late_pass(move |tcx| Box::new(disallowed_macros::DisallowedMacros::new(tcx, conf)));
+    store.register_late_pass(move |tcx| Box::new(disallowed_methods::DisallowedMethods::new(tcx, conf)));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
     store.register_late_pass(|_| Box::new(empty_drop::EmptyDrop));
@@ -958,86 +773,57 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::<vec_init_then_push::VecInitThenPush>::default());
     store.register_late_pass(|_| Box::new(redundant_slicing::RedundantSlicing));
     store.register_late_pass(|_| Box::new(from_str_radix_10::FromStrRadix10));
-    store.register_late_pass(move |_| Box::new(if_then_some_else_none::IfThenSomeElseNone::new(msrv())));
+    store.register_late_pass(move |_| Box::new(if_then_some_else_none::IfThenSomeElseNone::new(conf)));
     store.register_late_pass(|_| Box::new(bool_assert_comparison::BoolAssertComparison));
     store.register_early_pass(move || Box::new(module_style::ModStyle));
     store.register_late_pass(|_| Box::<unused_async::UnusedAsync>::default());
-    store.register_late_pass(move |_| Box::new(disallowed_types::DisallowedTypes::new(disallowed_types.clone())));
-    store.register_late_pass(move |_| {
-        Box::new(missing_enforced_import_rename::ImportRename::new(
-            enforced_import_renames.clone(),
-        ))
-    });
-    store.register_early_pass(move || Box::new(disallowed_script_idents::DisallowedScriptIdents::new(allowed_scripts)));
+    store.register_late_pass(move |tcx| Box::new(disallowed_types::DisallowedTypes::new(tcx, conf)));
+    store.register_late_pass(move |tcx| Box::new(missing_enforced_import_rename::ImportRename::new(tcx, conf)));
+    store.register_early_pass(move || Box::new(disallowed_script_idents::DisallowedScriptIdents::new(conf)));
     store.register_late_pass(|_| Box::new(strlen_on_c_strings::StrlenOnCStrings));
     store.register_late_pass(move |_| Box::new(self_named_constructors::SelfNamedConstructors));
     store.register_late_pass(move |_| Box::new(iter_not_returning_iterator::IterNotReturningIterator));
     store.register_late_pass(move |_| Box::new(manual_assert::ManualAssert));
-    store.register_late_pass(move |_| {
-        Box::new(non_send_fields_in_send_ty::NonSendFieldInSendTy::new(
-            enable_raw_pointer_heuristic_for_send,
-        ))
-    });
-    store.register_late_pass(move |_| {
-        Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::new(
-            accept_comment_above_statement,
-            accept_comment_above_attributes,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(non_send_fields_in_send_ty::NonSendFieldInSendTy::new(conf)));
+    store.register_late_pass(move |_| Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::new(conf)));
     let format_args = format_args_storage.clone();
-    store.register_late_pass(move |_| {
-        Box::new(format_args::FormatArgs::new(
-            format_args.clone(),
-            msrv(),
-            allow_mixed_uninlined_format_args,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(format_args::FormatArgs::new(conf, format_args.clone())));
     store.register_late_pass(|_| Box::new(trailing_empty_array::TrailingEmptyArray));
     store.register_early_pass(|| Box::new(octal_escapes::OctalEscapes));
     store.register_late_pass(|_| Box::new(needless_late_init::NeedlessLateInit));
     store.register_late_pass(|_| Box::new(return_self_not_must_use::ReturnSelfNotMustUse));
     store.register_late_pass(|_| Box::new(init_numbered_fields::NumberedFields));
     store.register_early_pass(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames));
-    store.register_late_pass(move |_| Box::new(manual_bits::ManualBits::new(msrv())));
+    store.register_late_pass(move |_| Box::new(manual_bits::ManualBits::new(conf)));
     store.register_late_pass(|_| Box::new(default_union_representation::DefaultUnionRepresentation));
     store.register_late_pass(|_| Box::<only_used_in_recursion::OnlyUsedInRecursion>::default());
-    store.register_late_pass(move |_| Box::new(dbg_macro::DbgMacro::new(allow_dbg_in_tests)));
+    store.register_late_pass(move |_| Box::new(dbg_macro::DbgMacro::new(conf)));
     let format_args = format_args_storage.clone();
-    store.register_late_pass(move |_| Box::new(write::Write::new(format_args.clone(), allow_print_in_tests)));
-    store.register_late_pass(move |_| {
-        Box::new(cargo::Cargo {
-            ignore_publish: cargo_ignore_publish,
-            allowed_duplicate_crates: allowed_duplicate_crates.clone(),
-        })
-    });
+    store.register_late_pass(move |_| Box::new(write::Write::new(conf, format_args.clone())));
+    store.register_late_pass(move |_| Box::new(cargo::Cargo::new(conf)));
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
     store.register_early_pass(|| Box::new(empty_with_brackets::EmptyWithBrackets));
     store.register_late_pass(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
     store.register_early_pass(|| Box::new(pub_use::PubUse));
     store.register_late_pass(|_| Box::new(format_push_string::FormatPushString));
-    store.register_late_pass(move |_| Box::new(large_include_file::LargeIncludeFile::new(max_include_file_size)));
+    store.register_late_pass(move |_| Box::new(large_include_file::LargeIncludeFile::new(conf)));
     store.register_late_pass(|_| Box::new(strings::TrimSplitWhitespace));
     store.register_late_pass(|_| Box::new(rc_clone_in_vec_init::RcCloneInVecInit));
     store.register_early_pass(|| Box::<duplicate_mod::DuplicateMod>::default());
     store.register_early_pass(|| Box::new(unused_rounding::UnusedRounding));
-    store.register_early_pass(move || Box::new(almost_complete_range::AlmostCompleteRange::new(msrv())));
+    store.register_early_pass(move || Box::new(almost_complete_range::AlmostCompleteRange::new(conf)));
     store.register_late_pass(|_| Box::new(swap_ptr_to_ref::SwapPtrToRef));
     store.register_late_pass(|_| Box::new(mismatching_type_param_order::TypeParamMismatch));
     store.register_late_pass(|_| Box::new(read_zero_byte_vec::ReadZeroByteVec));
     store.register_late_pass(|_| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
-    store.register_late_pass(move |_| Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv())));
-    store.register_late_pass(move |_| Box::new(manual_retain::ManualRetain::new(msrv())));
+    store.register_late_pass(move |_| Box::new(manual_rem_euclid::ManualRemEuclid::new(conf)));
+    store.register_late_pass(move |_| Box::new(manual_retain::ManualRetain::new(conf)));
     store.register_late_pass(move |_| Box::new(manual_rotate::ManualRotate));
-    store.register_late_pass(move |_| {
-        Box::new(operators::Operators::new(
-            verbose_bit_mask_threshold,
-            allow_comparison_to_zero,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(operators::Operators::new(conf)));
     store.register_late_pass(|_| Box::<std_instead_of_core::StdReexports>::default());
-    store.register_late_pass(move |_| Box::new(instant_subtraction::InstantSubtraction::new(msrv())));
+    store.register_late_pass(move |_| Box::new(instant_subtraction::InstantSubtraction::new(conf)));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));
-    store.register_late_pass(move |_| Box::new(manual_clamp::ManualClamp::new(msrv())));
+    store.register_late_pass(move |_| Box::new(manual_clamp::ManualClamp::new(conf)));
     store.register_late_pass(|_| Box::new(manual_string_new::ManualStringNew));
     store.register_late_pass(|_| Box::new(unused_peekable::UnusedPeekable));
     store.register_early_pass(|| Box::new(multi_assignments::MultiAssignments));
@@ -1048,44 +834,25 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(missing_trait_methods::MissingTraitMethods));
     store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
     store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
-    store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv())));
-    store.register_late_pass(move |_| {
-        Box::new(semicolon_block::SemicolonBlock::new(
-            semicolon_inside_block_ignore_singleline,
-            semicolon_outside_block_ignore_multiline,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(conf)));
+    store.register_late_pass(move |_| Box::new(semicolon_block::SemicolonBlock::new(conf)));
     store.register_late_pass(|_| Box::new(permissions_set_readonly_false::PermissionsSetReadonlyFalse));
     store.register_late_pass(|_| Box::new(size_of_ref::SizeOfRef));
     store.register_late_pass(|_| Box::new(multiple_unsafe_ops_per_block::MultipleUnsafeOpsPerBlock));
-    store.register_late_pass(move |_| {
-        Box::new(extra_unused_type_parameters::ExtraUnusedTypeParameters::new(
-            avoid_breaking_exported_api,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(extra_unused_type_parameters::ExtraUnusedTypeParameters::new(conf)));
     store.register_late_pass(|_| Box::new(no_mangle_with_rust_abi::NoMangleWithRustAbi));
     store.register_late_pass(|_| Box::new(collection_is_never_read::CollectionIsNeverRead));
     store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
     store.register_late_pass(|_| Box::new(needless_maybe_sized::NeedlessMaybeSized));
     store.register_late_pass(|_| Box::new(redundant_async_block::RedundantAsyncBlock));
     store.register_late_pass(|_| Box::new(let_with_type_underscore::UnderscoreTyped));
-    store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(msrv())));
+    store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(conf)));
     store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
-    store.register_late_pass(move |_| {
-        Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(
-            avoid_breaking_exported_api,
-            unnecessary_box_size,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(conf)));
     store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
     store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
     store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
-    store.register_early_pass(move || {
-        Box::new(excessive_nesting::ExcessiveNesting {
-            excessive_nesting_threshold,
-            nodes: rustc_ast::node_id::NodeSet::new(),
-        })
-    });
+    store.register_early_pass(move || Box::new(excessive_nesting::ExcessiveNesting::new(conf)));
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
     store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
@@ -1095,44 +862,21 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(redundant_type_annotations::RedundantTypeAnnotations));
     store.register_late_pass(|_| Box::new(arc_with_non_send_sync::ArcWithNonSendSync));
     store.register_late_pass(|_| Box::new(needless_if::NeedlessIf));
-    store.register_late_pass(move |_| {
-        Box::new(min_ident_chars::MinIdentChars {
-            allowed_idents_below_min_chars: allowed_idents_below_min_chars.clone(),
-            min_ident_chars_threshold,
-        })
-    });
-    store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(stack_size_threshold)));
+    store.register_late_pass(move |_| Box::new(min_ident_chars::MinIdentChars::new(conf)));
+    store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(conf)));
     store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
-    store.register_late_pass(move |_| {
-        Box::new(needless_pass_by_ref_mut::NeedlessPassByRefMut::new(
-            avoid_breaking_exported_api,
-        ))
-    });
+    store.register_late_pass(move |_| Box::new(needless_pass_by_ref_mut::NeedlessPassByRefMut::new(conf)));
     store.register_late_pass(|_| Box::new(non_canonical_impls::NonCanonicalImpls));
-    store.register_late_pass(move |_| {
-        Box::new(single_call_fn::SingleCallFn {
-            avoid_breaking_exported_api,
-            def_id_to_usage: rustc_data_structures::fx::FxIndexMap::default(),
-        })
-    });
-    store.register_early_pass(move || {
-        Box::new(raw_strings::RawStrings {
-            allow_one_hash_in_raw_strings,
-        })
-    });
-    store.register_late_pass(move |_| Box::new(legacy_numeric_constants::LegacyNumericConstants::new(msrv())));
+    store.register_late_pass(move |_| Box::new(single_call_fn::SingleCallFn::new(conf)));
+    store.register_early_pass(move || Box::new(raw_strings::RawStrings::new(conf)));
+    store.register_late_pass(move |_| Box::new(legacy_numeric_constants::LegacyNumericConstants::new(conf)));
     store.register_late_pass(|_| Box::new(manual_range_patterns::ManualRangePatterns));
     store.register_early_pass(|| Box::new(visibility::Visibility));
-    store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions { msrv: msrv() }));
+    store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions::new(conf)));
     store.register_late_pass(|_| Box::new(manual_float_methods::ManualFloatMethods));
     store.register_late_pass(|_| Box::new(four_forward_slashes::FourForwardSlashes));
     store.register_late_pass(|_| Box::new(error_impl_error::ErrorImplError));
-    store.register_late_pass(move |_| {
-        Box::new(absolute_paths::AbsolutePaths {
-            absolute_paths_max_segments,
-            absolute_paths_allowed_crates: absolute_paths_allowed_crates.clone(),
-        })
-    });
+    store.register_late_pass(move |_| Box::new(absolute_paths::AbsolutePaths::new(conf)));
     store.register_late_pass(|_| Box::new(redundant_locals::RedundantLocals));
     store.register_late_pass(|_| Box::new(ignored_unit_patterns::IgnoredUnitPatterns));
     store.register_late_pass(|_| Box::<reserve_after_initialization::ReserveAfterInitialization>::default());
@@ -1141,38 +885,29 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unnecessary_map_on_constructor::UnnecessaryMapOnConstructor));
     store.register_late_pass(move |_| {
         Box::new(needless_borrows_for_generic_args::NeedlessBorrowsForGenericArgs::new(
-            msrv(),
+            conf,
         ))
     });
-    store.register_late_pass(move |_| Box::new(manual_hash_one::ManualHashOne::new(msrv())));
+    store.register_late_pass(move |_| Box::new(manual_hash_one::ManualHashOne::new(conf)));
     store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
+    store.register_late_pass(|_| Box::<pathbuf_init_then_push::PathbufThenPush<'_>>::default());
     store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
     store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
     store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
     store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
     store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
     store.register_late_pass(|_| Box::<unconditional_recursion::UnconditionalRecursion>::default());
-    store.register_late_pass(move |_| {
-        Box::new(pub_underscore_fields::PubUnderscoreFields {
-            behavior: pub_underscore_fields_behavior,
-        })
-    });
-    store
-        .register_late_pass(move |_| Box::new(missing_const_for_thread_local::MissingConstForThreadLocal::new(msrv())));
-    store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(msrv())));
+    store.register_late_pass(move |_| Box::new(pub_underscore_fields::PubUnderscoreFields::new(conf)));
+    store.register_late_pass(move |_| Box::new(missing_const_for_thread_local::MissingConstForThreadLocal::new(conf)));
+    store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(conf)));
     store.register_late_pass(|_| Box::new(to_string_trait_impl::ToStringTraitImpl));
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
-    store.register_late_pass(move |_| Box::new(assigning_clones::AssigningClones::new(msrv())));
+    store.register_late_pass(move |_| Box::new(assigning_clones::AssigningClones::new(conf)));
     store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
     store.register_late_pass(|_| Box::new(manual_unwrap_or_default::ManualUnwrapOrDefault));
     store.register_late_pass(|_| Box::new(integer_division_remainder_used::IntegerDivisionRemainderUsed));
-    store.register_late_pass(move |_| {
-        Box::new(macro_metavars_in_unsafe::ExprMetavarsInUnsafe {
-            warn_unsafe_macro_metavars_in_private_macros,
-            ..Default::default()
-        })
-    });
-    store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(msrv())));
+    store.register_late_pass(move |_| Box::new(macro_metavars_in_unsafe::ExprMetavarsInUnsafe::new(conf)));
+    store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(conf)));
     store.register_early_pass(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers));
     store.register_late_pass(|_| Box::new(set_contains_or_insert::HashsetInsertAfterContains));
     store.register_early_pass(|| Box::new(byte_char_slices::ByteCharSlice));

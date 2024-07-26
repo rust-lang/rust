@@ -1157,7 +1157,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             match *arg {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
                 GenericArg::Type(ty) => self.hash_ty(ty),
-                GenericArg::Const(ref ca) => self.hash_const_arg(ca),
+                GenericArg::Const(ca) => self.hash_const_arg(ca),
                 GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }
         }

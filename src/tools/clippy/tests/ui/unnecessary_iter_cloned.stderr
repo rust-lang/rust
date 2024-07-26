@@ -1,5 +1,5 @@
 error: unnecessary use of `copied`
-  --> tests/ui/unnecessary_iter_cloned.rs:31:22
+  --> tests/ui/unnecessary_iter_cloned.rs:33:22
    |
 LL |     for (t, path) in files.iter().copied() {
    |                      ^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL +         let other = match get_file_path(t) {
    |
 
 error: unnecessary use of `copied`
-  --> tests/ui/unnecessary_iter_cloned.rs:46:22
+  --> tests/ui/unnecessary_iter_cloned.rs:48:22
    |
 LL |     for (t, path) in files.iter().copied() {
    |                      ^^^^^^^^^^^^^^^^^^^^^
@@ -33,13 +33,13 @@ LL +         let other = match get_file_path(t) {
    |
 
 error: unnecessary use of `cloned`
-  --> tests/ui/unnecessary_iter_cloned.rs:177:18
+  --> tests/ui/unnecessary_iter_cloned.rs:179:18
    |
 LL |         for c in v.iter().cloned() {
    |                  ^^^^^^^^^^^^^^^^^ help: use: `v.iter()`
 
 error: unnecessary use of `cloned`
-  --> tests/ui/unnecessary_iter_cloned.rs:185:18
+  --> tests/ui/unnecessary_iter_cloned.rs:187:18
    |
 LL |         for c in v.iter().cloned() {
    |                  ^^^^^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ LL +             let ref_c = c;
    |
 
 error: unnecessary use of `cloned`
-  --> tests/ui/unnecessary_iter_cloned.rs:194:23
+  --> tests/ui/unnecessary_iter_cloned.rs:196:23
    |
 LL |         for (i, c) in v.iter().cloned() {
    |                       ^^^^^^^^^^^^^^^^^
