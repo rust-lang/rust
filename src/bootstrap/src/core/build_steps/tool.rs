@@ -348,7 +348,7 @@ bootstrap_tool!(
 
 /// These are the submodules that are required for rustbook to work due to
 /// depending on mdbook plugins.
-pub static SUBMODULES_FOR_RUSTBOOK: &[&str] = &["src/doc/book"];
+pub static SUBMODULES_FOR_RUSTBOOK: &[&str] = &["src/doc/book", "src/doc/reference"];
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct OptimizedDist {
