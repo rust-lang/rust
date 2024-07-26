@@ -669,7 +669,7 @@ pub(crate) struct MacroSuggMovePosition {
 #[note(resolve_missing_macro_rules_name)]
 pub(crate) struct MaybeMissingMacroRulesName {
     #[primary_span]
-    pub(crate) span: Span,
+    pub(crate) spans: MultiSpan,
 }
 
 #[derive(Subdiagnostic)]

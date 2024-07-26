@@ -557,6 +557,7 @@ symbols! {
         clobber_abi,
         clone,
         clone_closures,
+        clone_fn,
         clone_from,
         closure,
         closure_lifetime_binder,

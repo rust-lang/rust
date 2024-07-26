@@ -6,7 +6,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
@@ -16,9 +15,8 @@ use smallvec::SmallVec;
 
 use crate::bounds::Bounds;
 use crate::errors;
-use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
-
-use super::RegionInferReason;
+use crate::hir_ty_lowering::HirTyLowerer;
+use crate::hir_ty_lowering::{AssocItemQSelf, OnlySelfBounds, PredicateFilter, RegionInferReason};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.
@@ -288,8 +286,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // one that does define it.
             self.probe_single_bound_for_assoc_item(
                 || traits::supertraits(tcx, trait_ref),
-                trait_ref.skip_binder().print_only_trait_name(),
-                None,
+                AssocItemQSelf::Trait(trait_ref.def_id()),
                 assoc_kind,
                 constraint.ident,
                 path_span,

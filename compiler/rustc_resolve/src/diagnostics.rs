@@ -1448,7 +1448,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         );
 
         if macro_kind == MacroKind::Bang && ident.name == sym::macro_rules {
-            err.subdiagnostic(MaybeMissingMacroRulesName { span: ident.span });
+            let label_span = ident.span.shrink_to_hi();
+            let mut spans = MultiSpan::from_span(label_span);
+            spans.push_span_label(label_span, "put a macro name here");
+            err.subdiagnostic(MaybeMissingMacroRulesName { spans: spans });
             return;
         }
 

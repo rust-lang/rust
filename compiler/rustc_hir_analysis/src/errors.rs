@@ -22,7 +22,7 @@ pub struct AmbiguousAssocItem<'a> {
     pub span: Span,
     pub assoc_kind: &'static str,
     pub assoc_name: Ident,
-    pub ty_param_name: &'a str,
+    pub qself: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -75,7 +75,7 @@ pub struct AssocItemNotFound<'a> {
     pub span: Span,
     pub assoc_name: Ident,
     pub assoc_kind: &'static str,
-    pub ty_param_name: &'a str,
+    pub qself: &'a str,
     #[subdiagnostic]
     pub label: Option<AssocItemNotFoundLabel<'a>>,
     #[subdiagnostic]
@@ -126,13 +126,32 @@ pub enum AssocItemNotFoundSugg<'a> {
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
-    #[suggestion(hir_analysis_assoc_item_not_found_other_sugg, code = "{suggested_name}")]
+    #[multipart_suggestion(
+        hir_analysis_assoc_item_not_found_similar_in_other_trait_qpath_sugg,
+        style = "verbose"
+    )]
+    SimilarInOtherTraitQPath {
+        #[suggestion_part(code = "<")]
+        lo: Span,
+        #[suggestion_part(code = " as {trait_ref}>")]
+        mi: Span,
+        #[suggestion_part(code = "{suggested_name}")]
+        hi: Option<Span>,
+        trait_ref: String,
+        suggested_name: Symbol,
+        identically_named: bool,
+        #[applicability]
+        applicability: Applicability,
+    },
+    #[suggestion(
+        hir_analysis_assoc_item_not_found_other_sugg,
+        code = "{suggested_name}",
+        applicability = "maybe-incorrect"
+    )]
     Other {
         #[primary_span]
         span: Span,
-        #[applicability]
-        applicability: Applicability,
-        ty_param_name: &'a str,
+        qself: &'a str,
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
