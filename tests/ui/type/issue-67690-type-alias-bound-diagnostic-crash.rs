@@ -3,6 +3,6 @@
 
 //@ check-pass
 pub type T<P: Send + Send + Send> = P;
-//~^ WARN bounds on generic parameters are not enforced in type aliases
+//~^ WARN bounds on generic parameters in type aliases are not enforced
 
 fn main() {}

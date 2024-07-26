@@ -39,7 +39,7 @@ mod traits {
     pub trait PubTr {}
 
     pub type Alias<T: PrivTr> = T; //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Alias`
-    //~^ WARNING bounds on generic parameters are not enforced in type aliases
+    //~^ WARNING bounds on generic parameters in type aliases are not enforced
     pub trait Tr1: PrivTr {} //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr1`
     pub trait Tr2<T: PrivTr> {} //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr2`
     pub trait Tr3 {
@@ -58,7 +58,7 @@ mod traits_where {
 
     pub type Alias<T> where T: PrivTr = T;
         //~^ ERROR trait `traits_where::PrivTr` is more private than the item `traits_where::Alias`
-        //~| WARNING where clauses are not enforced in type aliases
+        //~| WARNING where clauses on type aliases are not enforced
     pub trait Tr2<T> where T: PrivTr {}
         //~^ ERROR trait `traits_where::PrivTr` is more private than the item `traits_where::Tr2`
     pub trait Tr3 {
