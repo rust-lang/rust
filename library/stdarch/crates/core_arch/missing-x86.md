@@ -2,7 +2,6 @@
 <details><summary>["AMX-BF16"]</summary><p>
 
   * [ ] [`__tile_dpbf16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbf16ps)
-  * [ ] [`_tile_dpbf16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_dpbf16ps)
 </p></details>
 
 
@@ -10,15 +9,12 @@
 
   * [ ] [`__tile_cmmimfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_cmmimfp16ps)
   * [ ] [`__tile_cmmrlfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_cmmrlfp16ps)
-  * [ ] [`_tile_cmmimfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_cmmimfp16ps)
-  * [ ] [`_tile_cmmrlfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_cmmrlfp16ps)
 </p></details>
 
 
 <details><summary>["AMX-FP16"]</summary><p>
 
   * [ ] [`__tile_dpfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpfp16ps)
-  * [ ] [`_tile_dpfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_dpfp16ps)
 </p></details>
 
 
@@ -28,10 +24,6 @@
   * [ ] [`__tile_dpbsud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbsud)
   * [ ] [`__tile_dpbusd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbusd)
   * [ ] [`__tile_dpbuud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbuud)
-  * [ ] [`_tile_dpbssd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_dpbssd)
-  * [ ] [`_tile_dpbsud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_dpbsud)
-  * [ ] [`_tile_dpbusd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_dpbusd)
-  * [ ] [`_tile_dpbuud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_dpbuud)
 </p></details>
 
 
@@ -41,13 +33,6 @@
   * [ ] [`__tile_stored`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_stored)
   * [ ] [`__tile_stream_loadd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_stream_loadd)
   * [ ] [`__tile_zero`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_zero)
-  * [ ] [`_tile_loadconfig`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_loadconfig)
-  * [ ] [`_tile_loadd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_loadd)
-  * [ ] [`_tile_release`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_release)
-  * [ ] [`_tile_storeconfig`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_storeconfig)
-  * [ ] [`_tile_stored`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_stored)
-  * [ ] [`_tile_stream_loadd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_stream_loadd)
-  * [ ] [`_tile_zero`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_zero)
 </p></details>
 
 

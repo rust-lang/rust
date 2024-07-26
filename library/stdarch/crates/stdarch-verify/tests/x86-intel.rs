@@ -10,6 +10,7 @@ use serde::Deserialize;
 const PRINT_INSTRUCTION_VIOLATIONS: bool = false;
 const PRINT_MISSING_LISTS: bool = false;
 const PRINT_MISSING_LISTS_MARKDOWN: bool = false;
+const SS: u8 = (8 * core::mem::size_of::<usize>()) as u8;
 
 struct Function {
     name: &'static str,
@@ -36,6 +37,7 @@ static U16: Type = Type::PrimUnsigned(16);
 static U32: Type = Type::PrimUnsigned(32);
 static U64: Type = Type::PrimUnsigned(64);
 static U128: Type = Type::PrimUnsigned(128);
+static USIZE: Type = Type::PrimUnsigned(SS);
 static ORDERING: Type = Type::Ordering;
 
 static M128: Type = Type::M128;
@@ -708,7 +710,7 @@ fn equate(
         intel = intel.replace("const ", "");
         intel = intel.replace('*', " const*");
     }
-    if etype == "IMM" {
+    if etype == "IMM" || intel == "constexpr int" {
         // The _bittest intrinsics claim to only accept immediates but actually
         // accept run-time values as well.
         if !is_const && !intrinsic.starts_with("_bittest") {
@@ -727,7 +729,7 @@ fn equate(
         (&Type::PrimFloat(64), "double") => {}
         (&Type::PrimSigned(8), "__int8" | "char") => {}
         (&Type::PrimSigned(16), "__int16" | "short") => {}
-        (&Type::PrimSigned(32), "__int32" | "const int" | "int") => {}
+        (&Type::PrimSigned(32), "__int32" | "constexpr int" | "const int" | "int") => {}
         (&Type::PrimSigned(64), "__int64" | "long long") => {}
         (&Type::PrimUnsigned(8), "unsigned char") => {}
         (&Type::PrimUnsigned(16), "unsigned short") => {}
@@ -736,7 +738,7 @@ fn equate(
             &Type::PrimUnsigned(32),
             "unsigned __int32" | "unsigned int" | "unsigned long" | "const unsigned int",
         ) => {}
-        (&Type::PrimUnsigned(64), "unsigned __int64") => {}
+        (&Type::PrimUnsigned(64), "unsigned __int64" | "size_t") => {}
 
         (&Type::M128, "__m128") => {}
         (&Type::M128BH, "__m128bh") => {}

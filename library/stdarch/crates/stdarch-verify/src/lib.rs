@@ -215,6 +215,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "u32" => quote! { &U32 },
             "u64" => quote! { &U64 },
             "u128" => quote! { &U128 },
+            "usize" => quote! { &USIZE },
             "u8" => quote! { &U8 },
             "p8" => quote! { &P8 },
             "p16" => quote! { &P16 },
