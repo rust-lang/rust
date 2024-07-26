@@ -2483,12 +2483,15 @@ impl<'a> Parser<'a> {
     /// `check_pub` adds additional `pub` to the checks in case users place it
     /// wrongly, can be used to ensure `pub` never comes after `default`.
     pub(super) fn check_fn_front_matter(&mut self, check_pub: bool, case: Case) -> bool {
+        const ALL_QUALS: &[Symbol] =
+            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Safe, kw::Extern];
+
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
         // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
-            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Safe, kw::Extern]
+            ALL_QUALS
         } else {
             &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Safe, kw::Extern]
         };
@@ -2518,9 +2521,9 @@ impl<'a> Parser<'a> {
             || self.check_keyword_case(kw::Extern, case)
                 && self.look_ahead(1, |t| t.can_begin_string_literal())
                 && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
-                    // this branch is only for better diagnostic in later, `pub` is not allowed here
+                    // this branch is only for better diagnostics; `pub`, `unsafe`, etc. are not allowed here
                     (self.may_recover()
-                        && self.look_ahead(2, |t| t.is_keyword(kw::Pub))
+                        && self.look_ahead(2, |t| ALL_QUALS.iter().any(|&kw| t.is_keyword(kw)))
                         && self.look_ahead(3, |t| t.is_keyword_case(kw::Fn, case))))
     }
 
