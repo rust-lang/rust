@@ -28,7 +28,7 @@ struct Offset {
 
 impl<F> SortedTemplate<F> {
     /// Generate this template from arbitary text.
-    /// Will insert wherever the substring `magic` can be found.
+    /// Will insert wherever the substring `delimiter` can be found.
     /// Errors if it does not appear exactly once.
     pub(crate) fn from_template(template: &str, delimiter: &str) -> Result<Self, Error> {
         let mut split = template.split(delimiter);
@@ -45,7 +45,7 @@ impl<F> SortedTemplate<F> {
     pub(crate) fn from_before_after<S: ToString, T: ToString>(before: S, after: T) -> Self {
         let before = before.to_string();
         let after = after.to_string();
-        SortedTemplate { format: PhantomData, before, after, fragments: Default::default() }
+        Self { format: PhantomData, before, after, fragments: Default::default() }
     }
 }
 
@@ -100,7 +100,7 @@ impl<F: FileFormat> FromStr for SortedTemplate<F> {
                 .ok_or(Error("invalid fragment length: expected to find separator here"))?;
             fragments.insert(fragment.to_string());
         }
-        Ok(SortedTemplate {
+        Ok(Self {
             format: PhantomData,
             before: before.to_string(),
             after: s.to_string(),

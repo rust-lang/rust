@@ -55,7 +55,7 @@ use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
 use crate::{try_err, try_none};
 
-/// Write crate-info.json cross-crate information, static files, invocation-specific files, etc. to disk
+/// Write cross-crate information files, static files, invocation-specific files, etc. to disk
 pub(crate) fn write_shared(
     cx: &mut Context<'_>,
     krate: &Crate,
@@ -184,7 +184,7 @@ fn write_search_desc(
     Ok(())
 }
 
-/// Written to `crate-info.json`. Contains pre-rendered contents to insert into the CCI template
+/// Contains pre-rendered contents to insert into the CCI template
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct CrateInfo {
     src_files_js: PartsAndLocations<SourcesPart>,

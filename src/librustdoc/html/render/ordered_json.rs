@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Prerenedered json.
+/// Prerendered json.
 ///
 /// Both the Display and serde_json::to_string implementations write the serialized json
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -16,25 +16,21 @@ pub(crate) struct OrderedJson(String);
 impl OrderedJson {
     /// If you pass in an array, it will not be sorted.
     pub(crate) fn serialize<T: Serialize>(item: T) -> Result<Self, serde_json::Error> {
-        Ok(OrderedJson(serde_json::to_string(&item)?))
+        Ok(Self(serde_json::to_string(&item)?))
     }
 
     /// Serializes and sorts
-    pub(crate) fn array_sorted<T: Borrow<OrderedJson>, I: IntoIterator<Item = T>>(
-        items: I,
-    ) -> Self {
+    pub(crate) fn array_sorted<T: Borrow<Self>, I: IntoIterator<Item = T>>(items: I) -> Self {
         let items = items
             .into_iter()
             .sorted_unstable_by(|a, b| a.borrow().cmp(&b.borrow()))
             .format_with(",", |item, f| f(item.borrow()));
-        OrderedJson(format!("[{}]", items))
+        Self(format!("[{}]", items))
     }
 
-    pub(crate) fn array_unsorted<T: Borrow<OrderedJson>, I: IntoIterator<Item = T>>(
-        items: I,
-    ) -> Self {
+    pub(crate) fn array_unsorted<T: Borrow<Self>, I: IntoIterator<Item = T>>(items: I) -> Self {
         let items = items.into_iter().format_with(",", |item, f| f(item.borrow()));
-        OrderedJson(format!("[{items}]"))
+        Self(format!("[{items}]"))
     }
 }
 
@@ -48,7 +44,7 @@ impl From<Value> for OrderedJson {
     fn from(value: Value) -> Self {
         let serialized =
             serde_json::to_string(&value).expect("Serializing a Value to String should never fail");
-        OrderedJson(serialized)
+        Self(serialized)
     }
 }
 
@@ -69,7 +65,7 @@ pub(crate) struct EscapedJson(OrderedJson);
 
 impl From<OrderedJson> for EscapedJson {
     fn from(json: OrderedJson) -> Self {
-        EscapedJson(json)
+        Self(json)
     }
 }
 
