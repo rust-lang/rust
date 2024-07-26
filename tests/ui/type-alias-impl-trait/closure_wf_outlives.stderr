@@ -1,5 +1,5 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/closure_wf_outlives.rs:20:9
+  --> $DIR/closure_wf_outlives.rs:21:9
    |
 LL |         || {}
    |         ^^^^^
@@ -16,34 +16,34 @@ LL |     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
    |                     ^^
 
 error[E0803]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/closure_wf_outlives.rs:34:9
+  --> $DIR/closure_wf_outlives.rs:36:9
    |
 LL |         || {}
    |         ^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
-  --> $DIR/closure_wf_outlives.rs:27:17
+  --> $DIR/closure_wf_outlives.rs:28:17
    |
 LL |     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
    |                 ^^
 note: ...so that the declared lifetime parameter bounds are satisfied
-  --> $DIR/closure_wf_outlives.rs:34:9
+  --> $DIR/closure_wf_outlives.rs:36:9
    |
 LL |         || {}
    |         ^^^^^
 note: but, the lifetime must be valid for the lifetime `'b` as defined here...
-  --> $DIR/closure_wf_outlives.rs:27:21
+  --> $DIR/closure_wf_outlives.rs:28:21
    |
 LL |     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
    |                     ^^
 note: ...so that the declared lifetime parameter bounds are satisfied
-  --> $DIR/closure_wf_outlives.rs:34:9
+  --> $DIR/closure_wf_outlives.rs:36:9
    |
 LL |         || {}
    |         ^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/closure_wf_outlives.rs:60:9
+  --> $DIR/closure_wf_outlives.rs:64:9
    |
 LL |         || {}
    |         ^^^^^
@@ -52,7 +52,7 @@ LL |         || {}
    |         ...so that the type `T` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
-  --> $DIR/closure_wf_outlives.rs:58:12
+  --> $DIR/closure_wf_outlives.rs:62:12
    |
 LL |         T: 'static,
    |            ^^^^^^^

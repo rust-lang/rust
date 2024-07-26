@@ -35,6 +35,7 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(exact_size_is_empty)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
@@ -867,13 +868,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
     ) -> &'hir [hir::Attribute] {
-        if attrs.is_empty() {
+        self.lower_attrs_with_extra(id, attrs, target_span, std::iter::empty())
+    }
+
+    fn lower_attrs_with_extra(
+        &mut self,
+        id: HirId,
+        attrs: &[Attribute],
+        target_span: Span,
+        extra: impl IntoIterator<Item = hir::Attribute, IntoIter: ExactSizeIterator>,
+    ) -> &'hir [hir::Attribute] {
+        let extra = extra.into_iter();
+        if attrs.is_empty() && extra.is_empty() {
             &[]
         } else {
             let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span));
 
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
-            let ret = self.arena.alloc_from_iter(lowered_attrs);
+            let ret = self.arena.alloc_from_iter(lowered_attrs.into_iter().chain(extra));
 
             // this is possible if an item contained syntactical attribute,
             // but none of them parse succesfully or all of them were ignored

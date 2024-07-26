@@ -1,5 +1,5 @@
 error[E0407]: method `line_stream` is not a member of trait `X`
-  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:28:5
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:29:5
    |
 LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `X`
@@ -17,15 +17,23 @@ LL |     type LineStream<'c, 'd> = impl Stream;
    |                     |
    |                     found 0 type parameters
 
+error: unconstrained opaque type
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:25:31
+   |
+LL |     type LineStream<'c, 'd> = impl Stream;
+   |                               ^^^^^^^^^^^
+   |
+   = note: `LineStream` must be used in combination with a concrete type within the same impl
+
 error[E0277]: `()` is not a future
-  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:28:43
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:29:43
    |
 LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not a future
    |
    = help: the trait `Future` is not implemented for `()`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0049, E0277, E0407.
 For more information about an error, try `rustc --explain E0049`.

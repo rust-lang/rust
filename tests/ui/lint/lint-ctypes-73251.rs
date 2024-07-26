@@ -13,6 +13,7 @@ impl Foo for () {
 
 type Bar = impl Foo<Assoc = u32>;
 
+#[define_opaques(Bar)]
 fn assign() -> Bar {}
 
 extern "C" {

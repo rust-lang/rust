@@ -978,7 +978,14 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             _ctxt,
             _ident,
             _vis,
-            Fn { defaultness, generics, contract, body, sig: FnSig { header, decl, span } },
+            Fn {
+                defaultness,
+                generics,
+                contract,
+                body,
+                sig: FnSig { header, decl, span },
+                define_opaques,
+            },
         ) => {
             // Identifier and visibility are visited as a part of the item.
             visit_defaultness(vis, defaultness);
@@ -992,6 +999,11 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
                 vis.visit_block(body);
             }
             vis.visit_span(span);
+
+            for (id, path) in define_opaques.iter_mut().flatten() {
+                vis.visit_id(id);
+                vis.visit_path(path)
+            }
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {
             vis.visit_closure_binder(binder);

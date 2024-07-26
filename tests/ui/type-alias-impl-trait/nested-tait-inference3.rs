@@ -9,6 +9,7 @@ trait Foo<A> {}
 
 impl Foo<FooX> for () {}
 
+#[define_opaques(FooX)]
 fn foo() -> impl Foo<FooX> {
     //~^ ERROR: item does not constrain
     ()
