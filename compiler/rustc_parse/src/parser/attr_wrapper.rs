@@ -114,17 +114,15 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
             replace_ranges.sort_by_key(|(range, _)| range.start);
 
             #[cfg(debug_assertions)]
-            {
-                for [(range, tokens), (next_range, next_tokens)] in replace_ranges.array_windows() {
-                    assert!(
-                        range.end <= next_range.start || range.end >= next_range.end,
-                        "Replace ranges should either be disjoint or nested: ({:?}, {:?}) ({:?}, {:?})",
-                        range,
-                        tokens,
-                        next_range,
-                        next_tokens,
-                    );
-                }
+            for [(range, tokens), (next_range, next_tokens)] in replace_ranges.array_windows() {
+                assert!(
+                    range.end <= next_range.start || range.end >= next_range.end,
+                    "Replace ranges should either be disjoint or nested: ({:?}, {:?}) ({:?}, {:?})",
+                    range,
+                    tokens,
+                    next_range,
+                    next_tokens,
+                );
             }
 
             // Process the replace ranges, starting from the highest start
