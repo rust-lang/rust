@@ -273,7 +273,7 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
             }
             let snippet =
                 if let (Some(arr), Some(func)) = (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span)) {
-                    format!("assert!({}.len() > {});", &arr, &func)
+                    format!("assert!({arr}.len() > {func});")
                 } else {
                     return;
                 };
