@@ -418,7 +418,7 @@ The BCB CFG is critical to simplifying the coverage analysis by ensuring graph p
 queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
 significance.
 
-[directed-graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/trait.DirectedGraph.html_bogus
+[directed-graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/trait.DirectedGraph.html
 [graph-traits]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/index.html#traits
 [mir-dev-guide]: mir/index.md
 [compute-basic-coverage-blocks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.CoverageGraph.html#method.compute_basic_coverage_blocks
