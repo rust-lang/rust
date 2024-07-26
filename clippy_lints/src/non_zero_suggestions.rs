@@ -92,8 +92,8 @@ fn suggest_non_zero_conversion(
         cx,
         NON_ZERO_SUGGESTIONS,
         expr.span,
-        format!("Consider using `{target_non_zero_type}::{fn_name}()` for more efficient and type-safe conversion"),
-        "Replace with",
+        format!("consider using `{target_non_zero_type}::{fn_name}()` for more efficient and type-safe conversion"),
+        "replace with",
         suggestion,
         Applicability::MachineApplicable,
     );
