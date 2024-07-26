@@ -30,7 +30,7 @@ color-print = "0.3.4"
 anstream = "0.6.0"
 
 [dev-dependencies]
-ui_test = "0.24"
+ui_test = "0.25"
 regex = "1.5.5"
 toml = "0.7.3"
 walkdir = "2.3"
