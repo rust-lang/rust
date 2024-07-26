@@ -77,6 +77,14 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot close {}", self.name());
     }
 
+    fn flock<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+        _op: FlockOp,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        throw_unsup_format!("cannot flock {}", self.name());
+    }
+
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
         // Most FDs are not tty's and the consequence of a wrong `false` are minor,
         // so we use a default impl here.
@@ -324,6 +332,40 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(new_fd)
     }
 
+    fn flock(&mut self, fd: i32, op: i32) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        let Some(file_descriptor) = this.machine.fds.get(fd) else {
+            return Ok(Scalar::from_i32(this.fd_not_found()?));
+        };
+
+        // We need to check that there aren't unsupported options in `op`.
+        let lock_sh = this.eval_libc_i32("LOCK_SH");
+        let lock_ex = this.eval_libc_i32("LOCK_EX");
+        let lock_nb = this.eval_libc_i32("LOCK_NB");
+        let lock_un = this.eval_libc_i32("LOCK_UN");
+
+        use FlockOp::*;
+        let parsed_op = if op == lock_sh {
+            SharedLock { nonblocking: false }
+        } else if op == lock_sh | lock_nb {
+            SharedLock { nonblocking: true }
+        } else if op == lock_ex {
+            ExclusiveLock { nonblocking: false }
+        } else if op == lock_ex | lock_nb {
+            ExclusiveLock { nonblocking: true }
+        } else if op == lock_un {
+            Unlock
+        } else {
+            throw_unsup_format!("unsupported flags {:#x}", op);
+        };
+
+        let result = file_descriptor.flock(this.machine.communicate(), parsed_op)?;
+        drop(file_descriptor);
+        // return `0` if flock is successful
+        let result = result.map(|()| 0i32);
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+    }
+
     fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -519,4 +561,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let result = result?.map(|c| i64::try_from(c).unwrap());
         this.try_unwrap_io_result(result)
     }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum FlockOp {
+    SharedLock { nonblocking: bool },
+    ExclusiveLock { nonblocking: bool },
+    Unlock,
 }

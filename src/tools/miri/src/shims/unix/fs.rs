@@ -16,6 +16,8 @@ use crate::shims::unix::*;
 use crate::*;
 use shims::time::system_time_to_duration;
 
+use self::fd::FlockOp;
+
 #[derive(Debug)]
 struct FileHandle {
     file: File,
@@ -124,6 +126,97 @@ impl FileDescription for FileHandle {
             // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
             // for a deeper discussion.
             Ok(Ok(()))
+        }
+    }
+
+    fn flock<'tcx>(
+        &self,
+        communicate_allowed: bool,
+        op: FlockOp,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        #[cfg(target_family = "unix")]
+        {
+            use std::os::fd::AsRawFd;
+
+            use FlockOp::*;
+            // We always use non-blocking call to prevent interpreter from being blocked
+            let (host_op, lock_nb) = match op {
+                SharedLock { nonblocking } => (libc::LOCK_SH | libc::LOCK_NB, nonblocking),
+                ExclusiveLock { nonblocking } => (libc::LOCK_EX | libc::LOCK_NB, nonblocking),
+                Unlock => (libc::LOCK_UN, false),
+            };
+
+            let fd = self.file.as_raw_fd();
+            let ret = unsafe { libc::flock(fd, host_op) };
+            let res = match ret {
+                0 => Ok(()),
+                -1 => {
+                    let err = io::Error::last_os_error();
+                    if !lock_nb && err.kind() == io::ErrorKind::WouldBlock {
+                        throw_unsup_format!("blocking `flock` is not currently supported");
+                    }
+                    Err(err)
+                }
+                ret => panic!("Unexpected return value from flock: {ret}"),
+            };
+            Ok(res)
+        }
+
+        #[cfg(target_family = "windows")]
+        {
+            use std::os::windows::io::AsRawHandle;
+            use windows_sys::Win32::{
+                Foundation::{ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE},
+                Storage::FileSystem::{
+                    LockFileEx, UnlockFile, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY,
+                },
+            };
+            let fh = self.file.as_raw_handle() as HANDLE;
+
+            use FlockOp::*;
+            let (ret, lock_nb) = match op {
+                SharedLock { nonblocking } | ExclusiveLock { nonblocking } => {
+                    // We always use non-blocking call to prevent interpreter from being blocked
+                    let mut flags = LOCKFILE_FAIL_IMMEDIATELY;
+                    if matches!(op, ExclusiveLock { .. }) {
+                        flags |= LOCKFILE_EXCLUSIVE_LOCK;
+                    }
+                    let ret = unsafe { LockFileEx(fh, flags, 0, !0, !0, &mut std::mem::zeroed()) };
+                    (ret, nonblocking)
+                }
+                Unlock => {
+                    let ret = unsafe { UnlockFile(fh, 0, 0, !0, !0) };
+                    (ret, false)
+                }
+            };
+
+            let res = match ret {
+                TRUE => Ok(()),
+                FALSE => {
+                    let mut err = io::Error::last_os_error();
+                    let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
+                    if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
+                        if lock_nb {
+                            // Replace error with a custom WouldBlock error, which later will be
+                            // mapped in the `helpers` module
+                            let desc = format!("LockFileEx wouldblock error: {err}");
+                            err = io::Error::new(io::ErrorKind::WouldBlock, desc);
+                        } else {
+                            throw_unsup_format!("blocking `flock` is not currently supported");
+                        }
+                    }
+                    Err(err)
+                }
+                _ => panic!("Unexpected return value: {ret}"),
+            };
+            Ok(res)
+        }
+
+        #[cfg(not(any(target_family = "unix", target_family = "windows")))]
+        {
+            let _ = op;
+            compile_error!("flock is supported only on UNIX and Windows hosts");
         }
     }
 

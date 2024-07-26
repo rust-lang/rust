@@ -563,6 +563,7 @@ dependencies = [
  "smallvec",
  "tempfile",
  "ui_test",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

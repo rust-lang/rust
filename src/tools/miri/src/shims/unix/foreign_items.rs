@@ -170,6 +170,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.dup2(old_fd, new_fd)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "flock" => {
+                let [fd, op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let op = this.read_scalar(op)?.to_i32()?;
+                let result = this.flock(fd, op)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // File and file system access
             "open" | "open64" => {
