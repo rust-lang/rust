@@ -981,6 +981,7 @@ pub const unsafe fn assume(b: bool) {
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 #[cfg(not(bootstrap))]
 #[rustc_nounwind]
+#[miri::intrinsic_fallback_is_spec]
 #[cold]
 pub const fn cold_path() {}
 
@@ -1002,10 +1003,14 @@ pub const fn cold_path() {}
 #[miri::intrinsic_fallback_is_spec]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
+    #[cfg(any(bootstrap, miri))]
+    {
+        b
+    }
+    #[cfg(not(any(bootstrap, miri)))]
     if b {
         true
     } else {
-        #[cfg(not(bootstrap))]
         cold_path();
         false
     }
@@ -1029,8 +1034,12 @@ pub const fn likely(b: bool) -> bool {
 #[miri::intrinsic_fallback_is_spec]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
+    #[cfg(any(bootstrap, miri))]
+    {
+        b
+    }
+    #[cfg(not(any(bootstrap, miri)))]
     if b {
-        #[cfg(not(bootstrap))]
         cold_path();
         true
     } else {
