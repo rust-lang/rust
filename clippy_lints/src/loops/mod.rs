@@ -448,7 +448,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.80.0"]
     pub WHILE_FLOAT,
     nursery,
-    "while loops comaparing floating point values"
+    "while loops comparing floating point values"
 }
 
 declare_clippy_lint! {

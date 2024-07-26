@@ -21,8 +21,8 @@ declare_clippy_lint! {
     /// `PathBuf::from` instead.
     ///
     /// ### Known problems
-    /// `.join()` introduces an implicit `clone()`. `PathBuf::from` can alternativly be
-    /// used when the `PathBuf` is newly constructed. This will avoild the implicit clone.
+    /// `.join()` introduces an implicit `clone()`. `PathBuf::from` can alternatively be
+    /// used when the `PathBuf` is newly constructed. This will avoid the implicit clone.
     ///
     /// ### Example
     /// ```rust
