@@ -24,6 +24,7 @@ type TransactionResult<O> = Result<O, ()>;
 
 type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
 
+#[define_opaques(TransactionFuture)]
 fn execute_transaction_fut<'f, F, O>(
     //~^ ERROR: item does not constrain
     f: F,
@@ -36,6 +37,7 @@ where
 }
 
 impl Context {
+    #[define_opaques(TransactionFuture)]
     async fn do_transaction<O>(
         //~^ ERROR: item does not constrain
         &self, f: impl FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O>

@@ -1,5 +1,5 @@
 error[E0277]: can't compare `&i32` with `Bar<'a, 'b>`
-  --> $DIR/self-referential-3.rs:5:31
+  --> $DIR/self-referential-3.rs:6:31
    |
 LL | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
    |                               ^^^^^^^^^^^ no implementation for `&i32 == Bar<'a, 'b>`

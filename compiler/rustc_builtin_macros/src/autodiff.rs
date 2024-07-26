@@ -247,6 +247,7 @@ mod llvm_enzyme {
             generics: Generics::default(),
             contract: None,
             body: Some(d_body),
+            define_opaques: None,
         });
         let mut rustc_ad_attr =
             P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));

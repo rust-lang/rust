@@ -72,6 +72,7 @@ type NestedDeeply<'a> =
             >,
         >,
     >;
+#[define_opaques(NestedDeeply)]
 fn test<'a>() -> NestedDeeply<'a> {
     &()
 }

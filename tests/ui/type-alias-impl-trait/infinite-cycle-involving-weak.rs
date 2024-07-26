@@ -3,6 +3,9 @@
 type T = impl Copy;
 //~^ ERROR cannot resolve opaque type
 
-static STATIC: T = None::<&'static T>;
+#[define_opaques(T)]
+fn foo() -> T {
+    None::<&'static T>
+}
 
 fn main() {}

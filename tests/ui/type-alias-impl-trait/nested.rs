@@ -7,6 +7,7 @@ trait Trait<T> {}
 
 impl<T, U> Trait<T> for U {}
 
+#[define_opaques(Bar)]
 fn bar() -> Bar {
     //~^ ERROR: item does not constrain
     42

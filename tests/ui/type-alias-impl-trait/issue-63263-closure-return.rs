@@ -8,6 +8,7 @@
 
 pub type Closure = impl FnOnce();
 
+#[define_opaques(Closure)]
 fn bop() -> Closure {
     || -> Closure { || () };
     panic!()
