@@ -6,7 +6,7 @@ RUN sh /scripts/android-base-apt-get.sh
 # ndk
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
-    download_ndk android-ndk-r25b-linux.zip
+    download_ndk android-ndk-r26d-linux.zip
 
 # env
 ENV TARGETS=arm-linux-androideabi
