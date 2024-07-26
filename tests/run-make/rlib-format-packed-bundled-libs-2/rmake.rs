@@ -4,18 +4,14 @@
 // in rustc flags without a compilation failure or the removal of expected symbols.
 // See https://github.com/rust-lang/rust/pull/100101
 
-//FIXME(Oneirical): try it on test-various
-
-use run_make_support::{llvm_ar, llvm_readobj, regex, rfs, rust_lib_name, rustc};
+use run_make_support::{llvm_ar, llvm_nm, rfs, rust_lib_name, rustc};
 
 fn main() {
     // Build a strangely named dependency.
     rustc().input("native_dep.rs").crate_type("staticlib").output("native_dep.ext").run();
 
     rustc().input("rust_dep.rs").crate_type("rlib").arg("-Zpacked_bundled_libs").run();
-    let symbols = llvm_readobj().symbols().input(rust_lib_name("rust_dep")).run().stdout_utf8();
-    let re = regex::Regex::new("U.*native_f1").unwrap();
-    assert!(re.is_match(&symbols));
+    llvm_nm().input(rust_lib_name("rust_dep")).run().assert_stdout_contains_regex("U.*native_f1");
     llvm_ar()
         .arg("t")
         .arg(rust_lib_name("rust_dep"))
