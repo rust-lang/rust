@@ -137,9 +137,9 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
             // `#[cfg(FALSE)] struct Foo { #[cfg(FALSE)] field: bool }`
             //
             // By starting processing from the replace range with the greatest
-            // start position, we ensure that any replace range which encloses
-            // another replace range will capture the *replaced* tokens for the inner
-            // range, not the original tokens.
+            // start position, we ensure that any (outer) replace range which
+            // encloses another (inner) replace range will fully overwrite the
+            // inner range's replacement.
             for (range, target) in replace_ranges.into_iter().rev() {
                 assert!(!range.is_empty(), "Cannot replace an empty range: {range:?}");
 
