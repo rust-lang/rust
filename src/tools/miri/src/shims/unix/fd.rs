@@ -192,10 +192,6 @@ impl FileDescription for NullOutput {
 pub struct FileDescriptor(Rc<RefCell<Box<dyn FileDescription>>>);
 
 impl FileDescriptor {
-    pub fn new<T: FileDescription>(fd: T) -> Self {
-        FileDescriptor(Rc::new(RefCell::new(Box::new(fd))))
-    }
-
     pub fn borrow(&self) -> Ref<'_, dyn FileDescription> {
         Ref::map(self.0.borrow(), |fd| fd.as_ref())
     }
@@ -227,20 +223,25 @@ impl VisitProvenance for FdTable {
 }
 
 impl FdTable {
-    pub(crate) fn new(mute_stdout_stderr: bool) -> FdTable {
-        let mut fds: BTreeMap<_, FileDescriptor> = BTreeMap::new();
-        fds.insert(0i32, FileDescriptor::new(io::stdin()));
+    fn new() -> Self {
+        FdTable { fds: BTreeMap::new() }
+    }
+    pub(crate) fn init(mute_stdout_stderr: bool) -> FdTable {
+        let mut fds = FdTable::new();
+        fds.insert_fd(io::stdin());
         if mute_stdout_stderr {
-            fds.insert(1i32, FileDescriptor::new(NullOutput));
-            fds.insert(2i32, FileDescriptor::new(NullOutput));
+            assert_eq!(fds.insert_fd(NullOutput), 1);
+            assert_eq!(fds.insert_fd(NullOutput), 2);
         } else {
-            fds.insert(1i32, FileDescriptor::new(io::stdout()));
-            fds.insert(2i32, FileDescriptor::new(io::stderr()));
+            assert_eq!(fds.insert_fd(io::stdout()), 1);
+            assert_eq!(fds.insert_fd(io::stderr()), 2);
         }
-        FdTable { fds }
+        fds
     }
 
-    pub fn insert_fd(&mut self, file_handle: FileDescriptor) -> i32 {
+    /// Insert a file descriptor to the FdTable.
+    pub fn insert_fd<T: FileDescription>(&mut self, fd: T) -> i32 {
+        let file_handle = FileDescriptor(Rc::new(RefCell::new(Box::new(fd))));
         self.insert_fd_with_min_fd(file_handle, 0)
     }
 
