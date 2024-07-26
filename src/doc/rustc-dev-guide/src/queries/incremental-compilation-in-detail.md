@@ -529,7 +529,7 @@ session. The overhead of doing so is a few percent of total compilation time.
 
 Data structures used as query results could be factored in a way that removes
 edges from the dependency graph. Especially "span" information is very volatile,
-so including it in query result will increase the chance that that result won't
+so including it in query result will increase the chance that the result won't
 be reusable. See <https://github.com/rust-lang/rust/issues/47389> for more
 information.
 

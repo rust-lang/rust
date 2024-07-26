@@ -20,7 +20,7 @@ from.
 - The algorithm or code pattern seems like it was likely copied from somewhere else.
 - When adding new dependencies, double check the dependency's license.
 
-In all of these cases, we will want to check that source to make sure it it is licensed in a way
+In all of these cases, we will want to check that source to make sure it is licensed in a way
 that is compatible with Rust’s license.
 
 Examples
