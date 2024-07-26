@@ -1,4 +1,4 @@
-use crate::html::render::sorted_json::{EscapedJson, SortedJson};
+use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::sorted_template::{Html, SortedTemplate};
 use crate::html::render::write_shared::*;
 
@@ -26,13 +26,13 @@ fn sources_template() {
         r"var srcIndex = new Map(JSON.parse('[]'));
 createSrcSidebar();"
     );
-    template.append(EscapedJson::from(SortedJson::serialize("u")).to_string());
+    template.append(EscapedJson::from(OrderedJson::serialize("u").unwrap()).to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"var srcIndex = new Map(JSON.parse('["u"]'));
 createSrcSidebar();"#
     );
-    template.append(EscapedJson::from(SortedJson::serialize("v")).to_string());
+    template.append(EscapedJson::from(OrderedJson::serialize("v").unwrap()).to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"var srcIndex = new Map(JSON.parse('["u","v"]'));
@@ -42,7 +42,8 @@ createSrcSidebar();"#
 
 #[test]
 fn sources_parts() {
-    let parts = SearchIndexPart::get(SortedJson::serialize(["foo", "bar"]), "suffix").unwrap();
+    let parts =
+        SearchIndexPart::get(OrderedJson::serialize(["foo", "bar"]).unwrap(), "suffix").unwrap();
     assert_eq!(&parts.parts[0].0, Path::new("search-indexsuffix.js"));
     assert_eq!(&parts.parts[0].1.to_string(), r#"["foo","bar"]"#);
 }
@@ -51,15 +52,15 @@ fn sources_parts() {
 fn all_crates_template() {
     let mut template = AllCratesPart::blank();
     assert_eq!(but_last_line(&template.to_string()), r"window.ALL_CRATES = [];");
-    template.append(EscapedJson::from(SortedJson::serialize("b")).to_string());
+    template.append(EscapedJson::from(OrderedJson::serialize("b").unwrap()).to_string());
     assert_eq!(but_last_line(&template.to_string()), r#"window.ALL_CRATES = ["b"];"#);
-    template.append(EscapedJson::from(SortedJson::serialize("a")).to_string());
+    template.append(EscapedJson::from(OrderedJson::serialize("a").unwrap()).to_string());
     assert_eq!(but_last_line(&template.to_string()), r#"window.ALL_CRATES = ["a","b"];"#);
 }
 
 #[test]
 fn all_crates_parts() {
-    let parts = AllCratesPart::get(SortedJson::serialize("crate")).unwrap();
+    let parts = AllCratesPart::get(OrderedJson::serialize("crate").unwrap()).unwrap();
     assert_eq!(&parts.parts[0].0, Path::new("crates.js"));
     assert_eq!(&parts.parts[0].1.to_string(), r#""crate""#);
 }
@@ -73,14 +74,14 @@ fn search_index_template() {
 if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
 else if (window.initSearch) window.initSearch(searchIndex);"
     );
-    template.append(EscapedJson::from(SortedJson::serialize([1, 2])).to_string());
+    template.append(EscapedJson::from(OrderedJson::serialize([1, 2]).unwrap()).to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r"var searchIndex = new Map(JSON.parse('[[1,2]]'));
 if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
 else if (window.initSearch) window.initSearch(searchIndex);"
     );
-    template.append(EscapedJson::from(SortedJson::serialize([4, 3])).to_string());
+    template.append(EscapedJson::from(OrderedJson::serialize([4, 3]).unwrap()).to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r"var searchIndex = new Map(JSON.parse('[[1,2],[4,3]]'));
@@ -119,7 +120,7 @@ fn trait_alias_template() {
     }
 })()"#,
     );
-    template.append(SortedJson::serialize(["a"]).to_string());
+    template.append(OrderedJson::serialize(["a"]).unwrap().to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"(function() {
@@ -131,7 +132,7 @@ fn trait_alias_template() {
     }
 })()"#,
     );
-    template.append(SortedJson::serialize(["b"]).to_string());
+    template.append(OrderedJson::serialize(["b"]).unwrap().to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"(function() {
@@ -159,7 +160,7 @@ fn type_alias_template() {
     }
 })()"#,
     );
-    template.append(SortedJson::serialize(["a"]).to_string());
+    template.append(OrderedJson::serialize(["a"]).unwrap().to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"(function() {
@@ -171,7 +172,7 @@ fn type_alias_template() {
     }
 })()"#,
     );
-    template.append(SortedJson::serialize(["b"]).to_string());
+    template.append(OrderedJson::serialize(["b"]).unwrap().to_string());
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"(function() {
@@ -189,7 +190,7 @@ fn type_alias_template() {
 fn read_template_test() {
     let path = tempfile::TempDir::new().unwrap();
     let path = path.path().join("file.html");
-    let make_blank = || SortedTemplate::<Html>::before_after("<div>", "</div>");
+    let make_blank = || SortedTemplate::<Html>::from_before_after("<div>", "</div>");
 
     let template = read_template_or_blank(make_blank, &path).unwrap();
     assert_eq!(but_last_line(&template.to_string()), "<div></div>");

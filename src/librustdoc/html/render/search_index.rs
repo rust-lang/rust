@@ -18,7 +18,7 @@ use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::sorted_json::SortedJson;
+use crate::html::render::ordered_json::OrderedJson;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
 
 /// The serialized search description sharded version
@@ -47,7 +47,7 @@ use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, Re
 /// [2]: https://en.wikipedia.org/wiki/Sliding_window_protocol#Basic_concept
 /// [3]: https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/description-tcp-features
 pub(crate) struct SerializedSearchIndex {
-    pub(crate) index: SortedJson,
+    pub(crate) index: OrderedJson,
     pub(crate) desc: Vec<(usize, String)>,
 }
 
@@ -693,9 +693,9 @@ pub(crate) fn build_index<'tcx>(
         desc_index,
         empty_desc,
     };
-    let index = SortedJson::array_unsorted([
-        SortedJson::serialize(crate_name.as_str()),
-        SortedJson::serialize(data),
+    let index = OrderedJson::array_unsorted([
+        OrderedJson::serialize(crate_name.as_str()).unwrap(),
+        OrderedJson::serialize(data).unwrap(),
     ]);
     SerializedSearchIndex { index, desc }
 }

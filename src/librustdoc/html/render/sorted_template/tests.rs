@@ -1,5 +1,6 @@
-use super::super::sorted_template::*;
 use std::str::FromStr;
+
+use super::super::sorted_template::*;
 
 fn is_comment_js(s: &str) -> bool {
     s.starts_with("//")
@@ -13,7 +14,7 @@ fn is_comment_html(s: &str) -> bool {
 #[test]
 fn html_from_empty() {
     let inserts = ["<p>hello</p>", "<p>kind</p>", "<p>hello</p>", "<p>world</p>"];
-    let mut template = SortedTemplate::<Html>::before_after("", "");
+    let mut template = SortedTemplate::<Html>::from_before_after("", "");
     for insert in inserts {
         template.append(insert.to_string());
     }
@@ -29,7 +30,7 @@ fn html_page() {
     let inserts = ["<p>hello</p>", "<p>kind</p>", "<p>world</p>"];
     let before = "<html><head></head><body>";
     let after = "</body>";
-    let mut template = SortedTemplate::<Html>::before_after(before, after);
+    let mut template = SortedTemplate::<Html>::from_before_after(before, after);
     for insert in inserts {
         template.append(insert.to_string());
     }
@@ -43,7 +44,7 @@ fn html_page() {
 #[test]
 fn js_from_empty() {
     let inserts = ["1", "2", "2", "2", "3", "1"];
-    let mut template = SortedTemplate::<Js>::before_after("", "");
+    let mut template = SortedTemplate::<Js>::from_before_after("", "");
     for insert in inserts {
         template.append(insert.to_string());
     }
@@ -56,7 +57,7 @@ fn js_from_empty() {
 
 #[test]
 fn js_empty_array() {
-    let template = SortedTemplate::<Js>::before_after("[", "]");
+    let template = SortedTemplate::<Js>::from_before_after("[", "]");
     let template = format!("{template}");
     let (template, end) = template.rsplit_once("\n").unwrap();
     assert_eq!(template, format!("[]"));
@@ -67,7 +68,7 @@ fn js_empty_array() {
 #[test]
 fn js_number_array() {
     let inserts = ["1", "2", "3"];
-    let mut template = SortedTemplate::<Js>::before_after("[", "]");
+    let mut template = SortedTemplate::<Js>::from_before_after("[", "]");
     for insert in inserts {
         template.append(insert.to_string());
     }
@@ -81,7 +82,7 @@ fn js_number_array() {
 #[test]
 fn magic_js_number_array() {
     let inserts = ["1", "1"];
-    let mut template = SortedTemplate::<Js>::magic("[#]", "#").unwrap();
+    let mut template = SortedTemplate::<Js>::from_template("[#]", "#").unwrap();
     for insert in inserts {
         template.append(insert.to_string());
     }
@@ -95,7 +96,7 @@ fn magic_js_number_array() {
 #[test]
 fn round_trip_js() {
     let inserts = ["1", "2", "3"];
-    let mut template = SortedTemplate::<Js>::before_after("[", "]");
+    let mut template = SortedTemplate::<Js>::from_before_after("[", "]");
     for insert in inserts {
         template.append(insert.to_string());
     }
@@ -114,7 +115,7 @@ fn round_trip_html() {
     let inserts = ["<p>hello</p>", "<p>kind</p>", "<p>world</p>", "<p>kind</p>"];
     let before = "<html><head></head><body>";
     let after = "</body>";
-    let mut template = SortedTemplate::<Html>::before_after(before, after);
+    let mut template = SortedTemplate::<Html>::from_before_after(before, after);
     template.append(inserts[0].to_string());
     template.append(inserts[1].to_string());
     let template = format!("{template}");
@@ -129,7 +130,7 @@ fn round_trip_html() {
 #[test]
 fn blank_js() {
     let inserts = ["1", "2", "3"];
-    let template = SortedTemplate::<Js>::before_after("", "");
+    let template = SortedTemplate::<Js>::from_before_after("", "");
     let template = format!("{template}");
     let (t, _) = template.rsplit_once("\n").unwrap();
     assert_eq!(t, "");
