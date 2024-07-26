@@ -186,7 +186,7 @@ pub unsafe extern "C" fn invalid_asm_syntax(a: u32) -> u32 {
 // this previously ICE'd, see https://github.com/rust-lang/rust/issues/124375
 #[naked]
 pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
-    asm!("lea rax, [rdi + rsi]", "ret", options(noreturn));
+    naked_asm!("lea rax, [rdi + rsi]", "ret");
 }
 
 #[cfg(target_arch = "x86_64")]
