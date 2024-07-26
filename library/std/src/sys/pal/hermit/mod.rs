@@ -104,6 +104,8 @@ pub unsafe extern "C" fn runtime_entry(
     let result = main(argc as isize, argv);
 
     crate::sys::thread_local::destructors::run();
+    crate::rt::thread_cleanup();
+
     hermit_abi::exit(result);
 }
 
