@@ -647,8 +647,8 @@ impl<'tcx> MiriMachine<'tcx> {
         };
 
         let helps = match &e {
-            Int2Ptr { details: true } =>
-                vec![
+            Int2Ptr { details: true } => {
+                let mut v = vec![
                     (
                         None,
                         format!(
@@ -673,13 +673,26 @@ impl<'tcx> MiriMachine<'tcx> {
                             "you can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics"
                         ),
                     ),
-                    (
+                ];
+                if self.borrow_tracker.as_ref().is_some_and(|b| {
+                    matches!(b.borrow().borrow_tracker_method(), BorrowTrackerMethod::TreeBorrows)
+                }) {
+                    v.push((
+                        None,
+                        format!(
+                            "Tree Borrows does not support integer-to-pointer casts, so the program is likely to go wrong when this pointer gets used"
+                        ),
+                    ));
+                } else {
+                    v.push((
                         None,
                         format!(
                             "alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning"
                         ),
-                    ),
-                ],
+                    ));
+                }
+                v
+            }
             ExternTypeReborrow => {
                 vec![
                     (

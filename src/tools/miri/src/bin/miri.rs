@@ -620,6 +620,14 @@ fn main() {
             "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
         );
     }
+    // Tree Borrows + permissive provenance does not work.
+    if miri_config.provenance_mode == ProvenanceMode::Permissive
+        && matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
+    {
+        show_error!(
+            "Tree Borrows does not support integer-to-pointer casts, and is hence not compatible with permissive provenance"
+        );
+    }
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
