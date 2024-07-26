@@ -60,10 +60,6 @@ impl AttrWrapper {
     pub fn is_empty(&self) -> bool {
         self.attrs.is_empty()
     }
-
-    pub fn is_complete(&self) -> bool {
-        crate::parser::attr::is_complete(&self.attrs)
-    }
 }
 
 /// Returns `true` if `attrs` contains a `cfg` or `cfg_attr` attribute
@@ -199,20 +195,20 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
         f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, bool)>,
     ) -> PResult<'a, R> {
-        // Skip collection when nothing could observe the collected tokens, i.e.
-        // all of the following conditions hold.
-        // - We are not force collecting tokens (because force collection
-        //   requires tokens by definition).
-        if matches!(force_collect, ForceCollect::No)
-            // - None of our outer attributes require tokens.
-            && attrs.is_complete()
-            // - Our target doesn't support custom inner attributes (custom
+        // We must collect if anything could observe the collected tokens, i.e.
+        // if any of the following conditions hold.
+        // - We are force collecting tokens (because force collection requires
+        //   tokens by definition).
+        let needs_collection = matches!(force_collect, ForceCollect::Yes)
+            // - Any of our outer attributes require tokens.
+            || needs_tokens(&attrs.attrs)
+            // - Our target supports custom inner attributes (custom
             //   inner attribute invocation might require token capturing).
-            && !R::SUPPORTS_CUSTOM_INNER_ATTRS
-            // - We are not in `capture_cfg` mode (which requires tokens if
+            || R::SUPPORTS_CUSTOM_INNER_ATTRS
+            // - We are in `capture_cfg` mode (which requires tokens if
             //   the parsed node has `#[cfg]` or `#[cfg_attr]` attributes).
-            && !self.capture_cfg
-        {
+            || self.capture_cfg;
+        if !needs_collection {
             return Ok(f(self, attrs.attrs)?.0);
         }
 
@@ -250,28 +246,28 @@ impl<'a> Parser<'a> {
             return Ok(ret);
         }
 
-        // This is similar to the "skip collection" check at the start of this
-        // function, but now that we've parsed an AST node we have more
+        // This is similar to the `needs_collection` check at the start of this
+        // function, but now that we've parsed an AST node we have complete
         // information available. (If we return early here that means the
         // setup, such as cloning the token cursor, was unnecessary. That's
         // hard to avoid.)
         //
-        // Skip collection when nothing could observe the collected tokens, i.e.
-        // all of the following conditions hold.
-        // - We are not force collecting tokens.
-        if matches!(force_collect, ForceCollect::No)
-            // - None of our outer *or* inner attributes require tokens.
-            //   (`attrs` was just outer attributes, but `ret.attrs()` is outer
-            //   and inner attributes. That makes this check more precise than
-            //   `attrs.is_complete()` at the start of the function, and we can
-            //   skip the subsequent check on `R::SUPPORTS_CUSTOM_INNER_ATTRS`.
-            && crate::parser::attr::is_complete(ret.attrs())
-            // - We are not in `capture_cfg` mode, or we are but there are no
-            //   `#[cfg]` or `#[cfg_attr]` attributes. (During normal
-            //   non-`capture_cfg` parsing, we don't need any special capturing
-            //   for those attributes, because they're builtin.)
-            && (!self.capture_cfg || !has_cfg_or_cfg_attr(ret.attrs()))
-        {
+        // We must collect if anything could observe the collected tokens, i.e.
+        // if any of the following conditions hold.
+        // - We are force collecting tokens.
+        let needs_collection = matches!(force_collect, ForceCollect::Yes)
+            // - Any of our outer *or* inner attributes require tokens.
+            //   (`attr.attrs` was just outer attributes, but `ret.attrs()` is
+            //   outer and inner attributes. So this check is more precise than
+            //   the earlier `needs_tokens` check, and we don't need to
+            //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
+            || needs_tokens(ret.attrs())
+            // - We are in `capture_cfg` mode and there are `#[cfg]` or
+            //   `#[cfg_attr]` attributes. (During normal non-`capture_cfg`
+            //   parsing, we don't need any special capturing for those
+            //   attributes, because they're builtin.)
+            || (self.capture_cfg && has_cfg_or_cfg_attr(ret.attrs()));
+        if !needs_collection {
             return Ok(ret);
         }
 
@@ -459,6 +455,19 @@ fn make_attr_token_stream(
         }
     }
     AttrTokenStream::new(stack_top.inner)
+}
+
+/// Tokens are needed if:
+/// - any non-single-segment attributes (other than doc comments) are present; or
+/// - any `cfg_attr` attributes are present;
+/// - any single-segment, non-builtin attributes are present.
+fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().any(|attr| match attr.ident() {
+        None => !attr.is_doc_comment(),
+        Some(ident) => {
+            ident.name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(ident.name)
+        }
+    })
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
