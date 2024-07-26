@@ -1,7 +1,7 @@
 //! A UTF-8–encoded, growable string, with allocator support.
 //!
-//! This module only exists due to type parameter defaults not affecting inference.
-//! Otherwise, [`alloc::string::String`] would be the canonical location of `String`,
+//! This module only exists due to type parameter defaults not affecting inference,
+//! otherwise, [`alloc::string::String`][crate::string::String] would be the canonical location of `String`,
 //! instead of a type alias.
 
 #![unstable(feature = "string_allocator_api", issue = "32838")]
