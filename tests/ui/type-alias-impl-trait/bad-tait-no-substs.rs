@@ -8,9 +8,9 @@ pub enum UninhabitedVariants {
     Tuple(Alias),
     //~^ ERROR missing lifetime specifier
     //~| ERROR missing generics
-    //~| ERROR non-defining opaque type use in defining scope
 }
 
+#[define_opaques(Alias)]
 fn uwu(x: UninhabitedVariants) {
     //~^ ERROR item does not constrain
     match x {}

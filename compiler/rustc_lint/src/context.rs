@@ -933,7 +933,7 @@ impl<'tcx> LateContext<'tcx> {
                 hir::Node::Expr(expr) => Some(expr),
                 hir::Node::LetStmt(hir::LetStmt { init, .. }) => *init,
                 hir::Node::Item(item) => match item.kind {
-                    hir::ItemKind::Const(.., body_id) | hir::ItemKind::Static(.., body_id) => {
+                    hir::ItemKind::Const(.., body_id) | hir::ItemKind::Static(.., body_id, _) => {
                         Some(self.tcx.hir_body(body_id).value)
                     }
                     _ => None,

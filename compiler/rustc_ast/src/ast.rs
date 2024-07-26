@@ -394,6 +394,7 @@ pub struct Generics {
     pub params: ThinVec<GenericParam>,
     pub where_clause: WhereClause,
     pub span: Span,
+    pub define_opaques: Option<ThinVec<(NodeId, Path)>>,
 }
 
 /// A where-clause in a definition.
@@ -1413,6 +1414,7 @@ pub struct Closure {
     pub fn_decl_span: Span,
     /// The span of the argument block `|...|`
     pub fn_arg_span: Span,
+    pub define_opaques: Option<ThinVec<(NodeId, Path)>>,
 }
 
 /// Limit types of a range (inclusive or exclusive).
@@ -3233,6 +3235,30 @@ impl Item {
             ItemKind::Impl(i) => Some(&i.generics),
         }
     }
+
+    pub fn define_opaques(&mut self) -> Option<&mut Option<ThinVec<(NodeId, Path)>>> {
+        match &mut self.kind {
+            ItemKind::ExternCrate(_)
+            | ItemKind::Use(_)
+            | ItemKind::Mod(_, _)
+            | ItemKind::ForeignMod(_)
+            | ItemKind::GlobalAsm(_)
+            | ItemKind::MacCall(_)
+            | ItemKind::Delegation(_)
+            | ItemKind::DelegationMac(_)
+            | ItemKind::MacroDef(_) => None,
+            ItemKind::Static(s) => Some(&mut s.define_opaques),
+            ItemKind::Const(i) => Some(&mut i.generics.define_opaques),
+            ItemKind::Fn(i) => Some(&mut i.generics.define_opaques),
+            ItemKind::TyAlias(i) => Some(&mut i.generics.define_opaques),
+            ItemKind::TraitAlias(generics, _)
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics) => Some(&mut generics.define_opaques),
+            ItemKind::Trait(i) => Some(&mut i.generics.define_opaques),
+            ItemKind::Impl(i) => Some(&mut i.generics.define_opaques),
+        }
+    }
 }
 
 /// `extern` qualifier on a function item or function type.
@@ -3411,6 +3437,7 @@ pub struct StaticItem {
     pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
+    pub define_opaques: Option<ThinVec<(NodeId, Path)>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3678,15 +3705,15 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 168);
+    static_assert_size!(Fn, 176);
     static_assert_size!(ForeignItem, 88);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
-    static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 136);
-    static_assert_size!(Item, 136);
-    static_assert_size!(ItemKind, 64);
+    static_assert_size!(Generics, 48);
+    static_assert_size!(Impl, 144);
+    static_assert_size!(Item, 144);
+    static_assert_size!(ItemKind, 72);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 80);
     static_assert_size!(MetaItemLit, 40);

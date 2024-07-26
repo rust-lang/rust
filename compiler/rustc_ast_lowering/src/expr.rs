@@ -217,6 +217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     body,
                     fn_decl_span,
                     fn_arg_span,
+                    define_opaques,
                 }) => match coroutine_kind {
                     Some(coroutine_kind) => self.lower_expr_coroutine_closure(
                         binder,
@@ -228,6 +229,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         body,
                         *fn_decl_span,
                         *fn_arg_span,
+                        define_opaques,
                     ),
                     None => self.lower_expr_closure(
                         binder,
@@ -240,6 +242,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         body,
                         *fn_decl_span,
                         *fn_arg_span,
+                        define_opaques,
                     ),
                 },
                 ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
@@ -807,6 +810,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_arg_span: None,
             kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
+            // FIXME(type_alias_impl_trait): generators should also be able to have the attribute
+            define_opaques: None,
         }))
     }
 
@@ -1076,6 +1081,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
+        define_opaques: &Option<ThinVec<(NodeId, Path)>>,
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -1105,8 +1111,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // Lower outside new scope to preserve `is_in_loop_condition`.
         let fn_decl = self.lower_fn_decl(decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
+        let define_opaques = self.lower_define_opaques(define_opaques);
 
         let c = self.arena.alloc(hir::Closure {
+            define_opaques,
             def_id: closure_def_id,
             binder: binder_clause,
             capture_clause,
@@ -1178,6 +1186,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
+        define_opaques: &Option<ThinVec<(NodeId, Path)>>,
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -1217,8 +1226,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // closure argument types.
         let fn_decl =
             self.lower_fn_decl(&decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
+        let define_opaques = self.lower_define_opaques(define_opaques);
 
         let c = self.arena.alloc(hir::Closure {
+            define_opaques,
             def_id: closure_def_id,
             binder: binder_clause,
             capture_clause,

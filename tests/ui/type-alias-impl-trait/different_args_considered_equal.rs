@@ -2,10 +2,12 @@
 
 pub type Opaque<'a> = impl Sized;
 
+#[define_opaques(Opaque)]
 fn get_one<'a>(a: *mut &'a str) -> Opaque<'a> {
     a
 }
 
+#[define_opaques(Opaque)]
 fn get_iter<'a>() -> impl IntoIterator<Item = Opaque<'a>> {
     //~^ ERROR:  item does not constrain
     None::<Opaque<'static>>

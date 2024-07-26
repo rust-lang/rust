@@ -373,11 +373,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         _: Span,
         def_id: LocalDefId,
     ) {
-        let is_in_trait_impl = if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(
-            cx.tcx
-                .hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
-                .def_id,
-        ) {
+        let is_in_trait_impl = if let hir::Node::Item(item) = cx
+            .tcx
+            .hir_node_by_def_id(cx.tcx.hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id)).def_id)
+        {
             matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
         } else {
             false
@@ -401,7 +400,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
-            ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _, _) => self.check_ty(
+            ItemKind::Static(ty, _, _, _) | ItemKind::Const(ty, _, _) => self.check_ty(
                 cx,
                 ty,
                 CheckTyContext {

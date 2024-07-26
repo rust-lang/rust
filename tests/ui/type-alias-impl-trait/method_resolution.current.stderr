@@ -1,5 +1,5 @@
 error[E0599]: no method named `bar` found for struct `Bar<u32>` in the current scope
-  --> $DIR/method_resolution.rs:21:14
+  --> $DIR/method_resolution.rs:22:14
    |
 LL | struct Bar<T>(T);
    | ------------- method `bar` not found for this struct

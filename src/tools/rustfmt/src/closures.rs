@@ -373,6 +373,7 @@ pub(crate) fn rewrite_last_closure(
             ref body,
             fn_decl_span: _,
             fn_arg_span: _,
+            define_opaques: _,
         } = **closure;
         let body = match body.kind {
             ast::ExprKind::Block(ref block, _)

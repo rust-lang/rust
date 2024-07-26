@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Foo: Trait<Bar>` is not satisfied
-  --> $DIR/constrain_in_projection.rs:24:14
+  --> $DIR/constrain_in_projection.rs:25:14
    |
 LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
    |              ^^^ the trait `Trait<Bar>` is not implemented for `Foo`
@@ -8,7 +8,7 @@ LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
            but trait `Trait<()>` is implemented for it
 
 error[E0277]: the trait bound `Foo: Trait<Bar>` is not satisfied
-  --> $DIR/constrain_in_projection.rs:24:13
+  --> $DIR/constrain_in_projection.rs:25:13
    |
 LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<Bar>` is not implemented for `Foo`

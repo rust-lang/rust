@@ -7,6 +7,7 @@
 //@ [specialized]check-pass
 
 type OpaqueCoroutine = impl Sized;
+#[define_opaques(OpaqueCoroutine)]
 fn defining_use() -> OpaqueCoroutine {
     #[coroutine]
     || {

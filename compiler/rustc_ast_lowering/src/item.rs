@@ -188,10 +188,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
-            ItemKind::Static(box ast::StaticItem { ty: t, safety: _, mutability: m, expr: e }) => {
+            ItemKind::Static(box ast::StaticItem {
+                ty: t,
+                safety: _,
+                mutability: m,
+                expr: e,
+                define_opaques,
+            }) => {
                 let (ty, body_id) =
                     self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
-                hir::ItemKind::Static(ty, *m, body_id)
+
+                let define_opaques = self.lower_define_opaques(define_opaques);
+                hir::ItemKind::Static(ty, *m, body_id, define_opaques)
             }
             ItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
                 let (generics, (ty, body_id)) = self.lower_generics(
@@ -209,7 +217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 generics,
                 body,
                 contract,
-                ..
+                defaultness: _,
             }) => {
                 self.with_new_scopes(*fn_sig_span, |this| {
                     // Note: we don't need to change the return type from `T` to
@@ -653,10 +661,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         generics,
                     )
                 }
-                ForeignItemKind::Static(box StaticItem { ty, mutability, expr: _, safety }) => {
+                ForeignItemKind::Static(box StaticItem {
+                    ty,
+                    mutability,
+                    expr: _,
+                    safety,
+                    define_opaques,
+                }) => {
                     let ty = self
                         .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
                     let safety = self.lower_safety(*safety, hir::Safety::Unsafe);
+                    assert!(define_opaques.is_none());
 
                     hir::ForeignItemKind::Static(ty, *mutability, safety)
                 }
@@ -1646,15 +1661,38 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
         predicates.extend(impl_trait_bounds.into_iter());
 
+        let define_opaques = self.lower_define_opaques(&generics.define_opaques);
+
         let lowered_generics = self.arena.alloc(hir::Generics {
             params: self.arena.alloc_from_iter(params),
             predicates: self.arena.alloc_from_iter(predicates),
             has_where_clause_predicates,
             where_clause_span,
             span,
+            define_opaques,
         });
 
         (lowered_generics, res)
+    }
+
+    pub(super) fn lower_define_opaques(
+        &mut self,
+        define_opaques: &Option<ThinVec<(NodeId, Path)>>,
+    ) -> Option<&'hir [LocalDefId]> {
+        define_opaques.as_ref().map(|d| {
+            &*self.arena.alloc_from_iter(
+                d.iter()
+                    // TODO: error reporting for non-local items being mentioned and tests that go through these code paths
+                    .map(|(id, _path)| {
+                        self.resolver
+                            .get_partial_res(*id)
+                            .unwrap()
+                            .expect_full_res()
+                            .def_id()
+                            .expect_local()
+                    }),
+            )
+        })
     }
 
     pub(super) fn lower_generic_bound_predicate(

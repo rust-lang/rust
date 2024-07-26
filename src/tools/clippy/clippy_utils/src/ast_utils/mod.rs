@@ -335,12 +335,14 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 mutability: lm,
                 expr: le,
                 safety: ls,
+                define_opaques: _,
             }),
             Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
                 safety: rs,
+                define_opaques: _,
             }),
         ) => lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()),
         (
@@ -487,12 +489,14 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 mutability: lm,
                 expr: le,
                 safety: ls,
+                define_opaques: _,
             }),
             Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
                 safety: rs,
+                define_opaques: _,
             }),
         ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()) && ls == rs,
         (

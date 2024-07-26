@@ -704,6 +704,7 @@ pub struct Generics<'hir> {
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
+    pub define_opaques: Option<&'hir [LocalDefId]>,
 }
 
 impl<'hir> Generics<'hir> {
@@ -714,6 +715,7 @@ impl<'hir> Generics<'hir> {
             has_where_clause_predicates: false,
             where_clause_span: DUMMY_SP,
             span: DUMMY_SP,
+            define_opaques: None,
         };
         &NOPE
     }
@@ -1434,6 +1436,7 @@ pub struct Closure<'hir> {
     /// The span of the argument block `|...|`
     pub fn_arg_span: Option<Span>,
     pub kind: ClosureKind,
+    pub define_opaques: Option<&'hir [LocalDefId]>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
@@ -3922,7 +3925,7 @@ impl<'hir> Item<'hir> {
         expect_use, (&'hir UsePath<'hir>, UseKind), ItemKind::Use(p, uk), (p, *uk);
 
         expect_static, (&'hir Ty<'hir>, Mutability, BodyId),
-            ItemKind::Static(ty, mutbl, body), (ty, *mutbl, *body);
+            ItemKind::Static(ty, mutbl, body, _), (ty, *mutbl, *body);
 
         expect_const, (&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Const(ty, generics, body), (ty, generics, *body);
@@ -4084,7 +4087,7 @@ pub enum ItemKind<'hir> {
     Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
-    Static(&'hir Ty<'hir>, Mutability, BodyId),
+    Static(&'hir Ty<'hir>, Mutability, BodyId, Option<&'hir [LocalDefId]>),
     /// A `const` item.
     Const(&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
     /// A function declaration.
@@ -4364,7 +4367,7 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::Item(Item {
                 kind:
-                    ItemKind::Static(_, _, body)
+                    ItemKind::Static(_, _, body, _)
                     | ItemKind::Const(_, _, body)
                     | ItemKind::Fn { body, .. },
                 ..
@@ -4590,7 +4593,7 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(it) => match it.kind {
                 ItemKind::TyAlias(ty, _)
-                | ItemKind::Static(ty, _, _)
+                | ItemKind::Static(ty, _, _, _)
                 | ItemKind::Const(ty, _, _) => Some(ty),
                 ItemKind::Impl(impl_item) => Some(&impl_item.self_ty),
                 _ => None,
@@ -4616,13 +4619,23 @@ impl<'hir> Node<'hir> {
         }
     }
 
+    pub fn define_opaques(&self) -> Option<&'hir [LocalDefId]> {
+        match self {
+            Node::Item(Item { kind: ItemKind::Static(.., define_opaques), .. }) => *define_opaques,
+            Node::Expr(Expr { kind: ExprKind::Closure(c), .. }) => c.define_opaques,
+            _ => self.generics()?.define_opaques,
+        }
+    }
+
     #[inline]
     pub fn associated_body(&self) -> Option<(LocalDefId, BodyId)> {
         match self {
             Node::Item(Item {
                 owner_id,
                 kind:
-                    ItemKind::Const(_, _, body) | ItemKind::Static(.., body) | ItemKind::Fn { body, .. },
+                    ItemKind::Const(_, _, body)
+                    | ItemKind::Static(.., body, _)
+                    | ItemKind::Fn { body, .. },
                 ..
             })
             | Node::TraitItem(TraitItem {
@@ -4752,7 +4765,7 @@ mod size_asserts {
     static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);
-    static_assert_size!(Generics<'_>, 56);
+    static_assert_size!(Generics<'_>, 72);
     static_assert_size!(Impl<'_>, 80);
     static_assert_size!(ImplItem<'_>, 88);
     static_assert_size!(ImplItemKind<'_>, 40);

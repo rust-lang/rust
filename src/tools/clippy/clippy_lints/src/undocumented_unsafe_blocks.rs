@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -243,7 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             },
             (ItemKind::Impl(_), _) => {},
             // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
-            (&ItemKind::Const(.., body) | &ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
+            (&ItemKind::Const(.., body) | &ItemKind::Static(.., body, _), HasSafetyComment::Yes(pos)) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
                     let body = cx.tcx.hir_body(body);
                     if !matches!(

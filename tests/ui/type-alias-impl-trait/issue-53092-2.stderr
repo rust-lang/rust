@@ -1,17 +1,5 @@
-error[E0792]: non-defining opaque type use in defining scope
-  --> $DIR/issue-53092-2.rs:6:18
-   |
-LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
-   |                  ^^^^^^^^^^^ argument `u8` is not a generic parameter
-   |
-note: for this opaque type
-  --> $DIR/issue-53092-2.rs:4:18
-   |
-LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0391]: cycle detected when type-checking `CONST_BUG`
-  --> $DIR/issue-53092-2.rs:6:1
+  --> $DIR/issue-53092-2.rs:7:1
    |
 LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,13 +18,12 @@ LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires type-checking `CONST_BUG`, completing the cycle
 note: cycle used when checking that `CONST_BUG` is well-formed
-  --> $DIR/issue-53092-2.rs:6:1
+  --> $DIR/issue-53092-2.rs:7:1
    |
 LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0391, E0792.
-For more information about an error, try `rustc --explain E0391`.
+For more information about this error, try `rustc --explain E0391`.
