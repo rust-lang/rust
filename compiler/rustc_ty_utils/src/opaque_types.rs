@@ -7,7 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 use tracing::{instrument, trace};
 
 use crate::errors::{DuplicateArg, NotParam};
@@ -192,6 +192,11 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             }
         }
     }
+
+    fn collect_taits_from_defines_attr(&mut self) -> bool {
+        let Some(_attr) = self.tcx.get_attr(self.item, sym::defines) else { return false };
+        true
+    }
 }
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
@@ -317,7 +322,9 @@ fn opaque_types_defined_by<'tcx>(
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
-    super::sig_types::walk_types(tcx, item, &mut collector);
+    if !collector.collect_taits_from_defines_attr() {
+        super::sig_types::walk_types(tcx, item, &mut collector);
+    }
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
