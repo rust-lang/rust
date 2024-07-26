@@ -1306,37 +1306,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     // result of `foo(...)` won't help.
                     break 'outer;
                 }
-
-                // We're suggesting `.clone()` on an borrowed value. See if the expression we have
-                // is an argument to a function or method call, and try to suggest cloning the
-                // *result* of the call, instead of the argument. This is closest to what people
-                // would actually be looking for in most cases, with maybe the exception of things
-                // like `fn(T) -> T`, but even then it is reasonable.
-                let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
-                let mut prev = expr;
-                while let hir::Node::Expr(parent) = self.infcx.tcx.parent_hir_node(prev.hir_id) {
-                    if let hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) = parent.kind
-                        && let Some(call_ty) = typeck_results.node_type_opt(parent.hir_id)
-                        && let call_ty = call_ty.peel_refs()
-                        && (!call_ty
-                            .walk()
-                            .any(|t| matches!(t.unpack(), ty::GenericArgKind::Lifetime(_)))
-                            || if let ty::Alias(ty::Projection, _) = call_ty.kind() {
-                                // FIXME: this isn't quite right with lifetimes on assoc types,
-                                // but ignore for now. We will only suggest cloning if
-                                // `<Ty as Trait>::Assoc: Clone`, which should keep false positives
-                                // down to a managable ammount.
-                                true
-                            } else {
-                                false
-                            })
-                        && self.implements_clone(call_ty)
-                        && self.suggest_cloning_inner(err, call_ty, parent)
-                    {
-                        return;
-                    }
-                    prev = parent;
-                }
             }
         }
         let ty = ty.peel_refs();
