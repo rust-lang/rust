@@ -152,7 +152,12 @@ fn add_field_to_struct_fix(
             } else {
                 Some(make::visibility_pub_crate())
             };
-            let field_name = make::name(field_name);
+
+            let field_name = match field_name.chars().next() {
+                Some(ch) if ch.is_numeric() => return None,
+                Some(_) => make::name(field_name),
+                None => return None,
+            };
 
             let (offset, record_field) = record_field_layout(
                 visibility,
@@ -178,7 +183,12 @@ fn add_field_to_struct_fix(
         None => {
             // Add a field list to the Unit Struct
             let mut src_change_builder = SourceChangeBuilder::new(struct_range.file_id);
-            let field_name = make::name(field_name);
+            let field_name = match field_name.chars().next() {
+                // FIXME : See match arm below regarding tuple structs.
+                Some(ch) if ch.is_numeric() => return None,
+                Some(_) => make::name(field_name),
+                None => return None,
+            };
             let visibility = if error_range.file_id == struct_range.file_id {
                 None
             } else {
@@ -274,7 +284,7 @@ mod tests {
     use crate::{
         tests::{
             check_diagnostics, check_diagnostics_with_config, check_diagnostics_with_disabled,
-            check_fix,
+            check_fix, check_no_fix,
         },
         DiagnosticsConfig,
     };
@@ -458,5 +468,37 @@ fn foo() {
                 }
             "#,
         );
+    }
+
+    #[test]
+    fn no_fix_when_indexed() {
+        check_no_fix(
+            r#"
+            struct Kek {}
+impl Kek {
+    pub fn foo(self) {
+        self.$00
+    }
+}
+
+fn main() {}
+            "#,
+        )
+    }
+
+    #[test]
+    fn no_fix_when_without_field() {
+        check_no_fix(
+            r#"
+            struct Kek {}
+impl Kek {
+    pub fn foo(self) {
+        self.$0
+    }
+}
+
+fn main() {}
+            "#,
+        )
     }
 }
