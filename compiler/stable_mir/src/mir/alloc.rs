@@ -4,11 +4,12 @@ use crate::mir::mono::{Instance, StaticDef};
 use crate::target::{Endian, MachineInfo};
 use crate::ty::{Allocation, Binder, ExistentialTraitRef, IndexedVal, Ty};
 use crate::{with, Error};
+use serde::Serialize;
 use std::io::Read;
 
 /// An allocation in the SMIR global memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum GlobalAlloc {
     /// The alloc ID is used as a function pointer.
     Function(Instance),
@@ -41,7 +42,7 @@ impl GlobalAlloc {
 }
 
 /// A unique identification number for each provenance
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
 pub struct AllocId(usize);
 
 impl IndexedVal for AllocId {

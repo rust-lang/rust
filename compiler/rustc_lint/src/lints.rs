@@ -1499,6 +1499,35 @@ pub struct NonLocalDefinitionsCargoUpdateNote {
     pub crate_name: Symbol,
 }
 
+// precedence.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_ambiguous_negative_literals)]
+#[note(lint_example)]
+pub struct AmbiguousNegativeLiteralsDiag {
+    #[subdiagnostic]
+    pub negative_literal: AmbiguousNegativeLiteralsNegativeLiteralSuggestion,
+    #[subdiagnostic]
+    pub current_behavior: AmbiguousNegativeLiteralsCurrentBehaviorSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_negative_literal, applicability = "maybe-incorrect")]
+pub struct AmbiguousNegativeLiteralsNegativeLiteralSuggestion {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_current_behavior, applicability = "maybe-incorrect")]
+pub struct AmbiguousNegativeLiteralsCurrentBehaviorSuggestion {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
 // pass_by_value.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_pass_by_value)]

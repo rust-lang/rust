@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem;
 
+use derive_where::derive_where;
 use rustc_index::{Idx, IndexVec};
 use tracing::debug;
 
@@ -153,8 +154,7 @@ rustc_index::newtype_index! {
     pub struct StackDepth {}
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derive_where(Debug; X: Cx)]
 struct StackEntry<X: Cx> {
     input: X::Input,
 
@@ -226,8 +226,7 @@ struct DetachedEntry<X: Cx> {
 ///
 /// The provisional cache can theoretically result in changes to the observable behavior,
 /// see tests/ui/traits/next-solver/cycles/provisional-cache-impacts-behavior.rs.
-#[derive(derivative::Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive_where(Default; X: Cx)]
 struct ProvisionalCacheEntry<X: Cx> {
     stack_depth: Option<StackDepth>,
     with_inductive_stack: Option<DetachedEntry<X>>,

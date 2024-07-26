@@ -168,8 +168,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dst: PlaceRef<'tcx, Bx::Value>,
     ) {
         // The MIR validator enforces no unsized transmutes.
-        debug_assert!(src.layout.is_sized());
-        debug_assert!(dst.layout.is_sized());
+        assert!(src.layout.is_sized());
+        assert!(dst.layout.is_sized());
 
         if let Some(val) = self.codegen_transmute_operand(bx, src, dst.layout) {
             val.store(bx, dst);
@@ -223,8 +223,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match operand.val {
             OperandValue::Ref(source_place_val) => {
-                debug_assert_eq!(source_place_val.llextra, None);
-                debug_assert!(matches!(operand_kind, OperandValueKind::Ref));
+                assert_eq!(source_place_val.llextra, None);
+                assert!(matches!(operand_kind, OperandValueKind::Ref));
                 Some(bx.load_operand(source_place_val.with_type(cast)).val)
             }
             OperandValue::ZeroSized => {
@@ -295,7 +295,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         to_scalar: abi::Scalar,
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
-        debug_assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
+        assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
 
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
@@ -639,9 +639,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (OperandValue::Immediate(llval), operand.layout)
                     }
                     mir::UnOp::PtrMetadata => {
-                        debug_assert!(
-                            operand.layout.ty.is_unsafe_ptr() || operand.layout.ty.is_ref(),
-                        );
+                        assert!(operand.layout.ty.is_unsafe_ptr() || operand.layout.ty.is_ref(),);
                         let (_, meta) = operand.val.pointer_parts();
                         assert_eq!(operand.layout.fields.count() > 1, meta.is_some());
                         if let Some(meta) = meta {
@@ -651,7 +649,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                 };
-                debug_assert!(
+                assert!(
                     val.is_expected_variant_for_type(self.cx, layout),
                     "Made wrong variant {val:?} for type {layout:?}",
                 );
@@ -742,7 +740,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bug!("Field {field_idx:?} is {p:?} making {layout:?}");
                     });
                     let scalars = self.value_kind(op.layout).scalars().unwrap();
-                    debug_assert_eq!(values.len(), scalars.len());
+                    assert_eq!(values.len(), scalars.len());
                     inputs.extend(values);
                     input_scalars.extend(scalars);
                 }
@@ -760,7 +758,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 let val = OperandValue::from_immediates(inputs);
-                debug_assert!(
+                assert!(
                     val.is_expected_variant_for_type(self.cx, layout),
                     "Made wrong variant {val:?} for type {layout:?}",
                 );
@@ -805,7 +803,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let val = cg_place.val.address();
 
         let ty = cg_place.layout.ty;
-        debug_assert!(
+        assert!(
             if bx.cx().type_has_metadata(ty) {
                 matches!(val, OperandValue::Pair(..))
             } else {
@@ -927,7 +925,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::BinOp::Cmp => {
                 use std::cmp::Ordering;
-                debug_assert!(!is_float);
+                assert!(!is_float);
                 let pred = |op| base::bin_op_to_icmp_predicate(op, is_signed);
                 if bx.cx().tcx().sess.opts.optimize == OptLevel::No {
                     // FIXME: This actually generates tighter assembly, and is a classic trick
@@ -1111,7 +1109,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if layout.is_zst() {
             OperandValueKind::ZeroSized
         } else if self.cx.is_backend_immediate(layout) {
-            debug_assert!(!self.cx.is_backend_scalar_pair(layout));
+            assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.abi {
                 abi::Abi::Scalar(s) => s,
                 abi::Abi::Vector { element, .. } => element,

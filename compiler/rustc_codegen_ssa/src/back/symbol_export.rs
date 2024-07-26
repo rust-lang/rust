@@ -352,7 +352,7 @@ fn exported_symbols_provider_local(
                 }
                 MonoItem::Fn(Instance { def: InstanceKind::DropGlue(def_id, Some(ty)), args }) => {
                     // A little sanity-check
-                    debug_assert_eq!(
+                    assert_eq!(
                         args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
@@ -370,7 +370,7 @@ fn exported_symbols_provider_local(
                     args,
                 }) => {
                     // A little sanity-check
-                    debug_assert_eq!(
+                    assert_eq!(
                         args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
@@ -462,7 +462,7 @@ fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
-    debug_assert!(!def_id.is_local());
+    assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }
 

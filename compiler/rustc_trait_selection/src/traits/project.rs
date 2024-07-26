@@ -1202,6 +1202,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             false
                         }
                     }
+                } else if tcx.trait_is_auto(trait_ref.def_id) {
+                    tcx.dcx().span_delayed_bug(
+                        tcx.def_span(obligation.predicate.def_id),
+                        "associated types not allowed on auto traits",
+                    );
+                    false
                 } else {
                     bug!("unexpected builtin trait with associated type: {trait_ref:?}")
                 }

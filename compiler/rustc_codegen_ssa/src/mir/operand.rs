@@ -565,7 +565,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 for elem in place_ref.projection.iter() {
                     match elem {
                         mir::ProjectionElem::Field(ref f, _) => {
-                            debug_assert!(
+                            assert!(
                                 !o.layout.ty.is_any_ptr(),
                                 "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \
                                  but tried to access field {f:?} of pointer {o:?}",

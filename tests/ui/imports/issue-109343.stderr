@@ -2,7 +2,7 @@ error[E0432]: unresolved import `unresolved`
   --> $DIR/issue-109343.rs:4:9
    |
 LL | pub use unresolved::f;
-   |         ^^^^^^^^^^ maybe a missing crate `unresolved`?
+   |         ^^^^^^^^^^ you might be missing crate `unresolved`
    |
    = help: consider adding `extern crate unresolved` to use the `unresolved` crate
 

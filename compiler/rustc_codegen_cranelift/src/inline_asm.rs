@@ -46,9 +46,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     // Used by panic_abort on Windows, but uses a syntax which only happens to work with
     // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
     // the LLVM backend.
-    if template.len() == 1
-        && template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string())
-    {
+    if template.len() == 1 && template[0] == InlineAsmTemplatePiece::String("int $$0x29".into()) {
         fx.bcx.ins().trap(TrapCode::User(1));
         return;
     }

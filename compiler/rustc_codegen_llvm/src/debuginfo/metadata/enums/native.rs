@@ -65,7 +65,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 
     let visibility_flags = visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did());
 
-    debug_assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -142,7 +142,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, coroutine_def_id);
     let coroutine_type_and_layout = cx.layout_of(coroutine_type);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
 
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 

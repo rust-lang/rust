@@ -212,7 +212,7 @@ error[E0787]: asm options unsupported in naked functions: `nomem`, `preserves_fl
 LL |     asm!("", options(nomem, preserves_flags, noreturn));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0787]: asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
+error[E0787]: asm options unsupported in naked functions: `pure`, `readonly`, `nostack`
   --> $DIR/naked-functions.rs:112:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));

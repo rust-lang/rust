@@ -1,19 +1,19 @@
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/issue-102156.rs:4:5
    |
 LL | use core::convert::{From, TryFrom};
    |     ^^^^
    |     |
-   |     maybe a missing crate `core`?
+   |     you might be missing crate `core`
    |     help: try using `std` instead of `core`: `std`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/issue-102156.rs:4:5
    |
 LL | use core::convert::{From, TryFrom};
    |     ^^^^
    |     |
-   |     maybe a missing crate `core`?
+   |     you might be missing crate `core`
    |     help: try using `std` instead of `core`: `std`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`

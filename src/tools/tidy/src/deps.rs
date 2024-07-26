@@ -269,7 +269,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "darling_macro",
     "datafrog",
     "deranged",
-    "derivative",
+    "derive-where",
     "derive_more",
     "derive_setters",
     "digest",

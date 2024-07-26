@@ -249,7 +249,6 @@
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
-#![feature(unsized_const_params)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
 // tidy-alphabetical-end

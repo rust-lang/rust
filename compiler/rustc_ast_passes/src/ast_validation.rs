@@ -1366,17 +1366,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     {
                         self.dcx().emit_err(errors::TildeConstDisallowed { span, reason });
                     }
-                    (
-                        _,
-                        BoundConstness::Always(_) | BoundConstness::Maybe(_),
-                        BoundPolarity::Negative(_) | BoundPolarity::Maybe(_),
-                    ) => {
-                        self.dcx().emit_err(errors::IncompatibleTraitBoundModifiers {
-                            span: bound.span(),
-                            left: modifiers.constness.as_str(),
-                            right: modifiers.polarity.as_str(),
-                        });
-                    }
                     _ => {}
                 }
 
