@@ -1190,6 +1190,7 @@ pub struct NakedFunctionIncompatibleAttribute {
     pub span: Span,
     #[label(passes_naked_attribute)]
     pub naked_span: Span,
+    pub attr: Symbol,
 }
 
 #[derive(Diagnostic)]

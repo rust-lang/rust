@@ -2,7 +2,7 @@ error[E0736]: attribute incompatible with `#[naked]`
   --> $DIR/error-with-naked.rs:6:1
    |
 LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^ this attribute is incompatible with `#[naked]`
+   | ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[naked]`
 LL |
 LL | #[naked]
    | -------- function marked with `#[naked]` here
@@ -11,7 +11,7 @@ error[E0736]: attribute incompatible with `#[naked]`
   --> $DIR/error-with-naked.rs:18:5
    |
 LL |     #[track_caller]
-   |     ^^^^^^^^^^^^^^^ this attribute is incompatible with `#[naked]`
+   |     ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[naked]`
 LL |
 LL |     #[naked]
    |     -------- function marked with `#[naked]` here

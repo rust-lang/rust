@@ -461,6 +461,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
                             span: other_attr.span,
                             naked_span: attr.span,
+                            attr: other_attr.name_or_empty(),
                         });
 
                         return false;
