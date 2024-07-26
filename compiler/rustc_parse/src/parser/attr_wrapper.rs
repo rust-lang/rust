@@ -337,8 +337,7 @@ impl<'a> Parser<'a> {
         // When parsing `m`:
         // - `start_pos..end_pos` is `0..34` (`mod m`, excluding the `#[cfg_eval]` attribute).
         // - `inner_attr_replace_ranges` is empty.
-        // - `replace_range_start..replace_ranges_end` has two entries.
-        //   - One to delete the inner attribute (`17..27`), obtained when parsing `g` (see above).
+        // - `replace_range_start..replace_ranges_end` has one entry.
         //   - One `AttrsTarget` (added below when parsing `g`) to replace all of `g` (`3..33`,
         //     including its outer attribute), with:
         //     - `attrs`: includes the outer and the inner attr.
@@ -369,12 +368,10 @@ impl<'a> Parser<'a> {
 
             // What is the status here when parsing the example code at the top of this method?
             //
-            // When parsing `g`, we add two entries:
+            // When parsing `g`, we add one entry:
             // - The `start_pos..end_pos` (`3..33`) entry has a new `AttrsTarget` with:
             //   - `attrs`: includes the outer and the inner attr.
             //   - `tokens`: lazy tokens for `g` (with its inner attr deleted).
-            // - `inner_attr_replace_ranges` contains the one entry to delete the inner attr's
-            //   tokens (`17..27`).
             //
             // When parsing `m`, we do nothing here.
 
@@ -384,7 +381,6 @@ impl<'a> Parser<'a> {
             let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
             let target = AttrsTarget { attrs: ret.attrs().iter().cloned().collect(), tokens };
             self.capture_state.replace_ranges.push((start_pos..end_pos, Some(target)));
-            self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
         } else if matches!(self.capture_state.capturing, Capturing::No) {
             // Only clear the ranges once we've finished capturing entirely, i.e. we've finished
             // the outermost call to this method.
