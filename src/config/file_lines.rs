@@ -201,7 +201,7 @@ impl FileLines {
     }
 
     /// Returns `true` if this `FileLines` contains all lines in all files.
-    pub(crate) fn is_all(&self) -> bool {
+    pub fn is_all(&self) -> bool {
         self.0.is_none()
     }
 

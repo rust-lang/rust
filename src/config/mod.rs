@@ -741,6 +741,20 @@ make_backup = false
         assert_eq!(config.unstable_features(), true);
     }
 
+    #[test]
+    fn test_set_cli() {
+        let mut config = Config::default();
+        assert_eq!(config.was_set().edition(), false);
+        assert_eq!(config.was_set_cli().edition(), false);
+        config.set().edition(Edition::Edition2021);
+        assert_eq!(config.was_set().edition(), false);
+        assert_eq!(config.was_set_cli().edition(), false);
+        config.set_cli().edition(Edition::Edition2021);
+        assert_eq!(config.was_set().edition(), false);
+        assert_eq!(config.was_set_cli().edition(), true);
+        assert_eq!(config.was_set_cli().emit_mode(), false);
+    }
+
     #[cfg(test)]
     mod deprecated_option_merge_imports {
         use super::*;

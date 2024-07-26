@@ -263,24 +263,35 @@ fn format_string(input: String, options: GetOptsOptions) -> Result<i32> {
     let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
 
     if options.check {
-        config.set().emit_mode(EmitMode::Diff);
+        config.set_cli().emit_mode(EmitMode::Diff);
     } else {
         match options.emit_mode {
             // Emit modes which work with standard input
             // None means default, which is Stdout.
-            None | Some(EmitMode::Stdout) | Some(EmitMode::Checkstyle) | Some(EmitMode::Json) => {}
+            None => {
+                config
+                    .set()
+                    .emit_mode(options.emit_mode.unwrap_or(EmitMode::Stdout));
+            }
+            Some(EmitMode::Stdout) | Some(EmitMode::Checkstyle) | Some(EmitMode::Json) => {
+                config
+                    .set_cli()
+                    .emit_mode(options.emit_mode.unwrap_or(EmitMode::Stdout));
+            }
             Some(emit_mode) => {
                 return Err(OperationError::StdinBadEmit(emit_mode).into());
             }
         }
-        config
-            .set()
-            .emit_mode(options.emit_mode.unwrap_or(EmitMode::Stdout));
     }
     config.set().verbose(Verbosity::Quiet);
 
     // parse file_lines
-    config.set().file_lines(options.file_lines);
+    if options.file_lines.is_all() {
+        config.set().file_lines(options.file_lines);
+    } else {
+        config.set_cli().file_lines(options.file_lines);
+    }
+
     for f in config.file_lines().files() {
         match *f {
             FileName::Stdin => {}
@@ -650,36 +661,46 @@ impl GetOptsOptions {
 impl CliOptions for GetOptsOptions {
     fn apply_to(self, config: &mut Config) {
         if self.verbose {
-            config.set().verbose(Verbosity::Verbose);
+            config.set_cli().verbose(Verbosity::Verbose);
         } else if self.quiet {
-            config.set().verbose(Verbosity::Quiet);
+            config.set_cli().verbose(Verbosity::Quiet);
         } else {
             config.set().verbose(Verbosity::Normal);
         }
-        config.set().file_lines(self.file_lines);
-        config.set().unstable_features(self.unstable_features);
+
+        if self.file_lines.is_all() {
+            config.set().file_lines(self.file_lines);
+        } else {
+            config.set_cli().file_lines(self.file_lines);
+        }
+
+        if self.unstable_features {
+            config.set_cli().unstable_features(self.unstable_features);
+        } else {
+            config.set().unstable_features(self.unstable_features);
+        }
         if let Some(skip_children) = self.skip_children {
-            config.set().skip_children(skip_children);
+            config.set_cli().skip_children(skip_children);
         }
         if let Some(error_on_unformatted) = self.error_on_unformatted {
-            config.set().error_on_unformatted(error_on_unformatted);
+            config.set_cli().error_on_unformatted(error_on_unformatted);
         }
         if let Some(edition) = self.edition {
-            config.set().edition(edition);
+            config.set_cli().edition(edition);
         }
         if self.check {
-            config.set().emit_mode(EmitMode::Diff);
+            config.set_cli().emit_mode(EmitMode::Diff);
         } else if let Some(emit_mode) = self.emit_mode {
-            config.set().emit_mode(emit_mode);
+            config.set_cli().emit_mode(emit_mode);
         }
         if self.backup {
-            config.set().make_backup(true);
+            config.set_cli().make_backup(true);
         }
         if let Some(color) = self.color {
-            config.set().color(color);
+            config.set_cli().color(color);
         }
         if self.print_misformatted_file_names {
-            config.set().print_misformatted_file_names(true);
+            config.set_cli().print_misformatted_file_names(true);
         }
 
         for (key, val) in self.inline_config {

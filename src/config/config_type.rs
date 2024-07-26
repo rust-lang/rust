@@ -89,7 +89,10 @@ macro_rules! create_config {
             // - 1: true if the option was manually initialized
             // - 2: the option value
             // - 3: true if the option is unstable
-            $($i: (Cell<bool>, bool, <$ty as StyleEditionDefault>::ConfigType, bool)),+
+            // - 4: true if the option was set manually from a CLI flag
+            // FIXME: 4 is probably unnecessary and duplicative
+            // https://github.com/rust-lang/rustfmt/issues/6252
+            $($i: (Cell<bool>, bool, <$ty as StyleEditionDefault>::ConfigType, bool, bool)),+
         }
 
         // Just like the Config struct but with each property wrapped
@@ -136,6 +139,35 @@ macro_rules! create_config {
             )+
         }
 
+        #[allow(unreachable_pub)]
+        pub struct CliConfigSetter<'a>(&'a mut Config);
+
+        impl<'a> CliConfigSetter<'a> {
+            $(
+            #[allow(unreachable_pub)]
+            pub fn $i(&mut self, value: <$ty as StyleEditionDefault>::ConfigType) {
+                (self.0).$i.2 = value;
+                (self.0).$i.4 = true;
+                match stringify!($i) {
+                    "max_width"
+                    | "use_small_heuristics"
+                    | "fn_call_width"
+                    | "single_line_if_else_max_width"
+                    | "single_line_let_else_max_width"
+                    | "attr_fn_like_width"
+                    | "struct_lit_width"
+                    | "struct_variant_width"
+                    | "array_width"
+                    | "chain_width" => self.0.set_heuristics(),
+                    "merge_imports" => self.0.set_merge_imports(),
+                    "fn_args_layout" => self.0.set_fn_args_layout(),
+                    "hide_parse_errors" => self.0.set_hide_parse_errors(),
+                    &_ => (),
+                }
+            }
+            )+
+        }
+
         // Query each option, returns true if the user set the option, false if
         // a default was used.
         #[allow(unreachable_pub)]
@@ -146,6 +178,20 @@ macro_rules! create_config {
             #[allow(unreachable_pub)]
             pub fn $i(&self) -> bool {
                 (self.0).$i.1
+            }
+            )+
+        }
+
+        // Query each option, returns true if the user set the option via a CLI flag,
+        // false if a default was used.
+        #[allow(unreachable_pub)]
+        pub struct CliConfigWasSet<'a>(&'a Config);
+
+        impl<'a> CliConfigWasSet<'a> {
+            $(
+            #[allow(unreachable_pub)]
+            pub fn $i(&self) -> bool {
+                (self.0).$i.4
             }
             )+
         }
@@ -169,7 +215,8 @@ macro_rules! create_config {
                                 <$ty as StyleEditionDefault>::style_edition_default(
                                     style_edition
                                 ),
-                                $stb
+                                $stb,
+                                false,
                             ),
                     )+
                 }
@@ -181,8 +228,18 @@ macro_rules! create_config {
             }
 
             #[allow(unreachable_pub)]
+            pub fn set_cli(&mut self) -> CliConfigSetter<'_> {
+                CliConfigSetter(self)
+            }
+
+            #[allow(unreachable_pub)]
             pub fn was_set(&self) -> ConfigWasSet<'_> {
                 ConfigWasSet(self)
+            }
+
+            #[allow(unreachable_pub)]
+            pub fn was_set_cli(&self) -> CliConfigWasSet<'_> {
+                CliConfigWasSet(self)
             }
 
             fn fill_from_parsed_config(mut self, parsed: PartialConfig, dir: &Path) -> Config {
