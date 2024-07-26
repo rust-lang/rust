@@ -122,6 +122,7 @@ use types::*;
 use unit_bindings::*;
 use unused::*;
 
+#[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};

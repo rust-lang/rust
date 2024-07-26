@@ -1,8 +1,11 @@
 error[E0367]: `Drop` impl requires `'a: 'c` but the struct it is implemented for does not
-  --> $DIR/transitive-outlives.rs:20:9
+  --> $DIR/transitive-outlives.rs:18:1
    |
-LL |     'a: 'c,
-   |         ^^
+LL | / impl<'a, 'b, 'c> Drop for DropMe<'a, 'b, 'c>
+LL | |
+LL | | where
+LL | |     'a: 'c,
+   | |___________^
    |
 note: the implementor must specify the same requirement
   --> $DIR/transitive-outlives.rs:7:1

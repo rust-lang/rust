@@ -34,6 +34,8 @@ use super::{
     Pointer, Projectable, Scalar, ValueVisitor,
 };
 
+// for the validation errors
+#[rustfmt::skip]
 use super::InterpError::UndefinedBehavior as Ub;
 use super::InterpError::Unsupported as Unsup;
 use super::UndefinedBehaviorInfo::*;
