@@ -297,11 +297,13 @@ impl<'a> Parser<'a> {
         // with `None`, which means the relevant tokens will be removed. (More
         // details below.)
         let mut inner_attr_replace_ranges = Vec::new();
-        for inner_attr in ret.attrs().iter().filter(|a| a.style == ast::AttrStyle::Inner) {
-            if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&inner_attr.id) {
-                inner_attr_replace_ranges.push((attr_range, None));
-            } else {
-                self.dcx().span_delayed_bug(inner_attr.span, "Missing token range for attribute");
+        for attr in ret.attrs() {
+            if attr.style == ast::AttrStyle::Inner {
+                if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&attr.id) {
+                    inner_attr_replace_ranges.push((attr_range, None));
+                } else {
+                    self.dcx().span_delayed_bug(attr.span, "Missing token range for attribute");
+                }
             }
         }
 
