@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::env::env_var;
+use crate::rfs;
 
 /// Return the current working directory.
 ///
@@ -40,7 +41,7 @@ pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
     filter: F,
 ) -> Vec<PathBuf> {
     let mut matching_files = Vec::new();
-    for entry in std::fs::read_dir(path).unwrap() {
+    for entry in rfs::read_dir(path) {
         let entry = entry.expect("failed to read directory entry.");
         let path = entry.path();
 
@@ -77,4 +78,9 @@ pub fn has_extension<P: AsRef<Path>>(path: P, extension: &str) -> bool {
 /// Returns true if the filename at `path` ends with `suffix`.
 pub fn has_suffix<P: AsRef<Path>>(path: P, suffix: &str) -> bool {
     path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().ends_with(suffix))
+}
+
+/// Returns true if the filename at `path` contains `needle`.
+pub fn filename_contains<P: AsRef<Path>>(path: P, needle: &str) -> bool {
+    path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().contains(needle))
 }
