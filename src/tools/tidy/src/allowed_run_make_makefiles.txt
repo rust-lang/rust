@@ -2,7 +2,6 @@ run-make/branch-protection-check-IBT/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
-run-make/compiler-rt-works-on-mingw/Makefile
 run-make/cross-lang-lto-clang/Makefile
 run-make/cross-lang-lto-pgo-smoketest/Makefile
 run-make/cross-lang-lto-upstream-rlibs/Makefile
@@ -19,8 +18,6 @@ run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
 run-make/foreign-rust-exceptions/Makefile
 run-make/incr-add-rust-src-component/Makefile
-run-make/incr-foreign-head-span/Makefile
-run-make/interdependent-c-libraries/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-47551/Makefile
