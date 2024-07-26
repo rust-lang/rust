@@ -564,18 +564,8 @@ pub struct Std {
 }
 
 impl Std {
-    pub(crate) fn new(
-        stage: u32,
-        target: TargetSelection,
-        builder: &Builder<'_>,
-        format: DocumentationFormat,
-    ) -> Self {
-        let crates = builder
-            .in_tree_crates("sysroot", Some(target))
-            .into_iter()
-            .map(|krate| krate.name.to_string())
-            .collect();
-        Std { stage, target, format, crates }
+    pub(crate) fn new(stage: u32, target: TargetSelection, format: DocumentationFormat) -> Self {
+        Std { stage, target, format, crates: vec![] }
     }
 }
 
