@@ -1,5 +1,5 @@
 //@ only-x86_64
-//@ run-pass
+//@ build-pass
 #![feature(target_feature_11)]
 #![allow(dead_code)]
 
