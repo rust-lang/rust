@@ -27,7 +27,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
         lifetime: &hir::Lifetime,
         borrowed: bool,
         representation: DynKind,
@@ -37,7 +37,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        for trait_bound in hir_trait_bounds.iter().rev() {
+        for (trait_bound, modifier) in hir_trait_bounds.iter().rev() {
+            if *modifier == hir::TraitBoundModifier::Maybe {
+                continue;
+            }
             if let GenericArgCountResult {
                 correct:
                     Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
@@ -56,6 +59,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }
         }
+
+        let ast_bounds: Vec<_> = hir_trait_bounds
+            .iter()
+            .map(|&(trait_ref, polarity)| hir::GenericBound::Trait(trait_ref, polarity))
+            .collect();
+
+        self.add_implicit_traits_with_filter(
+            &mut bounds,
+            dummy_self,
+            &ast_bounds,
+            None,
+            span,
+            |tr| tr != hir::LangItem::Sized,
+        );
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
@@ -249,7 +266,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
-                let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
+                let empty_generic_args = hir_trait_bounds.iter().any(|(hir_bound, _)| {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });

@@ -607,7 +607,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
             _,
         ) = t.kind
         {
-            for ptr in poly_trait_refs {
+            for (ptr, _) in poly_trait_refs {
                 if Some(self.1) == ptr.trait_ref.trait_def_id() {
                     self.0.push(ptr.span);
                 }
