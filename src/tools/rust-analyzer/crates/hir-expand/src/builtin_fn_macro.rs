@@ -4,7 +4,7 @@ use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
 use intern::{sym, Symbol};
-use mbe::{parse_exprs_with_sep, parse_to_token_tree};
+use mbe::{parse_exprs_with_sep, parse_to_token_tree, DelimiterKind};
 use span::{Edition, EditionedFileId, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{
@@ -34,7 +34,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinFnLikeExpander {
-            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
+            fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
                 match *self {
                     $( BuiltinFnLikeExpander::$kind => $expand, )*
                 }
@@ -42,7 +42,7 @@ macro_rules! register_builtin {
         }
 
         impl EagerExpander {
-            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
+            fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
                 match *self {
                     $( EagerExpander::$e_kind => $e_expand, )*
                 }
@@ -711,6 +711,20 @@ fn parse_string(tt: &tt::Subtree) -> Result<(Symbol, Span), ExpandError> {
                 kind: tt::LitKind::Str,
                 suffix: _,
             })) => Some((unescape_str(text), *span)),
+            // FIXME: We wrap expression fragments in parentheses which can break this expectation
+            // here
+            // Remove this once we handle none delims correctly
+            tt::TokenTree::Subtree(t) if t.delimiter.kind == DelimiterKind::Parenthesis => {
+                t.token_trees.first().and_then(|tt| match tt {
+                    tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                        symbol: text,
+                        span,
+                        kind: tt::LitKind::Str,
+                        suffix: _,
+                    })) => Some((unescape_str(text), *span)),
+                    _ => None,
+                })
+            }
             _ => None,
         })
         .ok_or(mbe::ExpandError::ConversionError.into())
