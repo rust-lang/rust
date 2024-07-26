@@ -373,12 +373,19 @@ impl File {
                     reparse_tag = attr_tag.ReparseTag;
                 }
             }
+
+            // FILE_BASIC_INFO contains additional fields not returned by GetFileInformationByHandle
+            let basic_info = self.basic_info()?;
+
             Ok(FileAttr {
                 attributes: info.dwFileAttributes,
                 creation_time: info.ftCreationTime,
                 last_access_time: info.ftLastAccessTime,
                 last_write_time: info.ftLastWriteTime,
-                change_time: None, // Only available in FILE_BASIC_INFO
+                change_time: Some(c::FILETIME {
+                    dwLowDateTime: basic_info.ChangeTime as u32,
+                    dwHighDateTime: (basic_info.ChangeTime >> 32) as u32,
+                }),
                 file_size: (info.nFileSizeLow as u64) | ((info.nFileSizeHigh as u64) << 32),
                 reparse_tag,
                 volume_serial_number: Some(info.dwVolumeSerialNumber),
@@ -393,14 +400,7 @@ impl File {
     #[cfg(target_vendor = "uwp")]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
-            let mut info: c::FILE_BASIC_INFO = mem::zeroed();
-            let size = mem::size_of_val(&info);
-            cvt(c::GetFileInformationByHandleEx(
-                self.handle.as_raw_handle(),
-                c::FileBasicInfo,
-                core::ptr::addr_of_mut!(info) as *mut c_void,
-                size as u32,
-            ))?;
+            let mut info: c::FILE_BASIC_INFO = self.basic_info()?;
             let mut attr = FileAttr {
                 attributes: info.FileAttributes,
                 creation_time: c::FILETIME {

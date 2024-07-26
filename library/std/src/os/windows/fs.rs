@@ -299,7 +299,7 @@ impl OpenOptionsExt for OpenOptions {
 /// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
 ///
 /// [`BY_HANDLE_FILE_INFORMATION`]:
-///     https://docs.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
+///     https://docs.microsoft.com/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
@@ -323,7 +323,7 @@ pub trait MetadataExt {
     /// ```
     ///
     /// [File Attribute Constants]:
-    ///     https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
+    ///     https://docs.microsoft.com/windows/win32/fileio/file-attribute-constants
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_attributes(&self) -> u32;
 
@@ -352,7 +352,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     ///
-    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    /// [`FILETIME`]: https://docs.microsoft.com/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn creation_time(&self) -> u64;
 
@@ -387,7 +387,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     ///
-    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    /// [`FILETIME`]: https://docs.microsoft.com/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_access_time(&self) -> u64;
 
@@ -420,7 +420,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     ///
-    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    /// [`FILETIME`]: https://docs.microsoft.com/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_write_time(&self) -> u64;
 
@@ -472,10 +472,21 @@ pub trait MetadataExt {
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn file_index(&self) -> Option<u64>;
 
-    /// Returns the change time, which is the last time file metadata was changed, such as
-    /// renames, attributes, etc
+    /// Returns the value of the `ChangeTime{Low,High}` field from the
+    /// [`FILE_BASIC_INFO`] struct associated with the current file handle.
+    /// [`ChangeTime`], is the last time file metadata was changed, such as
+    /// renames, attributes, etc.
     ///
-    /// This will return `None` if the `Metadata` instance was not created using the `FILE_BASIC_INFO` type.
+    /// This will return `None` if `Metadata` was populated without access to
+    /// [`FILE_BASIC_INFO`]. For example, the result of `std::fs::read_dir`
+    /// will be derived from [`WIN32_FIND_DATA`] which does not have access to
+    /// `ChangeTime`.
+    ///
+    /// [`FILE_BASIC_INFO`]: https://learn.microsoft.com/windows/win32/api/winbase/ns-winbase-file_basic_info
+    /// [`WIN32_FIND_DATA`]: https://learn.microsoft.com/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataw
+    /// [`FindFirstFile`]: https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
+    /// [`FindNextFile`]: https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-findnextfilea
+    /// [`ChangeTime`]: https://devblogs.microsoft.com/oldnewthing/20100709-00/?p=13463#:~:text=I%E2%80%99m%20told%20that%20the%20difference%20is%20metadata.%20The,attributes%20%28hidden%2C%20read-only%2C%20etc.%29%20or%20renaming%20the%20file.
     #[unstable(feature = "windows_change_time", issue = "121478")]
     fn change_time(&self) -> Option<u64>;
 }
