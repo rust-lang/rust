@@ -1,7 +1,7 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
@@ -99,12 +99,14 @@ pub fn from_target_feature(
         }));
     }
 
-    // Add implied features
+    // Add both explicit and implied target features, using a set to deduplicate
+    let mut target_features_set = UnordSet::new();
     for feature in added_target_features.iter() {
-        target_features
-            .extend(tcx.implied_target_features(*feature).clone().into_sorted_stable_ord());
+        target_features_set
+            .extend_unord(tcx.implied_target_features(*feature).clone().into_items());
     }
-    target_features.extend(added_target_features)
+    target_features_set.extend(added_target_features);
+    target_features.extend(target_features_set.into_sorted_stable_ord())
 }
 
 /// Computes the set of target features used in a function for the purposes of
