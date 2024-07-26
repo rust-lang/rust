@@ -392,14 +392,18 @@ function isCodeActionWithoutEditsAndCommands(value: any): boolean {
 // to proxy around that. We store the last hover's reference command link
 // here, as only one hover can be active at a time, and we don't need to
 // keep a history of these.
-export let HOVER_REFERENCE_COMMAND: ra.CommandLink | undefined = undefined;
+export let HOVER_REFERENCE_COMMAND: ra.CommandLink[] = [];
 
 function renderCommand(cmd: ra.CommandLink): string {
-    HOVER_REFERENCE_COMMAND = cmd;
-    return `[${cmd.title}](command:rust-analyzer.hoverRefCommandProxy '${cmd.tooltip}')`;
+    HOVER_REFERENCE_COMMAND.push(cmd);
+    return `[${cmd.title}](command:rust-analyzer.hoverRefCommandProxy?${
+        HOVER_REFERENCE_COMMAND.length - 1
+    } '${cmd.tooltip}')`;
 }
 
 function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {
+    // clean up the previous hover ref command
+    HOVER_REFERENCE_COMMAND = [];
     const text = actions
         .map(
             (group) =>
