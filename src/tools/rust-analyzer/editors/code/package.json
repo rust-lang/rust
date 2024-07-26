@@ -137,11 +137,6 @@
                 "category": "rust-analyzer (debug command)"
             },
             {
-                "command": "rust-analyzer.shuffleCrateGraph",
-                "title": "Shuffle Crate Graph",
-                "category": "rust-analyzer (debug command)"
-            },
-            {
                 "command": "rust-analyzer.memoryUsage",
                 "title": "Memory Usage (Clears Database)",
                 "category": "rust-analyzer (debug command)"

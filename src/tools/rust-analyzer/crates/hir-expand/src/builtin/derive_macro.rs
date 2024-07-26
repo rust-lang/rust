@@ -9,17 +9,17 @@ use stdx::never;
 use tracing::debug;
 
 use crate::{
+    builtin::quote::{dollar_crate, quote},
+    db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
+    name,
     name::{AsName, Name},
-    quote::dollar_crate,
     span_map::ExpansionSpanMap,
-    tt,
+    tt, ExpandError, ExpandResult,
 };
 use syntax::ast::{
     self, AstNode, FieldList, HasAttrs, HasGenericParams, HasModuleItem, HasName, HasTypeBounds,
 };
-
-use crate::{db::ExpandDatabase, name, quote, ExpandError, ExpandResult};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {

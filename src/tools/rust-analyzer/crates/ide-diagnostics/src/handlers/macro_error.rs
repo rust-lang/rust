@@ -7,7 +7,10 @@ pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
     // Use more accurate position if available.
     let display_range = ctx.resolve_precise_location(&d.node, d.precise_location);
     Diagnostic::new(
-        DiagnosticCode::Ra("macro-error", Severity::Error),
+        DiagnosticCode::Ra(
+            "macro-error",
+            if d.error { Severity::Error } else { Severity::WeakWarning },
+        ),
         d.message.clone(),
         display_range,
     )

@@ -7,7 +7,7 @@ use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
-    ExpandError, InFile,
+    InFile,
 };
 use intern::{sym, Interned, Symbol};
 use rustc_hash::FxHashMap;
@@ -992,20 +992,11 @@ impl ExprCollector<'_> {
             }
         };
         if record_diagnostics {
-            match &res.err {
-                Some(ExpandError::UnresolvedProcMacro(krate)) => {
-                    self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro {
-                        node: InFile::new(outer_file, syntax_ptr),
-                        krate: *krate,
-                    });
-                }
-                Some(err) => {
-                    self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
-                        node: InFile::new(outer_file, syntax_ptr),
-                        message: err.to_string(),
-                    });
-                }
-                None => {}
+            if let Some(err) = res.err {
+                self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
+                    node: InFile::new(outer_file, syntax_ptr),
+                    err,
+                });
             }
         }
 

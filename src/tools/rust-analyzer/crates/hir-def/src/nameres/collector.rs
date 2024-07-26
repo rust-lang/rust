@@ -10,9 +10,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
     attrs::{Attr, AttrId},
-    builtin_attr_macro::find_builtin_attr,
-    builtin_derive_macro::find_builtin_derive,
-    builtin_fn_macro::find_builtin_macro,
+    builtin::{find_builtin_attr, find_builtin_derive, find_builtin_macro},
     name::{AsName, Name},
     proc_macro::CustomProcMacroExpander,
     ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
@@ -76,34 +74,11 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
     }
 
     let proc_macros = if krate.is_proc_macro {
-        match db.proc_macros().get(&def_map.krate) {
-            Some(Ok(proc_macros)) => Ok({
-                let ctx = db.syntax_context(tree_id.file_id());
-                proc_macros
-                    .iter()
-                    .enumerate()
-                    .map(|(idx, it)| {
-                        let name = Name::new_symbol(it.name.clone(), ctx);
-                        (
-                            name,
-                            if !db.expand_proc_attr_macros() {
-                                CustomProcMacroExpander::dummy()
-                            } else if it.disabled {
-                                CustomProcMacroExpander::disabled()
-                            } else {
-                                CustomProcMacroExpander::new(
-                                    hir_expand::proc_macro::ProcMacroId::new(idx as u32),
-                                )
-                            },
-                        )
-                    })
-                    .collect()
-            }),
-            Some(Err(e)) => Err(e.clone().into_boxed_str()),
-            None => Err("No proc-macros present for crate".to_owned().into_boxed_str()),
-        }
+        db.proc_macros()
+            .for_crate(def_map.krate, db.syntax_context(tree_id.file_id()))
+            .unwrap_or_default()
     } else {
-        Ok(vec![])
+        Default::default()
     };
 
     let mut collector = DefCollector {
@@ -252,10 +227,10 @@ struct DefCollector<'a> {
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
     /// List of procedural macros defined by this crate. This is read from the dynamic library
-    /// built by the build system, and is the list of proc. macros we can actually expand. It is
-    /// empty when proc. macro support is disabled (in which case we still do name resolution for
-    /// them).
-    proc_macros: Result<Vec<(Name, CustomProcMacroExpander)>, Box<str>>,
+    /// built by the build system, and is the list of proc-macros we can actually expand. It is
+    /// empty when proc-macro support is disabled (in which case we still do name resolution for
+    /// them). The bool signals whether the proc-macro has been explicitly disabled for name-resolution.
+    proc_macros: Box<[(Name, CustomProcMacroExpander, bool)]>,
     is_proc_macro: bool,
     from_glob_import: PerNsGlobImports,
     /// If we fail to resolve an attribute on a `ModItem`, we fall back to ignoring the attribute.
@@ -277,10 +252,6 @@ impl DefCollector<'_> {
         let item_tree = self.db.file_item_tree(file_id.into());
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
-
-        if let Err(e) = &self.proc_macros {
-            crate_data.proc_macro_loading_error = Some(e.clone());
-        }
 
         let mut process = true;
 
@@ -608,11 +579,17 @@ impl DefCollector<'_> {
         fn_id: FunctionId,
     ) {
         let kind = def.kind.to_basedb_kind();
-        let (expander, kind) =
-            match self.proc_macros.as_ref().map(|it| it.iter().find(|(n, _)| n == &def.name)) {
-                Ok(Some(&(_, expander))) => (expander, kind),
-                _ => (CustomProcMacroExpander::dummy(), kind),
-            };
+        let (expander, kind) = match self.proc_macros.iter().find(|(n, _, _)| n == &def.name) {
+            Some(_)
+                if kind == hir_expand::proc_macro::ProcMacroKind::Attr
+                    && !self.db.expand_proc_attr_macros() =>
+            {
+                (CustomProcMacroExpander::disabled_proc_attr(), kind)
+            }
+            Some(&(_, _, true)) => (CustomProcMacroExpander::disabled(), kind),
+            Some(&(_, expander, false)) => (expander, kind),
+            None => (CustomProcMacroExpander::missing_expander(), kind),
+        };
 
         let proc_macro_id = ProcMacroLoc {
             container: self.def_map.crate_root(),
@@ -1338,25 +1315,22 @@ impl DefCollector<'_> {
                         return recollect_without(self);
                     }
 
-                    let call_id = call_id();
                     if let MacroDefKind::ProcMacro(_, exp, _) = def.kind {
                         // If there's no expander for the proc macro (e.g.
                         // because proc macros are disabled, or building the
                         // proc macro crate failed), report this and skip
                         // expansion like we would if it was disabled
-                        if exp.is_dummy() {
-                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                        if let Some(err) = exp.as_expand_error(def.krate) {
+                            self.def_map.diagnostics.push(DefDiagnostic::macro_error(
                                 directive.module_id,
-                                self.db.lookup_intern_macro_call(call_id).kind,
-                                def.krate,
+                                ast_id,
+                                err,
                             ));
-                            return recollect_without(self);
-                        }
-                        if exp.is_disabled() {
                             return recollect_without(self);
                         }
                     }
 
+                    let call_id = call_id();
                     self.def_map.modules[directive.module_id]
                         .scope
                         .add_attr_macro_invoc(ast_id, call_id);
@@ -1395,7 +1369,6 @@ impl DefCollector<'_> {
         }
         let file_id = macro_call_id.as_file();
 
-        // Then, fetch and process the item tree. This will reuse the expansion result from above.
         let item_tree = self.db.file_item_tree(file_id);
 
         let mod_dir = if macro_call_id.as_macro_file().is_include_macro(self.db.upcast()) {
@@ -2433,7 +2406,7 @@ mod tests {
             unresolved_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
-            proc_macros: Ok(vec![]),
+            proc_macros: Default::default(),
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             is_proc_macro: false,

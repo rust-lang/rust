@@ -43,7 +43,6 @@ mod parent_module;
 mod references;
 mod rename;
 mod runnables;
-mod shuffle_crate_graph;
 mod signature_help;
 mod ssr;
 mod static_index;
@@ -201,10 +200,6 @@ impl AnalysisHost {
     }
     pub fn raw_database_mut(&mut self) -> &mut RootDatabase {
         &mut self.db
-    }
-
-    pub fn shuffle_crate_graph(&mut self) {
-        shuffle_crate_graph::shuffle_crate_graph(&mut self.db);
     }
 }
 

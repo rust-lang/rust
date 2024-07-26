@@ -2,9 +2,8 @@
 
 use std::ops::Not;
 
-use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::{attrs::AttrId, MacroCallKind};
+use hir_expand::{attrs::AttrId, ExpandError, MacroCallKind};
 use la_arena::Idx;
 use syntax::ast;
 
@@ -17,48 +16,16 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DefDiagnosticKind {
-    UnresolvedModule {
-        ast: AstId<ast::Module>,
-        candidates: Box<[String]>,
-    },
-    UnresolvedExternCrate {
-        ast: AstId<ast::ExternCrate>,
-    },
-    UnresolvedImport {
-        id: ItemTreeId<item_tree::Use>,
-        index: Idx<ast::UseTree>,
-    },
-    UnconfiguredCode {
-        tree: TreeId,
-        item: AttrOwner,
-        cfg: CfgExpr,
-        opts: CfgOptions,
-    },
-    /// A proc-macro that is lacking an expander, this might be due to build scripts not yet having
-    /// run or proc-macro expansion being disabled.
-    UnresolvedProcMacro {
-        ast: MacroCallKind,
-        krate: CrateId,
-    },
-    UnresolvedMacroCall {
-        ast: MacroCallKind,
-        path: ModPath,
-    },
-    UnimplementedBuiltinMacro {
-        ast: AstId<ast::Macro>,
-    },
-    InvalidDeriveTarget {
-        ast: AstId<ast::Item>,
-        id: usize,
-    },
-    MalformedDerive {
-        ast: AstId<ast::Adt>,
-        id: usize,
-    },
-    MacroDefError {
-        ast: AstId<ast::Macro>,
-        message: String,
-    },
+    UnresolvedModule { ast: AstId<ast::Module>, candidates: Box<[String]> },
+    UnresolvedExternCrate { ast: AstId<ast::ExternCrate> },
+    UnresolvedImport { id: ItemTreeId<item_tree::Use>, index: Idx<ast::UseTree> },
+    UnconfiguredCode { tree: TreeId, item: AttrOwner, cfg: CfgExpr, opts: CfgOptions },
+    UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
+    UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
+    InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
+    MalformedDerive { ast: AstId<ast::Adt>, id: usize },
+    MacroDefError { ast: AstId<ast::Macro>, message: String },
+    MacroError { ast: AstId<ast::Item>, err: ExpandError },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -115,6 +82,10 @@ impl DefDiagnostic {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedImport { id, index } }
     }
 
+    pub fn macro_error(container: LocalModuleId, ast: AstId<ast::Item>, err: ExpandError) -> Self {
+        Self { in_module: container, kind: DefDiagnosticKind::MacroError { ast, err } }
+    }
+
     pub fn unconfigured_code(
         container: LocalModuleId,
         tree: TreeId,
@@ -126,14 +97,6 @@ impl DefDiagnostic {
             in_module: container,
             kind: DefDiagnosticKind::UnconfiguredCode { tree, item, cfg, opts },
         }
-    }
-
-    pub fn unresolved_proc_macro(
-        container: LocalModuleId,
-        ast: MacroCallKind,
-        krate: CrateId,
-    ) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::UnresolvedProcMacro { ast, krate } }
     }
 
     // FIXME: Whats the difference between this and unresolved_proc_macro

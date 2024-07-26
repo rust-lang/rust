@@ -100,12 +100,6 @@ export function memoryUsage(ctx: CtxInit): Cmd {
     };
 }
 
-export function shuffleCrateGraph(ctx: CtxInit): Cmd {
-    return async () => {
-        return ctx.client.sendRequest(ra.shuffleCrateGraph);
-    };
-}
-
 export function triggerParameterHints(_: CtxInit): Cmd {
     return async () => {
         const parameterHintsEnabled = vscode.workspace

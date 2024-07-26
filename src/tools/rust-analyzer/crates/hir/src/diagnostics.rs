@@ -6,7 +6,6 @@
 pub use hir_ty::diagnostics::{CaseType, IncorrectCase};
 use hir_ty::{db::HirDatabase, diagnostics::BodyValidationDiagnostic, InferenceDiagnostic};
 
-use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 pub use hir_def::VariantId;
@@ -15,7 +14,7 @@ use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
-use crate::{AssocItem, Field, Local, MacroKind, Trait, Type};
+use crate::{AssocItem, Field, Local, Trait, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -90,7 +89,6 @@ diagnostics![
     UnresolvedMethodCall,
     UnresolvedModule,
     UnresolvedIdent,
-    UnresolvedProcMacro,
     UnusedMut,
     UnusedVariable,
 ];
@@ -151,22 +149,11 @@ pub struct InactiveCode {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct UnresolvedProcMacro {
-    pub node: InFile<SyntaxNodePtr>,
-    /// If the diagnostic can be pinpointed more accurately than via `node`, this is the `TextRange`
-    /// to use instead.
-    pub precise_location: Option<TextRange>,
-    pub macro_name: Option<String>,
-    pub kind: MacroKind,
-    /// The crate id of the proc-macro this macro belongs to, or `None` if the proc-macro can't be found.
-    pub krate: CrateId,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroError {
     pub node: InFile<SyntaxNodePtr>,
     pub precise_location: Option<TextRange>,
     pub message: String,
+    pub error: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

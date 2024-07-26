@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: f41950db4c7b3a5a
+lsp/ext.rs hash: e92e1f12229b0071
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -788,14 +788,6 @@ interface ViewCrateGraphParams {
 Renders rust-analyzer's crate graph as an SVG image.
 
 If `full` is `true`, the graph includes non-workspace crates (crates.io dependencies as well as sysroot crates).
-
-## Shuffle Crate Graph
-
-**Method:** `rust-analyzer/shuffleCrateGraph`
-
-**Request:** `null`
-
-Shuffles the crate IDs in the crate graph, for debugging purposes.
 
 ## Expand Macro
 

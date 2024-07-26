@@ -13,10 +13,10 @@ use syntax::{
 };
 
 use crate::{
+    builtin::quote::{dollar_crate, quote},
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
-    name, quote,
-    quote::dollar_crate,
+    name,
     tt::{self, DelimSpan},
     ExpandError, ExpandResult, HirFileIdExt, Lookup as _, MacroCallId,
 };
@@ -145,7 +145,7 @@ register_builtin! {
 }
 
 fn mk_pound(span: Span) -> tt::Subtree {
-    crate::quote::IntoTt::to_subtree(
+    crate::builtin::quote::IntoTt::to_subtree(
         vec![crate::tt::Leaf::Punct(crate::tt::Punct {
             char: '#',
             spacing: crate::tt::Spacing::Alone,

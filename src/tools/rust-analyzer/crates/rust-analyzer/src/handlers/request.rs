@@ -134,11 +134,6 @@ pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Res
     Ok(out)
 }
 
-pub(crate) fn handle_shuffle_crate_graph(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    state.analysis_host.shuffle_crate_graph();
-    Ok(())
-}
-
 pub(crate) fn handle_syntax_tree(
     snap: GlobalStateSnapshot,
     params: lsp_ext::SyntaxTreeParams,

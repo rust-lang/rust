@@ -179,7 +179,7 @@ impl Expander {
             value: match err {
                 // If proc-macro is disabled or unresolved, we want to expand to a missing expression
                 // instead of an empty tree which might end up in an empty block.
-                Some(ExpandError::UnresolvedProcMacro(_)) => None,
+                Some(ExpandError::MissingProcMacroExpander(_)) => None,
                 _ => (|| {
                     let parse = res.value.0.cast::<T>()?;
 

@@ -137,7 +137,7 @@ pub use {
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
         name::Name,
-        proc_macro::ProcMacros,
+        proc_macro::{ProcMacros, ProcMacrosBuilder},
         tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt,
     },
     hir_ty::{
@@ -833,14 +833,10 @@ fn macro_call_diagnostics(
     let ValueResult { value: parse_errors, err } = &*e;
     if let Some(err) = err {
         let loc = db.lookup_intern_macro_call(macro_call_id);
-        let (node, precise_location, macro_name, kind) = precise_macro_call_location(&loc.kind, db);
-        let diag = match err {
-            &hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
-                UnresolvedProcMacro { node, precise_location, macro_name, kind, krate }.into()
-            }
-            err => MacroError { node, precise_location, message: err.to_string() }.into(),
-        };
-        acc.push(diag);
+        let (node, precise_location, _macro_name, _kind) =
+            precise_macro_call_location(&loc.kind, db);
+        let (message, error) = err.render_to_string(db.upcast());
+        acc.push(MacroError { node, precise_location, message, error }.into());
     }
 
     if !parse_errors.is_empty() {
@@ -895,6 +891,19 @@ fn emit_def_diagnostic_(
             acc.push(UnresolvedExternCrate { decl: InFile::new(ast.file_id, item) }.into());
         }
 
+        DefDiagnosticKind::MacroError { ast, err } => {
+            let item = ast.to_ptr(db.upcast());
+            let (message, error) = err.render_to_string(db.upcast());
+            acc.push(
+                MacroError {
+                    node: InFile::new(ast.file_id, item.syntax_node_ptr()),
+                    precise_location: None,
+                    message,
+                    error,
+                }
+                .into(),
+            )
+        }
         DefDiagnosticKind::UnresolvedImport { id, index } => {
             let file_id = id.file_id();
             let item_tree = id.item_tree(db.upcast());
@@ -990,13 +999,6 @@ fn emit_def_diagnostic_(
                 );
                 Some(())
             })();
-        }
-        DefDiagnosticKind::UnresolvedProcMacro { ast, krate } => {
-            let (node, precise_location, macro_name, kind) = precise_macro_call_location(ast, db);
-            acc.push(
-                UnresolvedProcMacro { node, precise_location, macro_name, kind, krate: *krate }
-                    .into(),
-            );
         }
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
             let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
@@ -1795,20 +1797,17 @@ impl DefWithBody {
                 BodyDiagnostic::InactiveCode { node, cfg, opts } => {
                     InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
                 }
-                BodyDiagnostic::MacroError { node, message } => MacroError {
-                    node: (*node).map(|it| it.into()),
-                    precise_location: None,
-                    message: message.to_string(),
+                BodyDiagnostic::MacroError { node, err } => {
+                    let (message, error) = err.render_to_string(db.upcast());
+
+                    MacroError {
+                        node: (*node).map(|it| it.into()),
+                        precise_location: None,
+                        message,
+                        error,
+                    }
+                    .into()
                 }
-                .into(),
-                BodyDiagnostic::UnresolvedProcMacro { node, krate } => UnresolvedProcMacro {
-                    node: (*node).map(|it| it.into()),
-                    precise_location: None,
-                    macro_name: None,
-                    kind: MacroKind::ProcMacro,
-                    krate: *krate,
-                }
-                .into(),
                 BodyDiagnostic::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
                     macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
                     precise_location: None,

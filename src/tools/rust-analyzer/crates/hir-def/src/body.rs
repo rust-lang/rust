@@ -10,7 +10,7 @@ use std::ops::{Deref, Index};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::{name::Name, InFile};
+use hir_expand::{name::Name, ExpandError, InFile};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -115,8 +115,7 @@ pub struct SyntheticSyntax;
 #[derive(Debug, Eq, PartialEq)]
 pub enum BodyDiagnostic {
     InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
-    MacroError { node: InFile<AstPtr<ast::MacroCall>>, message: String },
-    UnresolvedProcMacro { node: InFile<AstPtr<ast::MacroCall>>, krate: CrateId },
+    MacroError { node: InFile<AstPtr<ast::MacroCall>>, err: ExpandError },
     UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
     UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
     UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },

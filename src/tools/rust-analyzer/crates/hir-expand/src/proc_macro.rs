@@ -7,19 +7,9 @@ use base_db::{CrateId, Env};
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::Span;
-use stdx::never;
 use triomphe::Arc;
 
 use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ProcMacroId(u32);
-
-impl ProcMacroId {
-    pub fn new(u32: u32) -> Self {
-        ProcMacroId(u32)
-    }
-}
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum ProcMacroKind {
@@ -28,7 +18,10 @@ pub enum ProcMacroKind {
     Attr,
 }
 
+/// A proc-macro expander implementation.
 pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
+    /// Run the expander with the given input subtree, optional attribute input subtree (for
+    /// [`ProcMacroKind::Attr`]), environment variables, and span information.
     fn expand(
         &self,
         subtree: &tt::Subtree,
@@ -42,57 +35,162 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
 
 #[derive(Debug)]
 pub enum ProcMacroExpansionError {
+    /// The proc-macro panicked.
     Panic(String),
-    /// Things like "proc macro server was killed by OOM".
+    /// The server itself errored out.
     System(String),
 }
 
-pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, String>;
+pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, (String, bool)>;
+type StoredProcMacroLoadResult = Result<Box<[ProcMacro]>, (Box<str>, bool)>;
 
-pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
+#[derive(Default, Debug)]
+pub struct ProcMacrosBuilder(FxHashMap<CrateId, StoredProcMacroLoadResult>);
+impl ProcMacrosBuilder {
+    pub fn insert(&mut self, proc_macros_crate: CrateId, proc_macro: ProcMacroLoadResult) {
+        self.0.insert(
+            proc_macros_crate,
+            match proc_macro {
+                Ok(it) => Ok(it.into_boxed_slice()),
+                Err((e, hard_err)) => Err((e.into_boxed_str(), hard_err)),
+            },
+        );
+    }
+    pub fn build(mut self) -> ProcMacros {
+        self.0.shrink_to_fit();
+        ProcMacros(self.0)
+    }
+}
 
+#[derive(Default, Debug)]
+pub struct ProcMacros(FxHashMap<CrateId, StoredProcMacroLoadResult>);
+
+impl FromIterator<(CrateId, ProcMacroLoadResult)> for ProcMacros {
+    fn from_iter<T: IntoIterator<Item = (CrateId, ProcMacroLoadResult)>>(iter: T) -> Self {
+        let mut builder = ProcMacrosBuilder::default();
+        for (k, v) in iter {
+            builder.insert(k, v);
+        }
+        builder.build()
+    }
+}
+
+impl ProcMacros {
+    fn get(&self, krate: CrateId, idx: u32) -> Result<&ProcMacro, ExpandError> {
+        let proc_macros = match self.0.get(&krate) {
+            Some(Ok(proc_macros)) => proc_macros,
+            Some(Err(_)) | None => {
+                return Err(ExpandError::other("internal error: no proc macros for crate"));
+            }
+        };
+        proc_macros.get(idx as usize).ok_or_else(|| {
+                ExpandError::other(
+                    format!(
+                        "internal error: proc-macro index out of bounds: the length is {} but the index is {}",
+                        proc_macros.len(),
+                        idx
+                    )
+                )
+            }
+        )
+    }
+
+    pub fn get_error_for_crate(&self, krate: CrateId) -> Option<(&str, bool)> {
+        self.0.get(&krate).and_then(|it| it.as_ref().err()).map(|(e, hard_err)| (&**e, *hard_err))
+    }
+
+    /// Fetch the [`CustomProcMacroExpander`]s and their corresponding names for the given crate.
+    pub fn for_crate(
+        &self,
+        krate: CrateId,
+        def_site_ctx: span::SyntaxContextId,
+    ) -> Option<Box<[(crate::name::Name, CustomProcMacroExpander, bool)]>> {
+        match self.0.get(&krate) {
+            Some(Ok(proc_macros)) => Some({
+                proc_macros
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, it)| {
+                        let name = crate::name::Name::new_symbol(it.name.clone(), def_site_ctx);
+                        (name, CustomProcMacroExpander::new(idx as u32), it.disabled)
+                    })
+                    .collect()
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// A loaded proc-macro.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
+    /// The name of the proc macro.
     pub name: Symbol,
     pub kind: ProcMacroKind,
+    /// The expander handle for this proc macro.
     pub expander: sync::Arc<dyn ProcMacroExpander>,
+    /// Whether this proc-macro is disabled for early name resolution. Notably, the
+    /// [`Self::expander`] is still usable.
     pub disabled: bool,
 }
 
+/// A custom proc-macro expander handle. This handle together with its crate resolves to a [`ProcMacro`]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct CustomProcMacroExpander {
-    proc_macro_id: ProcMacroId,
+    proc_macro_id: u32,
 }
 
 impl CustomProcMacroExpander {
-    const DUMMY_ID: u32 = !0;
+    const MISSING_EXPANDER: u32 = !0;
     const DISABLED_ID: u32 = !1;
+    const PROC_MACRO_ATTR_DISABLED: u32 = !2;
 
-    pub fn new(proc_macro_id: ProcMacroId) -> Self {
-        assert_ne!(proc_macro_id.0, Self::DUMMY_ID);
-        assert_ne!(proc_macro_id.0, Self::DISABLED_ID);
+    pub fn new(proc_macro_id: u32) -> Self {
+        assert_ne!(proc_macro_id, Self::MISSING_EXPANDER);
+        assert_ne!(proc_macro_id, Self::DISABLED_ID);
+        assert_ne!(proc_macro_id, Self::PROC_MACRO_ATTR_DISABLED);
         Self { proc_macro_id }
     }
 
-    /// A dummy expander that always errors. This is used for proc-macros that are missing, usually
-    /// due to them not being built yet.
-    pub const fn dummy() -> Self {
-        Self { proc_macro_id: ProcMacroId(Self::DUMMY_ID) }
-    }
-
-    /// The macro was not yet resolved.
-    pub const fn is_dummy(&self) -> bool {
-        self.proc_macro_id.0 == Self::DUMMY_ID
+    /// An expander that always errors due to the actual proc-macro expander missing.
+    pub const fn missing_expander() -> Self {
+        Self { proc_macro_id: Self::MISSING_EXPANDER }
     }
 
     /// A dummy expander that always errors. This expander is used for macros that have been disabled.
     pub const fn disabled() -> Self {
-        Self { proc_macro_id: ProcMacroId(Self::DISABLED_ID) }
+        Self { proc_macro_id: Self::DISABLED_ID }
+    }
+
+    /// A dummy expander that always errors. This expander is used for attribute macros when
+    /// proc-macro attribute expansion is disabled.
+    pub const fn disabled_proc_attr() -> Self {
+        Self { proc_macro_id: Self::PROC_MACRO_ATTR_DISABLED }
+    }
+
+    /// The macro-expander is missing or has yet to be build.
+    pub const fn is_missing(&self) -> bool {
+        self.proc_macro_id == Self::MISSING_EXPANDER
     }
 
     /// The macro is explicitly disabled and cannot be expanded.
     pub const fn is_disabled(&self) -> bool {
-        self.proc_macro_id.0 == Self::DISABLED_ID
+        self.proc_macro_id == Self::DISABLED_ID
+    }
+
+    /// The macro is explicitly disabled due to proc-macro attribute expansion being disabled.
+    pub const fn is_disabled_proc_attr(&self) -> bool {
+        self.proc_macro_id == Self::PROC_MACRO_ATTR_DISABLED
+    }
+
+    /// The macro is explicitly disabled due to proc-macro attribute expansion being disabled.
+    pub const fn as_expand_error(&self, def_crate: CrateId) -> Option<ExpandError> {
+        match self.proc_macro_id {
+            Self::PROC_MACRO_ATTR_DISABLED => Some(ExpandError::ProcMacroAttrExpansionDisabled),
+            Self::DISABLED_ID => Some(ExpandError::MacroDisabled),
+            Self::MISSING_EXPANDER => Some(ExpandError::MissingProcMacroExpander(def_crate)),
+            _ => None,
+        }
     }
 
     pub fn expand(
@@ -107,38 +205,27 @@ impl CustomProcMacroExpander {
         mixed_site: Span,
     ) -> ExpandResult<tt::Subtree> {
         match self.proc_macro_id {
-            ProcMacroId(Self::DUMMY_ID) => ExpandResult::new(
+            Self::PROC_MACRO_ATTR_DISABLED => ExpandResult::new(
                 tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
-                ExpandError::UnresolvedProcMacro(def_crate),
+                ExpandError::ProcMacroAttrExpansionDisabled,
             ),
-            ProcMacroId(Self::DISABLED_ID) => ExpandResult::new(
+            Self::MISSING_EXPANDER => ExpandResult::new(
+                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                ExpandError::MissingProcMacroExpander(def_crate),
+            ),
+            Self::DISABLED_ID => ExpandResult::new(
                 tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::MacroDisabled,
             ),
-            ProcMacroId(id) => {
+            id => {
                 let proc_macros = db.proc_macros();
-                let proc_macros = match proc_macros.get(&def_crate) {
-                    Some(Ok(proc_macros)) => proc_macros,
-                    Some(Err(_)) | None => {
-                        never!("Non-dummy expander even though there are no proc macros");
+                let proc_macro = match proc_macros.get(def_crate, id) {
+                    Ok(proc_macro) => proc_macro,
+                    Err(e) => {
                         return ExpandResult::new(
                             tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
-                            ExpandError::other("Internal error"),
-                        );
-                    }
-                };
-                let proc_macro = match proc_macros.get(id as usize) {
-                    Some(proc_macro) => proc_macro,
-                    None => {
-                        never!(
-                            "Proc macro index out of bounds: the length is {} but the index is {}",
-                            proc_macros.len(),
-                            id
-                        );
-                        return ExpandResult::new(
-                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
-                            ExpandError::other("Internal error: proc-macro index out of bounds"),
-                        );
+                            e,
+                        )
                     }
                 };
 

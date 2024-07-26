@@ -75,9 +75,7 @@ use base_db::{
     CrateId,
 };
 use hir_expand::{
-    builtin_attr_macro::BuiltinAttrExpander,
-    builtin_derive_macro::BuiltinDeriveExpander,
-    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
     impl_intern_lookup,

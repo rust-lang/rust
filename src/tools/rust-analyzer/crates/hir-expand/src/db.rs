@@ -11,8 +11,7 @@ use triomphe::Arc;
 
 use crate::{
     attrs::{collect_attrs, AttrId},
-    builtin_attr_macro::pseudo_derive_attr_expansion,
-    builtin_fn_macro::EagerExpander,
+    builtin::pseudo_derive_attr_expansion,
     cfg_process,
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
@@ -20,9 +19,9 @@ use crate::{
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
-    CustomProcMacroExpander, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap,
-    HirFileId, HirFileIdRepr, Lookup, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind, MacroFileId,
+    CustomProcMacroExpander, EagerCallInfo, EagerExpander, ExpandError, ExpandResult, ExpandTo,
+    ExpansionSpanMap, HirFileId, HirFileIdRepr, Lookup, MacroCallId, MacroCallKind, MacroCallLoc,
+    MacroDefId, MacroDefKind, MacroFileId,
 };
 /// This is just to ensure the types of smart_macro_arg and macro_arg are the same
 type MacroArgResult = (Arc<tt::Subtree>, SyntaxFixupUndoInfo, Span);
