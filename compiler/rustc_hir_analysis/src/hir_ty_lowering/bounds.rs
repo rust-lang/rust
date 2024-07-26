@@ -8,7 +8,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{sym, ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
@@ -73,10 +73,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
+        let mut unique_bounds = FxIndexSet::default();
+        let mut seen_repeat = false;
+        for unbound in &unbounds {
+            if let Res::Def(DefKind::Trait, unbound_def_id) = unbound.trait_ref.path.res {
+                seen_repeat |= !unique_bounds.insert(unbound_def_id);
+            }
+        }
         if unbounds.len() > 1 {
-            self.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
+            let err = errors::MultipleRelaxedDefaultBounds {
                 spans: unbounds.iter().map(|ptr| ptr.span).collect(),
-            });
+            };
+            if seen_repeat {
+                self.dcx().emit_err(err);
+            } else if !tcx.features().more_maybe_bounds {
+                self.tcx().sess.create_feature_err(err, sym::more_maybe_bounds).emit();
+            };
         }
 
         let mut seen_sized_unbound = false;
