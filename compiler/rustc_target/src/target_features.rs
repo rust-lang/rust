@@ -339,8 +339,6 @@ const WASM_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-end
 ];
 
-const WASM_IMPLICIT_FEATURES: &[(&str, &str)] = &[("relaxed-simd", "simd128")];
-
 const BPF_ALLOWED_FEATURES: &[(&str, Stability)] = &[("alu32", Unstable(sym::bpf_target_feature))];
 
 const CSKY_ALLOWED_FEATURES: &[(&str, Stability)] = &[
@@ -411,6 +409,54 @@ const IBMZ_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-end
 ];
 
+const X86_IMPLIED_FEATURES: &[(&str, &[&str])] = &[
+    // tidy-alphabetical-start
+    ("aes", &["sse2"]),
+    ("avx", &["sse4.2"]),
+    ("avx2", &["avx"]),
+    ("f16c", &["avx"]),
+    ("fma", &["avx"]),
+    ("pclmulqdq", &["sse2"]),
+    ("sha", &["sse2"]),
+    ("sse2", &["sse"]),
+    ("sse3", &["sse2"]),
+    ("sse4.1", &["ssse3"]),
+    ("sse4.2", &["sse4.1"]),
+    ("ssse3", &["sse3"]),
+    // tidy-alphabetical-end
+];
+
+const AARCH64_IMPLIED_FEATURES: &[(&str, &[&str])] = &[
+    // tidy-alphabetical-start
+    ("aes", &["neon"]),
+    ("f32mm", &["sve"]),
+    ("f64mm", &["sve"]),
+    ("fcma", &["neon"]),
+    ("fhm", &["fp16"]),
+    ("fp16", &["neon"]),
+    ("jsconv", &["neon"]),
+    ("rcpc2", &["rcpc"]),
+    ("sha2", &["neon"]),
+    ("sha3", &["sha2"]),
+    ("sm4", &["neon"]),
+    ("sve", &["fp16"]),
+    ("sve2", &["sve"]),
+    ("sve2-aes", &["sve2", "aes"]),
+    ("sve2-bitperm", &["sve2"]),
+    ("sve2-sha3", &["sve2", "sha3"]),
+    ("sve2-sm4", &["sve2", "sm4"]),
+    // tidy-alphabetical-end
+];
+
+const RISCV_IMPLIED_FEATURES: &[(&str, &[&str])] = &[
+    // tidy-alphabetical-start
+    ("zb", &["zba", "zbc", "zbs"]),
+    ("zk", &["zkn", "zkr", "zks", "zkt", "zbkb", "zbkc", "zkbx"]),
+    ("zkn", &["zknd", "zkne", "zknh", "zbkb", "zbkc", "zkbx"]),
+    ("zks", &["zksed", "zksh", "zbkb", "zbkc", "zkbx"]),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -458,11 +504,11 @@ impl super::spec::Target {
         }
     }
 
-    /// Returns a list of target features. Each items first target feature
-    /// implicitly enables the second one.
-    pub fn implicit_target_features(&self) -> &'static [(&'static str, &'static str)] {
+    pub fn implied_target_features(&self) -> &'static [(&'static str, &'static [&'static str])] {
         match &*self.arch {
-            "wasm32" | "wasm64" => WASM_IMPLICIT_FEATURES,
+            "aarch4" => AARCH64_IMPLIED_FEATURES,
+            "riscv32" | "riscv64" => RISCV_IMPLIED_FEATURES,
+            "x86" | "x86_64" => X86_IMPLIED_FEATURES,
             _ => &[],
         }
     }
