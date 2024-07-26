@@ -75,16 +75,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        if unbounds.len() > 1 && !tcx.features().more_maybe_bounds {
-            self.tcx()
-                .sess
-                .create_feature_err(
-                    errors::MultipleRelaxedDefaultBounds {
-                        spans: unbounds.iter().map(|ptr| ptr.span).collect(),
-                    },
-                    sym::more_maybe_bounds,
-                )
-                .emit();
+        let mut unique_bounds = FxIndexSet::default();
+        let mut seen_repeat = false;
+        for unbound in &unbounds {
+            if let Res::Def(DefKind::Trait, unbound_def_id) = unbound.trait_ref.path.res {
+                seen_repeat |= !unique_bounds.insert(unbound_def_id);
+            }
+        }
+        if unbounds.len() > 1 {
+            let err = errors::MultipleRelaxedDefaultBounds {
+                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
+            };
+            if seen_repeat {
+                self.dcx().emit_err(err);
+            } else if !tcx.features().more_maybe_bounds {
+                self.tcx().sess.create_feature_err(err, sym::more_maybe_bounds).emit();
+            };
         }
 
         let mut seen_sized_unbound = false;
