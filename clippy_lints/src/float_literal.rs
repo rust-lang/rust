@@ -1,7 +1,7 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, FloatTy};
@@ -105,32 +105,43 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             if is_whole && !sym_str.contains(['e', 'E']) {
                 // Normalize the literal by stripping the fractional portion
                 if sym_str.split('.').next().unwrap() != float_str {
-                    // If the type suffix is missing the suggestion would be
-                    // incorrectly interpreted as an integer so adding a `.0`
-                    // suffix to prevent that.
-                    if type_suffix.is_none() {
-                        float_str.push_str(".0");
-                    }
-
-                    span_lint_and_sugg(
+                    span_lint_and_then(
                         cx,
                         LOSSY_FLOAT_LITERAL,
                         expr.span,
                         "literal cannot be represented as the underlying type without loss of precision",
-                        "consider changing the type or replacing it with",
-                        numeric_literal::format(&float_str, type_suffix, true),
-                        Applicability::MachineApplicable,
+                        |diag| {
+                            // If the type suffix is missing the suggestion would be
+                            // incorrectly interpreted as an integer so adding a `.0`
+                            // suffix to prevent that.
+                            if type_suffix.is_none() {
+                                float_str.push_str(".0");
+                            }
+                            diag.span_suggestion_with_style(
+                                expr.span,
+                                "consider changing the type or replacing it with",
+                                numeric_literal::format(&float_str, type_suffix, true),
+                                Applicability::MachineApplicable,
+                                SuggestionStyle::ShowAlways,
+                            );
+                        },
                     );
                 }
             } else if digits > max as usize && float_str.len() < sym_str.len() {
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
                     EXCESSIVE_PRECISION,
                     expr.span,
                     "float has excessive precision",
-                    "consider changing the type or truncating it to",
-                    numeric_literal::format(&float_str, type_suffix, true),
-                    Applicability::MachineApplicable,
+                    |diag| {
+                        diag.span_suggestion_with_style(
+                            expr.span,
+                            "consider changing the type or truncating it to",
+                            numeric_literal::format(&float_str, type_suffix, true),
+                            Applicability::MachineApplicable,
+                            SuggestionStyle::ShowAlways,
+                        );
+                    },
                 );
             }
         }

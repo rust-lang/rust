@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_must_use_func_call;
 use clippy_utils::ty::{is_copy, is_must_use_ty, is_type_lang_item};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
@@ -126,14 +126,14 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 },
                 _ => return,
             };
-            span_lint_and_note(
-                cx,
-                lint,
-                expr.span,
-                msg,
-                note_span,
-                format!("argument has type `{arg_ty}`"),
-            );
+            span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+                let note = format!("argument has type `{arg_ty}`");
+                if let Some(span) = note_span {
+                    diag.span_note(span, note);
+                } else {
+                    diag.note(note);
+                }
+            });
         }
     }
 }

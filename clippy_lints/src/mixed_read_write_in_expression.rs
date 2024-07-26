@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
@@ -324,13 +324,17 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
         if path_to_local_id(expr, self.var) {
             // Check that this is a read, not a write.
             if !is_in_assignment_position(self.cx, expr) {
-                span_lint_and_note(
+                span_lint_and_then(
                     self.cx,
                     MIXED_READ_WRITE_IN_EXPRESSION,
                     expr.span,
                     format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
-                    Some(self.write_expr.span),
-                    "whether read occurs before this write depends on evaluation order",
+                    |diag| {
+                        diag.span_note(
+                            self.write_expr.span,
+                            "whether read occurs before this write depends on evaluation order",
+                        );
+                    },
                 );
             }
         }

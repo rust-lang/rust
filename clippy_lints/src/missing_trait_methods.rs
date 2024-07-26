@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::span_is_local;
 use rustc_hir::def_id::DefIdMap;
@@ -83,15 +83,15 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
             cx.tcx.with_stable_hashing_context(|hcx| {
                 for assoc in provided.values_sorted(&hcx, true) {
                     let source_map = cx.tcx.sess.source_map();
-                    let definition_span = source_map.guess_head_span(cx.tcx.def_span(assoc.def_id));
-
-                    span_lint_and_help(
+                    span_lint_and_then(
                         cx,
                         MISSING_TRAIT_METHODS,
                         source_map.guess_head_span(item.span),
                         format!("missing trait method provided by default: `{}`", assoc.name),
-                        Some(definition_span),
-                        "implement the method",
+                        |diag| {
+                            let definition_span = source_map.guess_head_span(cx.tcx.def_span(assoc.def_id));
+                            diag.span_help(definition_span, "implement the method");
+                        },
                     );
                 }
             });
