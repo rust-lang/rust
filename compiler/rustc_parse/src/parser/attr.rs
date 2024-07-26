@@ -457,14 +457,3 @@ impl<'a> Parser<'a> {
         Err(self.dcx().create_err(err))
     }
 }
-
-/// The attributes are complete if all attributes are either a doc comment or a
-/// builtin attribute other than `cfg_attr`.
-pub fn is_complete(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().all(|attr| {
-        attr.is_doc_comment()
-            || attr.ident().is_some_and(|ident| {
-                ident.name != sym::cfg_attr && rustc_feature::is_builtin_attr_name(ident.name)
-            })
-    })
-}
