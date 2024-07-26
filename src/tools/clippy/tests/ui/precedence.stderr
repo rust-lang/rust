@@ -43,35 +43,5 @@ error: operator precedence can trip the unwary
 LL |     3 & 5 - 2;
    |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 & (5 - 2)`
 
-error: unary minus has lower precedence than method call
-  --> tests/ui/precedence.rs:23:5
-   |
-LL |     -1i32.abs();
-   |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1i32.abs())`
-
-error: unary minus has lower precedence than method call
-  --> tests/ui/precedence.rs:24:5
-   |
-LL |     -1f32.abs();
-   |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1f32.abs())`
-
-error: unary minus has lower precedence than method call
-  --> tests/ui/precedence.rs:51:13
-   |
-LL |     let _ = -1.0_f64.cos().cos();
-   |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.cos().cos())`
-
-error: unary minus has lower precedence than method call
-  --> tests/ui/precedence.rs:52:13
-   |
-LL |     let _ = -1.0_f64.cos().sin();
-   |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.cos().sin())`
-
-error: unary minus has lower precedence than method call
-  --> tests/ui/precedence.rs:53:13
-   |
-LL |     let _ = -1.0_f64.sin().cos();
-   |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.sin().cos())`
-
-error: aborting due to 12 previous errors
+error: aborting due to 7 previous errors
 

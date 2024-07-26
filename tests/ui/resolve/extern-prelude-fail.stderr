@@ -2,15 +2,15 @@ error[E0432]: unresolved import `extern_prelude`
   --> $DIR/extern-prelude-fail.rs:7:9
    |
 LL |     use extern_prelude::S;
-   |         ^^^^^^^^^^^^^^ maybe a missing crate `extern_prelude`?
+   |         ^^^^^^^^^^^^^^ you might be missing crate `extern_prelude`
    |
    = help: consider adding `extern crate extern_prelude` to use the `extern_prelude` crate
 
-error[E0433]: failed to resolve: maybe a missing crate `extern_prelude`?
+error[E0433]: failed to resolve: you might be missing crate `extern_prelude`
   --> $DIR/extern-prelude-fail.rs:8:15
    |
 LL |     let s = ::extern_prelude::S;
-   |               ^^^^^^^^^^^^^^ maybe a missing crate `extern_prelude`?
+   |               ^^^^^^^^^^^^^^ you might be missing crate `extern_prelude`
    |
    = help: consider adding `extern crate extern_prelude` to use the `extern_prelude` crate
 

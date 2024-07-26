@@ -416,8 +416,8 @@ impl File {
                     dwHighDateTime: (info.LastWriteTime >> 32) as u32,
                 },
                 change_time: Some(c::FILETIME {
-                    dhLowDateTime: info.ChangeTime as c::DWORD,
-                    dhHighDateTime: (info.ChangeTime >> 32) as c::DWORD,
+                    dwLowDateTime: info.ChangeTime as u32,
+                    dwHighDateTime: (info.ChangeTime >> 32) as u32,
                 }),
                 file_size: 0,
                 reparse_tag: 0,

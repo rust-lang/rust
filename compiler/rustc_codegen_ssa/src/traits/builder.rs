@@ -165,7 +165,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         size: Size,
     ) -> Self::Value;
     fn load_from_place(&mut self, ty: Self::Type, place: PlaceValue<Self::Value>) -> Self::Value {
-        debug_assert_eq!(place.llextra, None);
+        assert_eq!(place.llextra, None);
         self.load(ty, place.llval, place.align)
     }
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
@@ -184,7 +184,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
     fn store_to_place(&mut self, val: Self::Value, place: PlaceValue<Self::Value>) -> Self::Value {
-        debug_assert_eq!(place.llextra, None);
+        assert_eq!(place.llextra, None);
         self.store(val, place.llval, place.align)
     }
     fn store_with_flags(
@@ -200,7 +200,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         place: PlaceValue<Self::Value>,
         flags: MemFlags,
     ) -> Self::Value {
-        debug_assert_eq!(place.llextra, None);
+        assert_eq!(place.llextra, None);
         self.store_with_flags(val, place.llval, place.align, flags)
     }
     fn atomic_store(
@@ -320,9 +320,9 @@ pub trait BuilderMethods<'a, 'tcx>:
         layout: TyAndLayout<'tcx>,
         flags: MemFlags,
     ) {
-        debug_assert!(layout.is_sized(), "cannot typed-copy an unsigned type");
-        debug_assert!(src.llextra.is_none(), "cannot directly copy from unsized values");
-        debug_assert!(dst.llextra.is_none(), "cannot directly copy into unsized values");
+        assert!(layout.is_sized(), "cannot typed-copy an unsigned type");
+        assert!(src.llextra.is_none(), "cannot directly copy from unsized values");
+        assert!(dst.llextra.is_none(), "cannot directly copy into unsized values");
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
             let ty = self.backend_type(layout);

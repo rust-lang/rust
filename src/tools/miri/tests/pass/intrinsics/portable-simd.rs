@@ -1,9 +1,22 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(portable_simd, adt_const_params, core_intrinsics, repr_simd)]
+#![feature(
+    portable_simd,
+    unsized_const_params,
+    adt_const_params,
+    rustc_attrs,
+    intrinsics,
+    core_intrinsics,
+    repr_simd
+)]
 #![allow(incomplete_features, internal_features)]
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
 use std::simd::{prelude::*, StdFloat};
+
+extern "rust-intrinsic" {
+    #[rustc_nounwind]
+    pub fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
+}
 
 fn simd_ops_f32() {
     let a = f32x4::splat(10.0);

@@ -73,6 +73,7 @@ mod noop_method_call;
 mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
+mod precedence;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
@@ -111,6 +112,7 @@ use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
+use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
@@ -120,6 +122,7 @@ use types::*;
 use unit_bindings::*;
 use unused::*;
 
+#[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
@@ -174,6 +177,7 @@ early_lint_methods!(
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             Expr2024: Expr2024,
+            Precedence: Precedence,
         ]
     ]
 );

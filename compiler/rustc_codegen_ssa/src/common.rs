@@ -91,7 +91,6 @@ pub enum TypeKind {
     Pointer,
     Vector,
     Metadata,
-    X86_MMX,
     Token,
     ScalableVector,
     BFloat,

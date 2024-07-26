@@ -1,26 +1,34 @@
-error: `~const` and `?` are mutually exclusive
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:3:31
+error: `~const` trait not allowed with `?` trait polarity modifier
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:3:38
    |
 LL | const fn maybe_const_maybe<T: ~const ?Sized>() {}
-   |                               ^^^^^^^^^^^^^
+   |                               ------ ^
+   |                               |
+   |                               there is not a well-defined meaning for a `~const ?` trait
 
-error: `const` and `?` are mutually exclusive
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:6:19
+error: `const` trait not allowed with `?` trait polarity modifier
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:6:25
    |
 LL | fn const_maybe<T: const ?Sized>() {}
-   |                   ^^^^^^^^^^^^
+   |                   ----- ^
+   |                   |
+   |                   there is not a well-defined meaning for a `const ?` trait
 
-error: `~const` and `!` are mutually exclusive
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:9:34
+error: `~const` trait not allowed with `!` trait polarity modifier
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:9:41
    |
 LL | const fn maybe_const_negative<T: ~const !Trait>() {}
-   |                                  ^^^^^^^^^^^^^
+   |                                  ------ ^
+   |                                  |
+   |                                  there is not a well-defined meaning for a `~const !` trait
 
-error: `const` and `!` are mutually exclusive
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:13:22
+error: `const` trait not allowed with `!` trait polarity modifier
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:13:28
    |
 LL | fn const_negative<T: const !Trait>() {}
-   |                      ^^^^^^^^^^^^
+   |                      ----- ^
+   |                      |
+   |                      there is not a well-defined meaning for a `const !` trait
 
 error: negative bounds are not supported
   --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:9:41

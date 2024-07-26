@@ -1,6 +1,4 @@
 run-make/branch-protection-check-IBT/Makefile
-run-make/c-dynamic-dylib/Makefile
-run-make/c-dynamic-rlib/Makefile
 run-make/c-unwind-abi-catch-lib-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
@@ -15,11 +13,8 @@ run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/emit-to-stdout/Makefile
 run-make/export-executable-symbols/Makefile
-run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
 run-make/extern-fn-reachable/Makefile
-run-make/extern-multiple-copies/Makefile
-run-make/extern-multiple-copies2/Makefile
 run-make/fmt-write-bloat/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
@@ -51,7 +46,6 @@ run-make/panic-abort-eh_frame/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
-run-make/pointer-auth-link-with-c/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
 run-make/raw-dylib-alt-calling-convention/Makefile

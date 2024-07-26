@@ -4304,17 +4304,35 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 // search for relevant arguments.
                 let mut arguments = Vec::new();
                 for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
-                    if let ty::Ref(argument_region, _, _) = argument.kind() {
-                        if argument_region == return_region {
-                            // Need to use the `rustc_middle::ty` types to compare against the
-                            // `return_region`. Then use the `rustc_hir` type to get only
-                            // the lifetime span.
-                            if let hir::TyKind::Ref(lifetime, _) = &fn_decl.inputs[index].kind {
+                    if let ty::Ref(argument_region, _, _) = argument.kind()
+                        && argument_region == return_region
+                    {
+                        // Need to use the `rustc_middle::ty` types to compare against the
+                        // `return_region`. Then use the `rustc_hir` type to get only
+                        // the lifetime span.
+                        match &fn_decl.inputs[index].kind {
+                            hir::TyKind::Ref(lifetime, _) => {
                                 // With access to the lifetime, we can get
                                 // the span of it.
                                 arguments.push((*argument, lifetime.ident.span));
-                            } else {
-                                bug!("ty type is a ref but hir type is not");
+                            }
+                            // Resolve `self` whose self type is `&T`.
+                            hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
+                                if let Res::SelfTyAlias { alias_to, .. } = path.res
+                                    && let Some(alias_to) = alias_to.as_local()
+                                    && let hir::Impl { self_ty, .. } = self
+                                        .infcx
+                                        .tcx
+                                        .hir_node_by_def_id(alias_to)
+                                        .expect_item()
+                                        .expect_impl()
+                                    && let hir::TyKind::Ref(lifetime, _) = self_ty.kind
+                                {
+                                    arguments.push((*argument, lifetime.ident.span));
+                                }
+                            }
+                            _ => {
+                                // Don't ICE though. It might be a type alias.
                             }
                         }
                     }

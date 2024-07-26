@@ -56,7 +56,7 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = E0123)]
 #[diag = "E0123"]
-//~^ ERROR failed to resolve: maybe a missing crate `core`
+//~^ ERROR failed to resolve: you might be missing crate `core`
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
@@ -801,7 +801,7 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
-    //~| ERROR failed to resolve: maybe a missing crate `core`
+    //~| ERROR failed to resolve: you might be missing crate `core`
     sub: Span,
 }
 
@@ -809,7 +809,7 @@ struct SuggestionsInvalidItem {
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
-    //~^ ERROR failed to resolve: maybe a missing crate `core`
+    //~^ ERROR failed to resolve: you might be missing crate `core`
     sub: Span,
 }
 

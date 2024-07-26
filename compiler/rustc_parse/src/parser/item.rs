@@ -2773,7 +2773,14 @@ impl<'a> Parser<'a> {
             let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(req_name, first_param).or_else(|e| {
                 let guar = e.emit();
-                let lo = p.prev_token.span;
+                // When parsing a param failed, we should check to make the span of the param
+                // not contain '(' before it.
+                // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
+                let lo = if let TokenKind::OpenDelim(Delimiter::Parenthesis) = p.prev_token.kind {
+                    p.prev_token.span.shrink_to_hi()
+                } else {
+                    p.prev_token.span
+                };
                 p.restore_snapshot(snapshot);
                 // Skip every token until next possible arg or end.
                 p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(Delimiter::Parenthesis)]);

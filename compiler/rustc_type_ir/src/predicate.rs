@@ -1,6 +1,7 @@
 use std::fmt;
 use std::hash::Hash;
 
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
@@ -12,15 +13,12 @@ use crate::visit::TypeVisitableExt as _;
 use crate::{self as ty, Interner};
 
 /// `A: 'region`
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "A: Clone"),
-    Copy(bound = "A: Copy"),
-    Hash(bound = "A: Hash"),
-    PartialEq(bound = "A: PartialEq"),
-    Eq(bound = "A: Eq"),
-    Debug(bound = "A: fmt::Debug")
-)]
+#[derive_where(Clone; I: Interner, A: Clone)]
+#[derive_where(Copy; I: Interner, A: Copy)]
+#[derive_where(Hash; I: Interner, A: Hash)]
+#[derive_where(PartialEq; I: Interner, A: PartialEq)]
+#[derive_where(Eq; I: Interner, A: Eq)]
+#[derive_where(Debug; I: Interner, A: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct OutlivesPredicate<I: Interner, A>(pub A, pub I::Region);
@@ -50,14 +48,7 @@ where
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the generic parameters.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct TraitRef<I: Interner> {
@@ -122,14 +113,7 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct TraitPredicate<I: Interner> {
@@ -243,15 +227,7 @@ impl fmt::Display for PredicatePolarity {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum ExistentialPredicate<I: Interner> {
@@ -296,14 +272,7 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
 /// ```
 /// The generic parameters don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct ExistentialTraitRef<I: Interner> {
@@ -349,14 +318,7 @@ impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
 }
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct ExistentialProjection<I: Interner> {
@@ -452,15 +414,7 @@ impl AliasTermKind {
 /// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
 /// * For an inherent projection, this would be `Ty::N<...>`.
 /// * For an opaque type, there is no explicit syntax.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct AliasTerm<I: Interner> {
@@ -489,7 +443,7 @@ pub struct AliasTerm<I: Interner> {
     pub def_id: I::DefId,
 
     /// This field exists to prevent the creation of `AliasTerm` without using [`AliasTerm::new_from_args`].
-    #[derivative(Debug = "ignore")]
+    #[derive_where(skip(Debug))]
     _use_alias_term_new_instead: (),
 }
 
@@ -631,14 +585,7 @@ impl<I: Interner> From<ty::UnevaluatedConst<I>> for AliasTerm<I> {
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct ProjectionPredicate<I: Interner> {
@@ -706,14 +653,7 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
 
 /// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
 /// proven by actually normalizing `alias`.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct NormalizesTo<I: Interner> {
@@ -748,15 +688,7 @@ impl<I: Interner> fmt::Debug for NormalizesTo<I> {
 /// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
 /// whether the `a` type is the type that we should label as "expected" when
 /// presenting user diagnostics.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct SubtypePredicate<I: Interner> {
@@ -766,15 +698,7 @@ pub struct SubtypePredicate<I: Interner> {
 }
 
 /// Encodes that we have to coerce *from* the `a` type to the `b` type.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct CoercePredicate<I: Interner> {

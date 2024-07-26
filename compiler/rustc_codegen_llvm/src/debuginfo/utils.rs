@@ -81,7 +81,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
         ty::Dynamic(..) => Some(FatPtrKind::Dyn),
         ty::Foreign(_) => {
             // Assert that pointers to foreign types really are thin:
-            debug_assert_eq!(
+            assert_eq!(
                 cx.size_of(Ty::new_imm_ptr(cx.tcx, pointee_tail_ty)),
                 cx.size_of(Ty::new_imm_ptr(cx.tcx, cx.tcx.types.u8))
             );

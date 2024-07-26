@@ -1,10 +1,10 @@
+use derive_where::derive_where;
 use rustc_index::IndexVec;
 
 use super::{AvailableDepth, Cx, StackDepth, StackEntry};
 use crate::data_structures::{HashMap, HashSet};
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""), Copy(bound = ""))]
+#[derive_where(Debug, Clone, Copy; X: Cx)]
 struct QueryData<X: Cx> {
     result: X::Result,
     proof_tree: X::ProofTree,
@@ -20,8 +20,7 @@ struct Success<X: Cx> {
 /// This contains results whose computation never hit the
 /// recursion limit in `success`, and all results which hit
 /// the recursion limit in `with_overflow`.
-#[derive(derivative::Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive_where(Default; X: Cx)]
 struct CacheEntry<X: Cx> {
     success: Option<Success<X>>,
     /// We have to be careful when caching roots of cycles.
@@ -32,8 +31,7 @@ struct CacheEntry<X: Cx> {
     with_overflow: HashMap<usize, X::Tracked<QueryData<X>>>,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derive_where(Debug; X: Cx)]
 pub(super) struct CacheData<'a, X: Cx> {
     pub(super) result: X::Result,
     pub(super) proof_tree: X::ProofTree,
@@ -41,11 +39,10 @@ pub(super) struct CacheData<'a, X: Cx> {
     pub(super) encountered_overflow: bool,
     // FIXME: This is currently unused, but impacts the design
     // by requiring a closure for `Cx::with_global_cache`.
+    #[allow(dead_code)]
     pub(super) nested_goals: &'a HashSet<X::Input>,
 }
-
-#[derive(derivative::Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive_where(Default; X: Cx)]
 pub struct GlobalCache<X: Cx> {
     map: HashMap<X::Input, CacheEntry<X>>,
 }

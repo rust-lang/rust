@@ -2,6 +2,7 @@
 //! refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 //! RFC for reference.
 
+use derive_where::derive_where;
 use smallvec::{smallvec, SmallVec};
 
 use crate::data_structures::SsoHashSet;
@@ -9,8 +10,7 @@ use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
 use crate::{self as ty, Interner};
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
     Region(I::Region),
     Param(I::ParamTy),

@@ -986,14 +986,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.2.0"
+name = "derive-where"
+version = "1.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+checksum = "62d671cc41a825ebabc75757b62d3d168c577f9149b2d49ece1dad1f72119d25"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.67",
 ]
 
 [[package]]
@@ -3882,7 +3882,6 @@ dependencies = [
  "termcolor",
  "termize",
  "tracing",
- "unicode-width",
  "windows",
 ]
 
@@ -4249,7 +4248,7 @@ name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "derivative",
+ "derive-where",
  "either",
  "field-offset",
  "gsgdt",
@@ -4379,7 +4378,7 @@ name = "rustc_next_trait_solver"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "derivative",
+ "derive-where",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",
@@ -4629,7 +4628,7 @@ dependencies = [
 name = "rustc_span"
 version = "0.0.0"
 dependencies = [
- "derivative",
+ "derive-where",
  "indexmap",
  "itoa",
  "md-5",
@@ -4769,7 +4768,7 @@ name = "rustc_type_ir"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "derivative",
+ "derive-where",
  "indexmap",
  "rustc_ast_ir",
  "rustc_data_structures",
@@ -5206,6 +5205,7 @@ name = "stable_mir"
 version = "0.1.0-preview"
 dependencies = [
  "scoped-tls",
+ "serde",
 ]
 
 [[package]]

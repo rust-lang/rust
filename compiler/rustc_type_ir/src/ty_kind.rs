@@ -1,3 +1,7 @@
+#![allow(clippy::derived_hash_with_manual_eq)]
+
+use derive_where::derive_where;
+
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -64,8 +68,7 @@ impl AliasTyKind {
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
+#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -292,6 +295,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
     }
 }
 
+// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
 // This is manually implemented because a derive would require `I: PartialEq`
 impl<I: Interner> PartialEq for TyKind<I> {
     #[inline]
@@ -414,15 +418,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 /// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
 /// * For an inherent projection, this would be `Ty::N<...>`.
 /// * For an opaque type, there is no explicit syntax.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct AliasTy<I: Interner> {
@@ -451,7 +447,7 @@ pub struct AliasTy<I: Interner> {
     pub def_id: I::DefId,
 
     /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new_from_args`].
-    #[derivative(Debug = "ignore")]
+    #[derive_where(skip(Debug))]
     pub(crate) _use_alias_ty_new_instead: (),
 }
 
@@ -942,15 +938,7 @@ impl fmt::Debug for InferTy {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Hash(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
@@ -958,14 +946,7 @@ pub struct TypeAndMut<I: Interner> {
     pub mutbl: Mutability,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Hash(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSig<I: Interner> {

@@ -3212,3 +3212,33 @@ pub struct UnsafeAttrOutsideUnsafeSuggestion {
     #[suggestion_part(code = ")")]
     pub right: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_binder_before_modifiers)]
+pub struct BinderBeforeModifiers {
+    #[primary_span]
+    pub binder_span: Span,
+    #[label]
+    pub modifiers_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_binder_and_polarity)]
+pub struct BinderAndPolarity {
+    #[primary_span]
+    pub polarity_span: Span,
+    #[label]
+    pub binder_span: Span,
+    pub polarity: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_modifiers_and_polarity)]
+pub struct PolarityAndModifiers {
+    #[primary_span]
+    pub polarity_span: Span,
+    #[label]
+    pub modifiers_span: Span,
+    pub polarity: &'static str,
+    pub modifiers_concatenated: String,
+}

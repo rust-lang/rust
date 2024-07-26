@@ -330,7 +330,6 @@ impl SourceMap {
         cnum: CrateNum,
         file_local_lines: FreezeLock<SourceFileLines>,
         multibyte_chars: Vec<MultiByteChar>,
-        non_narrow_chars: Vec<NonNarrowChar>,
         normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
     ) -> Lrc<SourceFile> {
@@ -348,7 +347,6 @@ impl SourceMap {
             source_len,
             lines: file_local_lines,
             multibyte_chars,
-            non_narrow_chars,
             normalized_pos,
             stable_id,
             cnum,

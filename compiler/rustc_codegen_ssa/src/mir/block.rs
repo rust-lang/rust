@@ -84,7 +84,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
         if is_cleanupret {
             // Cross-funclet jump - need a trampoline
-            debug_assert!(base::wants_new_eh_instructions(fx.cx.tcx().sess));
+            assert!(base::wants_new_eh_instructions(fx.cx.tcx().sess));
             debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
             let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);

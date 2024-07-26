@@ -935,9 +935,14 @@ impl<'a> Parser<'a> {
     /// If no modifiers are present, this does not consume any tokens.
     ///
     /// ```ebnf
-    /// TRAIT_BOUND_MODIFIERS = [["~"] "const"] ["async"] ["?" | "!"]
+    /// CONSTNESS = [["~"] "const"]
+    /// ASYNCNESS = ["async"]
+    /// POLARITY = ["?" | "!"]
     /// ```
+    ///
+    /// See `parse_generic_ty_bound` for the complete grammar of trait bound modifiers.
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
+        let modifier_lo = self.token.span;
         let constness = if self.eat(&token::Tilde) {
             let tilde = self.prev_token.span;
             self.expect_keyword(kw::Const)?;
@@ -970,6 +975,7 @@ impl<'a> Parser<'a> {
         } else {
             BoundAsyncness::Normal
         };
+        let modifier_hi = self.prev_token.span;
 
         let polarity = if self.eat(&token::Question) {
             BoundPolarity::Maybe(self.prev_token.span)
@@ -980,13 +986,40 @@ impl<'a> Parser<'a> {
             BoundPolarity::Positive
         };
 
+        // Enforce the mutual-exclusivity of `const`/`async` and `?`/`!`.
+        match polarity {
+            BoundPolarity::Positive => {
+                // All trait bound modifiers allowed to combine with positive polarity
+            }
+            BoundPolarity::Maybe(polarity_span) | BoundPolarity::Negative(polarity_span) => {
+                match (asyncness, constness) {
+                    (BoundAsyncness::Normal, BoundConstness::Never) => {
+                        // Ok, no modifiers.
+                    }
+                    (_, _) => {
+                        let constness = constness.as_str();
+                        let asyncness = asyncness.as_str();
+                        let glue =
+                            if !constness.is_empty() && !asyncness.is_empty() { " " } else { "" };
+                        let modifiers_concatenated = format!("{constness}{glue}{asyncness}");
+                        self.dcx().emit_err(errors::PolarityAndModifiers {
+                            polarity_span,
+                            polarity: polarity.as_str(),
+                            modifiers_span: modifier_lo.to(modifier_hi),
+                            modifiers_concatenated,
+                        });
+                    }
+                }
+            }
+        }
+
         Ok(TraitBoundModifiers { constness, asyncness, polarity })
     }
 
     /// Parses a type bound according to:
     /// ```ebnf
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    /// TY_BOUND_NOPAREN = [TRAIT_BOUND_MODIFIERS] [for<LT_PARAM_DEFS>] SIMPLE_PATH
+    /// TY_BOUND_NOPAREN = [for<GENERIC_PARAMS> CONSTNESS ASYNCNESS | POLARITY] SIMPLE_PATH
     /// ```
     ///
     /// For example, this grammar accepts `for<'a: 'b> ~const ?m::Trait<'a>`.
@@ -996,14 +1029,35 @@ impl<'a> Parser<'a> {
         has_parens: bool,
         leading_token: &Token,
     ) -> PResult<'a, GenericBound> {
-        let modifiers = self.parse_trait_bound_modifiers()?;
         let (mut lifetime_defs, binder_span) = self.parse_late_bound_lifetime_defs()?;
+
+        let modifiers_lo = self.token.span;
+        let modifiers = self.parse_trait_bound_modifiers()?;
+        let modifiers_span = modifiers_lo.to(self.prev_token.span);
+
+        if let Some(binder_span) = binder_span {
+            match modifiers.polarity {
+                BoundPolarity::Negative(polarity_span) | BoundPolarity::Maybe(polarity_span) => {
+                    self.dcx().emit_err(errors::BinderAndPolarity {
+                        binder_span,
+                        polarity_span,
+                        polarity: modifiers.polarity.as_str(),
+                    });
+                }
+                BoundPolarity::Positive => {}
+            }
+        }
 
         // Recover erroneous lifetime bound with modifiers or binder.
         // e.g. `T: for<'a> 'a` or `T: ~const 'a`.
         if self.token.is_lifetime() {
             let _: ErrorGuaranteed = self.error_lt_bound_with_modifiers(modifiers, binder_span);
             return self.parse_generic_lt_bound(lo, has_parens);
+        }
+
+        if let (more_lifetime_defs, Some(binder_span)) = self.parse_late_bound_lifetime_defs()? {
+            lifetime_defs.extend(more_lifetime_defs);
+            self.dcx().emit_err(errors::BinderBeforeModifiers { binder_span, modifiers_span });
         }
 
         let mut path = if self.token.is_keyword(kw::Fn)

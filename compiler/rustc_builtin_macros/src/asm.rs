@@ -459,7 +459,7 @@ fn expand_preparsed_asm(
 
     for (i, template_expr) in args.templates.into_iter().enumerate() {
         if i != 0 {
-            template.push(ast::InlineAsmTemplatePiece::String("\n".to_string()));
+            template.push(ast::InlineAsmTemplatePiece::String("\n".into()));
         }
 
         let msg = "asm template must be a string literal";
@@ -527,7 +527,7 @@ fn expand_preparsed_asm(
 
         // Don't treat raw asm as a format string.
         if args.options.contains(ast::InlineAsmOptions::RAW) {
-            template.push(ast::InlineAsmTemplatePiece::String(template_str.to_string()));
+            template.push(ast::InlineAsmTemplatePiece::String(template_str.to_string().into()));
             let template_num_lines = 1 + template_str.matches('\n').count();
             line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
             continue;
@@ -577,7 +577,7 @@ fn expand_preparsed_asm(
         for piece in unverified_pieces {
             match piece {
                 parse::Piece::String(s) => {
-                    template.push(ast::InlineAsmTemplatePiece::String(s.to_string()))
+                    template.push(ast::InlineAsmTemplatePiece::String(s.to_string().into()))
                 }
                 parse::Piece::NextArgument(arg) => {
                     let span = arg_spans.next().unwrap_or(template_sp);

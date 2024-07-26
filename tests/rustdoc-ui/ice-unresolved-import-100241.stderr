@@ -2,7 +2,7 @@ error[E0432]: unresolved import `inner`
   --> $DIR/ice-unresolved-import-100241.rs:9:13
    |
 LL |     pub use inner::S;
-   |             ^^^^^ maybe a missing crate `inner`?
+   |             ^^^^^ you might be missing crate `inner`
    |
    = help: consider adding `extern crate inner` to use the `inner` crate
 

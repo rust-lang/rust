@@ -524,23 +524,23 @@ LL |     #[suggestion(no_crate_suggestion, code = "")]
    = help: to show a suggestion consisting of multiple parts, use a `Subdiagnostic` annotated with `#[multipart_suggestion(...)]`
    = help: to show a variable set of suggestions, use a `Vec` of `Subdiagnostic`s annotated with `#[suggestion(...)]`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/diagnostic-derive.rs:58:8
    |
 LL | #[diag = "E0123"]
-   |        ^ maybe a missing crate `core`?
+   |        ^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/diagnostic-derive.rs:802:23
    |
 LL |     #[suggestion(code(foo))]
-   |                       ^^^ maybe a missing crate `core`?
+   |                       ^^^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/diagnostic-derive.rs:811:25
    |
 LL |     #[suggestion(code = 3)]
-   |                         ^ maybe a missing crate `core`?
+   |                         ^ you might be missing crate `core`
 
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:63:3

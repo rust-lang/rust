@@ -330,7 +330,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
-            debug_assert!(
+            assert!(
                 !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
                     && self.tcx.sess.target.is_like_windows
                     && self.tcx.sess.opts.cg.prefer_dynamic)
