@@ -9,16 +9,34 @@ use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for conversions from `NonZero` types to regular integer types,
+    /// and suggests using `NonZero` types for the target as well.
     ///
     /// ### Why is this bad?
+    /// Converting from `NonZero` types to regular integer types and then back to `NonZero`
+    /// types is less efficient and loses the type-safety guarantees provided by `NonZero` types.
+    /// Using `NonZero` types consistently can lead to more optimized code and prevent
+    /// certain classes of errors related to zero values.
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
+    /// use std::num::{NonZeroU32, NonZeroU64};
+    ///
+    /// fn example(x: u64, y: NonZeroU32) {
+    ///     // Bad: Converting NonZeroU32 to u64 unnecessarily
+    ///     let r1 = x / u64::from(y.get());
+    ///     let r2 = x % u64::from(y.get());
+    /// }
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
+    /// use std::num::{NonZeroU32, NonZeroU64};
+    ///
+    /// fn example(x: u64, y: NonZeroU32) {
+    ///     // Good: Preserving the NonZero property
+    ///     let r1 = x / NonZeroU64::from(y);
+    ///     let r2 = x % NonZeroU64::from(y);
+    /// }
     /// ```
     #[clippy::version = "1.81.0"]
     pub NON_ZERO_SUGGESTIONS,

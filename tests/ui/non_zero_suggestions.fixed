@@ -8,32 +8,32 @@ fn main() {
     // U32 -> U64
     let x: u64 = 100;
     let y = NonZeroU32::new(10).unwrap();
-    let r1 = x / u64::from(y.get());
-    let r2 = x % u64::from(y.get());
+    let r1 = x / NonZeroU64::from(y);
+    let r2 = x % NonZeroU64::from(y);
 
     // U16 -> U32
     let a: u32 = 50;
     let b = NonZeroU16::new(5).unwrap();
-    let r3 = a / u32::from(b.get());
+    let r3 = a / NonZeroU32::from(b);
 
     // I8 -> I16
     let c: i16 = 25;
     let d = NonZeroI8::new(3).unwrap();
-    let r4 = i16::from(d.get());
+    let r4 = NonZeroI16::from(d);
 
     // Different operations
     let m: u64 = 400;
     let n = NonZeroU32::new(20).unwrap();
-    let r5 = m / u64::from(n.get());
+    let r5 = m / NonZeroU64::from(n);
 
     // Edge cases
 
     // Using the max value of a type
     let max_u32 = NonZeroU32::new(u32::MAX).unwrap();
-    let r6 = u64::from(max_u32.get());
+    let r6 = NonZeroU64::from(max_u32);
 
     // Chained method calls
-    let _ = u64::from(NonZeroU32::new(10).unwrap().get());
+    let _ = NonZeroU64::from(NonZeroU32::new(10).unwrap());
 
     // Negative test cases (lint should not trigger)
 
@@ -55,7 +55,7 @@ fn main() {
 
 // Additional function to test the lint in a different context
 fn divide_numbers(x: u64, y: NonZeroU32) -> u64 {
-    x / u64::from(y.get())
+    x / NonZeroU64::from(y)
 }
 
 struct Calculator {
@@ -64,6 +64,6 @@ struct Calculator {
 
 impl Calculator {
     fn divide(&self, divisor: NonZeroU32) -> u64 {
-        self.value / u64::from(divisor.get())
+        self.value / NonZeroU64::from(divisor)
     }
 }
