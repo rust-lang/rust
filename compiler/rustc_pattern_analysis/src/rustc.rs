@@ -20,6 +20,9 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
+use crate::lints::lint_nonexhaustive_missing_variants;
+use crate::pat_column::PatternColumn;
+use crate::usefulness::{compute_match_usefulness, PlaceValidity};
 use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
 
 use crate::constructor::Constructor::*;
@@ -29,6 +32,8 @@ pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcPatCtxt<'p
 pub type ConstructorSet<'p, 'tcx> = crate::constructor::ConstructorSet<RustcPatCtxt<'p, 'tcx>>;
 pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<RustcPatCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcPatCtxt<'p, 'tcx>>;
+pub type RedundancyExplanation<'p, 'tcx> =
+    crate::usefulness::RedundancyExplanation<'p, RustcPatCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcPatCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
     crate::usefulness::UsefulnessReport<'p, RustcPatCtxt<'p, 'tcx>>;
@@ -1057,4 +1062,27 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     let mut pats = Vec::new();
     expand(pat, &mut pats);
     pats
+}
+
+/// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
+/// useful, and runs some lints.
+pub fn analyze_match<'p, 'tcx>(
+    tycx: &RustcPatCtxt<'p, 'tcx>,
+    arms: &[MatchArm<'p, 'tcx>],
+    scrut_ty: Ty<'tcx>,
+    pattern_complexity_limit: Option<usize>,
+) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
+    let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
+    let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
+    let report =
+        compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity, pattern_complexity_limit)?;
+
+    // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
+    // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
+    if tycx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
+        let pat_column = PatternColumn::new(arms);
+        lint_nonexhaustive_missing_variants(tycx, arms, &pat_column, scrut_ty)?;
+    }
+
+    Ok(report)
 }

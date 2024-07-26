@@ -23,10 +23,18 @@ LL |         &Var2 => (),
 error: unreachable pattern
   --> $DIR/issue-31221.rs:31:9
    |
-LL |         (c, d) => (),
-   |         ------ matches any value
 LL |         anything => ()
    |         ^^^^^^^^ unreachable pattern
+   |
+note: these patterns collectively make the last one unreachable
+  --> $DIR/issue-31221.rs:31:9
+   |
+LL |         (Var1, b) => (),
+   |         --------- matches some of the same values
+LL |         (c, d) => (),
+   |         ------ matches some of the same values
+LL |         anything => ()
+   |         ^^^^^^^^ collectively making this unreachable
 
 error: aborting due to 3 previous errors
 

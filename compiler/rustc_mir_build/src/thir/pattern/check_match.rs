@@ -1,4 +1,5 @@
 use crate::errors::*;
+use crate::fluent_generated as fluent;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
@@ -16,8 +17,8 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::{
-    Constructor, DeconstructedPat, MatchArm, RevealedTy, RustcPatCtxt as PatCtxt, Usefulness,
-    UsefulnessReport, WitnessPat,
+    Constructor, DeconstructedPat, MatchArm, RedundancyExplanation, RevealedTy,
+    RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport, WitnessPat,
 };
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
@@ -391,12 +392,16 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
         let pattern_complexity_limit =
             get_limit_size(cx.tcx.hir().krate_attrs(), cx.tcx.sess, sym::pattern_complexity);
-        let report =
-            rustc_pattern_analysis::analyze_match(&cx, &arms, scrut_ty, pattern_complexity_limit)
-                .map_err(|err| {
-                self.error = Err(err);
-                err
-            })?;
+        let report = rustc_pattern_analysis::rustc::analyze_match(
+            &cx,
+            &arms,
+            scrut_ty,
+            pattern_complexity_limit,
+        )
+        .map_err(|err| {
+            self.error = Err(err);
+            err
+        })?;
 
         // Warn unreachable subpatterns.
         for (arm, is_useful) in report.arm_usefulness.iter() {
@@ -405,9 +410,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             {
                 let mut redundant_subpats = redundant_subpats.clone();
                 // Emit lints in the order in which they occur in the file.
-                redundant_subpats.sort_unstable_by_key(|pat| pat.data().span);
-                for pat in redundant_subpats {
-                    report_unreachable_pattern(cx, arm.arm_data, pat.data().span, None)
+                redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span);
+                for (pat, explanation) in redundant_subpats {
+                    report_unreachable_pattern(cx, arm.arm_data, pat, &explanation)
                 }
             }
         }
@@ -906,26 +911,60 @@ fn report_irrefutable_let_patterns(
 fn report_unreachable_pattern<'p, 'tcx>(
     cx: &PatCtxt<'p, 'tcx>,
     hir_id: HirId,
-    span: Span,
-    catchall: Option<Span>,
+    pat: &DeconstructedPat<'p, 'tcx>,
+    explanation: &RedundancyExplanation<'p, 'tcx>,
 ) {
-    cx.tcx.emit_node_span_lint(
-        UNREACHABLE_PATTERNS,
-        hir_id,
-        span,
-        UnreachablePattern { span: if catchall.is_some() { Some(span) } else { None }, catchall },
-    );
+    let pat_span = pat.data().span;
+    let mut lint = UnreachablePattern {
+        span: Some(pat_span),
+        matches_no_values: None,
+        covered_by_catchall: None,
+        covered_by_one: None,
+        covered_by_many: None,
+    };
+    match explanation.covered_by.as_slice() {
+        [] => {
+            // Empty pattern; we report the uninhabited type that caused the emptiness.
+            lint.span = None; // Don't label the pattern itself
+            pat.walk(&mut |subpat| {
+                let ty = **subpat.ty();
+                if cx.is_uninhabited(ty) {
+                    lint.matches_no_values = Some(UnreachableMatchesNoValues { ty });
+                    false // No need to dig further.
+                } else if matches!(subpat.ctor(), Constructor::Ref | Constructor::UnionField) {
+                    false // Don't explore further since they are not by-value.
+                } else {
+                    true
+                }
+            });
+        }
+        [covering_pat] if pat_is_catchall(covering_pat) => {
+            lint.covered_by_catchall = Some(covering_pat.data().span);
+        }
+        [covering_pat] => {
+            lint.covered_by_one = Some(covering_pat.data().span);
+        }
+        covering_pats => {
+            let mut multispan = MultiSpan::from_span(pat_span);
+            for p in covering_pats {
+                multispan.push_span_label(
+                    p.data().span,
+                    fluent::mir_build_unreachable_matches_same_values,
+                );
+            }
+            multispan
+                .push_span_label(pat_span, fluent::mir_build_unreachable_making_this_unreachable);
+            lint.covered_by_many = Some(multispan);
+        }
+    }
+    cx.tcx.emit_node_span_lint(UNREACHABLE_PATTERNS, hir_id, pat_span, lint);
 }
 
 /// Report unreachable arms, if any.
 fn report_arm_reachability<'p, 'tcx>(cx: &PatCtxt<'p, 'tcx>, report: &UsefulnessReport<'p, 'tcx>) {
-    let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
-        if matches!(is_useful, Usefulness::Redundant) {
-            report_unreachable_pattern(cx, arm.arm_data, arm.pat.data().span, catchall)
-        }
-        if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
-            catchall = Some(arm.pat.data().span);
+        if let Usefulness::Redundant(explanation) = is_useful {
+            report_unreachable_pattern(cx, arm.arm_data, arm.pat, explanation)
         }
     }
 }

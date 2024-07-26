@@ -11,7 +11,7 @@ use crate::{PatCx, PrivateUninhabitedField};
 use self::Constructor::*;
 
 /// A globally unique id to distinguish patterns.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct PatId(u32);
 impl PatId {
     fn new() -> Self {
@@ -144,6 +144,21 @@ impl<Cx: PatCx> fmt::Debug for DeconstructedPat<Cx> {
             fields[ipat.idx] = PatOrWild::Pat(&ipat.pat);
         }
         self.ctor().fmt_fields(f, self.ty(), fields.into_iter())
+    }
+}
+
+/// Delegate to `uid`.
+impl<Cx: PatCx> PartialEq for DeconstructedPat<Cx> {
+    fn eq(&self, other: &Self) -> bool {
+        self.uid == other.uid
+    }
+}
+/// Delegate to `uid`.
+impl<Cx: PatCx> Eq for DeconstructedPat<Cx> {}
+/// Delegate to `uid`.
+impl<Cx: PatCx> std::hash::Hash for DeconstructedPat<Cx> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.uid.hash(state);
     }
 }
 
