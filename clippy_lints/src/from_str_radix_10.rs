@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
             && matches!(prim_ty, PrimTy::Int(_) | PrimTy::Uint(_))
 
             // do not lint in constant context, because the suggestion won't work.
-            // NB: keep this check until a new `const_trait_impl` is available and stablized.
+            // NB: keep this check until a new `const_trait_impl` is available and stabilized.
             && !in_constant(cx, exp.hir_id)
         {
             let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {

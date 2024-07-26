@@ -395,7 +395,7 @@ fn check_final_expr<'tcx>(
             // Returns may be used to turn an expression into a statement in rustc's AST.
             // This allows the addition of attributes, like `#[allow]` (See: clippy#9361)
             // `#[expect(clippy::needless_return)]` needs to be handled separatly to
-            // actually fullfil the expectation (clippy::#12998)
+            // actually fulfill the expectation (clippy::#12998)
             match cx.tcx.hir().attrs(expr.hir_id) {
                 [] => {},
                 [attr] => {
