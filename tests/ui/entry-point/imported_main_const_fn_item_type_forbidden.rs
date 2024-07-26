@@ -4,6 +4,7 @@ pub mod foo {
     type MainFn = impl Fn();
 
     fn bar() {}
+    #[define_opaques(MainFn)]
     pub const BAR: MainFn = bar;
 }
 

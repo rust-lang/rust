@@ -5,6 +5,7 @@
 
 pub type Foo = impl std::fmt::Debug;
 
+#[define_opaques(Foo)]
 pub fn foo() -> Foo {
     5
 }

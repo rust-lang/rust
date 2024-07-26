@@ -12,6 +12,7 @@ type Foo = impl Sized;
 struct Bar<T>(T);
 
 impl Bar<Foo> {
+    #[define_opaques(Foo)]
     fn bar(self) {
         self.foo()
     }
@@ -21,6 +22,7 @@ impl Bar<u32> {
     fn foo(self) {}
 }
 
+#[define_opaques(Foo)]
 fn foo() -> Foo {
     42_u32
 }

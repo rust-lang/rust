@@ -541,7 +541,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
         ItemKind::Use(ref path, _) => {
             try_visit!(visitor.visit_use(path, item.hir_id()));
         }
-        ItemKind::Static(ref typ, _, body) => {
+        ItemKind::Static(ref typ, _, body, _) => {
             try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));

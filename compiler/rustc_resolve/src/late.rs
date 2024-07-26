@@ -394,32 +394,37 @@ pub(crate) enum AliasPossibility {
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum PathSource<'a> {
-    // Type paths `Path`.
+    /// Type paths `Path`.
     Type,
-    // Trait paths in bounds or impls.
+    /// Trait paths in bounds or impls.
     Trait(AliasPossibility),
-    // Expression paths `path`, with optional parent context.
+    /// Expression paths `path`, with optional parent context.
     Expr(Option<&'a Expr>),
-    // Paths in path patterns `Path`.
+    /// Paths in path patterns `Path`.
     Pat,
-    // Paths in struct expressions and patterns `Path { .. }`.
+    /// Paths in struct expressions and patterns `Path { .. }`.
     Struct,
-    // Paths in tuple struct patterns `Path(..)`.
+    /// Paths in tuple struct patterns `Path(..)`.
     TupleStruct(Span, &'a [Span]),
-    // `m::A::B` in `<T as m::A>::B::C`.
+    /// `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
-    // Paths in delegation item
+    /// Paths in delegation item
     Delegation,
     /// An arg in a `use<'a, N>` precise-capturing bound.
     PreciseCapturingArg(Namespace),
-    // Paths that end with `(..)`, for return type notation.
+    /// Paths that end with `(..)`, for return type notation.
     ReturnTypeNotation,
+    /// Paths from `#[defines]` attributes
+    DefineOpaques,
 }
 
 impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
-            PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
+            PathSource::Type
+            | PathSource::Trait(_)
+            | PathSource::Struct
+            | PathSource::DefineOpaques => TypeNS,
             PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::TupleStruct(..)
@@ -440,6 +445,7 @@ impl<'a> PathSource<'a> {
             | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
             | PathSource::TraitItem(..)
+            | PathSource::DefineOpaques
             | PathSource::Delegation
             | PathSource::PreciseCapturingArg(..) => false,
         }
@@ -447,6 +453,7 @@ impl<'a> PathSource<'a> {
 
     fn descr_expected(self) -> &'static str {
         match &self {
+            PathSource::DefineOpaques => "type alias or associated type with opaqaue types",
             PathSource::Type => "type",
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
@@ -490,6 +497,19 @@ impl<'a> PathSource<'a> {
 
     pub(crate) fn is_expected(self, res: Res) -> bool {
         match self {
+            PathSource::DefineOpaques => {
+                matches!(
+                    res,
+                    Res::Def(
+                        DefKind::Struct
+                            | DefKind::Union
+                            | DefKind::Enum
+                            | DefKind::TyAlias
+                            | DefKind::AssocTy,
+                        _
+                    ) | Res::SelfTyAlias { .. }
+                )
+            }
             PathSource::Type => matches!(
                 res,
                 Res::Def(
@@ -569,16 +589,16 @@ impl<'a> PathSource<'a> {
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
-            (PathSource::Type, true) => E0573,
-            (PathSource::Type, false) => E0412,
+            (PathSource::Type | PathSource::DefineOpaques, true) => E0573,
+            (PathSource::Type | PathSource::DefineOpaques, false) => E0412,
             (PathSource::Struct, true) => E0574,
             (PathSource::Struct, false) => E0422,
             (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
             (PathSource::Expr(..), false) | (PathSource::Delegation, false) => E0425,
             (PathSource::Pat | PathSource::TupleStruct(..), true) => E0532,
             (PathSource::Pat | PathSource::TupleStruct(..), false) => E0531,
-            (PathSource::TraitItem(..), true) | (PathSource::ReturnTypeNotation, true) => E0575,
-            (PathSource::TraitItem(..), false) | (PathSource::ReturnTypeNotation, false) => E0576,
+            (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, true) => E0575,
+            (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, false) => E0576,
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
         }
@@ -1172,6 +1192,10 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         self.visit_generic_params(&generics.params, self.diag_metadata.current_self_item.is_some());
         for p in &generics.where_clause.predicates {
             self.visit_where_predicate(p);
+        }
+
+        for (id, path) in generics.define_opaques.iter().flatten() {
+            self.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
         }
     }
 
@@ -1984,6 +2008,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | PathSource::Pat
                 | PathSource::Struct
                 | PathSource::TupleStruct(..)
+                | PathSource::DefineOpaques
                 | PathSource::Delegation => true,
             };
             if inferred {
@@ -2693,7 +2718,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 });
             }
 
-            ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. }) => {
+            ItemKind::Static(box ast::StaticItem {
+                ref ty, ref expr, ref define_opaques, ..
+            }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(
                         LifetimeRibKind::Elided(LifetimeRes::Static {
@@ -2707,6 +2734,10 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // We already forbid generic params because of the above item rib,
                         // so it doesn't matter whether this is a trivial constant.
                         this.resolve_const_body(expr, Some((item.ident, ConstantItemKind::Static)));
+                    }
+
+                    for (id, path) in define_opaques.iter().flatten() {
+                        this.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
                     }
                 });
             }

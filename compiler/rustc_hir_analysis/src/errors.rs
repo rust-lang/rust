@@ -425,16 +425,6 @@ pub(crate) struct UnconstrainedOpaqueType {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_tait_forward_compat)]
-#[note]
-pub(crate) struct TaitForwardCompat {
-    #[primary_span]
-    pub span: Span,
-    #[note]
-    pub item_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_tait_forward_compat2)]
 #[note]
 pub(crate) struct TaitForwardCompat2 {

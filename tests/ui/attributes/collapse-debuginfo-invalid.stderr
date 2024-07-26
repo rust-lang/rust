@@ -41,9 +41,8 @@ LL |   #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | / fn foo() {
-LL | |     let _ = #[collapse_debuginfo(yes)] || { };
-LL | |
-LL | |     #[collapse_debuginfo(yes)]
+LL | |     let _ = #[collapse_debuginfo(yes)]
+LL | |     || {};
 ...  |
 LL | | }
    | |_- not a macro definition
@@ -51,11 +50,13 @@ LL | | }
 error: `collapse_debuginfo` attribute should be applied to macro definitions
   --> $DIR/collapse-debuginfo-invalid.rs:26:13
    |
-LL |     let _ = #[collapse_debuginfo(yes)] || { };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ ------ not a macro definition
+LL |     let _ = #[collapse_debuginfo(yes)]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     || {};
+   |     ----- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:28:5
+  --> $DIR/collapse-debuginfo-invalid.rs:29:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,13 +65,15 @@ LL |     let _ = 3;
    |     ---------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:31:13
+  --> $DIR/collapse-debuginfo-invalid.rs:32:13
    |
-LL |     let _ = #[collapse_debuginfo(yes)] 3;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ - not a macro definition
+LL |     let _ = #[collapse_debuginfo(yes)]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     3;
+   |     - not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:34:9
+  --> $DIR/collapse-debuginfo-invalid.rs:36:9
    |
 LL |         #[collapse_debuginfo(yes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,17 +82,16 @@ LL |         _ => (),
    |         ------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:40:1
+  --> $DIR/collapse-debuginfo-invalid.rs:42:1
    |
-LL |   #[collapse_debuginfo(yes)]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[collapse_debuginfo(yes)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL | / mod bar {
-LL | | }
-   | |_- not a macro definition
+LL | mod bar {}
+   | ---------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:45:1
+  --> $DIR/collapse-debuginfo-invalid.rs:46:1
    |
 LL | #[collapse_debuginfo(yes)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +100,7 @@ LL | type Map = HashMap<u32, u32>;
    | ----------------------------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:49:1
+  --> $DIR/collapse-debuginfo-invalid.rs:50:1
    |
 LL |   #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,7 +113,7 @@ LL | | }
    | |_- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:52:5
+  --> $DIR/collapse-debuginfo-invalid.rs:53:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +122,7 @@ LL |     Variant,
    |     ------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:57:1
+  --> $DIR/collapse-debuginfo-invalid.rs:58:1
    |
 LL |   #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -133,7 +135,7 @@ LL | | }
    | |_- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:60:5
+  --> $DIR/collapse-debuginfo-invalid.rs:61:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,19 +144,19 @@ LL |     field: u32,
    |     ---------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:65:1
+  --> $DIR/collapse-debuginfo-invalid.rs:66:1
    |
 LL |   #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | / union Qux {
 LL | |     a: u32,
-LL | |     b: u16
+LL | |     b: u16,
 LL | | }
    | |_- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:72:1
+  --> $DIR/collapse-debuginfo-invalid.rs:73:1
    |
 LL |   #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -167,7 +169,7 @@ LL | | }
    | |_- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:80:1
+  --> $DIR/collapse-debuginfo-invalid.rs:81:1
    |
 LL | #[collapse_debuginfo(yes)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -176,7 +178,7 @@ LL | type AFoobar = impl Foobar;
    | --------------------------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:92:1
+  --> $DIR/collapse-debuginfo-invalid.rs:94:1
    |
 LL |   #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -191,7 +193,7 @@ LL | | }
    | |_- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:75:5
+  --> $DIR/collapse-debuginfo-invalid.rs:76:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -200,7 +202,7 @@ LL |     type Bar;
    |     --------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:95:5
+  --> $DIR/collapse-debuginfo-invalid.rs:97:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +211,7 @@ LL |     const FOO: u32 = 3;
    |     ------------------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:99:5
+  --> $DIR/collapse-debuginfo-invalid.rs:101:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

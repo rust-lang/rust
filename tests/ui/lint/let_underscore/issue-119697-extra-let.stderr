@@ -1,5 +1,5 @@
 error: non-binding let on a type that has a destructor
-  --> $DIR/issue-119697-extra-let.rs:15:5
+  --> $DIR/issue-119697-extra-let.rs:16:5
    |
 LL |     _ = field;
    |     ^^^^^^^^^
@@ -21,7 +21,7 @@ LL +     drop(field);
    |
 
 error: non-binding let on a type that has a destructor
-  --> $DIR/issue-119697-extra-let.rs:17:5
+  --> $DIR/issue-119697-extra-let.rs:18:5
    |
 LL |     let _ = field;
    |     ^^^^^^^^^^^^^^

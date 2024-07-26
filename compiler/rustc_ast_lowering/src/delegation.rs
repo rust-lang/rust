@@ -131,6 +131,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             has_where_clause_predicates: false,
             where_clause_span: span,
             span,
+            define_opaques: None,
         })
     }
 

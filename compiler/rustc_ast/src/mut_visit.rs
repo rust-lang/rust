@@ -1091,10 +1091,15 @@ fn walk_lifetime<T: MutVisitor>(vis: &mut T, Lifetime { id, ident }: &mut Lifeti
 }
 
 fn walk_generics<T: MutVisitor>(vis: &mut T, generics: &mut Generics) {
-    let Generics { params, where_clause, span } = generics;
+    let Generics { params, where_clause, span, define_opaques } = generics;
     params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
     vis.visit_where_clause(where_clause);
     vis.visit_span(span);
+
+    for (id, path) in define_opaques.iter_mut().flatten() {
+        vis.visit_id(id);
+        vis.visit_path(path)
+    }
 }
 
 fn walk_ty_alias_where_clauses<T: MutVisitor>(vis: &mut T, tawcs: &mut TyAliasWhereClauses) {
@@ -1239,9 +1244,20 @@ impl WalkItemKind for ItemKind {
         match self {
             ItemKind::ExternCrate(_orig_name) => {}
             ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-            ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
+            ItemKind::Static(box StaticItem {
+                ty,
+                safety: _,
+                mutability: _,
+                expr,
+                define_opaques,
+            }) => {
                 vis.visit_ty(ty);
                 visit_opt(expr, |expr| vis.visit_expr(expr));
+
+                for (id, path) in define_opaques.iter_mut().flatten() {
+                    vis.visit_id(id);
+                    vis.visit_path(path)
+                }
             }
             ItemKind::Const(item) => {
                 visit_const_item(item, vis);
@@ -1507,7 +1523,14 @@ impl WalkItemKind for ForeignItemKind {
         visitor: &mut impl MutVisitor,
     ) {
         match self {
-            ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
+            ForeignItemKind::Static(box StaticItem {
+                ty,
+                mutability: _,
+                expr,
+                safety: _,
+                define_opaques,
+            }) => {
+                assert!(define_opaques.is_none(), "{define_opaques:#?}");
                 visitor.visit_ty(ty);
                 visit_opt(expr, |expr| visitor.visit_expr(expr));
             }
@@ -1728,12 +1751,17 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             body,
             fn_decl_span,
             fn_arg_span,
+            define_opaques,
         }) => {
             visit_constness(vis, constness);
             vis.visit_capture_by(capture_clause);
             vis.visit_fn(FnKind::Closure(binder, coroutine_kind, fn_decl, body), *span, *id);
             vis.visit_span(fn_decl_span);
             vis.visit_span(fn_arg_span);
+            for (id, path) in define_opaques.iter_mut().flatten() {
+                vis.visit_id(id);
+                vis.visit_path(path)
+            }
         }
         ExprKind::Block(blk, label) => {
             visit_opt(label, |label| vis.visit_label(label));

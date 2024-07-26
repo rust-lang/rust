@@ -531,7 +531,9 @@ impl<'a> State<'a> {
                 body,
                 fn_decl_span: _,
                 fn_arg_span: _,
+                define_opaques,
             }) => {
+                if let Some(define_opaques) = define_opaques {}
                 self.print_closure_binder(binder);
                 self.print_constness(*constness);
                 self.print_movability(*movability);

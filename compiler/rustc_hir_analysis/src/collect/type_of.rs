@@ -266,7 +266,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Static(ty, .., body_id) => {
+            ItemKind::Static(ty, .., body_id, _) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),

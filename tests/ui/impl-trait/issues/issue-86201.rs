@@ -4,6 +4,7 @@
 //@ check-pass
 
 type FunType = impl Fn<()>;
+#[define_opaques(FunType)]
 static STATIC_FN: FunType = some_fn;
 
 fn some_fn() {}

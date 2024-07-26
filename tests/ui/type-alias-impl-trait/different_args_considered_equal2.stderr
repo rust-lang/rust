@@ -1,9 +1,9 @@
 error[E0700]: hidden type for `Opaque<'static>` captures lifetime that does not appear in bounds
-  --> $DIR/different_args_considered_equal2.rs:9:9
+  --> $DIR/different_args_considered_equal2.rs:10:9
    |
 LL | pub type Opaque<'a> = impl Sized;
    |                       ---------- opaque type defined here
-LL |
+...
 LL | fn get_one<'a>(a: *mut &'a str) -> impl IntoIterator<Item = Opaque<'a>> {
    |            -- hidden type `*mut &'a str` captures the lifetime `'a` as defined here
 ...

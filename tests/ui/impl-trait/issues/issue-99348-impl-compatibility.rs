@@ -21,6 +21,7 @@ trait Bar {
     type Other;
 }
 
+#[define_opaques(Tait)]
 fn tait() -> Tait {}
 
 fn main() {}

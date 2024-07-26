@@ -294,6 +294,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span.shrink_to_hi(),
             },
             span,
+            define_opaques: None,
         })
     }
 

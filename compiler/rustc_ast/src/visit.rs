@@ -371,9 +371,19 @@ impl WalkItemKind for ItemKind {
         match self {
             ItemKind::ExternCrate(_rename) => {}
             ItemKind::Use(use_tree) => try_visit!(visitor.visit_use_tree(use_tree, id, false)),
-            ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
+            ItemKind::Static(box StaticItem {
+                ty,
+                safety: _,
+                mutability: _,
+                expr,
+                define_opaques,
+            }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
+
+                for (id, path) in define_opaques.iter().flatten() {
+                    try_visit!(visitor.visit_path(path, *id))
+                }
             }
             ItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
                 try_visit!(visitor.visit_generics(generics));
@@ -729,9 +739,18 @@ impl WalkItemKind for ForeignItemKind {
         visitor: &mut V,
     ) -> V::Result {
         match self {
-            ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
+            ForeignItemKind::Static(box StaticItem {
+                ty,
+                mutability: _,
+                expr,
+                safety: _,
+                define_opaques,
+            }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
+                for (id, path) in define_opaques.iter().flatten() {
+                    try_visit!(visitor.visit_path(path, *id))
+                }
             }
             ForeignItemKind::Fn(func) => {
                 let kind = FnKind::Fn(FnCtxt::Foreign, ident, vis, &*func);
@@ -798,10 +817,14 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics) -> V::Result {
-    let Generics { params, where_clause, span: _ } = generics;
+    let Generics { params, where_clause, span: _, define_opaques } = generics;
     let WhereClause { has_where_token: _, predicates, span: _ } = where_clause;
     walk_list!(visitor, visit_generic_param, params);
     walk_list!(visitor, visit_where_predicate, predicates);
+
+    for (id, path) in define_opaques.iter().flatten() {
+        try_visit!(visitor.visit_path(path, *id))
+    }
     V::Result::output()
 }
 
@@ -1196,13 +1219,17 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
             body,
             fn_decl_span: _,
             fn_arg_span: _,
+            define_opaques,
         }) => {
             try_visit!(visitor.visit_capture_by(capture_clause));
             try_visit!(visitor.visit_fn(
                 FnKind::Closure(binder, coroutine_kind, fn_decl, body),
                 *span,
                 *id
-            ))
+            ));
+            for (id, path) in define_opaques.iter().flatten() {
+                try_visit!(visitor.visit_path(path, *id))
+            }
         }
         ExprKind::Block(block, opt_label) => {
             visit_opt!(visitor, visit_label, opt_label);
