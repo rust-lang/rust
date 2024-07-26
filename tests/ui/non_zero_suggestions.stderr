@@ -1,5 +1,5 @@
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:11:18
+  --> tests/ui/non_zero_suggestions.rs:10:18
    |
 LL |     let r1 = x / u64::from(y.get());
    |                  ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`
@@ -8,52 +8,58 @@ LL |     let r1 = x / u64::from(y.get());
    = help: to override `-D warnings` add `#[allow(clippy::non_zero_suggestions)]`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:12:18
+  --> tests/ui/non_zero_suggestions.rs:13:18
    |
 LL |     let r2 = x % u64::from(y.get());
    |                  ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`
 
 error: consider using `NonZeroU32::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:17:18
+  --> tests/ui/non_zero_suggestions.rs:19:18
    |
 LL |     let r3 = a / u32::from(b.get());
    |                  ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU32::from(b)`
 
 error: consider using `NonZeroI16::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:22:14
+  --> tests/ui/non_zero_suggestions.rs:25:14
    |
 LL |     let r4 = i16::from(d.get());
    |              ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroI16::from(d)`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:27:18
+  --> tests/ui/non_zero_suggestions.rs:31:18
    |
 LL |     let r5 = m / u64::from(n.get());
    |                  ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(n)`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:33:14
+  --> tests/ui/non_zero_suggestions.rs:37:14
    |
 LL |     let r6 = u64::from(max_u32.get());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(max_u32)`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:36:13
+  --> tests/ui/non_zero_suggestions.rs:41:13
    |
 LL |     let _ = u64::from(NonZeroU32::new(10).unwrap().get());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(NonZeroU32::new(10).unwrap())`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:58:9
+  --> tests/ui/non_zero_suggestions.rs:63:9
    |
 LL |     x / u64::from(y.get())
    |         ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions.rs:67:22
+  --> tests/ui/non_zero_suggestions.rs:68:5
+   |
+LL |     u64::from(y.get())
+   |     ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`
+
+error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+  --> tests/ui/non_zero_suggestions.rs:80:22
    |
 LL |         self.value / u64::from(divisor.get())
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(divisor)`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
