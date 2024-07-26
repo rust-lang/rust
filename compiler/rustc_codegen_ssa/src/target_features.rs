@@ -1,7 +1,7 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
@@ -30,6 +30,7 @@ pub fn from_target_feature(
             .emit();
     };
     let rust_features = tcx.features();
+    let mut added_target_features = Vec::new();
     for item in list {
         // Only `enable = ...` is accepted in the meta-item list.
         if !item.has_name(sym::enable) {
@@ -44,7 +45,7 @@ pub fn from_target_feature(
         };
 
         // We allow comma separation to enable multiple features.
-        target_features.extend(value.as_str().split(',').filter_map(|feature| {
+        added_target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
                 let mut err = tcx.dcx().struct_span_err(item.span(), msg);
@@ -98,13 +99,12 @@ pub fn from_target_feature(
         }));
     }
 
-    for (feature, requires) in tcx.sess.target.implicit_target_features() {
-        if target_features.iter().any(|f| f.as_str() == *feature)
-            && !target_features.iter().any(|f| f.as_str() == *requires)
-        {
-            target_features.push(Symbol::intern(requires));
-        }
+    // Add implied features
+    for feature in added_target_features.iter() {
+        target_features
+            .extend(tcx.implied_target_features(*feature).clone().into_sorted_stable_ord());
     }
+    target_features.extend(added_target_features)
 }
 
 /// Computes the set of target features used in a function for the purposes of
@@ -161,6 +161,28 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .map(|&(a, b)| (a.to_string(), b.as_feature_name()))
                     .collect()
             }
+        },
+        implied_target_features: |tcx, feature| {
+            let implied_features = tcx
+                .sess
+                .target
+                .implied_target_features()
+                .iter()
+                .map(|(f, i)| (Symbol::intern(f), i))
+                .collect::<FxHashMap<_, _>>();
+
+            // implied target features have their own implied target features, so we traverse the
+            // map until there are no more features to add
+            let mut features = UnordSet::new();
+            let mut new_features = vec![feature];
+            while let Some(new_feature) = new_features.pop() {
+                if features.insert(new_feature) {
+                    if let Some(implied_features) = implied_features.get(&new_feature) {
+                        new_features.extend(implied_features.iter().copied().map(Symbol::intern))
+                    }
+                }
+            }
+            features
         },
         asm_target_features,
         ..*providers
