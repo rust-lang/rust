@@ -171,6 +171,9 @@ rely on CI.
 - [x] clzti2.c
 - [x] comparedf2.c
 - [x] comparesf2.c
+- [x] ctzdi2.c
+- [x] ctzsi2.c
+- [x] ctzti2.c
 - [x] divdf3.c
 - [x] divdi3.c
 - [x] divmoddi4.c
@@ -395,9 +398,6 @@ These builtins are never called by LLVM.
 - ~~arm/switchu8.S~~
 - ~~cmpdi2.c~~
 - ~~cmpti2.c~~
-- ~~ctzdi2.c~~
-- ~~ctzsi2.c~~
-- ~~ctzti2.c~~
 - ~~ffssi2.c~~
 - ~~ffsdi2.c~~ - this is [called by gcc][jemalloc-fail] though!
 - ~~ffsti2.c~~
