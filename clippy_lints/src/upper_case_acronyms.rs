@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use core::mem::replace;
 use rustc_errors::Applicability;
@@ -39,17 +40,16 @@ declare_clippy_lint! {
     "capitalized acronyms are against the naming convention"
 }
 
-#[derive(Default)]
 pub struct UpperCaseAcronyms {
     avoid_breaking_exported_api: bool,
     upper_case_acronyms_aggressive: bool,
 }
 
 impl UpperCaseAcronyms {
-    pub fn new(avoid_breaking_exported_api: bool, aggressive: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
-            upper_case_acronyms_aggressive: aggressive,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            upper_case_acronyms_aggressive: conf.upper_case_acronyms_aggressive,
         }
     }
 }

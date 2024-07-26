@@ -16,6 +16,7 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use rustc_ast::{Attribute, MetaItemKind, NestedMetaItem};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
@@ -499,7 +500,6 @@ declare_clippy_lint! {
     "duplicated attribute"
 }
 
-#[derive(Clone)]
 pub struct Attributes {
     msrv: Msrv,
 }
@@ -517,9 +517,10 @@ impl_lint_pass!(Attributes => [
 ]);
 
 impl Attributes {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -589,7 +590,15 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
 }
 
 pub struct EarlyAttributes {
-    pub msrv: Msrv,
+    msrv: Msrv,
+}
+
+impl EarlyAttributes {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
+    }
 }
 
 impl_lint_pass!(EarlyAttributes => [

@@ -31,7 +31,7 @@ error: use of a disallowed macro `serde::Serialize`
 LL |     #[derive(Serialize)]
    |              ^^^^^^^^^
    |
-   = note: no serializing (from clippy.toml)
+   = note: no serializing
 
 error: use of a disallowed macro `macros::expr`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:21:13

@@ -200,7 +200,7 @@ mod with_ty_alias {
     }
     // NOTE: When checking the type of a function param, make sure it is not an alias with
     // `AliasTyKind::Projection` before calling `TyCtxt::type_of` to find out what the actual type
-    // is. Because the associate ty could have no default, therefore would cause ICE, as demostrated
+    // is. Because the associate ty could have no default, therefore would cause ICE, as demonstrated
     // in this test.
     fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
 }

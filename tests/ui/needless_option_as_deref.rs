@@ -52,3 +52,21 @@ struct S<'a> {
 fn from_field<'a>(s: &'a mut S<'a>) -> Option<&'a mut usize> {
     s.opt.as_deref_mut()
 }
+
+mod issue_non_copy_13077 {
+    pub fn something(mut maybe_side_effect: Option<&mut String>) {
+        for _ in 0..10 {
+            let _ = S {
+                field: other(maybe_side_effect.as_deref_mut()),
+            };
+        }
+    }
+
+    fn other(_maybe_side_effect: Option<&mut String>) {
+        unimplemented!()
+    }
+
+    pub struct S {
+        pub field: (),
+    }
+}

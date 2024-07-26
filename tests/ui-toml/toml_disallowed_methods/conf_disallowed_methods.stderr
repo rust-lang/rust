@@ -13,7 +13,7 @@ error: use of a disallowed method `regex::Regex::is_match`
 LL |     re.is_match("abc");
    |        ^^^^^^^^
    |
-   = note: no matching allowed (from clippy.toml)
+   = note: no matching allowed
 
 error: use of a disallowed method `std::iter::Iterator::sum`
   --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:39:14

@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::source::snippet_with_context;
@@ -51,9 +52,10 @@ pub struct IfThenSomeElseNone {
 }
 
 impl IfThenSomeElseNone {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -61,26 +63,6 @@ impl_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
 
 impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !self.msrv.meets(msrvs::BOOL_THEN) {
-            return;
-        }
-
-        if in_external_macro(cx.sess(), expr.span) {
-            return;
-        }
-
-        // We only care about the top-most `if` in the chain
-        if is_else_clause(cx.tcx, expr) {
-            return;
-        }
-
-        // `bool::then()` and `bool::then_some()` are not const
-        if in_constant(cx, expr.hir_id) {
-            return;
-        }
-
-        let ctxt = expr.span.ctxt();
-
         if let Some(higher::If {
             cond,
             then,
@@ -89,9 +71,14 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && let ExprKind::Block(then_block, _) = then.kind
             && let Some(then_expr) = then_block.expr
             && let ExprKind::Call(then_call, [then_arg]) = then_expr.kind
+            && let ctxt = expr.span.ctxt()
             && then_expr.span.ctxt() == ctxt
             && is_res_lang_ctor(cx, path_res(cx, then_call), OptionSome)
             && is_res_lang_ctor(cx, path_res(cx, peel_blocks(els)), OptionNone)
+            && !is_else_clause(cx.tcx, expr)
+            && !in_constant(cx, expr.hir_id)
+            && !in_external_macro(cx.sess(), expr.span)
+            && self.msrv.meets(msrvs::BOOL_THEN)
             && !contains_return(then_block.stmts)
         {
             let mut app = Applicability::Unspecified;

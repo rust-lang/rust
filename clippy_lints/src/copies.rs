@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, IntoSpan, SpanRangeExt};
 use clippy_utils::ty::{needs_ordered_drop, InteriorMut};
@@ -11,6 +12,7 @@ use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{intravisit, BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
@@ -159,15 +161,13 @@ declare_clippy_lint! {
 }
 
 pub struct CopyAndPaste<'tcx> {
-    ignore_interior_mutability: Vec<String>,
     interior_mut: InteriorMut<'tcx>,
 }
 
-impl CopyAndPaste<'_> {
-    pub fn new(ignore_interior_mutability: Vec<String>) -> Self {
+impl<'tcx> CopyAndPaste<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf) -> Self {
         Self {
-            ignore_interior_mutability,
-            interior_mut: InteriorMut::default(),
+            interior_mut: InteriorMut::new(tcx, &conf.ignore_interior_mutability),
         }
     }
 }
@@ -180,10 +180,6 @@ impl_lint_pass!(CopyAndPaste<'_> => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        self.interior_mut = InteriorMut::new(cx, &self.ignore_interior_mutability);
-    }
-
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() && matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {
             let (conds, blocks) = if_sequence(expr);
