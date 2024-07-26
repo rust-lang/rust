@@ -1,14 +1,13 @@
-use crate::common;
-use crate::traits::{AsmMethods, BuilderMethods, GlobalAsmOperandRef, MiscMethods};
 use rustc_attr::InstructionSetAttr;
-use rustc_middle::bug;
 use rustc_middle::mir::mono::{MonoItem, MonoItemData, Visibility};
-use rustc_middle::mir::Body;
-use rustc_middle::mir::InlineAsmOperand;
-use rustc_middle::ty;
+use rustc_middle::mir::{Body, InlineAsmOperand};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_middle::{bug, ty};
 use rustc_target::asm::InlineAsmArch;
+
+use crate::common;
+use crate::traits::{AsmMethods, BuilderMethods, GlobalAsmOperandRef, MiscMethods};
 
 pub fn codegen_naked_asm<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,

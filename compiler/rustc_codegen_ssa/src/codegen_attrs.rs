@@ -112,14 +112,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::rustc_allocator_zeroed => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
-            sym::naked => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
-
-                // naked functions are generated as an extern function, and a global asm block that
-                // contains the naked function's body. In order to link these together, the linkage
-                // of the extern function must be external.
-                codegen_fn_attrs.linkage = Some(Linkage::External);
-            }
+            sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
             sym::no_mangle => {
                 if tcx.opt_item_name(did.to_def_id()).is_some() {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE
@@ -566,7 +559,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     });
 
-    // naked function MUST NOT be inlined!
+    // naked function MUST NOT be inlined! This attribute is required for the rust compiler itself,
+    // but not for the code generation backend because at that point the naked function will just be
+    // a declaration, with a definition provided in global assembly.
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         codegen_fn_attrs.inline = InlineAttr::Never;
     }
