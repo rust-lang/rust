@@ -808,7 +808,7 @@ enum Value {
 /// Having a ratoml file at the root of a project enables
 /// configuring global level configurations as well.
 #[test]
-#[ignore = "Root ratomls are not being looked for on startup. Fix this."]
+// #[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_in_root_is_global() {
     let server = RatomlTest::new(
         vec![

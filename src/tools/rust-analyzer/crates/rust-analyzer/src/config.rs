@@ -779,11 +779,8 @@ pub struct Config {
     /// Config node whose values apply to **every** Rust project.
     user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
 
-    /// A special file for this session whose path is set to `self.root_path.join("rust-analyzer.toml")`
-    root_ratoml_path: VfsPath,
-
-    /// This file can be used to make global changes while having only a workspace-wide scope.
-    root_ratoml: Option<(GlobalLocalConfigInput, ConfigErrors)>,
+    /// TODO : This file can be used to make global changes while having only a workspace-wide scope.
+    workspace_ratoml_change: FxHashMap<SourceRootId, (GlobalLocalConfigInput, ConfigErrors)>,
 
     /// For every `SourceRoot` there can be at most one RATOML file.
     ratoml_files: FxHashMap<SourceRootId, (LocalConfigInput, ConfigErrors)>,
@@ -917,38 +914,44 @@ impl Config {
             should_update = true;
         }
 
-        if let Some(change) = change.root_ratoml_change {
-            tracing::info!("updating root ra-toml config: {:#}", change);
-            #[allow(clippy::single_match)]
-            match toml::from_str(&change) {
-                Ok(table) => {
+        if let Some(change) = change.workspace_ratoml_change {
+            tracing::info!("updating root ra-toml config");
+            for (source_root_id, (_, text)) in change {
+                if let Some(text) = text {
                     let mut toml_errors = vec![];
-                    validate_toml_table(
-                        GlobalLocalConfigInput::FIELDS,
-                        &table,
-                        &mut String::new(),
-                        &mut toml_errors,
-                    );
-                    config.root_ratoml = Some((
-                        GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
-                        ConfigErrors(
-                            toml_errors
-                                .into_iter()
-                                .map(|(a, b)| ConfigErrorInner::Toml { config_key: a, error: b })
-                                .map(Arc::new)
-                                .collect(),
-                        ),
-                    ));
-                    should_update = true;
-                }
-                Err(e) => {
-                    config.root_ratoml = Some((
-                        GlobalLocalConfigInput::from_toml(toml::map::Map::default(), &mut vec![]),
-                        ConfigErrors(vec![ConfigErrorInner::ParseError {
-                            reason: e.message().to_owned(),
+                    match toml::from_str(&text) {
+                        Ok(table) => {
+                            validate_toml_table(
+                                GlobalLocalConfigInput::FIELDS,
+                                &table,
+                                &mut String::new(),
+                                &mut toml_errors,
+                            );
+                            config.workspace_ratoml_change.insert(
+                                source_root_id,
+                                (
+                                    GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
+                                    ConfigErrors(
+                                        toml_errors
+                                            .into_iter()
+                                            .map(|(a, b)| ConfigErrorInner::Toml {
+                                                config_key: a,
+                                                error: b,
+                                            })
+                                            .map(Arc::new)
+                                            .collect(),
+                                    ),
+                                ),
+                            );
+                            should_update = true;
                         }
-                        .into()]),
-                    ));
+                        Err(e) => {
+                            config.validation_errors.0.push(
+                                ConfigErrorInner::ParseError { reason: e.message().to_owned() }
+                                    .into(),
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -958,7 +961,6 @@ impl Config {
                 if let Some(text) = text {
                     let mut toml_errors = vec![];
                     tracing::info!("updating ra-toml config: {:#}", text);
-                    #[allow(clippy::single_match)]
                     match toml::from_str(&text) {
                         Ok(table) => {
                             validate_toml_table(
@@ -985,16 +987,10 @@ impl Config {
                             );
                         }
                         Err(e) => {
-                            config.root_ratoml = Some((
-                                GlobalLocalConfigInput::from_toml(
-                                    toml::map::Map::default(),
-                                    &mut vec![],
-                                ),
-                                ConfigErrors(vec![ConfigErrorInner::ParseError {
-                                    reason: e.message().to_owned(),
-                                }
-                                .into()]),
-                            ));
+                            config.validation_errors.0.push(
+                                ConfigErrorInner::ParseError { reason: e.message().to_owned() }
+                                    .into(),
+                            );
                         }
                     }
                 }
@@ -1026,7 +1022,13 @@ impl Config {
                 .1
                  .0
                 .iter()
-                .chain(config.root_ratoml.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
+                .chain(
+                    config
+                        .workspace_ratoml_change
+                        .values()
+                        .into_iter()
+                        .flat_map(|it| it.1 .0.iter()),
+                )
                 .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.ratoml_files.values().flat_map(|it| it.1 .0.iter()))
                 .chain(config.validation_errors.0.iter())
@@ -1055,8 +1057,8 @@ impl Config {
 #[derive(Default, Debug)]
 pub struct ConfigChange {
     user_config_change: Option<Arc<str>>,
-    root_ratoml_change: Option<Arc<str>>,
     client_config_change: Option<serde_json::Value>,
+    workspace_ratoml_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<Arc<str>>)>>,
     ratoml_file_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<Arc<str>>)>>,
     source_map_change: Option<Arc<FxHashMap<SourceRootId, SourceRootId>>>,
 }
@@ -1078,9 +1080,15 @@ impl ConfigChange {
         self.user_config_change = content;
     }
 
-    pub fn change_root_ratoml(&mut self, content: Option<Arc<str>>) {
-        assert!(self.root_ratoml_change.is_none()); // Otherwise it is a double write.
-        self.root_ratoml_change = content;
+    pub fn change_workspace_ratoml(
+        &mut self,
+        source_root: SourceRootId,
+        vfs_path: VfsPath,
+        content: Option<Arc<str>>,
+    ) -> Option<(VfsPath, Option<Arc<str>>)> {
+        self.workspace_ratoml_change
+            .get_or_insert_with(Default::default)
+            .insert(source_root, (vfs_path, content))
     }
 
     pub fn change_client_config(&mut self, change: serde_json::Value) {
@@ -1333,11 +1341,6 @@ impl Config {
         // FIXME @alibektas : Temporary solution. I don't think this is right as at some point we may allow users to specify
         // custom USER_CONFIG_PATHs which may also be relative.
         let user_config_path = VfsPath::from(AbsPathBuf::assert(user_config_path));
-        let root_ratoml_path = {
-            let mut p = root_path.clone();
-            p.push("rust-analyzer.toml");
-            VfsPath::new_real_path(p.to_string())
-        };
 
         Config {
             caps: ClientCapabilities::new(caps),
@@ -1352,10 +1355,9 @@ impl Config {
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config: None,
             user_config_path,
-            root_ratoml: None,
-            root_ratoml_path,
             detached_files: Default::default(),
             validation_errors: Default::default(),
+            workspace_ratoml_change: Default::default(),
         }
     }
 
@@ -1396,10 +1398,6 @@ impl Config {
 
     pub fn root_path(&self) -> &AbsPathBuf {
         &self.root_path
-    }
-
-    pub fn root_ratoml_path(&self) -> &VfsPath {
-        &self.root_ratoml_path
     }
 
     pub fn caps(&self) -> &ClientCapabilities {
@@ -3591,7 +3589,7 @@ mod tests {
 
         let mut change = ConfigChange::default();
 
-        change.change_root_ratoml(Some(
+        change.change_user_config(Some(
             toml::toml! {
                 [cargo.cfgs]
                 these = "these"

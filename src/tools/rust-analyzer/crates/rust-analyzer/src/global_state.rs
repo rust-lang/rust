@@ -10,6 +10,7 @@ use flycheck::{project_json, FlycheckHandle};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabaseExt};
+use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
@@ -22,7 +23,7 @@ use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, Worksp
 use rustc_hash::{FxHashMap, FxHashSet};
 use tracing::{span, trace, Level};
 use triomphe::Arc;
-use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs};
+use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 
 use crate::{
     config::{Config, ConfigChange, ConfigErrors},
@@ -382,9 +383,16 @@ impl GlobalState {
         {
             let config_change = {
                 let user_config_path = self.config.user_config_path();
-                let root_ratoml_path = self.config.root_ratoml_path();
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();
+
+                // FIXME @alibektas : This is silly. There is abs no reason to use VfsPaths when there is SourceRoots. But how
+                // do I resolve a "workspace_root" to its corresponding id without having to rely on a cargo.toml's ( or project json etc.) file id?
+                let workspace_roots = self
+                    .workspaces
+                    .iter()
+                    .map(|ws| VfsPath::from(ws.workspace_root().to_owned()))
+                    .collect_vec();
 
                 for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
                     if vfs_path == *user_config_path {
@@ -392,16 +400,20 @@ impl GlobalState {
                         continue;
                     }
 
-                    if vfs_path == *root_ratoml_path {
-                        change.change_root_ratoml(Some(db.file_text(file_id)));
+                    // If change has been made to a ratoml file that
+                    // belongs to a non-local source root, we will ignore it.
+                    let sr_id = db.file_source_root(file_id);
+                    let sr = db.source_root(sr_id);
+
+                    if workspace_roots.contains(&vfs_path) {
+                        change.change_workspace_ratoml(
+                            sr_id,
+                            vfs_path,
+                            Some(db.file_text(file_id)),
+                        );
                         continue;
                     }
 
-                    // If change has been made to a ratoml file that
-                    // belongs to a non-local source root, we will ignore it.
-                    // As it doesn't make sense a users to use external config files.
-                    let sr_id = db.file_source_root(file_id);
-                    let sr = db.source_root(sr_id);
                     if !sr.is_library {
                         if let Some((old_path, old_text)) = change.change_ratoml(
                             sr_id,
@@ -430,7 +442,7 @@ impl GlobalState {
             if should_update {
                 self.update_configuration(config);
             } else {
-                // No global or client level config was changed. So we can just naively replace config.
+                // No global or client level config was changed. So we can naively replace config.
                 self.config = Arc::new(config);
             }
         }
