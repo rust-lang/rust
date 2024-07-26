@@ -59,7 +59,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
 }
 
 /// An unevaluated (potentially generic) constant used in the type-system.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Debug, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct UnevaluatedConst<I: Interner> {
@@ -71,15 +71,6 @@ impl<I: Interner> UnevaluatedConst<I> {
     #[inline]
     pub fn new(def: I::DefId, args: I::GenericArgs) -> UnevaluatedConst<I> {
         UnevaluatedConst { def, args }
-    }
-}
-
-impl<I: Interner> fmt::Debug for UnevaluatedConst<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UnevaluatedConst")
-            .field("def", &self.def)
-            .field("args", &self.args)
-            .finish()
     }
 }
 
