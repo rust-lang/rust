@@ -15,10 +15,12 @@ pub unsafe extern "C" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, size: usi
 
 // CHECK: declare
 // CHECK-SAME: @memcpy
-// CHECK-SAME: #0
+// CHECK-SAME: #1
 extern "C" {
     pub fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
 }
 
 // CHECK: attributes #0
+// CHECK-SAME: "no-builtins"
+// CHECK: attributes #1
 // CHECK-SAME: "no-builtins"

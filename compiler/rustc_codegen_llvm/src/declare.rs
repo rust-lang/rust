@@ -137,7 +137,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );
-        fn_abi.apply_attrs_llfn(self, llfn);
+        // If this is for a foreign instance, do *not* add the attributes.
+        // There will be no body attached to this, and having attributes attached to a declaration
+        // means that if there are multiple declarations in different modules, one of them will win
+        // and be used for *all* modules, even though it may never be called!
+        let is_foreign_fn = instance.is_some_and(|i| self.tcx.is_foreign_item(i.def_id()));
+        fn_abi.apply_attrs_llfn(self, llfn, is_foreign_fn);
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
