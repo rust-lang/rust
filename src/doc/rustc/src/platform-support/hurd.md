@@ -1,4 +1,4 @@
-# `i686-unknown-hurd-gnu`
+# `i686-unknown-hurd-gnu` and `x86_64-unknown-hurd-gnu`
 
 **Tier: 3**
 
@@ -16,7 +16,8 @@ The GNU/Hurd target supports `std` and uses the standard ELF file format.
 
 ## Building the target
 
-This target can be built by adding `i686-unknown-hurd-gnu` as target in the rustc list.
+This target can be built by adding `i686-unknown-hurd-gnu` and
+`x86_64-unknown-hurd-gnu` as targets in the rustc list.
 
 ## Building Rust programs
 
@@ -32,4 +33,4 @@ Tests can be run in the same way as a regular binary.
 ## Cross-compilation toolchains and C code
 
 The target supports C code, the GNU toolchain calls the target
-`i686-unknown-gnu`.
+`i686-unknown-gnu` and `x86_64-unknown-gnu`.
