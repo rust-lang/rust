@@ -7,6 +7,10 @@
 // Visibilities are tested elsewhere.
 
 extern "C" unsafe fn test() {}
-//~^ ERROR
+//~^ ERROR expected `fn`, found keyword `unsafe`
+//~| NOTE expected `fn`
+//~| HELP `unsafe` must come before `extern "C"`
+//~| SUGGESTION unsafe extern "C"
+//~| NOTE keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
 fn main() {}
