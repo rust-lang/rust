@@ -382,29 +382,25 @@ fn format_rusage_data(child: Child) -> Option<String> {
 /// supplied on Linux (the `rusage` struct has other fields in it but they are
 /// currently unsupported by Linux).
 fn format_rusage_data(_child: Child) -> Option<String> {
-    let rusage: libc::rusage = unsafe {
-        let mut recv = std::mem::zeroed();
-        // -1 is RUSAGE_CHILDREN, which means to get the rusage for all children
-        // (and grandchildren, etc) processes that have respectively terminated
-        // and been waited for.
-        let retval = libc::getrusage(-1, &mut recv);
-        if retval != 0 {
-            return None;
-        }
-        recv
-    };
+    use nix::sys::resource::{getrusage, UsageWho};
+
+    // RUSAGE_CHILDREN (= -1)  means to get the rusage for all children
+    // (and grandchildren, etc) processes that have respectively terminated
+    // and been waited for.
+    let rusage = getrusage(UsageWho::RUSAGE_CHILDREN).ok()?;
+
     // Mac OS X reports the maxrss in bytes, not kb.
     let divisor = if env::consts::OS == "macos" { 1024 } else { 1 };
-    let maxrss = (rusage.ru_maxrss + (divisor - 1)) / divisor;
+    let maxrss = (rusage.max_rss() + (divisor - 1)) / divisor;
 
     let mut init_str = format!(
         "user: {USER_SEC}.{USER_USEC:03} \
          sys: {SYS_SEC}.{SYS_USEC:03} \
          max rss (kb): {MAXRSS}",
-        USER_SEC = rusage.ru_utime.tv_sec,
-        USER_USEC = rusage.ru_utime.tv_usec,
-        SYS_SEC = rusage.ru_stime.tv_sec,
-        SYS_USEC = rusage.ru_stime.tv_usec,
+        USER_SEC = rusage.user_time().tv_sec(),
+        USER_USEC = rusage.user_time().tv_usec(),
+        SYS_SEC = rusage.system_time().tv_sec(),
+        SYS_USEC = rusage.system_time().tv_usec(),
         MAXRSS = maxrss
     );
 
@@ -413,20 +409,20 @@ fn format_rusage_data(_child: Child) -> Option<String> {
     // either means no events of that type occurred, or that the platform
     // does not support it.
 
-    let minflt = rusage.ru_minflt;
-    let majflt = rusage.ru_majflt;
+    let minflt = rusage.minor_page_faults();
+    let majflt = rusage.major_page_faults();
     if minflt != 0 || majflt != 0 {
         init_str.push_str(&format!(" page reclaims: {minflt} page faults: {majflt}"));
     }
 
-    let inblock = rusage.ru_inblock;
-    let oublock = rusage.ru_oublock;
+    let inblock = rusage.block_reads();
+    let oublock = rusage.block_writes();
     if inblock != 0 || oublock != 0 {
         init_str.push_str(&format!(" fs block inputs: {inblock} fs block outputs: {oublock}"));
     }
 
-    let nvcsw = rusage.ru_nvcsw;
-    let nivcsw = rusage.ru_nivcsw;
+    let nvcsw = rusage.voluntary_context_switches();
+    let nivcsw = rusage.involuntary_context_switches();
     if nvcsw != 0 || nivcsw != 0 {
         init_str.push_str(&format!(
             " voluntary ctxt switches: {nvcsw} involuntary ctxt switches: {nivcsw}"

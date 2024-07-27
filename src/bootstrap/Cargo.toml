@@ -65,6 +65,10 @@ xz2 = "0.1"
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.30", default-features = false, optional = true }
 
+[target.'cfg(unix)'.dependencies.nix]
+version = "0.29.0"
+features = ["resource"]
+
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"
 
