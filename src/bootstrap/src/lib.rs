@@ -441,7 +441,13 @@ impl Build {
             // Cargo.toml files.
             let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
-                build.update_submodule(s);
+                build.require_and_update_submodule(
+                    s,
+                    Some(
+                        "The submodule is required for the standard library \
+                         and the main Cargo workspace.",
+                    ),
+                );
             }
             // Now, update all existing submodules.
             build.update_existing_submodules();
