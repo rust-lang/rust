@@ -459,7 +459,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(match self.ptr_try_get_alloc_id(ptr) {
             Err(addr) => {
                 // We couldn't get a proper allocation.
-                throw_ub!(DanglingIntPointer(addr, msg));
+                throw_ub!(DanglingIntPointer { addr, inbounds_size: size, msg });
             }
             Ok((alloc_id, offset, prov)) => {
                 let (alloc_size, _alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
@@ -470,7 +470,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         alloc_id,
                         alloc_size,
                         ptr_offset: self.target_usize_to_isize(offset.bytes()),
-                        ptr_size: size,
+                        inbounds_size: size,
                         msg,
                     })
                 }
@@ -1443,7 +1443,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, (AllocId, Size, M::ProvenanceExtra)> {
         self.ptr_try_get_alloc_id(ptr).map_err(|offset| {
-            err_ub!(DanglingIntPointer(offset, CheckInAllocMsg::InboundsTest)).into()
+            err_ub!(DanglingIntPointer {
+                addr: offset,
+                // We don't know the actually required size.
+                inbounds_size: Size::ZERO,
+                msg: CheckInAllocMsg::InboundsTest
+            })
+            .into()
         })
     }
 }

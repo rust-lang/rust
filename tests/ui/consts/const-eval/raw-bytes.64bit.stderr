@@ -440,7 +440,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/raw-bytes.rs:196:62
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: null pointer is a dangling pointer (it has no provenance)
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: expected a pointer to some allocation, but got a null pointer
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/raw-bytes.rs:199:65

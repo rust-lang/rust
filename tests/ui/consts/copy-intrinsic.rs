@@ -27,7 +27,7 @@ const COPY_OOB_1: () = unsafe {
     copy_nonoverlapping(0x100 as *const i32, dangle, 0);
     // Non-zero-sized copy is not.
     copy_nonoverlapping(0x100 as *const i32, dangle, 1); //~ ERROR evaluation of constant value failed [E0080]
-    //~| 0x100[noalloc] is a dangling pointer
+    //~| got 0x100[noalloc] which is a dangling pointer
 };
 const COPY_OOB_2: () = unsafe {
     let x = 0i32;
@@ -36,7 +36,7 @@ const COPY_OOB_2: () = unsafe {
     copy_nonoverlapping(dangle, 0x100 as *mut i32, 0);
     // Non-zero-sized copy is not.
     copy_nonoverlapping(dangle, 0x100 as *mut i32, 1); //~ ERROR evaluation of constant value failed [E0080]
-    //~| offset 40 is out-of-bounds
+    //~| +0x28 which is at or beyond the end of the allocation
 };
 
 const COPY_SIZE_OVERFLOW: () = unsafe {

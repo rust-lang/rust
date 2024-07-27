@@ -2,13 +2,13 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/copy-intrinsic.rs:29:5
    |
 LL |     copy_nonoverlapping(0x100 as *const i32, dangle, 1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: 0x100[noalloc] is a dangling pointer (it has no provenance)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got 0x100[noalloc] which is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/copy-intrinsic.rs:38:5
    |
 LL |     copy_nonoverlapping(dangle, 0x100 as *mut i32, 1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC0 has size 4, so pointer to 4 bytes starting at offset 40 is out-of-bounds
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x28 which is at or beyond the end of the allocation of size 4 bytes
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/copy-intrinsic.rs:45:5

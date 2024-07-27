@@ -329,16 +329,21 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a pointer after it got freed.
     PointerUseAfterFree(AllocId, CheckInAllocMsg),
     /// Used a pointer outside the bounds it is valid for.
-    /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be in-bounds.)
     PointerOutOfBounds {
         alloc_id: AllocId,
         alloc_size: Size,
         ptr_offset: i64,
-        ptr_size: Size,
+        /// The size of the memory range that was expected to be in-bounds.
+        inbounds_size: Size,
         msg: CheckInAllocMsg,
     },
     /// Using an integer as a pointer in the wrong way.
-    DanglingIntPointer(u64, CheckInAllocMsg),
+    DanglingIntPointer {
+        addr: u64,
+        /// The size of the memory range that was expected to be in-bounds (or 0 if we don't know).
+        inbounds_size: Size,
+        msg: CheckInAllocMsg,
+    },
     /// Used a pointer with bad alignment.
     AlignmentCheckFailed(Misalignment, CheckAlignMsg),
     /// Writing to read-only memory.

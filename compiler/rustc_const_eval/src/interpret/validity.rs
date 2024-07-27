@@ -348,7 +348,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 try_validation!(
                     self.ecx.get_ptr_vtable_ty(vtable, Some(data)),
                     self.path,
-                    Ub(DanglingIntPointer(..) | InvalidVTablePointer(..)) =>
+                    Ub(DanglingIntPointer{ .. } | InvalidVTablePointer(..)) =>
                         InvalidVTablePtr { value: format!("{vtable}") },
                     Ub(InvalidVTableTrait { expected_trait, vtable_trait }) => {
                         InvalidMetaWrongTrait { expected_trait, vtable_trait: *vtable_trait }
@@ -405,8 +405,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            Ub(DanglingIntPointer(0, _)) => NullPtr { ptr_kind },
-            Ub(DanglingIntPointer(i, _)) => DanglingPtrNoProvenance {
+            Ub(DanglingIntPointer { addr: 0, .. }) => NullPtr { ptr_kind },
+            Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
                 pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(*i))
@@ -605,7 +605,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
-                        Ub(DanglingIntPointer(..) | InvalidFunctionPointer(..)) =>
+                        Ub(DanglingIntPointer{ .. } | InvalidFunctionPointer(..)) =>
                             InvalidFnPtr { value: format!("{ptr}") },
                     );
                     // FIXME: Check if the signature matches
