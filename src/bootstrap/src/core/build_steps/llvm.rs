@@ -110,7 +110,8 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
     }
 
     // Initialize the llvm submodule if not initialized already.
-    builder.require_and_update_submodule("src/llvm-project", None);
+    // If submodules are disabled, this does nothing.
+    builder.update_submodule("src/llvm-project");
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
