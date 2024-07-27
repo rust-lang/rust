@@ -2262,8 +2262,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            // FIXME(async_closures): These are never clone, for now.
-            ty::CoroutineClosure(_, _) => None,
+            ty::CoroutineClosure(_, args) => {
+                // (*) binder moved here
+                let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
+                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
+                    // Not yet resolved.
+                    Ambiguous
+                } else {
+                    Where(
+                        obligation
+                            .predicate
+                            .rebind(args.as_coroutine_closure().upvar_tys().to_vec()),
+                    )
+                }
+            }
+
             // `Copy` and `Clone` are automatically implemented for an anonymous adt
             // if all of its fields are `Copy` and `Clone`
             ty::Adt(adt, args) if adt.is_anonymous() => {

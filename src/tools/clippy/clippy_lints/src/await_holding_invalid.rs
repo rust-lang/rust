@@ -1,11 +1,11 @@
-use clippy_config::types::DisallowedPath;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{match_def_path, paths};
-use rustc_data_structures::fx::FxHashMap;
+use clippy_utils::{create_disallowed_map, match_def_path, paths};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{sym, Span};
 
@@ -172,31 +172,19 @@ declare_clippy_lint! {
 
 impl_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF, AWAIT_HOLDING_INVALID_TYPE]);
 
-#[derive(Debug)]
 pub struct AwaitHolding {
-    conf_invalid_types: Vec<DisallowedPath>,
-    def_ids: FxHashMap<DefId, DisallowedPath>,
+    def_ids: DefIdMap<(&'static str, Option<&'static str>)>,
 }
 
 impl AwaitHolding {
-    pub(crate) fn new(conf_invalid_types: Vec<DisallowedPath>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
-            conf_invalid_types,
-            def_ids: FxHashMap::default(),
+            def_ids: create_disallowed_map(tcx, &conf.await_holding_invalid_types),
         }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        for conf in &self.conf_invalid_types {
-            let segs: Vec<_> = conf.path().split("::").collect();
-            for id in clippy_utils::def_path_def_ids(cx, &segs) {
-                self.def_ids.insert(id, conf.clone());
-            }
-        }
-    }
-
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(hir::Closure {
             kind: hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)),
@@ -258,25 +246,22 @@ impl AwaitHolding {
                             );
                         },
                     );
-                } else if let Some(disallowed) = self.def_ids.get(&adt.did()) {
-                    emit_invalid_type(cx, ty_cause.source_info.span, disallowed);
+                } else if let Some(&(path, reason)) = self.def_ids.get(&adt.did()) {
+                    emit_invalid_type(cx, ty_cause.source_info.span, path, reason);
                 }
             }
         }
     }
 }
 
-fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedPath) {
+fn emit_invalid_type(cx: &LateContext<'_>, span: Span, path: &'static str, reason: Option<&'static str>) {
     span_lint_and_then(
         cx,
         AWAIT_HOLDING_INVALID_TYPE,
         span,
-        format!(
-            "`{}` may not be held across an await point per `clippy.toml`",
-            disallowed.path()
-        ),
+        format!("holding a disallowed type across an await point `{path}`"),
         |diag| {
-            if let Some(reason) = disallowed.reason() {
+            if let Some(reason) = reason {
                 diag.note(reason);
             }
         },

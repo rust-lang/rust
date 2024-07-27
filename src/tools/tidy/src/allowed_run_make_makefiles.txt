@@ -1,8 +1,6 @@
 run-make/branch-protection-check-IBT/Makefile
-run-make/c-unwind-abi-catch-lib-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
-run-make/compiler-rt-works-on-mingw/Makefile
 run-make/cross-lang-lto-clang/Makefile
 run-make/cross-lang-lto-pgo-smoketest/Makefile
 run-make/cross-lang-lto-upstream-rlibs/Makefile
@@ -10,18 +8,12 @@ run-make/cross-lang-lto/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
-run-make/dump-ice-to-disk/Makefile
 run-make/emit-to-stdout/Makefile
-run-make/export-executable-symbols/Makefile
-run-make/extern-flag-disambiguates/Makefile
 run-make/extern-fn-reachable/Makefile
 run-make/fmt-write-bloat/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
-run-make/foreign-rust-exceptions/Makefile
 run-make/incr-add-rust-src-component/Makefile
-run-make/incr-foreign-head-span/Makefile
-run-make/interdependent-c-libraries/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-47551/Makefile
@@ -42,7 +34,6 @@ run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
-run-make/panic-abort-eh_frame/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-indirect-call-promotion/Makefile

@@ -1864,9 +1864,9 @@ impl<'tcx> Ty<'tcx> {
             // Definitely absolutely not copy.
             ty::Ref(_, _, hir::Mutability::Mut) => false,
 
-            // Thin pointers & thin shared references are pure-clone-copy, but for
-            // anything with custom metadata it might be more complicated.
-            ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
+            // The standard library has a blanket Copy impl for shared references and raw pointers,
+            // for all unsized types.
+            ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => true,
 
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 

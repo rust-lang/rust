@@ -1,4 +1,5 @@
 use clippy_config::types::MacroMatcher;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast;
@@ -35,17 +36,15 @@ declare_clippy_lint! {
 /// The (callsite span, (open brace, close brace), source snippet)
 type MacroInfo = (Span, (char, char), String);
 
-#[derive(Debug)]
 pub struct MacroBraces {
     macro_braces: FxHashMap<String, (char, char)>,
     done: FxHashSet<Span>,
 }
 
 impl MacroBraces {
-    pub fn new(conf: &[MacroMatcher]) -> Self {
-        let macro_braces = macro_braces(conf);
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            macro_braces,
+            macro_braces: macro_braces(&conf.standard_macro_braces),
             done: FxHashSet::default(),
         }
     }

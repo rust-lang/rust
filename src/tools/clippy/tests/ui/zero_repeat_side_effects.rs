@@ -16,13 +16,11 @@ fn main() {
 
     // on arrays
     let a = [f(); 0];
-    let a = [f(); N];
     let mut b;
     b = [f(); 0];
-    b = [f(); N];
 
     // on vecs
-    // vecs dont support infering value of consts
+    // vecs dont support inferring value of consts
     let c = vec![f(); 0];
     let d;
     d = vec![f(); 0];
@@ -39,9 +37,11 @@ fn main() {
     // when singled out/not part of assignment/local
     vec![f(); 0];
     [f(); 0];
-    [f(); N];
 
     // should not trigger
+    let a = [f(); N];
+    b = [f(); N];
+    [f(); N];
 
     // on arrays with > 0 repeat
     let a = [f(); 1];
@@ -57,4 +57,16 @@ fn main() {
 
     // as function param
     drop(vec![f(); 1]);
+}
+
+macro_rules! LEN {
+    () => {
+        0
+    };
+}
+
+fn issue_13110() {
+    let _data = [f(); LEN!()];
+    const LENGTH: usize = LEN!();
+    let _data = [f(); LENGTH];
 }

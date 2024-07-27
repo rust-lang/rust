@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -44,19 +45,20 @@ declare_clippy_lint! {
     "usage of non-allowed Unicode scripts"
 }
 
-#[derive(Clone, Debug)]
 pub struct DisallowedScriptIdents {
     whitelist: FxHashSet<Script>,
 }
 
 impl DisallowedScriptIdents {
-    pub fn new(whitelist: &[String]) -> Self {
-        let whitelist = whitelist
-            .iter()
-            .map(String::as_str)
-            .filter_map(Script::from_full_name)
-            .collect();
-        Self { whitelist }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            whitelist: conf
+                .allowed_scripts
+                .iter()
+                .map(String::as_str)
+                .filter_map(Script::from_full_name)
+                .collect(),
+        }
     }
 }
 

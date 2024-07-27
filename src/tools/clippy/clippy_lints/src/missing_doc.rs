@@ -5,6 +5,7 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/cf9cf7c923eb01146971429044f216a3ca905e06/compiler/rustc_lint/src/builtin.rs#L415
 //
 
+use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
@@ -51,18 +52,10 @@ pub struct MissingDoc {
     prev_span: Option<Span>,
 }
 
-impl Default for MissingDoc {
-    #[must_use]
-    fn default() -> Self {
-        Self::new(false)
-    }
-}
-
 impl MissingDoc {
-    #[must_use]
-    pub fn new(crate_items_only: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            crate_items_only,
+            crate_items_only: conf.missing_docs_in_crate_items,
             doc_hidden_stack: vec![false],
             prev_span: None,
         }

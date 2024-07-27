@@ -78,4 +78,8 @@ fn main() {
     const NEG_INF1: f32 = -1.0e+33f32;
     const NEG_INF2: f64 = -1.0e+3300f64;
     const NEG_INF3: f32 = -3.40282357e+38_f32;
+
+    // issue #12954
+    const _: f64 = 3.0;
+    const _: f64 = 3.0000000000000000;
 }

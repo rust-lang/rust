@@ -2832,7 +2832,11 @@ pub enum TyKind<'hir> {
     OpaqueDef(ItemId, &'hir [GenericArg<'hir>], bool),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
+    TraitObject(
+        &'hir [(PolyTraitRef<'hir>, TraitBoundModifier)],
+        &'hir Lifetime,
+        TraitObjectSyntax,
+    ),
     /// Unused for now.
     Typeof(&'hir AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been

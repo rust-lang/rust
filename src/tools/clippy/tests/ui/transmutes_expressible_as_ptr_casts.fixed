@@ -18,7 +18,7 @@ fn main() {
     let ptr_i32 = usize::MAX as *const i32;
 
     // e has type *T, U is *U_0, and either U_0: Sized ...
-    let _ptr_i8_transmute = unsafe { ptr_i32 as *const i8 };
+    let _ptr_i8_transmute = unsafe { ptr_i32.cast::<i8>() };
     let _ptr_i8 = ptr_i32 as *const i8;
 
     let slice_ptr = &[0, 1, 2, 3] as *const [i32];

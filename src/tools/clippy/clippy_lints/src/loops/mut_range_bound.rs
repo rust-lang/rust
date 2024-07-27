@@ -8,6 +8,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
 use rustc_span::Span;
+use std::ops::ControlFlow;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
     if let Some(higher::Range {
@@ -114,7 +115,6 @@ impl MutatePairDelegate<'_, '_> {
 struct BreakAfterExprVisitor {
     hir_id: HirId,
     past_expr: bool,
-    past_candidate: bool,
     break_after_expr: bool,
 }
 
@@ -123,7 +123,6 @@ impl BreakAfterExprVisitor {
         let mut visitor = BreakAfterExprVisitor {
             hir_id,
             past_expr: false,
-            past_candidate: false,
             break_after_expr: false,
         };
 
@@ -135,21 +134,19 @@ impl BreakAfterExprVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for BreakAfterExprVisitor {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if self.past_candidate {
-            return;
-        }
-
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<()> {
         if expr.hir_id == self.hir_id {
             self.past_expr = true;
+            ControlFlow::Continue(())
         } else if self.past_expr {
             if matches!(&expr.kind, ExprKind::Break(..)) {
                 self.break_after_expr = true;
             }
 
-            self.past_candidate = true;
+            ControlFlow::Break(())
         } else {
-            intravisit::walk_expr(self, expr);
+            intravisit::walk_expr(self, expr)
         }
     }
 }

@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::approx_ty_size;
 use rustc_errors::Applicability;
@@ -47,10 +48,10 @@ pub struct UnnecessaryBoxReturns {
 impl_lint_pass!(UnnecessaryBoxReturns => [UNNECESSARY_BOX_RETURNS]);
 
 impl UnnecessaryBoxReturns {
-    pub fn new(avoid_breaking_exported_api: bool, maximum_size: u64) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
-            maximum_size,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            maximum_size: conf.unnecessary_box_size,
         }
     }
 

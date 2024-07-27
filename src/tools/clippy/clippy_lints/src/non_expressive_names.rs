@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use rustc_ast::ast::{
     self, Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind,
@@ -73,12 +74,19 @@ declare_clippy_lint! {
     "unclear name"
 }
 
-#[derive(Copy, Clone)]
 pub struct NonExpressiveNames {
     pub single_char_binding_names_threshold: u64,
 }
 
 impl_lint_pass!(NonExpressiveNames => [SIMILAR_NAMES, MANY_SINGLE_CHAR_NAMES, JUST_UNDERSCORES_AND_DIGITS]);
+
+impl NonExpressiveNames {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
+        }
+    }
+}
 
 struct ExistingName {
     interned: Symbol,
@@ -90,7 +98,7 @@ struct ExistingName {
 struct SimilarNamesLocalVisitor<'a, 'tcx> {
     names: Vec<ExistingName>,
     cx: &'a EarlyContext<'tcx>,
-    lint: NonExpressiveNames,
+    threshold: u64,
 
     /// A stack of scopes containing the single-character bindings in each scope.
     single_char_names: Vec<Vec<Ident>>,
@@ -103,8 +111,7 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
         }
 
         let num_single_char_names = self.single_char_names.iter().flatten().count();
-        let threshold = self.lint.single_char_binding_names_threshold;
-        if num_single_char_names as u64 > threshold {
+        if num_single_char_names as u64 > self.threshold {
             let span = self
                 .single_char_names
                 .iter()
@@ -384,7 +391,7 @@ impl EarlyLintPass for NonExpressiveNames {
             ..
         }) = item.kind
         {
-            do_check(*self, cx, &item.attrs, &sig.decl, blk);
+            do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
 
@@ -399,17 +406,17 @@ impl EarlyLintPass for NonExpressiveNames {
             ..
         }) = item.kind
         {
-            do_check(*self, cx, &item.attrs, &sig.decl, blk);
+            do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
 }
 
-fn do_check(lint: NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
+fn do_check(lint: &NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
     if !attrs.iter().any(|attr| attr.has_name(sym::test)) {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),
             cx,
-            lint,
+            threshold: lint.single_char_binding_names_threshold,
             single_char_names: vec![vec![]],
         };
 

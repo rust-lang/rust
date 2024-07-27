@@ -3,6 +3,7 @@
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::take_array;
 use rustc_ast::attr;
+use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
@@ -271,8 +272,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
             return;
         }
 
-        let trait_def_id = self.tcx.trait_of_item(fn_def_id);
-        if trait_def_id.is_none() || trait_def_id != self.tcx.lang_items().clone_trait() {
+        if !self.tcx.is_lang_item(fn_def_id, LangItem::CloneFn) {
             return;
         }
 

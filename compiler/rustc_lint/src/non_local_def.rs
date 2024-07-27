@@ -429,7 +429,7 @@ fn ty_has_local_parent(
             path_has_local_parent(ty_path, cx, impl_parent, impl_parent_parent)
         }
         TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => path_has_local_parent(
-            principle_poly_trait_ref.trait_ref.path,
+            principle_poly_trait_ref.0.trait_ref.path,
             cx,
             impl_parent,
             impl_parent_parent,
@@ -527,7 +527,7 @@ fn self_ty_kind_for_diagnostic(ty: &rustc_hir::Ty<'_>, tcx: TyCtxt<'_>) -> (Span
                 .to_string(),
         ),
         TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
-            let path = &principle_poly_trait_ref.trait_ref.path;
+            let path = &principle_poly_trait_ref.0.trait_ref.path;
             (
                 path_span_without_args(path),
                 path.res
