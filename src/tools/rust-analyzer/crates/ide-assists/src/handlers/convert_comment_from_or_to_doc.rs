@@ -40,7 +40,7 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
 
     acc.add(
         AssistId("doc_to_comment", AssistKind::RefactorRewrite),
-        "Replace comment with doc comment",
+        "Replace doc comment with comment",
         target,
         |edit| {
             // We need to either replace the first occurrence of /* with /***, or we need to replace
@@ -87,7 +87,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 
     acc.add(
         AssistId("comment_to_doc", AssistKind::RefactorRewrite),
-        "Replace doc comment with comment",
+        "Replace comment with doc comment",
         target,
         |edit| {
             // We need to either replace the first occurrence of /* with /***, or we need to replace
