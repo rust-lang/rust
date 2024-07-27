@@ -708,7 +708,7 @@ impl CliOptions for GetOptsOptions {
             config.set_cli().edition(edition);
         }
         if let Some(edition) = self.style_edition {
-            config.set().style_edition(edition);
+            config.set_cli().style_edition(edition);
         }
         if self.check {
             config.set_cli().emit_mode(EmitMode::Diff);

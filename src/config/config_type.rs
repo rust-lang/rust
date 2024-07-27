@@ -164,6 +164,8 @@ macro_rules! create_config {
                     "merge_imports" => self.0.set_merge_imports(),
                     "fn_args_layout" => self.0.set_fn_args_layout(),
                     "hide_parse_errors" => self.0.set_hide_parse_errors(),
+                    "version" => self.0.set_version(),
+                    "edition" => self.0.set_edition(),
                     &_ => (),
                 }
             }
@@ -576,7 +578,7 @@ macro_rules! create_config {
                     Use `style_edition` instead."
                 );
 
-                if self.was_set().style_edition() {
+                if self.was_set().style_edition() || self.was_set_cli().style_edition() {
                     eprintln!(
                         "Warning: the deprecated `version` option was \
                         used in conjunction with the `edition` or \
@@ -591,7 +593,10 @@ macro_rules! create_config {
             }
 
             fn set_edition(&mut self) {
-                if self.was_set().style_edition() || self.was_set().version() {
+                let style_edition_set = self.was_set().style_edition()
+                    || self.was_set_cli().style_edition();
+
+                if style_edition_set || self.was_set().version() {
                     return;
                 }
 

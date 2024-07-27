@@ -779,6 +779,7 @@ match_block_trailing_comma = false
 blank_lines_upper_bound = 1
 blank_lines_lower_bound = 0
 edition = "2015"
+style_edition = "2024"
 version = "Two"
 inline_attribute_width = 0
 format_generated_files = true
