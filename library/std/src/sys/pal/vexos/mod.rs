@@ -34,8 +34,11 @@ pub unsafe extern "C" fn _start() -> ! {
         fn main() -> i32;
     }
 
+    // Setup the stack
     asm!("ldr sp, =__stack_top", options(nostack));
 
+    // vexOS doesn't explicitly clean out .bss, so as a sanity
+    // check we'll fill it with zeroes.
     ptr::slice_from_raw_parts_mut(
         addr_of_mut!(__bss_start),
         addr_of_mut!(__bss_end).offset_from(addr_of_mut!(__bss_start)) as usize,

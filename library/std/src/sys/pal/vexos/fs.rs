@@ -13,7 +13,6 @@ pub struct File {
     fd: FileDesc,
 }
 
-//TODO: We may be able to get some of this info
 #[derive(Clone)]
 pub struct FileAttr {
     size: u64,
@@ -72,7 +71,6 @@ impl FileAttr {
 
         let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
         let is_dir = file_type == 3;
-        println!("{is_dir}");
 
         // We can't get the size if its a directory because we cant open it as a file
         if is_dir {
@@ -342,7 +340,7 @@ impl File {
                 map_fresult(vex_sdk::vexFileSeek(self.fd.0, try_convert_offset(offset)?, SEEK_SET))?
             },
 
-            // The VEX SDK does not allow seeking with negative offsets.
+            // vexOS does not allow seeking with negative offsets.
             // That means we need to calculate the offset from the start for both of these.
             SeekFrom::End(offset) => unsafe {
                 // If our offset is positive, everything is easy
@@ -429,52 +427,15 @@ impl Drop for File {
     }
 }
 
-pub fn readdir(p: &Path) -> io::Result<ReadDir> {
-    // getting directory entries does not work with trailing slashes
-    let p = Path::new(
-        p.to_str()
-            .ok_or(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Path contained invalid characters",
-            ))?
-            .trim_end_matches("/"),
-    );
-    
-    if !stat(p)?.file_type().is_dir() {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Given directory was not a path"));
-    }
-
-    let path = CString::new(p.as_os_str().as_encoded_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Path contained a null byte"))?;
-
-    //TODO: Figure out if there is any way to check the number of entries in a directory/the needed length
-    let mut filenames_buffer = [0u8; 1000];
-    unsafe {
-        vex_sdk::vexFileDirectoryGet(
-            path.as_ptr(),
-            filenames_buffer.as_mut_ptr().cast(),
-            filenames_buffer.len() as _,
-        );
-    }
-    let filenames_buffer = filenames_buffer.to_vec();
-    // stop at null-terminator
-    let filenames = match filenames_buffer.split(|&e| e == 0).next() {
-        Some(filenames) => filenames,
-        None => &filenames_buffer,
-    };
-    let filenames = String::from_utf8(filenames.to_vec())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
-    let paths = filenames
-        .split('\n')
-        .map(|filename| {
-            let mut path = PathBuf::new();
-            path.push(p);
-            path.push(filename);
-            DirEntry { path }
-        })
-        .collect::<Vec<_>>();
-
-    Ok(ReadDir { entries: paths })
+pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
+    // While there *is* a userspace function for reading file directories,
+    // the necessary implementation cannot currently be done cleanly, as
+    // vexOS does not expose directory length to user programs.
+    //
+    // This means that we would need to create a large fixed-length buffer
+    // and hope that the folder's contents didn't exceed that buffer's length,
+    // which obviously isn't behavior we want to rely on in the standard library.
+    unsupported()
 }
 
 pub fn unlink(_p: &Path) -> io::Result<()> {
@@ -522,7 +483,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    // Symlinks aren't supported in our filesystem
+    // Symlinks aren't supported in this filesystem
     stat(p)
 }
 

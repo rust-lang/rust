@@ -44,7 +44,10 @@ impl io::Write for Stdout {
             unsafe { vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, buf.as_ptr(), buf.len() as u32) };
 
         if written < 0 {
-            return Err(io::Error::new(io::ErrorKind::Other, "Internal write error occurred."));
+            return Err(io::Error::new(
+                io::ErrorKind::Uncategorized,
+                "Internal write error occurred.",
+            ));
         }
 
         Ok(written as usize)
