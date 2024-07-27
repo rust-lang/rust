@@ -1,3 +1,4 @@
+//@ needs-asm-support
 //@ run-rustfix
 
 use std::arch::global_asm;
