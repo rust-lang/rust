@@ -28,7 +28,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Default for Iter<'_, T> {
     /// Creates an empty `vec_deque::Iter`.
     ///
