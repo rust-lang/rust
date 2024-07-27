@@ -2287,7 +2287,7 @@ macro_rules! test_book {
                 fn run(self, builder: &Builder<'_>) {
                     $(
                         for submodule in $submodules {
-                            builder.require_and_update_submodule(submodule, None);
+                            builder.require_submodule(submodule, None);
                         }
                     )*
                     builder.ensure(BookTest {
@@ -2409,7 +2409,7 @@ impl Step for RustcGuide {
 
     fn run(self, builder: &Builder<'_>) {
         let relative_path = "src/doc/rustc-dev-guide";
-        builder.require_and_update_submodule(relative_path, None);
+        builder.require_submodule(relative_path, None);
 
         let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook).delay_failure();
@@ -3019,7 +3019,7 @@ impl Step for Bootstrap {
         let _guard = builder.msg(Kind::Test, 0, "bootstrap", host, host);
 
         // Some tests require cargo submodule to be present.
-        builder.build.require_and_update_submodule("src/tools/cargo", None);
+        builder.build.require_submodule("src/tools/cargo", None);
 
         let mut check_bootstrap = command(builder.python());
         check_bootstrap

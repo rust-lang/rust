@@ -441,7 +441,7 @@ impl Build {
             // Cargo.toml files.
             let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
-                build.require_and_update_submodule(
+                build.require_submodule(
                     s,
                     Some(
                         "The submodule is required for the standard library \
@@ -482,7 +482,7 @@ impl Build {
     ///
     /// This *does not* update the submodule if `config.toml` explicitly says
     /// not to, or if we're not in a git repository (like a plain source
-    /// tarball). Typically [`Build::require_and_update_submodule`] should be
+    /// tarball). Typically [`Build::require_submodule`] should be
     /// used instead to provide a nice error to the user if the submodule is
     /// missing.
     fn update_submodule(&self, relative_path: &str) {
@@ -599,7 +599,7 @@ impl Build {
     ///
     /// The given `err_hint` will be shown to the user if the submodule is not
     /// checked out and submodule management is disabled.
-    pub fn require_and_update_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+    pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
         if cfg!(test) && !self.config.submodules() {
@@ -628,7 +628,7 @@ impl Build {
     /// management is disabled and the submodule does not exist.
     pub fn require_and_update_all_submodules(&self) {
         for submodule in build_helper::util::parse_gitmodules(&self.src) {
-            self.require_and_update_submodule(submodule, None);
+            self.require_submodule(submodule, None);
         }
     }
 

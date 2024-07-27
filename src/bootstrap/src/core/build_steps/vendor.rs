@@ -37,7 +37,7 @@ impl Step for Vendor {
 
         // These submodules must be present for `x vendor` to work.
         for submodule in SUBMODULES_FOR_RUSTBOOK.iter().chain(["src/tools/cargo"].iter()) {
-            builder.build.require_and_update_submodule(submodule, None);
+            builder.build.require_submodule(submodule, None);
         }
 
         // Sync these paths by default.

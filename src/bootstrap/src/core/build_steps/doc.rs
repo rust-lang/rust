@@ -54,7 +54,7 @@ macro_rules! book {
             fn run(self, builder: &Builder<'_>) {
                 $(
                     let path = submodule_helper!( $path, submodule $( = $submodule )? );
-                    builder.require_and_update_submodule(path, None);
+                    builder.require_submodule(path, None);
                 )?
                 builder.ensure(RustbookSrc {
                     target: self.target,
@@ -224,7 +224,7 @@ impl Step for TheBook {
     /// * Index page
     /// * Redirect pages
     fn run(self, builder: &Builder<'_>) {
-        builder.require_and_update_submodule("src/doc/book", None);
+        builder.require_submodule("src/doc/book", None);
 
         let compiler = self.compiler;
         let target = self.target;
@@ -934,7 +934,7 @@ macro_rules! tool_doc {
                     let source_type = SourceType::Submodule;
 
                     let path = submodule_helper!( $path, submodule $( = $submodule )? );
-                    builder.require_and_update_submodule(path, None);
+                    builder.require_submodule(path, None);
                 )?
 
                 let stage = builder.top_stage;
@@ -1252,7 +1252,7 @@ impl Step for Reference {
 
     /// Builds the reference book.
     fn run(self, builder: &Builder<'_>) {
-        builder.require_and_update_submodule("src/doc/reference", None);
+        builder.require_submodule("src/doc/reference", None);
 
         // This is needed for generating links to the standard library using
         // the mdbook-spec plugin.

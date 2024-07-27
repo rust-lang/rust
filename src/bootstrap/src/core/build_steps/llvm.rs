@@ -1198,7 +1198,7 @@ impl Step for CrtBeginEnd {
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.require_and_update_submodule(
+        builder.require_submodule(
             "src/llvm-project",
             Some("The LLVM sources are required for the CRT from `compiler-rt`."),
         );
@@ -1274,7 +1274,7 @@ impl Step for Libunwind {
 
     /// Build libunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.require_and_update_submodule(
+        builder.require_submodule(
             "src/llvm-project",
             Some("The LLVM sources are required for libunwind."),
         );

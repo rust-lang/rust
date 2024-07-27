@@ -182,11 +182,11 @@ impl Step for Std {
             return;
         }
 
-        builder.require_and_update_submodule("library/stdarch", None);
+        builder.require_submodule("library/stdarch", None);
 
         // Profiler information requires LLVM's compiler-rt
         if builder.config.profiler {
-            builder.require_and_update_submodule(
+            builder.require_submodule(
                 "src/llvm-project",
                 Some(
                     "The `build.profiler` config option requires `compiler-rt` sources from LLVM.",
@@ -461,7 +461,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         // That's probably ok? At least, the difference wasn't enforced before. There's a comment in
         // the compiler_builtins build script that makes me nervous, though:
         // https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
-        builder.require_and_update_submodule(
+        builder.require_submodule(
             "src/llvm-project",
             Some(
                 "The `build.optimized-compiler-builtins` config option \

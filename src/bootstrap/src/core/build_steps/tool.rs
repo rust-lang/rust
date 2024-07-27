@@ -290,7 +290,7 @@ macro_rules! bootstrap_tool {
             fn run(self, builder: &Builder<'_>) -> PathBuf {
                 $(
                     for submodule in $submodules {
-                        builder.require_and_update_submodule(submodule, None);
+                        builder.require_submodule(submodule, None);
                     }
                 )*
                 builder.ensure(ToolBuild {
@@ -373,7 +373,7 @@ impl Step for OptimizedDist {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
         // the tool requires it to be in place to run.
-        builder.require_and_update_submodule("src/tools/rustc-perf", None);
+        builder.require_submodule("src/tools/rustc-perf", None);
 
         builder.ensure(ToolBuild {
             compiler: self.compiler,
@@ -414,7 +414,7 @@ impl Step for RustcPerf {
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         // We need to ensure the rustc-perf submodule is initialized.
-        builder.require_and_update_submodule("src/tools/rustc-perf", None);
+        builder.require_submodule("src/tools/rustc-perf", None);
 
         let tool = ToolBuild {
             compiler: self.compiler,
@@ -715,7 +715,7 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.build.require_and_update_submodule("src/tools/cargo", None);
+        builder.build.require_submodule("src/tools/cargo", None);
 
         builder.ensure(ToolBuild {
             compiler: self.compiler,
