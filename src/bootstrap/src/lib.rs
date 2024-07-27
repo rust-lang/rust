@@ -594,8 +594,11 @@ impl Build {
     /// Updates a submodule, and exits with a failure if submodule management
     /// is disabled and the submodule does not exist.
     ///
+    /// The given submodule name should be its path relative to the root of
+    /// the main repository.
+    ///
     /// The given `err_hint` will be shown to the user if the submodule is not
-    /// checked out.
+    /// checked out and submodule management is disabled.
     pub fn require_and_update_submodule(&self, submodule: &str, err_hint: Option<&str>) {
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
