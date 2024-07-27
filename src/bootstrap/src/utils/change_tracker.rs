@@ -215,4 +215,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Removed android-ndk r25b support in favor of android-ndk r26d.",
     },
+    ChangeInfo {
+        change_id: 125181,
+        severity: ChangeSeverity::Warning,
+        summary: "For tarball sources, default value for `rust.channel` will be taken from `src/ci/channel` file.",
+    },
 ];
