@@ -172,7 +172,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         hir_id: hir::HirId,
         ident: &mut Ident,
-        attrs: Option<&'hir [Attribute]>,
+        attrs: &'hir [Attribute],
         vis_span: Span,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
@@ -488,7 +488,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         vis_span: Span,
         ident: &mut Ident,
-        attrs: Option<&'hir [Attribute]>,
+        attrs: &'hir [Attribute],
     ) -> hir::ItemKind<'hir> {
         let path = &tree.prefix;
         let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
@@ -566,7 +566,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         // `ItemLocalId` and the new owner. (See `lower_node_id`)
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, vis_span, &mut ident, attrs);
-                        if let Some(attrs) = attrs {
+                        if !attrs.is_empty() {
                             this.attrs.insert(hir::ItemLocalId::ZERO, attrs);
                         }
 
