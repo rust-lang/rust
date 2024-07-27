@@ -1892,8 +1892,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
     /// expanded with `create_or_subcandidates`.
     ///
-    /// Given a pattern `(P | Q, R | S)` we (in principle) generate a CFG like
-    /// so:
+    /// Given a pattern `(P | Q, R | S)` we would like to generate a CFG like so:
+    ///
+    /// ```text
+    ///     ...
+    ///      +---------------+------------+
+    ///      |               |            |
+    /// [ P matches ] [ Q matches ] [ otherwise ]
+    ///      |               |            |
+    ///      +---------------+            |
+    ///      |                           ...
+    /// [ match R, S ]
+    ///      |
+    ///     ...
+    /// ```
+    ///
+    /// In practice there are some complications:
+    ///
+    /// * If `P` or `Q` has bindings or type ascriptions, they can refer to different places in each
+    ///   branch so we must generate separate branches for each case.
+    /// * If there's a guard, we must also keep branches separate as this changes how many times
+    ///   the guard is run.
+    /// * If `P` succeeds and `R | S` fails, we know `(Q, R | S)` will fail too. So we could skip
+    ///   testing of `Q` in that case. Because we can't distinguish pattern failure from guard
+    ///   failure, we only do this optimization when there is no guard. We then get this (note how
+    ///   we don't test `Q` if `(P, R | S)` fails):
     ///
     /// ```text
     /// [ start ]
@@ -1921,26 +1944,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [ Success ]                 [ Failure ]
     /// ```
     ///
-    /// In practice there are some complications:
-    ///
-    /// * If there's a guard, then the otherwise branch of the first match on
-    ///   `R | S` goes to a test for whether `Q` matches, and the control flow
-    ///   doesn't merge into a single success block until after the guard is
-    ///   tested.
-    /// * If neither `P` or `Q` has any bindings or type ascriptions and there
-    ///   isn't a match guard, then we create a smaller CFG like:
+    /// * If there's a guard, then the otherwise branch of the first match on `R | S` goes to a test
+    ///   for whether `Q` matches, and the control flow doesn't merge into a single success block
+    ///   until after the guard is tested. In other words, the branches are kept entirely separate:
     ///
     /// ```text
-    ///     ...
-    ///      +---------------+------------+
-    ///      |               |            |
-    /// [ P matches ] [ Q matches ] [ otherwise ]
-    ///      |               |            |
-    ///      +---------------+            |
-    ///      |                           ...
-    /// [ match R, S ]
+    /// [ start ]
     ///      |
-    ///     ...
+    /// [ match P, Q ]
+    ///      |
+    ///      +---------------------------+-------------+------------------------------------+
+    ///      |                           |             |                                    |
+    ///      V                           |             V                                    V
+    /// [ P matches ]                    |       [ Q matches ]                        [ otherwise ]
+    ///      |                           |             |                                    |
+    ///      V                     [ otherwise ]       V                                    |
+    /// [ match R, S ]                   ^       [ match R, S ]                             |
+    ///      |                           |             |                                    |
+    ///      +--------------+------------+             +--------------+------------+        |
+    ///      |              |                          |              |            |        |
+    ///      V              V                          V              V            V        |
+    /// [ R matches ] [ S matches ]               [ R matches ] [ S matches ] [otherwise ]  |
+    ///      |              |                          |              |            |        |
+    ///      +--------------+--------------------------+--------------+            |        |
+    ///      |                                                                     |        |
+    ///      |                                                                     +--------+
+    ///      |                                                                     |
+    ///      V                                                                     V
+    /// [ Success ]                                                           [ Failure ]
     /// ```
     ///
     /// Note that this takes place _after_ the subcandidates have participated
