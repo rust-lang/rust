@@ -310,6 +310,16 @@ fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
     p.dcx().emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
 }
 
+/// Report an invalid option error.
+///
+/// This function must be called immediately after the option token is parsed.
+/// Otherwise, the suggestion will be incorrect.
+fn err_unsupported_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
+    // Tool-only output
+    let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
+    p.dcx().emit_err(errors::GlobalAsmUnsupportedOption { span, symbol, full_span });
+}
+
 /// Try to set the provided option in the provided `AsmArgs`.
 /// If it is already set, report a duplicate option error.
 ///
@@ -318,13 +328,16 @@ fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
 fn try_set_option<'a>(
     p: &Parser<'a>,
     args: &mut AsmArgs,
+    is_global_asm: bool,
     symbol: Symbol,
     option: ast::InlineAsmOptions,
 ) {
-    if !args.options.contains(option) {
-        args.options |= option;
-    } else {
+    if is_global_asm && !ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option) {
+        err_unsupported_option(p, symbol, p.prev_token.span);
+    } else if args.options.contains(option) {
         err_duplicate_option(p, symbol, p.prev_token.span);
+    } else {
+        args.options |= option;
     }
 }
 
@@ -338,25 +351,33 @@ fn parse_options<'a>(
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        if !is_global_asm && p.eat_keyword(sym::pure) {
-            try_set_option(p, args, sym::pure, ast::InlineAsmOptions::PURE);
-        } else if !is_global_asm && p.eat_keyword(sym::nomem) {
-            try_set_option(p, args, sym::nomem, ast::InlineAsmOptions::NOMEM);
-        } else if !is_global_asm && p.eat_keyword(sym::readonly) {
-            try_set_option(p, args, sym::readonly, ast::InlineAsmOptions::READONLY);
-        } else if !is_global_asm && p.eat_keyword(sym::preserves_flags) {
-            try_set_option(p, args, sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS);
-        } else if !is_global_asm && p.eat_keyword(sym::noreturn) {
-            try_set_option(p, args, sym::noreturn, ast::InlineAsmOptions::NORETURN);
-        } else if !is_global_asm && p.eat_keyword(sym::nostack) {
-            try_set_option(p, args, sym::nostack, ast::InlineAsmOptions::NOSTACK);
-        } else if !is_global_asm && p.eat_keyword(sym::may_unwind) {
-            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::MAY_UNWIND);
-        } else if p.eat_keyword(sym::att_syntax) {
-            try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
-        } else if p.eat_keyword(kw::Raw) {
-            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::RAW);
-        } else {
+        const OPTIONS: [(Symbol, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
+            (sym::pure, ast::InlineAsmOptions::PURE),
+            (sym::nomem, ast::InlineAsmOptions::NOMEM),
+            (sym::readonly, ast::InlineAsmOptions::READONLY),
+            (sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS),
+            (sym::noreturn, ast::InlineAsmOptions::NORETURN),
+            (sym::nostack, ast::InlineAsmOptions::NOSTACK),
+            (sym::may_unwind, ast::InlineAsmOptions::MAY_UNWIND),
+            (sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX),
+            (kw::Raw, ast::InlineAsmOptions::RAW),
+        ];
+
+        'blk: {
+            for (symbol, option) in OPTIONS {
+                let kw_matched =
+                    if !is_global_asm || ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option) {
+                        p.eat_keyword(symbol)
+                    } else {
+                        p.eat_keyword_noexpect(symbol)
+                    };
+
+                if kw_matched {
+                    try_set_option(p, args, is_global_asm, symbol, option);
+                    break 'blk;
+                }
+            }
+
             return p.unexpected();
         }
 
