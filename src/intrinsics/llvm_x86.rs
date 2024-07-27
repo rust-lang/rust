@@ -40,7 +40,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                     shl rdx, 32
                     or rax, rdx
                     "
-                    .to_string(),
+                    .into(),
                 )],
                 &[
                     CInlineAsmOperand::In {
@@ -471,7 +471,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             // into 0x80000000 for which Cranelift doesn't have a native instruction.
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String(format!("cvtps2dq xmm0, xmm0"))],
+                &[InlineAsmTemplatePiece::String("cvtps2dq xmm0, xmm0".into())],
                 &[CInlineAsmOperand::InOut {
                     reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
                     _late: true,
@@ -875,7 +875,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String(asm.to_string())],
+                &[InlineAsmTemplatePiece::String(asm.into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
@@ -914,7 +914,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String(format!("pcmpestri xmm0, xmm1, {imm8}"))],
+                &[InlineAsmTemplatePiece::String(format!("pcmpestri xmm0, xmm1, {imm8}").into())],
                 &[
                     CInlineAsmOperand::In {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
@@ -967,7 +967,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String(format!("pcmpestrm xmm0, xmm1, {imm8}"))],
+                &[InlineAsmTemplatePiece::String(format!("pcmpestrm xmm0, xmm1, {imm8}").into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
@@ -1015,7 +1015,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String(format!("pclmulqdq xmm0, xmm1, {imm8}"))],
+                &[InlineAsmTemplatePiece::String(format!("pclmulqdq xmm0, xmm1, {imm8}").into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
@@ -1052,7 +1052,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String(format!("aeskeygenassist xmm0, xmm0, {imm8}"))],
+                &[InlineAsmTemplatePiece::String(
+                    format!("aeskeygenassist xmm0, xmm0, {imm8}").into(),
+                )],
                 &[CInlineAsmOperand::InOut {
                     reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
                     _late: true,
@@ -1071,7 +1073,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("aesimc xmm0, xmm0".to_string())],
+                &[InlineAsmTemplatePiece::String("aesimc xmm0, xmm0".into())],
                 &[CInlineAsmOperand::InOut {
                     reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
                     _late: true,
@@ -1091,7 +1093,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("aesenc xmm0, xmm1".to_string())],
+                &[InlineAsmTemplatePiece::String("aesenc xmm0, xmm1".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
@@ -1117,7 +1119,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("aesenclast xmm0, xmm1".to_string())],
+                &[InlineAsmTemplatePiece::String("aesenclast xmm0, xmm1".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
@@ -1143,7 +1145,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("aesdec xmm0, xmm1".to_string())],
+                &[InlineAsmTemplatePiece::String("aesdec xmm0, xmm1".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
@@ -1169,7 +1171,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("aesdeclast xmm0, xmm1".to_string())],
+                &[InlineAsmTemplatePiece::String("aesdeclast xmm0, xmm1".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
@@ -1207,7 +1209,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String(format!("sha1rnds4 xmm1, xmm2, {func}"))],
+                &[InlineAsmTemplatePiece::String(format!("sha1rnds4 xmm1, xmm2, {func}").into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
@@ -1233,7 +1235,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("sha1msg1 xmm1, xmm2".to_string())],
+                &[InlineAsmTemplatePiece::String("sha1msg1 xmm1, xmm2".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
@@ -1259,7 +1261,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("sha1msg2 xmm1, xmm2".to_string())],
+                &[InlineAsmTemplatePiece::String("sha1msg2 xmm1, xmm2".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
@@ -1285,7 +1287,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("sha1nexte xmm1, xmm2".to_string())],
+                &[InlineAsmTemplatePiece::String("sha1nexte xmm1, xmm2".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
@@ -1312,7 +1314,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("sha256rnds2 xmm1, xmm2".to_string())],
+                &[InlineAsmTemplatePiece::String("sha256rnds2 xmm1, xmm2".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
@@ -1343,7 +1345,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("sha256msg1 xmm1, xmm2".to_string())],
+                &[InlineAsmTemplatePiece::String("sha256msg1 xmm1, xmm2".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
@@ -1369,7 +1371,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("sha256msg2 xmm1, xmm2".to_string())],
+                &[InlineAsmTemplatePiece::String("sha256msg2 xmm1, xmm2".into())],
                 &[
                     CInlineAsmOperand::InOut {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
@@ -1435,7 +1437,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let edx_place = res_place.place_field(fx, FieldIdx::new(1));
             codegen_inline_asm_inner(
                 fx,
-                &[InlineAsmTemplatePiece::String("rdtsc".to_string())],
+                &[InlineAsmTemplatePiece::String("rdtsc".into())],
                 &[
                     CInlineAsmOperand::Out {
                         reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
