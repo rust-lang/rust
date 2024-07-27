@@ -195,13 +195,13 @@ pub unsafe extern "C" fn compatible_cfg_attributes() {
 #[forbid(dead_code)]
 #[naked]
 pub unsafe extern "C" fn compatible_diagnostic_attributes() {
-    asm!("", options(noreturn, att_syntax));
+    asm!("", options(noreturn, raw));
 }
 
 #[deprecated = "test"]
 #[naked]
 pub unsafe extern "C" fn compatible_deprecated_attributes() {
-    asm!("", options(noreturn, att_syntax));
+    asm!("", options(noreturn, raw));
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -222,15 +222,16 @@ pub unsafe extern "C" fn compatible_must_use_attributes() -> u64 {
 #[no_mangle]
 #[naked]
 pub unsafe extern "C" fn compatible_ffi_attributes_1() {
-    asm!("", options(noreturn, att_syntax));
+    asm!("", options(noreturn, raw));
 }
 
 #[cold]
 #[naked]
 pub unsafe extern "C" fn compatible_codegen_attributes() {
-    asm!("", options(noreturn, att_syntax));
+    asm!("", options(noreturn, raw));
 }
 
+#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
 #[naked]
 pub unsafe extern "C" fn compatible_target_feature() {
@@ -240,11 +241,11 @@ pub unsafe extern "C" fn compatible_target_feature() {
 #[doc = "foo bar baz"]
 #[naked]
 pub unsafe extern "C" fn compatible_doc_attributes() {
-    asm!("", options(noreturn, att_syntax));
+    asm!("", options(noreturn, raw));
 }
 
 #[linkage = "external"]
 #[naked]
 pub unsafe extern "C" fn compatible_linkage() {
-    asm!("", options(noreturn, att_syntax));
+    asm!("", options(noreturn, raw));
 }
