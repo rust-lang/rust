@@ -123,7 +123,7 @@ macro_rules! define_Conf {
         $(#[doc = $doc:literal])+
         $(#[conf_deprecated($dep:literal, $new_conf:ident)])?
         $(#[default_text = $default_text:expr])?
-        ($name:ident: $ty:ty = $default:expr),
+        $name:ident: $ty:ty = $default:expr,
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
@@ -237,52 +237,52 @@ define_Conf! {
     /// Lint: ABSOLUTE_PATHS.
     ///
     /// Which crates to allow absolute paths from
-    (absolute_paths_allowed_crates: FxHashSet<String> = FxHashSet::default()),
+    absolute_paths_allowed_crates: FxHashSet<String> = FxHashSet::default(),
     /// Lint: ABSOLUTE_PATHS.
     ///
     /// The maximum number of segments a path can have before being linted, anything above this will
     /// be linted.
-    (absolute_paths_max_segments: u64 = 2),
+    absolute_paths_max_segments: u64 = 2,
     /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
     ///
     /// Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
-    (accept_comment_above_attributes: bool = true),
+    accept_comment_above_attributes: bool = true,
     /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
     ///
     /// Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
-    (accept_comment_above_statement: bool = true),
+    accept_comment_above_statement: bool = true,
     /// Lint: MODULO_ARITHMETIC.
     ///
     /// Don't lint when comparing the result of a modulo operation to zero.
-    (allow_comparison_to_zero: bool = true),
+    allow_comparison_to_zero: bool = true,
     /// Lint: DBG_MACRO.
     ///
     /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
-    (allow_dbg_in_tests: bool = false),
+    allow_dbg_in_tests: bool = false,
     /// Lint: EXPECT_USED.
     ///
     /// Whether `expect` should be allowed in test functions or `#[cfg(test)]`
-    (allow_expect_in_tests: bool = false),
+    allow_expect_in_tests: bool = false,
     /// Lint: UNINLINED_FORMAT_ARGS.
     ///
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
-    (allow_mixed_uninlined_format_args: bool = true),
+    allow_mixed_uninlined_format_args: bool = true,
     /// Lint: UNNECESSARY_RAW_STRING_HASHES.
     ///
     /// Whether to allow `r#""#` when `r""` can be used
-    (allow_one_hash_in_raw_strings: bool = false),
+    allow_one_hash_in_raw_strings: bool = false,
     /// Lint: PANIC.
     ///
     /// Whether `panic` should be allowed in test functions or `#[cfg(test)]`
-    (allow_panic_in_tests: bool = false),
+    allow_panic_in_tests: bool = false,
     /// Lint: PRINT_STDOUT, PRINT_STDERR.
     ///
     /// Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
-    (allow_print_in_tests: bool = false),
+    allow_print_in_tests: bool = false,
     /// Lint: MODULE_INCEPTION.
     ///
     /// Whether to allow module inception if it's not public.
-    (allow_private_module_inception: bool = false),
+    allow_private_module_inception: bool = false,
     /// Lint: RENAMED_FUNCTION_PARAMS.
     ///
     /// List of trait paths to ignore when checking renamed function parameters.
@@ -298,31 +298,31 @@ define_Conf! {
     /// - By default, the following traits are ignored: `From`, `TryFrom`, `FromStr`
     /// - `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value.
-    (allow_renamed_params_for: Vec<String> =
-        DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS.iter().map(ToString::to_string).collect()),
+    allow_renamed_params_for: Vec<String> =
+        DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS.iter().map(ToString::to_string).collect(),
     /// Lint: UNWRAP_USED.
     ///
     /// Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
-    (allow_unwrap_in_tests: bool = false),
+    allow_unwrap_in_tests: bool = false,
     /// Lint: USELESS_VEC.
     ///
     /// Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
-    (allow_useless_vec_in_tests: bool = false),
+    allow_useless_vec_in_tests: bool = false,
     /// Lint: PATH_ENDS_WITH_EXT.
     ///
     /// Additional dotfiles (files or directories starting with a dot) to allow
-    (allowed_dotfiles: Vec<String> = Vec::default()),
+    allowed_dotfiles: Vec<String> = Vec::default(),
     /// Lint: MULTIPLE_CRATE_VERSIONS.
     ///
     /// A list of crate names to allow duplicates of
-    (allowed_duplicate_crates: FxHashSet<String> = FxHashSet::default()),
+    allowed_duplicate_crates: FxHashSet<String> = FxHashSet::default(),
     /// Lint: MIN_IDENT_CHARS.
     ///
     /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
     /// the list to indicate, that the configured values should be appended to the default
     /// configuration of Clippy. By default, any configuration will replace the default value.
-    (allowed_idents_below_min_chars: FxHashSet<String> =
-        DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect()),
+    allowed_idents_below_min_chars: FxHashSet<String> =
+        DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect(),
     /// Lint: MODULE_NAME_REPETITIONS.
     ///
     /// List of prefixes to allow when determining whether an item's name ends with the module's name.
@@ -342,11 +342,11 @@ define_Conf! {
     ///   `TryInto` will also be included)
     /// - Use `".."` as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value
-    (allowed_prefixes: Vec<String> = DEFAULT_ALLOWED_PREFIXES.iter().map(ToString::to_string).collect()),
+    allowed_prefixes: Vec<String> = DEFAULT_ALLOWED_PREFIXES.iter().map(ToString::to_string).collect(),
     /// Lint: DISALLOWED_SCRIPT_IDENTS.
     ///
     /// The list of unicode scripts allowed to be used in the scope.
-    (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
+    allowed_scripts: Vec<String> = vec!["Latin".to_string()],
     /// Lint: WILDCARD_IMPORTS.
     ///
     /// List of path segments allowed to have wildcard imports.
@@ -362,7 +362,7 @@ define_Conf! {
     /// 1. This configuration has no effects if used with `warn_on_all_wildcard_imports = true`.
     /// 2. Paths with any segment that containing the word 'prelude'
     /// are already allowed by default.
-    (allowed_wildcard_imports: FxHashSet<String> = FxHashSet::default()),
+    allowed_wildcard_imports: FxHashSet<String> = FxHashSet::default(),
     /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///
     /// Suppress checking of the passed type names in all types of operations.
@@ -379,7 +379,7 @@ define_Conf! {
     ///
     /// A type, say `SomeType`, listed in this configuration has the same behavior of
     /// `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
-    (arithmetic_side_effects_allowed: Vec<String> = <_>::default()),
+    arithmetic_side_effects_allowed: Vec<String> = <_>::default(),
     /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///
     /// Suppress checking of the passed type pair names in binary operations like addition or
@@ -396,7 +396,7 @@ define_Conf! {
     /// ```toml
     /// arithmetic-side-effects-allowed-binary = [["SomeType" , "f32"], ["AnotherType", "*"]]
     /// ```
-    (arithmetic_side_effects_allowed_binary: Vec<[String; 2]> = <_>::default()),
+    arithmetic_side_effects_allowed_binary: Vec<[String; 2]> = <_>::default(),
     /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///
     /// Suppress checking of the passed type names in unary operations like "negation" (`-`).
@@ -406,59 +406,59 @@ define_Conf! {
     /// ```toml
     /// arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
     /// ```
-    (arithmetic_side_effects_allowed_unary: Vec<String> = <_>::default()),
+    arithmetic_side_effects_allowed_unary: Vec<String> = <_>::default(),
     /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS.
     ///
     /// The maximum allowed size for arrays on the stack
-    (array_size_threshold: u64 = 512_000),
+    array_size_threshold: u64 = 512_000,
     /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX, UNNECESSARY_BOX_RETURNS, SINGLE_CALL_FN, NEEDLESS_PASS_BY_REF_MUT.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
-    (avoid_breaking_exported_api: bool = true),
+    avoid_breaking_exported_api: bool = true,
     /// Lint: AWAIT_HOLDING_INVALID_TYPE.
     ///
     /// The list of types which may not be held across an await point.
-    (await_holding_invalid_types: Vec<DisallowedPath> = Vec::new()),
+    await_holding_invalid_types: Vec<DisallowedPath> = Vec::new(),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
     /// Use the Disallowed Names lint instead
     #[conf_deprecated("Please use `disallowed-names` instead", disallowed_names)]
-    (blacklisted_names: Vec<String> = Vec::new()),
+    blacklisted_names: Vec<String> = Vec::new(),
     /// Lint: CARGO_COMMON_METADATA.
     ///
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
-    (cargo_ignore_publish: bool = false),
+    cargo_ignore_publish: bool = false,
     /// Lint: MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC, MISSING_PANICS_DOC, MISSING_ERRORS_DOC.
     ///
     /// Whether to also run the listed lints on private items.
-    (check_private_items: bool = false),
+    check_private_items: bool = false,
     /// Lint: COGNITIVE_COMPLEXITY.
     ///
     /// The maximum cognitive complexity a function can have
-    (cognitive_complexity_threshold: u64 = 25),
+    cognitive_complexity_threshold: u64 = 25,
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
-    (cyclomatic_complexity_threshold: u64 = 25),
+    cyclomatic_complexity_threshold: u64 = 25,
     /// Lint: DISALLOWED_MACROS.
     ///
     /// The list of disallowed macros, written as fully qualified paths.
-    (disallowed_macros: Vec<DisallowedPath> = Vec::new()),
+    disallowed_macros: Vec<DisallowedPath> = Vec::new(),
     /// Lint: DISALLOWED_METHODS.
     ///
     /// The list of disallowed methods, written as fully qualified paths.
-    (disallowed_methods: Vec<DisallowedPath> = Vec::new()),
+    disallowed_methods: Vec<DisallowedPath> = Vec::new(),
     /// Lint: DISALLOWED_NAMES.
     ///
     /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
     /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value.
-    (disallowed_names: Vec<String> = DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
+    disallowed_names: Vec<String> = DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect(),
     /// Lint: DISALLOWED_TYPES.
     ///
     /// The list of disallowed types, written as fully qualified paths.
-    (disallowed_types: Vec<DisallowedPath> = Vec::new()),
+    disallowed_types: Vec<DisallowedPath> = Vec::new(),
     /// Lint: DOC_MARKDOWN.
     ///
     /// The list of words this lint should not consider as identifiers needing ticks. The value
@@ -466,11 +466,11 @@ define_Conf! {
     /// default configuration of Clippy. By default, any configuration will replace the default value. For example:
     /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
-    (doc_valid_idents: FxHashSet<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
+    doc_valid_idents: FxHashSet<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect(),
     /// Lint: NON_SEND_FIELDS_IN_SEND_TY.
     ///
     /// Whether to apply the raw pointer heuristic to determine if a type is `Send`.
-    (enable_raw_pointer_heuristic_for_send: bool = true),
+    enable_raw_pointer_heuristic_for_send: bool = true,
     /// Lint: EXPLICIT_ITER_LOOP.
     ///
     /// Whether to recommend using implicit into iter for reborrowed values.
@@ -490,105 +490,105 @@ define_Conf! {
     /// for _ in &*rmvec {}
     /// for _ in &mut *rmvec {}
     /// ```
-    (enforce_iter_loop_reborrow: bool = false),
+    enforce_iter_loop_reborrow: bool = false,
     /// Lint: MISSING_ENFORCED_IMPORT_RENAMES.
     ///
     /// The list of imports to always rename, a fully qualified path followed by the rename.
-    (enforced_import_renames: Vec<Rename> = Vec::new()),
+    enforced_import_renames: Vec<Rename> = Vec::new(),
     /// Lint: ENUM_VARIANT_NAMES.
     ///
     /// The minimum number of enum variants for the lints about variant names to trigger
-    (enum_variant_name_threshold: u64 = 3),
+    enum_variant_name_threshold: u64 = 3,
     /// Lint: LARGE_ENUM_VARIANT.
     ///
     /// The maximum size of an enum's variant to avoid box suggestion
-    (enum_variant_size_threshold: u64 = 200),
+    enum_variant_size_threshold: u64 = 200,
     /// Lint: EXCESSIVE_NESTING.
     ///
     /// The maximum amount of nesting a block can reside in
-    (excessive_nesting_threshold: u64 = 0),
+    excessive_nesting_threshold: u64 = 0,
     /// Lint: LARGE_FUTURES.
     ///
     /// The maximum byte size a `Future` can have, before it triggers the `clippy::large_futures` lint
-    (future_size_threshold: u64 = 16 * 1024),
+    future_size_threshold: u64 = 16 * 1024,
     /// Lint: MUTABLE_KEY_TYPE, IFS_SAME_COND, BORROW_INTERIOR_MUTABLE_CONST, DECLARE_INTERIOR_MUTABLE_CONST.
     ///
     /// A list of paths to types that should be treated as if they do not contain interior mutability
-    (ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()])),
+    ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()]),
     /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
-    (large_error_threshold: u64 = 128),
+    large_error_threshold: u64 = 128,
     /// Lint: DECIMAL_LITERAL_REPRESENTATION.
     ///
     /// The lower bound for linting decimal literals
-    (literal_representation_threshold: u64 = 16384),
+    literal_representation_threshold: u64 = 16384,
     /// Lint: MANUAL_LET_ELSE.
     ///
     /// Whether the matches should be considered by the lint, and whether there should
     /// be filtering for common types.
-    (matches_for_let_else: MatchLintBehaviour = MatchLintBehaviour::WellKnownTypes),
+    matches_for_let_else: MatchLintBehaviour = MatchLintBehaviour::WellKnownTypes,
     /// Lint: FN_PARAMS_EXCESSIVE_BOOLS.
     ///
     /// The maximum number of bool parameters a function can have
-    (max_fn_params_bools: u64 = 3),
+    max_fn_params_bools: u64 = 3,
     /// Lint: LARGE_INCLUDE_FILE.
     ///
     /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
-    (max_include_file_size: u64 = 1_000_000),
+    max_include_file_size: u64 = 1_000_000,
     /// Lint: STRUCT_EXCESSIVE_BOOLS.
     ///
     /// The maximum number of bool fields a struct can have
-    (max_struct_bools: u64 = 3),
+    max_struct_bools: u64 = 3,
     /// Lint: INDEX_REFUTABLE_SLICE.
     ///
     /// When Clippy suggests using a slice pattern, this is the maximum number of elements allowed in
     /// the slice pattern that is suggested. If more elements are necessary, the lint is suppressed.
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
-    (max_suggested_slice_pattern_length: u64 = 3),
+    max_suggested_slice_pattern_length: u64 = 3,
     /// Lint: TYPE_REPETITION_IN_BOUNDS.
     ///
     /// The maximum number of bounds a trait can have to be linted
-    (max_trait_bounds: u64 = 3),
+    max_trait_bounds: u64 = 3,
     /// Lint: MIN_IDENT_CHARS.
     ///
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
-    (min_ident_chars_threshold: u64 = 1),
+    min_ident_chars_threshold: u64 = 1,
     /// Lint: MISSING_DOCS_IN_PRIVATE_ITEMS.
     ///
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
-    (missing_docs_in_crate_items: bool = false),
+    missing_docs_in_crate_items: bool = false,
     /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE, ITER_KV_MAP, MANUAL_C_STR_LITERALS, ASSIGNING_CLONES, LEGACY_NUMERIC_CONSTANTS, MANUAL_PATTERN_CHAR_COMPARISON, ALLOW_ATTRIBUTES, ALLOW_ATTRIBUTES_WITHOUT_REASON, COLLAPSIBLE_MATCH.
     ///
     /// The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
     #[default_text = ""]
-    (msrv: Msrv = Msrv::empty()),
+    msrv: Msrv = Msrv::empty(),
     /// Lint: LARGE_TYPES_PASSED_BY_VALUE.
     ///
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
-    (pass_by_value_size_limit: u64 = 256),
+    pass_by_value_size_limit: u64 = 256,
     /// Lint: PUB_UNDERSCORE_FIELDS.
     ///
     /// Lint "public" fields in a struct that are prefixed with an underscore based on their
     /// exported visibility, or whether they are marked as "pub".
-    (pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PubliclyExported),
+    pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PubliclyExported,
     /// Lint: SEMICOLON_INSIDE_BLOCK.
     ///
     /// Whether to lint only if it's multiline.
-    (semicolon_inside_block_ignore_singleline: bool = false),
+    semicolon_inside_block_ignore_singleline: bool = false,
     /// Lint: SEMICOLON_OUTSIDE_BLOCK.
     ///
     /// Whether to lint only if it's singleline.
-    (semicolon_outside_block_ignore_multiline: bool = false),
+    semicolon_outside_block_ignore_multiline: bool = false,
     /// Lint: MANY_SINGLE_CHAR_NAMES.
     ///
     /// The maximum number of single char bindings a scope may have
-    (single_char_binding_names_threshold: u64 = 4),
+    single_char_binding_names_threshold: u64 = 4,
     /// Lint: LARGE_STACK_FRAMES.
     ///
     /// The maximum allowed stack size for functions in bytes
-    (stack_size_threshold: u64 = 512_000),
+    stack_size_threshold: u64 = 512_000,
     /// Lint: NONSTANDARD_MACRO_BRACES.
     ///
     /// Enforce the named macros always use the braces specified.
@@ -596,11 +596,11 @@ define_Conf! {
     /// A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro
     /// could be used with a full path two `MacroMatcher`s have to be added one with the full path
     /// `crate_name::macro_name` and one with just the macro name.
-    (standard_macro_braces: Vec<MacroMatcher> = Vec::new()),
+    standard_macro_braces: Vec<MacroMatcher> = Vec::new(),
     /// Lint: STRUCT_FIELD_NAMES.
     ///
     /// The minimum number of struct fields for the lints about field names to trigger
-    (struct_field_name_threshold: u64 = 3),
+    struct_field_name_threshold: u64 = 3,
     /// Lint: INDEXING_SLICING.
     ///
     /// Whether to suppress a restriction lint in constant code. In same
@@ -608,57 +608,57 @@ define_Conf! {
     /// suggested counterparts are unavailable in constant code. This
     /// configuration will cause restriction lints to trigger even
     /// if no suggestion can be made.
-    (suppress_restriction_lint_in_const: bool = false),
+    suppress_restriction_lint_in_const: bool = false,
     /// Lint: BOXED_LOCAL, USELESS_VEC.
     ///
     /// The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
-    (too_large_for_stack: u64 = 200),
+    too_large_for_stack: u64 = 200,
     /// Lint: TOO_MANY_ARGUMENTS.
     ///
     /// The maximum number of argument a function or method can have
-    (too_many_arguments_threshold: u64 = 7),
+    too_many_arguments_threshold: u64 = 7,
     /// Lint: TOO_MANY_LINES.
     ///
     /// The maximum number of lines a function or method can have
-    (too_many_lines_threshold: u64 = 100),
+    too_many_lines_threshold: u64 = 100,
     /// Lint: TRIVIALLY_COPY_PASS_BY_REF.
     ///
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
     /// reference. By default there is no limit
     #[default_text = ""]
-    (trivial_copy_size_limit: Option<u64> = None),
+    trivial_copy_size_limit: Option<u64> = None,
     /// Lint: TYPE_COMPLEXITY.
     ///
     /// The maximum complexity a type can have
-    (type_complexity_threshold: u64 = 250),
+    type_complexity_threshold: u64 = 250,
     /// Lint: UNNECESSARY_BOX_RETURNS.
     ///
     /// The byte size a `T` in `Box<T>` can have, below which it triggers the `clippy::unnecessary_box` lint
-    (unnecessary_box_size: u64 = 128),
+    unnecessary_box_size: u64 = 128,
     /// Lint: UNREADABLE_LITERAL.
     ///
     /// Should the fraction of a decimal be linted to include separators.
-    (unreadable_literal_lint_fractions: bool = true),
+    unreadable_literal_lint_fractions: bool = true,
     /// Lint: UPPER_CASE_ACRONYMS.
     ///
     /// Enables verbose mode. Triggers if there is more than one uppercase char next to each other
-    (upper_case_acronyms_aggressive: bool = false),
+    upper_case_acronyms_aggressive: bool = false,
     /// Lint: VEC_BOX.
     ///
     /// The size of the boxed type in bytes, where boxing in a `Vec` is allowed
-    (vec_box_size_threshold: u64 = 4096),
+    vec_box_size_threshold: u64 = 4096,
     /// Lint: VERBOSE_BIT_MASK.
     ///
     /// The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
-    (verbose_bit_mask_threshold: u64 = 1),
+    verbose_bit_mask_threshold: u64 = 1,
     /// Lint: WILDCARD_IMPORTS.
     ///
     /// Whether to allow certain wildcard imports (prelude, super in tests).
-    (warn_on_all_wildcard_imports: bool = false),
+    warn_on_all_wildcard_imports: bool = false,
     /// Lint: MACRO_METAVARS_IN_UNSAFE.
     ///
     /// Whether to also emit warnings for unsafe blocks with metavariable expansions in **private** macros.
-    (warn_unsafe_macro_metavars_in_private_macros: bool = false),
+    warn_unsafe_macro_metavars_in_private_macros: bool = false,
 }
 
 /// Search for the configuration file.
