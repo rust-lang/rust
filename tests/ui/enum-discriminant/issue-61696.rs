@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(unreachable_patterns)]
 
 pub enum Infallible {}
 
