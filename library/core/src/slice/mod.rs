@@ -2898,7 +2898,9 @@ impl<T> [T] {
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `T: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -2955,7 +2957,9 @@ impl<T> [T] {
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `compare` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -2999,7 +3003,9 @@ impl<T> [T] {
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
     ///
-    /// If `K: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `K: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -3042,14 +3048,13 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice is nearly fully sorted, where `slice::sort` may be faster.
-    ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
     /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// May panic if `T: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -3103,14 +3108,13 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice is nearly fully sorted, where `slice::sort` may be faster.
-    ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
     /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// May panic if `compare` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -3168,14 +3172,13 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice is nearly fully sorted, where `slice::sort` may be faster.
-    ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
     /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// May panic if `K: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
