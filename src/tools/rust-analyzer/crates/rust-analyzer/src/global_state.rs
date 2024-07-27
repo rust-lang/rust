@@ -386,12 +386,18 @@ impl GlobalState {
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();
 
-                // FIXME @alibektas : This is silly. There is abs no reason to use VfsPaths when there is SourceRoots. But how
+                // FIXME @alibektas : This is silly. There is no reason to use VfsPaths when there is SourceRoots. But how
                 // do I resolve a "workspace_root" to its corresponding id without having to rely on a cargo.toml's ( or project json etc.) file id?
-                let workspace_roots = self
+                let workspace_ratoml_paths = self
                     .workspaces
                     .iter()
-                    .map(|ws| VfsPath::from(ws.workspace_root().to_owned()))
+                    .map(|ws| {
+                        VfsPath::from({
+                            let mut p = ws.workspace_root().to_owned();
+                            p.push("rust-analyzer.toml");
+                            p
+                        })
+                    })
                     .collect_vec();
 
                 for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
@@ -405,7 +411,7 @@ impl GlobalState {
                     let sr_id = db.file_source_root(file_id);
                     let sr = db.source_root(sr_id);
 
-                    if workspace_roots.contains(&vfs_path) {
+                    if workspace_ratoml_paths.contains(&vfs_path) {
                         change.change_workspace_ratoml(
                             sr_id,
                             vfs_path,
@@ -422,6 +428,7 @@ impl GlobalState {
                         ) {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
+                                dbg!("HARBIDEN");
                                 span!(Level::ERROR, "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
                                 // Put the old one back in.
                                 change.change_ratoml(sr_id, old_path, old_text);

@@ -700,37 +700,6 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
     );
 
     assert!(server.query(QueryType::Local, 3));
-
-    let server = RatomlTest::new(
-        vec![
-            r#"
-//- /p1/Cargo.toml
-[package]
-name = "p1"
-version = "0.1.0"
-edition = "2021"
-"#,
-            r#"
-//- /p1/src/rust-analyzer.toml
-assist.emitMustUse = false
-"#,
-            r#"
-//- /p1/rust-analyzer.toml
-assist.emitMustUse = true
-"#,
-            r#"
-//- /p1/src/lib.rs
-enum Value {
-    Number(i32),
-    Text(String),
-}
-"#,
-        ],
-        vec!["p1"],
-        None,
-    );
-
-    assert!(server.query(QueryType::Local, 3));
 }
 
 /// If a root is non-local, so we cannot find what its parent is
@@ -808,7 +777,6 @@ enum Value {
 /// Having a ratoml file at the root of a project enables
 /// configuring global level configurations as well.
 #[test]
-// #[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_in_root_is_global() {
     let server = RatomlTest::new(
         vec![
@@ -820,7 +788,7 @@ version = "0.1.0"
 edition = "2021"
         "#,
             r#"
-//- /rust-analyzer.toml
+//- /p1/rust-analyzer.toml
 rustfmt.rangeFormatting.enable = true
         "#,
             r#"
@@ -829,7 +797,7 @@ fn main() {
     todo!()
 }"#,
         ],
-        vec![],
+        vec!["p1"],
         None,
     );
 
@@ -837,7 +805,6 @@ fn main() {
 }
 
 #[test]
-#[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_root_is_updateable() {
     let mut server = RatomlTest::new(
         vec![
@@ -849,7 +816,7 @@ version = "0.1.0"
 edition = "2021"
         "#,
             r#"
-//- /rust-analyzer.toml
+//- /p1/rust-analyzer.toml
 rustfmt.rangeFormatting.enable = true
     "#,
             r#"
@@ -858,7 +825,7 @@ fn main() {
    todo!()
 }"#,
         ],
-        vec![],
+        vec!["p1"],
         None,
     );
 
@@ -868,7 +835,6 @@ fn main() {
 }
 
 #[test]
-#[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_root_is_deletable() {
     let mut server = RatomlTest::new(
         vec![
@@ -880,7 +846,7 @@ version = "0.1.0"
 edition = "2021"
         "#,
             r#"
-//- /rust-analyzer.toml
+//- /p1/rust-analyzer.toml
 rustfmt.rangeFormatting.enable = true
        "#,
             r#"
@@ -889,7 +855,7 @@ fn main() {
     todo!()
 }"#,
         ],
-        vec![],
+        vec!["p1"],
         None,
     );
 

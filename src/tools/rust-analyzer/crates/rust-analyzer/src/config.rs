@@ -780,10 +780,10 @@ pub struct Config {
     user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
 
     /// TODO : This file can be used to make global changes while having only a workspace-wide scope.
-    workspace_ratoml_change: FxHashMap<SourceRootId, (GlobalLocalConfigInput, ConfigErrors)>,
+    workspace_ratoml: FxHashMap<SourceRootId, (GlobalLocalConfigInput, ConfigErrors)>,
 
     /// For every `SourceRoot` there can be at most one RATOML file.
-    ratoml_files: FxHashMap<SourceRootId, (LocalConfigInput, ConfigErrors)>,
+    krate_ratoml: FxHashMap<SourceRootId, (LocalConfigInput, ConfigErrors)>,
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
@@ -927,7 +927,7 @@ impl Config {
                                 &mut String::new(),
                                 &mut toml_errors,
                             );
-                            config.workspace_ratoml_change.insert(
+                            config.workspace_ratoml.insert(
                                 source_root_id,
                                 (
                                     GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
@@ -969,7 +969,7 @@ impl Config {
                                 &mut String::new(),
                                 &mut toml_errors,
                             );
-                            config.ratoml_files.insert(
+                            config.krate_ratoml.insert(
                                 source_root_id,
                                 (
                                     LocalConfigInput::from_toml(&table, &mut toml_errors),
@@ -1022,15 +1022,9 @@ impl Config {
                 .1
                  .0
                 .iter()
-                .chain(
-                    config
-                        .workspace_ratoml_change
-                        .values()
-                        .into_iter()
-                        .flat_map(|it| it.1 .0.iter()),
-                )
+                .chain(config.workspace_ratoml.values().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
-                .chain(config.ratoml_files.values().flat_map(|it| it.1 .0.iter()))
+                .chain(config.krate_ratoml.values().flat_map(|it| it.1 .0.iter()))
                 .chain(config.validation_errors.0.iter())
                 .cloned()
                 .collect(),
@@ -1070,6 +1064,7 @@ impl ConfigChange {
         vfs_path: VfsPath,
         content: Option<Arc<str>>,
     ) -> Option<(VfsPath, Option<Arc<str>>)> {
+        dbg!("change_ratoml", &vfs_path);
         self.ratoml_file_change
             .get_or_insert_with(Default::default)
             .insert(source_root, (vfs_path, content))
@@ -1086,6 +1081,7 @@ impl ConfigChange {
         vfs_path: VfsPath,
         content: Option<Arc<str>>,
     ) -> Option<(VfsPath, Option<Arc<str>>)> {
+        dbg!("change_workspace", &vfs_path);
         self.workspace_ratoml_change
             .get_or_insert_with(Default::default)
             .insert(source_root, (vfs_path, content))
@@ -1350,14 +1346,14 @@ impl Config {
             workspace_roots,
             visual_studio_code_version,
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
-            ratoml_files: FxHashMap::default(),
+            krate_ratoml: FxHashMap::default(),
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config: None,
             user_config_path,
             detached_files: Default::default(),
             validation_errors: Default::default(),
-            workspace_ratoml_change: Default::default(),
+            workspace_ratoml: Default::default(),
         }
     }
 
@@ -1877,7 +1873,7 @@ impl Config {
         }
     }
 
-    pub fn rustfmt(&self) -> RustfmtConfig {
+    pub fn rustfmt(&self, source_root_id: Option<SourceRootId>) -> RustfmtConfig {
         match &self.rustfmt_overrideCommand(None) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1885,8 +1881,8 @@ impl Config {
                 RustfmtConfig::CustomCommand { command, args }
             }
             Some(_) | None => RustfmtConfig::Rustfmt {
-                extra_args: self.rustfmt_extraArgs(None).clone(),
-                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(None),
+                extra_args: self.rustfmt_extraArgs(source_root_id).clone(),
+                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(source_root_id),
             },
         }
     }
@@ -2540,22 +2536,28 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
-                    let mut par: Option<SourceRootId> = source_root;
-                    while let Some(source_root_id) = par {
-                        par = self.source_root_parent_map.get(&source_root_id).copied();
-                        if let Some((config, _)) = self.ratoml_files.get(&source_root_id) {
+                    let follow = if stringify!($field) == "assist_emitMustUse" { dbg!("YEY"); true } else {false};
+                    let mut current: Option<SourceRootId> = None;
+                    let mut next: Option<SourceRootId> = source_root;
+                    if follow { dbg!(&self.krate_ratoml);}
+                    while let Some(source_root_id) = next {
+                        current = next;
+                        next = self.source_root_parent_map.get(&source_root_id).copied();
+                        if let Some((config, _)) = self.krate_ratoml.get(&source_root_id) {
                             if let Some(value) = config.$field.as_ref() {
                                 return value;
                             }
                         }
                     }
 
-                    // TODO
-                    // if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
-                    //     if let Some(v) = root_path_ratoml.local.$field.as_ref() {
-                    //         return &v;
-                    //     }
-                    // }
+                    if let Some(current) = current {
+                        if follow { dbg!(&self.workspace_ratoml);}
+                        if let Some((root_path_ratoml, _)) = self.workspace_ratoml.get(&current).as_ref() {
+                            if let Some(v) = root_path_ratoml.local.$field.as_ref() {
+                                return &v;
+                            }
+                        }
+                    }
 
                     if let Some(v) = self.client_config.0.local.$field.as_ref() {
                         return &v;
@@ -2582,12 +2584,22 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root : Option<SourceRootId>) -> &$ty {
-                    // TODO
-                    // if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
-                    //     if let Some(v) = root_path_ratoml.global.$field.as_ref() {
-                    //         return &v;
-                    //     }
-                    // }
+                    let follow = if stringify!($field) == "rustfmt_extraArgs" { dbg!("YEY"); true } else {false};
+                    let mut current: Option<SourceRootId> = None;
+                    let mut next: Option<SourceRootId> = source_root;
+                    while let Some(source_root_id) = next {
+                        current = next;
+                        next = self.source_root_parent_map.get(&source_root_id).copied();
+                    }
+
+                    if let Some(current) = current {
+                        if follow { dbg!(&self.workspace_ratoml);}
+                        if let Some((root_path_ratoml, _)) = self.workspace_ratoml.get(&current).as_ref() {
+                            if let Some(v) = root_path_ratoml.global.$field.as_ref() {
+                                return &v;
+                            }
+                        }
+                    }
 
                     if let Some(v) = self.client_config.0.global.$field.as_ref() {
                         return &v;
