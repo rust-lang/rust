@@ -14,7 +14,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
@@ -563,25 +563,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
+        let mut return_ty = None;
+
         // FIXME: We may want to elaborate here, though I assume this will be exceedingly rare.
         for bound in self.obligations_for_self_ty(return_vid) {
             if let Some(ret_projection) = bound.predicate.as_projection_clause()
                 && let Some(ret_projection) = ret_projection.no_bound_vars()
                 && self.tcx.is_lang_item(ret_projection.def_id(), LangItem::FutureOutput)
             {
-                let sig = projection.rebind(self.tcx.mk_fn_sig(
-                    input_tys,
-                    ret_projection.term.expect_type(),
-                    false,
-                    hir::Safety::Safe,
-                    Abi::Rust,
-                ));
-
-                return Some(ExpectedSig { cause_span, sig });
+                return_ty = Some(ret_projection.term.expect_type());
             }
         }
 
-        None
+        let sig = projection.rebind(self.tcx.mk_fn_sig(
+            input_tys,
+            return_ty.unwrap_or_else(|| self.next_ty_var(cause_span.unwrap_or(DUMMY_SP))),
+            false,
+            hir::Safety::Safe,
+            Abi::Rust,
+        ));
+
+        return Some(ExpectedSig { cause_span, sig });
     }
 
     fn sig_of_closure(
