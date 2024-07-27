@@ -1,0 +1,106 @@
+// MIR for `simplification_subtleties` after built
+
+fn simplification_subtleties() -> () {
+    let mut _0: ();
+    let mut _1: (i32, bool);
+    let mut _2: !;
+    let mut _3: !;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = (const 1_i32, const true);
+        PlaceMention(_1);
+        switchInt((_1.0: i32)) -> [1: bb2, 2: bb4, otherwise: bb1];
+    }
+
+    bb1: {
+        switchInt((_1.0: i32)) -> [2: bb13, otherwise: bb12];
+    }
+
+    bb2: {
+        goto -> bb6;
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        goto -> bb6;
+    }
+
+    bb5: {
+        goto -> bb1;
+    }
+
+    bb6: {
+        switchInt((_1.1: bool)) -> [0: bb8, otherwise: bb7];
+    }
+
+    bb7: {
+        goto -> bb5;
+    }
+
+    bb8: {
+        goto -> bb11;
+    }
+
+    bb9: {
+        goto -> bb11;
+    }
+
+    bb10: {
+        goto -> bb7;
+    }
+
+    bb11: {
+        falseEdge -> [real: bb17, imaginary: bb1];
+    }
+
+    bb12: {
+        _0 = const ();
+        goto -> bb20;
+    }
+
+    bb13: {
+        falseEdge -> [real: bb16, imaginary: bb12];
+    }
+
+    bb14: {
+        goto -> bb12;
+    }
+
+    bb15: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb16: {
+        StorageLive(_3);
+        _3 = core::panicking::panic(const "internal error: entered unreachable code") -> bb21;
+    }
+
+    bb17: {
+        StorageLive(_2);
+        _2 = core::panicking::panic(const "internal error: entered unreachable code") -> bb21;
+    }
+
+    bb18: {
+        StorageDead(_2);
+        goto -> bb20;
+    }
+
+    bb19: {
+        StorageDead(_3);
+        goto -> bb20;
+    }
+
+    bb20: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb21 (cleanup): {
+        resume;
+    }
+}
