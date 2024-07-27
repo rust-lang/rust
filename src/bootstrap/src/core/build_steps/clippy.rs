@@ -200,7 +200,7 @@ impl Step for Rustc {
             builder.ensure(compile::Std::new(compiler, compiler.host));
             builder.ensure(compile::Std::new(compiler, target));
         } else {
-            builder.ensure(check::Std::new(target));
+            builder.ensure(check::Std::new_with_build_kind(target, Some(Kind::Check)));
         }
 
         let mut cargo = builder::Cargo::new(
@@ -267,7 +267,7 @@ macro_rules! lint_any {
                 let compiler = builder.compiler(builder.top_stage, builder.config.build);
                 let target = self.target;
 
-                builder.ensure(check::Rustc::new(target, builder));
+                builder.ensure(check::Rustc::new_with_build_kind(target, builder, Some(Kind::Check)));
 
                 let cargo = prepare_tool_cargo(
                     builder,

@@ -689,7 +689,7 @@ impl<'a> ShouldRun<'a> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, ValueEnum)]
 pub enum Kind {
     #[value(alias = "b")]
     Build,
