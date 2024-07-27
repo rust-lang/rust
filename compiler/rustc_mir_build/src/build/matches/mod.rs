@@ -997,10 +997,14 @@ impl<'tcx> PatternExtraData<'tcx> {
 /// Will typically be incorporated into a [`Candidate`].
 #[derive(Debug, Clone)]
 struct FlatPat<'pat, 'tcx> {
-    /// To match the pattern, all of these must be satisfied...
+    /// To match the pattern, all of these must be satisfied.
     // Invariant: all the match pairs are recursively simplified.
     // Invariant: or-patterns must be sorted to the end.
     match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
+
+    /// Whether this recursively (i.e. including inside sub-or-patterns) contains bindings or
+    /// ascriptions.
+    contains_bindings: bool,
 
     extra_data: PatternExtraData<'tcx>,
 }
@@ -1025,7 +1029,10 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
         // bindings/ascriptions, and sort or-patterns after other match pairs.
         cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
 
-        Self { match_pairs, extra_data }
+        let contains_bindings =
+            !extra_data.is_empty() || match_pairs.iter().any(|mp| mp.contains_bindings());
+
+        Self { match_pairs, extra_data, contains_bindings }
     }
 }
 
@@ -1242,14 +1249,32 @@ struct Ascription<'tcx> {
 ///   - See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
 enum TestCase<'pat, 'tcx> {
-    Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
-    Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { value: mir::Const<'tcx> },
+    Irrefutable {
+        binding: Option<Binding<'tcx>>,
+        ascription: Option<Ascription<'tcx>>,
+    },
+    Variant {
+        adt_def: ty::AdtDef<'tcx>,
+        variant_index: VariantIdx,
+    },
+    Constant {
+        value: mir::Const<'tcx>,
+    },
     Range(&'pat PatRange<'tcx>),
-    Slice { len: usize, variable_length: bool },
-    Deref { temp: Place<'tcx>, mutability: Mutability },
+    Slice {
+        len: usize,
+        variable_length: bool,
+    },
+    Deref {
+        temp: Place<'tcx>,
+        mutability: Mutability,
+    },
     Never,
-    Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
+    Or {
+        pats: Box<[FlatPat<'pat, 'tcx>]>,
+        /// Whether this recursively contains any bindings or ascriptions.
+        contains_bindings: bool,
+    },
 }
 
 impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
@@ -1877,7 +1902,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
         match_pair: MatchPairTree<'pat, 'tcx>,
     ) {
-        let TestCase::Or { pats } = match_pair.test_case else { bug!() };
+        let TestCase::Or { pats, .. } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
         candidate.or_span = Some(match_pair.pattern.span);
         candidate.subcandidates = pats
