@@ -599,7 +599,7 @@ impl<'a> Parser<'a> {
 
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
-    // Public for rustfmt usage.
+    // Public for rustc_builtin_macros and rustfmt usage.
     #[inline]
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
@@ -631,8 +631,11 @@ impl<'a> Parser<'a> {
         false
     }
 
+    /// If the next token is the given keyword, eats it and returns `true`.
+    /// Otherwise, returns `false`. No expectation is added.
+    // Public for rustc_builtin_macros usage.
     #[inline]
-    fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
+    pub fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
         if self.token.is_keyword(kw) {
             self.bump();
             true

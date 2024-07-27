@@ -244,10 +244,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             self.tcx.dcx().emit_err(NakedFunctionsOperands { unsupported_operands });
         }
 
-        let supported_options =
-            InlineAsmOptions::RAW | InlineAsmOptions::NORETURN | InlineAsmOptions::ATT_SYNTAX;
-        let unsupported_options = asm.options.difference(supported_options);
-
+        let unsupported_options = asm.options.difference(InlineAsmOptions::NAKED_OPTIONS);
         if !unsupported_options.is_empty() {
             self.tcx.dcx().emit_err(NakedFunctionsAsmOptions {
                 span,

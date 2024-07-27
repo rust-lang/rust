@@ -20,6 +20,8 @@ use crate::{fmt, io};
     target_os = "freebsd",
     target_os = "openbsd",
     target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
     target_os = "haiku",
     target_os = "nto",
 ))]
@@ -31,6 +33,8 @@ use libc::MSG_NOSIGNAL;
     target_os = "freebsd",
     target_os = "openbsd",
     target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
     target_os = "haiku",
     target_os = "nto",
 )))]

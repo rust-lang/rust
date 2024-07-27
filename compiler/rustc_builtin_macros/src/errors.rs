@@ -846,6 +846,17 @@ pub(crate) struct AsmOptAlreadyprovided {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_global_asm_unsupported_option)]
+pub(crate) struct GlobalAsmUnsupportedOption {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: Symbol,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub(crate) full_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_test_runner_invalid)]
 pub(crate) struct TestRunnerInvalid {
     #[primary_span]
