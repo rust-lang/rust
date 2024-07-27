@@ -246,7 +246,7 @@ impl Step for Std {
                 Mode::Std,
                 SourceType::InTree,
                 target,
-                "check",
+                Kind::Check,
             );
             cargo.rustflag("-Zalways-encode-mir");
             cargo.arg("--manifest-path").arg(builder.src.join("library/sysroot/Cargo.toml"));
@@ -258,7 +258,7 @@ impl Step for Std {
                 Mode::Std,
                 SourceType::InTree,
                 target,
-                "build",
+                Kind::Build,
             );
             std_cargo(builder, target, compiler.stage, &mut cargo);
             for krate in &*self.crates {
@@ -916,7 +916,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            "build",
+            Kind::Build,
         );
 
         rustc_cargo(builder, &mut cargo, target, &compiler);
@@ -1356,7 +1356,7 @@ impl Step for CodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            "build",
+            Kind::Build,
         );
         cargo
             .arg("--manifest-path")

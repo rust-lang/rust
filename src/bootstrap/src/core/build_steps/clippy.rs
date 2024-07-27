@@ -132,8 +132,14 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
-        let mut cargo =
-            builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, "clippy");
+        let mut cargo = builder::Cargo::new(
+            builder,
+            compiler,
+            Mode::Std,
+            SourceType::InTree,
+            target,
+            Kind::Clippy,
+        );
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
@@ -203,7 +209,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            "clippy",
+            Kind::Clippy,
         );
 
         rustc_cargo(builder, &mut cargo, target, &compiler);
@@ -268,7 +274,7 @@ macro_rules! lint_any {
                     compiler,
                     Mode::ToolRustc,
                     target,
-                    "clippy",
+                    Kind::Clippy,
                     $path,
                     SourceType::InTree,
                     &[],

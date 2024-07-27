@@ -93,7 +93,7 @@ impl Step for ToolBuild {
             compiler,
             self.mode,
             target,
-            "build",
+            Kind::Build,
             path,
             self.source_type,
             &self.extra_features,
@@ -139,12 +139,12 @@ pub fn prepare_tool_cargo(
     compiler: Compiler,
     mode: Mode,
     target: TargetSelection,
-    command: &'static str,
+    cmd_kind: Kind,
     path: &str,
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
-    let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, command);
+    let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
@@ -640,7 +640,7 @@ impl Step for Rustdoc {
             build_compiler,
             Mode::ToolRustc,
             target,
-            "build",
+            Kind::Build,
             "src/tools/rustdoc",
             SourceType::InTree,
             features.as_slice(),
@@ -899,7 +899,7 @@ impl Step for LlvmBitcodeLinker {
             self.compiler,
             Mode::ToolRustc,
             self.target,
-            "build",
+            Kind::Build,
             "src/tools/llvm-bitcode-linker",
             SourceType::InTree,
             &self.extra_features,

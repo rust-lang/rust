@@ -712,7 +712,7 @@ fn doc_std(
     let out_dir = target_dir.join(target.triple).join("doc");
 
     let mut cargo =
-        builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, "doc");
+        builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, Kind::Doc);
 
     compile::std_cargo(builder, target, compiler.stage, &mut cargo);
     cargo
@@ -814,8 +814,14 @@ impl Step for Rustc {
         );
 
         // Build cargo command.
-        let mut cargo =
-            builder::Cargo::new(builder, compiler, Mode::Rustc, SourceType::InTree, target, "doc");
+        let mut cargo = builder::Cargo::new(
+            builder,
+            compiler,
+            Mode::Rustc,
+            SourceType::InTree,
+            target,
+            Kind::Doc,
+        );
 
         cargo.rustdocflag("--document-private-items");
         // Since we always pass --document-private-items, there's no need to warn about linking to private items.
@@ -962,7 +968,7 @@ macro_rules! tool_doc {
                     compiler,
                     Mode::ToolRustc,
                     target,
-                    "doc",
+                    Kind::Doc,
                     $path,
                     source_type,
                     &[],

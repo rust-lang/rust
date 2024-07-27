@@ -11,16 +11,6 @@ use crate::core::config::TargetSelection;
 use crate::{Compiler, Mode, Subcommand};
 use std::path::{Path, PathBuf};
 
-pub fn cargo_subcommand(kind: Kind) -> &'static str {
-    match kind {
-        Kind::Check
-        // We ensure check steps for both std and rustc from build_steps/clippy, so handle `Kind::Clippy` as well.
-        | Kind::Clippy => "check",
-        Kind::Fix => "fix",
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
@@ -63,7 +53,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            builder.kind,
         );
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -117,7 +107,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            builder.kind,
         );
 
         // If we're not in stage 0, tests and examples will fail to compile
@@ -212,7 +202,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            builder.kind,
         );
 
         rustc_cargo(builder, &mut cargo, target, &compiler);
@@ -290,7 +280,7 @@ impl Step for CodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            builder.kind,
         );
 
         cargo
@@ -348,7 +338,7 @@ impl Step for RustAnalyzer {
             compiler,
             Mode::ToolRustc,
             target,
-            cargo_subcommand(builder.kind),
+            builder.kind,
             "src/tools/rust-analyzer",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
@@ -416,7 +406,7 @@ macro_rules! tool_check_step {
                     compiler,
                     Mode::ToolRustc,
                     target,
-                    cargo_subcommand(builder.kind),
+                    builder.kind,
                     $path,
                     $source_type,
                     &[],
