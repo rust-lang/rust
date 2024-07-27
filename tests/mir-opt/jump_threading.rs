@@ -506,6 +506,16 @@ fn assume(a: u8, b: bool) -> u8 {
     }
 }
 
+fn floats() -> u32 {
+    // CHECK-LABEL: fn floats(
+    // CHECK: switchInt(
+
+    // Test for issue #128243, where float equality was assumed to be bitwise.
+    // When adding float support, it must be ensured that this continues working properly.
+    let x = if true { -0.0 } else { 1.0 };
+    if x == 0.0 { 0 } else { 1 }
+}
+
 fn main() {
     // CHECK-LABEL: fn main(
     too_complex(Ok(0));
@@ -520,6 +530,7 @@ fn main() {
     disappearing_bb(7);
     aggregate(7);
     assume(7, false);
+    floats();
 }
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
@@ -534,3 +545,4 @@ fn main() {
 // EMIT_MIR jump_threading.disappearing_bb.JumpThreading.diff
 // EMIT_MIR jump_threading.aggregate.JumpThreading.diff
 // EMIT_MIR jump_threading.assume.JumpThreading.diff
+// EMIT_MIR jump_threading.floats.JumpThreading.diff
