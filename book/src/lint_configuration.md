@@ -364,7 +364,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 
 
 ## `await-holding-invalid-types`
-
+The list of types which may not be held across an await point.
 
 **Default Value:** `[]`
 

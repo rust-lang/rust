@@ -416,6 +416,8 @@ define_Conf! {
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
     /// Lint: AWAIT_HOLDING_INVALID_TYPE.
+    ///
+    /// The list of types which may not be held across an await point.
     (await_holding_invalid_types: Vec<DisallowedPath> = Vec::new()),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
