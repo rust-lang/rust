@@ -712,6 +712,113 @@ make_backup = false
         assert_eq!(&toml, &default_config);
     }
 
+    #[test]
+    fn test_dump_style_edition_2024_config() {
+        let edition_2024_config = format!(
+            r#"max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Auto"
+indent_style = "Block"
+use_small_heuristics = "Default"
+fn_call_width = 60
+attr_fn_like_width = 70
+struct_lit_width = 18
+struct_variant_width = 35
+array_width = 60
+chain_width = 60
+single_line_if_else_max_width = 50
+single_line_let_else_max_width = 50
+wrap_comments = false
+format_code_in_doc_comments = false
+doc_comment_code_block_width = 100
+comment_width = 80
+normalize_comments = false
+normalize_doc_attributes = false
+format_strings = false
+format_macro_matchers = false
+format_macro_bodies = true
+skip_macro_invocations = []
+hex_literal_case = "Preserve"
+empty_item_single_line = true
+struct_lit_single_line = true
+fn_single_line = false
+where_single_line = false
+imports_indent = "Block"
+imports_layout = "Mixed"
+imports_granularity = "Preserve"
+group_imports = "Preserve"
+reorder_imports = true
+reorder_modules = true
+reorder_impl_items = false
+type_punctuation_density = "Wide"
+space_before_colon = false
+space_after_colon = true
+spaces_around_ranges = false
+binop_separator = "Front"
+remove_nested_parens = true
+combine_control_expr = true
+short_array_element_width_threshold = 10
+overflow_delimited_expr = false
+struct_field_align_threshold = 0
+enum_discrim_align_threshold = 0
+match_arm_blocks = true
+match_arm_leading_pipes = "Never"
+force_multiline_blocks = false
+fn_params_layout = "Tall"
+brace_style = "SameLineWhere"
+control_brace_style = "AlwaysSameLine"
+trailing_semicolon = true
+trailing_comma = "Vertical"
+match_block_trailing_comma = false
+blank_lines_upper_bound = 1
+blank_lines_lower_bound = 0
+edition = "2015"
+version = "Two"
+inline_attribute_width = 0
+format_generated_files = true
+generated_marker_line_search_limit = 5
+merge_derives = true
+use_try_shorthand = false
+use_field_init_shorthand = false
+force_explicit_abi = true
+condense_wildcard_suffixes = false
+color = "Auto"
+required_version = "{}"
+unstable_features = false
+disable_all_formatting = false
+skip_children = false
+show_parse_errors = true
+error_on_line_overflow = false
+error_on_unformatted = false
+ignore = []
+emit_mode = "Files"
+make_backup = false
+"#,
+            env!("CARGO_PKG_VERSION")
+        );
+        let toml = Config::default_with_style_edition(StyleEdition::Edition2024)
+            .all_options()
+            .to_toml()
+            .unwrap();
+        assert_eq!(&toml, &edition_2024_config);
+    }
+
+    #[test]
+    fn test_editions_2015_2018_2021_identical() {
+        let get_edition_toml = |style_edition: StyleEdition| {
+            Config::default_with_style_edition(style_edition)
+                .all_options()
+                .to_toml()
+                .unwrap();
+        };
+        let edition2015 = get_edition_toml(StyleEdition::Edition2015);
+        let edition2018 = get_edition_toml(StyleEdition::Edition2018);
+        let edition2021 = get_edition_toml(StyleEdition::Edition2021);
+        assert_eq!(edition2015, edition2018);
+        assert_eq!(edition2018, edition2021);
+    }
+
     #[stable_only_test]
     #[test]
     fn test_as_not_nightly_channel() {
