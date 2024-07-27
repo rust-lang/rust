@@ -24,7 +24,7 @@ use crate::core::build_steps::llvm;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::core::download::is_download_ci_available;
-use crate::utils::cache::{INTERNER, Interned};
+use crate::utils::cache::Interned;
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
 
@@ -465,13 +465,19 @@ impl std::str::FromStr for RustcLto {
     }
 }
 
-#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 // N.B.: This type is used everywhere, and the entire codebase relies on it being Copy.
 // Making !Copy is highly nontrivial!
 pub struct TargetSelection {
-    pub triple: Interned<String>,
-    file: Option<Interned<String>>,
+    pub triple: Interned<str>,
+    file: Option<Interned<str>>,
     synthetic: bool,
+}
+
+impl Default for TargetSelection {
+    fn default() -> Self {
+        Self { triple: "".into(), file: Default::default(), synthetic: Default::default() }
+    }
 }
 
 /// Newtype over `Vec<TargetSelection>` so we can implement custom parsing logic
@@ -500,18 +506,14 @@ impl TargetSelection {
             (selection, None)
         };
 
-        let triple = INTERNER.intern_str(triple);
-        let file = file.map(|f| INTERNER.intern_str(f));
+        let triple: Interned<str> = triple.into();
+        let file: Option<Interned<str>> = file.map(|f| f.into());
 
         Self { triple, file, synthetic: false }
     }
 
     pub fn create_synthetic(triple: &str, file: &str) -> Self {
-        Self {
-            triple: INTERNER.intern_str(triple),
-            file: Some(INTERNER.intern_str(file)),
-            synthetic: true,
-        }
+        Self { triple: triple.into(), file: Some(file.into()), synthetic: true }
     }
 
     pub fn rustc_target_arg(&self) -> &str {
@@ -571,7 +573,7 @@ impl fmt::Debug for TargetSelection {
 
 impl PartialEq<&str> for TargetSelection {
     fn eq(&self, other: &&str) -> bool {
-        self.triple == *other
+        &*self.triple == *other
     }
 }
 
@@ -579,7 +581,7 @@ impl PartialEq<&str> for TargetSelection {
 // This impl makes it more ergonomics to use them as such.
 impl AsRef<Path> for TargetSelection {
     fn as_ref(&self) -> &Path {
-        self.triple.as_ref()
+        (*self.triple).as_ref()
     }
 }
 
@@ -2119,7 +2121,7 @@ impl Config {
         //   thus, disabled
         // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
         //   when the config sets `rust.lld = false`
-        if config.build.triple == "x86_64-unknown-linux-gnu"
+        if &*config.build.triple == "x86_64-unknown-linux-gnu"
             && config.hosts == [config.build]
             && (config.channel == "dev" || config.channel == "nightly")
         {
