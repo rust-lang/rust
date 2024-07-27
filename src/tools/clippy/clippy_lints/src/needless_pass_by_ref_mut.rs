@@ -1,8 +1,10 @@
 use super::needless_pass_by_value::requires_exact_signature;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
+use core::ops::ControlFlow;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -19,8 +21,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-
-use core::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -51,7 +51,6 @@ declare_clippy_lint! {
     "using a `&mut` argument when it's not mutated"
 }
 
-#[derive(Clone)]
 pub struct NeedlessPassByRefMut<'tcx> {
     avoid_breaking_exported_api: bool,
     used_fn_def_ids: FxHashSet<LocalDefId>,
@@ -59,9 +58,9 @@ pub struct NeedlessPassByRefMut<'tcx> {
 }
 
 impl NeedlessPassByRefMut<'_> {
-    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
             used_fn_def_ids: FxHashSet::default(),
             fn_def_ids_to_maybe_unused_mut: FxIndexMap::default(),
         }

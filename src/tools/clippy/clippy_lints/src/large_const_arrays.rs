@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
@@ -32,13 +33,14 @@ declare_clippy_lint! {
 }
 
 pub struct LargeConstArrays {
-    maximum_allowed_size: u128,
+    maximum_allowed_size: u64,
 }
 
 impl LargeConstArrays {
-    #[must_use]
-    pub fn new(maximum_allowed_size: u128) -> Self {
-        Self { maximum_allowed_size }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            maximum_allowed_size: conf.array_size_threshold,
+        }
     }
 }
 
@@ -57,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
             && let element_count = element_count.to_target_usize(cx.tcx)
             && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
-            && self.maximum_allowed_size < u128::from(element_count) * u128::from(element_size)
+            && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
         {
             let hi_pos = item.ident.span.lo() - BytePos::from_usize(1);
             let sugg_span = Span::new(

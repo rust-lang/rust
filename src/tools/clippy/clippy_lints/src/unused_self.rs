@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::visitors::is_local_used;
@@ -43,9 +44,9 @@ pub struct UnusedSelf {
 impl_lint_pass!(UnusedSelf => [UNUSED_SELF]);
 
 impl UnusedSelf {
-    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
         }
     }
 }

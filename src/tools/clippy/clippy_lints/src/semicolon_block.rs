@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
@@ -64,21 +65,20 @@ declare_clippy_lint! {
 }
 impl_lint_pass!(SemicolonBlock => [SEMICOLON_INSIDE_BLOCK, SEMICOLON_OUTSIDE_BLOCK]);
 
-#[derive(Copy, Clone)]
 pub struct SemicolonBlock {
     semicolon_inside_block_ignore_singleline: bool,
     semicolon_outside_block_ignore_multiline: bool,
 }
 
 impl SemicolonBlock {
-    pub fn new(semicolon_inside_block_ignore_singleline: bool, semicolon_outside_block_ignore_multiline: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            semicolon_inside_block_ignore_singleline,
-            semicolon_outside_block_ignore_multiline,
+            semicolon_inside_block_ignore_singleline: conf.semicolon_inside_block_ignore_singleline,
+            semicolon_outside_block_ignore_multiline: conf.semicolon_outside_block_ignore_multiline,
         }
     }
 
-    fn semicolon_inside_block(self, cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
+    fn semicolon_inside_block(&self, cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
         let insert_span = tail.span.source_callsite().shrink_to_hi();
         let remove_span = semi_span.with_lo(block.span.hi());
 
@@ -103,7 +103,7 @@ impl SemicolonBlock {
     }
 
     fn semicolon_outside_block(
-        self,
+        &self,
         cx: &LateContext<'_>,
         block: &Block<'_>,
         tail_stmt_expr: &Expr<'_>,

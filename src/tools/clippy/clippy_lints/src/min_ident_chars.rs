@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
 use rustc_data_structures::fx::FxHashSet;
@@ -39,13 +40,19 @@ declare_clippy_lint! {
 }
 impl_lint_pass!(MinIdentChars => [MIN_IDENT_CHARS]);
 
-#[derive(Clone)]
 pub struct MinIdentChars {
-    pub allowed_idents_below_min_chars: FxHashSet<String>,
-    pub min_ident_chars_threshold: u64,
+    allowed_idents_below_min_chars: &'static FxHashSet<String>,
+    min_ident_chars_threshold: u64,
 }
 
 impl MinIdentChars {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            allowed_idents_below_min_chars: &conf.allowed_idents_below_min_chars,
+            min_ident_chars_threshold: conf.min_ident_chars_threshold,
+        }
+    }
+
     #[expect(clippy::cast_possible_truncation)]
     fn is_ident_too_short(&self, cx: &LateContext<'_>, str: &str, span: Span) -> bool {
         !in_external_macro(cx.sess(), span)
@@ -132,11 +139,11 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
                 return;
             }
 
-            // `struct Awa<T>(T)`
-            //                ^
+            // `struct Array<T, const N: usize>([T; N])`
+            //                                   ^  ^
             if let Node::PathSegment(path) = node {
                 if let Res::Def(def_kind, ..) = path.res
-                    && let DefKind::TyParam = def_kind
+                    && let DefKind::TyParam | DefKind::ConstParam = def_kind
                 {
                     return;
                 }

@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_in_test;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
@@ -5,9 +6,16 @@ use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 
-#[derive(Clone)]
 pub struct PanicUnimplemented {
-    pub allow_panic_in_tests: bool,
+    allow_panic_in_tests: bool,
+}
+
+impl PanicUnimplemented {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            allow_panic_in_tests: conf.allow_panic_in_tests,
+        }
+    }
 }
 
 declare_clippy_lint! {

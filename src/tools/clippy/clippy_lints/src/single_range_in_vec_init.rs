@@ -99,7 +99,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             && let Some(start_snippet) = snippet_opt(cx, start.span)
             && let Some(end_snippet) = snippet_opt(cx, end.span)
         {
-            let should_emit_every_value = if let Some(step_def_id) = get_trait_def_id(cx, &["core", "iter", "Step"])
+            let should_emit_every_value = if let Some(step_def_id) = get_trait_def_id(cx.tcx, &["core", "iter", "Step"])
                 && implements_trait(cx, ty, step_def_id, &[])
             {
                 true

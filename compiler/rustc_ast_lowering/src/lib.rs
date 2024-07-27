@@ -913,15 +913,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> Option<&'hir [Attribute]> {
+    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [Attribute] {
         if attrs.is_empty() {
-            None
+            &[]
         } else {
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
             debug_assert!(!ret.is_empty());
             self.attrs.insert(id.local_id, ret);
-            Some(ret)
+            ret
         }
     }
 
@@ -1216,6 +1216,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     itctx,
                     TraitBoundModifiers::NONE,
                 );
+                let bound = (bound, hir::TraitBoundModifier::None);
                 let bounds = this.arena.alloc_from_iter([bound]);
                 let lifetime_bound = this.elided_dyn_bound(t.span);
                 (bounds, lifetime_bound)
@@ -1348,21 +1349,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             // We can safely ignore constness here since AST validation
                             // takes care of rejecting invalid modifier combinations and
                             // const trait bounds in trait object types.
-                            GenericBound::Trait(ty, modifiers) => match modifiers.polarity {
-                                BoundPolarity::Positive | BoundPolarity::Negative(_) => {
-                                    Some(this.lower_poly_trait_ref(
-                                        ty,
-                                        itctx,
-                                        // Still, don't pass along the constness here; we don't want to
-                                        // synthesize any host effect args, it'd only cause problems.
-                                        TraitBoundModifiers {
-                                            constness: BoundConstness::Never,
-                                            ..*modifiers
-                                        },
-                                    ))
-                                }
-                                BoundPolarity::Maybe(_) => None,
-                            },
+                            GenericBound::Trait(ty, modifiers) => {
+                                // Still, don't pass along the constness here; we don't want to
+                                // synthesize any host effect args, it'd only cause problems.
+                                let modifiers = TraitBoundModifiers {
+                                    constness: BoundConstness::Never,
+                                    ..*modifiers
+                                };
+                                let trait_ref = this.lower_poly_trait_ref(ty, itctx, modifiers);
+                                let polarity = this.lower_trait_bound_modifiers(modifiers);
+                                Some((trait_ref, polarity))
+                            }
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
                                     lifetime_bound = Some(this.lower_lifetime(lifetime));
@@ -2688,6 +2685,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
                             span: self.lower_span(span),
                         };
+                        let principal = (principal, hir::TraitBoundModifier::None);
 
                         // The original ID is taken by the `PolyTraitRef`,
                         // so the `Ty` itself needs a different one.

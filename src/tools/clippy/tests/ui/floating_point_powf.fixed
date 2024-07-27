@@ -25,6 +25,14 @@ fn main() {
     let _ = 1.5_f64.sqrt();
     let _ = 1.5_f64.powi(3);
 
+    macro_rules! m {
+        ($e:expr) => {
+            5.5 - $e
+        };
+    }
+
+    let _ = (1f32 + m!(2.0)).exp2();
+
     // Cases where the lint shouldn't be applied
     let _ = x.powf(2.1);
     let _ = x.powf(-2.1);

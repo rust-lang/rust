@@ -47,9 +47,13 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
         if let ExprKind::Call(maybe_path, [src, radix]) = &exp.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, pathseg)) = &maybe_path.kind
-            // do not lint in constant context, because the suggestion won't work.
-            // NB: keep this check until a new `const_trait_impl` is available and stablized.
-            && !in_constant(cx, exp.hir_id)
+
+            // check if the second argument is a primitive `10`
+            && is_integer_literal(radix, 10)
+
+            // check if the second part of the path indeed calls the associated
+            // function `from_str_radix`
+            && pathseg.ident.name.as_str() == "from_str_radix"
 
             // check if the first part of the path is some integer primitive
             && let TyKind::Path(ty_qpath) = &ty.kind
@@ -57,12 +61,9 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
             && let def::Res::PrimTy(prim_ty) = ty_res
             && matches!(prim_ty, PrimTy::Int(_) | PrimTy::Uint(_))
 
-            // check if the second part of the path indeed calls the associated
-            // function `from_str_radix`
-            && pathseg.ident.name.as_str() == "from_str_radix"
-
-            // check if the second argument is a primitive `10`
-            && is_integer_literal(radix, 10)
+            // do not lint in constant context, because the suggestion won't work.
+            // NB: keep this check until a new `const_trait_impl` is available and stablized.
+            && !in_constant(cx, exp.hir_id)
         {
             let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
                 let ty = cx.typeck_results().expr_ty(expr);

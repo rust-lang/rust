@@ -1,4 +1,5 @@
 mod lazy_continuation;
+use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
@@ -421,17 +422,16 @@ declare_clippy_lint! {
     "require every line of a paragraph to be indented and marked"
 }
 
-#[derive(Clone)]
 pub struct Documentation {
-    valid_idents: FxHashSet<String>,
+    valid_idents: &'static FxHashSet<String>,
     check_private_items: bool,
 }
 
 impl Documentation {
-    pub fn new(valid_idents: &[String], check_private_items: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            valid_idents: valid_idents.iter().cloned().collect(),
-            check_private_items,
+            valid_idents: &conf.doc_valid_idents,
+            check_private_items: conf.check_private_items,
         }
     }
 }
@@ -452,7 +452,7 @@ impl_lint_pass!(Documentation => [
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
+        let Some(headers) = check_attrs(cx, self.valid_idents, attrs) else {
             return;
         };
 

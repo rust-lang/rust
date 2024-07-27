@@ -41,3 +41,8 @@ The setup for the `rmake.rs` version is a 3-stage process:
 
 [`run_make_support`]: ../../src/tools/run-make-support
 [extern_prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
+
+### Formatting
+
+Note that files under `tests/` are not formatted by `./x fmt`,
+use `rustfmt tests/path/to/file.rs` to format a specific file if desired.

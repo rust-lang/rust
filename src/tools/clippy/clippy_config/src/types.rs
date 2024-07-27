@@ -2,13 +2,13 @@ use serde::de::{self, Deserializer, Visitor};
 use serde::{ser, Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Rename {
     pub path: String,
     pub rename: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum DisallowedPath {
     Simple(String),
@@ -22,12 +22,10 @@ impl DisallowedPath {
         path
     }
 
-    pub fn reason(&self) -> Option<String> {
-        match self {
-            Self::WithReason {
-                reason: Some(reason), ..
-            } => Some(format!("{reason} (from clippy.toml)")),
-            _ => None,
+    pub fn reason(&self) -> Option<&str> {
+        match &self {
+            Self::WithReason { reason, .. } => reason.as_deref(),
+            Self::Simple(_) => None,
         }
     }
 }
