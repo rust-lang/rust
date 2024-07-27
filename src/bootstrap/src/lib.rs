@@ -441,7 +441,7 @@ impl Build {
             // Cargo.toml files.
             let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
-                build.update_submodule(Path::new(s));
+                build.update_submodule(s);
             }
             // Now, update all existing submodules.
             build.update_existing_submodules();
@@ -479,7 +479,7 @@ impl Build {
     /// tarball). Typically [`Build::require_and_update_submodule`] should be
     /// used instead to provide a nice error to the user if the submodule is
     /// missing.
-    fn update_submodule(&self, relative_path: &Path) {
+    fn update_submodule(&self, relative_path: &str) {
         if !self.config.submodules() {
             return;
         }
@@ -527,7 +527,7 @@ impl Build {
             return;
         }
 
-        println!("Updating submodule {}", relative_path.display());
+        println!("Updating submodule {relative_path}");
         helpers::git(Some(&self.src))
             .run_always()
             .args(["submodule", "-q", "sync"])
@@ -596,9 +596,8 @@ impl Build {
         if cfg!(test) && !self.config.submodules() {
             return;
         }
-        let relative_path = Path::new(submodule);
-        self.update_submodule(relative_path);
-        let absolute_path = self.config.src.join(relative_path);
+        self.update_submodule(submodule);
+        let absolute_path = self.config.src.join(submodule);
         if dir_is_empty(&absolute_path) {
             let maybe_enable = if !self.config.submodules()
                 && self.config.rust_info.is_managed_git_subrepository()
@@ -642,22 +641,23 @@ impl Build {
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = Path::new(line.split_once(' ').unwrap().1);
+            let submodule = line.split_once(' ').unwrap().1;
+            let path = Path::new(submodule);
             // Don't update the submodule unless it's already been cloned.
-            if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+            if GitInfo::new(false, path).is_managed_git_subrepository() {
                 self.update_submodule(submodule);
             }
         }
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(&self, submodule: &Path) {
+    pub fn update_existing_submodule(&self, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
         if !self.config.submodules() {
             return;
         }
 
-        if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+        if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
             self.update_submodule(submodule);
         }
     }

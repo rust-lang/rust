@@ -89,7 +89,7 @@ impl LdFlags {
 /// if not).
 pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
     // If we have llvm submodule initialized already, sync it.
-    builder.update_existing_submodule(&Path::new("src").join("llvm-project"));
+    builder.update_existing_submodule("src/llvm-project");
 
     builder.config.maybe_download_ci_llvm();
 
