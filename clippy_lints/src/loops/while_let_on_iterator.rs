@@ -14,7 +14,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let Some(higher::WhileLet { if_then, let_pat, let_expr, .. }) = higher::WhileLet::hir(expr)
+    if let Some(higher::WhileLet { if_then, let_pat, let_expr, label, .. }) = higher::WhileLet::hir(expr)
         // check for `Some(..)` pattern
         && let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind
         && is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome)
@@ -27,6 +27,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         && !uses_iter(cx, &iter_expr_struct, if_then)
     {
         let mut applicability = Applicability::MachineApplicable;
+
+        let loop_label = label.map_or(String::new(), |l| format!("{}: ", l.ident.name));
+
         let loop_var = if let Some(some_pat) = some_pat.first() {
             if is_refutable(cx, some_pat) {
                 // Refutable patterns don't work with for loops.
@@ -57,7 +60,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             expr.span.with_hi(let_expr.span.hi()),
             "this loop could be written as a `for` loop",
             "try",
-            format!("for {loop_var} in {iterator}{by_ref}"),
+            format!("{loop_label}for {loop_var} in {iterator}{by_ref}"),
             applicability,
         );
     }
