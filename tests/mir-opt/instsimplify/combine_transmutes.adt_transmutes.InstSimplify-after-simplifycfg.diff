@@ -1,5 +1,5 @@
-- // MIR for `adt_transmutes` before InstSimplify
-+ // MIR for `adt_transmutes` after InstSimplify
+- // MIR for `adt_transmutes` before InstSimplify-after-simplifycfg
++ // MIR for `adt_transmutes` after InstSimplify-after-simplifycfg
   
   fn adt_transmutes() -> () {
       let mut _0: ();

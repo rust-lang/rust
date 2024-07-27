@@ -1,4 +1,4 @@
-//@ test-mir-pass: InstSimplify
+//@ test-mir-pass: InstSimplify-after-simplifycfg
 //@ compile-flags: -Zinline-mir
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
@@ -8,7 +8,7 @@ fn generic_cast<T, U>(x: *const T) -> *const U {
     x as *const U
 }
 
-// EMIT_MIR casts.redundant.InstSimplify.diff
+// EMIT_MIR casts.redundant.InstSimplify-after-simplifycfg.diff
 pub fn redundant<'a, 'b: 'a>(x: *const &'a u8) -> *const &'a u8 {
     // CHECK-LABEL: fn redundant(
     // CHECK: inlined generic_cast
@@ -16,7 +16,7 @@ pub fn redundant<'a, 'b: 'a>(x: *const &'a u8) -> *const &'a u8 {
     generic_cast::<&'a u8, &'b u8>(x) as *const &'a u8
 }
 
-// EMIT_MIR casts.roundtrip.InstSimplify.diff
+// EMIT_MIR casts.roundtrip.InstSimplify-after-simplifycfg.diff
 pub fn roundtrip(x: *const u8) -> *const u8 {
     // CHECK-LABEL: fn roundtrip(
     // CHECK: _4 = _1;
@@ -25,7 +25,7 @@ pub fn roundtrip(x: *const u8) -> *const u8 {
     x as *mut u8 as *const u8
 }
 
-// EMIT_MIR casts.roundtrip.InstSimplify.diff
+// EMIT_MIR casts.roundtrip.InstSimplify-after-simplifycfg.diff
 pub fn cast_thin_via_aggregate(x: *const u8) -> *const () {
     // CHECK-LABEL: fn cast_thin_via_aggregate(
     // CHECK: _2 = _1;

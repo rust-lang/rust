@@ -1,5 +1,5 @@
-- // MIR for `panics` before InstSimplify
-+ // MIR for `panics` after InstSimplify
+- // MIR for `panics` before InstSimplify-after-simplifycfg
++ // MIR for `panics` after InstSimplify-after-simplifycfg
   
   fn panics() -> () {
       let mut _0: ();
