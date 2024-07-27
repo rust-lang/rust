@@ -267,7 +267,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
         clean::StaticItem(ref i) => item_static(buf, cx, item, i, None),
         clean::ForeignStaticItem(ref i, safety) => item_static(buf, cx, item, i, Some(*safety)),
-        clean::ConstantItem(generics, ty, c) => item_constant(buf, cx, item, generics, ty, c),
+        clean::ConstantItem(ci) => item_constant(buf, cx, item, &ci.generics, &ci.type_, &ci.kind),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
         clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e),
@@ -1841,7 +1841,7 @@ fn item_constant(
     it: &clean::Item,
     generics: &clean::Generics,
     ty: &clean::Type,
-    c: &clean::Constant,
+    c: &clean::ConstantKind,
 ) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
@@ -1911,7 +1911,7 @@ fn item_fields(
     w: &mut Buffer,
     cx: &mut Context<'_>,
     it: &clean::Item,
-    fields: &Vec<clean::Item>,
+    fields: &[clean::Item],
     ctor_kind: Option<CtorKind>,
 ) {
     let mut fields = fields

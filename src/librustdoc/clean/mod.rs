@@ -287,23 +287,21 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
 pub(crate) fn clean_const<'tcx>(
     constant: &hir::ConstArg<'tcx>,
     _cx: &mut DocContext<'tcx>,
-) -> Constant {
+) -> ConstantKind {
     match &constant.kind {
         hir::ConstArgKind::Path(qpath) => {
-            Constant { kind: ConstantKind::Path { path: qpath_to_string(&qpath).into() } }
+            ConstantKind::Path { path: qpath_to_string(&qpath).into() }
         }
-        hir::ConstArgKind::Anon(anon) => {
-            Constant { kind: ConstantKind::Anonymous { body: anon.body } }
-        }
+        hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
     }
 }
 
 pub(crate) fn clean_middle_const<'tcx>(
     constant: ty::Binder<'tcx, ty::Const<'tcx>>,
     _cx: &mut DocContext<'tcx>,
-) -> Constant {
+) -> ConstantKind {
     // FIXME: instead of storing the stringified expression, store `self` directly instead.
-    Constant { kind: ConstantKind::TyConst { expr: constant.skip_binder().to_string().into() } }
+    ConstantKind::TyConst { expr: constant.skip_binder().to_string().into() }
 }
 
 pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Lifetime> {
@@ -1230,14 +1228,11 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
-            hir::TraitItemKind::Const(ty, Some(default)) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                AssocConstItem(
-                    generics,
-                    Box::new(clean_ty(ty, cx)),
-                    ConstantKind::Local { def_id: local_did, body: default },
-                )
-            }
+            hir::TraitItemKind::Const(ty, Some(default)) => AssocConstItem(Box::new(Constant {
+                generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
+                kind: ConstantKind::Local { def_id: local_did, body: default },
+                type_: clean_ty(ty, cx),
+            })),
             hir::TraitItemKind::Const(ty, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 TyAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
@@ -1282,11 +1277,11 @@ pub(crate) fn clean_impl_item<'tcx>(
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
-            hir::ImplItemKind::Const(ty, expr) => {
-                let generics = clean_generics(impl_.generics, cx);
-                let default = ConstantKind::Local { def_id: local_did, body: expr };
-                AssocConstItem(generics, Box::new(clean_ty(ty, cx)), default)
-            }
+            hir::ImplItemKind::Const(ty, expr) => AssocConstItem(Box::new(Constant {
+                generics: clean_generics(impl_.generics, cx),
+                kind: ConstantKind::Local { def_id: local_did, body: expr },
+                type_: clean_ty(ty, cx),
+            })),
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let m = clean_function(cx, sig, impl_.generics, FunctionArgs::Body(body));
                 let defaultness = cx.tcx.defaultness(impl_.owner_id);
@@ -1320,12 +1315,12 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
     let tcx = cx.tcx;
     let kind = match assoc_item.kind {
         ty::AssocKind::Const => {
-            let ty = Box::new(clean_middle_ty(
+            let ty = clean_middle_ty(
                 ty::Binder::dummy(tcx.type_of(assoc_item.def_id).instantiate_identity()),
                 cx,
                 Some(assoc_item.def_id),
                 None,
-            ));
+            );
 
             let mut generics = clean_ty_generics(
                 cx,
@@ -1339,9 +1334,13 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 ty::TraitContainer => tcx.defaultness(assoc_item.def_id).has_value(),
             };
             if provided {
-                AssocConstItem(generics, ty, ConstantKind::Extern { def_id: assoc_item.def_id })
+                AssocConstItem(Box::new(Constant {
+                    generics,
+                    kind: ConstantKind::Extern { def_id: assoc_item.def_id },
+                    type_: ty,
+                }))
             } else {
-                TyAssocConstItem(generics, ty)
+                TyAssocConstItem(generics, Box::new(ty))
             }
         }
         ty::AssocKind::Fn => {
@@ -1397,7 +1396,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     {
                         true
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(c)) => match &c.kind {
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(c)) => match &**c {
                         ConstantKind::TyConst { expr } => **expr == *param.name.as_str(),
                         _ => false,
                     },
@@ -2744,14 +2743,16 @@ fn clean_maybe_renamed_item<'tcx>(
     let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            ItemKind::Static(ty, mutability, body_id) => {
-                StaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: Some(body_id) })
-            }
-            ItemKind::Const(ty, generics, body_id) => ConstantItem(
-                clean_generics(generics, cx),
-                Box::new(clean_ty(ty, cx)),
-                Constant { kind: ConstantKind::Local { body: body_id, def_id } },
-            ),
+            ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
+                type_: Box::new(clean_ty(ty, cx)),
+                mutability,
+                expr: Some(body_id),
+            }),
+            ItemKind::Const(ty, generics, body_id) => ConstantItem(Box::new(Constant {
+                generics: clean_generics(generics, cx),
+                type_: clean_ty(ty, cx),
+                kind: ConstantKind::Local { body: body_id, def_id },
+            })),
             ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                 bounds: ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
                 generics: clean_generics(ty.generics, cx),
@@ -3109,7 +3110,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                 ForeignFunctionItem(Box::new(Function { decl, generics }), safety)
             }
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
-                Static { type_: clean_ty(ty, cx), mutability, expr: None },
+                Static { type_: Box::new(clean_ty(ty, cx)), mutability, expr: None },
                 safety,
             ),
             hir::ForeignItemKind::Type => ForeignTypeItem,

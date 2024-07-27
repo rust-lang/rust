@@ -375,7 +375,7 @@ impl clean::Lifetime {
     }
 }
 
-impl clean::Constant {
+impl clean::ConstantKind {
     pub(crate) fn print(&self, tcx: TyCtxt<'_>) -> impl Display + '_ {
         let expr = self.expr(tcx);
         display_fn(
