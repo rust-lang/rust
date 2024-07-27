@@ -64,7 +64,7 @@ reach the first function call in the stack which does *not* have the attribute. 
 
 Starting at the bottom, we iterate up over stack [`Frame`][const-frame]s in the
 [`InterpCx::stack`][const-stack], calling
-[`InstanceDef::requires_caller_location`][requires-location] on the
+[`InstanceKind::requires_caller_location`][requires-location] on the
 [`Instance`s from each `Frame`][frame-instance]. We stop once we find one that returns `false` and
 return the span of the *previous* frame which was the "topmost" tracked function.
 
@@ -166,7 +166,7 @@ function:
 * is not `#[naked]`
 
 If the use is valid, we set [`CodegenFnAttrsFlags::TRACK_CALLER`][attrs-flags]. This flag influences
-the return value of [`InstanceDef::requires_caller_location`][requires-location] which is in turn
+the return value of [`InstanceKind::requires_caller_location`][requires-location] which is in turn
 used in both const and codegen contexts to ensure correct propagation.
 
 ### Traits
@@ -267,10 +267,10 @@ to the author and reviewers.
 [rationale]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md#rationale
 [revised design]: https://github.com/rust-lang/rust/issues/47809#issuecomment-443538059
 [attrs-flags]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/middle/codegen_fn_attrs/struct.CodegenFnAttrFlags.html#associatedconstant.TRACK_CALLER
-[`ReifyShim`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.InstanceDef.html#variant.ReifyShim
+[`ReifyShim`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.InstanceKind.html#variant.ReifyShim
 [`Location`]: https://doc.rust-lang.org/core/panic/struct.Location.html
 [const-find-closest]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.InterpCx.html#method.find_closest_untracked_caller_location
-[requires-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.InstanceDef.html#method.requires_caller_location
+[requires-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/enum.InstanceKind.html#method.requires_caller_location
 [alloc-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/interpret/struct.InterpCx.html#method.alloc_caller_location
 [fcx-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#structfield.caller_location
 [const-location-query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.const_caller_location

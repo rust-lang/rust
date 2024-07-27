@@ -40,8 +40,8 @@ The trait solver can either return success, ambiguity or an error as a [`Canonic
 For success and ambiguity it also returns constraints inference and region constraints.
 
 [solve]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/index.html
-[`Goal`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/struct.Goal.html
+[`Goal`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/canonical/ir/solve/struct.Goal.html
 [`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html
-[`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/assembly/struct.Candidate.html
-[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/enum.CandidateSource.html
+[`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/assembly/struct.Candidate.html
+[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/canonical/ir/solve/enum.CandidateSource.html
 [`CanonicalResponse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/type.CanonicalResponse.html

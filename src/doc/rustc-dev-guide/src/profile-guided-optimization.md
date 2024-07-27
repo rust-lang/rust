@@ -131,7 +131,7 @@ in [run-make tests][rmake-tests] (the relevant tests have `pgo` in their name).
 There is also a [codegen test][codegen-test] that checks that some expected
 instrumentation artifacts show up in LLVM IR.
 
-[rmake-tests]: https://github.com/rust-lang/rust/tree/master/tests/run-make-fulldeps
+[rmake-tests]: https://github.com/rust-lang/rust/tree/master/tests/run-make
 [codegen-test]: https://github.com/rust-lang/rust/blob/master/tests/codegen/pgo-instrumentation.rs
 
 ## Additional Information

@@ -34,7 +34,7 @@ So to reiterate:
 - `TypeFoldable`  is a trait that is implemented by things that embed types.
 
 In the case of `subst`, we can see that it is implemented as a `TypeFolder`:
-[`ArgFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/generic_args/struct.ArgFolder.html).
+[`ArgFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/binder/struct.ArgFolder.html).
 Looking at its implementation, we see where the actual substitutions are happening.
 
 However, you might also notice that the implementation calls this `super_fold_with` method. What is

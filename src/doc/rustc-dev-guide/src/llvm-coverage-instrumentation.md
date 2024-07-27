@@ -369,7 +369,7 @@ stored in [`CoverageCounters`].
 
 ### The `CoverageGraph`
 
-The [`CoverageGraph`][coverage-graph] is derived from the MIR (`mir::Body`).
+The [`CoverageGraph`][coverage graph] is derived from the MIR (`mir::Body`).
 
 ```rust
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);

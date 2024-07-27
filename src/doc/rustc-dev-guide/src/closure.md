@@ -195,7 +195,7 @@ can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, the possibl
 
 All of these callbacks have a common argument *cmt* which stands for Category,
 Mutability and Type and is defined in
-[`compiler/rustc_middle/src/middle/mem_categorization.rs`][cmt]. Borrowing from the code
+[`compiler/rustc_hir_typeck/src/expr_use_visitor.rs`][cmt]. Borrowing from the code
 comments, "`cmt` is a complete categorization of a value indicating where it
 originated and how it is located, as well as the mutability of the memory in
 which the value is stored". Based on the callback (consume, borrow etc.), we
@@ -212,4 +212,4 @@ self.tables
 
 [`Delegate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expr_use_visitor/trait.Delegate.html
 [ibk]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/upvar/struct.InferBorrowKind.html
-[cmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/mem_categorization/index.html
+[cmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expr_use_visitor/index.html

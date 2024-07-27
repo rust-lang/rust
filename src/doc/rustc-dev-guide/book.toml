@@ -40,7 +40,11 @@ exclude = [
     "play\\.rust-lang\\.org",
     "tomlee\\.co",
     "marketplace\\.visualstudio\\.com",
-    "objects\\.githubusercontent\\.com"
+    "objects\\.githubusercontent\\.com",
+    # The bug listing URL works only if an user is logged in, otherwise one gets 404.
+    "github\\.com/issues\\?",
+    # Handle: connection closed before message completed
+    "microsoft\\.com/en-us/research/publication/",
 ]
 cache-timeout = 86400
 warning-policy = "error"

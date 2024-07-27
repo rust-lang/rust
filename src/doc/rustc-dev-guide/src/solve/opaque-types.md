@@ -41,7 +41,7 @@ discarding their inferred types at the end, changing the behavior of an opaque t
 multiple times during coherence: [example][coherence-example]
 
 Inside of the defining scope we start by checking whether the type and const arguments of the
-opaque are all placeholders: [source](placeholder-ck). If this check is ambiguous,
+opaque are all placeholders: [source][placeholder-ck]. If this check is ambiguous,
 return ambiguity, if it fails, return `Err(NoSolution)`. This check ignores regions which are
 only checked at the end of borrowck. If it succeeds, continue.
 

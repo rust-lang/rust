@@ -65,8 +65,6 @@ The following test suites are available, with links for more information:
 - [`mir-opt`](#mir-opt-tests) — tests for MIR generation
 - [`run-make`](#run-make-tests) — general purpose tests using Rust programs (or
   Makefiles (legacy))
-- `run-make-fulldeps` — `run-make` tests which require a linkable build of `rustc`,
-  or the rust demangler
 - [`run-pass-valgrind`](#valgrind-tests) — tests run with Valgrind
 - [`coverage`](#coverage-tests) - tests for coverage instrumentation
 - [`coverage-run-rustdoc`](#coverage-tests) - coverage tests that also run

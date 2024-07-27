@@ -13,7 +13,7 @@ In the large majority of cases a `ParamEnv` when required already exists somewhe
 - During well formedness checking the `WfCheckingCtxt` has a [`param_env` field][wfckctxt_param_env]
 - The `TypeChecker` used by Mir Typeck has a [`param_env` field][mirtypeck_param_env]
 - In the next-gen trait solver all `Goal`s have a [`param_env` field][goal_param_env] specifying what environment to prove the goal in
-- When editing an existing [`TypeRelation`][typerelation] if it implements `ObligationEmittingRelation` then a [`param_env` method][typerelation_param_env] will be available.
+- When editing an existing [`TypeRelation`][typerelation] if it implements `PredicateEmittingRelation` then a [`param_env` method][typerelation_param_env] will be available.
 
 Using the `param_env` query to obtain an env is generally done at the start of some kind of analysis and then passed everywhere that a `ParamEnv` is required. For example the type checker will create a `ParamEnv` for the item it is type checking and then pass it around everywhere.
 
@@ -27,11 +27,11 @@ The `ParamEnv` type has a method [`ParamEnv::with_reveal_all_normalized`][with_r
 
 [param_env_new]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.new
 [normalize_env_or_error]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/fn.normalize_param_env_or_error.html
-[fnctxt_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/struct.FnCtxt.html#structfield.param_env
+[fnctxt_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
 [latectxt_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/context/struct.LateContext.html#structfield.param_env
 [wfckctxt_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/wfcheck/struct.WfCheckingCtxt.html#structfield.param_env
-[goal_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/struct.Goal.html#structfield.param_env
-[typerelation_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/relate/combine/trait.ObligationEmittingRelation.html#tymethod.param_env
+[goal_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/canonical/ir/solve/struct.Goal.html#structfield.param_env
+[typerelation_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/trait.PredicateEmittingRelation.html#tymethod.param_env
 [typerelation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/relate/trait.TypeRelation.html
 [mirtypeck_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/type_check/struct.TypeChecker.html#structfield.param_env
 [env_reveal_all_normalized]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env_reveal_all_normalized
@@ -40,5 +40,5 @@ The `ParamEnv` type has a method [`ParamEnv::with_reveal_all_normalized`][with_r
 [env_empty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.empty
 [reveal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/traits/enum.Reveal.html
 [pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
-[param_env_query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
+[param_env_query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
 [method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
