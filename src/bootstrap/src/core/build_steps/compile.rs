@@ -188,7 +188,9 @@ impl Step for Std {
         if builder.config.profiler {
             builder.require_and_update_submodule(
                 "src/llvm-project",
-                Some("The `build.profiler` config option requires compiler-rt sources."),
+                Some(
+                    "The `build.profiler` config option requires `compiler-rt` sources from LLVM.",
+                ),
             );
         }
 
@@ -462,8 +464,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         builder.require_and_update_submodule(
             "src/llvm-project",
             Some(
-                "need LLVM sources available to build `compiler-rt`, but they weren't present; \
-                 consider disabling `optimized-compiler-builtins`",
+                "The `build.optimized-compiler-builtins` config option \
+                 requires `compiler-rt` sources from LLVM.",
             ),
         );
         let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
