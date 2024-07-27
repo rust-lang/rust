@@ -3,7 +3,6 @@
     coroutines,
     stmt_expr_attributes,
     coroutine_trait,
-    is_sorted,
     repr_simd,
     tuple_trait,
     unboxed_closures

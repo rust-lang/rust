@@ -64,7 +64,6 @@ This API is completely unstable and subject to change.
 #![doc(rust_logo)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
-#![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
