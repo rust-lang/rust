@@ -414,6 +414,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(())
     }
 
+    /// Check whether the given pointer points to live memory for a signed amount of bytes.
+    /// A negative amounts means that the given range of memory to the left of the pointer
+    /// needs to be dereferenceable.
+    pub fn check_ptr_access_signed(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+        size: i64,
+        msg: CheckInAllocMsg,
+    ) -> InterpResult<'tcx> {
+        if let Ok(size) = u64::try_from(size) {
+            self.check_ptr_access(ptr, Size::from_bytes(size), msg)
+        } else {
+            // Compute the pointer at the beginning of the range, and do the standard
+            // dereferenceability check from there.
+            let begin_ptr = ptr.wrapping_signed_offset(size, self);
+            self.check_ptr_access(begin_ptr, Size::from_bytes(size.unsigned_abs()), msg)
+        }
+    }
+
     /// Low-level helper function to check if a ptr is in-bounds and potentially return a reference
     /// to the allocation it points to. Supports both shared and mutable references, as the actual
     /// checking is offloaded to a helper closure.

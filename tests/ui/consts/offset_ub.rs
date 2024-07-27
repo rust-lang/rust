@@ -1,6 +1,6 @@
 use std::ptr;
 
-
+//@ normalize-stderr-test: "0xf+" -> "0xf..f"
 //@ normalize-stderr-test: "0x7f+" -> "0x7f..f"
 
 

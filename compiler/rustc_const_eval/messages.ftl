@@ -233,8 +233,6 @@ const_eval_nullary_intrinsic_fail =
 
 const_eval_offset_from_different_allocations =
     `{$name}` called on pointers into different allocations
-const_eval_offset_from_different_integers =
-    `{$name}` called on different pointers without provenance (i.e., without an associated allocation)
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
 const_eval_offset_from_test =
@@ -242,7 +240,10 @@ const_eval_offset_from_test =
 const_eval_offset_from_underflow =
     `{$name}` called when first pointer is too far before second
 const_eval_offset_from_unsigned_overflow =
-    `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: {$a_offset} < {$b_offset}
+    `ptr_offset_from_unsigned` called when first pointer has smaller {$is_addr ->
+        [true] address
+        *[false] offset
+    } than second: {$a_offset} < {$b_offset}
 
 const_eval_operator_non_const =
     cannot call non-const operator in {const_eval_const_context}s

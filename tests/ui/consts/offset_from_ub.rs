@@ -36,7 +36,7 @@ pub const DIFFERENT_INT: isize = { // offset_from with two different integers: l
     let ptr1 = 8 as *const u8;
     let ptr2 = 16 as *const u8;
     unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
-    //~| different pointers without provenance
+    //~| dangling pointer
 };
 
 const OUT_OF_BOUNDS_1: isize = {
