@@ -417,6 +417,23 @@ pub struct DuplicateMatcherBinding {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_missing_fragment_specifier)]
+#[note]
+#[help(expand_valid)]
+pub struct MissingFragmentSpecifier {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        expand_suggestion_add_fragspec,
+        style = "verbose",
+        code = ":spec",
+        applicability = "maybe-incorrect"
+    )]
+    pub add_span: Span,
+    pub valid: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_invalid_fragment_specifier)]
 #[help]
 pub struct InvalidFragmentSpecifier {

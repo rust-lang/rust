@@ -115,12 +115,15 @@ use rustc_errors::MultiSpan;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
 use rustc_session::parse::ParseSess;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::kw;
 use rustc_span::{symbol::MacroRulesNormalizedIdent, ErrorGuaranteed, Span};
 
 use smallvec::SmallVec;
 
 use std::iter;
+
+use super::quoted::VALID_FRAGMENT_NAMES_MSG_2021;
 
 /// Stack represented as linked list.
 ///
@@ -269,12 +272,20 @@ fn check_binders(
                 // FIXME: Report this as a hard error eventually and remove equivalent errors from
                 // `parse_tt_inner` and `nameize`. Until then the error may be reported twice, once
                 // as a hard error and then once as a buffered lint.
-                psess.buffer_lint(
-                    MISSING_FRAGMENT_SPECIFIER,
-                    span,
-                    node_id,
-                    BuiltinLintDiag::MissingFragmentSpecifier,
-                );
+                if span.edition() >= Edition::Edition2024 {
+                    psess.dcx().emit_err(errors::MissingFragmentSpecifier {
+                        span,
+                        add_span: span.shrink_to_hi(),
+                        valid: VALID_FRAGMENT_NAMES_MSG_2021,
+                    });
+                } else {
+                    psess.buffer_lint(
+                        MISSING_FRAGMENT_SPECIFIER,
+                        span,
+                        node_id,
+                        BuiltinLintDiag::MissingFragmentSpecifier,
+                    );
+                }
             }
             if !macros.is_empty() {
                 psess.dcx().span_bug(span, "unexpected MetaVarDecl in nested lhs");
