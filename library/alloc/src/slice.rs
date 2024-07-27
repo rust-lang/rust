@@ -199,7 +199,9 @@ impl<T> [T] {
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
     /// clamps at `self.len() / 2`.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `T: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -258,7 +260,9 @@ impl<T> [T] {
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
     /// clamps at `self.len() / 2`.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `compare` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -304,7 +308,9 @@ impl<T> [T] {
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
     /// clamps at `self.len() / 2`.
     ///
-    /// If `K: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `K: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -355,6 +361,10 @@ impl<T> [T] {
     ///
     /// In the worst case, the algorithm allocates temporary storage in a `Vec<(K, usize)>` the
     /// length of the slice.
+    ///
+    /// # Panics
+    ///
+    /// May panic if `K: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
