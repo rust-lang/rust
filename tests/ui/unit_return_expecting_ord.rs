@@ -2,7 +2,6 @@
 #![allow(clippy::needless_return)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::useless_vec)]
-#![feature(is_sorted)]
 
 struct Struct {
     field: isize,
