@@ -765,3 +765,141 @@ fn emit_mode_from_emit_str(emit_str: &str) -> Result<EmitMode> {
         _ => Err(format_err!("Invalid value for `--emit`")),
     }
 }
+
+#[cfg(test)]
+#[allow(dead_code)]
+mod test {
+    use super::*;
+    use rustfmt_config_proc_macro::nightly_only_test;
+
+    fn get_config<O: CliOptions>(path: Option<&Path>, options: Option<O>) -> Config {
+        load_config(path, options).unwrap().0
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn flag_sets_style_edition_override_correctly() {
+        let mut options = GetOptsOptions::default();
+        options.style_edition = Some(StyleEdition::Edition2024);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn edition_sets_style_edition_override_correctly() {
+        let mut options = GetOptsOptions::default();
+        options.edition = Some(Edition::Edition2024);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn version_sets_style_edition_override_correctly() {
+        let mut options = GetOptsOptions::default();
+        options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_flag_has_correct_precedence_over_edition() {
+        let mut options = GetOptsOptions::default();
+        options.style_edition = Some(StyleEdition::Edition2021);
+        options.edition = Some(Edition::Edition2024);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2021);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_flag_has_correct_precedence_over_version() {
+        let mut options = GetOptsOptions::default();
+        options.style_edition = Some(StyleEdition::Edition2018);
+        options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2018);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_flag_has_correct_precedence_over_edition_version() {
+        let mut options = GetOptsOptions::default();
+        options.style_edition = Some(StyleEdition::Edition2021);
+        options.edition = Some(Edition::Edition2018);
+        options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2021);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_inline_has_correct_precedence_over_edition_version() {
+        let mut options = GetOptsOptions::default();
+        options.edition = Some(Edition::Edition2018);
+        options.inline_config = HashMap::from([
+            ("version".to_owned(), "One".to_owned()),
+            ("style_edition".to_owned(), "2024".to_owned()),
+        ]);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_config_file_trumps_edition_flag_version_inline() {
+        let mut options = GetOptsOptions::default();
+        let config_file = Some(Path::new("tests/config/style-edition/just-style-edition"));
+        options.edition = Some(Edition::Edition2018);
+        options.inline_config = HashMap::from([("version".to_owned(), "One".to_owned())]);
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_config_file_trumps_edition_config_and_version_inline() {
+        let mut options = GetOptsOptions::default();
+        let config_file = Some(Path::new(
+            "tests/config/style-edition/style-edition-and-edition",
+        ));
+        options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2021);
+        assert_eq!(config.edition(), Edition::Edition2024);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn version_config_trumps_edition_config_and_flag() {
+        let mut options = GetOptsOptions::default();
+        let config_file = Some(Path::new("tests/config/style-edition/version-edition"));
+        options.edition = Some(Edition::Edition2018);
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_config_file_trumps_version_config() {
+        let options = GetOptsOptions::default();
+        let config_file = Some(Path::new(
+            "tests/config/style-edition/version-style-edition",
+        ));
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2021);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_config_file_trumps_edition_version_config() {
+        let options = GetOptsOptions::default();
+        let config_file = Some(Path::new(
+            "tests/config/style-edition/version-style-edition-and-edition",
+        ));
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2021);
+    }
+}
