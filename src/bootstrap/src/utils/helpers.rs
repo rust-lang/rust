@@ -347,7 +347,7 @@ pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> 
     let mut builtins_locator = command(clang_cl_path);
     builtins_locator.args(["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
 
-    let clang_rt_builtins = builtins_locator.capture_stdout().run(builder).stdout();
+    let clang_rt_builtins = builtins_locator.run_capture_stdout(builder).stdout();
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
     assert!(
         clang_rt_builtins.exists(),
@@ -372,9 +372,9 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
     let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
         let newer_version = match lld_mode {
             LldMode::External => {
-                let mut cmd = command("lld").capture_stdout();
+                let mut cmd = command("lld");
                 cmd.arg("-flavor").arg("ld").arg("--version");
-                let out = cmd.run(builder).stdout();
+                let out = cmd.run_capture_stdout(builder).stdout();
                 match (out.find(char::is_numeric), out.find('.')) {
                     (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
                     _ => true,
@@ -534,7 +534,7 @@ pub fn get_closest_merge_base_commit(
     author: &str,
     target_paths: &[PathBuf],
 ) -> Result<String, String> {
-    let mut git = git(source_dir).capture_stdout();
+    let mut git = git(source_dir);
 
     let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
 
