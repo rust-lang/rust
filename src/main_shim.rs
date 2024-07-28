@@ -1,7 +1,6 @@
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_hir::LangItem;
-use rustc_middle::ty::AssocKind;
-use rustc_middle::ty::GenericArg;
+use rustc_middle::ty::{AssocKind, GenericArg};
 use rustc_session::config::{sigpipe, EntryFnType};
 use rustc_span::symbol::Ident;
 use rustc_span::DUMMY_SP;

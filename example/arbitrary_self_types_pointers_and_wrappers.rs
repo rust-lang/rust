@@ -2,10 +2,8 @@
 
 #![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
 
-use std::{
-    marker::Unsize,
-    ops::{CoerceUnsized, Deref, DispatchFromDyn},
-};
+use std::marker::Unsize;
+use std::ops::{CoerceUnsized, Deref, DispatchFromDyn};
 
 struct Ptr<T: ?Sized>(Box<T>);
 

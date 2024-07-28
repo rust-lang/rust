@@ -1,9 +1,7 @@
-use std::env;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::{env, fs, io};
 
 use crate::path::{Dirs, RelPath};
 use crate::shared_utils::rustflags_to_cmd_env;
