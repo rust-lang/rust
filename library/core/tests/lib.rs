@@ -44,7 +44,6 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
-#![feature(is_sorted)]
 #![feature(layout_for_ptr)]
 #![feature(pattern)]
 #![feature(slice_take)]
