@@ -35,10 +35,10 @@ use crate::vec::Vec;
 
 /// A UTF-8–encoded, growable string, with allocator support.
 ///
-/// The documentation for this type is located at [`alloc::string::String`].
+/// The documentation for this type is located at [`alloc::string::String`][crate::string::String].
 ///
 /// This is due to type parameter defaults not affecting inference.
-/// Otherwise, [`alloc::string::String`] would be the canonical location of `String`,
+/// Otherwise, `alloc::string::String` would be the canonical location of `String`,
 /// instead of a type alias.
 #[cfg_attr(not(test), lang = "String")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -48,7 +48,7 @@ pub struct String<#[unstable(feature = "allocator_api", issue = "32838")] A: All
 
 /// A possible error value when converting a `String` from a UTF-8 byte vector.
 ///
-/// This type is the error type for the [`from_utf8_in`] method on [`String`]. It
+/// This type is the error type for the [`from_utf8`] method on [`String`]. It
 /// is designed in such a way to carefully avoid reallocations: the
 /// [`into_bytes`] method will give back the byte vector that was used in the
 /// conversion attempt.
