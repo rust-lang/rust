@@ -380,11 +380,41 @@ LL | global_asm!("{1}", format!("{{{}}}", 0), const FOO, const BAR);
    |
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected operand, options, or additional template string
-  --> $DIR/parse-error.rs:149:19
+error: the `in` operand cannot be used with `global_asm!`
+  --> $DIR/parse-error.rs:150:19
    |
-LL | global_asm!("{}", label {});
-   |                   ^^^^^^^^ expected operand, options, or additional template string
+LL | global_asm!("{}", in(reg));
+   |                   ^^ the `in` operand is not meaningful for global-scoped inline assembly, remove it
+
+error: the `out` operand cannot be used with `global_asm!`
+  --> $DIR/parse-error.rs:152:19
+   |
+LL | global_asm!("{}", out(reg));
+   |                   ^^^ the `out` operand is not meaningful for global-scoped inline assembly, remove it
+
+error: the `lateout` operand cannot be used with `global_asm!`
+  --> $DIR/parse-error.rs:154:19
+   |
+LL | global_asm!("{}", lateout(reg));
+   |                   ^^^^^^^ the `lateout` operand is not meaningful for global-scoped inline assembly, remove it
+
+error: the `inout` operand cannot be used with `global_asm!`
+  --> $DIR/parse-error.rs:156:19
+   |
+LL | global_asm!("{}", inout(reg));
+   |                   ^^^^^ the `inout` operand is not meaningful for global-scoped inline assembly, remove it
+
+error: the `inlateout` operand cannot be used with `global_asm!`
+  --> $DIR/parse-error.rs:158:19
+   |
+LL | global_asm!("{}", inlateout(reg));
+   |                   ^^^^^^^^^ the `inlateout` operand is not meaningful for global-scoped inline assembly, remove it
+
+error: the `label` operand cannot be used with `global_asm!`
+  --> $DIR/parse-error.rs:160:19
+   |
+LL | global_asm!("{}", label(reg));
+   |                   ^^^^^ the `label` operand is not meaningful for global-scoped inline assembly, remove it
 
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:39:37
@@ -441,6 +471,6 @@ help: consider using `const` instead of `let`
 LL |     const bar: /* Type */ = 0;
    |     ~~~~~    ++++++++++++
 
-error: aborting due to 67 previous errors
+error: aborting due to 72 previous errors
 
 For more information about this error, try `rustc --explain E0435`.
