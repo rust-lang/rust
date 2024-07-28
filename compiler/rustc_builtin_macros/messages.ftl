@@ -220,6 +220,11 @@ builtin_macros_multiple_defaults = multiple declared defaults
     .note = only one variant can be default
     .suggestion = make `{$ident}` default
 
+builtin_macros_naked_functions_testing_attribute =
+    cannot use `#[naked]` with testing attributes
+    .label = function marked with testing attribute here
+    .naked_attribute = `#[naked]` is incompatible with testing attributes
+
 builtin_macros_no_default_variant = no default declared
     .help = make a unit variant default by placing `#[default]` above it
     .suggestion = make `{$ident}` default

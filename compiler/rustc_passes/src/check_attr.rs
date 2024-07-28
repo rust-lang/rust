@@ -155,7 +155,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_std_internal_symbol] => {
                     self.check_rustc_std_internal_symbol(attr, span, target)
                 }
-                [sym::naked] => self.check_naked(hir_id, attr, span, target),
+                [sym::naked] => self.check_naked(hir_id, attr, span, target, attrs),
                 [sym::rustc_never_returns_null_ptr] => {
                     self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
@@ -410,12 +410,71 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
+    fn check_naked(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+        attrs: &[Attribute],
+    ) -> bool {
+        // many attributes don't make sense in combination with #[naked].
+        // Notable attributes that are incompatible with `#[naked]` are:
+        //
+        // * `#[inline]`
+        // * `#[track_caller]`
+        // * `#[test]`, `#[ignore]`, `#[should_panic]`
+        //
+        // NOTE: when making changes to this list, check that `error_codes/E0736.md` remains accurate
+        const ALLOW_LIST: &[rustc_span::Symbol] = &[
+            // conditional compilation
+            sym::cfg,
+            sym::cfg_attr,
+            // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
+            sym::test,
+            sym::ignore,
+            sym::should_panic,
+            sym::bench,
+            // diagnostics
+            sym::allow,
+            sym::warn,
+            sym::deny,
+            sym::forbid,
+            sym::deprecated,
+            sym::must_use,
+            // abi, linking and FFI
+            sym::export_name,
+            sym::link_section,
+            sym::linkage,
+            sym::no_mangle,
+            sym::naked,
+            sym::instruction_set,
+            // code generation
+            sym::cold,
+            sym::target_feature,
+            // documentation
+            sym::doc,
+        ];
+
         match target {
             Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+                for other_attr in attrs {
+                    if !ALLOW_LIST.iter().any(|name| other_attr.has_name(*name)) {
+                        self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
+                            span: other_attr.span,
+                            naked_span: attr.span,
+                            attr: other_attr.name_or_empty(),
+                        });
+
+                        return false;
+                    }
+                }
+
+                true
+            }
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
-            // `#[allow_internal_unstable]` attribute with just a lint, because we previously
+            // `#[naked]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
@@ -488,7 +547,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if a `#[track_caller]` is applied to a non-naked function. Returns `true` if valid.
+    /// Checks if a `#[track_caller]` is applied to a function. Returns `true` if valid.
     fn check_track_caller(
         &self,
         hir_id: HirId,
@@ -498,10 +557,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
-                self.dcx().emit_err(errors::NakedTrackedCaller { attr_span });
-                false
-            }
             Target::Fn => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
                 // `extern` declarations and `#[track_caller]` would alter their ABI.
