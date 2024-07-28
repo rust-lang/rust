@@ -5,7 +5,6 @@ run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
 run-make/emit-to-stdout/Makefile
-run-make/extern-fn-reachable/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
 run-make/jobserver-error/Makefile

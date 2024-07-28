@@ -194,6 +194,11 @@ impl Rustc {
         self
     }
 
+    /// Make `rustc` prefere dynamic linking
+    pub fn prefer_dynamic(&mut self) -> &mut Self {
+        self.arg("-Cprefer-dynamic")
+    }
+
     /// Specify directory path used for profile generation
     pub fn profile_generate<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let mut arg = OsString::new();
