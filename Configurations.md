@@ -2698,7 +2698,7 @@ Controls the edition of the [Rust Style Guide] to use for formatting ([RFC 3338]
 
 - **Default value**: `"2015"`
 - **Possible values**: `"2015"`, `"2018"`, `"2021"`, `"2024"` (unstable variant)
-- **Stable**: Yes
+- **Stable**: No
 
 [Rust Style Guide]: https://doc.rust-lang.org/nightly/style-guide/
 [RFC 3338]: https://rust-lang.github.io/rfcs/3338-style-evolution.html

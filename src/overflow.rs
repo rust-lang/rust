@@ -200,8 +200,12 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::NestedMetaItem(..) => SPECIAL_CASE_ATTR,
             _ => &[],
         };
-        let additional_cases = match (self, config.style_edition()) {
-            (OverflowableItem::MacroArg(..), StyleEdition::Edition2024) => SPECIAL_CASE_MACROS_V2,
+        let additional_cases = match self {
+            OverflowableItem::MacroArg(..)
+                if config.style_edition() >= StyleEdition::Edition2024 =>
+            {
+                SPECIAL_CASE_MACROS_V2
+            }
             _ => &[],
         };
         base_cases.iter().chain(additional_cases)

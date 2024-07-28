@@ -581,8 +581,8 @@ macro_rules! create_config {
                 if self.was_set().style_edition() || self.was_set_cli().style_edition() {
                     eprintln!(
                         "Warning: the deprecated `version` option was \
-                        used in conjunction with the `edition` or \
-                        `style_edition` options which take precedence. \
+                        used in conjunction with the `style_edition` \
+                        option which takes precedence. \
                         The value of the `version` option will be ignored."
                     );
                 } else if matches!(self.version(), Version::Two) {
