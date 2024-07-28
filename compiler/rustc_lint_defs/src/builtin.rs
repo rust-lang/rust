@@ -91,6 +91,7 @@ declare_lint_pass! {
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         RUST_2021_PRELUDE_COLLISIONS,
         RUST_2024_INCOMPATIBLE_PAT,
+        RUST_2024_PRELUDE_COLLISIONS,
         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SINGLE_USE_LIFETIMES,
@@ -3751,6 +3752,46 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>",
+    };
+}
+
+declare_lint! {
+    /// The `rust_2024_prelude_collisions` lint detects the usage of trait methods which are ambiguous
+    /// with traits added to the prelude in future editions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(rust_2024_prelude_collisions)]
+    /// trait Meow {
+    ///     fn poll(&self) {}
+    /// }
+    /// impl<T> Meow for T {}
+    ///
+    /// fn main() {
+    ///     core::pin::pin!(async {}).poll();
+    ///     //                        ^^^^^^
+    ///     // This call to try_into matches both Future::poll and Meow::poll as
+    ///     // `Future` has been added to the Rust prelude in 2024 edition.
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust 2024, introduces two new additions to the standard library's prelude:
+    /// `Future` and `IntoFuture`. This results in an ambiguity as to which method/function
+    /// to call when an existing `poll`/`into_future` method is called via dot-call syntax or
+    /// a `poll`/`into_future` associated function is called directly on a type.
+    ///
+    pub RUST_2024_PRELUDE_COLLISIONS,
+    Allow,
+    "detects the usage of trait methods which are ambiguous with traits added to the \
+        prelude in future editions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/prelude.html>",
     };
 }
 
