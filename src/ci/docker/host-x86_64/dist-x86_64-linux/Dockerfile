@@ -62,6 +62,10 @@ COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
+# rustc's LLVM needs zstd.
+COPY scripts/zstd.sh /tmp/
+RUN ./zstd.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
