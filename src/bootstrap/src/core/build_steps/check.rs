@@ -9,7 +9,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::{Compiler, Mode, Subcommand};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn cargo_subcommand(kind: Kind) -> &'static str {
     match kind {
@@ -52,7 +52,7 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.update_submodule(&Path::new("library").join("stdarch"));
+        builder.require_submodule("library/stdarch", None);
 
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
