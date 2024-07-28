@@ -41,7 +41,6 @@ export class Config {
     }
 
     private refreshLogging() {
-        log.setEnabled(this.traceExtension ?? false);
         log.info(
             "Extension version:",
             vscode.extensions.getExtension(this.extensionId)!.packageJSON.version,
@@ -251,10 +250,6 @@ export class Config {
             value = config.defaultValue || config.defaultLanguageValue;
         }
         await this.cfg.update("checkOnSave", !(value || false), target || null, overrideInLanguage);
-    }
-
-    get traceExtension() {
-        return this.get<boolean>("trace.extension");
     }
 
     get discoverProjectRunner(): string | undefined {
