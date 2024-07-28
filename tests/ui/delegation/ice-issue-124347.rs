@@ -7,6 +7,6 @@ trait Trait {
 }
 
 reuse foo;
-//~^ ERROR recursive delegation is not supported yet
+//~^ ERROR cycle detected when computing generics of `foo`
 
 fn main() {}

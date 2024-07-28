@@ -33,7 +33,7 @@
 //! HIR ty lowering.
 //!
 //! Similarly generics, predicates and header are set to the "default" values.
-//! In case of discrepancy with callee function the `NotSupportedDelegation` error will
+//! In case of discrepancy with callee function the `UnsupportedDelegation` error will
 //! also be emitted during HIR ty lowering.
 
 use crate::{ImplTraitPosition, ResolverAstLoweringExt};
