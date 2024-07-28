@@ -110,7 +110,6 @@
 #![feature(error_generic_member_access)]
 #![feature(trait_upcasting)]
 #![feature(is_ascii_octdigit)]
-#![feature(get_many_mut)]
 #![feature(iter_map_windows)]
 #![allow(internal_features)]
 #![deny(unsafe_op_in_unsafe_fn)]

@@ -4448,8 +4448,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_many_mut)]
-    ///
     /// let x = &mut [1, 2, 4];
     ///
     /// unsafe {
@@ -4462,7 +4460,7 @@ impl<T> [T] {
     ///
     /// [`get_many_mut`]: slice::get_many_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub unsafe fn get_many_unchecked_mut<const N: usize>(
         &mut self,
@@ -4495,8 +4493,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_many_mut)]
-    ///
     /// let v = &mut [1, 2, 3];
     /// if let Ok([a, b]) = v.get_many_mut(&[0, 2]) {
     ///     *a = 413;
@@ -4504,7 +4500,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[413, 2, 612]);
     /// ```
-    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn get_many_mut<const N: usize>(
         &mut self,
@@ -4886,27 +4882,25 @@ fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> boo
 /// # Examples
 ///
 /// ```
-/// #![feature(get_many_mut)]
-///
 /// let v = &mut [1, 2, 3];
 /// assert!(v.get_many_mut(&[0, 999]).is_err());
 /// assert!(v.get_many_mut(&[1, 1]).is_err());
 /// ```
-#[unstable(feature = "get_many_mut", issue = "104642")]
+#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
 // NB: The N and the private field here is there to be forward-compatible with
 // adding more details to the error type at a later point
 pub struct GetManyMutError<const N: usize> {
     _private: (),
 }
 
-#[unstable(feature = "get_many_mut", issue = "104642")]
+#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
 impl<const N: usize> fmt::Debug for GetManyMutError<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GetManyMutError").finish_non_exhaustive()
     }
 }
 
-#[unstable(feature = "get_many_mut", issue = "104642")]
+#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
 impl<const N: usize> fmt::Display for GetManyMutError<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("an index is out of bounds or appeared multiple times in the array", f)

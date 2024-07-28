@@ -1076,5 +1076,5 @@ impl Error for crate::time::TryFromFloatSecsError {}
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
-#[unstable(feature = "get_many_mut", issue = "104642")]
+#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
 impl<const N: usize> Error for crate::slice::GetManyMutError<N> {}
