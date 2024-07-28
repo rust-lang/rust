@@ -1,6 +1,7 @@
+use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::exec::command;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
@@ -35,8 +36,8 @@ impl Step for Vendor {
         }
 
         // These submodules must be present for `x vendor` to work.
-        for path in ["src/tools/cargo", "src/doc/book"] {
-            builder.build.update_submodule(Path::new(path));
+        for submodule in SUBMODULES_FOR_RUSTBOOK.iter().chain(["src/tools/cargo"].iter()) {
+            builder.build.require_submodule(submodule, None);
         }
 
         // Sync these paths by default.

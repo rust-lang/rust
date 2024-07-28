@@ -1090,22 +1090,26 @@ fn render_assoc_item(
         clean::MethodItem(m, _) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
-        kind @ (clean::TyAssocConstItem(generics, ty) | clean::AssocConstItem(generics, ty, _)) => {
-            assoc_const(
-                w,
-                item,
-                generics,
-                ty,
-                match kind {
-                    clean::TyAssocConstItem(..) => None,
-                    clean::AssocConstItem(.., default) => Some(default),
-                    _ => unreachable!(),
-                },
-                link,
-                if parent == ItemType::Trait { 4 } else { 0 },
-                cx,
-            )
-        }
+        clean::TyAssocConstItem(generics, ty) => assoc_const(
+            w,
+            item,
+            generics,
+            ty,
+            None,
+            link,
+            if parent == ItemType::Trait { 4 } else { 0 },
+            cx,
+        ),
+        clean::AssocConstItem(ci) => assoc_const(
+            w,
+            item,
+            &ci.generics,
+            &ci.type_,
+            Some(&ci.kind),
+            link,
+            if parent == ItemType::Trait { 4 } else { 0 },
+            cx,
+        ),
         clean::TyAssocTypeItem(ref generics, ref bounds) => assoc_type(
             w,
             item,
@@ -1690,8 +1694,7 @@ fn render_impl(
                     w.write_str("</h4></section>");
                 }
             }
-            kind @ (clean::TyAssocConstItem(generics, ty)
-            | clean::AssocConstItem(generics, ty, _)) => {
+            clean::TyAssocConstItem(generics, ty) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
@@ -1706,11 +1709,29 @@ fn render_impl(
                     item,
                     generics,
                     ty,
-                    match kind {
-                        clean::TyAssocConstItem(..) => None,
-                        clean::AssocConstItem(.., default) => Some(default),
-                        _ => unreachable!(),
-                    },
+                    None,
+                    link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                    0,
+                    cx,
+                );
+                w.write_str("</h4></section>");
+            }
+            clean::AssocConstItem(ci) => {
+                let source_id = format!("{item_type}.{name}");
+                let id = cx.derive_id(&source_id);
+                write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
+                render_rightside(w, cx, item, render_mode);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
+                }
+                w.write_str("<h4 class=\"code-header\">");
+                assoc_const(
+                    w,
+                    item,
+                    &ci.generics,
+                    &ci.type_,
+                    Some(&ci.kind),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
                     0,
                     cx,

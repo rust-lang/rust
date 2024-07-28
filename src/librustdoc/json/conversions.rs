@@ -188,6 +188,16 @@ impl FromWithTcx<clean::Constant> for Constant {
     }
 }
 
+impl FromWithTcx<clean::ConstantKind> for Constant {
+    // FIXME(generic_const_items): Add support for generic const items.
+    fn from_tcx(constant: clean::ConstantKind, tcx: TyCtxt<'_>) -> Self {
+        let expr = constant.expr(tcx);
+        let value = constant.value(tcx);
+        let is_literal = constant.is_literal(tcx);
+        Constant { expr, value, is_literal }
+    }
+}
+
 impl FromWithTcx<clean::AssocItemConstraint> for TypeBinding {
     fn from_tcx(constraint: clean::AssocItemConstraint, tcx: TyCtxt<'_>) -> Self {
         TypeBinding {
@@ -325,8 +335,8 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_tcx(tcx)),
         OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
         // FIXME(generic_const_items): Add support for generic free consts
-        ConstantItem(_generics, t, c) => {
-            ItemEnum::Constant { type_: (*t).into_tcx(tcx), const_: c.into_tcx(tcx) }
+        ConstantItem(ci) => {
+            ItemEnum::Constant { type_: ci.type_.into_tcx(tcx), const_: ci.kind.into_tcx(tcx) }
         }
         MacroItem(m) => ItemEnum::Macro(m.source),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_tcx(tcx)),
@@ -341,8 +351,8 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: None }
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        AssocConstItem(_generics, ty, default) => {
-            ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: Some(default.expr(tcx)) }
+        AssocConstItem(ci) => {
+            ItemEnum::AssocConst { type_: ci.type_.into_tcx(tcx), default: Some(ci.kind.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_tcx(tcx),
@@ -829,7 +839,7 @@ impl FromWithTcx<clean::OpaqueTy> for OpaqueTy {
 impl FromWithTcx<clean::Static> for Static {
     fn from_tcx(stat: clean::Static, tcx: TyCtxt<'_>) -> Self {
         Static {
-            type_: stat.type_.into_tcx(tcx),
+            type_: (*stat.type_).into_tcx(tcx),
             mutable: stat.mutability == ast::Mutability::Mut,
             expr: stat
                 .expr

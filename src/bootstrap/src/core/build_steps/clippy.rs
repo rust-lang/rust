@@ -1,7 +1,5 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
 
-use std::path::Path;
-
 use crate::builder::Builder;
 use crate::builder::ShouldRun;
 use crate::core::builder;
@@ -127,7 +125,7 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.update_submodule(&Path::new("library").join("stdarch"));
+        builder.require_submodule("library/stdarch", None);
 
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
