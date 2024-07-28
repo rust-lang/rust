@@ -4851,20 +4851,30 @@ impl<T, const N: usize> SlicePattern for [T; N] {
 }
 
 /// This checks every index against each other, and against `len`.
-///
-/// This will do `binomial(N + 1, 2) = N * (N + 1) / 2 = 0, 1, 3, 6, 10, ..`
-/// comparison operations.
 fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> bool {
-    // NB: The optimizer should inline the loops into a sequence
-    // of instructions without additional branching.
-    let mut valid = true;
-    for (i, &idx) in indices.iter().enumerate() {
-        valid &= idx < len;
-        for &idx2 in &indices[..i] {
-            valid &= idx != idx2;
+    // Based on benchmarks, it is faster to sort starting with 9 indices.
+    if N >= 9 {
+        let mut sorted_indices = *indices;
+        sorted_indices.sort_unstable();
+        for &[i, j] in sorted_indices.array_windows() {
+            if i == j {
+                return false;
+            }
         }
+        let biggest_index = *sorted_indices.last().expect("indices array should not be empty");
+        biggest_index < len
+    } else {
+        // NB: The optimizer should inline the loops into a sequence
+        // of instructions without additional branching.
+        let mut valid = true;
+        for (i, &idx) in indices.iter().enumerate() {
+            valid &= idx < len;
+            for &idx2 in &indices[..i] {
+                valid &= idx != idx2;
+            }
+        }
+        valid
     }
-    valid
 }
 
 /// The error type returned by [`get_many_mut<N>`][`slice::get_many_mut`].
@@ -4883,8 +4893,8 @@ fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> boo
 /// assert!(v.get_many_mut([1, 1]).is_err());
 /// ```
 #[unstable(feature = "get_many_mut", issue = "104642")]
-// NB: The N here is there to be forward-compatible with adding more details
-// to the error type at a later point
+// NB: The N and the private field here is there to be forward-compatible with
+// adding more details to the error type at a later point
 pub struct GetManyMutError<const N: usize> {
     _private: (),
 }
