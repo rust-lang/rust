@@ -1,7 +1,8 @@
+use std::path::PathBuf;
+
 use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::exec::command;
-use std::path::PathBuf;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {

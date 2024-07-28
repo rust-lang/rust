@@ -5,18 +5,13 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use crate::def_collector::collect_definitions;
-use crate::imports::{ImportData, ImportKind};
-use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
-use crate::Namespace::{MacroNS, TypeNS, ValueNS};
-use crate::{errors, BindingKey, MacroData, NameBindingData};
-use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError};
-use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError};
+use std::cell::Cell;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
-use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::{Block, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
+use rustc_ast::{
+    self as ast, AssocItem, AssocItemKind, Block, ForeignItem, ForeignItemKind, Impl, Item,
+    ItemKind, MetaItemKind, NodeId, StmtKind,
+};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::ResolverExpand;
@@ -30,10 +25,17 @@ use rustc_middle::{bug, ty};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-
-use std::cell::Cell;
-
 use tracing::debug;
+
+use crate::def_collector::collect_definitions;
+use crate::imports::{ImportData, ImportKind};
+use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use crate::Namespace::{MacroNS, TypeNS, ValueNS};
+use crate::{
+    errors, BindingKey, Determinacy, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
+    ResolutionError, Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError,
+};
 
 type Res = def::Res<NodeId>;
 

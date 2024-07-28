@@ -1,4 +1,5 @@
-use crate::iter::{adapters::SourceIter, FusedIterator, TrustedLen};
+use crate::iter::adapters::SourceIter;
+use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next

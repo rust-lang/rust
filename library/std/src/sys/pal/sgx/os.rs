@@ -3,16 +3,12 @@ use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
 use crate::collections::HashMap;
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
-use crate::str;
 use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::Mutex;
-use crate::sync::Once;
+use crate::sync::{Mutex, Once};
 use crate::sys::{decode_error_kind, sgx_ineffective, unsupported};
-use crate::vec;
+use crate::{fmt, io, str, vec};
 
 pub fn errno() -> i32 {
     RESULT_SUCCESS

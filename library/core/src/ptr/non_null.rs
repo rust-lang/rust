@@ -1,15 +1,12 @@
 use crate::cmp::Ordering;
-use crate::fmt;
-use crate::hash;
-use crate::intrinsics;
 use crate::marker::Unsize;
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr;
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{fmt, hash, intrinsics, ptr};
 
 /// `*mut T` but non-zero and [covariant].
 ///

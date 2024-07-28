@@ -2,11 +2,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::ascii;
-use crate::intrinsics;
-use crate::mem;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{ascii, intrinsics, mem};
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
@@ -48,39 +46,31 @@ mod overflow_panic;
 mod saturating;
 mod wrapping;
 
-#[stable(feature = "saturating_int_impl", since = "1.74.0")]
-pub use saturating::Saturating;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use wrapping::Wrapping;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
-
+#[stable(feature = "int_error_matching", since = "1.55.0")]
+pub use error::IntErrorKind;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
-
+#[stable(feature = "try_from", since = "1.34.0")]
+pub use error::TryFromIntError;
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
+pub use nonzero::NonZero;
 #[unstable(
     feature = "nonzero_internals",
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
 pub use nonzero::ZeroablePrimitive;
-
-#[stable(feature = "generic_nonzero", since = "1.79.0")]
-pub use nonzero::NonZero;
-
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
 pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
-
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
-
-#[stable(feature = "try_from", since = "1.34.0")]
-pub use error::TryFromIntError;
-
-#[stable(feature = "int_error_matching", since = "1.55.0")]
-pub use error::IntErrorKind;
+#[stable(feature = "saturating_int_impl", since = "1.74.0")]
+pub use saturating::Saturating;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use wrapping::Wrapping;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
     () => {

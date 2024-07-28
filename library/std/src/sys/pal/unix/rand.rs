@@ -24,7 +24,6 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 mod imp {
     use crate::fs::File;
     use crate::io::Read;
-
     #[cfg(any(target_os = "linux", target_os = "android"))]
     use crate::sys::weak::syscall;
 
@@ -178,8 +177,9 @@ mod imp {
 
 #[cfg(target_vendor = "apple")]
 mod imp {
-    use crate::io;
     use libc::{c_int, c_void, size_t};
+
+    use crate::io;
 
     #[inline(always)]
     fn random_failure() -> ! {
@@ -311,8 +311,10 @@ mod imp {
 
 #[cfg(target_os = "vxworks")]
 mod imp {
+    use core::sync::atomic::AtomicBool;
+    use core::sync::atomic::Ordering::Relaxed;
+
     use crate::io;
-    use core::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
     pub fn fill_bytes(v: &mut [u8]) {
         static RNG_INIT: AtomicBool = AtomicBool::new(false);

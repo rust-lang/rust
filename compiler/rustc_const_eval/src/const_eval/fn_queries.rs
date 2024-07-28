@@ -1,10 +1,9 @@
-use rustc_attr as attr;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
+use {rustc_attr as attr, rustc_hir as hir};
 
 /// Whether the `def_id` is an unstable const fn and what feature gate(s) are necessary to enable
 /// it.

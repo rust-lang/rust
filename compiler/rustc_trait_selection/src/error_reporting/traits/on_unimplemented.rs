@@ -1,29 +1,27 @@
+use std::iter;
+use std::path::PathBuf;
+
+use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItem, NestedMetaItem};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_macros::LintDiagnostic;
+use rustc_middle::bug;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
+use rustc_parse_format::{ParseMode, Parser, Piece, Position};
+use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
+use {rustc_attr as attr, rustc_hir as hir};
+
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
 use crate::infer::InferCtxtExt;
-use rustc_ast::AttrArgs;
-use rustc_ast::AttrArgsEq;
-use rustc_ast::AttrKind;
-use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
-use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
-use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_macros::LintDiagnostic;
-use rustc_middle::bug;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
-use rustc_parse_format::{ParseMode, Parser, Piece, Position};
-use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
-use std::iter;
-use std::path::PathBuf;
 
 /// The symbols which are always allowed in a format string
 static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[

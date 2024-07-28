@@ -1,12 +1,8 @@
 use crate::ffi::{c_char, CStr, OsString};
-use crate::fmt;
 use crate::os::hermit::ffi::OsStringExt;
-use crate::ptr;
-use crate::sync::atomic::{
-    AtomicIsize, AtomicPtr,
-    Ordering::{Acquire, Relaxed, Release},
-};
-use crate::vec;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{AtomicIsize, AtomicPtr};
+use crate::{fmt, ptr, vec};
 
 static ARGC: AtomicIsize = AtomicIsize::new(0);
 static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());

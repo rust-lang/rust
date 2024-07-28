@@ -32,8 +32,7 @@ pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod stdio;
-pub use self::itron::thread;
-pub use self::itron::thread_parking;
+pub use self::itron::{thread, thread_parking};
 pub mod time;
 
 // SAFETY: must be called only once during runtime initialization.

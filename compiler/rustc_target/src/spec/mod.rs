@@ -34,16 +34,6 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
-use crate::abi::call::Conv;
-use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
-use crate::json::{Json, ToJson};
-use crate::spec::abi::Abi;
-use crate::spec::crt_objects::CrtObjects;
-use rustc_fs_util::try_canonicalize;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::symbol::{kw, sym, Symbol};
-use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
@@ -51,15 +41,28 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
+
+use rustc_fs_util::try_canonicalize;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_span::symbol::{kw, sym, Symbol};
+use serde_json::Value;
 use tracing::debug;
+
+use crate::abi::call::Conv;
+use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
+use crate::json::{Json, ToJson};
+use crate::spec::abi::Abi;
+use crate::spec::crt_objects::CrtObjects;
 
 pub mod abi;
 pub mod crt_objects;
 
 mod base;
-pub use base::apple::deployment_target as current_apple_deployment_target;
-pub use base::apple::platform as current_apple_platform;
-pub use base::apple::sdk_version as current_apple_sdk_version;
+pub use base::apple::{
+    deployment_target as current_apple_deployment_target, platform as current_apple_platform,
+    sdk_version as current_apple_sdk_version,
+};
 pub use base::avr_gnu::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
@@ -3353,8 +3356,7 @@ impl Target {
         target_triple: &TargetTriple,
         sysroot: &Path,
     ) -> Result<(Target, TargetWarnings), String> {
-        use std::env;
-        use std::fs;
+        use std::{env, fs};
 
         fn load_file(path: &Path) -> Result<(Target, TargetWarnings), String> {
             let contents = fs::read_to_string(path).map_err(|e| e.to_string())?;

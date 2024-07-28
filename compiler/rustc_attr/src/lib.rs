@@ -15,12 +15,10 @@ mod builtin;
 mod session_diagnostics;
 
 pub use builtin::*;
+pub use rustc_ast::attr::*;
+pub(crate) use rustc_session::HashStableContext;
 pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;
-
-pub use rustc_ast::attr::*;
-
-pub(crate) use rustc_session::HashStableContext;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

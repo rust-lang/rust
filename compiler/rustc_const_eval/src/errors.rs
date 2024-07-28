@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use either::Either;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
+    Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -468,8 +469,9 @@ fn bad_pointer_message(msg: CheckInAllocMsg, dcx: DiagCtxtHandle<'_>) -> String 
 
 impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         use UndefinedBehaviorInfo::*;
+
+        use crate::fluent_generated::*;
         match self {
             Ub(msg) => msg.clone().into(),
             Custom(x) => (x.msg)(),
@@ -630,8 +632,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 
 impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
+
+        use crate::fluent_generated::*;
         match self.kind {
             PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => {
                 const_eval_validation_box_to_uninhabited
@@ -702,8 +705,9 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
     }
 
     fn add_args<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
-        use crate::fluent_generated as fluent;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
+
+        use crate::fluent_generated as fluent;
 
         if let PointerAsInt { .. } | PartialPointer = self.kind {
             err.help(fluent::const_eval_ptr_as_bytes_1);
@@ -835,9 +839,9 @@ impl ReportErrorExt for UnsupportedOpInfo {
         }
     }
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        use crate::fluent_generated::*;
-
         use UnsupportedOpInfo::*;
+
+        use crate::fluent_generated::*;
         if let ReadPointerAsInt(_) | OverwritePartialPointer(_) | ReadPartialPointer(_) = self {
             diag.help(const_eval_ptr_as_bytes_1);
             diag.help(const_eval_ptr_as_bytes_2);

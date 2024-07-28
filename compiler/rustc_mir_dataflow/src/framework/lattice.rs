@@ -38,10 +38,12 @@
 //! [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
 //! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
-use crate::framework::BitSetExt;
+use std::iter;
+
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::{Idx, IndexVec};
-use std::iter;
+
+use crate::framework::BitSetExt;
 
 /// A [partially ordered set][poset] that has a [least upper bound][lub] for any pair of elements
 /// in the set.

@@ -13,8 +13,9 @@ use std::{env, fs, mem};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::tool::{self, prepare_tool_cargo, SourceType, Tool};
-use crate::core::builder::{self, crate_description};
-use crate::core::builder::{Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
+use crate::core::builder::{
+    self, crate_description, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step,
+};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::helpers::{symlink_dir, t, up_to_date};
 use crate::Mode;

@@ -1,18 +1,17 @@
-use super::operand::OperandValue;
-use super::{FunctionCx, LocalRef};
-
-use crate::common::IntPredicate;
-use crate::size_of_val;
-use crate::traits::*;
-
-use rustc_middle::bug;
-use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Align, FieldsShape, Int, Pointer, Size, TagEncoding};
-use rustc_target::abi::{VariantIdx, Variants};
+use rustc_middle::{bug, mir};
+use rustc_target::abi::{
+    Align, FieldsShape, Int, Pointer, Size, TagEncoding, VariantIdx, Variants,
+};
 use tracing::{debug, instrument};
+
+use super::operand::OperandValue;
+use super::{FunctionCx, LocalRef};
+use crate::common::IntPredicate;
+use crate::size_of_val;
+use crate::traits::*;
 
 /// The location and extra runtime properties of the place.
 ///

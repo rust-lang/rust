@@ -1,13 +1,13 @@
-use crate::interpret::{
-    self, throw_machine_stop, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic,
-};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult};
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::def_id::DefId;
+
+use crate::interpret::{
+    self, throw_machine_stop, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic,
+};
 
 /// Macro for machine-specific `InterpError` without allocation.
 /// (These will never be shown to the user, but they help diagnose ICEs.)

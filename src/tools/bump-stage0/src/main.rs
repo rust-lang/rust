@@ -1,10 +1,11 @@
 #![deny(unused_variables)]
 
+use std::collections::HashMap;
+
 use anyhow::{Context, Error};
 use build_helper::stage0_parser::{parse_stage0_file, Stage0Config, VersionMetadata};
 use curl::easy::Easy;
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 const PATH: &str = "src/stage0";
 const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo", "clippy-preview"];

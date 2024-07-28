@@ -1,4 +1,5 @@
 use std::str;
+
 use test::{black_box, Bencher};
 
 mod char_count;

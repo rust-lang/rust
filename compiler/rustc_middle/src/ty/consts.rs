@@ -1,6 +1,3 @@
-use crate::middle::resolve_bound_vars as rbv;
-use crate::mir::interpret::{ErrorHandled, LitToConstInput, Scalar};
-use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use either::Either;
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
@@ -11,14 +8,17 @@ use rustc_macros::HashStable;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 use tracing::{debug, instrument};
 
+use crate::middle::resolve_bound_vars as rbv;
+use crate::mir::interpret::{ErrorHandled, LitToConstInput, Scalar};
+use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
+
 mod int;
 mod kind;
 mod valtree;
 
 pub use int::*;
 pub use kind::*;
-use rustc_span::DUMMY_SP;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 pub use valtree::*;
 
 pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;

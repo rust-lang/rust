@@ -1,6 +1,5 @@
-use super::{probe, MethodCallee};
+use std::ops::Deref;
 
-use crate::{callee, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
@@ -12,8 +11,9 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
-use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, UserArgs, UserType,
@@ -22,7 +22,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
-use std::ops::Deref;
+use super::{probe, MethodCallee};
+use crate::{callee, FnCtxt};
 
 struct ConfirmContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,

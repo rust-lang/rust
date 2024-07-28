@@ -3,6 +3,8 @@
 // expectations such as `#[expect(unused)]` and `#[expect(dead_code)]` is live, and everything else
 // is dead.
 
+use std::mem;
+
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use hir::ItemKind;
 use rustc_data_structures::unord::UnordSet;
@@ -21,7 +23,6 @@ use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::FieldIdx;
-use std::mem;
 
 use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,

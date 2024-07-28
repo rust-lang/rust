@@ -1,6 +1,7 @@
-use super::*;
 use core::mem::size_of;
 use std::cell::Cell;
+
+use super::*;
 
 #[test]
 fn allocator_param() {

@@ -9,26 +9,23 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::panic::{BacktraceStyle, PanicHookInfo};
 use core::panic::{Location, PanicPayload};
 
-use crate::any::Any;
-use crate::fmt;
-use crate::intrinsics;
-use crate::mem::{self, ManuallyDrop};
-use crate::process;
-use crate::sync::atomic::{AtomicBool, Ordering};
-use crate::sync::{PoisonError, RwLock};
-use crate::sys::backtrace;
-use crate::sys::stdio::panic_output;
-use crate::thread;
-
-#[cfg(not(test))]
-use crate::io::try_set_output_capture;
 // make sure to use the stderr output configured
 // by libtest in the real copy of std
 #[cfg(test)]
 use realstd::io::try_set_output_capture;
+
+use crate::any::Any;
+#[cfg(not(test))]
+use crate::io::try_set_output_capture;
+use crate::mem::{self, ManuallyDrop};
+use crate::panic::{BacktraceStyle, PanicHookInfo};
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::{PoisonError, RwLock};
+use crate::sys::backtrace;
+use crate::sys::stdio::panic_output;
+use crate::{fmt, intrinsics, process, thread};
 
 // Binary interface to the panic runtime that the standard library depends on.
 //

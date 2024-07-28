@@ -1,7 +1,8 @@
 use core::cmp::Ordering;
+use std::cmp;
+
 use rustc_index::IndexVec;
 use rustc_middle::ty::error::TypeError;
-use std::cmp;
 
 rustc_index::newtype_index! {
     #[orderable]

@@ -1,3 +1,15 @@
+use std::collections::BTreeSet;
+use std::ffi::OsString;
+use std::fs::{read, File, OpenOptions};
+use std::io::{BufWriter, Write};
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
+use std::process::{ExitStatus, Output, Stdio};
+use std::{env, fmt, fs, io, mem, str};
+
+use cc::windows_registry;
+use itertools::Itertools;
+use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -12,9 +24,10 @@ use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_session::config::LinkerFeaturesCli;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, OutFileName, Strip};
-use rustc_session::config::{OutputFilenames, OutputType, PrintKind, SplitDwarfKind};
+use rustc_session::config::{
+    self, CFGuard, CrateType, DebugInfo, LinkerFeaturesCli, OutFileName, OutputFilenames,
+    OutputType, PrintKind, SplitDwarfKind, Strip,
+};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -24,11 +37,13 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
-use rustc_target::spec::LinkSelfContainedDefault;
-use rustc_target::spec::LinkerFlavorCli;
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
-use rustc_target::spec::{LinkSelfContainedComponents, LinkerFeatures};
-use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{
+    Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
+    LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    SplitDebuginfo,
+};
+use tempfile::Builder as TempFileBuilder;
+use tracing::{debug, info, warn};
 
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
@@ -38,21 +53,6 @@ use super::rpath::{self, RPathConfig};
 use crate::{
     errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
 };
-
-use cc::windows_registry;
-use regex::Regex;
-use tempfile::Builder as TempFileBuilder;
-
-use itertools::Itertools;
-use std::collections::BTreeSet;
-use std::ffi::OsString;
-use std::fs::{read, File, OpenOptions};
-use std::io::{BufWriter, Write};
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
-use std::process::{ExitStatus, Output, Stdio};
-use std::{env, fmt, fs, io, mem, str};
-use tracing::{debug, info, warn};
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {

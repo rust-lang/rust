@@ -1,5 +1,3 @@
-use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
-
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
@@ -10,6 +8,8 @@ use rustc_middle::mir::coverage::{
 use rustc_middle::ty::Instance;
 use rustc_span::Symbol;
 use tracing::{debug, instrument};
+
+use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.

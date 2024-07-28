@@ -57,14 +57,13 @@
 // [3]: https://docs.microsoft.com/en-us/archive/msdn-magazine/2012/november/windows-with-c-the-evolution-of-synchronization-in-windows-and-c
 // [4]: Windows Internals, Part 1, ISBN 9780735671300
 
+use core::ffi::c_void;
+
 use crate::pin::Pin;
-use crate::sync::atomic::{
-    AtomicI8,
-    Ordering::{Acquire, Release},
-};
+use crate::sync::atomic::AtomicI8;
+use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::sys::{c, dur2timeout};
 use crate::time::Duration;
-use core::ffi::c_void;
 
 pub struct Parker {
     state: AtomicI8,
@@ -185,15 +184,14 @@ impl Parker {
 
 #[cfg(target_vendor = "win7")]
 mod keyed_events {
-    use super::{Parker, EMPTY, NOTIFIED};
-    use crate::sys::c;
     use core::pin::Pin;
     use core::ptr;
-    use core::sync::atomic::{
-        AtomicPtr,
-        Ordering::{Acquire, Relaxed},
-    };
+    use core::sync::atomic::AtomicPtr;
+    use core::sync::atomic::Ordering::{Acquire, Relaxed};
     use core::time::Duration;
+
+    use super::{Parker, EMPTY, NOTIFIED};
+    use crate::sys::c;
 
     pub unsafe fn park(parker: Pin<&Parker>) {
         // Wait for unpark() to produce this event.

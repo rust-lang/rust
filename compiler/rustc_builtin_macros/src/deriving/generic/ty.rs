@@ -1,8 +1,6 @@
 //! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
 //! when specifying impls to be derived.
 
-pub(crate) use Ty::*;
-
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_expand::base::ExtCtxt;
@@ -10,6 +8,7 @@ use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use thin_vec::ThinVec;
+pub(crate) use Ty::*;
 
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
 /// for type parameters.

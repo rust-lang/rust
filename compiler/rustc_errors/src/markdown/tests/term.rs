@@ -1,5 +1,6 @@
 use std::io::BufWriter;
 use std::path::PathBuf;
+
 use termcolor::{BufferWriter, ColorChoice};
 
 use super::*;

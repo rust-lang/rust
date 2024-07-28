@@ -4,11 +4,12 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use crate::errors::{Kind, TestOutput};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
+
+use crate::errors::{Kind, TestOutput};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
 const DEF_PATH: Symbol = sym::rustc_def_path;

@@ -1,10 +1,10 @@
-use rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry;
 use std::fs;
 use std::iter::Peekable;
 use std::path::Path;
 use std::str::Chars;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagCtxtHandle;
 
 #[cfg(test)]

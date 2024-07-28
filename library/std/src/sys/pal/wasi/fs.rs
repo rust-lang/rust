@@ -2,22 +2,19 @@
 
 use super::fd::WasiFd;
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
-use crate::ptr;
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
-
 pub use crate::sys_common::fs::exists;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{fmt, iter, ptr};
 
 pub struct File {
     fd: WasiFd,

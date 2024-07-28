@@ -1,10 +1,11 @@
+use std::fmt;
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
-use std::fmt;
 
 use crate::{self as ty, DebruijnIndex, Interner};
 

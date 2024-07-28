@@ -1,14 +1,12 @@
-use crate::{
-    lints::{
-        HiddenUnicodeCodepointsDiag, HiddenUnicodeCodepointsDiagLabels,
-        HiddenUnicodeCodepointsDiagSub,
-    },
-    EarlyContext, EarlyLintPass, LintContext,
-};
 use ast::util::unicode::{contains_text_flow_control_chars, TEXT_FLOW_CONTROL_CHARS};
 use rustc_ast as ast;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{BytePos, Span, Symbol};
+
+use crate::lints::{
+    HiddenUnicodeCodepointsDiag, HiddenUnicodeCodepointsDiagLabels, HiddenUnicodeCodepointsDiagSub,
+};
+use crate::{EarlyContext, EarlyLintPass, LintContext};
 
 declare_lint! {
     /// The `text_direction_codepoint_in_literal` lint detects Unicode codepoints that change the

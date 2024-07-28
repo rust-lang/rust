@@ -3,27 +3,22 @@
 //! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
-use std::env;
-use std::ffi::OsStr;
-use std::ffi::OsString;
-use std::fs;
-use std::iter;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::{env, fs, iter};
 
 use clap_complete::shells;
 
-use crate::core::build_steps::compile;
-use crate::core::build_steps::dist;
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::build_steps::llvm;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
+use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder;
-use crate::core::builder::crate_description;
-use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
-use crate::core::config::flags::get_completion;
-use crate::core::config::flags::Subcommand;
+use crate::core::builder::{
+    crate_description, Builder, Compiler, Kind, RunConfig, ShouldRun, Step,
+};
+use crate::core::config::flags::{get_completion, Subcommand};
 use crate::core::config::TargetSelection;
 use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{

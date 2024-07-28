@@ -1,7 +1,7 @@
-use crate::base::ast::NestedMetaItem;
-use crate::errors;
-use crate::expand::{self, AstFragment, Invocation};
-use crate::module::DirOwnership;
+use std::default::Default;
+use std::iter;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
@@ -15,9 +15,11 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
-use rustc_parse::{parser::Parser, MACRO_ARGUMENTS};
+use rustc_parse::parser::Parser;
+use rustc_parse::MACRO_ARGUMENTS;
 use rustc_session::config::CollapseMacroDebuginfo;
-use rustc_session::{parse::ParseSess, Limit, Session};
+use rustc_session::parse::ParseSess;
+use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
@@ -25,11 +27,12 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
-use std::default::Default;
-use std::iter;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use thin_vec::ThinVec;
+
+use crate::base::ast::NestedMetaItem;
+use crate::errors;
+use crate::expand::{self, AstFragment, Invocation};
+use crate::module::DirOwnership;
 
 // When adding new variants, make sure to
 // adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`

@@ -1,8 +1,8 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
-use rustc_errors::Applicability;
-use rustc_errors::{codes::*, struct_span_code_err, Diag, DiagCtxtHandle};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, Diag, DiagCtxtHandle};
 use rustc_hir as hir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};

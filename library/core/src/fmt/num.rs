@@ -1,12 +1,9 @@
 //! Integer and floating-point number formatting
 
-use crate::fmt;
 use crate::mem::MaybeUninit;
 use crate::num::fmt as numfmt;
 use crate::ops::{Div, Rem, Sub};
-use crate::ptr;
-use crate::slice;
-use crate::str;
+use crate::{fmt, ptr, slice, str};
 
 #[doc(hidden)]
 trait DisplayInt:

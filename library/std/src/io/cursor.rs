@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests;
 
-use crate::io::prelude::*;
-
 use crate::alloc::Allocator;
 use crate::cmp;
+use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a

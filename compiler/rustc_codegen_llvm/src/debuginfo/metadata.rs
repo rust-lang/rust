@@ -1,32 +1,14 @@
-use self::type_map::DINodeCreationResult;
-use self::type_map::Stub;
-use self::type_map::UniqueTypeId;
+use std::borrow::Cow;
+use std::fmt::{self, Write};
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
+use std::{iter, ptr};
 
-use super::namespace::mangled_name_of_instance;
-use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
-use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
-};
-use super::CodegenUnitDebugContext;
-
-use crate::abi;
-use crate::common::CodegenCx;
-use crate::debuginfo::metadata::type_map::build_type_with_children;
-use crate::debuginfo::utils::fat_pointer_kind;
-use crate::debuginfo::utils::FatPtrKind;
-use crate::llvm;
-use crate::llvm::debuginfo::{
-    DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
-    DebugNameTableKind,
-};
-use crate::value::Value;
-
-use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
-use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
+use libc::{c_char, c_longlong, c_uint};
+use rustc_codegen_ssa::debuginfo::type_names::{cpp_like_debuginfo, VTableNameKind};
 use rustc_codegen_ssa::traits::*;
 use rustc_fs_util::path_to_c_string;
-use rustc_hir::def::CtorKind;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -36,21 +18,29 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
-use rustc_span::{hygiene, FileName, DUMMY_SP};
-use rustc_span::{FileNameDisplayPreference, SourceFile};
+use rustc_span::{hygiene, FileName, FileNameDisplayPreference, SourceFile, DUMMY_SP};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
-use libc::{c_char, c_longlong, c_uint};
-use std::borrow::Cow;
-use std::fmt::{self, Write};
-use std::hash::{Hash, Hasher};
-use std::iter;
-use std::path::{Path, PathBuf};
-use std::ptr;
+use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
+use super::namespace::mangled_name_of_instance;
+use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
+use super::utils::{
+    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
+};
+use super::CodegenUnitDebugContext;
+use crate::common::CodegenCx;
+use crate::debuginfo::metadata::type_map::build_type_with_children;
+use crate::debuginfo::utils::{fat_pointer_kind, FatPtrKind};
+use crate::llvm::debuginfo::{
+    DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
+    DebugNameTableKind,
+};
+use crate::value::Value;
+use crate::{abi, llvm};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -874,7 +864,8 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
-    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+    use rustc_session::config::RemapPathScopeComponents;
+    use rustc_session::RemapFileNameExt;
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()

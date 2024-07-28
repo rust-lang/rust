@@ -1,15 +1,15 @@
 //! Detects invalid HTML (like an unclosed `<span>`) in doc comments.
 
-use crate::clean::*;
-use crate::core::DocContext;
-use crate::html::markdown::main_body_opts;
+use std::iter::Peekable;
+use std::ops::Range;
+use std::str::CharIndices;
 
 use pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag, TagEnd};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 
-use std::iter::Peekable;
-use std::ops::Range;
-use std::str::CharIndices;
+use crate::clean::*;
+use crate::core::DocContext;
+use crate::html::markdown::main_body_opts;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     let tcx = cx.tcx;

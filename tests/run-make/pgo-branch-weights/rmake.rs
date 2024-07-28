@@ -10,8 +10,9 @@
 //@ needs-profiler-support
 //@ ignore-cross-compile
 
-use run_make_support::{llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc};
 use std::path::Path;
+
+use run_make_support::{llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc};
 
 fn main() {
     let path_prof_data_dir = Path::new("prof_data_dir");

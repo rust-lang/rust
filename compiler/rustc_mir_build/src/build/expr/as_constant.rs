@@ -1,18 +1,18 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_hir::LangItem;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::Size;
 use tracing::{instrument, trace};
+
+use crate::build::{parse_float_into_constval, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that

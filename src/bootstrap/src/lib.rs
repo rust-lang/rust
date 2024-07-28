@@ -18,15 +18,13 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fmt::Display;
 use std::fs::{self, File};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str;
 use std::sync::OnceLock;
 use std::time::SystemTime;
+use std::{env, io, str};
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
@@ -37,9 +35,7 @@ use utils::helpers::hex_encode;
 
 use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{flags, LldMode};
-use crate::core::config::{DryRun, Target};
-use crate::core::config::{LlvmLibunwind, TargetSelection};
+use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
 use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
@@ -49,6 +45,7 @@ mod utils;
 pub use core::builder::PathSet;
 pub use core::config::flags::Subcommand;
 pub use core::config::Config;
+
 pub use utils::change_tracker::{
     find_recent_config_change_ids, human_readable_changes, CONFIG_CHANGE_HISTORY,
 };

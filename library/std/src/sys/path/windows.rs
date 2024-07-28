@@ -1,8 +1,7 @@
 use crate::ffi::{OsStr, OsString};
-use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
-use crate::ptr;
 use crate::sys::pal::{c, fill_utf16_buf, os2path, to_u16s};
+use crate::{io, ptr};
 
 #[cfg(test)]
 mod tests;

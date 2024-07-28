@@ -1,8 +1,7 @@
 use rustc_hir::def_id::DefId;
+pub use rustc_type_ir::fast_reject::*;
 
 use super::TyCtxt;
-
-pub use rustc_type_ir::fast_reject::*;
 
 pub type DeepRejectCtxt<'tcx> = rustc_type_ir::fast_reject::DeepRejectCtxt<TyCtxt<'tcx>>;
 

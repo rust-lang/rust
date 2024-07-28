@@ -1,7 +1,8 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir;
-use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
+use std::cell::Cell;
+use std::fmt::{self, Debug};
+
 use derive_where::derive_where;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
@@ -13,10 +14,10 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use smallvec::SmallVec;
-use std::cell::Cell;
-use std::fmt::{self, Debug};
 
 use super::{ConstValue, SourceInfo};
+use crate::mir;
+use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]

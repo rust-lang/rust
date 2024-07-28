@@ -4,9 +4,6 @@ use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
-use crate::mir::interpret::ConstAllocation;
-
-use super::graphviz::write_mir_fn_graphviz;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::interpret::{
     alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer,
@@ -16,6 +13,9 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_target::abi::Size;
 use tracing::trace;
+
+use super::graphviz::write_mir_fn_graphviz;
+use crate::mir::interpret::ConstAllocation;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements

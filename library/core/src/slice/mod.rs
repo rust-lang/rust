@@ -7,16 +7,13 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::fmt;
-use crate::hint;
 use crate::intrinsics::{exact_div, unchecked_sub};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{Bound, OneSidedRange, Range, RangeBounds};
-use crate::ptr;
 use crate::simd::{self, Simd};
-use crate::slice;
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{fmt, hint, ptr, slice};
 
 #[unstable(
     feature = "slice_internals",
@@ -44,52 +41,38 @@ mod specialize;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use iter::{Chunks, ChunksMut, Windows};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use iter::{Iter, IterMut};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use iter::{RSplitN, RSplitNMut, Split, SplitMut, SplitN, SplitNMut};
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-pub use iter::{RSplit, RSplitMut};
-
-#[stable(feature = "chunks_exact", since = "1.31.0")]
-pub use iter::{ChunksExact, ChunksExactMut};
-
-#[stable(feature = "rchunks", since = "1.31.0")]
-pub use iter::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-pub use iter::{ArrayChunks, ArrayChunksMut};
-
-#[unstable(feature = "array_windows", issue = "75027")]
-pub use iter::ArrayWindows;
-
-#[stable(feature = "slice_group_by", since = "1.77.0")]
-pub use iter::{ChunkBy, ChunkByMut};
-
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-pub use iter::{SplitInclusive, SplitInclusiveMut};
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use raw::{from_raw_parts, from_raw_parts_mut};
-
-#[stable(feature = "from_ref", since = "1.28.0")]
-pub use raw::{from_mut, from_ref};
-
-#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-pub use raw::{from_mut_ptr_range, from_ptr_range};
-
-#[stable(feature = "slice_get_slice", since = "1.28.0")]
-pub use index::SliceIndex;
-
-#[unstable(feature = "slice_range", issue = "76393")]
-pub use index::{range, try_range};
-
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use ascii::EscapeAscii;
+#[stable(feature = "slice_get_slice", since = "1.28.0")]
+pub use index::SliceIndex;
+#[unstable(feature = "slice_range", issue = "76393")]
+pub use index::{range, try_range};
+#[unstable(feature = "array_windows", issue = "75027")]
+pub use iter::ArrayWindows;
+#[unstable(feature = "array_chunks", issue = "74985")]
+pub use iter::{ArrayChunks, ArrayChunksMut};
+#[stable(feature = "slice_group_by", since = "1.77.0")]
+pub use iter::{ChunkBy, ChunkByMut};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use iter::{Chunks, ChunksMut, Windows};
+#[stable(feature = "chunks_exact", since = "1.31.0")]
+pub use iter::{ChunksExact, ChunksExactMut};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use iter::{Iter, IterMut};
+#[stable(feature = "rchunks", since = "1.31.0")]
+pub use iter::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
+pub use iter::{RSplit, RSplitMut};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use iter::{RSplitN, RSplitNMut, Split, SplitMut, SplitN, SplitNMut};
+#[stable(feature = "split_inclusive", since = "1.51.0")]
+pub use iter::{SplitInclusive, SplitInclusiveMut};
+#[stable(feature = "from_ref", since = "1.28.0")]
+pub use raw::{from_mut, from_ref};
+#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
+pub use raw::{from_mut_ptr_range, from_ptr_range};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use raw::{from_raw_parts, from_raw_parts_mut};
 
 /// Calculates the direction and split point of a one-sided range.
 ///

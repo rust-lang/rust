@@ -1,13 +1,12 @@
 //! LLVM diagnostic reports.
 
+use libc::c_uint;
+use rustc_span::InnerSpan;
+
 pub use self::Diagnostic::*;
 pub use self::OptimizationDiagnosticKind::*;
-
-use crate::value::Value;
-use libc::c_uint;
-
 use super::{DiagnosticInfo, SMDiagnostic};
-use rustc_span::InnerSpan;
+use crate::value::Value;
 
 #[derive(Copy, Clone, Debug)]
 pub enum OptimizationDiagnosticKind {

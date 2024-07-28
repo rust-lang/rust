@@ -12,11 +12,12 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::matches::{MatchPairTree, PatternExtraData, TestCase};
-use crate::build::Builder;
+use std::mem;
+
 use tracing::{debug, instrument};
 
-use std::mem;
+use crate::build::matches::{MatchPairTree, PatternExtraData, TestCase};
+use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Simplify a list of match pairs so they all require a test. Stores relevant bindings and

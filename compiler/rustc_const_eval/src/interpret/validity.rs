@@ -9,17 +9,15 @@ use std::hash::Hash;
 use std::num::NonZero;
 
 use either::{Left, Right};
-use tracing::trace;
-
 use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
+use rustc_middle::mir::interpret::ValidationErrorKind::{self, *};
 use rustc_middle::mir::interpret::{
     ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
     UnsupportedOpInfo, ValidationErrorInfo,
-    ValidationErrorKind::{self, *},
 };
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -27,11 +25,13 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
+use tracing::trace;
 
+use super::machine::AllocMap;
 use super::{
-    err_ub, format_interp_error, machine::AllocMap, throw_ub, AllocId, AllocKind, CheckInAllocMsg,
-    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
-    Pointer, Projectable, Scalar, ValueVisitor,
+    err_ub, format_interp_error, throw_ub, AllocId, AllocKind, CheckInAllocMsg, GlobalAlloc, ImmTy,
+    Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable,
+    Scalar, ValueVisitor,
 };
 
 // for the validation errors

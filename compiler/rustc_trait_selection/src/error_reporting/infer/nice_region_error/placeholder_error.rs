@@ -1,12 +1,5 @@
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
-    ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
-    TraitPlaceholderMismatch, TyOrSig,
-};
-use crate::infer::RegionResolutionError;
-use crate::infer::ValuePairs;
-use crate::infer::{SubregionOrigin, TypeTrace};
-use crate::traits::{ObligationCause, ObligationCauseCode};
+use std::fmt;
+
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
@@ -14,10 +7,15 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, RePlaceholder, Region, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
 
-use std::fmt;
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
+use crate::errors::{
+    ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
+    TraitPlaceholderMismatch, TyOrSig,
+};
+use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace, ValuePairs};
+use crate::traits::{ObligationCause, ObligationCauseCode};
 
 // HACK(eddyb) maybe move this in a more central location.
 #[derive(Copy, Clone)]

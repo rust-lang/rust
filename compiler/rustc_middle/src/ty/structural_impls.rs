@@ -3,11 +3,8 @@
 //! written by hand, though we've recently added some macros and proc-macros
 //! to help with the tedium.
 
-use crate::mir::interpret;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
-use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
-use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use std::fmt::{self, Debug};
+
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::def::Namespace;
@@ -15,12 +12,13 @@ use rustc_span::source_map::Spanned;
 use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::ConstKind;
 
-use std::fmt::{self, Debug};
-
 use super::print::PrettyPrinter;
-use super::{GenericArg, GenericArgKind, Region};
-
-use super::Pattern;
+use super::{GenericArg, GenericArgKind, Pattern, Region};
+use crate::mir::interpret;
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
+use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
+use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

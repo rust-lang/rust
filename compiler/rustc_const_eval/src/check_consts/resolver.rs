@@ -2,17 +2,16 @@
 //!
 //! This contains the dataflow analysis used to track `Qualif`s on complex control-flow graphs.
 
+use std::fmt;
+use std::marker::PhantomData;
+
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
 };
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::JoinSemiLattice;
-use rustc_mir_dataflow::{Analysis, AnalysisDomain};
-
-use std::fmt;
-use std::marker::PhantomData;
+use rustc_mir_dataflow::{Analysis, AnalysisDomain, JoinSemiLattice};
 
 use super::{qualifs, ConstCx, Qualif};
 

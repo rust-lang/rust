@@ -14,10 +14,9 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use self::TargetLint::*;
+use std::cell::Cell;
+use std::{iter, slice};
 
-use crate::levels::LintLevelsBuilder;
-use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
@@ -30,19 +29,21 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError, PrintTraitRefExt as _};
-use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_session::lint::{BuiltinLintDiag, LintExpectationId};
-use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
+use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError, PrintTraitRefExt as _, Printer};
+use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt};
+use rustc_session::lint::{
+    BuiltinLintDiag, FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
+};
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi;
-use std::cell::Cell;
-use std::iter;
-use std::slice;
 use tracing::debug;
+
+use self::TargetLint::*;
+use crate::levels::LintLevelsBuilder;
+use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 
 mod diagnostics;
 

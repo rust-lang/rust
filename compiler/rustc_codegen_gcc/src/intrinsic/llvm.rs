@@ -3,7 +3,8 @@ use std::borrow::Cow;
 use gccjit::{Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
-use crate::{builder::Builder, context::CodegenCx};
+use crate::builder::Builder;
+use crate::context::CodegenCx;
 
 pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     builder: &Builder<'a, 'gcc, 'tcx>,

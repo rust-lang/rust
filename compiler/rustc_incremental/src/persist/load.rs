@@ -1,6 +1,8 @@
 //! Code to load the dep-graph from files.
 
-use crate::errors;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_middle::dep_graph::{DepGraph, DepsType, SerializedDepGraph, WorkProductMap};
@@ -10,15 +12,13 @@ use rustc_serialize::Decodable;
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::Session;
 use rustc_span::ErrorGuaranteed;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use tracing::{debug, warn};
 
 use super::data::*;
-use super::file_format;
 use super::fs::*;
 use super::save::build_dep_graph;
-use super::work_product;
+use super::{file_format, work_product};
+use crate::errors;
 
 #[derive(Debug)]
 /// Represents the result of an attempt to load incremental compilation data.

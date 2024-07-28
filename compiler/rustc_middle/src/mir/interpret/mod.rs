@@ -8,12 +8,9 @@ mod pointer;
 mod queries;
 mod value;
 
-use std::fmt;
-use std::io;
 use std::io::{Read, Write};
 use std::num::NonZero;
-
-use tracing::{debug, trace};
+use std::{fmt, io};
 
 use rustc_ast::LitKind;
 use rustc_attr::InlineAttr;
@@ -25,12 +22,18 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
+use tracing::{debug, trace};
+// Also make the error macros available from this module.
+pub use {
+    err_exhaust, err_inval, err_machine_stop, err_ub, err_ub_custom, err_ub_format, err_unsup,
+    err_unsup_format, throw_exhaust, throw_inval, throw_machine_stop, throw_ub, throw_ub_custom,
+    throw_ub_format, throw_unsup, throw_unsup_format,
+};
 
-use crate::mir;
-use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::GenericArgKind;
-use crate::ty::{self, Instance, Ty, TyCtxt};
-
+pub use self::allocation::{
+    alloc_range, AllocBytes, AllocError, AllocRange, AllocResult, Allocation, ConstAllocation,
+    InitChunk, InitChunkIter,
+};
 pub use self::error::{
     BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalStaticInitializerRawResult,
     EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, ExpectedKind,
@@ -39,21 +42,11 @@ pub use self::error::{
     ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
     ValidationErrorKind,
 };
-// Also make the error macros available from this module.
-pub use {
-    err_exhaust, err_inval, err_machine_stop, err_ub, err_ub_custom, err_ub_format, err_unsup,
-    err_unsup_format, throw_exhaust, throw_inval, throw_machine_stop, throw_ub, throw_ub_custom,
-    throw_ub_format, throw_unsup, throw_unsup_format,
-};
-
-pub use self::value::Scalar;
-
-pub use self::allocation::{
-    alloc_range, AllocBytes, AllocError, AllocRange, AllocResult, Allocation, ConstAllocation,
-    InitChunk, InitChunkIter,
-};
-
 pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
+pub use self::value::Scalar;
+use crate::mir;
+use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::{self, GenericArgKind, Instance, Ty, TyCtxt};
 
 /// Uniquely identifies one of the following:
 /// - A constant

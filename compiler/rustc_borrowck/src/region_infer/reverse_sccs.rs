@@ -1,10 +1,12 @@
-use crate::constraints::ConstraintSccIndex;
-use crate::RegionInferenceContext;
+use std::ops::Range;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_middle::ty::RegionVid;
-use std::ops::Range;
+
+use crate::constraints::ConstraintSccIndex;
+use crate::RegionInferenceContext;
 
 pub(crate) struct ReverseSccGraph {
     graph: VecGraph<ConstraintSccIndex>,

@@ -1,11 +1,12 @@
 //! A subset of a mir body used for const evaluability checking.
 
+use rustc_errors::ErrorGuaranteed;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
+
 use crate::ty::{
     self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
 };
-use rustc_errors::ErrorGuaranteed;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 #[derive(TyDecodable, TyEncodable, HashStable, TypeVisitable, TypeFoldable)]

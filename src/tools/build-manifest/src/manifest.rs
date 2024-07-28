@@ -1,8 +1,10 @@
-use crate::versions::PkgType;
-use crate::Builder;
-use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+use serde::{Serialize, Serializer};
+
+use crate::versions::PkgType;
+use crate::Builder;
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]

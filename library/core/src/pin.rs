@@ -920,11 +920,8 @@
 
 #![stable(feature = "pin", since = "1.33.0")]
 
-use crate::cmp;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
-
 #[allow(unused_imports)]
 use crate::{
     cell::{RefCell, UnsafeCell},
@@ -932,6 +929,7 @@ use crate::{
     marker::PhantomPinned,
     mem, ptr,
 };
+use crate::{cmp, fmt};
 
 /// A pointer which pins its pointee in place.
 ///

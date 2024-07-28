@@ -187,26 +187,26 @@
 
 use core::any::Any;
 use core::async_iter::AsyncIterator;
-use core::borrow;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::error::Error;
-use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
-use core::marker::Tuple;
-use core::marker::Unsize;
+use core::marker::{Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
-use core::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 use core::ops::{
-    CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver,
+    AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
+    DerefPure, DispatchFromDyn, Receiver,
 };
 use core::pin::Pin;
 use core::ptr::{self, addr_of_mut, NonNull, Unique};
-use core::slice;
 use core::task::{Context, Poll};
+use core::{borrow, fmt, slice};
+
+#[unstable(feature = "thin_box", issue = "92791")]
+pub use thin::ThinBox;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -221,9 +221,6 @@ use crate::string::String;
 use crate::vec;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
-
-#[unstable(feature = "thin_box", issue = "92791")]
-pub use thin::ThinBox;
 
 mod thin;
 

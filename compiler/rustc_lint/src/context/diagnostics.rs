@@ -4,8 +4,9 @@
 use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_errors::elided_lifetime_in_path_suggestion;
-use rustc_errors::{Applicability, Diag, DiagArgValue, LintDiagnostic};
+use rustc_errors::{
+    elided_lifetime_in_path_suggestion, Applicability, Diag, DiagArgValue, LintDiagnostic,
+};
 use rustc_middle::middle::stability;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::Session;

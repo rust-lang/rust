@@ -1,5 +1,4 @@
-use run_make_support::rfs;
-use run_make_support::rustc;
+use run_make_support::{rfs, rustc};
 
 fn main() {
     #[cfg(unix)]

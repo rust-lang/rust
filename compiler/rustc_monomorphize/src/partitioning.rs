@@ -113,15 +113,15 @@ use rustc_middle::mir::mono::{
     Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceKind, TyCtxt};
+use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::{self, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
 use tracing::debug;
 
-use crate::collector::UsageMap;
-use crate::collector::{self, MonoItemCollectionStrategy};
+use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode};
 
 struct PartitioningCx<'a, 'tcx> {

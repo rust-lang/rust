@@ -8,10 +8,9 @@ use std::hash::Hash;
 
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::{mir, ty};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};

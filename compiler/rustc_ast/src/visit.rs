@@ -13,14 +13,13 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use crate::ast::*;
-use crate::ptr::P;
-
+pub use rustc_ast_ir::visit::VisitorResult;
+pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-pub use rustc_ast_ir::visit::VisitorResult;
-pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
+use crate::ast::*;
+use crate::ptr::P;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AssocCtxt {

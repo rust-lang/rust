@@ -1,19 +1,16 @@
 //! Benchmarking module.
 
-use super::{
-    event::CompletedTest,
-    options::BenchMode,
-    test_result::TestResult,
-    types::{TestDesc, TestId},
-    Sender,
-};
-
-use crate::stats;
-use std::cmp;
-use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use std::{cmp, io};
+
+use super::event::CompletedTest;
+use super::options::BenchMode;
+use super::test_result::TestResult;
+use super::types::{TestDesc, TestId};
+use super::Sender;
+use crate::stats;
 
 /// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
 /// `black_box` could do.

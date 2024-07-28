@@ -1,7 +1,6 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::ptr::{self, drop_in_place};
-use crate::sys::thread_local::abort_on_dtor_unwind;
-use crate::sys::thread_local::destructors;
+use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 #[derive(Clone, Copy)]
 enum State {

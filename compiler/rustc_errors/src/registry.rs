@@ -1,5 +1,6 @@
-use crate::ErrCode;
 use rustc_data_structures::fx::FxHashMap;
+
+use crate::ErrCode;
 
 #[derive(Debug)]
 pub struct InvalidErrorCode;

@@ -1,9 +1,11 @@
 //! Code for debugging the dep-graph.
 
-use super::{DepNode, DepNodeIndex};
+use std::error::Error;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use std::error::Error;
+
+use super::{DepNode, DepNodeIndex};
 
 /// A dep-node filter goes from a user-defined string to a query over
 /// nodes. Right now the format is like this:

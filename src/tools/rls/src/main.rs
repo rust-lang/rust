@@ -3,10 +3,10 @@
 //! This is a small stub that replaces RLS to alert the user that RLS is no
 //! longer available.
 
-use serde_json::Value;
 use std::error::Error;
-use std::io::BufRead;
-use std::io::Write;
+use std::io::{BufRead, Write};
+
+use serde_json::Value;
 
 const ALERT_MSG: &str = "\
 RLS is no longer available as of Rust 1.65.

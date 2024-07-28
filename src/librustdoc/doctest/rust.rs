@@ -2,7 +2,8 @@
 
 use std::env;
 
-use rustc_data_structures::{fx::FxHashSet, sync::Lrc};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
@@ -14,7 +15,8 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 
 use super::{DoctestVisitor, ScrapedDoctest};
-use crate::clean::{types::AttributesExt, Attributes};
+use crate::clean::types::AttributesExt;
+use crate::clean::Attributes;
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {

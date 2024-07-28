@@ -1,17 +1,3 @@
-use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing};
-use crate::errors::{
-    self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
-    DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
-    ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
-    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
-    ParenRangeSuggestion, PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern,
-    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern,
-    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
-    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
-};
-use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{walk_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
@@ -26,6 +12,21 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, ErrorGuaranteed, Span};
 use thin_vec::{thin_vec, ThinVec};
+
+use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing};
+use crate::errors::{
+    self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
+    DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
+    ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
+    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
+    ParenRangeSuggestion, PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern,
+    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
+    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern,
+    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
+};
+use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
+use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Expected {

@@ -1,5 +1,6 @@
 use std::fmt::{self, Write as FmtWrite};
 use std::io::{self, Write as IoWrite};
+
 use test::{black_box, Bencher};
 
 #[bench]

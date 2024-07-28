@@ -1,7 +1,8 @@
-use super::region_constraints::RegionSnapshot;
-use super::InferCtxt;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::ty;
+
+use super::region_constraints::RegionSnapshot;
+use super::InferCtxt;
 
 mod fudge;
 pub(crate) mod undo_log;

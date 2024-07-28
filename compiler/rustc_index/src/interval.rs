@@ -1,7 +1,6 @@
 use std::iter::Step;
 use std::marker::PhantomData;
-use std::ops::RangeBounds;
-use std::ops::{Bound, Range};
+use std::ops::{Bound, Range, RangeBounds};
 
 use smallvec::SmallVec;
 

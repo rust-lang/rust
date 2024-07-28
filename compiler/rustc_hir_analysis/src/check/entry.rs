@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -5,12 +7,11 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
-
-use std::ops::Not;
 
 use super::check_function_signature;
 use crate::errors;

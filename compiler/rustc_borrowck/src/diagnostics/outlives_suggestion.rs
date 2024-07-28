@@ -4,15 +4,15 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::collections::BTreeMap;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diag;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
-
-use crate::MirBorrowckCtxt;
 
 use super::{ErrorConstraintInfo, RegionName, RegionNameSource};
+use crate::MirBorrowckCtxt;
 
 /// The different things we could suggest.
 enum SuggestedConstraint {

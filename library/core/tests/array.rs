@@ -259,7 +259,8 @@ fn iterator_drops() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn array_default_impl_avoids_leaks_on_panic() {
-    use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::Ordering::Relaxed;
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
     #[derive(Debug)]
     struct Bomb(#[allow(dead_code)] usize);

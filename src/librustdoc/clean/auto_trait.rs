@@ -6,13 +6,11 @@ use rustc_middle::ty::{self, Region, Ty};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
-
 use thin_vec::ThinVec;
 
-use crate::clean::{self, simplify, Lifetime};
 use crate::clean::{
-    clean_generic_param_def, clean_middle_ty, clean_predicate, clean_trait_ref_with_constraints,
-    clean_ty_generics,
+    self, clean_generic_param_def, clean_middle_ty, clean_predicate,
+    clean_trait_ref_with_constraints, clean_ty_generics, simplify, Lifetime,
 };
 use crate::core::DocContext;
 

@@ -1,18 +1,15 @@
-use crate::os::windows::prelude::*;
-
 use crate::ffi::OsStr;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::mem;
+use crate::os::windows::prelude::*;
 use crate::path::Path;
-use crate::ptr;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::Relaxed;
-use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::hashmap_random_keys;
 use crate::sys::pal::windows::api::{self, WinError};
+use crate::sys::{c, hashmap_random_keys};
 use crate::sys_common::{FromInner, IntoInner};
+use crate::{mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes

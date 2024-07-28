@@ -3,26 +3,21 @@
 //! and miri.
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty;
-use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{
-    bug,
-    mir::{self, BinOp, ConstValue, NonDivergingIntrinsic},
-    ty::layout::TyAndLayout,
-};
+use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
+use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
+use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::{bug, ty};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 use tracing::trace;
 
+use super::memory::MemoryKind;
+use super::util::ensure_monomorphic_enough;
 use super::{
-    err_inval, err_ub_custom, err_unsup_format, memory::MemoryKind, throw_inval, throw_ub_custom,
-    throw_ub_format, util::ensure_monomorphic_enough, Allocation, CheckInAllocMsg, ConstAllocation,
-    GlobalId, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Pointer, PointerArithmetic,
-    Provenance, Scalar,
+    err_inval, err_ub_custom, err_unsup_format, throw_inval, throw_ub_custom, throw_ub_format,
+    Allocation, CheckInAllocMsg, ConstAllocation, GlobalId, ImmTy, InterpCx, InterpResult,
+    MPlaceTy, Machine, OpTy, Pointer, PointerArithmetic, Provenance, Scalar,
 };
-
 use crate::fluent_generated as fluent;
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.

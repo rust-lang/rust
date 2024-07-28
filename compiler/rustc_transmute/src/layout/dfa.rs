@@ -1,8 +1,10 @@
-use super::{nfa, Byte, Nfa, Ref};
-use crate::Map;
 use std::fmt;
 use std::sync::atomic::{AtomicU32, Ordering};
+
 use tracing::instrument;
+
+use super::{nfa, Byte, Nfa, Ref};
+use crate::Map;
 
 #[derive(PartialEq, Clone, Debug)]
 pub(crate) struct Dfa<R>

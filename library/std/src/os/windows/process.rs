@@ -8,10 +8,9 @@ use crate::ffi::OsStr;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::process;
 use crate::sealed::Sealed;
-use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{process, sys};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {

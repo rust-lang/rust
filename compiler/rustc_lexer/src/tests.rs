@@ -1,6 +1,6 @@
-use super::*;
-
 use expect_test::{expect, Expect};
+
+use super::*;
 
 fn check_raw_str(s: &str, expected: Result<u8, RawStrError>) {
     let s = &format!("r{}", s);

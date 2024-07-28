@@ -1,8 +1,9 @@
+use std::fs::File;
+use std::path::Path;
+
 use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 use fs_extra::dir::CopyOptions;
-use std::fs::File;
-use std::path::Path;
 
 /// Delete and re-create the directory.
 pub fn reset_directory(path: &Utf8Path) -> anyhow::Result<()> {

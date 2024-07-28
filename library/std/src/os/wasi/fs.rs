@@ -5,14 +5,15 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "wasi_ext", issue = "71213")]
 
+// Used for `File::read` on intra-doc links
+#[allow(unused_imports)]
+use io::{Read, Write};
+
 use crate::ffi::OsStr;
 use crate::fs::{self, File, Metadata, OpenOptions};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::path::{Path, PathBuf};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
-// Used for `File::read` on intra-doc links
-#[allow(unused_imports)]
-use io::{Read, Write};
 
 /// WASI-specific extensions to [`File`].
 pub trait FileExt {

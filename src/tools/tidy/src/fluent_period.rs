@@ -1,9 +1,10 @@
 //! Checks that no Fluent messages or attributes end in periods (except ellipses)
 
+use std::path::Path;
+
 use fluent_syntax::ast::{Entry, PatternElement};
 
 use crate::walk::{filter_dirs, walk};
-use std::path::Path;
 
 fn filter_fluent(path: &Path) -> bool {
     if let Some(ext) = path.extension() { ext.to_str() != Some("ftl") } else { true }

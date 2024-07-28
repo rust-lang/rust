@@ -1,12 +1,16 @@
 //! A helper class for dealing with static archives
 
-use std::env;
 use std::ffi::{c_char, c_void, CStr, CString, OsString};
-use std::io;
-use std::mem;
 use std::path::{Path, PathBuf};
-use std::ptr;
-use std::str;
+use std::{env, io, mem, ptr, str};
+
+use rustc_codegen_ssa::back::archive::{
+    try_extract_macho_fat_archive, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
+    ArchiveBuilderBuilder, ObjectReader, UnknownArchiveKind, DEFAULT_OBJECT_READER,
+};
+use rustc_session::cstore::DllImport;
+use rustc_session::Session;
+use tracing::trace;
 
 use crate::common;
 use crate::errors::{
@@ -14,14 +18,6 @@ use crate::errors::{
 };
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
-use rustc_codegen_ssa::back::archive::{
-    try_extract_macho_fat_archive, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
-    ArchiveBuilderBuilder, ObjectReader, UnknownArchiveKind, DEFAULT_OBJECT_READER,
-};
-use tracing::trace;
-
-use rustc_session::cstore::DllImport;
-use rustc_session::Session;
 
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]

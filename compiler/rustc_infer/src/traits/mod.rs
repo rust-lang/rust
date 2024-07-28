@@ -14,21 +14,19 @@ use hir::def_id::LocalDefId;
 use rustc_hir as hir;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
+pub use rustc_middle::traits::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
 
+pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
+pub(crate) use self::project::UndoLog;
+pub use self::project::{
+    MismatchedProjectionTypes, Normalized, NormalizedTerm, ProjectionCache, ProjectionCacheEntry,
+    ProjectionCacheKey, ProjectionCacheStorage, Reveal,
+};
 pub use self::ImplSource::*;
 pub use self::SelectionError::*;
 use crate::infer::InferCtxt;
-
-pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
-pub use self::project::MismatchedProjectionTypes;
-pub(crate) use self::project::UndoLog;
-pub use self::project::{
-    Normalized, NormalizedTerm, ProjectionCache, ProjectionCacheEntry, ProjectionCacheKey,
-    ProjectionCacheStorage, Reveal,
-};
-pub use rustc_middle::traits::*;
 
 /// An `Obligation` represents some trait reference (e.g., `i32: Eq`) for
 /// which the "impl_source" must be found. The process of finding an "impl_source" is

@@ -123,7 +123,6 @@ functions.
 )]
 
 pub use self::decoder::{decode, DecodableFloat, Decoded, FullDecoded};
-
 use super::fmt::{Formatted, Part};
 use crate::mem::MaybeUninit;
 

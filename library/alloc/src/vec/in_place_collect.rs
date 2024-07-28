@@ -155,9 +155,7 @@
 //! vec.truncate(write_idx);
 //! ```
 
-use crate::alloc::{handle_alloc_error, Global};
-use core::alloc::Allocator;
-use core::alloc::Layout;
+use core::alloc::{Allocator, Layout};
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
@@ -165,6 +163,7 @@ use core::num::NonZero;
 use core::ptr;
 
 use super::{InPlaceDrop, InPlaceDstDataSrcBufDrop, SpecFromIter, SpecFromIterNested, Vec};
+use crate::alloc::{handle_alloc_error, Global};
 
 const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZero<usize>>,

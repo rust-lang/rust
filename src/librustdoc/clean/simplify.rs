@@ -18,8 +18,7 @@ use rustc_middle::ty;
 use thin_vec::ThinVec;
 
 use crate::clean;
-use crate::clean::GenericArgs as PP;
-use crate::clean::WherePredicate as WP;
+use crate::clean::{GenericArgs as PP, WherePredicate as WP};
 use crate::core::DocContext;
 
 pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {

@@ -1,11 +1,11 @@
-use crate::fx::FxHashMap;
-use crate::undo_log::{Rollback, Snapshots, UndoLogs, VecLog};
 use std::borrow::{Borrow, BorrowMut};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops;
 
+use crate::fx::FxHashMap;
 pub use crate::undo_log::Snapshot;
+use crate::undo_log::{Rollback, Snapshots, UndoLogs, VecLog};
 
 #[cfg(test)]
 mod tests;

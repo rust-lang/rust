@@ -1,20 +1,15 @@
 use r_efi::protocols::simple_text_output;
 
-use crate::ffi::OsStr;
-use crate::ffi::OsString;
-use crate::fmt;
-use crate::io;
-use crate::num::NonZero;
-use crate::num::NonZeroI32;
+use super::helpers;
+pub use crate::ffi::OsString as EnvKey;
+use crate::ffi::{OsStr, OsString};
+use crate::num::{NonZero, NonZeroI32};
 use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
-
-pub use crate::ffi::OsString as EnvKey;
-
-use super::helpers;
+use crate::{fmt, io};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

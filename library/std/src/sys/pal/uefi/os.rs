@@ -1,14 +1,14 @@
+use r_efi::efi::protocols::{device_path, loaded_image_device_path};
+use r_efi::efi::Status;
+
 use super::{helpers, unsupported, RawOsError};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
 use crate::path::{self, PathBuf};
 use crate::ptr::NonNull;
-use r_efi::efi::protocols::{device_path, loaded_image_device_path};
-use r_efi::efi::Status;
+use crate::{fmt, io};
 
 pub fn errno() -> RawOsError {
     0

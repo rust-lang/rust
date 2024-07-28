@@ -1,5 +1,7 @@
-use crate::spec::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
-use crate::spec::{RelocModel, SanitizerSet, Target, TargetOptions};
+use crate::spec::{
+    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target,
+    TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {

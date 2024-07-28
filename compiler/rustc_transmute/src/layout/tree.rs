@@ -1,5 +1,6 @@
-use super::{Byte, Def, Ref};
 use std::ops::ControlFlow;
+
+use super::{Byte, Def, Ref};
 
 #[cfg(test)]
 mod tests;
@@ -170,23 +171,13 @@ where
 
 #[cfg(feature = "rustc")]
 pub(crate) mod rustc {
+    use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf};
+    use rustc_middle::ty::{self, AdtDef, AdtKind, List, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+    use rustc_span::ErrorGuaranteed;
+    use rustc_target::abi::{FieldsShape, Size, TyAndLayout, Variants};
+
     use super::Tree;
     use crate::layout::rustc::{Def, Ref};
-
-    use rustc_middle::ty::layout::HasTyCtxt;
-    use rustc_middle::ty::layout::LayoutCx;
-    use rustc_middle::ty::layout::LayoutError;
-    use rustc_middle::ty::layout::LayoutOf;
-    use rustc_middle::ty::AdtDef;
-    use rustc_middle::ty::AdtKind;
-    use rustc_middle::ty::List;
-    use rustc_middle::ty::ScalarInt;
-    use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-    use rustc_span::ErrorGuaranteed;
-    use rustc_target::abi::FieldsShape;
-    use rustc_target::abi::Size;
-    use rustc_target::abi::TyAndLayout;
-    use rustc_target::abi::Variants;
 
     #[derive(Debug, Copy, Clone)]
     pub(crate) enum Err {

@@ -1,19 +1,10 @@
-use crate::back::lto::ThinBuffer;
-use crate::back::owned_target_machine::OwnedTargetMachine;
-use crate::back::profiling::{
-    selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
-};
-use crate::base;
-use crate::common;
-use crate::errors::{
-    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
-    WithLlvmError, WriteBytecode,
-};
-use crate::llvm::{self, DiagnosticInfo, PassManager};
-use crate::llvm_util;
-use crate::type_::Type;
-use crate::LlvmCodegenBackend;
-use crate::ModuleLlvm;
+use std::ffi::CString;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::{fs, slice, str};
+
+use libc::{c_char, c_int, c_void, size_t};
 use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
 };
@@ -29,23 +20,28 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxtHandle, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes};
-use rustc_session::config::{RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath};
+use rustc_session::config::{
+    self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
+};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::debug;
 
+use crate::back::lto::ThinBuffer;
+use crate::back::owned_target_machine::OwnedTargetMachine;
+use crate::back::profiling::{
+    selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
+};
+use crate::errors::{
+    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
+    WithLlvmError, WriteBytecode,
+};
 use crate::llvm::diagnostic::OptimizationDiagnosticKind;
-use libc::{c_char, c_int, c_void, size_t};
-use std::ffi::CString;
-use std::fs;
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::slice;
-use std::str;
-use std::sync::Arc;
+use crate::llvm::{self, DiagnosticInfo, PassManager};
+use crate::type_::Type;
+use crate::{base, common, llvm_util, LlvmCodegenBackend, ModuleLlvm};
 
 pub fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {

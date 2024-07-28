@@ -1,13 +1,15 @@
 //! Detects unescaped backticks (\`) in doc comments.
 
-use crate::clean::Item;
-use crate::core::DocContext;
-use crate::html::markdown::main_body_opts;
+use std::ops::Range;
+
 use pulldown_cmark::{BrokenLink, Event, Parser};
 use rustc_errors::Diag;
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
-use std::ops::Range;
+
+use crate::clean::Item;
+use crate::core::DocContext;
+use crate::html::markdown::main_body_opts;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     let tcx = cx.tcx;

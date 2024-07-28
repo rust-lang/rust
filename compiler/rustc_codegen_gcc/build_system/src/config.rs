@@ -1,14 +1,15 @@
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
+use std::{env as std_env, fs};
+
+use boml::types::TomlValue;
+use boml::Toml;
+
 use crate::utils::{
     create_dir, create_symlink, get_os_name, get_sysroot_dir, run_command_with_output,
     rustc_version_info, split_args,
 };
-use std::collections::HashMap;
-use std::env as std_env;
-use std::ffi::OsStr;
-use std::fs;
-use std::path::{Path, PathBuf};
-
-use boml::{types::TomlValue, Toml};
 
 #[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Channel {

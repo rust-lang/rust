@@ -11,7 +11,8 @@
 //! obtained from the wrapper's name as the first two arguments.
 //! On Windows it spawns a `..\rust-lld.exe` child process.
 
-use std::env::{self, consts::EXE_SUFFIX};
+use std::env::consts::EXE_SUFFIX;
+use std::env::{self};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process;

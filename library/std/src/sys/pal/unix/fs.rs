@@ -4,29 +4,6 @@
 #[cfg(test)]
 mod tests;
 
-use crate::os::unix::prelude::*;
-
-use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt::{self, Write as _};
-use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
-use crate::mem;
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
-use crate::path::{Path, PathBuf};
-use crate::ptr;
-use crate::sync::Arc;
-use crate::sys::common::small_c_string::run_path_with_cstr;
-use crate::sys::fd::FileDesc;
-use crate::sys::time::SystemTime;
-use crate::sys::{cvt, cvt_r};
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-
-#[cfg(all(target_os = "linux", target_env = "gnu"))]
-use crate::sys::weak::syscall;
-#[cfg(target_os = "android")]
-use crate::sys::weak::weak;
-
-use libc::{c_int, mode_t};
-
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use libc::c_char;
 #[cfg(any(
@@ -73,6 +50,7 @@ use libc::readdir64_r;
     target_os = "hurd",
 )))]
 use libc::readdir_r as readdir64_r;
+use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
     dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
@@ -97,7 +75,24 @@ use libc::{
 ))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
+use crate::ffi::{CStr, OsStr, OsString};
+use crate::fmt::{self, Write as _};
+use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
+use crate::os::unix::prelude::*;
+use crate::path::{Path, PathBuf};
+use crate::sync::Arc;
+use crate::sys::common::small_c_string::run_path_with_cstr;
+use crate::sys::fd::FileDesc;
+use crate::sys::time::SystemTime;
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+use crate::sys::weak::syscall;
+#[cfg(target_os = "android")]
+use crate::sys::weak::weak;
+use crate::sys::{cvt, cvt_r};
 pub use crate::sys_common::fs::exists;
+use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{mem, ptr};
 
 pub struct File(FileDesc);
 
@@ -2021,6 +2016,11 @@ mod remove_dir_impl {
     miri
 )))]
 mod remove_dir_impl {
+    #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+    use libc::{fdopendir, openat, unlinkat};
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    use libc::{fdopendir, openat64 as openat, unlinkat};
+
     use super::{lstat, Dir, DirEntry, InnerReadDir, ReadDir};
     use crate::ffi::CStr;
     use crate::io;
@@ -2029,11 +2029,6 @@ mod remove_dir_impl {
     use crate::path::{Path, PathBuf};
     use crate::sys::common::small_c_string::run_path_with_cstr;
     use crate::sys::{cvt, cvt_r};
-
-    #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
-    use libc::{fdopendir, openat, unlinkat};
-    #[cfg(all(target_os = "linux", target_env = "gnu"))]
-    use libc::{fdopendir, openat64 as openat, unlinkat};
 
     pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
         let fd = cvt_r(|| unsafe {

@@ -17,17 +17,16 @@
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).
 
-use std::fmt;
 use std::fmt::Debug;
-use std::io;
+use std::{fmt, io};
+
+use serde::Serialize;
 
 use crate::compiler_interface::with;
 pub use crate::crate_def::{CrateDef, CrateDefType, DefId};
 pub use crate::error::*;
-use crate::mir::Body;
-use crate::mir::Mutability;
+use crate::mir::{Body, Mutability};
 use crate::ty::{ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
-use serde::Serialize;
 
 pub mod abi;
 #[macro_use]

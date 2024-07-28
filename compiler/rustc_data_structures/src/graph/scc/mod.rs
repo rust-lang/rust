@@ -8,13 +8,15 @@
 //! Typical examples would include: minimum element in SCC, maximum element
 //! reachable from it, etc.
 
+use std::fmt::Debug;
+use std::ops::Range;
+
+use rustc_index::{Idx, IndexSlice, IndexVec};
+use tracing::{debug, instrument};
+
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
 use crate::graph::{DirectedGraph, NumEdges, Successors};
-use rustc_index::{Idx, IndexSlice, IndexVec};
-use std::fmt::Debug;
-use std::ops::Range;
-use tracing::{debug, instrument};
 
 #[cfg(test)]
 mod tests;

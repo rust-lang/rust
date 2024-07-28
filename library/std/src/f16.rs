@@ -7,11 +7,11 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(test))]
-use crate::intrinsics;
-
 #[unstable(feature = "f16", issue = "116909")]
 pub use core::f16::consts;
+
+#[cfg(not(test))]
+use crate::intrinsics;
 
 #[cfg(not(test))]
 impl f16 {

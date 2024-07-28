@@ -1,11 +1,18 @@
 //! The entry point of the NLL borrow checker.
 
+use std::path::PathBuf;
+use std::rc::Rc;
+use std::str::FromStr;
+use std::{env, io};
+
 use polonius_engine::{Algorithm, Output};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
-use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
-use rustc_middle::mir::{Body, ClosureOutlivesSubject, ClosureRegionRequirements, Promoted};
+use rustc_middle::mir::{
+    create_dump_file, dump_enabled, dump_mir, Body, ClosureOutlivesSubject,
+    ClosureRegionRequirements, PassWhere, Promoted,
+};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -13,25 +20,16 @@ use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::symbol::sym;
-use std::env;
-use std::io;
-use std::path::PathBuf;
-use std::rc::Rc;
-use std::str::FromStr;
 
-use crate::{
-    borrow_set::BorrowSet,
-    consumers::ConsumerOptions,
-    diagnostics::RegionErrors,
-    facts::{AllFacts, AllFactsExt, RustcFacts},
-    location::LocationTable,
-    polonius,
-    region_infer::RegionInferenceContext,
-    renumber,
-    type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
-    universal_regions::UniversalRegions,
-    BorrowckInferCtxt,
-};
+use crate::borrow_set::BorrowSet;
+use crate::consumers::ConsumerOptions;
+use crate::diagnostics::RegionErrors;
+use crate::facts::{AllFacts, AllFactsExt, RustcFacts};
+use crate::location::LocationTable;
+use crate::region_infer::RegionInferenceContext;
+use crate::type_check::{self, MirTypeckRegionConstraints, MirTypeckResults};
+use crate::universal_regions::UniversalRegions;
+use crate::{polonius, renumber, BorrowckInferCtxt};
 
 pub type PoloniusOutput = Output<RustcFacts>;
 

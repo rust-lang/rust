@@ -1,7 +1,6 @@
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::{Body, TerminatorKind};
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{move_path_children_matching, Analysis, MaybeReachable, MoveDataParamEnv};

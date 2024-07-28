@@ -2,15 +2,17 @@ use std::num::NonZero;
 
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed,
-    Level, MultiSpan,
+    Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
+    MultiSpan,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
-use crate::{config::CrateType, parse::ParseSess};
+use crate::config::CrateType;
+use crate::parse::ParseSess;
 
 pub(crate) struct FeatureGateError {
     pub(crate) span: MultiSpan,

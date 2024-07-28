@@ -1,5 +1,4 @@
-use crate::spec::SanitizerSet;
-use crate::spec::{base, StackProbeType, Target, TargetOptions};
+use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_ohos::opts();

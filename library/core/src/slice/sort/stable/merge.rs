@@ -1,8 +1,7 @@
 //! This module contains logic for performing a merge of two sorted sub-slices.
 
-use crate::cmp;
 use crate::mem::MaybeUninit;
-use crate::ptr;
+use crate::{cmp, ptr};
 
 /// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `scratch` as
 /// temporary storage, and stores the result into `v[..]`.

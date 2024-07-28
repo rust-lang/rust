@@ -14,18 +14,18 @@
 //! A few exceptions are allowed as there's known bugs in rustdoc, but this
 //! should catch the majority of "broken link" cases.
 
-use html5ever::tendril::ByteTendril;
-use html5ever::tokenizer::{
-    BufferQueue, TagToken, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
-};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::env;
-use std::fs;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::time::Instant;
+use std::{env, fs};
+
+use html5ever::tendril::ByteTendril;
+use html5ever::tokenizer::{
+    BufferQueue, TagToken, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
+};
 
 // Add linkcheck exceptions here
 // If at all possible you should use intra-doc links to avoid linkcheck issues. These

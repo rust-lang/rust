@@ -7,7 +7,6 @@
 //! better performance than one would get using heapsort as fallback.
 
 use crate::mem::{self, SizedTypeProperties};
-
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
 use crate::slice::sort::unstable::quicksort::partition;

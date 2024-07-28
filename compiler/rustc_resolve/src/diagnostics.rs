@@ -1,12 +1,15 @@
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
-use rustc_ast::{MetaItemKind, NestedMetaItem};
+use rustc_ast::{
+    self as ast, Crate, ItemKind, MetaItemKind, ModKind, NestedMetaItem, NodeId, Path,
+    CRATE_NODE_ID,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
+    report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
     ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -16,9 +19,10 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
-use rustc_session::lint::builtin::AMBIGUOUS_GLOB_IMPORTS;
-use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
+use rustc_session::lint::builtin::{
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
+    MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+};
 use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -36,13 +40,13 @@ use crate::errors::{
 };
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
-use crate::{errors as errs, BindingKey};
-use crate::{path_names_to_string, Used};
-use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
-use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{LexicalScopeBinding, NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
-use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet};
-use crate::{Segment, UseError};
+use crate::{
+    errors as errs, path_names_to_string, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind,
+    BindingError, BindingKey, Finalize, HasGenericParams, LexicalScopeBinding, MacroRulesScope,
+    Module, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
+    PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
+    VisResolutionError,
+};
 
 type Res = def::Res<ast::NodeId>;
 

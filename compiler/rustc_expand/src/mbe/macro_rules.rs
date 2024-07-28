@@ -1,18 +1,12 @@
-use crate::base::{DummyResult, SyntaxExtension, SyntaxExtensionKind};
-use crate::base::{ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, TTMacroExpander};
-use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
-use crate::mbe;
-use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
-use crate::mbe::macro_check;
-use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatcherLoc, NamedMatch::*};
-use crate::mbe::transcribe::transcribe;
+use std::borrow::Cow;
+use std::collections::hash_map::Entry;
+use std::{mem, slice};
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
-use rustc_ast::token::{
-    self, Delimiter, NonterminalKind, NtPatKind::*, Token, TokenKind, TokenKind::*,
-};
+use rustc_ast::token::NtPatKind::*;
+use rustc_ast::token::TokenKind::*;
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
@@ -33,12 +27,19 @@ use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace, trace_span};
 
-use std::borrow::Cow;
-use std::collections::hash_map::Entry;
-use std::{mem, slice};
-
 use super::diagnostics;
 use super::macro_parser::{NamedMatches, NamedParseResult};
+use crate::base::{
+    DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, SyntaxExtension,
+    SyntaxExtensionKind, TTMacroExpander,
+};
+use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
+use crate::mbe;
+use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
+use crate::mbe::macro_check;
+use crate::mbe::macro_parser::NamedMatch::*;
+use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
+use crate::mbe::transcribe::transcribe;
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,

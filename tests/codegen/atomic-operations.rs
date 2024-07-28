@@ -2,7 +2,8 @@
 //@ compile-flags: -O
 #![crate_type = "lib"]
 
-use std::sync::atomic::{AtomicI32, Ordering::*};
+use std::sync::atomic::AtomicI32;
+use std::sync::atomic::Ordering::*;
 
 // CHECK-LABEL: @compare_exchange
 #[no_mangle]

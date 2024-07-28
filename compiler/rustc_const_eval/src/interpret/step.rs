@@ -3,13 +3,11 @@
 //! The main entry point is the `step` method.
 
 use either::Either;
-use tracing::{info, instrument, trace};
-
 use rustc_index::IndexSlice;
-use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use tracing::{info, instrument, trace};
 
 use super::{
     ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy, Projectable, Scalar,

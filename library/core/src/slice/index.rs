@@ -1,9 +1,8 @@
 //! Indexing implementations for `[T]`.
 
 use crate::intrinsics::const_eval_select;
-use crate::ops;
-use crate::range;
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{ops, range};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, I> ops::Index<I> for [T]

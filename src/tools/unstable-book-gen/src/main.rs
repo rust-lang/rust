@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fs::{self, write};
 use std::path::Path;
+
 use tidy::features::{collect_lang_features, collect_lib_features, Features};
 use tidy::t;
 use tidy::unstable_book::{

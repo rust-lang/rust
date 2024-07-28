@@ -1,22 +1,20 @@
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::memmap::Mmap;
-use rustc_session::cstore::DllImport;
-use rustc_session::Session;
-use rustc_span::symbol::Symbol;
-
-use super::metadata::search_for_section;
-
-use ar_archive_writer::{write_archive_to_stream, ArchiveKind, NewArchiveMember};
-pub use ar_archive_writer::{ObjectReader, DEFAULT_OBJECT_READER};
-use object::read::archive::ArchiveFile;
-use object::read::macho::FatArch;
-use tempfile::Builder as TempFileBuilder;
-
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use ar_archive_writer::{write_archive_to_stream, ArchiveKind, NewArchiveMember};
+pub use ar_archive_writer::{ObjectReader, DEFAULT_OBJECT_READER};
+use object::read::archive::ArchiveFile;
+use object::read::macho::FatArch;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::memmap::Mmap;
+use rustc_session::cstore::DllImport;
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
+use tempfile::Builder as TempFileBuilder;
+
+use super::metadata::search_for_section;
 // Re-exporting for rustc_codegen_llvm::back::archive
 pub use crate::errors::{ArchiveBuildFailure, ExtractBundledLibsError, UnknownArchiveKind};
 

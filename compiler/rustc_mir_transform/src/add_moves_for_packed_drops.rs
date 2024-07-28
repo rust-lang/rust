@@ -1,8 +1,8 @@
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
 use crate::util;
-use rustc_middle::mir::patch::MirPatch;
 
 /// This pass moves values being dropped that are within a packed
 /// struct to a separate local before dropping them, to ensure that

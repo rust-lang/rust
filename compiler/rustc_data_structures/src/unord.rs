@@ -2,21 +2,17 @@
 //! ordering. This is a useful property for deterministic computations, such
 //! as required by the query system.
 
+use std::borrow::{Borrow, BorrowMut};
+use std::collections::hash_map::{Entry, OccupiedError};
+use std::hash::Hash;
+use std::iter::{Product, Sum};
+use std::ops::Index;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
-use std::collections::hash_map::OccupiedError;
-use std::{
-    borrow::{Borrow, BorrowMut},
-    collections::hash_map::Entry,
-    hash::Hash,
-    iter::{Product, Sum},
-    ops::Index,
-};
 
-use crate::{
-    fingerprint::Fingerprint,
-    stable_hasher::{HashStable, StableCompare, StableHasher, ToStableHashKey},
-};
+use crate::fingerprint::Fingerprint;
+use crate::stable_hasher::{HashStable, StableCompare, StableHasher, ToStableHashKey};
 
 /// `UnordItems` is the order-less version of `Iterator`. It only contains methods
 /// that don't (easily) expose an ordering of the underlying items.

@@ -1,20 +1,12 @@
-use super::FnCtxt;
-
-use crate::errors;
-use crate::fluent_generated as fluent;
-use crate::fn_ctxt::rustc_span::BytePos;
-use crate::hir::is_range_literal;
-use crate::method::probe;
-use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use core::cmp::min;
 use core::iter;
+
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_UNAMBIGUOUS};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
@@ -26,8 +18,10 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, suggest_constraining_type_params, Article, Binder};
-use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Upcast};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, Ty, TyCtxt,
+    TypeVisitableExt, Upcast,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
@@ -37,6 +31,13 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+
+use super::FnCtxt;
+use crate::fn_ctxt::rustc_span::BytePos;
+use crate::hir::is_range_literal;
+use crate::method::probe;
+use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
+use crate::{errors, fluent_generated as fluent};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {

@@ -1,10 +1,8 @@
 use std::iter::FromIterator;
 
-use gccjit::ToRValue;
-use gccjit::{BinaryOp, RValue, Type};
+use gccjit::{BinaryOp, RValue, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{ComparisonOp, UnaryOp};
-
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 #[cfg(feature = "master")]

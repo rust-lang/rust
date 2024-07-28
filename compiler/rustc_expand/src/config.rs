@@ -1,19 +1,14 @@
 //! Conditional compilation stripping.
 
-use crate::errors::{
-    FeatureNotAllowed, FeatureRemoved, FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute,
-    MalformedFeatureAttributeHelp, RemoveExprNotSupported,
-};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, Spacing};
-use rustc_ast::tokenstream::{LazyAttrTokenStream, TokenTree};
-use rustc_ast::NodeId;
-use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
+use rustc_ast::tokenstream::{
+    AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
+};
+use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_feature::Features;
-use rustc_feature::{ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
+use rustc_feature::{Features, ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
@@ -22,6 +17,11 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use thin_vec::ThinVec;
 use tracing::instrument;
+
+use crate::errors::{
+    FeatureNotAllowed, FeatureRemoved, FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute,
+    MalformedFeatureAttributeHelp, RemoveExprNotSupported,
+};
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {

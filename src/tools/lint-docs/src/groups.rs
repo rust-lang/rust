@@ -1,9 +1,10 @@
-use crate::{Lint, LintExtractor};
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt::Write;
 use std::fs;
 use std::process::Command;
+
+use crate::{Lint, LintExtractor};
 
 /// Descriptions of rustc lint groups.
 static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[

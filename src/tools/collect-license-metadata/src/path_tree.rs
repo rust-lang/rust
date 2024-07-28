@@ -3,9 +3,10 @@
 //! responsible for that, by turning the list of paths into a tree and executing simplification
 //! passes over the tree to remove redundant information.
 
-use crate::licenses::{License, LicenseId, LicensesInterner};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+use crate::licenses::{License, LicenseId, LicensesInterner};
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "kebab-case", tag = "type")]

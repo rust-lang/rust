@@ -1,5 +1,6 @@
-use rand::RngCore;
 use std::iter::repeat;
+
+use rand::RngCore;
 use test::{black_box, Bencher};
 
 #[bench]

@@ -42,13 +42,12 @@ pub use self::methods::encode_utf8_raw; // perma-unstable
 
 #[rustfmt::skip]
 use crate::ascii;
+pub(crate) use self::methods::EscapeDebugExtArgs;
 use crate::error::Error;
 use crate::escape;
 use crate::fmt::{self, Write};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
-
-pub(crate) use self::methods::EscapeDebugExtArgs;
 
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8 = 0b1000_0000;

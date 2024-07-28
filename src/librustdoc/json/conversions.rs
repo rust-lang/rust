@@ -8,14 +8,14 @@ use std::fmt;
 
 use rustc_ast::ast;
 use rustc_attr::DeprecatedSince;
-use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
+use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::{Pos, Symbol};
 use rustc_target::spec::abi::Abi as RustcAbi;
-
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};

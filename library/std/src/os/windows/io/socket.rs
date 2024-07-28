@@ -3,13 +3,11 @@
 #![stable(feature = "io_safety", since = "1.63.0")]
 
 use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::{self, ManuallyDrop};
-use crate::sys;
 #[cfg(not(target_vendor = "uwp"))]
 use crate::sys::cvt;
+use crate::{fmt, io, sys};
 
 /// A borrowed socket.
 ///

@@ -9,8 +9,7 @@
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;
-use crate::hash::Hash;
-use crate::hash::Hasher;
+use crate::hash::{Hash, Hasher};
 
 /// Implements a given marker trait for multiple types at the same time.
 ///

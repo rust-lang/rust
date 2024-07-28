@@ -1,7 +1,5 @@
-use crate::sync::atomic::{
-    AtomicU32,
-    Ordering::{Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
 
 pub struct RwLock {

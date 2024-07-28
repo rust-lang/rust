@@ -1,6 +1,7 @@
+use core::error::Request;
+
 use super::Error;
 use crate::fmt;
-use core::error::Request;
 
 #[derive(Debug, PartialEq)]
 struct A;

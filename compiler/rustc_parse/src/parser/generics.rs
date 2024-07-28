@@ -1,20 +1,18 @@
-use crate::errors::{
-    self, MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
-    UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
-    WhereClauseBeforeTupleStructBodySugg,
-};
-
-use super::{ForceCollect, Parser};
-
 use ast::token::Delimiter;
-use rustc_ast::token;
 use rustc_ast::{
-    self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
+    self as ast, token, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 use thin_vec::ThinVec;
+
+use super::{ForceCollect, Parser};
+use crate::errors::{
+    self, MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
+    UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
+    WhereClauseBeforeTupleStructBodySugg,
+};
 
 enum PredicateOrStructBody {
     Predicate(ast::WherePredicate),

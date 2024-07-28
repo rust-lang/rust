@@ -1,26 +1,12 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
 
-use crate::builder::Builder;
-use crate::builder::ShouldRun;
+use super::compile::{librustc_stamp, libstd_stamp, run_cargo, rustc_cargo, std_cargo};
+use super::tool::{prepare_tool_cargo, SourceType};
+use super::{check, compile};
+use crate::builder::{Builder, ShouldRun};
 use crate::core::builder;
-use crate::core::builder::crate_description;
-use crate::core::builder::Alias;
-use crate::core::builder::Kind;
-use crate::core::builder::RunConfig;
-use crate::core::builder::Step;
-use crate::Mode;
-use crate::Subcommand;
-use crate::TargetSelection;
-
-use super::check;
-use super::compile;
-use super::compile::librustc_stamp;
-use super::compile::libstd_stamp;
-use super::compile::run_cargo;
-use super::compile::rustc_cargo;
-use super::compile::std_cargo;
-use super::tool::prepare_tool_cargo;
-use super::tool::SourceType;
+use crate::core::builder::{crate_description, Alias, Kind, RunConfig, Step};
+use crate::{Mode, Subcommand, TargetSelection};
 
 /// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[

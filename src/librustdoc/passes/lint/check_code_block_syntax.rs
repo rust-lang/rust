@@ -1,11 +1,9 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 
 use rustc_data_structures::sync::{Lock, Lrc};
-use rustc_errors::{
-    emitter::Emitter,
-    translation::{to_fluent_args, Translate},
-    Applicability, DiagCtxt, DiagInner, LazyFallbackBundle,
-};
+use rustc_errors::emitter::Emitter;
+use rustc_errors::translation::{to_fluent_args, Translate};
+use rustc_errors::{Applicability, DiagCtxt, DiagInner, LazyFallbackBundle};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;

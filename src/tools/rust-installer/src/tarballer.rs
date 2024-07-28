@@ -1,14 +1,13 @@
-use anyhow::{bail, Context, Result};
 use std::fs::{read_link, symlink_metadata};
 use std::io::{BufWriter, Write};
 use std::path::Path;
+
+use anyhow::{bail, Context, Result};
 use tar::{Builder, Header, HeaderMode};
 use walkdir::WalkDir;
 
-use crate::{
-    compression::{CombinedEncoder, CompressionFormats, CompressionProfile},
-    util::*,
-};
+use crate::compression::{CombinedEncoder, CompressionFormats, CompressionProfile};
+use crate::util::*;
 
 actor! {
     #[derive(Debug)]

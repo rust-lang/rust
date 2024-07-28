@@ -1,8 +1,7 @@
 use std::fs::{File, OpenOptions};
-use std::io;
-use std::mem;
 use std::os::unix::prelude::*;
 use std::path::Path;
+use std::{io, mem};
 
 #[derive(Debug)]
 pub struct Lock {

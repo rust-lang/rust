@@ -1,8 +1,5 @@
-use crate::infer::canonical::{
-    Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
-};
-use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{ObligationCause, ObligationCtxt};
+use std::fmt;
+
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::PredicateObligation;
@@ -10,7 +7,12 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::Span;
-use std::fmt;
+
+use crate::infer::canonical::{
+    Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
+};
+use crate::infer::{InferCtxt, InferOk};
+use crate::traits::{ObligationCause, ObligationCtxt};
 
 pub mod ascribe_user_type;
 pub mod custom;

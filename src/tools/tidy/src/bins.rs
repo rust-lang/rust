@@ -21,11 +21,12 @@ mod os_impl {
 
 #[cfg(unix)]
 mod os_impl {
-    use crate::walk::{filter_dirs, walk_no_read};
     use std::fs;
     use std::os::unix::prelude::*;
     use std::path::Path;
     use std::process::{Command, Stdio};
+
+    use crate::walk::{filter_dirs, walk_no_read};
 
     enum FilesystemSupport {
         Supported,

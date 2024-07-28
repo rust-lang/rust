@@ -1,7 +1,5 @@
 //! Random access inspection of the results of a dataflow analysis.
 
-use crate::framework::BitSetExt;
-
 use std::cmp::Ordering;
 
 #[cfg(debug_assertions)]
@@ -9,6 +7,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
+use crate::framework::BitSetExt;
 
 /// Allows random access inspection of the results of a dataflow analysis.
 ///

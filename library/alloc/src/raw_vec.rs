@@ -1,10 +1,9 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
 use core::alloc::LayoutError;
-use core::cmp;
-use core::hint;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ptr::{self, NonNull, Unique};
+use core::{cmp, hint};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;

@@ -1,10 +1,10 @@
 //! Metadata from source code coverage analysis and instrumentation.
 
+use std::fmt::{self, Debug, Formatter};
+
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
-
-use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
     /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR

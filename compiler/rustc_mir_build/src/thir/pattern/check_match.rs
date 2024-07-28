@@ -1,11 +1,9 @@
-use crate::errors::*;
-use crate::fluent_generated as fluent;
-
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
@@ -26,6 +24,9 @@ use rustc_session::lint::builtin::{
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{sym, Span};
 use tracing::instrument;
+
+use crate::errors::*;
+use crate::fluent_generated as fluent;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let typeck_results = tcx.typeck(def_id);

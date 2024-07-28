@@ -1,5 +1,4 @@
-use gccjit::LValue;
-use gccjit::{RValue, ToRValue, Type};
+use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, MiscMethods, StaticMethods};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::mir::Mutability;

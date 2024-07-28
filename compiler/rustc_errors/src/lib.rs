@@ -28,6 +28,17 @@
 
 extern crate self as rustc_errors;
 
+use std::backtrace::{Backtrace, BacktraceStatus};
+use std::borrow::Cow;
+use std::cell::Cell;
+use std::error::Report;
+use std::hash::Hash;
+use std::io::Write;
+use std::num::NonZero;
+use std::ops::DerefMut;
+use std::path::{Path, PathBuf};
+use std::{fmt, panic};
+
 pub use codes::*;
 pub use diagnostic::{
     BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
@@ -39,42 +50,28 @@ pub use diagnostic_impls::{
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
-pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DiagMessage, FluentBundle, LanguageIdentifier,
-    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
-};
-pub use rustc_lint_defs::{pluralize, Applicability};
-pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
-pub use rustc_span::ErrorGuaranteed;
-pub use snippet::Style;
-
-// Used by external projects such as `rust-gpu`.
-// See https://github.com/rust-lang/rust/pull/115393.
-pub use termcolor::{Color, ColorSpec, WriteColor};
-
 use emitter::{is_case_difference, DynEmitter, Emitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
+pub use rustc_error_messages::{
+    fallback_fluent_bundle, fluent_bundle, DiagMessage, FluentBundle, LanguageIdentifier,
+    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
+};
 use rustc_lint_defs::LintExpectationId;
+pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_macros::{Decodable, Encodable};
+pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
+pub use rustc_span::ErrorGuaranteed;
 use rustc_span::{Loc, Span, DUMMY_SP};
-use std::backtrace::{Backtrace, BacktraceStatus};
-use std::borrow::Cow;
-use std::cell::Cell;
-use std::error::Report;
-use std::fmt;
-use std::hash::Hash;
-use std::io::Write;
-use std::num::NonZero;
-use std::ops::DerefMut;
-use std::panic;
-use std::path::{Path, PathBuf};
+pub use snippet::Style;
+// Used by external projects such as `rust-gpu`.
+// See https://github.com/rust-lang/rust/pull/115393.
+pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
-
 use Level::*;
 
 pub mod annotate_snippet_emitter_writer;

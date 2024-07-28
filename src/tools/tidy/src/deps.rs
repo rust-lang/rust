@@ -1,10 +1,11 @@
 //! Checks the licenses of third-party dependencies.
 
-use build_helper::ci::CiEnv;
-use cargo_metadata::{Metadata, Package, PackageId};
 use std::collections::HashSet;
 use std::fs::read_dir;
 use std::path::Path;
+
+use build_helper::ci::CiEnv;
+use cargo_metadata::{Metadata, Package, PackageId};
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.

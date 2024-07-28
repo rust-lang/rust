@@ -2,9 +2,8 @@
 
 #![unstable(feature = "wasi_ext", issue = "71213")]
 
-use crate::io;
-use crate::net;
 use crate::sys_common::AsInner;
+use crate::{io, net};
 
 /// WASI-specific extensions to [`std::net::TcpListener`].
 ///

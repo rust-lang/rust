@@ -1,28 +1,34 @@
+use std::fmt;
+
+use rustc_ast as ast;
+use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::{
+    Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitKind,
+    TraitObjectSyntax, UintTy,
+};
+pub use rustc_ast::{
+    BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy, ImplPolarity, IsAuto, Movability,
+    Mutability, UnOp,
+};
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::sorted_map::SortedMap;
+use rustc_index::IndexVec;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::def_id::LocalDefId;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_target::asm::InlineAsmRegOrRegClass;
+use rustc_target::spec::abi::Abi;
+use smallvec::SmallVec;
+use tracing::debug;
+
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::FnKind;
 use crate::LangItem;
-use rustc_ast as ast;
-use rustc_ast::util::parser::ExprPrecedence;
-use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
-pub use rustc_ast::{BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy};
-pub use rustc_ast::{ImplPolarity, IsAuto, Movability, Mutability, UnOp};
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::sorted_map::SortedMap;
-use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
-use rustc_target::asm::InlineAsmRegOrRegClass;
-use rustc_target::spec::abi::Abi;
-use smallvec::SmallVec;
-use std::fmt;
-use tracing::debug;
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
@@ -4008,8 +4014,9 @@ impl<'hir> Node<'hir> {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 24);

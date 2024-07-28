@@ -5,12 +5,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fs::{self, Metadata, OpenOptions};
-use crate::io;
 use crate::path::Path;
 use crate::sealed::Sealed;
-use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
+use crate::{io, sys};
 
 /// Windows-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]

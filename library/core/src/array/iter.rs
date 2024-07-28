@@ -1,14 +1,11 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
+use crate::intrinsics::transmute_unchecked;
+use crate::iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
+use crate::mem::MaybeUninit;
 use crate::num::NonZero;
-use crate::{
-    fmt,
-    intrinsics::transmute_unchecked,
-    iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce},
-    mem::MaybeUninit,
-    ops::{IndexRange, Range},
-    ptr,
-};
+use crate::ops::{IndexRange, Range};
+use crate::{fmt, ptr};
 
 /// A by-value [array] iterator.
 #[stable(feature = "array_value_iter", since = "1.51.0")]

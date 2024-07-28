@@ -1,13 +1,15 @@
-use crate::expand::{AstFragment, AstFragmentKind};
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
-use rustc_ast::{self as ast, visit::AssocCtxt};
+use rustc_ast::visit::AssocCtxt;
+use rustc_ast::{self as ast};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::Ident;
 use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
+
+use crate::expand::{AstFragment, AstFragmentKind};
 
 pub(crate) fn placeholder(
     kind: AstFragmentKind,

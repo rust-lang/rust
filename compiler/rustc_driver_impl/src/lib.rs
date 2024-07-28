@@ -17,8 +17,23 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
+use std::cmp::max;
+use std::collections::BTreeMap;
+use std::ffi::OsString;
+use std::fmt::Write as _;
+use std::fs::{self, File};
+use std::io::{self, IsTerminal, Read, Write};
+use std::panic::{self, catch_unwind, PanicHookInfo};
+use std::path::PathBuf;
+use std::process::{self, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock};
+use std::time::{Duration, Instant, SystemTime};
+use std::{env, str};
+
 use rustc_ast as ast;
-use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
+use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
@@ -35,8 +50,9 @@ use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
-use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
-use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
+use rustc_session::config::{
+    nightly_options, ErrorOutputType, Input, OutFileName, OutputType, CG_OPTIONS, Z_OPTIONS,
+};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::collect_crate_types;
@@ -46,20 +62,6 @@ use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTriple};
-use std::cmp::max;
-use std::collections::BTreeMap;
-use std::env;
-use std::ffi::OsString;
-use std::fmt::Write as _;
-use std::fs::{self, File};
-use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind, PanicHookInfo};
-use std::path::PathBuf;
-use std::process::{self, Command, Stdio};
-use std::str;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock};
-use std::time::{Duration, Instant, SystemTime};
 use time::OffsetDateTime;
 use tracing::trace;
 
@@ -689,7 +691,6 @@ fn print_crate_info(
     parse_attrs: bool,
 ) -> Compilation {
     use rustc_session::config::PrintKind::*;
-
     // This import prevents the following code from using the printing macros
     // used by the rest of the module. Within this function, we only write to
     // the output specified by `sess.io.output_file`.

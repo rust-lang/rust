@@ -1,6 +1,5 @@
-use std::env;
-use std::fs;
 use std::path::PathBuf;
+use std::{env, fs};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
@@ -10,9 +9,7 @@ use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{add_dylib_path, exe, get_closest_merge_base_commit, git, t};
-use crate::Compiler;
-use crate::Mode;
-use crate::{gha, Kind};
+use crate::{gha, Compiler, Kind, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {

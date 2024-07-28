@@ -1,9 +1,11 @@
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
-    SingleLabelManySpans, SubdiagMessageOp, Subdiagnostic,
+    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_requires_cfg_pattern)]

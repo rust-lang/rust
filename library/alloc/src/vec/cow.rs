@@ -1,6 +1,5 @@
-use crate::borrow::Cow;
-
 use super::Vec;
+use crate::borrow::Cow;
 
 #[stable(feature = "cow_from_vec", since = "1.8.0")]
 impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {

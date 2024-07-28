@@ -8,13 +8,16 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
 
+use std::cmp::Ordering;
+use std::fmt;
+use std::ops::Index;
+
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
-use rustc_index::newtype_index;
-use rustc_index::IndexVec;
+use rustc_index::{newtype_index, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
@@ -29,9 +32,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, ErrorGuaranteed, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
-use std::cmp::Ordering;
-use std::fmt;
-use std::ops::Index;
 use tracing::instrument;
 
 pub mod visit;
@@ -1236,8 +1236,9 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);

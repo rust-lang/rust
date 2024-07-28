@@ -2,7 +2,6 @@
 
 use super::select::Selected;
 use super::waker::current_thread_id;
-
 use crate::cell::Cell;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};

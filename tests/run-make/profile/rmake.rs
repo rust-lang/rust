@@ -8,8 +8,9 @@
 //@ ignore-cross-compile
 //@ needs-profiler-support
 
-use run_make_support::{run, rustc};
 use std::path::Path;
+
+use run_make_support::{run, rustc};
 
 fn main() {
     rustc().arg("-g").arg("-Zprofile").input("test.rs").run();

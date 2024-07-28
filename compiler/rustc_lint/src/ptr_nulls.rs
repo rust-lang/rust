@@ -1,8 +1,10 @@
-use crate::{lints::PtrNullChecksDiag, LateContext, LateLintPass, LintContext};
 use rustc_ast::LitKind;
 use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
+
+use crate::lints::PtrNullChecksDiag;
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `useless_ptr_null_checks` lint checks for useless null checks against pointers

@@ -1,5 +1,6 @@
-use smallvec::{Array, SmallVec};
 use std::ptr;
+
+use smallvec::{Array, SmallVec};
 use thin_vec::ThinVec;
 
 pub trait FlatMapInPlace<T>: Sized {

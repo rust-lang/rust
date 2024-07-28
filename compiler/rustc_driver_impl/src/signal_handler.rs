@@ -1,9 +1,10 @@
 //! Signal handler for rustc
 //! Primarily used to extract a backtrace from stack overflow
 
-use rustc_interface::util::{DEFAULT_STACK_SIZE, STACK_SIZE};
 use std::alloc::{alloc, Layout};
 use std::{fmt, mem, ptr};
+
+use rustc_interface::util::{DEFAULT_STACK_SIZE, STACK_SIZE};
 
 extern "C" {
     fn backtrace_symbols_fd(buffer: *const *mut libc::c_void, size: libc::c_int, fd: libc::c_int);

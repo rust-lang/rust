@@ -1,16 +1,12 @@
 use super::Builder;
 use crate::any::Any;
-use crate::mem;
 use crate::panic::panic_any;
-use crate::result;
-use crate::sync::{
-    atomic::{AtomicBool, Ordering},
-    mpsc::{channel, Sender},
-    Arc, Barrier,
-};
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::mpsc::{channel, Sender};
+use crate::sync::{Arc, Barrier};
 use crate::thread::{self, Scope, ThreadId};
-use crate::time::Duration;
-use crate::time::Instant;
+use crate::time::{Duration, Instant};
+use crate::{mem, result};
 
 // !!! These tests are dangerous. If something is buggy, they will hang, !!!
 // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!

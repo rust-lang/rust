@@ -6,21 +6,20 @@
 // tidy-alphabetical-end
 
 use std::fmt;
+#[cfg(feature = "nightly")]
+use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
-use rustc_index::{Idx, IndexSlice, IndexVec};
-
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
+use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
-#[cfg(feature = "nightly")]
-use std::iter::Step;
 
 mod layout;
 #[cfg(test)]

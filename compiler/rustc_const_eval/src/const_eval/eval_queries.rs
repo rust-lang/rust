@@ -1,8 +1,6 @@
 use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
-use tracing::{debug, instrument, trace};
-
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
@@ -16,17 +14,16 @@ use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, Abi};
+use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
-use crate::errors::ConstEvalError;
-use crate::errors::{self, DanglingPtrInFinal};
+use crate::errors::{self, ConstEvalError, DanglingPtrInFinal};
 use crate::interpret::{
-    create_static_alloc, intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate,
-    InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
-    StackPopCleanup,
+    create_static_alloc, eval_nullary_intrinsic, intern_const_alloc_recursive, throw_exhaust,
+    CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpError,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup,
 };
-use crate::interpret::{eval_nullary_intrinsic, throw_exhaust, InternResult};
 use crate::CTRL_C_RECEIVED;
 
 // Returns a pointer to where the result lives

@@ -1,12 +1,6 @@
-use crate::attributes;
-use crate::builder::Builder;
-use crate::context::CodegenCx;
-use crate::llvm::{self, Attribute, AttributePlace};
-use crate::llvm_util;
-use crate::type_::Type;
-use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
+use std::cmp;
 
+use libc::c_uint;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
@@ -20,11 +14,15 @@ pub use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int, Size};
 pub use rustc_target::spec::abi::Abi;
 use rustc_target::spec::SanitizerSet;
-
-use libc::c_uint;
 use smallvec::SmallVec;
 
-use std::cmp;
+use crate::builder::Builder;
+use crate::context::CodegenCx;
+use crate::llvm::{self, Attribute, AttributePlace};
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
+use crate::{attributes, llvm_util};
 
 pub trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);

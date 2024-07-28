@@ -1,5 +1,3 @@
-use crate::inline;
-use crate::pass_manager as pm;
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -7,9 +5,10 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::InliningThreshold;
-use rustc_session::config::OptLevel;
+use rustc_session::config::{InliningThreshold, OptLevel};
 use rustc_span::sym;
+
+use crate::{inline, pass_manager as pm};
 
 pub fn provide(providers: &mut Providers) {
     providers.cross_crate_inlinable = cross_crate_inlinable;

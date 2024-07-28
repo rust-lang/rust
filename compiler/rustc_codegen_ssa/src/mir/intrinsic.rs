@@ -1,21 +1,16 @@
-use super::operand::OperandRef;
-use super::place::PlaceRef;
-use super::FunctionCx;
-use crate::errors;
-use crate::errors::InvalidMonomorphization;
-use crate::meth;
-use crate::size_of_val;
-use crate::traits::*;
-use crate::MemFlags;
-
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{sym, Span};
-use rustc_target::abi::{
-    call::{FnAbi, PassMode},
-    WrappingRange,
-};
+use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::abi::WrappingRange;
+
+use super::operand::OperandRef;
+use super::place::PlaceRef;
+use super::FunctionCx;
+use crate::errors::InvalidMonomorphization;
+use crate::traits::*;
+use crate::{errors, meth, size_of_val, MemFlags};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,

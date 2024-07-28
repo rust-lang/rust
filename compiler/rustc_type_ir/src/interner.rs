@@ -1,22 +1,24 @@
-use rustc_ast_ir::Movability;
-use rustc_index::bit_set::BitSet;
-use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
+
+use rustc_ast_ir::Movability;
+use rustc_index::bit_set::BitSet;
+use smallvec::SmallVec;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
-use crate::search_graph;
 use crate::solve::inspect::CanonicalGoalEvaluationStep;
 use crate::solve::{
     CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
 };
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty};
+use crate::{
+    search_graph, {self as ty},
+};
 
 pub trait Interner:
     Sized

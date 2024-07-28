@@ -5,18 +5,19 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_index::Idx;
+use rustc_middle::bug;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
+};
+use smallvec::SmallVec;
+
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
-use rustc_middle::bug;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_index::Idx;
-use smallvec::SmallVec;
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,

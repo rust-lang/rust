@@ -151,21 +151,18 @@
 #[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx", target_os = "xous"))))]
 mod tests;
 
-use crate::io::prelude::*;
-
 use crate::convert::Infallible;
 use crate::ffi::OsStr;
-use crate::fmt;
-use crate::fs;
+use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::num::NonZero;
 use crate::path::Path;
-use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
 use crate::sys::process as imp;
 #[stable(feature = "command_access", since = "1.57.0")]
 pub use crate::sys_common::process::CommandEnvs;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{fmt, fs, str};
 
 /// Representation of a running or exited child process.
 ///

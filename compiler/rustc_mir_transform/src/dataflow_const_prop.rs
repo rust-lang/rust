@@ -12,10 +12,11 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_mir_dataflow::lattice::FlatSet;
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
-use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
+use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 

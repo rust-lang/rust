@@ -12,11 +12,10 @@ use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
 use tracing::trace;
 
+use super::util::ensure_monomorphic_enough;
 use super::{
-    err_inval, throw_ub, throw_ub_custom, util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate,
-    InterpCx, Machine, OpTy, PlaceTy,
+    err_inval, throw_ub, throw_ub_custom, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
 };
-
 use crate::fluent_generated as fluent;
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {

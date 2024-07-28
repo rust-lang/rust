@@ -3,9 +3,10 @@
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
 
+use std::path::PathBuf;
+
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 /// rustdoc format-version.
 pub const FORMAT_VERSION: u32 = 32;

@@ -1,9 +1,6 @@
-use std::{
-    fmt,
-    marker::PhantomData,
-    ops::{Index, IndexMut},
-    slice,
-};
+use std::marker::PhantomData;
+use std::ops::{Index, IndexMut};
+use std::{fmt, slice};
 
 use crate::{Idx, IndexVec};
 

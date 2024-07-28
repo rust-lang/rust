@@ -43,12 +43,12 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
+use rustc_type_ir::TyKind::*;
+use tracing::instrument;
+
 use crate::query::Providers;
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, DefId, Ty, TypeVisitableExt, VariantDef, Visibility};
-
-use rustc_type_ir::TyKind::*;
-use tracing::instrument;
 
 pub mod inhabited_predicate;
 

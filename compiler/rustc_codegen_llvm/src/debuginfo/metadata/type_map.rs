@@ -1,27 +1,18 @@
 use std::cell::RefCell;
 
-use rustc_data_structures::{
-    fingerprint::Fingerprint,
-    fx::FxHashMap,
-    stable_hasher::{HashStable, StableHasher},
-};
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
-use rustc_middle::{
-    bug,
-    ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt},
-};
+use rustc_middle::bug;
+use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_target::abi::{Align, Size, VariantIdx};
 
-use crate::{
-    common::CodegenCx,
-    debuginfo::utils::{create_DIArray, debug_context, DIB},
-    llvm::{
-        self,
-        debuginfo::{DIFlags, DIScope, DIType},
-    },
-};
-
 use super::{unknown_file_metadata, SmallVec, UNKNOWN_LINE_NUMBER};
+use crate::common::CodegenCx;
+use crate::debuginfo::utils::{create_DIArray, debug_context, DIB};
+use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};
+use crate::llvm::{self};
 
 mod private {
     use rustc_macros::HashStable;

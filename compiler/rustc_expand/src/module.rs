@@ -1,19 +1,20 @@
-use crate::base::ModuleData;
-use crate::errors::{
-    ModuleCircular, ModuleFileNotFound, ModuleInBlock, ModuleInBlockName, ModuleMultipleCandidates,
-};
+use std::iter::once;
+use std::path::{self, Path, PathBuf};
+
 use rustc_ast::ptr::P;
 use rustc_ast::{token, AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_parse::validate_attr;
-use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal};
+use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
-use std::iter::once;
-use std::path::{self, Path, PathBuf};
 use thin_vec::ThinVec;
+
+use crate::base::ModuleData;
+use crate::errors::{
+    ModuleCircular, ModuleFileNotFound, ModuleInBlock, ModuleInBlockName, ModuleMultipleCandidates,
+};
 
 #[derive(Copy, Clone)]
 pub enum DirOwnership {

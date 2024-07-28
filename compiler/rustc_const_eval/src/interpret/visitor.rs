@@ -1,14 +1,13 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
+use std::num::NonZero;
+
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::FieldIdx;
-use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
+use rustc_target::abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use tracing::trace;
-
-use std::num::NonZero;
 
 use super::{throw_inval, InterpCx, MPlaceTy, Machine, Projectable};
 

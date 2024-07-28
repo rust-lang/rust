@@ -3,12 +3,11 @@
 // tidy-alphabetical-end
 
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::bug;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::util::Providers;
+use rustc_middle::{bug, traits};
 use rustc_span::ErrorGuaranteed;
 
 mod collector;

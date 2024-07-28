@@ -1,5 +1,6 @@
 //! Set and unset common attributes on LLVM values.
 
+pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
@@ -9,15 +10,12 @@ use rustc_span::symbol::sym;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
-use crate::attributes;
+use crate::context::CodegenCx;
 use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDisableOrEnable};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
-use crate::llvm_util;
-pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
-
-use crate::context::CodegenCx;
 use crate::value::Value;
+use crate::{attributes, llvm_util};
 
 pub fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {

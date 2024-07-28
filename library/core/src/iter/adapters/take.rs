@@ -1,8 +1,6 @@
 use crate::cmp;
-use crate::iter::{
-    adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedFused, TrustedLen,
-    TrustedRandomAccess,
-};
+use crate::iter::adapters::SourceIter;
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, TrustedRandomAccess};
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 

@@ -7,10 +7,9 @@
 #[cfg(target_vendor = "apple")]
 #[allow(non_camel_case_types)]
 pub unsafe fn raise_fd_limit() {
-    use std::cmp;
-    use std::io;
     use std::mem::size_of_val;
     use std::ptr::null_mut;
+    use std::{cmp, io};
 
     static CTL_KERN: libc::c_int = 1;
     static KERN_MAXFILESPERPROC: libc::c_int = 29;

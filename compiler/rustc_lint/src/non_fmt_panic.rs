@@ -1,18 +1,19 @@
-use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
-use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty;
+use rustc_middle::{bug, ty};
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::{hygiene, sym, symbol::kw, InnerSpan, Span, Symbol};
+use rustc_span::symbol::kw;
+use rustc_span::{hygiene, sym, InnerSpan, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+
+use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_fmt_panics` lint detects `panic!(..)` invocations where the first

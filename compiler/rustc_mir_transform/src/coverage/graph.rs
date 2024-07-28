@@ -1,3 +1,7 @@
+use std::cmp::Ordering;
+use std::collections::VecDeque;
+use std::ops::{Index, IndexMut};
+
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
@@ -6,10 +10,6 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
-
-use std::cmp::Ordering;
-use std::collections::VecDeque;
-use std::ops::{Index, IndexMut};
 
 /// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
 /// nodes are `BasicCoverageBlock`s, which encompass one or more MIR `BasicBlock`s.

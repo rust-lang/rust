@@ -23,10 +23,11 @@
 //! allows for doing a more fine-grained check to see if pre- or post-lto data
 //! was re-used.
 
-use crate::errors;
+use std::borrow::Cow;
+use std::fmt;
+
 use rustc_ast as ast;
-use rustc_data_structures::unord::UnordMap;
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
@@ -34,10 +35,10 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use std::borrow::Cow;
-use std::fmt;
 use thin_vec::ThinVec;
 use tracing::debug;
+
+use crate::errors;
 
 #[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTracker)) {

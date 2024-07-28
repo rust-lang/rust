@@ -1,12 +1,7 @@
-use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
-use crate::common::Funclet;
-use crate::context::CodegenCx;
-use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
-use crate::llvm_util;
-use crate::type_::Type;
-use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
+use std::borrow::Cow;
+use std::ops::Deref;
+use std::{iter, ptr};
+
 use libc::{c_char, c_uint};
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -23,14 +18,20 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{self, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::Deref;
-use std::ptr;
 use tracing::{debug, instrument};
+
+use crate::abi::FnAbiLlvmExt;
+use crate::common::Funclet;
+use crate::context::CodegenCx;
+use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
+use crate::{attributes, llvm_util};
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -390,8 +391,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
+        use rustc_middle::ty::IntTy::*;
+        use rustc_middle::ty::UintTy::*;
         use rustc_middle::ty::{Int, Uint};
-        use rustc_middle::ty::{IntTy::*, UintTy::*};
 
         let new_kind = match ty.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),

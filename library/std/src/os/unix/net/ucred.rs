@@ -23,9 +23,8 @@ pub struct UCred {
     pub pid: Option<pid_t>,
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
-pub(super) use self::impl_linux::peer_cred;
-
+#[cfg(target_vendor = "apple")]
+pub(super) use self::impl_apple::peer_cred;
 #[cfg(any(
     target_os = "dragonfly",
     target_os = "freebsd",
@@ -34,17 +33,17 @@ pub(super) use self::impl_linux::peer_cred;
     target_os = "nto"
 ))]
 pub(super) use self::impl_bsd::peer_cred;
-
-#[cfg(target_vendor = "apple")]
-pub(super) use self::impl_apple::peer_cred;
+#[cfg(any(target_os = "android", target_os = "linux"))]
+pub(super) use self::impl_linux::peer_cred;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 mod impl_linux {
+    use libc::{c_void, getsockopt, socklen_t, ucred, SOL_SOCKET, SO_PEERCRED};
+
     use super::UCred;
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
     use crate::{io, mem};
-    use libc::{c_void, getsockopt, socklen_t, ucred, SOL_SOCKET, SO_PEERCRED};
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
         let ucred_size = mem::size_of::<ucred>();
@@ -99,11 +98,12 @@ mod impl_bsd {
 
 #[cfg(target_vendor = "apple")]
 mod impl_apple {
+    use libc::{c_void, getpeereid, getsockopt, pid_t, socklen_t, LOCAL_PEERPID, SOL_LOCAL};
+
     use super::UCred;
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
     use crate::{io, mem};
-    use libc::{c_void, getpeereid, getsockopt, pid_t, socklen_t, LOCAL_PEERPID, SOL_LOCAL};
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
         let mut cred = UCred { uid: 1, gid: 1, pid: None };

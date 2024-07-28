@@ -1,8 +1,9 @@
 use std::fmt;
 
-use crate::ty;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+
+use crate::ty;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]

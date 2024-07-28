@@ -2,7 +2,6 @@
 
 #![allow(rustc::usage_of_qualified_ty)]
 
-use crate::rustc_smir::{Stable, Tables};
 use rustc_middle::ty;
 use rustc_target::abi::call::Conv;
 use stable_mir::abi::{
@@ -13,6 +12,8 @@ use stable_mir::abi::{
 use stable_mir::opaque;
 use stable_mir::target::MachineSize as Size;
 use stable_mir::ty::{Align, IndexedVal, VariantIdx};
+
+use crate::rustc_smir::{Stable, Tables};
 
 impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
     type T = VariantIdx;

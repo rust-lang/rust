@@ -1,9 +1,6 @@
 use crate::any::type_name;
-use crate::fmt;
-use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
-use crate::ptr;
-use crate::slice;
+use crate::{fmt, intrinsics, ptr, slice};
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///

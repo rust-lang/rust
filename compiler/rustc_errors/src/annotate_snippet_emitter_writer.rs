@@ -5,6 +5,12 @@
 //!
 //! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
+use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
+use rustc_data_structures::sync::Lrc;
+use rustc_error_messages::FluentArgs;
+use rustc_span::source_map::SourceMap;
+use rustc_span::SourceFile;
+
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
 use crate::translation::{to_fluent_args, Translate};
@@ -12,11 +18,6 @@ use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, FluentBundle, LazyFallbackBundle,
     Level, MultiSpan, Style, Subdiag,
 };
-use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
-use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
-use rustc_span::source_map::SourceMap;
-use rustc_span::SourceFile;
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitter {

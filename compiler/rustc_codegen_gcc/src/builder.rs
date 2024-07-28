@@ -28,9 +28,8 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
-use rustc_target::abi::{
-    self, call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange,
-};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
 use crate::common::{type_is_pointer, SignType, TypeReflection};

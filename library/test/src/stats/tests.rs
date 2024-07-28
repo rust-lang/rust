@@ -1,9 +1,10 @@
 use super::*;
 
 extern crate test;
-use self::test::test::Bencher;
 use std::io;
 use std::io::prelude::*;
+
+use self::test::test::Bencher;
 
 // Test vectors generated from R, using the script src/etc/stat-test-vectors.r.
 

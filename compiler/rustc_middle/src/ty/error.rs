@@ -1,5 +1,6 @@
-use crate::ty::print::{with_forced_trimmed_paths, FmtPrinter, PrettyPrinter};
-use crate::ty::{self, Ty, TyCtxt};
+use std::borrow::Cow;
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::path::PathBuf;
 
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -7,9 +8,8 @@ use rustc_hir::def::{CtorOf, DefKind};
 use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
-use std::borrow::Cow;
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::path::PathBuf;
+use crate::ty::print::{with_forced_trimmed_paths, FmtPrinter, PrettyPrinter};
+use crate::ty::{self, Ty, TyCtxt};
 
 pub type TypeError<'tcx> = rustc_type_ir::error::TypeError<TyCtxt<'tcx>>;
 

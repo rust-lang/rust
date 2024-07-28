@@ -13,8 +13,7 @@ use rustc_middle::ty::{
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 
-use crate::fluent_generated as fluent;
-use crate::{LateContext, LateLintPass};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass};
 
 declare_lint! {
     /// The `impl_trait_overcaptures` lint warns against cases where lifetime

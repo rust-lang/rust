@@ -1,6 +1,8 @@
-use crate::util::*;
-use anyhow::{Context, Result};
 use std::io::Write;
+
+use anyhow::{Context, Result};
+
+use crate::util::*;
 
 const TEMPLATE: &str = include_str!("../install-template.sh");
 

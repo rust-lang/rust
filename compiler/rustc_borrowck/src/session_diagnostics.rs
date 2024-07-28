@@ -1,4 +1,5 @@
-use rustc_errors::{codes::*, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::MultiSpan;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;

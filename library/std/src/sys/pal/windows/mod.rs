@@ -1,6 +1,7 @@
 #![allow(missing_docs, nonstandard_style)]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+pub use self::rand::hashmap_random_keys;
 use crate::ffi::{OsStr, OsString};
 use crate::io::ErrorKind;
 use crate::mem::MaybeUninit;
@@ -8,8 +9,6 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
 use crate::sys::pal::windows::api::wide_str;
 use crate::time::Duration;
-
-pub use self::rand::hashmap_random_keys;
 
 #[macro_use]
 pub mod compat;

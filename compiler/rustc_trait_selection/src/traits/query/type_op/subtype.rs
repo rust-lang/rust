@@ -1,10 +1,10 @@
-use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::ObligationCtxt;
+pub use rustc_middle::traits::query::type_op::Subtype;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 
-pub use rustc_middle::traits::query::type_op::Subtype;
+use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
+use crate::traits::ObligationCtxt;
 
 impl<'tcx> super::QueryTypeOp<'tcx> for Subtype<'tcx> {
     type QueryResponse = ();

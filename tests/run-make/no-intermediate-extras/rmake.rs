@@ -5,8 +5,9 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::rustc;
 use std::fs;
+
+use run_make_support::rustc;
 
 fn main() {
     rustc().crate_type("rlib").arg("--test").input("foo.rs").run();

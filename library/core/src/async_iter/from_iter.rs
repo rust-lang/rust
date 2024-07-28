@@ -1,6 +1,5 @@
-use crate::pin::Pin;
-
 use crate::async_iter::AsyncIterator;
+use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
 /// An async iterator that was created from iterator.

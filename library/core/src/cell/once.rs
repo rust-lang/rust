@@ -1,6 +1,5 @@
 use crate::cell::UnsafeCell;
-use crate::fmt;
-use crate::mem;
+use crate::{fmt, mem};
 
 /// A cell which can nominally be written to only once.
 ///

@@ -1,11 +1,11 @@
-use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};
+use std::path::Path;
+use std::{fs, str};
+
 use rustc_errors::DiagCtxtHandle;
 use rustc_span::edition::Edition;
-use std::fs;
-use std::path::Path;
-use std::str;
-
 use serde::Serialize;
+
+use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};
 
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct ExternalHtml {

@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use super::{make_test, GlobalTestOptions};
 use rustc_span::edition::DEFAULT_EDITION;
+
+use super::{make_test, GlobalTestOptions};
 
 /// Default [`GlobalTestOptions`] for these unit tests.
 fn default_global_opts(crate_name: impl Into<String>) -> GlobalTestOptions {

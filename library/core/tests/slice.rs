@@ -1856,6 +1856,7 @@ fn sort_unstable() {
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
+
     use rand::seq::SliceRandom;
     use rand::Rng;
 

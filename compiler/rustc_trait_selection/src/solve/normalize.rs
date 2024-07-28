@@ -1,20 +1,21 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use crate::error_reporting::traits::OverflowCause;
-use crate::error_reporting::InferCtxtErrorExt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
-use rustc_middle::ty::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, UniverseIndex,
+};
 
 use super::{FulfillmentCtxt, NextSolverError};
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::InferCtxtErrorExt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.

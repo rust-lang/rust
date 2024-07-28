@@ -1,14 +1,12 @@
-use crate::{
-    lints::{SupertraitAsDerefTarget, SupertraitAsDerefTargetLabel},
-    LateContext, LateLintPass, LintContext,
-};
-
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::ty;
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 use rustc_trait_selection::traits::supertraits;
+
+use crate::lints::{SupertraitAsDerefTarget, SupertraitAsDerefTargetLabel};
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the

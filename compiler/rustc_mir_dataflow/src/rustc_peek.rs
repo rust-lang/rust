@@ -1,3 +1,12 @@
+use rustc_ast::MetaItem;
+use rustc_hir::def_id::DefId;
+use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::{self, Body, Local, Location, MirPass};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
+use tracing::{debug, info};
+
 use crate::errors::{
     PeekArgumentNotALocal, PeekArgumentUntracked, PeekBitNotSet, PeekMustBeNotTemporary,
     PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
@@ -6,19 +15,8 @@ use crate::framework::BitSetExt;
 use crate::impls::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
 };
-use crate::move_paths::{HasMoveData, MoveData};
-use crate::move_paths::{LookupResult, MovePathIndex};
-use crate::MoveDataParamEnv;
-use crate::{Analysis, JoinSemiLattice, ResultsCursor};
-use rustc_ast::MetaItem;
-use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::MirPass;
-use rustc_middle::mir::{self, Body, Local, Location};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
-use tracing::{debug, info};
+use crate::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
+use crate::{Analysis, JoinSemiLattice, MoveDataParamEnv, ResultsCursor};
 
 pub struct SanityCheck;
 

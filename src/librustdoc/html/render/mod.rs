@@ -35,16 +35,12 @@ mod span_map;
 mod type_layout;
 mod write_shared;
 
-pub(crate) use self::context::*;
-pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
-
 use std::collections::VecDeque;
 use std::fmt::{self, Write};
-use std::fs;
 use std::iter::Peekable;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::str;
+use std::{fs, str};
 
 use rinja::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
@@ -55,13 +51,13 @@ use rustc_hir::Mutability;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
-use rustc_span::{
-    symbol::{sym, Symbol},
-    BytePos, FileName, RealFileName, DUMMY_SP,
-};
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{BytePos, FileName, RealFileName, DUMMY_SP};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 
+pub(crate) use self::context::*;
+pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -73,15 +69,13 @@ use crate::html::format::{
     print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
     Buffer, Ending, HrefError, PrintWithSpace,
 };
-use crate::html::highlight;
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
 };
-use crate::html::sources;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
+use crate::html::{highlight, sources};
 use crate::scrape_examples::{CallData, CallLocation};
-use crate::try_none;
-use crate::DOC_RUST_LANG_ORG_CHANNEL;
+use crate::{try_none, DOC_RUST_LANG_ORG_CHANNEL};
 
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {

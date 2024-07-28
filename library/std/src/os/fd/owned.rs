@@ -4,14 +4,12 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-use crate::fmt;
-use crate::fs;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx", target_os = "hermit")))]
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{fmt, fs, io};
 
 /// A borrowed file descriptor.
 ///

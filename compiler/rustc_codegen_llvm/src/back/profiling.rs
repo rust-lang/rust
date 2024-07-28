@@ -1,8 +1,10 @@
-use measureme::{event_id::SEPARATOR_BYTE, EventId, StringComponent, StringId};
-use rustc_data_structures::profiling::{SelfProfiler, TimingGuard};
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use std::sync::Arc;
+
+use measureme::event_id::SEPARATOR_BYTE;
+use measureme::{EventId, StringComponent, StringId};
+use rustc_data_structures::profiling::{SelfProfiler, TimingGuard};
 
 fn llvm_args_to_string_id(profiler: &SelfProfiler, pass_name: &str, ir_name: &str) -> EventId {
     let pass_name = profiler.get_or_alloc_cached_string(pass_name);

@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests;
 
+use std::sync::OnceLock;
+
 use anyhow::ensure;
 use regex::bytes;
-use std::sync::OnceLock;
 
 /// Given the raw contents of a string literal in LLVM IR assembly, decodes any
 /// backslash escapes and returns a vector containing the resulting byte string.

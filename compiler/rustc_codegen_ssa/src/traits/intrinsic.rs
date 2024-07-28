@@ -1,8 +1,9 @@
-use super::BackendTypes;
-use crate::mir::operand::OperandRef;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
+
+use super::BackendTypes;
+use crate::mir::operand::OperandRef;
 
 pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     /// Remember to add all intrinsics here, in `compiler/rustc_hir_analysis/src/check/mod.rs`,

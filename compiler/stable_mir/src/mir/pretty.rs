@@ -1,14 +1,13 @@
-use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
-use crate::ty::{IndexedVal, MirConst, Ty, TyConst};
-use crate::{with, Body, Mutability};
-use fmt::{Display, Formatter};
 use std::fmt::Debug;
 use std::io::Write;
 use std::{fmt, io, iter};
 
-use super::{AssertMessage, BinOp, TerminatorKind};
+use fmt::{Display, Formatter};
 
-use super::{BorrowKind, FakeBorrowKind};
+use super::{AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
+use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
+use crate::ty::{IndexedVal, MirConst, Ty, TyConst};
+use crate::{with, Body, Mutability};
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

@@ -1,13 +1,11 @@
-use std::{
-    io::Error,
-    path::{Path, PathBuf},
-};
+use std::io::Error;
+use std::path::{Path, PathBuf};
 
-use crate::fluent_generated as fluent;
 use rustc_ast::Label;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee,
-    Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -15,6 +13,7 @@ use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use crate::check_attr::ProcMacroKind;
+use crate::fluent_generated as fluent;
 use crate::lang_items::Duplicate;
 
 #[derive(LintDiagnostic)]

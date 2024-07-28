@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
 
+use build_helper::drop_bomb::DropBomb;
 use regex::Regex;
 use similar::TextDiff;
-
-use build_helper::drop_bomb::DropBomb;
 
 use crate::fs;
 

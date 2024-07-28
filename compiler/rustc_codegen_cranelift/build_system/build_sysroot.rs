@@ -1,7 +1,6 @@
-use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
 
 use crate::path::{Dirs, RelPath};
 use crate::rustc_info::get_file_name;

@@ -12,10 +12,6 @@ mod caches;
 pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
 
 mod config;
-pub use self::config::{HashResult, QueryConfig};
-
-use crate::dep_graph::DepKind;
-use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::DiagInner;
@@ -24,6 +20,9 @@ use rustc_macros::{Decodable, Encodable};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use thin_vec::ThinVec;
+
+pub use self::config::{HashResult, QueryConfig};
+use crate::dep_graph::{DepKind, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 
 /// Description of a frame in the query stack.
 ///

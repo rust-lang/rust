@@ -18,27 +18,29 @@ mod read2;
 pub mod runtest;
 pub mod util;
 
-use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
-use crate::common::{Config, Debugger, Mode, PassMode, TestPaths};
-use crate::util::logv;
-use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use core::panic;
-use getopts::Options;
 use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
-use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
-use std::{env, vec};
+use std::{env, fs, vec};
+
+use build_helper::git::{get_git_modified_files, get_git_untracked_files};
+use getopts::Options;
 use test::ColorConfig;
 use tracing::*;
 use walkdir::WalkDir;
 
 use self::header::{make_test_description, EarlyProps};
+use crate::common::{
+    expected_output_path, output_base_dir, output_relative_path, Config, Debugger, Mode, PassMode,
+    TestPaths, UI_EXTENSIONS,
+};
 use crate::header::HeadersCache;
+use crate::util::logv;
 
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
