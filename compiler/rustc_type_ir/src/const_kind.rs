@@ -1,5 +1,3 @@
-#![allow(clippy::derived_hash_with_manual_eq)]
-
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -10,10 +8,8 @@ use std::fmt;
 
 use crate::{self as ty, DebruijnIndex, Interner};
 
-use self::ConstKind::*;
-
 /// Represents a constant in Rust.
-#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
@@ -45,23 +41,6 @@ pub enum ConstKind<I: Interner> {
     Expr(I::ExprConst),
 }
 
-// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
-impl<I: Interner> PartialEq for ConstKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Param(l0), Param(r0)) => l0 == r0,
-            (Infer(l0), Infer(r0)) => l0 == r0,
-            (Bound(l0, l1), Bound(r0, r1)) => l0 == r0 && l1 == r1,
-            (Placeholder(l0), Placeholder(r0)) => l0 == r0,
-            (Unevaluated(l0), Unevaluated(r0)) => l0 == r0,
-            (Value(l0, l1), Value(r0, r1)) => l0 == r0 && l1 == r1,
-            (Error(l0), Error(r0)) => l0 == r0,
-            (Expr(l0), Expr(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
-}
-
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use ConstKind::*;
@@ -80,7 +59,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
 }
 
 /// An unevaluated (potentially generic) constant used in the type-system.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Debug, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct UnevaluatedConst<I: Interner> {
@@ -92,15 +71,6 @@ impl<I: Interner> UnevaluatedConst<I> {
     #[inline]
     pub fn new(def: I::DefId, args: I::GenericArgs) -> UnevaluatedConst<I> {
         UnevaluatedConst { def, args }
-    }
-}
-
-impl<I: Interner> fmt::Debug for UnevaluatedConst<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UnevaluatedConst")
-            .field("def", &self.def)
-            .field("args", &self.args)
-            .finish()
     }
 }
 
