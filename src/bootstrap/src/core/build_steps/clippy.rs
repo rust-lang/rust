@@ -19,6 +19,7 @@ use super::compile::libstd_stamp;
 use super::compile::run_cargo;
 use super::compile::rustc_cargo;
 use super::compile::std_cargo;
+use super::compile::std_crates_for_run_make;
 use super::tool::prepare_tool_cargo;
 use super::tool::SourceType;
 
@@ -120,7 +121,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.make_run_crates(Alias::Library);
+        let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std { target: run.target, crates });
     }
 
