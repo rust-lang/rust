@@ -22,6 +22,10 @@ class Log {
         log: true,
     });
 
+    trace(...messages: [unknown, ...unknown[]]): void {
+        this.output.trace(this.stringify(messages));
+    }
+
     debug(...messages: [unknown, ...unknown[]]): void {
         this.output.debug(this.stringify(messages));
     }
