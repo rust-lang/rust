@@ -3,9 +3,8 @@ use std::path::{Path, PathBuf};
 use rustc_codegen_ssa::back::archive::{
     ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder, DEFAULT_OBJECT_READER,
 };
-use rustc_session::Session;
-
 use rustc_session::cstore::DllImport;
+use rustc_session::Session;
 
 pub(crate) struct ArArchiveBuilderBuilder;
 

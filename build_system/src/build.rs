@@ -1,11 +1,12 @@
-use crate::config::{Channel, ConfigInfo};
-use crate::utils::{
-    copy_file, create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
-};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
+
+use crate::config::{Channel, ConfigInfo};
+use crate::utils::{
+    copy_file, create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
+};
 
 #[derive(Default)]
 struct BuildArg {

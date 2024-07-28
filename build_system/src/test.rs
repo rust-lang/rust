@@ -1,3 +1,10 @@
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::fs::{remove_dir_all, File};
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
@@ -5,13 +12,6 @@ use crate::utils::{
     run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
     split_args, walk_dir,
 };
-
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::fs::{remove_dir_all, File};
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 type Env = HashMap<String, String>;
 type Runner = fn(&Env, &TestArg) -> Result<(), String>;
