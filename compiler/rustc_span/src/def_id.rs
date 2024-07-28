@@ -252,14 +252,7 @@ impl !PartialOrd for DefId {}
 //     +-------------------+-------------------+
 // ```
 //
-// The order here has direct impact on `FxHash` quality because we have far more `DefIndex` per
-// crate than we have `Crate`s within one compilation. Or in other words, this arrangement puts
-// more entropy in the low bits than the high bits. The reason this matters is that `FxHash`, which
-// is used throughout rustc, has problems distributing the entropy from the high bits, so reversing
-// the order would lead to a large number of collisions and thus far worse performance.
-//
-// On 64-bit big-endian systems, this compiles to a 64-bit rotation by 32 bits, which is still
-// faster than another `FxHash` round.
+// On 64-bit big-endian systems, this compiles to a 64-bit rotation by 32 bits, or a 64-bit load.
 #[cfg(target_pointer_width = "64")]
 impl Hash for DefId {
     fn hash<H: Hasher>(&self, h: &mut H) {
