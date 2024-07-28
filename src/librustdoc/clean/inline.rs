@@ -131,8 +131,8 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Const, did) => {
             record_extern_fqn(cx, did, ItemType::Constant);
             cx.with_param_env(did, |cx| {
-                let (generics, ty, ct) = build_const_item(cx, did);
-                clean::ConstantItem(generics, Box::new(ty), ct)
+                let ct = build_const_item(cx, did);
+                clean::ConstantItem(Box::new(ct))
             })
         }
         Res::Def(DefKind::Macro(kind), did) => {
@@ -720,10 +720,7 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     }
 }
 
-fn build_const_item(
-    cx: &mut DocContext<'_>,
-    def_id: DefId,
-) -> (clean::Generics, clean::Type, clean::Constant) {
+fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     let mut generics =
         clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
@@ -733,17 +730,17 @@ fn build_const_item(
         None,
         None,
     );
-    (generics, ty, clean::Constant { kind: clean::ConstantKind::Extern { def_id } })
+    clean::Constant { generics, type_: ty, kind: clean::ConstantKind::Extern { def_id } }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
-        type_: clean_middle_ty(
+        type_: Box::new(clean_middle_ty(
             ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity()),
             cx,
             Some(did),
             None,
-        ),
+        )),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: None,
     }

@@ -852,9 +852,9 @@ pub(crate) enum ItemKind {
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
     TyAssocConstItem(Generics, Box<Type>),
-    ConstantItem(Generics, Box<Type>, Constant),
+    ConstantItem(Box<Constant>),
     /// An associated constant in a trait impl or a provided one in a trait declaration.
-    AssocConstItem(Generics, Box<Type>, ConstantKind),
+    AssocConstItem(Box<Constant>),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -888,7 +888,7 @@ impl ItemKind {
             | TypeAliasItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
-            | ConstantItem(_, _, _)
+            | ConstantItem(_)
             | TraitAliasItem(_)
             | TyMethodItem(_)
             | MethodItem(_, _)
@@ -922,7 +922,7 @@ impl ItemKind {
                 | TypeAliasItem(_)
                 | OpaqueTyItem(_)
                 | StaticItem(_)
-                | ConstantItem(_, _, _)
+                | ConstantItem(_)
                 | TraitAliasItem(_)
                 | ForeignFunctionItem(_, _)
                 | ForeignStaticItem(_, _)
@@ -2050,7 +2050,7 @@ impl From<hir::PrimTy> for PrimitiveType {
 pub(crate) struct Struct {
     pub(crate) ctor_kind: Option<CtorKind>,
     pub(crate) generics: Generics,
-    pub(crate) fields: Vec<Item>,
+    pub(crate) fields: ThinVec<Item>,
 }
 
 impl Struct {
@@ -2076,7 +2076,7 @@ impl Union {
 /// only as a variant in an enum.
 #[derive(Clone, Debug)]
 pub(crate) struct VariantStruct {
-    pub(crate) fields: Vec<Item>,
+    pub(crate) fields: ThinVec<Item>,
 }
 
 impl VariantStruct {
@@ -2110,7 +2110,7 @@ pub(crate) struct Variant {
 #[derive(Clone, Debug)]
 pub(crate) enum VariantKind {
     CLike,
-    Tuple(Vec<Item>),
+    Tuple(ThinVec<Item>),
     Struct(VariantStruct),
 }
 
@@ -2246,7 +2246,7 @@ impl Path {
 pub(crate) enum GenericArg {
     Lifetime(Lifetime),
     Type(Type),
-    Const(Box<Constant>),
+    Const(Box<ConstantKind>),
     Infer,
 }
 
@@ -2359,20 +2359,22 @@ pub(crate) struct BareFunctionDecl {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Static {
-    pub(crate) type_: Type,
+    pub(crate) type_: Box<Type>,
     pub(crate) mutability: Mutability,
     pub(crate) expr: Option<BodyId>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Constant {
+    pub(crate) generics: Generics,
     pub(crate) kind: ConstantKind,
+    pub(crate) type_: Type,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum Term {
     Type(Type),
-    Constant(Constant),
+    Constant(ConstantKind),
 }
 
 impl Term {
@@ -2594,7 +2596,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 56);
+    static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 32);
     // tidy-alphabetical-end
