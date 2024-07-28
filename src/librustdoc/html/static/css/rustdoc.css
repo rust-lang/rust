@@ -16,6 +16,24 @@
 	--src-sidebar-width: 300px;
 	--desktop-sidebar-z-index: 100;
 	--sidebar-elems-left-padding: 24px;
+	/* clipboard <https://github.com/rust-lang/crates.io/commits/main/public/assets/copy.svg> */
+	--clipboard-image: url('data:image/svg+xml,<svg width="19" height="18" viewBox="0 0 24 25" \
+xmlns="http://www.w3.org/2000/svg" aria-label="Copy to clipboard">\
+<path d="M18 20h2v3c0 1-1 2-2 2H2c-.998 0-2-1-2-2V5c0-.911.755-1.667 1.667-1.667h5A3.323 3.323 0 \
+0110 0a3.323 3.323 0 013.333 3.333h5C19.245 3.333 20 4.09 20 5v8.333h-2V9H2v14h16v-3zM3 \
+7h14c0-.911-.793-1.667-1.75-1.667H13.5c-.957 0-1.75-.755-1.75-1.666C11.75 2.755 10.957 2 10 \
+2s-1.75.755-1.75 1.667c0 .911-.793 1.666-1.75 1.666H4.75C3.793 5.333 3 6.09 3 7z"/>\
+<path d="M4 19h6v2H4zM12 11H4v2h8zM4 17h4v-2H4zM15 15v-3l-4.5 4.5L15 21v-3l8.027-.032L23 15z"/>\
+</svg>');
+	--copy-path-height: 34px;
+	--copy-path-width: 33px;
+	/* Checkmark <https://www.svgrepo.com/svg/335033/checkmark> */
+	--checkmark-image: url('data:image/svg+xml,<svg viewBox="-1 -1 23 23" \
+xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
+<g><path d="M9 19.414l-6.707-6.707 1.414-1.414L9 16.586 20.293 5.293l1.414 1.414"></path>\
+</g></svg>');
+	--button-left-margin: 4px;
+	--button-border-radius: 2px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -723,6 +741,11 @@ ul.block, .block li {
 	position: relative;
 	margin-bottom: 10px;
 }
+
+.rustdoc .example-wrap > pre {
+	border-radius: 6px;
+}
+
 /* For the last child of a div, the margin will be taken care of
 	by the margin-top of the next item. */
 .rustdoc .example-wrap:last-child {
@@ -1427,15 +1450,17 @@ documentation. */
 	top: 20px;
 }
 
-a.test-arrow {
+.example-wrap > a.test-arrow, .example-wrap .button-holder {
 	visibility: hidden;
 	position: absolute;
-	padding: 5px 10px 5px 10px;
-	border-radius: 5px;
-	font-size: 1.375rem;
-	top: 5px;
-	right: 5px;
+	top: 4px;
+	right: 4px;
 	z-index: 1;
+}
+a.test-arrow {
+	padding: 5px 7px;
+	border-radius: var(--button-border-radius);
+	font-size: 1rem;
 	color: var(--test-arrow-color);
 	background-color: var(--test-arrow-background-color);
 }
@@ -1443,8 +1468,36 @@ a.test-arrow:hover {
 	color: var(--test-arrow-hover-color);
 	background-color: var(--test-arrow-hover-background-color);
 }
-.example-wrap:hover .test-arrow {
+.example-wrap .button-holder {
+	display: flex;
+}
+.example-wrap:hover > .test-arrow {
+	padding: 2px 7px;
+}
+.example-wrap:hover > .test-arrow, .example-wrap:hover > .button-holder {
 	visibility: visible;
+}
+.example-wrap .button-holder .copy-button {
+	color: var(--copy-path-button-color);
+	background: var(--main-background-color);
+	height: var(--copy-path-height);
+	width: var(--copy-path-width);
+	margin-left: var(--button-left-margin);
+	padding: 2px 0 0 4px;
+	border: 0;
+	cursor: pointer;
+	border-radius: var(--button-border-radius);
+}
+.example-wrap .button-holder .copy-button::before {
+	filter: var(--copy-path-img-filter);
+	content: var(--clipboard-image);
+}
+.example-wrap .button-holder .copy-button:hover::before {
+	filter: var(--copy-path-img-hover-filter);
+}
+.example-wrap .button-holder .copy-button.clicked::before {
+	content: var(--checkmark-image);
+	padding-right: 5px;
 }
 
 .code-attribute {
@@ -1610,7 +1663,7 @@ a.tooltip:hover::after {
 }
 
 #settings-menu, #help-button {
-	margin-left: 4px;
+	margin-left: var(--button-left-margin);
 	display: flex;
 }
 #sidebar-button {
@@ -1641,7 +1694,7 @@ a.tooltip:hover::after {
 	justify-content: center;
 	background-color: var(--button-background-color);
 	border: 1px solid var(--border-color);
-	border-radius: 2px;
+	border-radius: var(--button-border-radius);
 	color: var(--settings-button-color);
 	/* Rare exception to specifying font sizes in rem. Since this is acting
 	   as an icon, it's okay to specify their sizes in pixels. */
@@ -1693,8 +1746,8 @@ a.tooltip:hover::after {
 #copy-path {
 	color: var(--copy-path-button-color);
 	background: var(--main-background-color);
-	height: 34px;
-	width: 33px;
+	height: var(--copy-path-height);
+	width: var(--copy-path-width);
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
@@ -1703,27 +1756,13 @@ a.tooltip:hover::after {
 }
 #copy-path::before {
 	filter: var(--copy-path-img-filter);
-	/* clipboard <https://github.com/rust-lang/crates.io/commits/main/public/assets/copy.svg> */
-	content: url('data:image/svg+xml,<svg width="19" height="18" viewBox="0 0 24 25" \
-xmlns="http://www.w3.org/2000/svg" aria-label="Copy to clipboard">\
-<path d="M18 20h2v3c0 1-1 2-2 2H2c-.998 0-2-1-2-2V5c0-.911.755-1.667 1.667-1.667h5A3.323 3.323 0 \
-0110 0a3.323 3.323 0 013.333 3.333h5C19.245 3.333 20 4.09 20 5v8.333h-2V9H2v14h16v-3zM3 \
-7h14c0-.911-.793-1.667-1.75-1.667H13.5c-.957 0-1.75-.755-1.75-1.666C11.75 2.755 10.957 2 10 \
-2s-1.75.755-1.75 1.667c0 .911-.793 1.666-1.75 1.666H4.75C3.793 5.333 3 6.09 3 7z"/>\
-<path d="M4 19h6v2H4zM12 11H4v2h8zM4 17h4v-2H4zM15 15v-3l-4.5 4.5L15 21v-3l8.027-.032L23 15z"/>\
-</svg>');
-	width: 19px;
-	height: 18px;
+	content: var(--clipboard-image);
 }
 #copy-path:hover::before {
 	filter: var(--copy-path-img-hover-filter);
 }
 #copy-path.clicked::before {
-	/* Checkmark <https://www.svgrepo.com/svg/335033/checkmark> */
-	content: url('data:image/svg+xml,<svg viewBox="-1 -1 23 23" xmlns="http://www.w3.org/2000/svg" \
-		fill="black" height="18px">\
-		<g><path d="M9 19.414l-6.707-6.707 1.414-1.414L9 16.586 20.293 5.293l1.414 1.414"></path>\
-		</g></svg>');
+	content: var(--checkmark-image);
 }
 
 @keyframes rotating {
