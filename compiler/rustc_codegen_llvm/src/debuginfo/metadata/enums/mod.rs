@@ -3,7 +3,6 @@ use rustc_codegen_ssa::debuginfo::{
     wants_c_like_enum_debuginfo,
 };
 use rustc_hir::def::CtorKind;
-use rustc_index::IndexSlice;
 use rustc_middle::{
     bug,
     mir::CoroutineLayout,
@@ -13,7 +12,6 @@ use rustc_middle::{
         AdtDef, CoroutineArgs, CoroutineArgsExt, Ty, VariantDef,
     },
 };
-use rustc_span::Symbol;
 use rustc_target::abi::{
     FieldIdx, HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants,
 };
@@ -323,7 +321,6 @@ pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
     coroutine_type_and_layout: TyAndLayout<'tcx>,
     coroutine_type_di_node: &'ll DIType,
     coroutine_layout: &CoroutineLayout<'tcx>,
-    common_upvar_names: &IndexSlice<FieldIdx, Symbol>,
 ) -> &'ll DIType {
     let variant_name = CoroutineArgs::variant_name(variant_index);
     let unique_type_id = UniqueTypeId::for_enum_variant_struct_type(
@@ -333,11 +330,6 @@ pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
     );
 
     let variant_layout = coroutine_type_and_layout.for_variant(cx, variant_index);
-
-    let coroutine_args = match coroutine_type_and_layout.ty.kind() {
-        ty::Coroutine(_, args) => args.as_coroutine(),
-        _ => unreachable!(),
-    };
 
     type_map::build_type_with_children(
         cx,
@@ -352,7 +344,7 @@ pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
         ),
         |cx, variant_struct_type_di_node| {
             // Fields that just belong to this variant/state
-            let state_specific_fields: SmallVec<_> = (0..variant_layout.fields.count())
+            (0..variant_layout.fields.count())
                 .map(|field_index| {
                     let coroutine_saved_local = coroutine_layout.variant_fields[variant_index]
                         [FieldIdx::from_usize(field_index)];
@@ -374,28 +366,7 @@ pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                         type_di_node(cx, field_type),
                     )
                 })
-                .collect();
-
-            // Fields that are common to all states
-            let common_fields: SmallVec<_> = coroutine_args
-                .prefix_tys()
-                .iter()
-                .zip(common_upvar_names)
-                .enumerate()
-                .map(|(index, (upvar_ty, upvar_name))| {
-                    build_field_di_node(
-                        cx,
-                        variant_struct_type_di_node,
-                        upvar_name.as_str(),
-                        cx.size_and_align_of(upvar_ty),
-                        coroutine_type_and_layout.fields.offset(index),
-                        DIFlags::FlagZero,
-                        type_di_node(cx, upvar_ty),
-                    )
-                })
-                .collect();
-
-            state_specific_fields.into_iter().chain(common_fields).collect()
+                .collect()
         },
         |cx| build_generic_type_param_di_nodes(cx, coroutine_type_and_layout.ty),
     )

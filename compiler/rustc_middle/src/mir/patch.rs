@@ -155,10 +155,14 @@ impl<'tcx> MirPatch<'tcx> {
         ty: Ty<'tcx>,
         span: Span,
         local_info: LocalInfo<'tcx>,
+        immutable: bool,
     ) -> Local {
         let index = self.next_local;
         self.next_local += 1;
         let mut new_decl = LocalDecl::new(ty, span);
+        if immutable {
+            new_decl = new_decl.immutable();
+        }
         **new_decl.local_info.as_mut().assert_crate_local() = local_info;
         self.new_locals.push(new_decl);
         Local::new(index)

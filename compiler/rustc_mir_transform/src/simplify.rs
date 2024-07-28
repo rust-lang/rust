@@ -27,6 +27,7 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
+use rustc_data_structures::unord::UnordMap;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -404,7 +405,20 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
         // Update references to all vars and tmps now
         let mut updater = LocalUpdater { map, tcx };
         updater.visit_body_preserves_cfg(body);
+        let map = updater.map;
 
+        let local_upvar_rev_map: UnordMap<_, _> = body
+            .local_upvar_map
+            .iter_enumerated()
+            .filter_map(
+                |pair| if let (field, Some(local)) = pair { Some((*local, field)) } else { None },
+            )
+            .collect();
+        for (old, &new) in map.iter_enumerated() {
+            let Some(new) = new else { continue };
+            let Some(&field) = local_upvar_rev_map.get(&old) else { continue };
+            body.local_upvar_map[field] = Some(new);
+        }
         body.local_decls.shrink_to_fit();
     }
 }

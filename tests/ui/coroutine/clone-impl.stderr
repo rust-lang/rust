@@ -7,11 +7,14 @@ LL |     move || {
 LL |     check_copy(&gen_clone_0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}: Copy`
    |
-note: captured value does not implement `Copy`
-  --> $DIR/clone-impl.rs:47:14
+note: coroutine does not implement `Copy` as this value is used across a yield
+  --> $DIR/clone-impl.rs:43:5
    |
-LL |         drop(clonable_0);
-   |              ^^^^^^^^^^ has type `Vec<u32>` which does not implement `Copy`
+LL |     let clonable_0: Vec<u32> = Vec::new();
+   |         ---------- has type `Vec<u32>` which does not implement `Copy`
+LL |     let gen_clone_0 = #[coroutine]
+LL |     move || {
+   |     ^ yield occurs here, with `clonable_0` maybe used later
 note: required by a bound in `check_copy`
   --> $DIR/clone-impl.rs:89:18
    |
@@ -49,11 +52,14 @@ LL |     move || {
 LL |     check_copy(&gen_clone_1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}: Copy`
    |
-note: captured value does not implement `Copy`
-  --> $DIR/clone-impl.rs:68:14
+note: coroutine does not implement `Copy` as this value is used across a yield
+  --> $DIR/clone-impl.rs:58:5
    |
-LL |         drop(clonable_1);
-   |              ^^^^^^^^^^ has type `Vec<u32>` which does not implement `Copy`
+LL |     let clonable_1: Vec<u32> = Vec::new();
+   |         ---------- has type `Vec<u32>` which does not implement `Copy`
+LL |     let gen_clone_1 = #[coroutine]
+LL |     move || {
+   |     ^ yield occurs here, with `clonable_1` maybe used later
 note: required by a bound in `check_copy`
   --> $DIR/clone-impl.rs:89:18
    |
@@ -92,11 +98,14 @@ LL |     move || {
 LL |     check_copy(&gen_non_clone);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`, the trait `Copy` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}: Copy`
    |
-note: captured value does not implement `Copy`
-  --> $DIR/clone-impl.rs:81:14
+note: coroutine does not implement `Copy` as this value is used across a yield
+  --> $DIR/clone-impl.rs:79:5
    |
-LL |         drop(non_clonable);
-   |              ^^^^^^^^^^^^ has type `NonClone` which does not implement `Copy`
+LL |     let non_clonable: NonClone = NonClone;
+   |         ------------ has type `NonClone` which does not implement `Copy`
+LL |     let gen_non_clone = #[coroutine]
+LL |     move || {
+   |     ^ yield occurs here, with `non_clonable` maybe used later
 note: required by a bound in `check_copy`
   --> $DIR/clone-impl.rs:89:18
    |
@@ -117,11 +126,14 @@ LL |     move || {
 LL |     check_clone(&gen_non_clone);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`, the trait `Clone` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}: Clone`
    |
-note: captured value does not implement `Clone`
-  --> $DIR/clone-impl.rs:81:14
+note: coroutine does not implement `Clone` as this value is used across a yield
+  --> $DIR/clone-impl.rs:79:5
    |
-LL |         drop(non_clonable);
-   |              ^^^^^^^^^^^^ has type `NonClone` which does not implement `Clone`
+LL |     let non_clonable: NonClone = NonClone;
+   |         ------------ has type `NonClone` which does not implement `Clone`
+LL |     let gen_non_clone = #[coroutine]
+LL |     move || {
+   |     ^ yield occurs here, with `non_clonable` maybe used later
 note: required by a bound in `check_clone`
   --> $DIR/clone-impl.rs:90:19
    |

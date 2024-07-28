@@ -53,18 +53,18 @@ fn main() {
     let i = 13;
     let fut = pin!(async {
         test_async_drop(Int(0), 0).await;
-        test_async_drop(AsyncInt(0), 104).await;
-        test_async_drop([AsyncInt(1), AsyncInt(2)], 152).await;
-        test_async_drop((AsyncInt(3), AsyncInt(4)), 488).await;
+        test_async_drop(AsyncInt(0), 48).await;
+        test_async_drop([AsyncInt(1), AsyncInt(2)], 80).await;
+        test_async_drop((AsyncInt(3), AsyncInt(4)), 120).await;
         test_async_drop(5, 0).await;
         let j = 42;
         test_async_drop(&i, 0).await;
         test_async_drop(&j, 0).await;
-        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 1688).await;
+        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 176).await;
         test_async_drop(ManuallyDrop::new(AsyncInt(9)), 0).await;
 
         let foo = AsyncInt(10);
-        test_async_drop(AsyncReference { foo: &foo }, 104).await;
+        test_async_drop(AsyncReference { foo: &foo }, 48).await;
 
         let foo = AsyncInt(11);
         test_async_drop(
@@ -73,17 +73,17 @@ fn main() {
                 let foo = AsyncInt(10);
                 foo
             },
-            120,
+            56,
         )
         .await;
 
-        test_async_drop(AsyncEnum::A(AsyncInt(12)), 680).await;
-        test_async_drop(AsyncEnum::B(SyncInt(13)), 680).await;
+        test_async_drop(AsyncEnum::A(AsyncInt(12)), 144).await;
+        test_async_drop(AsyncEnum::B(SyncInt(13)), 144).await;
 
         test_async_drop(SyncInt(14), 16).await;
         test_async_drop(
             SyncThenAsync { i: 15, a: AsyncInt(16), b: SyncInt(17), c: AsyncInt(18) },
-            3064,
+            200,
         )
         .await;
 
@@ -99,11 +99,11 @@ fn main() {
                 black_box(core::future::ready(())).await;
                 foo
             },
-            120,
+            56,
         )
         .await;
 
-        test_async_drop(AsyncUnion { signed: 21 }, 32).await;
+        test_async_drop(AsyncUnion { signed: 21 }, 24).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));
@@ -210,11 +210,9 @@ impl AsyncDrop for AsyncUnion {
 
     fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
         async move {
-            println!(
-                "AsyncUnion::Dropper::poll: {}, {}",
-                unsafe { self.signed },
-                unsafe { self.unsigned },
-            );
+            println!("AsyncUnion::Dropper::poll: {}, {}", unsafe { self.signed }, unsafe {
+                self.unsigned
+            },);
         }
     }
 }
