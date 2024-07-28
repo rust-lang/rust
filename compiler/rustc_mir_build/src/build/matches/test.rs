@@ -20,7 +20,9 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
 
-use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::build::matches::{
+    Candidate, CandidateState, MatchPairTree, Test, TestBranch, TestCase, TestKind,
+};
 use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -535,17 +537,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'_, 'tcx>,
         sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
     ) -> Option<TestBranch<'tcx>> {
+        let CandidateState::Incomplete { match_pairs, .. } = &mut candidate.state else { bug!() };
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) = candidate
-            .match_pairs
-            .iter()
-            .enumerate()
-            .find(|&(_, mp)| mp.place == Some(test_place))?;
+        let (match_pair_index, match_pair) =
+            match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == Some(test_place))?;
 
         // If true, the match pair is completely entailed by its corresponding test
         // branch, so it can be removed. If false, the match pair is _compatible_
@@ -581,12 +581,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         matches!(range.contains(value, self.tcx, self.param_env), None | Some(true))
                     })
                 };
-                let is_conflicting_candidate = |candidate: &&mut Candidate<'_, 'tcx>| {
-                    candidate
-                        .match_pairs
-                        .iter()
-                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
-                };
+                let is_conflicting_candidate =
+                    |candidate: &&mut Candidate<'_, 'tcx>| {
+                        candidate.match_pairs().unwrap().iter().any(|mp| {
+                            mp.place == Some(test_place) && is_covering_range(&mp.test_case)
+                        })
+                    };
                 if sorted_candidates
                     .get(&TestBranch::Failure)
                     .is_some_and(|candidates| candidates.iter().any(is_conflicting_candidate))
@@ -756,10 +756,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         if fully_matched {
             // Replace the match pair by its sub-pairs.
-            let match_pair = candidate.match_pairs.remove(match_pair_index);
-            candidate.match_pairs.extend(match_pair.subpairs);
+            let match_pair = match_pairs.remove(match_pair_index);
+            match_pairs.extend(match_pair.subpairs);
             // Move or-patterns to the end.
-            candidate.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
+            match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
         }
 
         ret

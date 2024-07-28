@@ -1039,7 +1039,30 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
 #[derive(Debug)]
 enum CandidateState<'pat, 'tcx> {
     /// Still some match pairs to process.
-    Incomplete,
+    Incomplete {
+        /// For the candidate to match, all of these must be satisfied.
+        ///
+        /// ---
+        /// Initially contains a list of match pairs created by [`FlatPat`], but is
+        /// subsequently mutated (in a queue-like way) while lowering the match tree.
+        /// When this list becomes empty, the candidate is fully matched and becomes
+        /// a leaf (see [`Builder::select_matched_candidate`]).
+        ///
+        /// Key mutations include:
+        ///
+        /// - When a match pair is fully satisfied by a test, it is removed from the
+        ///   list, and its subpairs are added instead (see [`Builder::sort_candidate`]).
+        /// - During or-pattern expansion, any leading or-pattern is removed, and is
+        ///   converted into subcandidates (see [`Builder::expand_and_match_or_candidates`]).
+        /// - After a candidate's subcandidates have been lowered, a copy of any remaining
+        ///   or-patterns is added to each leaf subcandidate
+        ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
+        ///
+        /// Invariants:
+        /// - All [`TestCase::Irrefutable`] patterns have been removed by simplification.
+        /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
+        match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
+    },
     /// This candidate has been fully processed.
     Complete {
         /// When the scrutinee matches, we branch to this block.
@@ -1052,6 +1075,16 @@ enum CandidateState<'pat, 'tcx> {
         /// nested or-patterns), and these conditions fail, branch to `continue_matching_block` to
         /// continue matching subsequent candidates.
         continue_matching_block: BasicBlock,
+    },
+    /// This candidate was expanded into or-patterns and then merged back into a single `candidate`.
+    /// The given match pairs must be processed starting from `success_block`, branching to
+    /// `failure_block` on failure.
+    ///
+    /// Invariant: `match_pairs` must not be empty.
+    PartiallyMatched {
+        success_block: BasicBlock,
+        failure_block: BasicBlock,
+        match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
     },
     /// This candidate had an or-pattern and got expanded into subcandidates.
     Expanded {
@@ -1068,6 +1101,9 @@ enum CandidateState<'pat, 'tcx> {
         /// - See [`Builder::remove_never_subcandidates`].
         /// Invariant: this must not be empty.
         subcandidates: Vec<Candidate<'pat, 'tcx>>,
+        /// Any match pairs that may remain. They will be processed in
+        /// `test_remaining_match_pairs_after_or`.
+        remaining_match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
     },
 }
 
@@ -1083,29 +1119,6 @@ enum CandidateState<'pat, 'tcx> {
 /// the arm pattern to successfully match.
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
-    /// For the candidate to match, all of these must be satisfied.
-    ///
-    /// ---
-    /// Initially contains a list of match pairs created by [`FlatPat`], but is
-    /// subsequently mutated (in a queue-like way) while lowering the match tree.
-    /// When this list becomes empty, the candidate is fully matched and becomes
-    /// a leaf (see [`Builder::select_matched_candidate`]).
-    ///
-    /// Key mutations include:
-    ///
-    /// - When a match pair is fully satisfied by a test, it is removed from the
-    ///   list, and its subpairs are added instead (see [`Builder::sort_candidate`]).
-    /// - During or-pattern expansion, any leading or-pattern is removed, and is
-    ///   converted into subcandidates (see [`Builder::expand_and_match_or_candidates`]).
-    /// - After a candidate's subcandidates have been lowered, a copy of any remaining
-    ///   or-patterns is added to each leaf subcandidate
-    ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
-    ///
-    /// Invariants:
-    /// - All [`TestCase::Irrefutable`] patterns have been removed by simplification.
-    /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
-    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
-
     /// A `Candidate` goes through several states during the algorithm. See `CandidateState` for
     /// details.
     state: CandidateState<'pat, 'tcx>,
@@ -1146,8 +1159,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
     fn from_flat_pat(flat_pat: FlatPat<'pat, 'tcx>, has_guard: bool) -> Self {
         Candidate {
-            match_pairs: flat_pat.match_pairs,
-            state: CandidateState::Incomplete,
+            state: CandidateState::Incomplete { match_pairs: flat_pat.match_pairs },
             extra_data: flat_pat.extra_data,
             has_guard,
             false_edge_start_block: None,
@@ -1158,9 +1170,17 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
         self.state.subcandidates_mut().into_iter().flatten()
     }
 
+    /// Returns the match pairs if the candidate is `Incomplete`.
+    fn match_pairs(&self) -> Option<&[MatchPairTree<'pat, 'tcx>]> {
+        self.state.match_pairs()
+    }
+
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
-        matches!(&*self.match_pairs, [MatchPairTree { test_case: TestCase::Or { .. }, .. }, ..])
+        matches!(
+            self.match_pairs(),
+            Some([MatchPairTree { test_case: TestCase::Or { .. }, .. }, ..])
+        )
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1190,15 +1210,28 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
 impl<'pat, 'tcx> CandidateState<'pat, 'tcx> {
     fn into_subcandidates(self) -> Option<Vec<Candidate<'pat, 'tcx>>> {
         match self {
-            CandidateState::Incomplete | CandidateState::Complete { .. } => None,
+            CandidateState::Incomplete { .. }
+            | CandidateState::Complete { .. }
+            | CandidateState::PartiallyMatched { .. } => None,
             CandidateState::Expanded { subcandidates, .. } => Some(subcandidates),
         }
     }
 
     fn subcandidates_mut(&mut self) -> Option<&mut [Candidate<'pat, 'tcx>]> {
         match self {
-            CandidateState::Incomplete | CandidateState::Complete { .. } => None,
+            CandidateState::Incomplete { .. }
+            | CandidateState::Complete { .. }
+            | CandidateState::PartiallyMatched { .. } => None,
             CandidateState::Expanded { subcandidates, .. } => Some(subcandidates.as_mut_slice()),
+        }
+    }
+
+    fn match_pairs(&self) -> Option<&[MatchPairTree<'pat, 'tcx>]> {
+        match self {
+            CandidateState::Expanded { .. }
+            | CandidateState::Complete { .. }
+            | CandidateState::PartiallyMatched { .. } => None,
+            CandidateState::Incomplete { match_pairs, .. } => Some(match_pairs),
         }
     }
 }
@@ -1226,9 +1259,9 @@ fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
     I: Iterator<Item = C>,
 {
     match candidate.borrow().state {
-        CandidateState::Incomplete | CandidateState::Complete { .. } => {
-            visit_leaf(candidate, context)
-        }
+        CandidateState::Incomplete { .. }
+        | CandidateState::Complete { .. }
+        | CandidateState::PartiallyMatched { .. } => visit_leaf(candidate, context),
         CandidateState::Expanded { .. } => {
             for child in get_children(candidate, context) {
                 traverse_candidate(child, context, visit_leaf, get_children, complete_children);
@@ -1485,7 +1518,6 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
         candidate: Candidate<'_, 'tcx>,
         parent_data: &Vec<PatternExtraData<'tcx>>,
     ) -> Self {
-        debug_assert!(candidate.match_pairs.is_empty());
         let CandidateState::Complete { success_block, continue_matching_block } = candidate.state
         else {
             bug!("a leaf candidate should be `Complete` at the end of the algorithm")
@@ -1597,7 +1629,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let CandidateState::Complete { success_block, continue_matching_block } =
                         &mut leaf_candidate.state
                     else {
-                        bug!()
+                        bug!("{leaf_candidate:?}")
                     };
                     let source_info = self.source_info(leaf_candidate.extra_data.span);
                     // Falsely branch to `next_candidate_start_block` before reaching pre_binding.
@@ -1726,6 +1758,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Note how we test `x` twice. This is the tradeoff of backtracking automata: we prefer smaller
     /// code size so we accept non-optimal code paths.
+    ///
+    /// Invariant: all the `candidates` must have state `Incomplete` at the start of the function,
+    /// and `Complete` or `Expanded` at the end.
     #[instrument(skip(self), level = "debug")]
     fn match_candidates(
         &mut self,
@@ -1734,9 +1769,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) -> BasicBlock {
-        ensure_sufficient_stack(|| {
+        debug_assert!(
+            candidates
+                .iter()
+                .all(|candidate| matches!(candidate.state, CandidateState::Incomplete { .. }))
+        );
+        let otherwise_block = ensure_sufficient_stack(|| {
             self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
-        })
+        });
+        debug_assert!(candidates.iter().all(|candidate| matches!(
+            candidate.state,
+            CandidateState::Complete { .. } | CandidateState::Expanded { .. }
+        )));
+        otherwise_block
     }
 
     /// Construct the decision tree for `candidates`. Don't call this, call `match_candidates`
@@ -1760,7 +1805,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // If there are no candidates that still need testing, we're done.
                 return start_block;
             }
-            [first, remaining @ ..] if first.match_pairs.is_empty() => {
+            [first, remaining @ ..]
+                if let CandidateState::Incomplete { match_pairs, .. } = &first.state
+                    && match_pairs.is_empty() =>
+            {
                 // The first candidate has satisfied all its match pairs.
                 // We record the blocks that will be needed by match arm lowering,
                 // and then continue with the remaining candidates.
@@ -1818,8 +1866,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'_, 'tcx>,
         start_block: BasicBlock,
     ) -> BasicBlock {
-        assert!(matches!(candidate.state, CandidateState::Incomplete));
-
         // Create the otherwise block for this candidate, which is the
         // pre-binding block for the next candidate.
         let otherwise_block = self.cfg.start_new_block();
@@ -1870,7 +1916,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .position(|candidate| {
                 // If a candidate starts with an or-pattern and has more match pairs,
                 // we can expand it, but we must stop expanding _after_ it.
-                candidate.match_pairs.len() > 1 && candidate.starts_with_or_pattern()
+                candidate.starts_with_or_pattern() && candidate.match_pairs().unwrap().len() > 1
             })
             .map(|pos| pos + 1) // Stop _after_ the found candidate
             .unwrap_or(candidates.len()); // Otherwise, include all candidates
@@ -1882,9 +1928,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut expanded_candidates = Vec::new();
         for candidate in candidates_to_expand.iter_mut() {
             if candidate.starts_with_or_pattern() {
-                let or_match_pair = candidate.match_pairs.remove(0);
                 // Expand the or-pattern into subcandidates.
-                self.create_or_subcandidates(candidate, or_match_pair);
+                self.expand_first_or_pattern(candidate);
                 // Collect the newly created subcandidates.
                 for subcandidate in candidate.subcandidates_mut() {
                     expanded_candidates.push(subcandidate);
@@ -1912,7 +1957,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // (Only the last candidate can possibly have more match pairs.)
         debug_assert!({
             let mut all_except_last = candidates_to_expand.iter().rev().skip(1);
-            all_except_last.all(|candidate| candidate.match_pairs.is_empty())
+            all_except_last
+                .all(|candidate| matches!(candidate.state, CandidateState::Complete { .. }))
         });
         for candidate in candidates_to_expand.iter_mut() {
             self.merge_trivial_subcandidates(candidate);
@@ -1931,12 +1977,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
     /// subcandidate. Any candidate that has been expanded this way should also be postprocessed
     /// at the end of [`Self::expand_and_match_or_candidates`].
-    fn create_or_subcandidates<'pat>(
-        &mut self,
-        candidate: &mut Candidate<'pat, 'tcx>,
-        match_pair: MatchPairTree<'pat, 'tcx>,
-    ) {
-        assert!(matches!(candidate.state, CandidateState::Incomplete));
+    fn expand_first_or_pattern<'pat>(&mut self, candidate: &mut Candidate<'pat, 'tcx>) {
+        let CandidateState::Incomplete { match_pairs, .. } = &mut candidate.state else { bug!() };
+        let match_pair = match_pairs.remove(0);
+        let remaining_match_pairs = mem::take(match_pairs);
         let TestCase::Or { pats, .. } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
         let or_span = match_pair.pattern.span;
@@ -1946,7 +1990,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
         subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
-        candidate.state = CandidateState::Expanded { or_span, subcandidates };
+        candidate.state =
+            CandidateState::Expanded { or_span, subcandidates, remaining_match_pairs };
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
@@ -2038,7 +2083,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Note that this takes place _after_ the subcandidates have participated
     /// in match tree lowering.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
-        let CandidateState::Expanded { subcandidates, or_span } = &mut candidate.state else {
+        let CandidateState::Expanded { subcandidates, or_span, remaining_match_pairs, .. } =
+            &mut candidate.state
+        else {
             return;
         };
         if candidate.has_guard {
@@ -2079,10 +2126,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         // This is a lie, some match pairs may remain. They'll be processed right away by
         // `test_remaining_match_pairs_after_or`
-        candidate.state = CandidateState::Complete {
-            success_block: shared_pre_binding_block,
-            continue_matching_block: last_otherwise.unwrap(),
-        };
+        if remaining_match_pairs.is_empty() {
+            candidate.state = CandidateState::Complete {
+                success_block: shared_pre_binding_block,
+                continue_matching_block: last_otherwise.unwrap(),
+            };
+        } else {
+            let remaining_match_pairs = mem::take(remaining_match_pairs);
+            candidate.state = CandidateState::PartiallyMatched {
+                success_block: shared_pre_binding_block,
+                failure_block: last_otherwise.unwrap(),
+                match_pairs: remaining_match_pairs,
+            };
+        }
     }
 
     /// Never subcandidates may have a set of bindings inconsistent with their siblings,
@@ -2096,7 +2152,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if candidate.extra_data.is_never {
                 candidate.visit_leaves(|subcandidate| {
                     match &subcandidate.state {
-                        CandidateState::Incomplete | CandidateState::Expanded { .. } => bug!(),
+                        CandidateState::Incomplete { .. }
+                        | CandidateState::PartiallyMatched { .. }
+                        | CandidateState::Expanded { .. } => {
+                            bug!()
+                        }
                         CandidateState::Complete { success_block, continue_matching_block } => {
                             last_otherwise = Some(*continue_matching_block);
                             // That block is already unreachable but needs a terminator to make the MIR well-formed.
@@ -2133,67 +2193,99 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         candidate: &mut Candidate<'_, 'tcx>,
     ) {
-        if candidate.match_pairs.is_empty() {
-            return;
+        match &mut candidate.state {
+            // Nothing to do.
+            CandidateState::Complete { .. } => {}
+            // Candidate was expanded then merged. We continue matching the remaining match pairs
+            // from where we left off.
+            CandidateState::PartiallyMatched { success_block, failure_block, match_pairs } => {
+                let remaining_match_pairs = mem::take(match_pairs);
+                let success_block = *success_block;
+                let failure_block = *failure_block;
+
+                // We're testing match pairs that remained after an `Or`, so the remaining
+                // pairs should all be `Or` too, due to the sorting invariant.
+                debug_assert!(
+                    remaining_match_pairs
+                        .iter()
+                        .all(|match_pair| matches!(match_pair.test_case, TestCase::Or { .. }))
+                );
+
+                // This candidate was partially processed. We resume processing it with the
+                // remaining match pairs.
+                candidate.state =
+                    CandidateState::Incomplete { match_pairs: remaining_match_pairs.clone() };
+                let otherwise =
+                    self.match_candidates(span, scrutinee_span, success_block, &mut [candidate]);
+
+                let source_info = self.source_info(candidate.extra_data.span);
+                self.cfg.goto(otherwise, source_info, failure_block);
+            }
+            // The candidate was expanded. If some match pairs remain, we process them inside each
+            // leaf candidate.
+            CandidateState::Expanded { or_span, remaining_match_pairs, .. } => {
+                if remaining_match_pairs.is_empty() {
+                    // Nothing to do.
+                    return;
+                }
+                let remaining_match_pairs = mem::take(remaining_match_pairs);
+                let source_info = self.source_info(*or_span);
+
+                let mut last_otherwise = None;
+                candidate.visit_leaves(|leaf_candidate| {
+                    let CandidateState::Complete { continue_matching_block, .. } =
+                        leaf_candidate.state
+                    else {
+                        bug!()
+                    };
+                    last_otherwise = Some(continue_matching_block);
+                });
+
+                // We're testing match pairs that remained after an `Or`, so the remaining
+                // pairs should all be `Or` too, due to the sorting invariant.
+                debug_assert!(
+                    remaining_match_pairs
+                        .iter()
+                        .all(|match_pair| matches!(match_pair.test_case, TestCase::Or { .. }))
+                );
+
+                // Visit each leaf candidate within this subtree, add a copy of the remaining
+                // match pairs to it, and then recursively lower the rest of the match tree
+                // from that point.
+                candidate.visit_leaves(|leaf_candidate| {
+                    // This candidate was fully processed. We resume processing it with the remaining match
+                    // pairs.
+                    let CandidateState::Complete { success_block, continue_matching_block } =
+                        leaf_candidate.state
+                    else {
+                        bug!()
+                    };
+                    leaf_candidate.state =
+                        CandidateState::Incomplete { match_pairs: remaining_match_pairs.clone() };
+
+                    // The candidate was processed, and matching of the processed match pairs branched to
+                    // its `pre_binding_block`. We therefore start from that to match the new match pairs.
+                    let start_block = success_block;
+                    // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q, R |
+                    // S)` will fail too. If there is no guard, we skip testing of `Q` by branching directly
+                    // to `last_otherwise`. If there is a guard, `leaf_candidate.otherwise_block` can be
+                    // reached by guard failure as well, so we can't skip `Q`.
+                    let otherwise_block = if leaf_candidate.has_guard {
+                        continue_matching_block
+                    } else {
+                        last_otherwise.unwrap()
+                    };
+                    let otherwise = self.match_candidates(
+                        span,
+                        scrutinee_span,
+                        start_block,
+                        &mut [leaf_candidate],
+                    );
+                    self.cfg.goto(otherwise, source_info, otherwise_block);
+                });
+            }
+            CandidateState::Incomplete { .. } => bug!(),
         }
-
-        let or_span = match candidate.state {
-            CandidateState::Expanded { or_span, .. } => or_span,
-            // This branch is possible if we just merged trivial patterns.
-            _ => candidate.extra_data.span,
-        };
-        let source_info = self.source_info(or_span);
-
-        let mut last_otherwise = None;
-        candidate.visit_leaves(|leaf_candidate| {
-            let CandidateState::Complete { continue_matching_block, .. } = leaf_candidate.state
-            else {
-                bug!()
-            };
-            last_otherwise = Some(continue_matching_block);
-        });
-
-        let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
-        // We're testing match pairs that remained after an `Or`, so the remaining
-        // pairs should all be `Or` too, due to the sorting invariant.
-        debug_assert!(
-            remaining_match_pairs
-                .iter()
-                .all(|match_pair| matches!(match_pair.test_case, TestCase::Or { .. }))
-        );
-
-        // Visit each leaf candidate within this subtree, add a copy of the remaining
-        // match pairs to it, and then recursively lower the rest of the match tree
-        // from that point.
-        candidate.visit_leaves(|leaf_candidate| {
-            let CandidateState::Complete { success_block, continue_matching_block } =
-                leaf_candidate.state
-            else {
-                bug!()
-            };
-            leaf_candidate.state = CandidateState::Incomplete;
-            // At this point the leaf's own match pairs have all been lowered
-            // and removed, so `extend` and assignment are equivalent,
-            // but extending can also recycle any existing vector capacity.
-            assert!(leaf_candidate.match_pairs.is_empty());
-            leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
-
-            // The candidate was processed, and matching of the processed match pairs branched to
-            // its `pre_binding_block`. We therefore start from that to match the new match pairs.
-            let or_start = success_block;
-            // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q, R |
-            // S)` will fail too. If there is no guard, we skip testing of `Q` by branching directly
-            // to `last_otherwise`. If there is a guard, `leaf_candidate.otherwise_block` can be
-            // reached by guard failure as well, so we can't skip `Q`.
-            let or_otherwise = if leaf_candidate.has_guard {
-                continue_matching_block
-            } else {
-                last_otherwise.unwrap()
-            };
-            let otherwise =
-                self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
-            self.cfg.goto(otherwise, source_info, or_otherwise);
-        });
     }
 
     /// Pick a test to run. Which test doesn't matter as long as it is guaranteed to fully match at
@@ -2214,8 +2306,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`SwitchInt`]: TestKind::SwitchInt
     /// [`Range`]: TestKind::Range
     fn pick_test(&mut self, candidates: &[&mut Candidate<'_, 'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
+        let CandidateState::Incomplete { match_pairs, .. } = &candidates[0].state else { bug!() };
         // Extract the match-pair from the highest priority candidate
-        let match_pair = &candidates[0].match_pairs[0];
+        let match_pair = &match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
         // Unwrap is ok after simplification.
         let match_place = match_pair.place.unwrap();
