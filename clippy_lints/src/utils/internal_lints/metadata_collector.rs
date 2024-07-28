@@ -165,7 +165,7 @@ impl MetadataCollector {
     fn get_lint_configs(&self, lint_name: &str) -> Option<String> {
         self.config
             .iter()
-            .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
+            .filter(|config| config.lints.iter().any(|&lint| lint == lint_name))
             .map(ToString::to_string)
             .reduce(|acc, x| acc + &x)
             .map(|configurations| {

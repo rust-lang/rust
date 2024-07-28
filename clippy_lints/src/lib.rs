@@ -496,7 +496,7 @@ pub fn explain(name: &str) -> i32 {
         // Check if the lint has configuration
         let mut mdconf = get_configuration_metadata();
         let name = name.to_ascii_lowercase();
-        mdconf.retain(|cconf| cconf.lints.contains(&name));
+        mdconf.retain(|cconf| cconf.lints.contains(&&*name));
         if !mdconf.is_empty() {
             println!("### Configuration for {}:\n", info.lint.name_lower());
             for conf in mdconf {
