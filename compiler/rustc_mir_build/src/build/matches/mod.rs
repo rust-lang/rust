@@ -2083,19 +2083,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             assert!(leaf_candidate.match_pairs.is_empty());
             leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
 
+            // The candidate was processed, and matching of the processed match pairs branched to
+            // its `pre_binding_block`. We therefore start from that to match the new match pairs.
             let or_start = leaf_candidate.pre_binding_block.unwrap();
-            let otherwise =
-                self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
-            // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
-            // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
-            // directly to `last_otherwise`. If there is a guard,
-            // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
-            // can't skip `Q`.
+            // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q, R |
+            // S)` will fail too. If there is no guard, we skip testing of `Q` by branching directly
+            // to `last_otherwise`. If there is a guard, `leaf_candidate.otherwise_block` can be
+            // reached by guard failure as well, so we can't skip `Q`.
             let or_otherwise = if leaf_candidate.has_guard {
                 leaf_candidate.otherwise_block.unwrap()
             } else {
                 last_otherwise.unwrap()
             };
+            let otherwise =
+                self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
             self.cfg.goto(otherwise, source_info, or_otherwise);
         });
     }
