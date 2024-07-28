@@ -27,7 +27,7 @@ use lsp_types::{
     SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use paths::Utf8PathBuf;
-use project_model::{ManifestPath, ProjectWorkspaceKind, TargetKind};
+use project_model::{CargoWorkspace, ManifestPath, ProjectWorkspaceKind, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
@@ -199,6 +199,20 @@ pub(crate) fn handle_view_item_tree(
     Ok(res)
 }
 
+// cargo test requires the real package name which might contain hyphens but
+// the test identifier passed to this function is the namespace form where hyphens
+// are replaced with underscores so we have to reverse this and find the real package name
+fn find_package_name(namespace_root: &str, cargo: &CargoWorkspace) -> Option<String> {
+    cargo.packages().find_map(|p| {
+        let package_name = &cargo[p].name;
+        if package_name.replace('-', "_") == namespace_root {
+            Some(package_name.clone())
+        } else {
+            None
+        }
+    })
+}
+
 pub(crate) fn handle_run_test(
     state: &mut GlobalState,
     params: lsp_ext::RunTestParams,
@@ -206,7 +220,7 @@ pub(crate) fn handle_run_test(
     if let Some(_session) = state.test_run_session.take() {
         state.send_notification::<lsp_ext::EndRunTest>(());
     }
-    // We detect the lowest common ansector of all included tests, and
+    // We detect the lowest common ancestor of all included tests, and
     // run it. We ignore excluded tests for now, the client will handle
     // it for us.
     let lca = match params.include {
@@ -225,20 +239,31 @@ pub(crate) fn handle_run_test(
             .unwrap_or_default(),
         None => "".to_owned(),
     };
-    let test_path = if lca.is_empty() {
-        None
-    } else if let Some((_, path)) = lca.split_once("::") {
-        Some(path)
+    let (namespace_root, test_path) = if lca.is_empty() {
+        (None, None)
+    } else if let Some((namespace_root, path)) = lca.split_once("::") {
+        (Some(namespace_root), Some(path))
     } else {
-        None
+        (Some(lca.as_str()), None)
     };
     let mut handles = vec![];
     for ws in &*state.workspaces {
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
+            let test_target = if let Some(namespace_root) = namespace_root {
+                if let Some(package_name) = find_package_name(namespace_root, cargo) {
+                    flycheck::TestTarget::Package(package_name)
+                } else {
+                    flycheck::TestTarget::Workspace
+                }
+            } else {
+                flycheck::TestTarget::Workspace
+            };
+
             let handle = flycheck::CargoTestHandle::new(
                 test_path,
                 state.config.cargo_test_options(),
                 cargo.workspace_root(),
+                test_target,
                 state.test_run_sender.clone(),
             )?;
             handles.push(handle);
