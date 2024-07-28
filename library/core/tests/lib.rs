@@ -87,7 +87,6 @@
 #![feature(const_ipv6)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
-#![feature(const_waker)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(pointer_is_aligned_to)]
