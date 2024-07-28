@@ -13,7 +13,7 @@ pub struct Mutex {
     mtx: SpinIdOnceCell<()>,
 }
 
-/// Create a mutex object. This function never panics.
+/// Creates a mutex object. This function never panics.
 fn new_mtx() -> Result<abi::ID, ItronError> {
     ItronError::err_if_negative(unsafe {
         abi::acre_mtx(&abi::T_CMTX {
@@ -31,7 +31,7 @@ impl Mutex {
         Mutex { mtx: SpinIdOnceCell::new() }
     }
 
-    /// Get the inner mutex's ID, which is lazily created.
+    /// Gets the inner mutex's ID, which is lazily created.
     fn raw(&self) -> abi::ID {
         match self.mtx.get_or_try_init(|| new_mtx().map(|id| (id, ()))) {
             Ok((id, ())) => id,

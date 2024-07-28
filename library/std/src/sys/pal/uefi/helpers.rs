@@ -30,8 +30,9 @@ type BootUninstallMultipleProtocolInterfaces =
 const BOOT_SERVICES_UNAVAILABLE: io::Error =
     const_io_error!(io::ErrorKind::Other, "Boot Services are no longer available");
 
-/// Locate Handles with a particular Protocol GUID
-/// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`
+/// Locates Handles with a particular Protocol GUID.
+///
+/// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`.
 ///
 /// Returns an array of [Handles](r_efi::efi::Handle) that support a specified protocol.
 pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ffi::c_void>>> {
@@ -148,8 +149,9 @@ pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result
     if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
 }
 
-/// Get the Protocol for current system handle.
-/// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
+/// Gets the Protocol for current system handle.
+///
+/// Note: Some protocols need to be manually freed. It is the caller's responsibility to do so.
 pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> io::Result<NonNull<T>> {
     let system_handle = uefi::env::try_image_handle().ok_or(io::const_io_error!(
         io::ErrorKind::NotFound,
@@ -220,7 +222,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
     Err(io::const_io_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
 }
 
-/// Get RuntimeServices
+/// Gets RuntimeServices.
 pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>> {
     let system_table: NonNull<r_efi::efi::SystemTable> =
         crate::os::uefi::env::try_system_table()?.cast();

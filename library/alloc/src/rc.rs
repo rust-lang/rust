@@ -439,7 +439,7 @@ impl<T> Rc<T> {
     /// }
     ///
     /// impl Gadget {
-    ///     /// Construct a reference counted Gadget.
+    ///     /// Constructs a reference counted Gadget.
     ///     fn new() -> Rc<Self> {
     ///         // `me` is a `Weak<Gadget>` pointing at the new allocation of the
     ///         // `Rc` we're constructing.
@@ -449,7 +449,7 @@ impl<T> Rc<T> {
     ///         })
     ///     }
     ///
-    ///     /// Return a reference counted pointer to Self.
+    ///     /// Returns a reference counted pointer to Self.
     ///     fn me(&self) -> Rc<Self> {
     ///         self.me.upgrade().unwrap()
     ///     }
@@ -1900,7 +1900,7 @@ impl<T: Clone, A: Allocator> Rc<T, A> {
 }
 
 impl<A: Allocator> Rc<dyn Any, A> {
-    /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
+    /// Attempts to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
     ///
@@ -2586,7 +2586,7 @@ impl<T, const N: usize> From<[T; N]> for Rc<[T]> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Rc<[T]> {
-    /// Allocate a reference-counted slice and fill it by cloning `v`'s items.
+    /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
     ///
     /// # Example
     ///
@@ -2605,7 +2605,7 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Rc<str> {
-    /// Allocate a reference-counted string slice and copy `v` into it.
+    /// Allocates a reference-counted string slice and copies `v` into it.
     ///
     /// # Example
     ///
@@ -2624,7 +2624,7 @@ impl From<&str> for Rc<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<String> for Rc<str> {
-    /// Allocate a reference-counted string slice and copy `v` into it.
+    /// Allocates a reference-counted string slice and copies `v` into it.
     ///
     /// # Example
     ///
@@ -2662,7 +2662,7 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
-    /// Allocate a reference-counted slice and move `v`'s items into it.
+    /// Allocates a reference-counted slice and moves `v`'s items into it.
     ///
     /// # Example
     ///
@@ -2695,8 +2695,8 @@ where
     B: ToOwned + ?Sized,
     Rc<B>: From<&'a B> + From<B::Owned>,
 {
-    /// Create a reference-counted pointer from
-    /// a clone-on-write pointer by copying its content.
+    /// Creates a reference-counted pointer from a clone-on-write pointer by
+    /// copying its content.
     ///
     /// # Example
     ///
@@ -3526,7 +3526,7 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized, A: Allocator> Unpin for Rc<T, A> {}
 
-/// Get the offset within an `RcBox` for the payload behind a pointer.
+/// Gets the offset within an `RcBox` for the payload behind a pointer.
 ///
 /// # Safety
 ///
@@ -3734,7 +3734,7 @@ struct UniqueRcUninit<T: ?Sized, A: Allocator> {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
-    /// Allocate a RcBox with layout suitable to contain `for_value` or a clone of it.
+    /// Allocates a RcBox with layout suitable to contain `for_value` or a clone of it.
     fn new(for_value: &T, alloc: A) -> UniqueRcUninit<T, A> {
         let layout = Layout::for_value(for_value);
         let ptr = unsafe {

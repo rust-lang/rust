@@ -414,9 +414,9 @@ unsafe impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for St
 /// These only work for unsigned types, and will need to be reworked
 /// if you want to use it to specialize on signed types.
 ///
-/// Currently these are only implemented for integers up to usize due to
-/// correctness issues around ExactSizeIterator impls on 16bit platforms.
-/// And since ExactSizeIterator is a prerequisite for backwards iteration
+/// Currently these are only implemented for integers up to `usize` due to
+/// correctness issues around `ExactSizeIterator` impls on 16bit platforms.
+/// And since `ExactSizeIterator` is a prerequisite for backwards iteration
 /// and we must consistently specialize backwards and forwards iteration
 /// that makes the situation complicated enough that it's not covered
 /// for now.

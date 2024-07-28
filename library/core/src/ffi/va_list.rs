@@ -162,7 +162,7 @@ pub struct VaList<'a, 'f: 'a> {
     windows,
 ))]
 impl<'f> VaListImpl<'f> {
-    /// Convert a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
+    /// Converts a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
     #[inline]
     pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
         VaList { inner: VaListImpl { ..*self }, _marker: PhantomData }
@@ -182,7 +182,7 @@ impl<'f> VaListImpl<'f> {
     not(windows),
 ))]
 impl<'f> VaListImpl<'f> {
-    /// Convert a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
+    /// Converts a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
     #[inline]
     pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
         VaList { inner: self, _marker: PhantomData }

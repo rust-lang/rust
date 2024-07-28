@@ -116,7 +116,7 @@ pub struct Summary {
 }
 
 impl Summary {
-    /// Construct a new summary of a sample set.
+    /// Constructs a new summary of a sample set.
     pub fn new(samples: &[f64]) -> Summary {
         Summary {
             sum: samples.sum(),

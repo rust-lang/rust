@@ -135,7 +135,7 @@ unsafe impl Sync for HandleOrInvalid {}
 unsafe impl Sync for BorrowedHandle<'_> {}
 
 impl BorrowedHandle<'_> {
-    /// Return a `BorrowedHandle` holding the given raw handle.
+    /// Returns a `BorrowedHandle` holding the given raw handle.
     ///
     /// # Safety
     ///

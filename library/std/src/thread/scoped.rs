@@ -67,7 +67,7 @@ impl ScopeData {
     }
 }
 
-/// Create a scope for spawning scoped threads.
+/// Creates a scope for spawning scoped threads.
 ///
 /// The function passed to `scope` will be provided a [`Scope`] object,
 /// through which scoped threads can be [spawned][`Scope::spawn`].

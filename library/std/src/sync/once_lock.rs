@@ -578,7 +578,7 @@ impl<T: Clone> Clone for OnceLock<T> {
 
 #[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> From<T> for OnceLock<T> {
-    /// Create a new cell with its contents set to `value`.
+    /// Creates a new cell with its contents set to `value`.
     ///
     /// # Example
     ///

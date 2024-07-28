@@ -549,7 +549,7 @@ where
     None
 }
 
-/// Check if a file exists without following symlinks.
+/// Checks if a file exists without following symlinks.
 fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
         let path = args::to_user_path(path).ok()?;

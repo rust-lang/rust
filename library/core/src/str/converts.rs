@@ -206,7 +206,7 @@ pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     unsafe { &mut *(v as *mut [u8] as *mut str) }
 }
 
-/// Creates an `&str` from a pointer and a length.
+/// Creates a `&str` from a pointer and a length.
 ///
 /// The pointed-to bytes must be valid UTF-8.
 /// If this might not be the case, use `str::from_utf8(slice::from_raw_parts(ptr, len))`,
@@ -225,7 +225,7 @@ pub const unsafe fn from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a str {
     unsafe { &*ptr::from_raw_parts(ptr, len) }
 }
 
-/// Creates an `&mut str` from a pointer and a length.
+/// Creates a `&mut str` from a pointer and a length.
 ///
 /// The pointed-to bytes must be valid UTF-8.
 /// If this might not be the case, use `str::from_utf8_mut(slice::from_raw_parts_mut(ptr, len))`,

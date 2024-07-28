@@ -31,13 +31,13 @@ impl Flag {
         }
     }
 
-    /// Check the flag for an unguarded borrow, where we only care about existing poison.
+    /// Checks the flag for an unguarded borrow, where we only care about existing poison.
     #[inline]
     pub fn borrow(&self) -> LockResult<()> {
         if self.get() { Err(PoisonError::new(())) } else { Ok(()) }
     }
 
-    /// Check the flag for a guarded borrow, where we may also set poison when `done`.
+    /// Checks the flag for a guarded borrow, where we may also set poison when `done`.
     #[inline]
     pub fn guard(&self) -> LockResult<Guard> {
         let ret = Guard {

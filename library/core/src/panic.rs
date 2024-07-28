@@ -160,7 +160,7 @@ pub unsafe trait PanicPayload: crate::fmt::Display {
     /// Just borrow the contents.
     fn get(&mut self) -> &(dyn Any + Send);
 
-    /// Try to borrow the contents as `&str`, if possible without doing any allocations.
+    /// Tries to borrow the contents as `&str`, if possible without doing any allocations.
     fn as_str(&mut self) -> Option<&str> {
         None
     }

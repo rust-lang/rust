@@ -633,7 +633,7 @@ macro_rules! write {
     };
 }
 
-/// Write formatted data into a buffer, with a newline appended.
+/// Writes formatted data into a buffer, with a newline appended.
 ///
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`) alone
 /// (no additional CARRIAGE RETURN (`\r`/`U+000D`).
