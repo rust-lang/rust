@@ -13,7 +13,7 @@ impl fmt::Display for ClippyConfiguration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "- `{}`: {}", self.name, self.doc)?;
         if !self.default.is_empty() {
-            write!(f, " (default: `{}`)", self.default)?;
+            write!(f, "\n\n(default: `{}`)", self.default)?;
         }
         Ok(())
     }

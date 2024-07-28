@@ -167,7 +167,7 @@ impl MetadataCollector {
             .iter()
             .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
             .map(ToString::to_string)
-            .reduce(|acc, x| acc + &x)
+            .reduce(|acc, x| acc + "\n\n" + &x)
             .map(|configurations| {
                 format!(
                     r#"
