@@ -7,6 +7,7 @@ use crate::char::EscapeDebugExtArgs;
 use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
+use crate::ptr::{self, DynMetadata};
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
 use crate::result;
@@ -2565,16 +2566,51 @@ impl<T: ?Sized> Pointer for &mut T {
 
 // Implementation of Display/Debug for various core types
 
+/// A local trait for pointer Debug impl so that we can have
+/// min_specialization-compliant specializations for two types of fat ptrs.
+trait PtrMetadataFmt {
+    fn fmt_ptr(&self, ptr: *const (), f: &mut Formatter<'_>) -> Result;
+}
+
+// Regular pointer / default impl
+impl<T> PtrMetadataFmt for T {
+    #[inline]
+    default fn fmt_ptr(&self, ptr: *const (), f: &mut Formatter<'_>) -> Result {
+        Pointer::fmt(&ptr, f)
+    }
+}
+
+// Pointer + length
+impl PtrMetadataFmt for usize {
+    #[inline]
+    fn fmt_ptr(&self, ptr: *const (), f: &mut Formatter<'_>) -> Result {
+        write!(f, "({:p}, {})", ptr, *self)
+    }
+}
+
+// Pointer + vtable
+impl<Dyn: ?Sized> PtrMetadataFmt for DynMetadata<Dyn> {
+    #[inline]
+    fn fmt_ptr(&self, ptr: *const (), f: &mut Formatter<'_>) -> Result {
+        f.debug_tuple("")
+            .field(&ptr)
+            .field(self)
+            .finish()
+   }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(self, f)
+        let meta = ptr::metadata(*self);
+        meta.fmt_ptr(*self as *const (), f)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(self, f)
+        let ptr: *const T = *self;
+        Debug::fmt(&ptr, f)
     }
 }
 
