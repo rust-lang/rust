@@ -42,3 +42,29 @@ pub fn any_symbol_contains(path: impl AsRef<Path>, substrings: &[&str]) -> bool 
         false
     })
 }
+
+/// Check if an object file contains *all* of the given symbols.
+///
+/// The symbol names must match exactly.
+///
+/// Panics if `path` is not a valid object file readable by the current user.
+pub fn contains_exact_symbols(path: impl AsRef<Path>, symbol_names: &[&str]) -> bool {
+    let mut found = vec![false; symbol_names.len()];
+    with_symbol_iter(path, |syms| {
+        for sym in syms {
+            for (i, symbol_name) in symbol_names.iter().enumerate() {
+                found[i] |= sym.name_bytes().unwrap() == symbol_name.as_bytes();
+            }
+        }
+    });
+    let result = found.iter().all(|x| *x);
+    if !result {
+        eprintln!("does not contain symbol(s): ");
+        for i in 0..found.len() {
+            if !found[i] {
+                eprintln!("* {}", symbol_names[i]);
+            }
+        }
+    }
+    result
+}
