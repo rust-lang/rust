@@ -2571,18 +2571,6 @@ dependencies = [
  "indexmap",
  "memchr",
  "ruzstd 0.5.0",
- "wasmparser 0.118.2",
-]
-
-[[package]]
-name = "object"
-version = "0.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7090bae93f8585aad99e595b7073c5de9ba89fbd6b4e9f0cdd7a10177273ac8"
-dependencies = [
- "flate2",
- "memchr",
- "ruzstd 0.6.0",
 ]
 
 [[package]]
@@ -2596,14 +2584,20 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.36.0"
+version = "0.36.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "576dfe1fc8f9df304abb159d767a29d0476f7750fbf8aa7ad07816004a207434"
+checksum = "3f203fa8daa7bb185f760ae12bd8e097f63d17041dcdcaf675ac54cdf863170e"
 dependencies = [
  "compiler_builtins",
+ "crc32fast",
+ "flate2",
+ "hashbrown",
+ "indexmap",
  "memchr",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
+ "ruzstd 0.7.0",
+ "wasmparser 0.214.0",
 ]
 
 [[package]]
@@ -3344,10 +3338,10 @@ dependencies = [
  "bstr",
  "build_helper",
  "gimli 0.31.0",
- "object 0.34.0",
+ "object 0.36.2",
  "regex",
  "similar",
- "wasmparser 0.118.2",
+ "wasmparser 0.214.0",
 ]
 
 [[package]]
@@ -3653,7 +3647,7 @@ dependencies = [
  "itertools",
  "libc",
  "measureme",
- "object 0.32.2",
+ "object 0.36.2",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3692,7 +3686,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.32.2",
+ "object 0.36.2",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -3722,7 +3716,7 @@ dependencies = [
  "thin-vec",
  "thorin-dwp",
  "tracing",
- "wasm-encoder 0.200.0",
+ "wasm-encoder 0.210.0",
  "windows",
 ]
 
@@ -4675,7 +4669,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "object 0.32.2",
+ "object 0.36.2",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
@@ -4960,12 +4954,11 @@ dependencies = [
 
 [[package]]
 name = "ruzstd"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5174a470eeb535a721ae9fdd6e291c2411a906b96592182d05217591d5c5cf7b"
+checksum = "5022b253619b1ba797f243056276bed8ed1a73b0f5a7ce7225d524067644bf8f"
 dependencies = [
  "byteorder",
- "derive_more",
  "twox-hash",
 ]
 
@@ -5252,7 +5245,7 @@ dependencies = [
  "hermit-abi 0.4.0",
  "libc",
  "miniz_oxide",
- "object 0.36.0",
+ "object 0.36.2",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
@@ -6190,15 +6183,6 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
-version = "0.200.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9e3fb0c8fbddd78aa6095b850dfeedbc7506cf5f81e633f69cf8f2333ab84b9"
-dependencies = [
- "leb128",
-]
-
-[[package]]
-name = "wasm-encoder"
 version = "0.210.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7e3764d9d6edabd8c9e16195e177be0d20f6ab942ad18af52860f12f82bc59a"
@@ -6233,16 +6217,6 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.118.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77f1154f1ab868e2a01d9834a805faca7bf8b50d041b4ca714d005d0dab1c50c"
-dependencies = [
- "indexmap",
- "semver",
-]
-
-[[package]]
-name = "wasmparser"
 version = "0.210.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7bbcd21e7581619d9f6ca00f8c4f08f1cacfe58bf63f83af57cd0476f1026f5"
@@ -6253,6 +6227,16 @@ dependencies = [
  "indexmap",
  "semver",
  "serde",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.214.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5309c1090e3e84dad0d382f42064e9933fdaedb87e468cc239f0eabea73ddcb6"
+dependencies = [
+ "bitflags 2.5.0",
+ "indexmap",
 ]
 
 [[package]]
