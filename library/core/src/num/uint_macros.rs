@@ -10,6 +10,7 @@ macro_rules! uint_impl {
         // literal is fine if they need to be multiple code tokens.
         // In non-comments, use the associated constants rather than these.
         BITS = $BITS:literal,
+        BYTES = $BYTES:literal,
         MAX = $MaxV:literal,
         rot = $rot:literal,
         rot_op = $rot_op:literal,
@@ -57,6 +58,16 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = Self::MAX.count_ones();
+
+        /// The size of this integer type in bytes.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::BYTES, ", stringify!($BITS), ");")]
+        /// ```
+        #[stable(feature = "int_bits_const", since = "1.73.0")] // FIXME: Unsure "since" field
+        pub const BYTES: u32 = Self::BITS / 8;
 
         /// Returns the number of ones in the binary representation of `self`.
         ///
