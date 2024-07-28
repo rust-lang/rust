@@ -966,7 +966,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         let overlaps: Vec<_> = overlaps_with
             .iter()
             .map(|pat| pat.data().span)
-            .map(|span| errors::Overlap { range: overlap_as_pat.clone(), span })
+            .map(|span| errors::Overlap { range: overlap_as_pat.to_string(), span })
             .collect();
         let pat_span = pat.data().span;
         self.tcx.emit_node_span_lint(
@@ -1014,7 +1014,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // Point at this range.
                     first_range: thir_pat.span,
                     // That's the gap that isn't covered.
-                    max: gap_as_pat.clone(),
+                    max: gap_as_pat.to_string(),
                     // Suggest `lo..=max` instead.
                     suggestion: suggested_range.to_string(),
                 },
@@ -1028,7 +1028,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // Point at this range.
                     first_range: thir_pat.span,
                     // That's the gap that isn't covered.
-                    gap: gap_as_pat.clone(),
+                    gap: gap_as_pat.to_string(),
                     // Suggest `lo..=gap` instead.
                     suggestion: suggested_range.to_string(),
                     // All these ranges skipped over `gap` which we think is probably a
@@ -1037,8 +1037,8 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                         .iter()
                         .map(|pat| errors::GappedRange {
                             span: pat.data().span,
-                            gap: gap_as_pat.clone(),
-                            first_range: thir_pat.clone(),
+                            gap: gap_as_pat.to_string(),
+                            first_range: thir_pat.to_string(),
                         })
                         .collect(),
                 },

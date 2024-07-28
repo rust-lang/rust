@@ -856,7 +856,7 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub(crate) span: Span,
     pub(crate) origin: &'s str,
     #[subdiagnostic]
-    pub(crate) uncovered: Uncovered<'tcx>,
+    pub(crate) uncovered: Uncovered,
     #[subdiagnostic]
     pub(crate) inform: Option<Inform>,
     #[subdiagnostic]

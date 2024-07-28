@@ -9,7 +9,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
@@ -699,12 +698,6 @@ impl<'tcx> Pat<'tcx> {
             _ => true,
         });
         is_never_pattern
-    }
-}
-
-impl<'tcx> IntoDiagArg for Pat<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        format!("{self}").into_diag_arg()
     }
 }
 
