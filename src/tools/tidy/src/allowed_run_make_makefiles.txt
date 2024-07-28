@@ -50,14 +50,10 @@ run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
-run-make/sanitizer-cdylib-link/Makefile
-run-make/sanitizer-dylib-link/Makefile
-run-make/sanitizer-staticlib-link/Makefile
 run-make/share-generics-dylib/Makefile
 run-make/simd-ffi/Makefile
 run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
-run-make/static-dylib-by-default/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
