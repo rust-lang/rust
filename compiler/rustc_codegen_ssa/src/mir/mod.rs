@@ -21,6 +21,7 @@ pub mod coverageinfo;
 pub mod debuginfo;
 mod intrinsic;
 mod locals;
+mod niche_check;
 pub mod operand;
 pub mod place;
 mod rvalue;

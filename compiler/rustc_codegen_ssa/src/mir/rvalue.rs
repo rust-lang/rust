@@ -160,7 +160,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_transmute(
+    pub fn codegen_transmute(
         &mut self,
         bx: &mut Bx,
         src: OperandRef<'tcx, Bx::Value>,
@@ -195,7 +195,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// Returns `None` for cases that can't work in that framework, such as for
     /// `Immediate`->`Ref` that needs an `alloc` to get the location.
-    fn codegen_transmute_operand(
+    pub fn codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
@@ -337,7 +337,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// `to_backend_ty` must be the *non*-immediate backend type (so it will be
     /// `i8`, not `i1`, for `bool`-like types.)
-    fn transmute_immediate(
+    pub fn transmute_immediate(
         &self,
         bx: &mut Bx,
         mut imm: Bx::Value,
