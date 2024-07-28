@@ -744,7 +744,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Note: it is possible to get `isize/usize::MAX+1` here, as explained in the doc for
     /// [`IntRange::split`]. This cannot be represented as a `Const`, so we represent it with
     /// `PosInfinity`.
-    pub(crate) fn hoist_pat_range_bdy(
+    fn hoist_pat_range_bdy(
         &self,
         miint: MaybeInfiniteInt,
         ty: RevealedTy<'tcx>,
@@ -775,7 +775,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     }
 
     /// Convert back to a `thir::Pat` for diagnostic purposes.
-    pub(crate) fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> Pat<'tcx> {
+    fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> Pat<'tcx> {
         use MaybeInfiniteInt::*;
         let cx = self;
         let kind = if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
@@ -811,9 +811,17 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
 
         Pat { ty: ty.inner(), span: DUMMY_SP, kind }
     }
+
+    /// Prints a [`WitnessPat`] to an owned string, for diagnostic purposes.
+    pub fn print_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> String {
+        // This works by converting the witness pattern back to a `thir::Pat`
+        // and then printing that, but callers don't need to know that.
+        self.hoist_witness_pat(pat).to_string()
+    }
+
     /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
     /// appear in diagnostics, like float ranges.
-    pub fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> Pat<'tcx> {
+    fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> Pat<'tcx> {
         let cx = self;
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
         let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));

@@ -26,19 +26,13 @@ impl Uncovered {
     where
         'tcx: 'p,
     {
-        let witness_1 = cx.hoist_witness_pat(witnesses.get(0).unwrap()).to_string();
+        let witness_1 = cx.print_witness_pat(witnesses.get(0).unwrap());
         Self {
             span,
             count: witnesses.len(),
             // Substitute dummy values if witnesses is smaller than 3. These will never be read.
-            witness_2: witnesses
-                .get(1)
-                .map(|w| cx.hoist_witness_pat(w).to_string())
-                .unwrap_or_default(),
-            witness_3: witnesses
-                .get(2)
-                .map(|w| cx.hoist_witness_pat(w).to_string())
-                .unwrap_or_default(),
+            witness_2: witnesses.get(1).map(|w| cx.print_witness_pat(w)).unwrap_or_default(),
+            witness_3: witnesses.get(2).map(|w| cx.print_witness_pat(w)).unwrap_or_default(),
             witness_1,
             remainder: witnesses.len().saturating_sub(3),
         }
