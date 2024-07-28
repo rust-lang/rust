@@ -4,6 +4,7 @@
 // collections, resulting in having to optimize down excess IR multiple times.
 // Your performance intuition is useless. Run perf.
 
+use crate::assert_unsafe_precondition;
 use crate::cmp;
 use crate::error::Error;
 use crate::fmt;
@@ -118,6 +119,15 @@ impl Layout {
     #[inline]
     #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "Layout::from_size_align_unchecked requires that align is a power of 2 \
+            and the rounded-up allocation size does not exceed isize::MAX",
+            (
+                size: usize = size,
+                align: usize = align,
+            ) => Layout::from_size_align(size, align).is_ok()
+        );
         // SAFETY: the caller is required to uphold the preconditions.
         unsafe { Layout { size, align: Alignment::new_unchecked(align) } }
     }

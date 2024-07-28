@@ -297,7 +297,20 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
-        if T::IS_ZST || self.cap.0 == 0 {
+        // Reduce the amount of code we need to monomorphize per `T`.
+        #[inline]
+        #[rustc_no_mir_inline]
+        unsafe fn inner(size: usize, align: usize, cap: usize) -> Layout {
+            // SAFETY: Precondition guaranteed by the caller
+            unsafe {
+                let size = size.unchecked_mul(cap);
+                Layout::from_size_align_unchecked(size, align)
+            }
+        }
+
+        let cap = self.cap.0;
+
+        if T::IS_ZST || cap == 0 {
             None
         } else {
             // We could use Layout::array here which ensures the absence of isize and usize overflows
@@ -306,10 +319,8 @@ impl<T, A: Allocator> RawVec<T, A> {
             // support such types. So we can do better by skipping some checks and avoid an unwrap.
             const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
             unsafe {
-                let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>().unchecked_mul(self.cap.0);
-                let layout = Layout::from_size_align_unchecked(size, align);
-                Some((self.ptr.cast().into(), layout))
+                let layout = inner(mem::size_of::<T>(), mem::align_of::<T>(), cap);
+                Some((self.non_null().cast(), layout))
             }
         }
     }
