@@ -51,32 +51,28 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
             if_else: Some(if_else),
             ..
         }) = higher::IfLet::hir(cx, expr)
+            && let Some(op_mutex) = for_each_expr_without_closures(let_expr, |e| mutex_lock_call(cx, e, None))
+            && let Some(arm_mutex) =
+                for_each_expr_without_closures((if_then, if_else), |e| mutex_lock_call(cx, e, Some(op_mutex)))
         {
-            let op_mutex = for_each_expr_without_closures(let_expr, |e| mutex_lock_call(cx, e, None));
-            if let Some(op_mutex) = op_mutex {
-                let arm_mutex =
-                    for_each_expr_without_closures((if_then, if_else), |e| mutex_lock_call(cx, e, Some(op_mutex)));
-                if let Some(arm_mutex) = arm_mutex {
-                    let diag = |diag: &mut Diag<'_, ()>| {
-                        diag.span_label(
-                            op_mutex.span,
-                            "this Mutex will remain locked for the entire `if let`-block...",
-                        );
-                        diag.span_label(
-                            arm_mutex.span,
-                            "... and is tried to lock again here, which will always deadlock.",
-                        );
-                        diag.help("move the lock call outside of the `if let ...` expression");
-                    };
-                    span_lint_and_then(
-                        cx,
-                        IF_LET_MUTEX,
-                        expr.span,
-                        "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
-                        diag,
-                    );
-                }
-            }
+            let diag = |diag: &mut Diag<'_, ()>| {
+                diag.span_label(
+                    op_mutex.span,
+                    "this Mutex will remain locked for the entire `if let`-block...",
+                );
+                diag.span_label(
+                    arm_mutex.span,
+                    "... and is tried to lock again here, which will always deadlock.",
+                );
+                diag.help("move the lock call outside of the `if let ...` expression");
+            };
+            span_lint_and_then(
+                cx,
+                IF_LET_MUTEX,
+                expr.span,
+                "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
+                diag,
+            );
         }
     }
 }
