@@ -2,11 +2,12 @@ use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::cmp::{max, min};
+use core::error::Error;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::{FusedIterator, Peekable};
 use core::mem::ManuallyDrop;
-use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
+use core::ops::{BitAnd, BitOr, BitXor, Bound, RangeBounds, Sub};
 
 use super::map::{BTreeMap, Keys};
 use super::merge_iter::MergeIterInner;
@@ -1183,6 +1184,178 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Returns a [`Cursor`] pointing at the gap before the smallest element
+    /// greater than the given bound.
+    ///
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
+    /// gap before the smallest element greater than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
+    /// gap before the smallest element greater than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
+    /// gap before the smallest element in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeSet;
+    /// use std::ops::Bound;
+    ///
+    /// let set = BTreeSet::from([1, 2, 3, 4]);
+    ///
+    /// let cursor = set.lower_bound(Bound::Included(&2));
+    /// assert_eq!(cursor.peek_prev(), Some(&1));
+    /// assert_eq!(cursor.peek_next(), Some(&2));
+    ///
+    /// let cursor = set.lower_bound(Bound::Excluded(&2));
+    /// assert_eq!(cursor.peek_prev(), Some(&2));
+    /// assert_eq!(cursor.peek_next(), Some(&3));
+    ///
+    /// let cursor = set.lower_bound(Bound::Unbounded);
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some(&1));
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn lower_bound<Q: ?Sized>(&self, bound: Bound<&Q>) -> Cursor<'_, T>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        Cursor { inner: self.map.lower_bound(bound) }
+    }
+
+    /// Returns a [`CursorMut`] pointing at the gap before the smallest element
+    /// greater than the given bound.
+    ///
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
+    /// gap before the smallest element greater than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
+    /// gap before the smallest element greater than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
+    /// gap before the smallest element in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeSet;
+    /// use std::ops::Bound;
+    ///
+    /// let mut set = BTreeSet::from([1, 2, 3, 4]);
+    ///
+    /// let mut cursor = unsafe { set.lower_bound_mut(Bound::Included(&2)) };
+    /// assert_eq!(cursor.peek_prev(), Some(&mut 1));
+    /// assert_eq!(cursor.peek_next(), Some(&mut 2));
+    ///
+    /// let mut cursor = unsafe { set.lower_bound_mut(Bound::Excluded(&2)) };
+    /// assert_eq!(cursor.peek_prev(), Some(&mut 2));
+    /// assert_eq!(cursor.peek_next(), Some(&mut 3));
+    ///
+    /// let mut cursor = unsafe { set.lower_bound_mut(Bound::Unbounded) };
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some(&mut 1));
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn lower_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        CursorMut { inner: unsafe { self.map.lower_bound_mut(bound).with_mutable_key() } }
+    }
+
+    /// Returns a [`Cursor`] pointing at the gap after the greatest element
+    /// smaller than the given bound.
+    ///
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
+    /// gap after the greatest element smaller than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
+    /// gap after the greatest element smaller than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
+    /// gap after the greatest element in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeSet;
+    /// use std::ops::Bound;
+    ///
+    /// let set = BTreeSet::from([1, 2, 3, 4]);
+    ///
+    /// let cursor = set.upper_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.peek_prev(), Some(&3));
+    /// assert_eq!(cursor.peek_next(), Some(&4));
+    ///
+    /// let cursor = set.upper_bound(Bound::Excluded(&3));
+    /// assert_eq!(cursor.peek_prev(), Some(&2));
+    /// assert_eq!(cursor.peek_next(), Some(&3));
+    ///
+    /// let cursor = set.upper_bound(Bound::Unbounded);
+    /// assert_eq!(cursor.peek_prev(), Some(&4));
+    /// assert_eq!(cursor.peek_next(), None);
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn upper_bound<Q: ?Sized>(&self, bound: Bound<&Q>) -> Cursor<'_, T>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        Cursor { inner: self.map.upper_bound(bound) }
+    }
+
+    /// Returns a [`CursorMut`] pointing at the gap after the greatest element
+    /// smaller than the given bound.
+    ///
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
+    /// gap after the greatest element smaller than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
+    /// gap after the greatest element smaller than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
+    /// gap after the greatest element in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeSet;
+    /// use std::ops::Bound;
+    ///
+    /// let mut set = BTreeSet::from([1, 2, 3, 4]);
+    ///
+    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Included(&3)) };
+    /// assert_eq!(cursor.peek_prev(), Some(&mut 3));
+    /// assert_eq!(cursor.peek_next(), Some(&mut 4));
+    ///
+    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Excluded(&3)) };
+    /// assert_eq!(cursor.peek_prev(), Some(&mut 2));
+    /// assert_eq!(cursor.peek_next(), Some(&mut 3));
+    ///
+    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Unbounded) };
+    /// assert_eq!(cursor.peek_prev(), Some(&mut 4));
+    /// assert_eq!(cursor.peek_next(), None);
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn upper_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        CursorMut { inner: unsafe { self.map.upper_bound_mut(bound).with_mutable_key() } }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1816,6 +1989,258 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T: Ord> FusedIterator for Union<'_, T> {}
+
+/// A cursor over a `BTreeSet`.
+///
+/// A `Cursor` is like an iterator, except that it can freely seek back-and-forth.
+///
+/// Cursors always point to a gap between two elements in the set, and can
+/// operate on the two immediately adjacent elements.
+///
+/// A `Cursor` is created with the [`BTreeSet::lower_bound`] and [`BTreeSet::upper_bound`] methods.
+#[derive(Clone)]
+#[unstable(feature = "btree_cursors", issue = "107540")]
+pub struct Cursor<'a, K: 'a> {
+    inner: super::map::Cursor<'a, K, SetValZST>,
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl<K: Debug> Debug for Cursor<'_, K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Cursor")
+    }
+}
+
+/// A cursor over a `BTreeSet` with editing operations, and which allows
+/// mutating elements.
+///
+/// A `Cursor` is like an iterator, except that it can freely seek back-and-forth, and can
+/// safely mutate the set during iteration. This is because the lifetime of its yielded
+/// references is tied to its own lifetime, instead of just the underlying set. This means
+/// cursors cannot yield multiple elements at once.
+///
+/// Cursors always point to a gap between two elements in the set, and can
+/// operate on the two immediately adjacent elements.
+///
+/// A `CursorMut` is created with the [`BTreeSet::lower_bound_mut`] and
+/// [`BTreeSet::upper_bound_mut`] methods.
+///
+/// # Safety
+///
+/// Since this cursor allows mutating elements, you must ensure that the
+/// `BTreeSet` invariants are maintained. Specifically:
+///
+/// * The newly inserted element must be unique in the tree.
+/// * All elements in the tree must remain in sorted order.
+#[unstable(feature = "btree_cursors", issue = "107540")]
+pub struct CursorMut<'a, K: 'a, #[unstable(feature = "allocator_api", issue = "32838")] A = Global>
+{
+    inner: super::map::CursorMutKey<'a, K, SetValZST, A>,
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl<K: Debug, A> Debug for CursorMut<'_, K, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("CursorMut")
+    }
+}
+
+impl<'a, K> Cursor<'a, K> {
+    /// Advances the cursor to the next gap, returning the element that it
+    /// moved over.
+    ///
+    /// If the cursor is already at the end of the set then `None` is returned
+    /// and the cursor is not moved.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn next(&mut self) -> Option<&'a K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+
+    /// Advances the cursor to the previous gap, returning the element that it
+    /// moved over.
+    ///
+    /// If the cursor is already at the start of the set then `None` is returned
+    /// and the cursor is not moved.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn prev(&mut self) -> Option<&'a K> {
+        self.inner.prev().map(|(k, _)| k)
+    }
+
+    /// Returns a reference to next element without moving the cursor.
+    ///
+    /// If the cursor is at the end of the set then `None` is returned
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_next(&self) -> Option<&'a K> {
+        self.inner.peek_next().map(|(k, _)| k)
+    }
+
+    /// Returns a reference to the previous element without moving the cursor.
+    ///
+    /// If the cursor is at the start of the set then `None` is returned.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_prev(&self) -> Option<&'a K> {
+        self.inner.peek_prev().map(|(k, _)| k)
+    }
+}
+
+impl<'a, T, A> CursorMut<'a, T, A> {
+    /// Advances the cursor to the next gap, returning the element that it
+    /// moved over.
+    ///
+    /// If the cursor is already at the end of the set then `None` is returned
+    /// and the cursor is not moved.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn next(&mut self) -> Option<&mut T> {
+        self.inner.next().map(|(k, _)| k)
+    }
+
+    /// Advances the cursor to the previous gap, returning the element that it
+    /// moved over.
+    ///
+    /// If the cursor is already at the start of the set then `None` is returned
+    /// and the cursor is not moved.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn prev(&mut self) -> Option<&mut T> {
+        self.inner.prev().map(|(k, _)| k)
+    }
+
+    /// Returns a reference to the next element without moving the cursor.
+    ///
+    /// If the cursor is at the end of the set then `None` is returned.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_next(&mut self) -> Option<&mut T> {
+        self.inner.peek_next().map(|(k, _)| k)
+    }
+
+    /// Returns a reference to the previous element without moving the cursor.
+    ///
+    /// If the cursor is at the start of the set then `None` is returned.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_prev(&mut self) -> Option<&mut T> {
+        self.inner.peek_prev().map(|(k, _)| k)
+    }
+
+    /// Returns a read-only cursor pointing to the same location as the
+    /// `CursorMut`.
+    ///
+    /// The lifetime of the returned `Cursor` is bound to that of the
+    /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
+    /// `CursorMut` is frozen for the lifetime of the `Cursor`.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn as_cursor(&self) -> Cursor<'_, T> {
+        Cursor { inner: self.inner.as_cursor() }
+    }
+}
+
+impl<'a, T: Ord, A: Allocator + Clone> CursorMut<'a, T, A> {
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap before the
+    /// newly inserted element.
+    ///
+    /// # Safety
+    ///
+    /// You must ensure that the `BTreeSet` invariants are maintained.
+    /// Specifically:
+    ///
+    /// * The newly inserted element must be unique in the tree.
+    /// * All elements in the tree must remain in sorted order.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn insert_after_unchecked(&mut self, value: T) {
+        unsafe { self.inner.insert_after_unchecked(value, SetValZST) }
+    }
+
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap after the
+    /// newly inserted element.
+    ///
+    /// # Safety
+    ///
+    /// You must ensure that the `BTreeSet` invariants are maintained.
+    /// Specifically:
+    ///
+    /// * The newly inserted element must be unique in the tree.
+    /// * All elements in the tree must remain in sorted order.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn insert_before_unchecked(&mut self, value: T) {
+        unsafe { self.inner.insert_before_unchecked(value, SetValZST) }
+    }
+
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap before the
+    /// newly inserted element.
+    ///
+    /// If the inserted element is not greater than the element before the
+    /// cursor (if any), or if it not less than the element after the cursor (if
+    /// any), then an [`UnorderedError`] is returned since this would
+    /// invalidate the [`Ord`] invariant between the elements of the set.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn insert_after(&mut self, value: T) -> Result<(), UnorderedError> {
+        self.inner.insert_after(value, SetValZST).map_err(UnorderedError::from_map_error)
+    }
+
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap after the
+    /// newly inserted element.
+    ///
+    /// If the inserted element is not greater than the element before the
+    /// cursor (if any), or if it not less than the element after the cursor (if
+    /// any), then an [`UnorderedError`] is returned since this would
+    /// invalidate the [`Ord`] invariant between the elements of the set.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn insert_before(&mut self, value: T) -> Result<(), UnorderedError> {
+        self.inner.insert_before(value, SetValZST).map_err(UnorderedError::from_map_error)
+    }
+
+    /// Removes the next element from the `BTreeSet`.
+    ///
+    /// The element that was removed is returned. The cursor position is
+    /// unchanged (before the removed element).
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn remove_next(&mut self) -> Option<T> {
+        self.inner.remove_next().map(|(k, _)| k)
+    }
+
+    /// Removes the precending element from the `BTreeSet`.
+    ///
+    /// The element that was removed is returned. The cursor position is
+    /// unchanged (after the removed element).
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn remove_prev(&mut self) -> Option<T> {
+        self.inner.remove_prev().map(|(k, _)| k)
+    }
+}
+
+/// Error type returned by [`CursorMut::insert_before`] and
+/// [`CursorMut::insert_after`] if the element being inserted is not properly
+/// ordered with regards to adjacent elements.
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "btree_cursors", issue = "107540")]
+pub struct UnorderedError {}
+
+impl UnorderedError {
+    fn from_map_error(error: super::map::UnorderedKeyError) -> Self {
+        let super::map::UnorderedKeyError {} = error;
+        Self {}
+    }
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl fmt::Display for UnorderedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "value is not properly ordered relative to neighbors")
+    }
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl Error for UnorderedError {}
 
 #[cfg(test)]
 mod tests;
