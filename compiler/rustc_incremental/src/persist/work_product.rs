@@ -10,6 +10,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use std::fs as std_fs;
 use std::path::Path;
+use std::path::PathBuf;
 use tracing::debug;
 
 /// Copies a CGU work product to the incremental compilation directory, so next compilation can
@@ -18,6 +19,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     sess: &Session,
     cgu_name: &str,
     files: &[(&'static str, &Path)],
+    known_links: &[PathBuf],
 ) -> Option<(WorkProductId, WorkProduct)> {
     debug!(?cgu_name, ?files);
     sess.opts.incremental.as_ref()?;
@@ -26,6 +28,10 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     for (ext, path) in files {
         let file_name = format!("{cgu_name}.{ext}");
         let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
+        if known_links.contains(&path_in_incr_dir) {
+            let _ = saved_files.insert(ext.to_string(), file_name);
+            continue;
+        }
         match link_or_copy(path, &path_in_incr_dir) {
             Ok(_) => {
                 let _ = saved_files.insert(ext.to_string(), file_name);
