@@ -18,6 +18,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
+use rustc_span::{sym, Symbol};
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{FramePointer, LinkSelfContainedComponents, LinkerFeatures};
 use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
@@ -400,6 +401,23 @@ pub struct LocationDetail {
 impl LocationDetail {
     pub(crate) fn all() -> Self {
         Self { file: true, line: true, column: true }
+    }
+}
+
+/// Values for the `-Z fmt-debug` flag.
+#[derive(Copy, Clone, PartialEq, Hash, Debug)]
+pub enum FmtDebug {
+    /// Derive fully-featured implementation
+    Full,
+    /// Print only type name, without fields
+    Shallow,
+    /// `#[derive(Debug)]` and `{:?}` are no-ops
+    None,
+}
+
+impl FmtDebug {
+    pub(crate) fn all() -> [Symbol; 3] {
+        [sym::full, sym::none, sym::shallow]
     }
 }
 
@@ -2962,7 +2980,7 @@ pub enum WasiExecModel {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FunctionReturn,
+        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
         PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks,
@@ -3070,6 +3088,7 @@ pub(crate) mod dep_tracking {
         OutputType,
         RealFileName,
         LocationDetail,
+        FmtDebug,
         BranchProtection,
         OomStrategy,
         LanguageIdentifier,
