@@ -2853,6 +2853,35 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Returns `true` if `self` is an integer multiple of `rhs`, and false otherwise.
+        ///
+        /// This function is equivalent to `self % rhs == 0`, except that it will not panic
+        /// for `rhs == 0`. Instead, `0.is_multiple_of(0) == true`, and for any non-zero `n`,
+        /// `n.is_multiple_of(0) == false`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(unsigned_is_multiple_of)]
+        #[doc = concat!("assert!(6_", stringify!($SelfT), ".is_multiple_of(2));")]
+        #[doc = concat!("assert!(!5_", stringify!($SelfT), ".is_multiple_of(2));")]
+        ///
+        #[doc = concat!("assert!(0_", stringify!($SelfT), ".is_multiple_of(0));")]
+        #[doc = concat!("assert!(!6_", stringify!($SelfT), ".is_multiple_of(0));")]
+        /// ```
+        #[unstable(feature = "unsigned_is_multiple_of", issue = "128101")]
+        #[must_use]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn is_multiple_of(self, rhs: Self) -> bool {
+            match rhs {
+                0 => self == 0,
+                _ => self % rhs == 0,
+            }
+        }
+
         /// Returns `true` if and only if `self == 2^k` for some `k`.
         ///
         /// # Examples
