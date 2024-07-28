@@ -52,7 +52,7 @@ impl Cap {
 /// * Produces `Unique::dangling()` on zero-length allocations.
 /// * Avoids freeing `Unique::dangling()`.
 /// * Catches all overflows in capacity computations (promotes them to "capacity overflow" panics).
-/// * Guards against 32-bit systems allocating more than isize::MAX bytes.
+/// * Guards against 32-bit systems allocating more than `isize::MAX` bytes.
 /// * Guards against overflowing your length.
 /// * Calls `handle_alloc_error` for fallible allocations.
 /// * Contains a `ptr::Unique` and thus endows the user with all related benefits.
@@ -484,7 +484,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
+        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
         unsafe { self.set_ptr_and_cap(ptr, cap) };
         Ok(())
     }
@@ -504,7 +504,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
+        // SAFETY: `finish_grow` would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
         unsafe {
             self.set_ptr_and_cap(ptr, cap);
         }

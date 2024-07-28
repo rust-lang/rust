@@ -21,7 +21,7 @@ impl<T> Storage<T> {
         Storage { state: Cell::new(State::Initial), val: UnsafeCell::new(val) }
     }
 
-    /// Get a pointer to the TLS value. If the TLS variable has been destroyed,
+    /// Gets a pointer to the TLS value. If the TLS variable has been destroyed,
     /// a null pointer is returned.
     ///
     /// The resulting pointer may not be used after thread destruction has

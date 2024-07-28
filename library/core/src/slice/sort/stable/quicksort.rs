@@ -196,7 +196,8 @@ struct PartitionState<T> {
 
 impl<T> PartitionState<T> {
     /// # Safety
-    /// scan and scratch must point to valid disjoint buffers of length len. The
+    ///
+    /// `scan` and `scratch` must point to valid disjoint buffers of length `len`. The
     /// scan buffer must be initialized.
     unsafe fn new(scan: *const T, scratch: *mut T, len: usize) -> Self {
         // SAFETY: See function safety comment.
@@ -208,6 +209,7 @@ impl<T> PartitionState<T> {
     /// branchless core of the partition.
     ///
     /// # Safety
+    ///
     /// This function may be called at most `len` times. If it is called exactly
     /// `len` times the scratch buffer then contains a copy of each element from
     /// the scan buffer exactly once - a permutation, and num_left <= len.

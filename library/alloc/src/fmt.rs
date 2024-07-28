@@ -600,8 +600,7 @@ pub use core::fmt::{LowerHex, Pointer, UpperHex};
 #[cfg(not(no_global_oom_handling))]
 use crate::string;
 
-/// The `format` function takes an [`Arguments`] struct and returns the resulting
-/// formatted string.
+/// Takes an [`Arguments`] struct and returns the resulting formatted string.
 ///
 /// The [`Arguments`] instance can be created with the [`format_args!`] macro.
 ///

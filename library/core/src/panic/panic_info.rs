@@ -152,7 +152,7 @@ impl Display for PanicInfo<'_> {
 }
 
 impl<'a> PanicMessage<'a> {
-    /// Get the formatted message, if it has no arguments to be formatted at runtime.
+    /// Gets the formatted message, if it has no arguments to be formatted at runtime.
     ///
     /// This can be used to avoid allocations in some cases.
     ///

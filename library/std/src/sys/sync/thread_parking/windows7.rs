@@ -95,7 +95,7 @@ const NOTIFIED: i8 = 1;
 // Ordering::Release when writing NOTIFIED (the 'token') in unpark(), and using
 // Ordering::Acquire when reading this state in park() after waking up.
 impl Parker {
-    /// Construct the Windows parker. The UNIX parker implementation
+    /// Constructs the Windows parker. The UNIX parker implementation
     /// requires this to happen in-place.
     pub unsafe fn new_in_place(parker: *mut Parker) {
         parker.write(Self { state: AtomicI8::new(EMPTY) });

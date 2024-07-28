@@ -965,6 +965,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     }
 
     /// Returns an iterator which retrieves elements in heap order.
+    ///
     /// This method consumes the original heap.
     ///
     /// # Examples
@@ -1361,7 +1362,7 @@ struct Hole<'a, T: 'a> {
 }
 
 impl<'a, T> Hole<'a, T> {
-    /// Create a new `Hole` at index `pos`.
+    /// Creates a new `Hole` at index `pos`.
     ///
     /// Unsafe because pos must be within the data slice.
     #[inline]

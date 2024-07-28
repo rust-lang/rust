@@ -114,7 +114,7 @@ impl<T: Sized> Exclusive<T> {
 }
 
 impl<T: ?Sized> Exclusive<T> {
-    /// Get exclusive access to the underlying value.
+    /// Gets exclusive access to the underlying value.
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
@@ -122,7 +122,7 @@ impl<T: ?Sized> Exclusive<T> {
         &mut self.inner
     }
 
-    /// Get pinned exclusive access to the underlying value.
+    /// Gets pinned exclusive access to the underlying value.
     ///
     /// `Exclusive` is considered to _structurally pin_ the underlying
     /// value, which means _unpinned_ `Exclusive`s can produce _unpinned_

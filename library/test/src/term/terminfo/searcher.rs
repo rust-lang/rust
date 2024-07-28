@@ -9,7 +9,7 @@ use std::path::PathBuf;
 #[cfg(test)]
 mod tests;
 
-/// Return path to database entry for `term`
+/// Returns path to database entry for `term`
 #[allow(deprecated)]
 pub(crate) fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     let mut dirs_to_search = Vec::new();

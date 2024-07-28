@@ -196,9 +196,9 @@
 //! * The **provenance** it has, defining the memory it has permission to access.
 //!   Provenance can be absent, in which case the pointer does not have permission to access any memory.
 //!
-//! Under Strict Provenance, a usize *cannot* accurately represent a pointer, and converting from
-//! a pointer to a usize is generally an operation which *only* extracts the address. It is
-//! therefore *impossible* to construct a valid pointer from a usize because there is no way
+//! Under Strict Provenance, a `usize` *cannot* accurately represent a pointer, and converting from
+//! a pointer to a `usize` is generally an operation which *only* extracts the address. It is
+//! therefore *impossible* to construct a valid pointer from a `usize` because there is no way
 //! to restore the address-space and provenance. In other words, pointer-integer-pointer
 //! roundtrips are not possible (in the sense that the resulting pointer is not dereferenceable).
 //!
@@ -234,16 +234,16 @@
 //!
 //! Most code needs no changes to conform to strict provenance, as the only really concerning
 //! operation that *wasn't* obviously already Undefined Behaviour is casts from usize to a
-//! pointer. For code which *does* cast a usize to a pointer, the scope of the change depends
+//! pointer. For code which *does* cast a `usize` to a pointer, the scope of the change depends
 //! on exactly what you're doing.
 //!
-//! In general, you just need to make sure that if you want to convert a usize address to a
+//! In general, you just need to make sure that if you want to convert a `usize` address to a
 //! pointer and then use that pointer to read/write memory, you need to keep around a pointer
 //! that has sufficient provenance to perform that read/write itself. In this way all of your
 //! casts from an address to a pointer are essentially just applying offsets/indexing.
 //!
 //! This is generally trivial to do for simple cases like tagged pointers *as long as you
-//! represent the tagged pointer as an actual pointer and not a usize*. For instance:
+//! represent the tagged pointer as an actual pointer and not a `usize`*. For instance:
 //!
 //! ```
 //! #![feature(strict_provenance)]
@@ -606,7 +606,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// Without provenance, this pointer is not associated with any actual allocation. Such a
 /// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
 /// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers are
-/// little more than a usize address in disguise.
+/// little more than a `usize` address in disguise.
 ///
 /// This is different from `addr as *const T`, which creates a pointer that picks up a previously
 /// exposed provenance. See [`with_exposed_provenance`] for more details on that operation.
@@ -650,7 +650,7 @@ pub const fn dangling<T>() -> *const T {
 /// Without provenance, this pointer is not associated with any actual allocation. Such a
 /// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
 /// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers are
-/// little more than a usize address in disguise.
+/// little more than a `usize` address in disguise.
 ///
 /// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
 /// exposed provenance. See [`with_exposed_provenance_mut`] for more details on that operation.
@@ -687,7 +687,7 @@ pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
 }
 
-/// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
+/// Converts an address back to a pointer, picking up a previously 'exposed' provenance.
 ///
 /// This is a more rigorously specified alternative to `addr as *const T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously exposed by passing it to
@@ -735,7 +735,7 @@ where
     addr as *const T
 }
 
-/// Convert an address back to a mutable pointer, picking up a previously 'exposed' provenance.
+/// Converts an address back to a mutable pointer, picking up a previously 'exposed' provenance.
 ///
 /// This is a more rigorously specified alternative to `addr as *mut T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously passed to
@@ -775,7 +775,7 @@ where
     addr as *mut T
 }
 
-/// Convert a reference to a raw pointer.
+/// Converts a reference to a raw pointer.
 ///
 /// For `r: &T`, `from_ref(r)` is equivalent to `r as *const T` (except for the caveat noted below),
 /// but is a bit safer since it will never silently change type or mutability, in particular if the
@@ -832,7 +832,7 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
     r
 }
 
-/// Convert a mutable reference to a raw pointer.
+/// Converts a mutable reference to a raw pointer.
 ///
 /// For `r: &mut T`, `from_mut(r)` is equivalent to `r as *mut T` (except for the caveat noted
 /// below), but is a bit safer since it will never silently change type or mutability, in particular
@@ -1468,7 +1468,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// # Examples
 ///
-/// Read a usize value from a byte buffer:
+/// Read a `usize` value from a byte buffer:
 ///
 /// ```
 /// use std::mem;
@@ -1679,7 +1679,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// # Examples
 ///
-/// Write a usize value to a byte buffer:
+/// Write a `usize` value to a byte buffer:
 ///
 /// ```
 /// use std::mem;
@@ -2014,7 +2014,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
         let y = cttz_nonzero(a);
         if x < y { x } else { y }
     };
-    // SAFETY: gcdpow has an upper-bound that’s at most the number of bits in a usize.
+    // SAFETY: gcdpow has an upper-bound that’s at most the number of bits in a `usize`.
     let gcd = unsafe { unchecked_shl(1usize, gcdpow) };
     // SAFETY: gcd is always greater or equal to 1.
     if addr & unsafe { unchecked_sub(gcd, 1) } == 0 {
@@ -2213,7 +2213,7 @@ impl<F: FnPtr> fmt::Debug for F {
     }
 }
 
-/// Create a `const` raw pointer to a place, without creating an intermediate reference.
+/// Creates a `const` raw pointer to a place, without creating an intermediate reference.
 ///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
@@ -2287,7 +2287,7 @@ pub macro addr_of($place:expr) {
     &raw const $place
 }
 
-/// Create a `mut` raw pointer to a place, without creating an intermediate reference.
+/// Creates a `mut` raw pointer to a place, without creating an intermediate reference.
 ///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,

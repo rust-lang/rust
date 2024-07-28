@@ -208,7 +208,7 @@ macro_rules! impl_try_from_unbounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
@@ -226,7 +226,7 @@ macro_rules! impl_try_from_lower_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
@@ -248,7 +248,7 @@ macro_rules! impl_try_from_upper_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
@@ -270,7 +270,7 @@ macro_rules! impl_try_from_both_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]

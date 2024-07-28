@@ -230,7 +230,7 @@ pub(super) struct WaitableTimer {
     handle: c::HANDLE,
 }
 impl WaitableTimer {
-    /// Create a high-resolution timer. Will fail before Windows 10, version 1803.
+    /// Creates a high-resolution timer. Will fail before Windows 10, version 1803.
     pub fn high_resolution() -> Result<Self, ()> {
         let handle = unsafe {
             c::CreateWaitableTimerExW(

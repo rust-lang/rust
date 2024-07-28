@@ -167,7 +167,7 @@ impl SimpleMessage {
     }
 }
 
-/// Create and return an `io::Error` for a given `ErrorKind` and constant
+/// Creates and returns an `io::Error` for a given `ErrorKind` and constant
 /// message. This doesn't allocate.
 pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
     $crate::io::error::Error::from_static_message({
@@ -852,7 +852,7 @@ impl Error {
         }
     }
 
-    /// Attempt to downcast the custom boxed error to `E`.
+    /// Attempts to downcast the custom boxed error to `E`.
     ///
     /// If this [`Error`] contains a custom boxed error,
     /// then it would attempt downcasting on the boxed error,

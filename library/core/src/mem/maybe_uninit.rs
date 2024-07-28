@@ -310,7 +310,7 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
-    /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
+    /// Creates a new array of `MaybeUninit<T>` items, in an uninitialized state.
     ///
     /// Note: in a future Rust version this method may become unnecessary
     /// when Rust allows

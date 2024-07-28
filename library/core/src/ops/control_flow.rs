@@ -238,7 +238,7 @@ impl<B, C> ControlFlow<B, C> {
 /// They have mediocre names and non-obvious semantics, so aren't
 /// currently on a path to potential stabilization.
 impl<R: ops::Try> ControlFlow<R, R::Output> {
-    /// Create a `ControlFlow` from any type implementing `Try`.
+    /// Creates a `ControlFlow` from any type implementing `Try`.
     #[inline]
     pub(crate) fn from_try(r: R) -> Self {
         match R::branch(r) {
@@ -247,7 +247,7 @@ impl<R: ops::Try> ControlFlow<R, R::Output> {
         }
     }
 
-    /// Convert a `ControlFlow` into any type implementing `Try`;
+    /// Converts a `ControlFlow` into any type implementing `Try`.
     #[inline]
     pub(crate) fn into_try(self) -> R {
         match self {

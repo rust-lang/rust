@@ -67,7 +67,7 @@ pub unsafe trait UserSafe {
     /// Equivalent to `mem::align_of::<Self>`.
     fn align_of() -> usize;
 
-    /// Construct a pointer to `Self` given a memory range in user space.
+    /// Constructs a pointer to `Self` given a memory range in user space.
     ///
     /// N.B., this takes a size, not a length!
     ///
@@ -77,7 +77,7 @@ pub unsafe trait UserSafe {
     /// correct size and is correctly aligned and points to the right type.
     unsafe fn from_raw_sized_unchecked(ptr: *mut u8, size: usize) -> *mut Self;
 
-    /// Construct a pointer to `Self` given a memory range.
+    /// Constructs a pointer to `Self` given a memory range.
     ///
     /// N.B., this takes a size, not a length!
     ///
@@ -276,7 +276,7 @@ impl<T> User<T>
 where
     T: UserSafe,
 {
-    /// Allocate space for `T` in user memory.
+    /// Allocates space for `T` in user memory.
     pub fn uninitialized() -> Self {
         Self::new_uninit_bytes(mem::size_of::<T>())
     }
@@ -287,7 +287,7 @@ impl<T> User<[T]>
 where
     [T]: UserSafe,
 {
-    /// Allocate space for a `[T]` of `n` elements in user memory.
+    /// Allocates space for a `[T]` of `n` elements in user memory.
     pub fn uninitialized(n: usize) -> Self {
         Self::new_uninit_bytes(n * mem::size_of::<T>())
     }

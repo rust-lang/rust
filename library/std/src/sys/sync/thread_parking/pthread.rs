@@ -92,7 +92,7 @@ pub struct Parker {
 }
 
 impl Parker {
-    /// Construct the UNIX parker in-place.
+    /// Constructs the UNIX parker in-place.
     ///
     /// # Safety
     /// The constructed parker must never be moved.

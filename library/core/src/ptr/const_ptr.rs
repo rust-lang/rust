@@ -61,7 +61,7 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
-    /// Use the pointer value in a new pointer of another type.
+    /// Uses the pointer value in a new pointer of another type.
     ///
     /// In case `meta` is a (fat) pointer to an unsized type, this operation
     /// will ignore the pointer part, whereas for (thin) pointers to sized
