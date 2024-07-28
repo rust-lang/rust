@@ -576,6 +576,42 @@
 //@ revisions: x86_64_wrs_vxworks
 //@ [x86_64_wrs_vxworks] compile-flags: --target x86_64-wrs-vxworks
 //@ [x86_64_wrs_vxworks] needs-llvm-components: x86
+//@ revisions: thumbv6m_nuttx_eabi
+//@ [thumbv6m_nuttx_eabi] compile-flags: --target thumbv6m-nuttx-eabi
+//@ [thumbv6m_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7m_nuttx_eabi
+//@ [thumbv7m_nuttx_eabi] compile-flags: --target thumbv7m-nuttx-eabi
+//@ [thumbv7m_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7em_nuttx_eabi
+//@ [thumbv7em_nuttx_eabi] compile-flags: --target thumbv7em-nuttx-eabi
+//@ [thumbv7em_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7em_nuttx_eabihf
+//@ [thumbv7em_nuttx_eabihf] compile-flags: --target thumbv7em-nuttx-eabihf
+//@ [thumbv7em_nuttx_eabihf] needs-llvm-components: arm
+//@ revisions: thumbv8m_base_nuttx_eabi
+//@ [thumbv8m_base_nuttx_eabi] compile-flags: --target thumbv8m.base-nuttx-eabi
+//@ [thumbv8m_base_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv8m_main_nuttx_eabi
+//@ [thumbv8m_main_nuttx_eabi] compile-flags: --target thumbv8m.main-nuttx-eabi
+//@ [thumbv8m_main_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv8m_main_nuttx_eabihf
+//@ [thumbv8m_main_nuttx_eabihf] compile-flags: --target thumbv8m.main-nuttx-eabihf
+//@ [thumbv8m_main_nuttx_eabihf] needs-llvm-components: arm
+//@ revisions: riscv32imc_unknown_nuttx_elf
+//@ [riscv32imc_unknown_nuttx_elf] compile-flags: --target riscv32imc-unknown-nuttx-elf
+//@ [riscv32imc_unknown_nuttx_elf] needs-llvm-components: riscv
+//@ revisions: riscv32imac_unknown_nuttx_elf
+//@ [riscv32imac_unknown_nuttx_elf] compile-flags: --target riscv32imac-unknown-nuttx-elf
+//@ [riscv32imac_unknown_nuttx_elf] needs-llvm-components: riscv
+//@ revisions: riscv32imafc_unknown_nuttx_elf
+//@ [riscv32imafc_unknown_nuttx_elf] compile-flags: --target riscv32imafc-unknown-nuttx-elf
+//@ [riscv32imafc_unknown_nuttx_elf] needs-llvm-components: riscv
+//@ revisions: riscv64imac_unknown_nuttx_elf
+//@ [riscv64imac_unknown_nuttx_elf] compile-flags: --target riscv64imac-unknown-nuttx-elf
+//@ [riscv64imac_unknown_nuttx_elf] needs-llvm-components: riscv
+//@ revisions: riscv64gc_unknown_nuttx_elf
+//@ [riscv64gc_unknown_nuttx_elf] compile-flags: --target riscv64gc-unknown-nuttx-elf
+//@ [riscv64gc_unknown_nuttx_elf] needs-llvm-components: riscv
 // FIXME: disabled since it requires a custom LLVM until the upstream LLVM adds support for the target (https://github.com/espressif/llvm-project/issues/4)
 /*
     revisions: xtensa_esp32_none_elf

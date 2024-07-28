@@ -79,6 +79,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: PredicateEmittingRelation<InferCtxt<'tcx>>,
     {
+        debug!("super_combine_tys::<{}>({:?}, {:?})", std::any::type_name::<R>(), a, b);
         debug_assert!(!a.has_escaping_bound_vars());
         debug_assert!(!b.has_escaping_bound_vars());
 
@@ -174,9 +175,10 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: PredicateEmittingRelation<InferCtxt<'tcx>>,
     {
-        debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
+        debug!("super_combine_consts::<{}>({:?}, {:?})", std::any::type_name::<R>(), a, b);
         debug_assert!(!a.has_escaping_bound_vars());
         debug_assert!(!b.has_escaping_bound_vars());
+
         if a == b {
             return Ok(a);
         }

@@ -1,6 +1,7 @@
 //! Code which is used by built-in goals that match "structurally", such a auto
 //! traits, `Copy`/`Clone`.
 
+use derive_where::derive_where;
 use rustc_ast_ir::{Movability, Mutability};
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -216,7 +217,10 @@ where
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
 
-        ty::CoroutineClosure(..) => Err(NoSolution),
+        // impl Copy/Clone for CoroutineClosure where Self::TupledUpvars: Copy/Clone
+        ty::CoroutineClosure(_, args) => {
+            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+        }
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
         // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
@@ -384,8 +388,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
 
 /// Relevant types for an async callable, including its inputs, output,
 /// and the return type you get from awaiting the output.
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Debug(bound = ""))]
+#[derive_where(Clone, Copy, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub(in crate::solve) struct AsyncCallableRelevantTypes<I: Interner> {
     pub tupled_inputs_ty: I::Ty,

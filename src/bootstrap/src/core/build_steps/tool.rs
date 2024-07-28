@@ -9,7 +9,7 @@ use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{command, BootstrapCommand};
-use crate::utils::helpers::{add_dylib_path, exe, t};
+use crate::utils::helpers::{add_dylib_path, exe, get_closest_merge_base_commit, git, t};
 use crate::Compiler;
 use crate::Mode;
 use crate::{gha, Kind};
@@ -337,6 +337,7 @@ bootstrap_tool!(
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
+    WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -553,6 +554,56 @@ impl Step for Rustdoc {
         }
         let target = target_compiler.host;
 
+        let bin_rustdoc = || {
+            let sysroot = builder.sysroot(target_compiler);
+            let bindir = sysroot.join("bin");
+            t!(fs::create_dir_all(&bindir));
+            let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
+            let _ = fs::remove_file(&bin_rustdoc);
+            bin_rustdoc
+        };
+
+        // If CI rustc is enabled and we haven't modified the rustdoc sources,
+        // use the precompiled rustdoc from CI rustc's sysroot to speed up bootstrapping.
+        if builder.download_rustc()
+            && target_compiler.stage > 0
+            && builder.rust_info().is_managed_git_subrepository()
+        {
+            let commit = get_closest_merge_base_commit(
+                Some(&builder.config.src),
+                &builder.config.git_config(),
+                &builder.config.stage0_metadata.config.git_merge_commit_email,
+                &[],
+            )
+            .unwrap();
+
+            let librustdoc_src = builder.config.src.join("src/librustdoc");
+            let rustdoc_src = builder.config.src.join("src/tools/rustdoc");
+
+            // FIXME: The change detection logic here is quite similar to `Config::download_ci_rustc_commit`.
+            // It would be better to unify them.
+            let has_changes = !git(Some(&builder.config.src))
+                .allow_failure()
+                .run_always()
+                .args(["diff-index", "--quiet", &commit])
+                .arg("--")
+                .arg(librustdoc_src)
+                .arg(rustdoc_src)
+                .run(builder);
+
+            if !has_changes {
+                let precompiled_rustdoc = builder
+                    .config
+                    .ci_rustc_dir()
+                    .join("bin")
+                    .join(exe("rustdoc", target_compiler.host));
+
+                let bin_rustdoc = bin_rustdoc();
+                builder.copy_link(&precompiled_rustdoc, &bin_rustdoc);
+                return bin_rustdoc;
+            }
+        }
+
         let build_compiler = if builder.download_rustc() && target_compiler.stage == 1 {
             // We already have the stage 1 compiler, we don't need to cut the stage.
             builder.compiler(target_compiler.stage, builder.config.build)
@@ -613,11 +664,7 @@ impl Step for Rustdoc {
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
-            let sysroot = builder.sysroot(target_compiler);
-            let bindir = sysroot.join("bin");
-            t!(fs::create_dir_all(&bindir));
-            let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
-            let _ = fs::remove_file(&bin_rustdoc);
+            let bin_rustdoc = bin_rustdoc();
             builder.copy_link(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
         } else {
@@ -857,6 +904,15 @@ impl Step for LlvmBitcodeLinker {
             &self.extra_features,
         );
 
+        let _guard = builder.msg_tool(
+            Kind::Build,
+            Mode::ToolRustc,
+            bin_name,
+            self.compiler.stage,
+            &self.compiler.host,
+            &self.target,
+        );
+
         cargo.into_cmd().run(builder);
 
         let tool_out = builder
@@ -925,7 +981,7 @@ impl Step for LibcxxVersionTool {
             }
         }
 
-        let version_output = command(executable).capture_stdout().run(builder).stdout();
+        let version_output = command(executable).run_capture_stdout(builder).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();

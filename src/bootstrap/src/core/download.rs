@@ -706,7 +706,7 @@ download-rustc = false
             let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
 
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            let llvm_config_file = t!(File::open(llvm_config));
+            let llvm_config_file = t!(File::options().write(true).open(llvm_config));
 
             t!(llvm_config_file.set_times(file_times));
 

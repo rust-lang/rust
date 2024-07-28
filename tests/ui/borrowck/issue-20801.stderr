@@ -11,7 +11,7 @@ LL |     unsafe { &mut GLOBAL_MUT_T }
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |     unsafe { addr_of_mut!(GLOBAL_MUT_T) }
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |              ~~~~~~~~~~~~~            +
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/issue-20801.rs:27:22

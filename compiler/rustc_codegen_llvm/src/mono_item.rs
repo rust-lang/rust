@@ -108,8 +108,8 @@ impl CodegenCx<'_, '_> {
         llval: &llvm::Value,
         is_declaration: bool,
     ) -> bool {
-        let linkage = llvm::LLVMRustGetLinkage(llval);
-        let visibility = llvm::LLVMRustGetVisibility(llval);
+        let linkage = unsafe { llvm::LLVMRustGetLinkage(llval) };
+        let visibility = unsafe { llvm::LLVMRustGetVisibility(llval) };
 
         if matches!(linkage, llvm::Linkage::InternalLinkage | llvm::Linkage::PrivateLinkage) {
             return true;
@@ -145,8 +145,8 @@ impl CodegenCx<'_, '_> {
         }
 
         // Thread-local variables generally don't support copy relocations.
-        let is_thread_local_var = llvm::LLVMIsAGlobalVariable(llval)
-            .is_some_and(|v| llvm::LLVMIsThreadLocal(v) == llvm::True);
+        let is_thread_local_var = unsafe { llvm::LLVMIsAGlobalVariable(llval) }
+            .is_some_and(|v| unsafe { llvm::LLVMIsThreadLocal(v) } == llvm::True);
         if is_thread_local_var {
             return false;
         }

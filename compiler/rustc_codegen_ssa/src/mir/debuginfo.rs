@@ -194,7 +194,7 @@ fn calculate_debuginfo_offset<
             }
             _ => {
                 // Sanity check for `can_use_in_debuginfo`.
-                debug_assert!(!elem.can_use_in_debuginfo());
+                assert!(!elem.can_use_in_debuginfo());
                 bug!("unsupported var debuginfo projection `{:?}`", projection)
             }
         }
@@ -502,7 +502,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let DebugInfoOffset { direct_offset, indirect_offsets, result: fragment_layout } =
                     calculate_debuginfo_offset(bx, &fragment.projection, var_layout);
-                debug_assert!(indirect_offsets.is_empty());
+                assert!(indirect_offsets.is_empty());
 
                 if fragment_layout.size == Size::ZERO {
                     // Fragment is a ZST, so does not represent anything. Avoid generating anything

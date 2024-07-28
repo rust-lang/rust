@@ -50,7 +50,7 @@ impl OutputMode {
 /// If you want to delay failures until the end of bootstrap, use [delay_failure].
 ///
 /// By default, the command will print its stdout/stderr to stdout/stderr of bootstrap ([OutputMode::Print]).
-/// If you want to handle the output programmatically, use [BootstrapCommand::capture].
+/// If you want to handle the output programmatically, use [BootstrapCommand::run_capture].
 ///
 /// Bootstrap will print a debug log to stdout if the command fails and failure is not allowed.
 ///
@@ -59,8 +59,6 @@ impl OutputMode {
 pub struct BootstrapCommand {
     command: Command,
     pub failure_behavior: BehaviorOnFailure,
-    pub stdout: OutputMode,
-    pub stderr: OutputMode,
     // Run the command even during dry run
     pub run_always: bool,
     // This field makes sure that each command is executed (or disarmed) before it is dropped,
@@ -135,22 +133,23 @@ impl BootstrapCommand {
         self
     }
 
-    /// Capture all output of the command, do not print it.
-    #[must_use]
-    pub fn capture(self) -> Self {
-        Self { stdout: OutputMode::Capture, stderr: OutputMode::Capture, ..self }
-    }
-
-    /// Capture stdout of the command, do not print it.
-    #[must_use]
-    pub fn capture_stdout(self) -> Self {
-        Self { stdout: OutputMode::Capture, ..self }
-    }
-
-    /// Run the command, returning its output.
+    /// Run the command, while printing stdout and stderr.
+    /// Returns true if the command has succeeded.
     #[track_caller]
-    pub fn run(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self)
+    pub fn run(&mut self, builder: &Build) -> bool {
+        builder.run(self, OutputMode::Print, OutputMode::Print).is_success()
+    }
+
+    /// Run the command, while capturing and returning all its output.
+    #[track_caller]
+    pub fn run_capture(&mut self, builder: &Build) -> CommandOutput {
+        builder.run(self, OutputMode::Capture, OutputMode::Capture)
+    }
+
+    /// Run the command, while capturing and returning stdout, and printing stderr.
+    #[track_caller]
+    pub fn run_capture_stdout(&mut self, builder: &Build) -> CommandOutput {
+        builder.run(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Provides access to the stdlib Command inside.
@@ -189,11 +188,7 @@ impl BootstrapCommand {
 impl Debug for BootstrapCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.command)?;
-        write!(
-            f,
-            " (failure_mode={:?}, stdout_mode={:?}, stderr_mode={:?})",
-            self.failure_behavior, self.stdout, self.stderr
-        )
+        write!(f, " (failure_mode={:?})", self.failure_behavior)
     }
 }
 
@@ -205,8 +200,6 @@ impl From<Command> for BootstrapCommand {
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,
-            stdout: OutputMode::Print,
-            stderr: OutputMode::Print,
             run_always: false,
             drop_bomb: DropBomb::arm(program),
         }
@@ -230,17 +223,41 @@ pub fn command<S: AsRef<OsStr>>(program: S) -> BootstrapCommand {
 }
 
 /// Represents the output of an executed process.
-#[allow(unused)]
 pub struct CommandOutput {
     status: CommandStatus,
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
+    stdout: Option<Vec<u8>>,
+    stderr: Option<Vec<u8>>,
 }
 
 impl CommandOutput {
     #[must_use]
-    pub fn did_not_start() -> Self {
-        Self { status: CommandStatus::DidNotStart, stdout: vec![], stderr: vec![] }
+    pub fn did_not_start(stdout: OutputMode, stderr: OutputMode) -> Self {
+        Self {
+            status: CommandStatus::DidNotStart,
+            stdout: match stdout {
+                OutputMode::Print => None,
+                OutputMode::Capture => Some(vec![]),
+            },
+            stderr: match stderr {
+                OutputMode::Print => None,
+                OutputMode::Capture => Some(vec![]),
+            },
+        }
+    }
+
+    #[must_use]
+    pub fn from_output(output: Output, stdout: OutputMode, stderr: OutputMode) -> Self {
+        Self {
+            status: CommandStatus::Finished(output.status),
+            stdout: match stdout {
+                OutputMode::Print => None,
+                OutputMode::Capture => Some(output.stdout),
+            },
+            stderr: match stderr {
+                OutputMode::Print => None,
+                OutputMode::Capture => Some(output.stderr),
+            },
+        }
     }
 
     #[must_use]
@@ -266,7 +283,10 @@ impl CommandOutput {
 
     #[must_use]
     pub fn stdout(&self) -> String {
-        String::from_utf8(self.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
+        String::from_utf8(
+            self.stdout.clone().expect("Accessing stdout of a command that did not capture stdout"),
+        )
+        .expect("Cannot parse process stdout as UTF-8")
     }
 
     #[must_use]
@@ -276,7 +296,10 @@ impl CommandOutput {
 
     #[must_use]
     pub fn stderr(&self) -> String {
-        String::from_utf8(self.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
+        String::from_utf8(
+            self.stderr.clone().expect("Accessing stderr of a command that did not capture stderr"),
+        )
+        .expect("Cannot parse process stderr as UTF-8")
     }
 }
 
@@ -284,18 +307,8 @@ impl Default for CommandOutput {
     fn default() -> Self {
         Self {
             status: CommandStatus::Finished(ExitStatus::default()),
-            stdout: vec![],
-            stderr: vec![],
-        }
-    }
-}
-
-impl From<Output> for CommandOutput {
-    fn from(output: Output) -> Self {
-        Self {
-            status: CommandStatus::Finished(output.status),
-            stdout: output.stdout,
-            stderr: output.stderr,
+            stdout: Some(vec![]),
+            stderr: Some(vec![]),
         }
     }
 }

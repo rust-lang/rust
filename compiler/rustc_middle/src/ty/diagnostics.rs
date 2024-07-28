@@ -188,31 +188,60 @@ fn suggest_changing_unsized_bound(
             continue;
         };
 
-        for (pos, bound) in predicate.bounds.iter().enumerate() {
-            let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound else {
-                continue;
-            };
-            if poly.trait_ref.trait_def_id() != def_id {
-                continue;
-            }
-            if predicate.origin == PredicateOrigin::ImplTrait && predicate.bounds.len() == 1 {
-                // For `impl ?Sized` with no other bounds, suggest `impl Sized` instead.
-                let bound_span = bound.span();
-                if bound_span.can_be_used_for_suggestions() {
-                    let question_span = bound_span.with_hi(bound_span.lo() + BytePos(1));
-                    suggestions.push((
+        let unsized_bounds = predicate
+            .bounds
+            .iter()
+            .enumerate()
+            .filter(|(_, bound)| {
+                if let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound
+                    && poly.trait_ref.trait_def_id() == def_id
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if unsized_bounds.is_empty() {
+            continue;
+        }
+
+        let mut push_suggestion = |sp, msg| suggestions.push((sp, String::new(), msg));
+
+        if predicate.bounds.len() == unsized_bounds.len() {
+            // All the bounds are unsized bounds, e.g.
+            // `T: ?Sized + ?Sized` or `_: impl ?Sized + ?Sized`,
+            // so in this case:
+            // - if it's an impl trait predicate suggest changing the
+            //   the first bound to sized and removing the rest
+            // - Otherwise simply suggest removing the entire predicate
+            if predicate.origin == PredicateOrigin::ImplTrait {
+                let first_bound = unsized_bounds[0].1;
+                let first_bound_span = first_bound.span();
+                if first_bound_span.can_be_used_for_suggestions() {
+                    let question_span =
+                        first_bound_span.with_hi(first_bound_span.lo() + BytePos(1));
+                    push_suggestion(
                         question_span,
-                        String::new(),
                         SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized,
-                    ));
+                    );
+
+                    for (pos, _) in unsized_bounds.iter().skip(1) {
+                        let sp = generics.span_for_bound_removal(where_pos, *pos);
+                        push_suggestion(sp, SuggestChangingConstraintsMessage::RemoveMaybeUnsized);
+                    }
                 }
             } else {
+                let sp = generics.span_for_predicate_removal(where_pos);
+                push_suggestion(sp, SuggestChangingConstraintsMessage::RemoveMaybeUnsized);
+            }
+        } else {
+            // Some of the bounds are other than unsized.
+            // So push separate removal suggestion for each unsized bound
+            for (pos, _) in unsized_bounds {
                 let sp = generics.span_for_bound_removal(where_pos, pos);
-                suggestions.push((
-                    sp,
-                    String::new(),
-                    SuggestChangingConstraintsMessage::RemoveMaybeUnsized,
-                ));
+                push_suggestion(sp, SuggestChangingConstraintsMessage::RemoveMaybeUnsized);
             }
         }
     }
@@ -270,6 +299,19 @@ pub fn suggest_constraining_type_params<'a>(
                 suggest_changing_unsized_bound(generics, &mut suggestions, param, def_id);
             }
         }
+
+        // in the scenario like impl has stricter requirements than trait,
+        // we should not suggest restrict bound on the impl, here we double check
+        // the whether the param already has the constraint by checking `def_id`
+        let bound_trait_defs: Vec<DefId> = generics
+            .bounds_for_param(param.def_id)
+            .flat_map(|bound| {
+                bound.bounds.iter().flat_map(|b| b.trait_ref().and_then(|t| t.trait_def_id()))
+            })
+            .collect();
+
+        constraints
+            .retain(|(_, def_id)| def_id.map_or(true, |def| !bound_trait_defs.contains(&def)));
 
         if constraints.is_empty() {
             continue;
@@ -332,6 +374,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          --
         //          |
         //          replace with: `T: Bar +`
+
         if let Some((span, open_paren_sp)) = generics.bounds_span_for_suggestions(param.def_id) {
             suggest_restrict(span, true, open_paren_sp);
             continue;

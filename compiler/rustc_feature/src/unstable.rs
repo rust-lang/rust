@@ -205,6 +205,8 @@ declare_features! (
     (unstable, lifetime_capture_rules_2024, "1.76.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (unstable, link_cfg, "1.14.0", None),
+    /// Allows using `?Trait` trait bounds in more contexts.
+    (internal, more_maybe_bounds, "CURRENT_RUSTC_VERSION", None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (unstable, multiple_supertrait_upcastable, "1.69.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
@@ -312,6 +314,7 @@ declare_features! (
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
+    (unstable, s390x_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     (unstable, sse4a_target_feature, "1.27.0", Some(44839)),
     (unstable, tbm_target_feature, "1.27.0", Some(44839)),
     (unstable, wasm_target_feature, "1.30.0", Some(44839)),
@@ -339,8 +342,8 @@ declare_features! (
     (unstable, abi_riscv_interrupt, "1.73.0", Some(111889)),
     /// Allows `extern "x86-interrupt" fn()`.
     (unstable, abi_x86_interrupt, "1.17.0", Some(40180)),
-    /// Allows additional const parameter types, such as `&'static str` or user defined types
-    (incomplete, adt_const_params, "1.56.0", Some(95174)),
+    /// Allows additional const parameter types, such as `[u8; 10]` or user defined types
+    (unstable, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
     /// Allows trait methods with arbitrary self types.
@@ -630,6 +633,9 @@ declare_features! (
     (unstable, unsafe_attributes, "1.80.0", Some(123757)),
     /// Allows unsafe on extern declarations and safety qualifiers over internal items.
     (unstable, unsafe_extern_blocks, "1.80.0", Some(123743)),
+    /// Allows const generic parameters to be defined with types that
+    /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
+    (incomplete, unsized_const_params, "CURRENT_RUSTC_VERSION", Some(95174)),
     /// Allows unsized fn parameters.
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.

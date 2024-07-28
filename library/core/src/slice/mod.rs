@@ -726,7 +726,7 @@ impl<T> [T] {
     /// Returns a raw pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     ///
     /// The caller must also ensure that the memory the pointer (non-transitively) points to
     /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
@@ -761,7 +761,7 @@ impl<T> [T] {
     /// Returns an unsafe mutable pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     ///
     /// Modifying the container referenced by this slice may cause its buffer
     /// to be reallocated, which would also make any pointers to it invalid.
@@ -4069,7 +4069,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
     /// let empty: [i32; 0] = [];
     ///
     /// assert!([1, 2, 2, 9].is_sorted());
@@ -4079,7 +4078,7 @@ impl<T> [T] {
     /// assert!(![0.0, 1.0, f32::NAN].is_sorted());
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn is_sorted(&self) -> bool
     where
@@ -4096,8 +4095,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!([1, 2, 2, 9].is_sorted_by(|a, b| a <= b));
     /// assert!(![1, 2, 2, 9].is_sorted_by(|a, b| a < b));
     ///
@@ -4108,7 +4105,7 @@ impl<T> [T] {
     /// assert!(empty.is_sorted_by(|a, b| false));
     /// assert!(empty.is_sorted_by(|a, b| true));
     /// ```
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn is_sorted_by<'a, F>(&'a self, mut compare: F) -> bool
     where
@@ -4128,13 +4125,11 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
     /// assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn is_sorted_by_key<'a, F, K>(&'a self, f: F) -> bool
     where
@@ -4521,6 +4516,121 @@ impl<T> [T] {
         // SAFETY: The `get_many_check_valid()` call checked that all indices
         // are disjunct and in bounds.
         unsafe { Ok(self.get_many_unchecked_mut(indices)) }
+    }
+
+    /// Returns the index that an element reference points to.
+    ///
+    /// Returns `None` if `element` does not point within the slice or if it points between elements.
+    ///
+    /// This method is useful for extending slice iterators like [`slice::split`].
+    ///
+    /// Note that this uses pointer arithmetic and **does not compare elements**.
+    /// To find the index of an element via comparison, use
+    /// [`.iter().position()`](crate::iter::Iterator::position) instead.
+    ///
+    /// # Panics
+    /// Panics if `T` is zero-sized.
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// #![feature(substr_range)]
+    ///
+    /// let nums: &[u32] = &[1, 7, 1, 1];
+    /// let num = &nums[2];
+    ///
+    /// assert_eq!(num, &1);
+    /// assert_eq!(nums.elem_offset(num), Some(2));
+    /// ```
+    /// Returning `None` with an in-between element:
+    /// ```
+    /// #![feature(substr_range)]
+    ///
+    /// let arr: &[[u32; 2]] = &[[0, 1], [2, 3]];
+    /// let flat_arr: &[u32] = arr.as_flattened();
+    ///
+    /// let ok_elm: &[u32; 2] = flat_arr[0..2].try_into().unwrap();
+    /// let weird_elm: &[u32; 2] = flat_arr[1..3].try_into().unwrap();
+    ///
+    /// assert_eq!(ok_elm, &[0, 1]);
+    /// assert_eq!(weird_elm, &[1, 2]);
+    ///
+    /// assert_eq!(arr.elem_offset(ok_elm), Some(0)); // Points to element 0
+    /// assert_eq!(arr.elem_offset(weird_elm), None); // Points between element 0 and 1
+    /// ```
+    #[must_use]
+    #[unstable(feature = "substr_range", issue = "126769")]
+    pub fn elem_offset(&self, element: &T) -> Option<usize> {
+        if T::IS_ZST {
+            panic!("elements are zero-sized");
+        }
+
+        let self_start = self.as_ptr() as usize;
+        let elem_start = element as *const T as usize;
+
+        let byte_offset = elem_start.wrapping_sub(self_start);
+
+        if byte_offset % mem::size_of::<T>() != 0 {
+            return None;
+        }
+
+        let offset = byte_offset / mem::size_of::<T>();
+
+        if offset < self.len() { Some(offset) } else { None }
+    }
+
+    /// Returns the range of indices that a subslice points to.
+    ///
+    /// Returns `None` if `subslice` does not point within the slice or if it points between elements.
+    ///
+    /// This method **does not compare elements**. Instead, this method finds the location in the slice that
+    /// `subslice` was obtained from. To find the index of a subslice via comparison, instead use
+    /// [`.windows()`](slice::windows)[`.position()`](crate::iter::Iterator::position).
+    ///
+    /// This method is useful for extending slice iterators like [`slice::split`].
+    ///
+    /// Note that this may return a false positive (either `Some(0..0)` or `Some(self.len()..self.len())`)
+    /// if `subslice` has a length of zero and points to the beginning or end of another, separate, slice.
+    ///
+    /// # Panics
+    /// Panics if `T` is zero-sized.
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// #![feature(substr_range)]
+    ///
+    /// let nums = &[0, 5, 10, 0, 0, 5];
+    ///
+    /// let mut iter = nums
+    ///     .split(|t| *t == 0)
+    ///     .map(|n| nums.subslice_range(n).unwrap());
+    ///
+    /// assert_eq!(iter.next(), Some(0..0));
+    /// assert_eq!(iter.next(), Some(1..3));
+    /// assert_eq!(iter.next(), Some(4..4));
+    /// assert_eq!(iter.next(), Some(5..6));
+    /// ```
+    #[must_use]
+    #[unstable(feature = "substr_range", issue = "126769")]
+    pub fn subslice_range(&self, subslice: &[T]) -> Option<Range<usize>> {
+        if T::IS_ZST {
+            panic!("elements are zero-sized");
+        }
+
+        let self_start = self.as_ptr() as usize;
+        let subslice_start = subslice.as_ptr() as usize;
+
+        let byte_start = subslice_start.wrapping_sub(self_start);
+
+        if byte_start % core::mem::size_of::<T>() != 0 {
+            return None;
+        }
+
+        let start = byte_start / core::mem::size_of::<T>();
+        let end = start.wrapping_add(subslice.len());
+
+        if start <= self.len() && end <= self.len() { Some(start..end) } else { None }
     }
 }
 

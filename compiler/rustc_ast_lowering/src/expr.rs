@@ -75,10 +75,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(c) => {
-                    let c = self.with_new_scopes(c.value.span, |this| hir::ConstBlock {
-                        def_id: this.local_def_id(c.id),
-                        hir_id: this.lower_node_id(c.id),
-                        body: this.lower_const_body(c.value.span, Some(&c.value)),
+                    let c = self.with_new_scopes(c.value.span, |this| {
+                        let def_id = this.local_def_id(c.id);
+                        hir::ConstBlock {
+                            def_id,
+                            hir_id: this.lower_node_id(c.id),
+                            body: this.with_def_id_parent(def_id, |this| {
+                                this.lower_const_body(c.value.span, Some(&c.value))
+                            }),
+                        }
                     });
                     hir::ExprKind::ConstBlock(c)
                 }
@@ -377,17 +382,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
-                let parent_def_id = self.current_hir_id_owner;
+                let parent_def_id = self.current_def_id_parent;
                 let node_id = self.next_node_id();
 
-                // Add a definition for the in-band const def.
-                self.create_def(
-                    parent_def_id.def_id,
-                    node_id,
-                    kw::Empty,
-                    DefKind::AnonConst,
-                    f.span,
-                );
+                // HACK(min_generic_const_args): see lower_anon_const
+                if !arg.is_potential_trivial_const_arg() {
+                    // Add a definition for the in-band const def.
+                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
+                }
 
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
@@ -622,6 +624,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_source: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
+        let closure_def_id = self.local_def_id(closure_node_id);
         let coroutine_kind = hir::CoroutineKind::Desugared(desugaring_kind, coroutine_source);
 
         // The `async` desugaring takes a resume argument and maintains a `task_context`,
@@ -672,22 +675,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
             lifetime_elision_allowed: false,
         });
 
-        let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(coroutine_kind);
+        let body = self.with_def_id_parent(closure_def_id, move |this| {
+            this.lower_body(move |this| {
+                this.coroutine_kind = Some(coroutine_kind);
 
-            let old_ctx = this.task_context;
-            if task_context.is_some() {
-                this.task_context = task_context;
-            }
-            let res = body(this);
-            this.task_context = old_ctx;
+                let old_ctx = this.task_context;
+                if task_context.is_some() {
+                    this.task_context = task_context;
+                }
+                let res = body(this);
+                this.task_context = old_ctx;
 
-            (params, res)
+                (params, res)
+            })
         });
 
         // `static |<_task_context?>| -> <return_ty> { <body> }`:
         hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
-            def_id: self.local_def_id(closure_node_id),
+            def_id: closure_def_id,
             binder: hir::ClosureBinder::Default,
             capture_clause,
             bound_generic_params: &[],
@@ -966,27 +971,30 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
+        let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
-            let mut coroutine_kind = if this
-                .attrs
-                .get(&closure_hir_id.local_id)
-                .is_some_and(|attrs| attrs.iter().any(|attr| attr.has_name(sym::coroutine)))
-            {
-                Some(hir::CoroutineKind::Coroutine(Movability::Movable))
-            } else {
-                None
-            };
-            let body_id = this.lower_fn_body(decl, |this| {
-                this.coroutine_kind = coroutine_kind;
-                let e = this.lower_expr_mut(body);
-                coroutine_kind = this.coroutine_kind;
-                e
-            });
-            let coroutine_option =
-                this.closure_movability_for_fn(decl, fn_decl_span, coroutine_kind, movability);
-            (body_id, coroutine_option)
+            this.with_def_id_parent(closure_def_id, move |this| {
+                let mut coroutine_kind = if this
+                    .attrs
+                    .get(&closure_hir_id.local_id)
+                    .is_some_and(|attrs| attrs.iter().any(|attr| attr.has_name(sym::coroutine)))
+                {
+                    Some(hir::CoroutineKind::Coroutine(Movability::Movable))
+                } else {
+                    None
+                };
+                let body_id = this.lower_fn_body(decl, |this| {
+                    this.coroutine_kind = coroutine_kind;
+                    let e = this.lower_expr_mut(body);
+                    coroutine_kind = this.coroutine_kind;
+                    e
+                });
+                let coroutine_option =
+                    this.closure_movability_for_fn(decl, fn_decl_span, coroutine_kind, movability);
+                (body_id, coroutine_option)
+            })
         });
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
@@ -994,7 +1002,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_decl = self.lower_fn_decl(decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
-            def_id: self.local_def_id(closure_id),
+            def_id: closure_def_id,
             binder: binder_clause,
             capture_clause,
             bound_generic_params,
@@ -1066,6 +1074,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
+        let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         assert_matches!(
@@ -1075,27 +1084,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         let body = self.with_new_scopes(fn_decl_span, |this| {
-            let inner_decl =
-                FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
+            this.with_def_id_parent(closure_def_id, |this| {
+                let inner_decl =
+                    FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
 
-            // Transform `async |x: u8| -> X { ... }` into
-            // `|x: u8| || -> X { ... }`.
-            let body_id = this.lower_body(|this| {
-                let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
-                    &inner_decl,
-                    |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
-                    fn_decl_span,
-                    body.span,
-                    coroutine_kind,
-                    hir::CoroutineSource::Closure,
-                );
+                // Transform `async |x: u8| -> X { ... }` into
+                // `|x: u8| || -> X { ... }`.
+                let body_id = this.lower_body(|this| {
+                    let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
+                        &inner_decl,
+                        |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
+                        fn_decl_span,
+                        body.span,
+                        coroutine_kind,
+                        hir::CoroutineSource::Closure,
+                    );
 
-                let hir_id = this.lower_node_id(coroutine_kind.closure_id());
-                this.maybe_forward_track_caller(body.span, closure_hir_id, hir_id);
+                    let hir_id = this.lower_node_id(coroutine_kind.closure_id());
+                    this.maybe_forward_track_caller(body.span, closure_hir_id, hir_id);
 
-                (parameters, expr)
-            });
-            body_id
+                    (parameters, expr)
+                });
+                body_id
+            })
         });
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
@@ -1106,7 +1117,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_fn_decl(&decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
-            def_id: self.local_def_id(closure_id),
+            def_id: closure_def_id,
             binder: binder_clause,
             capture_clause,
             bound_generic_params,

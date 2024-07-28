@@ -5,5 +5,5 @@ extern "C" {
 }
 
 fn main() {
-    let _val = unsafe { std::ptr::addr_of!(FOO) }; //~ ERROR: is not supported by Miri
+    let _val = std::ptr::addr_of!(FOO); //~ ERROR: is not supported by Miri
 }

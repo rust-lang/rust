@@ -8,7 +8,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{dynamic_lib_name, fs_wrapper, run, run_fail, rustc};
+use run_make_support::{dynamic_lib_name, rfs, run, run_fail, rustc};
 
 fn main() {
     rustc().input("m1.rs").arg("-Cprefer-dynamic").run();
@@ -16,8 +16,8 @@ fn main() {
     rustc().input("m3.rs").arg("-Cprefer-dynamic").run();
     rustc().input("m4.rs").run();
     run("m4");
-    fs_wrapper::remove_file(dynamic_lib_name("m1"));
-    fs_wrapper::remove_file(dynamic_lib_name("m2"));
-    fs_wrapper::remove_file(dynamic_lib_name("m3"));
+    rfs::remove_file(dynamic_lib_name("m1"));
+    rfs::remove_file(dynamic_lib_name("m2"));
+    rfs::remove_file(dynamic_lib_name("m3"));
     run_fail("m4");
 }

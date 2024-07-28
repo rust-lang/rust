@@ -567,13 +567,6 @@ pub(crate) struct StaticInPattern {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_assoc_const_in_pattern, code = E0158)]
-pub(crate) struct AssocConstInPattern {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(mir_build_const_param_in_pattern, code = E0158)]
 pub(crate) struct ConstParamInPattern {
     #[primary_span]
@@ -589,15 +582,27 @@ pub(crate) struct NonConstPath {
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unreachable_pattern)]
-pub(crate) struct UnreachablePattern {
+pub(crate) struct UnreachablePattern<'tcx> {
     #[label]
     pub(crate) span: Option<Span>,
-    #[label(mir_build_catchall_label)]
-    pub(crate) catchall: Option<Span>,
+    #[subdiagnostic]
+    pub(crate) matches_no_values: Option<UnreachableMatchesNoValues<'tcx>>,
+    #[label(mir_build_unreachable_covered_by_catchall)]
+    pub(crate) covered_by_catchall: Option<Span>,
+    #[label(mir_build_unreachable_covered_by_one)]
+    pub(crate) covered_by_one: Option<Span>,
+    #[note(mir_build_unreachable_covered_by_many)]
+    pub(crate) covered_by_many: Option<MultiSpan>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(mir_build_unreachable_matches_no_values)]
+pub(crate) struct UnreachableMatchesNoValues<'tcx> {
+    pub(crate) ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_const_pattern_depends_on_generic_parameter)]
+#[diag(mir_build_const_pattern_depends_on_generic_parameter, code = E0158)]
 pub(crate) struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
     pub(crate) span: Span,

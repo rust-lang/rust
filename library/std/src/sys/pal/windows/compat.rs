@@ -158,8 +158,10 @@ macro_rules! compat_fn_with_fallback {
             static PTR: AtomicPtr<c_void> = AtomicPtr::new(load as *mut _);
 
             unsafe extern "system" fn load($($argname: $argtype),*) -> $rettype {
-                let func = load_from_module(Module::new($module));
-                func($($argname),*)
+                unsafe {
+                    let func = load_from_module(Module::new($module));
+                    func($($argname),*)
+                }
             }
 
             fn load_from_module(module: Option<Module>) -> F {
@@ -182,8 +184,10 @@ macro_rules! compat_fn_with_fallback {
 
             #[inline(always)]
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
-                let func: F = mem::transmute(PTR.load(Ordering::Relaxed));
-                func($($argname),*)
+                unsafe {
+                    let func: F = mem::transmute(PTR.load(Ordering::Relaxed));
+                    func($($argname),*)
+                }
             }
         }
         #[allow(unused)]
@@ -225,7 +229,7 @@ macro_rules! compat_fn_optional {
             }
             #[inline]
             pub unsafe extern "system" fn $symbol($($argname: $argtype),*) $(-> $rettype)? {
-                $symbol::option().unwrap()($($argname),*)
+                unsafe { $symbol::option().unwrap()($($argname),*) }
             }
         )+
     )

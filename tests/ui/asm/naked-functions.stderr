@@ -5,19 +5,19 @@ LL |     asm!("", options(readonly, nostack), options(pure));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:204:5
+  --> $DIR/naked-functions.rs:168:5
    |
 LL |     compile_error!("this is a user specified error")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:210:5
+  --> $DIR/naked-functions.rs:174:5
    |
 LL |     compile_error!("this is a user specified error");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: asm template must be a string literal
-  --> $DIR/naked-functions.rs:217:10
+  --> $DIR/naked-functions.rs:181:10
    |
 LL |     asm!(invalid_syntax)
    |          ^^^^^^^^^^^^^^
@@ -212,7 +212,7 @@ error[E0787]: asm options unsupported in naked functions: `nomem`, `preserves_fl
 LL |     asm!("", options(nomem, preserves_flags, noreturn));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0787]: asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
+error[E0787]: asm options unsupported in naked functions: `pure`, `readonly`, `nostack`
   --> $DIR/naked-functions.rs:112:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
@@ -249,42 +249,6 @@ warning: Rust ABI is unsupported in naked functions
 LL | pub unsafe fn rust_abi() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:171:1
-   |
-LL | #[inline]
-   | ^^^^^^^^^
-
-error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:178:1
-   |
-LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^
-
-error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:185:1
-   |
-LL | #[inline(never)]
-   | ^^^^^^^^^^^^^^^^
-
-error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:192:1
-   |
-LL | #[inline]
-   | ^^^^^^^^^
-
-error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:194:1
-   |
-LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^
-
-error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:196:1
-   |
-LL | #[inline(never)]
-   | ^^^^^^^^^^^^^^^^
-
-error: aborting due to 33 previous errors; 2 warnings emitted
+error: aborting due to 27 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0787`.

@@ -2,7 +2,7 @@ error[E0432]: unresolved import `test`
   --> $DIR/issue-37887.rs:3:9
    |
 LL |     use test::*;
-   |         ^^^^ maybe a missing crate `test`?
+   |         ^^^^ you might be missing crate `test`
    |
    = help: consider adding `extern crate test` to use the `test` crate
 

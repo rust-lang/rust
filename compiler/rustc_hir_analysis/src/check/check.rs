@@ -26,7 +26,7 @@ use rustc_middle::ty::{
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
@@ -1572,6 +1572,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
                 param_name,
                 param_def_kind: tcx.def_descr(param.def_id),
                 help: errors::UnusedGenericParameterHelp::TyAlias { param_name },
+                usage_spans: vec![],
                 const_param_help,
             });
             diag.code(E0091);

@@ -1,15 +1,5 @@
-error[E0658]: cannot borrow here, since the borrowed element may contain interior mutability
-  --> $DIR/const-promoted-opaque.rs:29:25
-   |
-LL |     let _: &'static _ = &FOO;
-   |                         ^^^^
-   |
-   = note: see issue #80384 <https://github.com/rust-lang/rust/issues/80384> for more information
-   = help: add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0493]: destructor of `helper::Foo` cannot be evaluated at compile-time
-  --> $DIR/const-promoted-opaque.rs:29:26
+  --> $DIR/const-promoted-opaque.rs:28:26
    |
 LL |     let _: &'static _ = &FOO;
    |                          ^^^ the destructor for this type cannot be evaluated in constants
@@ -17,14 +7,8 @@ LL |     let _: &'static _ = &FOO;
 LL | };
    | - value is dropped here
 
-error[E0492]: constants cannot refer to interior mutable data
-  --> $DIR/const-promoted-opaque.rs:34:19
-   |
-LL | const BAZ: &Foo = &FOO;
-   |                   ^^^^ this borrow of an interior mutable value may end up in the final value
-
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-promoted-opaque.rs:38:26
+  --> $DIR/const-promoted-opaque.rs:37:26
    |
 LL |     let _: &'static _ = &FOO;
    |            ----------    ^^^ creates a temporary value which is freed while still in use
@@ -34,38 +18,7 @@ LL |
 LL | }
    | - temporary value is freed at the end of this statement
 
-error[E0391]: cycle detected when computing type of opaque `helper::Foo::{opaque#0}`
-  --> $DIR/const-promoted-opaque.rs:14:20
-   |
-LL |     pub type Foo = impl Sized;
-   |                    ^^^^^^^^^^
-   |
-note: ...which requires borrow-checking `helper::FOO`...
-  --> $DIR/const-promoted-opaque.rs:18:5
-   |
-LL |     pub const FOO: Foo = String::new();
-   |     ^^^^^^^^^^^^^^^^^^
-note: ...which requires promoting constants in MIR for `helper::FOO`...
-  --> $DIR/const-promoted-opaque.rs:18:5
-   |
-LL |     pub const FOO: Foo = String::new();
-   |     ^^^^^^^^^^^^^^^^^^
-note: ...which requires const checking `helper::FOO`...
-  --> $DIR/const-promoted-opaque.rs:18:5
-   |
-LL |     pub const FOO: Foo = String::new();
-   |     ^^^^^^^^^^^^^^^^^^
-   = note: ...which requires computing whether `helper::Foo` is freeze...
-   = note: ...which requires evaluating trait selection obligation `helper::Foo: core::marker::Freeze`...
-   = note: ...which again requires computing type of opaque `helper::Foo::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `helper::Foo::{opaque#0}`
-  --> $DIR/const-promoted-opaque.rs:14:20
-   |
-LL |     pub type Foo = impl Sized;
-   |                    ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+error: aborting due to 2 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0391, E0492, E0493, E0658, E0716.
-For more information about an error, try `rustc --explain E0391`.
+Some errors have detailed explanations: E0493, E0716.
+For more information about an error, try `rustc --explain E0493`.

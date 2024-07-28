@@ -1043,11 +1043,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                 let load = self.load(llty, llptr, align);
                 scalar_load_metadata(self, load, scalar);
-                if scalar.is_bool() {
-                    self.trunc(load, self.type_i1())
-                } else {
-                    load
-                }
+                if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
             };
 
             OperandValue::Pair(
@@ -1795,18 +1791,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
         let int_max = |signed: bool, int_width: u64| -> u128 {
             let shift_amount = 128 - int_width;
-            if signed {
-                i128::MAX as u128 >> shift_amount
-            } else {
-                u128::MAX >> shift_amount
-            }
+            if signed { i128::MAX as u128 >> shift_amount } else { u128::MAX >> shift_amount }
         };
         let int_min = |signed: bool, int_width: u64| -> i128 {
-            if signed {
-                i128::MIN >> (128 - int_width)
-            } else {
-                0
-            }
+            if signed { i128::MIN >> (128 - int_width) } else { 0 }
         };
 
         let compute_clamp_bounds_single = |signed: bool, int_width: u64| -> (u128, u128) {

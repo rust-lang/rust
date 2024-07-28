@@ -70,7 +70,7 @@ For more docs on how to build and test see [build_system/usage.txt](build_system
 |FreeBSD|✅[^no-rustup]|❓|❓|❓|
 |AIX|❌[^xcoff]|N/A|N/A|❌[^xcoff]|
 |Other unixes|❓|❓|❓|❓|
-|macOS|✅|✅[^no-rustup]|N/A|N/A|
+|macOS|✅|✅|N/A|N/A|
 |Windows|✅[^no-rustup]|❌|N/A|N/A|
 
 ✅: Fully supported and tested

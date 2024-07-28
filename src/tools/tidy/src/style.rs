@@ -18,9 +18,9 @@
 // ignore-tidy-dbg
 
 use crate::walk::{filter_dirs, walk};
-use regex::RegexSet;
+use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
-use std::{ffi::OsStr, path::Path};
+use std::{ffi::OsStr, path::Path, sync::LazyLock};
 
 #[cfg(test)]
 mod tests;
@@ -110,14 +110,24 @@ const ROOT_PROBLEMATIC_CONSTS: &[u32] = &[
     173390526, 721077,
 ];
 
+const LETTER_DIGIT: &[(char, char)] = &[('A', '4'), ('B', '8'), ('E', '3')];
+
 // Returns all permutations of problematic consts, over 2000 elements.
 fn generate_problematic_strings(
     consts: &[u32],
     letter_digit: &FxHashMap<char, char>,
 ) -> Vec<String> {
     generate_problems(consts, letter_digit)
-        .flat_map(|v| vec![v.to_string(), format!("{:x}", v), format!("{:X}", v)])
+        .flat_map(|v| vec![v.to_string(), format!("{:X}", v)])
         .collect()
+}
+
+static PROBLEMATIC_CONSTS_STRINGS: LazyLock<Vec<String>> = LazyLock::new(|| {
+    generate_problematic_strings(ROOT_PROBLEMATIC_CONSTS, &LETTER_DIGIT.iter().cloned().collect())
+});
+
+fn contains_problematic_const(trimmed: &str) -> bool {
+    PROBLEMATIC_CONSTS_STRINGS.iter().any(|s| trimmed.to_uppercase().contains(s))
 }
 
 const INTERNAL_COMPILER_DOCS_LINE: &str = "#### This error code is internal to the compiler and will not be emitted with normal Rust code.";
@@ -316,14 +326,14 @@ pub fn check(path: &Path, bad: &mut bool) {
         // We only check CSS files in rustdoc.
         path.extension().map_or(false, |e| e == "css") && !is_in(path, "src", "librustdoc")
     }
-    let problematic_consts_strings = generate_problematic_strings(
-        ROOT_PROBLEMATIC_CONSTS,
-        &[('A', '4'), ('B', '8'), ('E', '3')].iter().cloned().collect(),
-    );
+
     // This creates a RegexSet as regex contains performance optimizations to be able to deal with these over
     // 2000 needles efficiently. This runs over the entire source code, so performance matters.
-    let problematic_regex = RegexSet::new(problematic_consts_strings.as_slice()).unwrap();
-
+    let problematic_regex = RegexSetBuilder::new(PROBLEMATIC_CONSTS_STRINGS.as_slice())
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+    let style_file = Path::new(file!());
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
@@ -389,10 +399,15 @@ pub fn check(path: &Path, bad: &mut bool) {
         let mut lines = 0;
         let mut last_safety_comment = false;
         let mut comment_block: Option<(usize, usize)> = None;
-        let is_test = file.components().any(|c| c.as_os_str() == "tests");
+        let is_test = file.components().any(|c| c.as_os_str() == "tests")
+            || file.file_stem().unwrap() == "tests";
+        let is_style = file.ends_with(style_file) || style_file.ends_with(file);
+        let is_style_test =
+            is_test && file.parent().unwrap().ends_with(style_file.with_extension(""));
         // scanning the whole file for multiple needles at once is more efficient than
         // executing lines times needles separate searches.
-        let any_problematic_line = problematic_regex.is_match(contents);
+        let any_problematic_line =
+            !is_style && !is_style_test && problematic_regex.is_match(contents);
         for (i, line) in contents.split('\n').enumerate() {
             if line.is_empty() {
                 if i == 0 {
@@ -451,7 +466,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             if line.contains('\r') {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
             }
-            if filename != "style.rs" {
+            if !is_style {
                 // Allow using TODO in diagnostic suggestions by marking the
                 // relevant line with `// ignore-tidy-todo`.
                 if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {
@@ -462,12 +477,8 @@ pub fn check(path: &Path, bad: &mut bool) {
                 if trimmed.contains("//") && trimmed.contains(" XXX") {
                     err("Instead of XXX use FIXME")
                 }
-                if any_problematic_line {
-                    for s in problematic_consts_strings.iter() {
-                        if trimmed.contains(s) {
-                            err("Don't use magic numbers that spell things (consider 0x12345678)");
-                        }
-                    }
+                if any_problematic_line && contains_problematic_const(trimmed) {
+                    err("Don't use magic numbers that spell things (consider 0x12345678)");
                 }
             }
             // for now we just check libcore

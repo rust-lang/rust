@@ -11,7 +11,7 @@ LL | static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
 help: use `addr_of!` instead to create a raw pointer
    |
 LL | static mut S: *const u8 = unsafe { addr_of!(S) as *const *const u8 as *const u8 };
-   |                                    ~~~~~~~~~~~
+   |                                    ~~~~~~~~~ +
 
 warning: 1 warning emitted
 

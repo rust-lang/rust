@@ -76,3 +76,17 @@ fn test_nested() {
         Struct(Variant.1, Variant.1),
     ));
 }
+
+#[test]
+fn test_empty() {
+    // `TY = Result<bool, !>`
+    const TY: Ty = Ty::Enum(&[Ty::Bool, Ty::Enum(&[])]);
+    assert_exhaustive(pats!(TY;
+        Variant.0,
+    ));
+    let ty = Ty::Tuple(&[Ty::Bool, TY]);
+    assert_exhaustive(pats!(ty;
+        (true, Variant.0),
+        (false, Variant.0),
+    ));
+}

@@ -1,6 +1,7 @@
 //! Verify that we manage to propagate the value of aggregate `a` even without directly mentioning
 //! the contained scalars.
 //@ test-mir-pass: DataflowConstProp
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 
 const Foo: (u32, u32) = (5, 3);
 

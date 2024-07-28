@@ -14,6 +14,7 @@
 //! trait references and bounds.
 
 mod bounds;
+mod cmse;
 pub mod errors;
 pub mod generics;
 mod lint;
@@ -54,7 +55,6 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
-use std::fmt::Display;
 use std::slice;
 
 /// A path segment that is semantically allowed to have generic arguments.
@@ -189,6 +189,25 @@ pub trait HirTyLowerer<'tcx> {
         Self: Sized,
     {
         self
+    }
+}
+
+/// The "qualified self" of an associated item path.
+///
+/// For diagnostic purposes only.
+enum AssocItemQSelf {
+    Trait(DefId),
+    TyParam(LocalDefId, Span),
+    SelfTyAlias,
+}
+
+impl AssocItemQSelf {
+    fn to_string(&self, tcx: TyCtxt<'_>) -> String {
+        match *self {
+            Self::Trait(def_id) => tcx.def_path_str(def_id),
+            Self::TyParam(def_id, _) => tcx.hir().ty_param_name(def_id).to_string(),
+            Self::SelfTyAlias => kw::SelfUpper.to_string(),
+        }
     }
 }
 
@@ -471,11 +490,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        let did = ct.value.def_id;
-                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
-                        ty::Const::from_anon_const(tcx, did).into()
+                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::Param(param.def_id))
+                            .into()
                     }
-                    (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
+                    (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
                     }
                     (kind, arg) => span_bug!(
@@ -802,6 +820,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn probe_single_ty_param_bound_for_assoc_ty(
         &self,
         ty_param_def_id: LocalDefId,
+        ty_param_span: Span,
         assoc_name: Ident,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
@@ -811,19 +830,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let predicates = &self.probe_ty_param_bounds(span, ty_param_def_id, assoc_name).predicates;
         debug!("predicates={:#?}", predicates);
 
-        let param_name = tcx.hir().ty_param_name(ty_param_def_id);
         self.probe_single_bound_for_assoc_item(
             || {
-                traits::transitive_bounds_that_define_assoc_item(
-                    tcx,
-                    predicates
-                        .iter()
-                        .filter_map(|(p, _)| Some(p.as_trait_clause()?.map_bound(|t| t.trait_ref))),
-                    assoc_name,
-                )
+                let trait_refs = predicates
+                    .iter()
+                    .filter_map(|(p, _)| Some(p.as_trait_clause()?.map_bound(|t| t.trait_ref)));
+                traits::transitive_bounds_that_define_assoc_item(tcx, trait_refs, assoc_name)
             },
-            param_name,
-            Some(ty_param_def_id),
+            AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span),
             ty::AssocKind::Type,
             assoc_name,
             span,
@@ -835,12 +849,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// This fails if there is no such bound in the list of candidates or if there are multiple
     /// candidates in which case it reports ambiguity.
-    #[instrument(level = "debug", skip(self, all_candidates, ty_param_name, constraint), ret)]
+    #[instrument(level = "debug", skip(self, all_candidates, qself, constraint), ret)]
     fn probe_single_bound_for_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        ty_param_name: impl Display,
-        ty_param_def_id: Option<LocalDefId>,
+        qself: AssocItemQSelf,
         assoc_kind: ty::AssocKind,
         assoc_name: Ident,
         span: Span,
@@ -858,8 +871,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let Some(bound) = matching_candidates.next() else {
             let reported = self.complain_about_assoc_item_not_found(
                 all_candidates,
-                &ty_param_name.to_string(),
-                ty_param_def_id,
+                qself,
                 assoc_kind,
                 assoc_name,
                 span,
@@ -872,13 +884,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let Some(bound2) = matching_candidates.next() {
             debug!(?bound2);
 
-            let assoc_kind_str = assoc_kind_str(assoc_kind);
-            let ty_param_name = &ty_param_name.to_string();
+            let assoc_kind_str = errors::assoc_kind_str(assoc_kind);
+            let qself_str = qself.to_string(tcx);
             let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
                 span,
                 assoc_kind: assoc_kind_str,
                 assoc_name,
-                ty_param_name,
+                qself: &qself_str,
             });
             // Provide a more specific error code index entry for equality bindings.
             err.code(
@@ -912,7 +924,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
-                                        ty::Const::from_anon_const(tcx, ct.def_id).into()
+                                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No)
+                                            .into()
                                     }
                                 };
                                 // FIXME(#97583): This isn't syntactically well-formed!
@@ -928,7 +941,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.span_suggestion_verbose(
                             span.with_hi(assoc_name.span.lo()),
                             "use fully-qualified syntax to disambiguate",
-                            format!("<{ty_param_name} as {}>::", bound.print_only_trait_path()),
+                            format!("<{qself_str} as {}>::", bound.print_only_trait_path()),
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -942,7 +955,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if !where_bounds.is_empty() {
                 err.help(format!(
                     "consider introducing a new type parameter `T` and adding `where` constraints:\
-                     \n    where\n        T: {ty_param_name},\n{}",
+                     \n    where\n        T: {qself_str},\n{}",
                     where_bounds.join(",\n"),
                 ));
             }
@@ -996,11 +1009,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         let assoc_ident = assoc_segment.ident;
-        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
-            path.res
-        } else {
-            Res::Err
-        };
 
         // Check if we have an enum variant or an inherent associated type.
         let mut variant_resolution = None;
@@ -1037,6 +1045,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
+        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
+            path.res
+        } else {
+            Res::Err
+        };
+
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&qself_ty.kind(), qself_res) {
@@ -1055,8 +1069,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             ty::Binder::dummy(trait_ref.instantiate_identity()),
                         )
                     },
-                    kw::SelfUpper,
-                    None,
+                    AssocItemQSelf::SelfTyAlias,
                     ty::AssocKind::Type,
                     assoc_ident,
                     span,
@@ -1068,6 +1081,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
             ) => self.probe_single_ty_param_bound_for_assoc_ty(
                 param_did.expect_local(),
+                qself.span,
                 assoc_ident,
                 span,
             )?,
@@ -1087,7 +1101,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
 
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
-                    if let Some(suggested_name) = find_best_match_for_name(
+                    if let Some(variant_name) = find_best_match_for_name(
                         &adt_def
                             .variants()
                             .iter()
@@ -1095,12 +1109,66 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .collect::<Vec<Symbol>>(),
                         assoc_ident.name,
                         None,
-                    ) {
-                        err.span_suggestion(
-                            assoc_ident.span,
+                    ) && let Some(variant) =
+                        adt_def.variants().iter().find(|s| s.name == variant_name)
+                    {
+                        let mut suggestion = vec![(assoc_ident.span, variant_name.to_string())];
+                        if let hir::Node::Stmt(hir::Stmt {
+                            kind: hir::StmtKind::Semi(ref expr),
+                            ..
+                        })
+                        | hir::Node::Expr(ref expr) = tcx.parent_hir_node(hir_ref_id)
+                            && let hir::ExprKind::Struct(..) = expr.kind
+                        {
+                            match variant.ctor {
+                                None => {
+                                    // struct
+                                    suggestion = vec![(
+                                        assoc_ident.span.with_hi(expr.span.hi()),
+                                        if variant.fields.is_empty() {
+                                            format!("{variant_name} {{}}")
+                                        } else {
+                                            format!(
+                                                "{variant_name} {{ {} }}",
+                                                variant
+                                                    .fields
+                                                    .iter()
+                                                    .map(|f| format!("{}: /* value */", f.name))
+                                                    .collect::<Vec<_>>()
+                                                    .join(", ")
+                                            )
+                                        },
+                                    )];
+                                }
+                                Some((hir::def::CtorKind::Fn, def_id)) => {
+                                    // tuple
+                                    let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
+                                    let inputs = fn_sig.inputs().skip_binder();
+                                    suggestion = vec![(
+                                        assoc_ident.span.with_hi(expr.span.hi()),
+                                        format!(
+                                            "{variant_name}({})",
+                                            inputs
+                                                .iter()
+                                                .map(|i| format!("/* {i} */"))
+                                                .collect::<Vec<_>>()
+                                                .join(", ")
+                                        ),
+                                    )];
+                                }
+                                Some((hir::def::CtorKind::Const, _)) => {
+                                    // unit
+                                    suggestion = vec![(
+                                        assoc_ident.span.with_hi(expr.span.hi()),
+                                        variant_name.to_string(),
+                                    )];
+                                }
+                            }
+                        }
+                        err.multipart_suggestion_verbose(
                             "there is a variant with a similar name",
-                            suggested_name,
-                            Applicability::MaybeIncorrect,
+                            suggestion,
+                            Applicability::HasPlaceholders,
                         );
                     } else {
                         err.span_label(
@@ -2140,7 +2208,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let length = match length {
                     hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
                     hir::ArrayLen::Body(constant) => {
-                        ty::Const::from_anon_const(tcx, constant.def_id)
+                        ty::Const::from_const_arg(tcx, constant, ty::FeedConstTy::No)
                     }
                 };
 
@@ -2324,6 +2392,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, safety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
+        // reject function types that violate cmse ABI requirements
+        cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);
+
         // Find any late-bound regions declared in return type that do
         // not appear in the arguments. These are not well-formed.
         //
@@ -2462,13 +2533,5 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self.dcx().emit_err(AmbiguousLifetimeBound { span });
         }
         Some(r)
-    }
-}
-
-fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
-    match kind {
-        ty::AssocKind::Fn => "function",
-        ty::AssocKind::Const => "constant",
-        ty::AssocKind::Type => "type",
     }
 }

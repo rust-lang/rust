@@ -4,6 +4,7 @@ use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, FulfillmentError, ObligationCause};
 
 use hir::LangItem;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -19,6 +20,8 @@ pub enum CopyImplementationError<'tcx> {
 }
 
 pub enum ConstParamTyImplementationError<'tcx> {
+    UnsizedConstParamsFeatureRequired,
+    InvalidInnerTyOfBuiltinTy(Vec<(Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdtOrBuiltinAllowed,
 }
@@ -77,9 +80,9 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     Ok(())
 }
 
-/// Checks that the fields of the type (an ADT) all implement `ConstParamTy`.
+/// Checks that the fields of the type (an ADT) all implement `(Unsized?)ConstParamTy`.
 ///
-/// If fields don't implement `ConstParamTy`, return an error containing a list of
+/// If fields don't implement `(Unsized?)ConstParamTy`, return an error containing a list of
 /// those violating fields.
 ///
 /// If it's not an ADT, int ty, `bool` or `char`, returns `Err(NotAnAdtOrBuiltinAllowed)`.
@@ -87,35 +90,95 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
+    lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    let (adt, args) = match self_type.kind() {
-        // `core` provides these impls.
-        ty::Uint(_)
-        | ty::Int(_)
-        | ty::Bool
-        | ty::Char
-        | ty::Str
-        | ty::Array(..)
-        | ty::Slice(_)
-        | ty::Ref(.., hir::Mutability::Not)
-        | ty::Tuple(_) => return Ok(()),
+    assert!(matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
 
-        &ty::Adt(adt, args) => (adt, args),
+    let inner_tys: Vec<_> = match *self_type.kind() {
+        // Trivially okay as these types are all:
+        // - Sized
+        // - Contain no nested types
+        // - Have structural equality
+        ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => return Ok(()),
+
+        // Handle types gated under `feature(unsized_const_params)`
+        // FIXME(unsized_const_params): Make `const N: [u8]` work then forbid references
+        ty::Slice(inner_ty) | ty::Ref(_, inner_ty, Mutability::Not)
+            if lang_item == LangItem::UnsizedConstParamTy =>
+        {
+            vec![inner_ty]
+        }
+        ty::Str if lang_item == LangItem::UnsizedConstParamTy => {
+            vec![Ty::new_slice(tcx, tcx.types.u8)]
+        }
+        ty::Str | ty::Slice(..) | ty::Ref(_, _, Mutability::Not) => {
+            return Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired);
+        }
+
+        ty::Array(inner_ty, _) => vec![inner_ty],
+
+        // `str` morally acts like a newtype around `[u8]`
+        ty::Tuple(inner_tys) => inner_tys.into_iter().collect(),
+
+        ty::Adt(adt, args) if adt.is_enum() || adt.is_struct() => {
+            all_fields_implement_trait(
+                tcx,
+                param_env,
+                self_type,
+                adt,
+                args,
+                parent_cause.clone(),
+                lang_item,
+            )
+            .map_err(ConstParamTyImplementationError::InfrigingFields)?;
+
+            vec![]
+        }
 
         _ => return Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed),
     };
 
-    all_fields_implement_trait(
-        tcx,
-        param_env,
-        self_type,
-        adt,
-        args,
-        parent_cause,
-        hir::LangItem::ConstParamTy,
-    )
-    .map_err(ConstParamTyImplementationError::InfrigingFields)?;
+    let mut infringing_inner_tys = vec![];
+    for inner_ty in inner_tys {
+        // We use an ocx per inner ty for better diagnostics
+        let infcx = tcx.infer_ctxt().build();
+        let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
+
+        ocx.register_bound(
+            parent_cause.clone(),
+            param_env,
+            inner_ty,
+            tcx.require_lang_item(lang_item, Some(parent_cause.span)),
+        );
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            infringing_inner_tys.push((inner_ty, InfringingFieldsReason::Fulfill(errors)));
+            continue;
+        }
+
+        // Check regions assuming the self type of the impl is WF
+        let outlives_env = OutlivesEnvironment::with_bounds(
+            param_env,
+            infcx.implied_bounds_tys(
+                param_env,
+                parent_cause.body_id,
+                &FxIndexSet::from_iter([self_type]),
+            ),
+        );
+        let errors = infcx.resolve_regions(&outlives_env);
+        if !errors.is_empty() {
+            infringing_inner_tys.push((inner_ty, InfringingFieldsReason::Regions(errors)));
+            continue;
+        }
+    }
+
+    if !infringing_inner_tys.is_empty() {
+        return Err(ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(
+            infringing_inner_tys,
+        ));
+    }
 
     Ok(())
 }

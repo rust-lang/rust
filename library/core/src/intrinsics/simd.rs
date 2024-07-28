@@ -243,18 +243,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 
-    /// Shuffle two vectors by const indices.
-    ///
-    /// `T` must be a vector.
-    ///
-    /// `U` must be a vector with the same element type as `T` and the same length as `IDX`.
-    ///
-    /// Returns a new vector such that element `i` is selected from `xy[IDX[i]]`, where `xy`
-    /// is the concatenation of `x` and `y`. It is a compile-time error if `IDX[i]` is out-of-bounds
-    /// of `xy`.
-    #[rustc_nounwind]
-    pub fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
-
     /// Read a vector of pointers.
     ///
     /// `T` must be a vector.

@@ -172,12 +172,10 @@ impl Thread {
     pub fn join(self) {
         cfg_if::cfg_if! {
             if #[cfg(target_feature = "atomics")] {
-                unsafe {
-                    let ret = libc::pthread_join(self.id, ptr::null_mut());
-                    mem::forget(self);
-                    if ret != 0 {
-                        rtabort!("failed to join thread: {}", io::Error::from_raw_os_error(ret));
-                    }
+                let id = mem::ManuallyDrop::new(self).id;
+                let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
+                if ret != 0 {
+                    rtabort!("failed to join thread: {}", io::Error::from_raw_os_error(ret));
                 }
             } else {
                 self.0

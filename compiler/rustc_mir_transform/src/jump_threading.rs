@@ -509,6 +509,13 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                     BinOp::Ne => ScalarInt::FALSE,
                     _ => return None,
                 };
+                if value.const_.ty().is_floating_point() {
+                    // Floating point equality does not follow bit-patterns.
+                    // -0.0 and NaN both have special rules for equality,
+                    // and therefore we cannot use integer comparisons for them.
+                    // Avoid handling them, though this could be extended in the future.
+                    return None;
+                }
                 let value = value.const_.normalize(self.tcx, self.param_env).try_to_scalar_int()?;
                 let conds = conditions.map(self.arena, |c| Condition {
                     value,

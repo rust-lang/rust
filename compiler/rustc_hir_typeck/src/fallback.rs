@@ -175,7 +175,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         };
         debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
 
-        let span = self.infcx.type_var_origin(ty).map(|origin| origin.span).unwrap_or(DUMMY_SP);
+        let span = ty.ty_vid().map_or(DUMMY_SP, |vid| self.infcx.type_var_origin(vid).span);
         self.demand_eqtype(span, ty, fallback);
         self.fallback_has_occurred.set(true);
         true

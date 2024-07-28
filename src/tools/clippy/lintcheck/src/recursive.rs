@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct DriverInfo {
     pub package_name: String,
+    pub version: String,
 }
 
 pub(crate) fn serialize_line<T, W>(value: &T, writer: &mut W)
@@ -61,10 +62,17 @@ fn process_stream(
     let mut stderr = String::new();
     stream.read_to_string(&mut stderr).unwrap();
 
+    // It's 99% likely that dependencies compiled with recursive mode are on crates.io
+    // and therefore on docs.rs. This links to the sources directly, do avoid invalid
+    // links due to remaped paths. See rust-lang/docs.rs#2551 for more details.
+    let base_url = format!(
+        "https://docs.rs/crate/{}/{}/source/src/{{file}}#{{line}}",
+        driver_info.package_name, driver_info.version
+    );
     let messages = stderr
         .lines()
         .filter_map(|json_msg| serde_json::from_str::<Diagnostic>(json_msg).ok())
-        .filter_map(ClippyWarning::new);
+        .filter_map(|diag| ClippyWarning::new(diag, &base_url, &driver_info.package_name));
 
     for message in messages {
         sender.send(message).unwrap();

@@ -2,12 +2,12 @@ error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-import.rs:1:5
    |
 LL | use foo::bar;
-   |     ^^^ maybe a missing crate `foo`?
+   |     ^^^ you might be missing crate `foo`
    |
    = help: consider adding `extern crate foo` to use the `foo` crate
 
 error[E0432]: unresolved import `bar::Baz`
-  --> $DIR/unresolved-import.rs:5:5
+  --> $DIR/unresolved-import.rs:6:5
    |
 LL | use bar::Baz as x;
    |     ^^^^^---^^^^^
@@ -16,7 +16,7 @@ LL | use bar::Baz as x;
    |     no `Baz` in `bar`
 
 error[E0432]: unresolved import `food::baz`
-  --> $DIR/unresolved-import.rs:10:5
+  --> $DIR/unresolved-import.rs:12:5
    |
 LL | use food::baz;
    |     ^^^^^^---
@@ -25,7 +25,7 @@ LL | use food::baz;
    |     no `baz` in `food`
 
 error[E0432]: unresolved import `food::beens`
-  --> $DIR/unresolved-import.rs:15:12
+  --> $DIR/unresolved-import.rs:18:12
    |
 LL | use food::{beens as Foo};
    |            -----^^^^^^^
@@ -34,13 +34,13 @@ LL | use food::{beens as Foo};
    |            help: a similar name exists in the module: `beans`
 
 error[E0432]: unresolved import `MyEnum`
-  --> $DIR/unresolved-import.rs:39:9
+  --> $DIR/unresolved-import.rs:43:9
    |
 LL |     use MyEnum::*;
    |         ^^^^^^ help: a similar path exists: `self::MyEnum`
 
 error[E0432]: unresolved import `Enum`
-  --> $DIR/unresolved-import.rs:49:9
+  --> $DIR/unresolved-import.rs:54:9
    |
 LL |     use Enum::*;
    |         ^^^^ help: a similar path exists: `self::Enum`

@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 
+use derive_where::derive_where;
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::{shift_region, TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -100,15 +101,7 @@ use crate::{self as ty, Interner};
 /// * `GR`: The "return type", which is the type of value returned upon
 ///   completion of the coroutine.
 /// * `GW`: The "coroutine witness".
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct ClosureArgs<I: Interner> {
     /// Lifetime and type parameters from the enclosing function,
@@ -136,9 +129,9 @@ pub struct ClosureArgsParts<I: Interner> {
 impl<I: Interner> ClosureArgs<I> {
     /// Construct `ClosureArgs` from `ClosureArgsParts`, containing `Args`
     /// for the closure parent, alongside additional closure-specific components.
-    pub fn new(tcx: I, parts: ClosureArgsParts<I>) -> ClosureArgs<I> {
+    pub fn new(cx: I, parts: ClosureArgsParts<I>) -> ClosureArgs<I> {
         ClosureArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().chain([
+            args: cx.mk_args_from_iter(parts.parent_args.iter().chain([
                 parts.closure_kind_ty.into(),
                 parts.closure_sig_as_fn_ptr_ty.into(),
                 parts.tupled_upvars_ty.into(),
@@ -210,15 +203,7 @@ impl<I: Interner> ClosureArgs<I> {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineClosureArgs<I: Interner> {
     pub args: I::GenericArgs,
@@ -258,9 +243,9 @@ pub struct CoroutineClosureArgsParts<I: Interner> {
 }
 
 impl<I: Interner> CoroutineClosureArgs<I> {
-    pub fn new(tcx: I, parts: CoroutineClosureArgsParts<I>) -> CoroutineClosureArgs<I> {
+    pub fn new(cx: I, parts: CoroutineClosureArgsParts<I>) -> CoroutineClosureArgs<I> {
         CoroutineClosureArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().chain([
+            args: cx.mk_args_from_iter(parts.parent_args.iter().chain([
                 parts.closure_kind_ty.into(),
                 parts.signature_parts_ty.into(),
                 parts.tupled_upvars_ty.into(),
@@ -370,15 +355,7 @@ impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct CoroutineClosureSignature<I: Interner> {
     pub interior: I::Ty,
@@ -409,14 +386,14 @@ impl<I: Interner> CoroutineClosureSignature<I> {
     /// When the kind and upvars are known, use the other helper functions.
     pub fn to_coroutine(
         self,
-        tcx: I,
+        cx: I,
         parent_args: I::GenericArgsSlice,
         coroutine_kind_ty: I::Ty,
         coroutine_def_id: I::DefId,
         tupled_upvars_ty: I::Ty,
     ) -> I::Ty {
         let coroutine_args = ty::CoroutineArgs::new(
-            tcx,
+            cx,
             ty::CoroutineArgsParts {
                 parent_args,
                 kind_ty: coroutine_kind_ty,
@@ -428,7 +405,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
             },
         );
 
-        Ty::new_coroutine(tcx, coroutine_def_id, coroutine_args.args)
+        Ty::new_coroutine(cx, coroutine_def_id, coroutine_args.args)
     }
 
     /// Given known upvars and a [`ClosureKind`](ty::ClosureKind), compute the coroutine
@@ -438,7 +415,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
     /// that the `ClosureKind` is actually supported by the coroutine-closure.
     pub fn to_coroutine_given_kind_and_upvars(
         self,
-        tcx: I,
+        cx: I,
         parent_args: I::GenericArgsSlice,
         coroutine_def_id: I::DefId,
         goal_kind: ty::ClosureKind,
@@ -447,7 +424,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         coroutine_captures_by_ref_ty: I::Ty,
     ) -> I::Ty {
         let tupled_upvars_ty = Self::tupled_upvars_by_closure_kind(
-            tcx,
+            cx,
             goal_kind,
             self.tupled_inputs_ty,
             closure_tupled_upvars_ty,
@@ -456,9 +433,9 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         );
 
         self.to_coroutine(
-            tcx,
+            cx,
             parent_args,
-            Ty::from_coroutine_closure_kind(tcx, goal_kind),
+            Ty::from_coroutine_closure_kind(cx, goal_kind),
             coroutine_def_id,
             tupled_upvars_ty,
         )
@@ -474,7 +451,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
     /// lifetimes are related to the lifetime of the borrow on the closure made for
     /// the call. This allows borrowck to enforce the self-borrows correctly.
     pub fn tupled_upvars_by_closure_kind(
-        tcx: I,
+        cx: I,
         kind: ty::ClosureKind,
         tupled_inputs_ty: I::Ty,
         closure_tupled_upvars_ty: I::Ty,
@@ -488,12 +465,12 @@ impl<I: Interner> CoroutineClosureSignature<I> {
                 };
                 let coroutine_captures_by_ref_ty =
                     sig.output().skip_binder().fold_with(&mut FoldEscapingRegions {
-                        interner: tcx,
+                        interner: cx,
                         region: env_region,
                         debruijn: ty::INNERMOST,
                     });
                 Ty::new_tup_from_iter(
-                    tcx,
+                    cx,
                     tupled_inputs_ty
                         .tuple_fields()
                         .iter()
@@ -501,7 +478,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
                 )
             }
             ty::ClosureKind::FnOnce => Ty::new_tup_from_iter(
-                tcx,
+                cx,
                 tupled_inputs_ty
                     .tuple_fields()
                     .iter()
@@ -552,15 +529,7 @@ impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct GenSig<I: Interner> {
     pub resume_ty: I::Ty,
@@ -569,15 +538,7 @@ pub struct GenSig<I: Interner> {
 }
 
 /// Similar to `ClosureArgs`; see the above documentation for more.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineArgs<I: Interner> {
     pub args: I::GenericArgs,
@@ -615,9 +576,9 @@ pub struct CoroutineArgsParts<I: Interner> {
 impl<I: Interner> CoroutineArgs<I> {
     /// Construct `CoroutineArgs` from `CoroutineArgsParts`, containing `Args`
     /// for the coroutine parent, alongside additional coroutine-specific components.
-    pub fn new(tcx: I, parts: CoroutineArgsParts<I>) -> CoroutineArgs<I> {
+    pub fn new(cx: I, parts: CoroutineArgsParts<I>) -> CoroutineArgs<I> {
         CoroutineArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().chain([
+            args: cx.mk_args_from_iter(parts.parent_args.iter().chain([
                 parts.kind_ty.into(),
                 parts.resume_ty.into(),
                 parts.yield_ty.into(),

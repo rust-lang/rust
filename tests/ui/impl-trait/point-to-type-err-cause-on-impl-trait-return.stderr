@@ -171,11 +171,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn hat() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn hat() -> impl std::fmt::Display {
    |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn hat() -> Box<dyn std::fmt::Display> {
 LL |     match 13 {
@@ -192,11 +192,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn pug() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn pug() -> impl std::fmt::Display {
    |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn pug() -> Box<dyn std::fmt::Display> {
 LL |     match 13 {
@@ -211,10 +211,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn man() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
-   |
-LL | fn man() -> impl std::fmt::Display {
-   |             ~~~~
+   = help: if there were a single returned type, you could use `impl Trait` instead
 help: box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn man() -> Box<dyn std::fmt::Display> {

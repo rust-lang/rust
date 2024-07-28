@@ -4,13 +4,13 @@ use ParseOpt as PO;
 #[test]
 fn test_parse_simple() {
     let buf = "**abcd** rest";
-    let (t, r) = parse_simple_pat(buf.as_bytes(), STG, STG, PO::None, MdTree::Strong).unwrap();
+    let (t, r) = parse_simple_pat(buf.as_bytes(), b"**", b"**", PO::None, MdTree::Strong).unwrap();
     assert_eq!(t, MdTree::Strong("abcd"));
     assert_eq!(r, b" rest");
 
     // Escaping should fail
     let buf = r"**abcd\** rest";
-    let res = parse_simple_pat(buf.as_bytes(), STG, STG, PO::None, MdTree::Strong);
+    let res = parse_simple_pat(buf.as_bytes(), b"**", b"**", PO::None, MdTree::Strong);
     assert!(res.is_none());
 }
 
@@ -141,12 +141,12 @@ fn test_indented_section() {
     assert_eq!(str::from_utf8(r).unwrap(), "\nnot ind");
 
     let (txt, rest) = get_indented_section(IND2.as_bytes());
-    assert_eq!(str::from_utf8(txt).unwrap(), "test end of stream\n  1\n  2");
-    assert_eq!(str::from_utf8(rest).unwrap(), "\n");
+    assert_eq!(str::from_utf8(txt).unwrap(), "test end of stream\n  1\n  2\n");
+    assert_eq!(str::from_utf8(rest).unwrap(), "");
 
     let (txt, rest) = get_indented_section(IND3.as_bytes());
-    assert_eq!(str::from_utf8(txt).unwrap(), "test empty lines\n  1\n  2");
-    assert_eq!(str::from_utf8(rest).unwrap(), "\n\nnot ind");
+    assert_eq!(str::from_utf8(txt).unwrap(), "test empty lines\n  1\n  2\n");
+    assert_eq!(str::from_utf8(rest).unwrap(), "\nnot ind");
 }
 
 const HBT: &str = r"# Heading
@@ -308,5 +308,58 @@ fn test_code_at_start() {
     ]
     .into();
     let res = entrypoint(CODE_STARTLINE);
+    assert_eq!(res, expected);
+}
+
+#[test]
+fn test_code_in_parens() {
+    let expected =
+        vec![MdTree::PlainText("("), MdTree::CodeInline("Foo"), MdTree::PlainText(")")].into();
+    let res = entrypoint("(`Foo`)");
+    assert_eq!(res, expected);
+}
+
+const LIST_WITH_SPACE: &str = "
+para
+ * l1
+ * l2
+";
+
+#[test]
+fn test_list_with_space() {
+    let expected = vec![
+        MdTree::PlainText("para"),
+        MdTree::ParagraphBreak,
+        MdTree::UnorderedListItem(vec![MdTree::PlainText("l1")].into()),
+        MdTree::LineBreak,
+        MdTree::UnorderedListItem(vec![MdTree::PlainText("l2")].into()),
+    ]
+    .into();
+    let res = entrypoint(LIST_WITH_SPACE);
+    assert_eq!(res, expected);
+}
+
+const SNAKE_CASE: &str = "
+foo*bar*
+foo**bar**
+foo_bar_
+foo__bar__
+";
+
+#[test]
+fn test_snake_case() {
+    let expected = vec![
+        MdTree::PlainText("foo"),
+        MdTree::Emphasis("bar"),
+        MdTree::PlainText(" "),
+        MdTree::PlainText("foo"),
+        MdTree::Strong("bar"),
+        MdTree::PlainText(" "),
+        MdTree::PlainText("foo_bar_"),
+        MdTree::PlainText(" "),
+        MdTree::PlainText("foo__bar__"),
+    ]
+    .into();
+    let res = entrypoint(SNAKE_CASE);
     assert_eq!(res, expected);
 }

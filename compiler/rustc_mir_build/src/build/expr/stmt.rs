@@ -44,7 +44,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if lhs_expr.ty.needs_drop(this.tcx, this.param_env) {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
-                    unpack!(block = this.build_drop_and_replace(block, lhs_expr.span, lhs, rhs));
+                    block =
+                        this.build_drop_and_replace(block, lhs_expr.span, lhs, rhs).into_block();
                 } else {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));

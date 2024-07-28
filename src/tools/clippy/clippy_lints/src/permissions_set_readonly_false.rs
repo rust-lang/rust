@@ -31,10 +31,10 @@ declare_lint_pass!(PermissionsSetReadonlyFalse => [PERMISSIONS_SET_READONLY_FALS
 impl<'tcx> LateLintPass<'tcx> for PermissionsSetReadonlyFalse {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::MethodCall(path, receiver, [arg], _) = &expr.kind
-            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::FsPermissions)
-            && path.ident.name == sym!(set_readonly)
             && let ExprKind::Lit(lit) = &arg.kind
             && LitKind::Bool(false) == lit.node
+            && path.ident.name.as_str() == "set_readonly"
+            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::FsPermissions)
         {
             span_lint_and_then(
                 cx,

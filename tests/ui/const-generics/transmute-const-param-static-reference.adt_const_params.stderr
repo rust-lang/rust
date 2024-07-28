@@ -1,0 +1,9 @@
+error[E0741]: `&'static ()` can't be used as a const parameter type
+  --> $DIR/transmute-const-param-static-reference.rs:9:23
+   |
+LL | struct Const<const P: &'static ()>;
+   |                       ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.

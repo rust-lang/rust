@@ -1,23 +1,24 @@
 #![unstable(issue = "none", feature = "windows_handle")]
-#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, Read};
-use crate::mem;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::ptr;
 use crate::sys::c;
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use core::cmp;
+use core::ffi::c_void;
+use core::mem;
+use core::ptr;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
 /// All methods are inherited through a `Deref` impl to `RawHandle`
+#[derive(Debug)]
 pub struct Handle(OwnedHandle);
 
 impl Handle {
@@ -73,7 +74,7 @@ impl IntoRawHandle for Handle {
 
 impl FromRawHandle for Handle {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        Self(FromRawHandle::from_raw_handle(raw_handle))
+        unsafe { Self(FromRawHandle::from_raw_handle(raw_handle)) }
     }
 }
 
@@ -137,15 +138,31 @@ impl Handle {
         }
     }
 
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+
+        Read::read_to_end(&mut me, buf)
+    }
+
     pub unsafe fn read_overlapped(
         &self,
-        buf: &mut [u8],
+        buf: &mut [mem::MaybeUninit<u8>],
         overlapped: *mut c::OVERLAPPED,
     ) -> io::Result<Option<usize>> {
-        let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
-        let mut amt = 0;
-        let res =
-            cvt(c::ReadFile(self.as_raw_handle(), buf.as_mut_ptr(), len, &mut amt, overlapped));
+        // SAFETY: We have exclusive access to the buffer and it's up to the caller to
+        // ensure the OVERLAPPED pointer is valid for the lifetime of this function.
+        let (res, amt) = unsafe {
+            let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
+            let mut amt = 0;
+            let res = cvt(c::ReadFile(
+                self.as_raw_handle(),
+                buf.as_mut_ptr().cast::<u8>(),
+                len,
+                &mut amt,
+                overlapped,
+            ));
+            (res, amt)
+        };
         match res {
             Ok(_) => Ok(Some(amt as usize)),
             Err(e) => {
@@ -230,20 +247,24 @@ impl Handle {
 
         // The length is clamped at u32::MAX.
         let len = cmp::min(len, u32::MAX as usize) as u32;
-        let status = c::NtReadFile(
-            self.as_handle(),
-            ptr::null_mut(),
-            None,
-            ptr::null_mut(),
-            &mut io_status,
-            buf,
-            len,
-            offset.map(|n| n as _).as_ref(),
-            None,
-        );
+        // SAFETY: It's up to the caller to ensure `buf` is writeable up to
+        // the provided `len`.
+        let status = unsafe {
+            c::NtReadFile(
+                self.as_raw_handle(),
+                ptr::null_mut(),
+                None,
+                ptr::null_mut(),
+                &mut io_status,
+                buf.cast::<c_void>(),
+                len,
+                offset.as_ref().map(|n| ptr::from_ref(n).cast::<i64>()).unwrap_or(ptr::null()),
+                ptr::null(),
+            )
+        };
 
         let status = if status == c::STATUS_PENDING {
-            c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE);
+            unsafe { c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE) };
             io_status.status()
         } else {
             status
@@ -261,7 +282,7 @@ impl Handle {
             status if c::nt_success(status) => Ok(io_status.Information),
 
             status => {
-                let error = c::RtlNtStatusToDosError(status);
+                let error = unsafe { c::RtlNtStatusToDosError(status) };
                 Err(io::Error::from_raw_os_error(error as _))
             }
         }
@@ -280,15 +301,15 @@ impl Handle {
         let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
         let status = unsafe {
             c::NtWriteFile(
-                self.as_handle(),
+                self.as_raw_handle(),
                 ptr::null_mut(),
                 None,
                 ptr::null_mut(),
                 &mut io_status,
-                buf.as_ptr(),
+                buf.as_ptr().cast::<c_void>(),
                 len,
-                offset.map(|n| n as _).as_ref(),
-                None,
+                offset.as_ref().map(|n| ptr::from_ref(n).cast::<i64>()).unwrap_or(ptr::null()),
+                ptr::null(),
             )
         };
         let status = if status == c::STATUS_PENDING {

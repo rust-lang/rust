@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::is_in_test;
 use clippy_utils::macros::{format_arg_removal_span, root_macro_call_first_node, FormatArgsStorage, MacroCall};
@@ -237,7 +238,6 @@ declare_clippy_lint! {
     "writing a literal with a format string"
 }
 
-#[derive(Default)]
 pub struct Write {
     format_args: FormatArgsStorage,
     in_debug_impl: bool,
@@ -245,11 +245,11 @@ pub struct Write {
 }
 
 impl Write {
-    pub fn new(format_args: FormatArgsStorage, allow_print_in_tests: bool) -> Self {
+    pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
         Self {
             format_args,
-            allow_print_in_tests,
-            ..Default::default()
+            allow_print_in_tests: conf.allow_print_in_tests,
+            in_debug_impl: false,
         }
     }
 }

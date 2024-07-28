@@ -120,6 +120,9 @@ ast_passes_fn_without_body =
 ast_passes_forbidden_bound =
     bounds cannot be used in this context
 
+ast_passes_forbidden_const_param =
+    late-bound const parameters cannot be used currently
+
 ast_passes_forbidden_default =
     `default` is only allowed on items in trait impls
     .label = `default` because of this
@@ -152,15 +155,10 @@ ast_passes_impl_trait_path = `impl Trait` is not allowed in path parameters
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
-ast_passes_incompatible_trait_bound_modifiers = `{$left}` and `{$right}` are mutually exclusive
-
 ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
     .because = {$annotation} because of this
     .type = inherent impl for this type
     .only_trait = only trait implementations may be annotated with {$annotation}
-
-ast_passes_invalid_label =
-    invalid label name `{$name}`
 
 ast_passes_invalid_unnamed_field =
     unnamed fields are not allowed outside of structs or unions
@@ -175,9 +173,6 @@ ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot
 
 ast_passes_item_underscore = `{$kind}` items in this context need a name
     .label = `_` is not a valid name for this `{$kind}` item
-
-ast_passes_keyword_lifetime =
-    lifetimes cannot use keyword names
 
 ast_passes_match_arm_with_no_body =
     `match` arm with no body
@@ -274,6 +269,9 @@ ast_passes_unsafe_item = {$kind} cannot be declared unsafe
 ast_passes_unsafe_negative_impl = negative impls cannot be unsafe
     .negative = negative because of this
     .unsafe = unsafe because of this
+
+ast_passes_unsafe_static =
+    static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
 
 ast_passes_visibility_not_permitted =
     visibility qualifiers are not permitted here

@@ -1,8 +1,11 @@
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:9:9
    |
+LL |         MAGIC_TEST => (),
+   |         ---------- matches all the values already
+LL |         [0x00, 0x00, 0x00, 0x00] => (),
 LL |         [84, 69, 83, 84] => (),
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^ unreachable pattern
    |
 note: the lint level is defined here
   --> $DIR/slice-pattern-const.rs:1:9
@@ -13,50 +16,68 @@ LL | #![deny(unreachable_patterns)]
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:15:9
    |
+LL |         MAGIC_TEST => (),
+   |         ---------- matches all the values already
 LL |         [84, 69, 83, 84] => (),
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:21:9
    |
+LL |         [84, 69, 83, 84] => (),
+   |         ---------------- matches all the values already
 LL |         MAGIC_TEST => (),
-   |         ^^^^^^^^^^
+   |         ^^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:28:9
    |
+LL |         [4] => (),
+   |         --- matches all the values already
 LL |         FOO => (),
-   |         ^^^
+   |         ^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:35:9
    |
+LL |         [4] => (),
+   |         --- matches all the values already
 LL |         BAR => (),
-   |         ^^^
+   |         ^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:43:9
    |
+LL |         [] => (),
+   |         -- matches all the values already
 LL |         BOO => (),
-   |         ^^^
+   |         ^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:44:9
    |
+LL |         [] => (),
+   |         -- matches all the values already
+LL |         BOO => (),
 LL |         b"" => (),
-   |         ^^^
+   |         ^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:45:9
    |
+LL |         [] => (),
+   |         -- matches all the values already
+...
 LL |         _ => (),
-   |         ^
+   |         ^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:51:9
    |
+LL |         CONST1 => {}
+   |         ------ matches all the values already
 LL |         [true] => {}
-   |         ^^^^^^
+   |         ^^^^^^ unreachable pattern
 
 error: aborting due to 9 previous errors
 

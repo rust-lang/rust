@@ -36,7 +36,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span};
 use rustc_span::{Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -1265,9 +1264,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         (
                             match parent_pred {
-                                None => format!("`{}`", &p),
+                                None => format!("`{p}`"),
                                 Some(parent_pred) => match format_pred(*parent_pred) {
-                                    None => format!("`{}`", &p),
+                                    None => format!("`{p}`"),
                                     Some((parent_p, _)) => {
                                         if !suggested
                                             && !suggested_bounds.contains(pred)
@@ -1596,16 +1595,127 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // that had unsatisfied trait bounds
         if unsatisfied_predicates.is_empty() && rcvr_ty.is_enum() {
             let adt_def = rcvr_ty.ty_adt_def().expect("enum is not an ADT");
-            if let Some(suggestion) = edit_distance::find_best_match_for_name(
+            if let Some(var_name) = edit_distance::find_best_match_for_name(
                 &adt_def.variants().iter().map(|s| s.name).collect::<Vec<_>>(),
                 item_name.name,
                 None,
-            ) {
-                err.span_suggestion(
-                    span,
+            ) && let Some(variant) = adt_def.variants().iter().find(|s| s.name == var_name)
+            {
+                let mut suggestion = vec![(span, var_name.to_string())];
+                if let SelfSource::QPath(ty) = source
+                    && let hir::Node::Expr(ref path_expr) = self.tcx.parent_hir_node(ty.hir_id)
+                    && let hir::ExprKind::Path(_) = path_expr.kind
+                    && let hir::Node::Stmt(hir::Stmt {
+                        kind: hir::StmtKind::Semi(ref parent), ..
+                    })
+                    | hir::Node::Expr(ref parent) = self.tcx.parent_hir_node(path_expr.hir_id)
+                {
+                    let replacement_span =
+                        if let hir::ExprKind::Call(..) | hir::ExprKind::Struct(..) = parent.kind {
+                            // We want to replace the parts that need to go, like `()` and `{}`.
+                            span.with_hi(parent.span.hi())
+                        } else {
+                            span
+                        };
+                    match (variant.ctor, parent.kind) {
+                        (None, hir::ExprKind::Struct(..)) => {
+                            // We want a struct and we have a struct. We won't suggest changing
+                            // the fields (at least for now).
+                            suggestion = vec![(span, var_name.to_string())];
+                        }
+                        (None, _) => {
+                            // struct
+                            suggestion = vec![(
+                                replacement_span,
+                                if variant.fields.is_empty() {
+                                    format!("{var_name} {{}}")
+                                } else {
+                                    format!(
+                                        "{var_name} {{ {} }}",
+                                        variant
+                                            .fields
+                                            .iter()
+                                            .map(|f| format!("{}: /* value */", f.name))
+                                            .collect::<Vec<_>>()
+                                            .join(", ")
+                                    )
+                                },
+                            )];
+                        }
+                        (Some((hir::def::CtorKind::Const, _)), _) => {
+                            // unit, remove the `()`.
+                            suggestion = vec![(replacement_span, var_name.to_string())];
+                        }
+                        (
+                            Some((hir::def::CtorKind::Fn, def_id)),
+                            hir::ExprKind::Call(rcvr, args),
+                        ) => {
+                            let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                            let inputs = fn_sig.inputs().skip_binder();
+                            // FIXME: reuse the logic for "change args" suggestion to account for types
+                            // involved and detect things like substitution.
+                            match (inputs, args) {
+                                (inputs, []) => {
+                                    // Add arguments.
+                                    suggestion.push((
+                                        rcvr.span.shrink_to_hi().with_hi(parent.span.hi()),
+                                        format!(
+                                            "({})",
+                                            inputs
+                                                .iter()
+                                                .map(|i| format!("/* {i} */"))
+                                                .collect::<Vec<String>>()
+                                                .join(", ")
+                                        ),
+                                    ));
+                                }
+                                (_, [arg]) if inputs.len() != args.len() => {
+                                    // Replace arguments.
+                                    suggestion.push((
+                                        arg.span,
+                                        inputs
+                                            .iter()
+                                            .map(|i| format!("/* {i} */"))
+                                            .collect::<Vec<String>>()
+                                            .join(", "),
+                                    ));
+                                }
+                                (_, [arg_start, .., arg_end]) if inputs.len() != args.len() => {
+                                    // Replace arguments.
+                                    suggestion.push((
+                                        arg_start.span.to(arg_end.span),
+                                        inputs
+                                            .iter()
+                                            .map(|i| format!("/* {i} */"))
+                                            .collect::<Vec<String>>()
+                                            .join(", "),
+                                    ));
+                                }
+                                // Argument count is the same, keep as is.
+                                _ => {}
+                            }
+                        }
+                        (Some((hir::def::CtorKind::Fn, def_id)), _) => {
+                            let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                            let inputs = fn_sig.inputs().skip_binder();
+                            suggestion = vec![(
+                                replacement_span,
+                                format!(
+                                    "{var_name}({})",
+                                    inputs
+                                        .iter()
+                                        .map(|i| format!("/* {i} */"))
+                                        .collect::<Vec<String>>()
+                                        .join(", ")
+                                ),
+                            )];
+                        }
+                    }
+                }
+                err.multipart_suggestion_verbose(
                     "there is a variant with a similar name",
                     suggestion,
-                    Applicability::MaybeIncorrect,
+                    Applicability::HasPlaceholders,
                 );
             }
         }
@@ -3165,7 +3275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         return_type: Option<Ty<'tcx>>,
     ) {
-        let output_ty = match self.get_impl_future_output_ty(ty) {
+        let output_ty = match self.err_ctxt().get_impl_future_output_ty(ty) {
             Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };

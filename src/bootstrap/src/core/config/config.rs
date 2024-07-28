@@ -20,7 +20,7 @@ use crate::core::build_steps::llvm;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
-use crate::utils::helpers::{self, exe, output, t};
+use crate::utils::helpers::{self, exe, get_closest_merge_base_commit, output, t};
 use build_helper::exit;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
@@ -1570,11 +1570,22 @@ impl Config {
         let mut is_user_configured_rust_channel = false;
 
         if let Some(rust) = toml.rust {
-            config.download_rustc_commit =
-                config.download_ci_rustc_commit(rust.download_rustc.clone());
+            if let Some(commit) = config.download_ci_rustc_commit(rust.download_rustc.clone()) {
+                // Primarily used by CI runners to avoid handling download-rustc incompatible
+                // options one by one on shell scripts.
+                let disable_ci_rustc_if_incompatible =
+                    env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                        .is_some_and(|s| s == "1" || s == "true");
 
-            if config.download_rustc_commit.is_some() {
-                check_incompatible_options_for_ci_rustc(&rust);
+                if let Err(e) = check_incompatible_options_for_ci_rustc(&rust) {
+                    if disable_ci_rustc_if_incompatible {
+                        config.download_rustc_commit = None;
+                    } else {
+                        panic!("{}", e);
+                    }
+                } else {
+                    config.download_rustc_commit = Some(commit);
+                }
             }
 
             let Rust {
@@ -2471,14 +2482,13 @@ impl Config {
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let merge_base = output(
-            helpers::git(Some(&self.src))
-                .arg("rev-list")
-                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", "HEAD"])
-                .as_command_mut(),
-        );
-        let commit = merge_base.trim_end();
+        let commit = get_closest_merge_base_commit(
+            Some(&self.src),
+            &self.git_config(),
+            &self.stage0_metadata.config.git_merge_commit_email,
+            &[],
+        )
+        .unwrap();
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
             println!("HELP: maybe your repository history is too shallow?");
@@ -2489,7 +2499,7 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", commit])
+            .args(["diff-index", "--quiet", &commit])
             .arg("--")
             .args([self.src.join("compiler"), self.src.join("library")])
             .as_command_mut()
@@ -2565,14 +2575,13 @@ impl Config {
     ) -> Option<String> {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let merge_base = output(
-            helpers::git(Some(&self.src))
-                .arg("rev-list")
-                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", "HEAD"])
-                .as_command_mut(),
-        );
-        let commit = merge_base.trim_end();
+        let commit = get_closest_merge_base_commit(
+            Some(&self.src),
+            &self.git_config(),
+            &self.stage0_metadata.config.git_merge_commit_email,
+            &[],
+        )
+        .unwrap();
         if commit.is_empty() {
             println!("error: could not find commit hash for downloading components from CI");
             println!("help: maybe your repository history is too shallow?");
@@ -2583,7 +2592,7 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let mut git = helpers::git(Some(&self.src));
-        git.args(["diff-index", "--quiet", commit, "--"]);
+        git.args(["diff-index", "--quiet", &commit, "--"]);
 
         // Handle running from a directory other than the top level
         let top_level = &self.src;
@@ -2614,14 +2623,15 @@ impl Config {
 
 /// Checks the CI rustc incompatible options by destructuring the `Rust` instance
 /// and makes sure that no rust options from config.toml are missed.
-fn check_incompatible_options_for_ci_rustc(rust: &Rust) {
+fn check_incompatible_options_for_ci_rustc(rust: &Rust) -> Result<(), String> {
     macro_rules! err {
         ($name:expr) => {
-            assert!(
-                $name.is_none(),
-                "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
-                stringify!($name).replace("_", "-")
-            );
+            if $name.is_some() {
+                return Err(format!(
+                    "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
+                    stringify!($name).replace("_", "-")
+                ));
+            }
         };
     }
 
@@ -2717,6 +2727,8 @@ fn check_incompatible_options_for_ci_rustc(rust: &Rust) {
     warn!(channel);
     warn!(description);
     warn!(incremental);
+
+    Ok(())
 }
 
 fn set<T>(field: &mut T, val: Option<T>) {

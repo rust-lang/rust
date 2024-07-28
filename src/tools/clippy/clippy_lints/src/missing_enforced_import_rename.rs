@@ -1,12 +1,13 @@
-use clippy_config::types::Rename;
+use clippy_config::Conf;
+use clippy_utils::def_path_def_ids;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 
@@ -46,15 +47,18 @@ declare_clippy_lint! {
 }
 
 pub struct ImportRename {
-    conf_renames: Vec<Rename>,
-    renames: FxHashMap<DefId, Symbol>,
+    renames: DefIdMap<Symbol>,
 }
 
 impl ImportRename {
-    pub fn new(conf_renames: Vec<Rename>) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
-            conf_renames,
-            renames: FxHashMap::default(),
+            renames: conf
+                .enforced_import_renames
+                .iter()
+                .map(|x| (x.path.split("::").collect::<Vec<_>>(), Symbol::intern(&x.rename)))
+                .flat_map(|(path, rename)| def_path_def_ids(tcx, &path).map(move |id| (id, rename)))
+                .collect(),
         }
     }
 }
@@ -62,15 +66,6 @@ impl ImportRename {
 impl_lint_pass!(ImportRename => [MISSING_ENFORCED_IMPORT_RENAMES]);
 
 impl LateLintPass<'_> for ImportRename {
-    fn check_crate(&mut self, cx: &LateContext<'_>) {
-        for Rename { path, rename } in &self.conf_renames {
-            let segs = path.split("::").collect::<Vec<_>>();
-            for id in clippy_utils::def_path_def_ids(cx, &segs) {
-                self.renames.insert(id, Symbol::intern(rename));
-            }
-        }
-    }
-
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Use(path, UseKind::Single) = &item.kind {
             for &res in &path.res {

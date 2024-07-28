@@ -13,7 +13,6 @@ pub use SubregionOrigin::*;
 
 use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
-use error_reporting::TypeErrCtxt;
 use free_regions::RegionRelations;
 use lexical_region_resolve::LexicalRegionResolutions;
 use opaque_types::OpaqueTypeStorage;
@@ -24,7 +23,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
@@ -54,7 +54,6 @@ use type_variable::TypeVariableOrigin;
 pub mod at;
 pub mod canonical;
 mod context;
-pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod lexical_region_resolve;
@@ -697,36 +696,24 @@ impl<'tcx> InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
-    /// Creates a `TypeErrCtxt` for emitting various inference errors.
-    /// During typeck, use `FnCtxt::err_ctxt` instead.
-    pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
-        TypeErrCtxt {
-            infcx: self,
-            sub_relations: Default::default(),
-            typeck_results: None,
-            fallback_has_occurred: false,
-            normalize_fn_sig: Box::new(|fn_sig| fn_sig),
-            autoderef_steps: Box::new(|ty| {
-                debug_assert!(false, "shouldn't be using autoderef_steps outside of typeck");
-                vec![(ty, vec![])]
-            }),
-        }
-    }
-
     pub fn freshen<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
     }
 
-    /// Returns the origin of the type variable identified by `vid`, or `None`
-    /// if this is not a type variable.
+    /// Returns the origin of the type variable identified by `vid`.
     ///
-    /// No attempt is made to resolve `ty`.
-    pub fn type_var_origin(&self, ty: Ty<'tcx>) -> Option<TypeVariableOrigin> {
-        match *ty.kind() {
-            ty::Infer(ty::TyVar(vid)) => {
-                Some(self.inner.borrow_mut().type_variables().var_origin(vid))
-            }
-            _ => None,
+    /// No attempt is made to resolve `vid` to its root variable.
+    pub fn type_var_origin(&self, vid: TyVid) -> TypeVariableOrigin {
+        self.inner.borrow_mut().type_variables().var_origin(vid)
+    }
+
+    /// Returns the origin of the const variable identified by `vid`
+    // FIXME: We should store origins separately from the unification table
+    // so this doesn't need to be optional.
+    pub fn const_var_origin(&self, vid: ConstVid) -> Option<ConstVariableOrigin> {
+        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
+            ConstVariableValue::Known { .. } => None,
+            ConstVariableValue::Unknown { origin, .. } => Some(origin),
         }
     }
 
@@ -766,18 +753,6 @@ impl<'tcx> InferCtxt<'tcx> {
             .filter(|&vid| table.probe_value(vid).is_unknown())
             .map(|v| ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(v)))
             .collect()
-    }
-
-    // FIXME(-Znext-solver): Get rid of this method, it's never correct. Either that,
-    // or we need to process the obligations.
-    pub fn can_eq_shallow<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
-    where
-        T: at::ToTrace<'tcx>,
-    {
-        let origin = &ObligationCause::dummy();
-        // We're only answering whether the types could be the same, and with
-        // opaque types, "they can be the same", via registering a hidden type.
-        self.probe(|_| self.at(origin, param_env).eq(DefineOpaqueTypes::Yes, a, b).is_ok())
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -1426,17 +1401,17 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         match self.const_eval_resolve(param_env, unevaluated, span) {
-            Ok(Some(val)) => Ok(ty::Const::new_value(
+            Ok(Ok(val)) => Ok(ty::Const::new_value(
                 self.tcx,
                 val,
                 self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args),
             )),
-            Ok(None) => {
+            Ok(Err(bad_ty)) => {
                 let tcx = self.tcx;
                 let def_id = unevaluated.def;
                 span_bug!(
                     tcx.def_span(def_id),
-                    "unable to construct a constant value for the unevaluated constant {:?}",
+                    "unable to construct a valtree for the unevaluated constant {:?}: type {bad_ty} is not valtree-compatible",
                     unevaluated
                 );
             }
@@ -1585,60 +1560,6 @@ impl<'tcx> InferCtxt<'tcx> {
             "shouldn't override a set obligation inspector"
         );
         self.obligation_inspector.set(Some(inspector));
-    }
-}
-
-impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    // [Note-Type-error-reporting]
-    // An invariant is that anytime the expected or actual type is Error (the special
-    // error type, meaning that an error occurred when typechecking this expression),
-    // this is a derived error. The error cascaded from another error (that was already
-    // reported), so it's not useful to display it to the user.
-    // The following methods implement this logic.
-    // They check if either the actual or expected type is Error, and don't print the error
-    // in this case. The typechecker should only ever report type errors involving mismatched
-    // types using one of these methods, and should not call span_err directly for such
-    // errors.
-    pub fn type_error_struct_with_diag<M>(
-        &self,
-        sp: Span,
-        mk_diag: M,
-        actual_ty: Ty<'tcx>,
-    ) -> Diag<'a>
-    where
-        M: FnOnce(String) -> Diag<'a>,
-    {
-        let actual_ty = self.resolve_vars_if_possible(actual_ty);
-        debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
-
-        let mut err = mk_diag(self.ty_to_string(actual_ty));
-
-        // Don't report an error if actual type is `Error`.
-        if actual_ty.references_error() {
-            err.downgrade_to_delayed_bug();
-        }
-
-        err
-    }
-
-    pub fn report_mismatched_types(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
-        err: TypeError<'tcx>,
-    ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
-    }
-
-    pub fn report_mismatched_consts(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        expected: ty::Const<'tcx>,
-        actual: ty::Const<'tcx>,
-        err: TypeError<'tcx>,
-    ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
 }
 
@@ -1886,4 +1807,33 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
     }
 
     args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
+}
+
+impl<'tcx> InferCtxt<'tcx> {
+    /// Given a [`hir::Block`], get the span of its last expression or
+    /// statement, peeling off any inner blocks.
+    pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
+        let block = block.innermost_block();
+        if let Some(expr) = &block.expr {
+            expr.span
+        } else if let Some(stmt) = block.stmts.last() {
+            // possibly incorrect trailing `;` in the else arm
+            stmt.span
+        } else {
+            // empty block; point at its entirety
+            block.span
+        }
+    }
+
+    /// Given a [`hir::HirId`] for a block, get the span of its last expression
+    /// or statement, peeling off any inner blocks.
+    pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
+        match self.tcx.hir_node(hir_id) {
+            hir::Node::Block(blk) => self.find_block_span(blk),
+            // The parser was in a weird state if either of these happen, but
+            // it's better not to panic.
+            hir::Node::Expr(e) => e.span,
+            _ => rustc_span::DUMMY_SP,
+        }
+    }
 }

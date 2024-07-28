@@ -2,7 +2,7 @@ error[E0107]: function takes 0 generic arguments but 1 generic argument was supp
   --> $DIR/no-explicit-const-params-cross-crate.rs:14:5
    |
 LL |     foo::<false>();
-   |     ^^^--------- help: remove these generics
+   |     ^^^--------- help: remove the unnecessary generics
    |     |
    |     expected 0 generic arguments
    |
@@ -32,7 +32,7 @@ error[E0107]: function takes 0 generic arguments but 1 generic argument was supp
   --> $DIR/no-explicit-const-params-cross-crate.rs:7:5
    |
 LL |     foo::<true>();
-   |     ^^^-------- help: remove these generics
+   |     ^^^-------- help: remove the unnecessary generics
    |     |
    |     expected 0 generic arguments
    |

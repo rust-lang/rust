@@ -171,14 +171,17 @@ impl<'a> Parser<'a> {
             NonterminalKind::Path => {
                 NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
             }
-            NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(true)?)),
+            NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(ForceCollect::Yes)?)),
             NonterminalKind::Vis => {
                 NtVis(P(self
                     .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?))
             }
             NonterminalKind::Lifetime => {
-                return if self.check_lifetime() {
-                    Ok(ParseNtResult::Lifetime(self.expect_lifetime().ident))
+                // We want to keep `'keyword` parsing, just like `keyword` is still
+                // an ident for nonterminal purposes.
+                return if let Some(ident) = self.token.lifetime() {
+                    self.bump();
+                    Ok(ParseNtResult::Lifetime(ident))
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,

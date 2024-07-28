@@ -1,4 +1,4 @@
-use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, TrailingToken};
+use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing};
 use crate::errors::{
     self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
@@ -12,7 +12,7 @@ use crate::errors::{
 };
 use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
+use rustc_ast::mut_visit::{walk_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
 use rustc_ast::{
@@ -392,9 +392,9 @@ impl<'a> Parser<'a> {
         // Parse `?`, `.f`, `(arg0, arg1, ...)` or `[expr]` until they've all been eaten.
         if let Ok(expr) = snapshot
             .parse_expr_dot_or_call_with(
+                AttrVec::new(),
                 self.mk_expr(pat_span, ExprKind::Dummy), // equivalent to transforming the parsed pattern into an `Expr`
                 pat_span,
-                AttrVec::new(),
             )
             .map_err(|err| err.cancel())
         {
@@ -542,12 +542,12 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let token::Lifetime(lt) = self.token.kind
+        } else if let Some(lt) = self.token.lifetime()
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
             // keep us from suggesting something like `let 'a: Ty = ..` => `let 'a': Ty = ..`
-            && could_be_unclosed_char_literal(Ident::with_dummy_span(lt))
+            && could_be_unclosed_char_literal(lt)
             && !self.look_ahead(1, |token| matches!(token.kind, token::Colon))
         {
             // Recover a `'a` as a `'a'` literal
@@ -683,12 +683,12 @@ impl<'a> Parser<'a> {
     /// Parse `&pat` / `&mut pat`.
     fn parse_pat_deref(&mut self, expected: Option<Expected>) -> PResult<'a, PatKind> {
         self.expect_and()?;
-        if let token::Lifetime(name) = self.token.kind {
+        if let Some(lifetime) = self.token.lifetime() {
             self.bump(); // `'a`
 
             self.dcx().emit_err(UnexpectedLifetimeInPattern {
                 span: self.prev_token.span,
-                symbol: name,
+                symbol: lifetime.name,
                 suggestion: self.prev_token.span.until(self.token.span),
             });
         }
@@ -810,7 +810,7 @@ impl<'a> Parser<'a> {
                     self.0 = true;
                     *m = Mutability::Mut;
                 }
-                noop_visit_pat(pat, self);
+                walk_pat(self, pat);
             }
         }
 
@@ -1315,9 +1315,8 @@ impl<'a> Parser<'a> {
 
                     last_non_comma_dotdot_span = Some(this.prev_token.span);
 
-                    // We just ate a comma, so there's no need to use
-                    // `TrailingToken::Comma`
-                    Ok((field, TrailingToken::None))
+                    // We just ate a comma, so there's no need to capture a trailing token.
+                    Ok((field, false))
                 })?;
 
             fields.push(field)

@@ -54,10 +54,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn car() -> dyn NotObjectSafe {
    |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
-   |
-LL | fn car() -> impl NotObjectSafe {
-   |             ~~~~
+   = help: if there were a single returned type, you could use `impl Trait` instead
 help: box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn car() -> Box<dyn NotObjectSafe> {

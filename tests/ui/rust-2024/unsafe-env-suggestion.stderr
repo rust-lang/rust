@@ -9,8 +9,8 @@ LL |     env::set_var("FOO", "BAR");
 note: the lint level is defined here
   --> $DIR/unsafe-env-suggestion.rs:3:9
    |
-LL | #![deny(deprecated_safe)]
-   |         ^^^^^^^^^^^^^^^
+LL | #![deny(deprecated_safe_2024)]
+   |         ^^^^^^^^^^^^^^^^^^^^
 help: you can wrap the call in an `unsafe` block if you can guarantee the code is only ever called from single-threaded code
    |
 LL +     // TODO: Audit that the environment access only happens in single-threaded code.

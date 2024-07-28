@@ -38,6 +38,7 @@
 // this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
 
+use derive_where::derive_where;
 use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -467,18 +468,18 @@ impl FileName {
 /// `SpanData` is public because `Span` uses a thread-local interner and can't be
 /// sent to other threads, but some pieces of performance infra run in a separate thread.
 /// Using `Span` is generally preferred.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, derivative::Derivative)]
-#[derivative(PartialOrd, Ord)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive_where(PartialOrd, Ord)]
 pub struct SpanData {
     pub lo: BytePos,
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
+    #[derive_where(skip)]
     // `SyntaxContext` does not implement `Ord`.
     // The other fields are enough to determine in-file order.
     pub ctxt: SyntaxContext,
-    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
+    #[derive_where(skip)]
     // `LocalDefId` does not implement `Ord`.
     // The other fields are enough to determine in-file order.
     pub parent: Option<LocalDefId>,
@@ -1345,68 +1346,6 @@ pub struct MultiByteChar {
     pub bytes: u8,
 }
 
-/// Identifies an offset of a non-narrow character in a `SourceFile`.
-#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable_Generic)]
-pub enum NonNarrowChar {
-    /// Represents a zero-width character.
-    ZeroWidth(RelativeBytePos),
-    /// Represents a wide (full-width) character.
-    Wide(RelativeBytePos),
-    /// Represents a tab character, represented visually with a width of 4 characters.
-    Tab(RelativeBytePos),
-}
-
-impl NonNarrowChar {
-    fn new(pos: RelativeBytePos, width: usize) -> Self {
-        match width {
-            0 => NonNarrowChar::ZeroWidth(pos),
-            2 => NonNarrowChar::Wide(pos),
-            4 => NonNarrowChar::Tab(pos),
-            _ => panic!("width {width} given for non-narrow character"),
-        }
-    }
-
-    /// Returns the relative offset of the character in the `SourceFile`.
-    pub fn pos(&self) -> RelativeBytePos {
-        match *self {
-            NonNarrowChar::ZeroWidth(p) | NonNarrowChar::Wide(p) | NonNarrowChar::Tab(p) => p,
-        }
-    }
-
-    /// Returns the width of the character, 0 (zero-width) or 2 (wide).
-    pub fn width(&self) -> usize {
-        match *self {
-            NonNarrowChar::ZeroWidth(_) => 0,
-            NonNarrowChar::Wide(_) => 2,
-            NonNarrowChar::Tab(_) => 4,
-        }
-    }
-}
-
-impl Add<RelativeBytePos> for NonNarrowChar {
-    type Output = Self;
-
-    fn add(self, rhs: RelativeBytePos) -> Self {
-        match self {
-            NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos + rhs),
-            NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos + rhs),
-            NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos + rhs),
-        }
-    }
-}
-
-impl Sub<RelativeBytePos> for NonNarrowChar {
-    type Output = Self;
-
-    fn sub(self, rhs: RelativeBytePos) -> Self {
-        match self {
-            NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos - rhs),
-            NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos - rhs),
-            NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos - rhs),
-        }
-    }
-}
-
 /// Identifies an offset of a character that was normalized away from `SourceFile`.
 #[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable_Generic)]
 pub struct NormalizedPos {
@@ -1581,8 +1520,6 @@ pub struct SourceFile {
     pub lines: FreezeLock<SourceFileLines>,
     /// Locations of multi-byte characters in the source code.
     pub multibyte_chars: Vec<MultiByteChar>,
-    /// Width of characters that are not narrow in the source code.
-    pub non_narrow_chars: Vec<NonNarrowChar>,
     /// Locations of characters removed during normalization.
     pub normalized_pos: Vec<NormalizedPos>,
     /// A hash of the filename & crate-id, used for uniquely identifying source
@@ -1604,7 +1541,6 @@ impl Clone for SourceFile {
             source_len: self.source_len,
             lines: self.lines.clone(),
             multibyte_chars: self.multibyte_chars.clone(),
-            non_narrow_chars: self.non_narrow_chars.clone(),
             normalized_pos: self.normalized_pos.clone(),
             stable_id: self.stable_id,
             cnum: self.cnum,
@@ -1679,7 +1615,6 @@ impl<S: SpanEncoder> Encodable<S> for SourceFile {
         }
 
         self.multibyte_chars.encode(s);
-        self.non_narrow_chars.encode(s);
         self.stable_id.encode(s);
         self.normalized_pos.encode(s);
         self.cnum.encode(s);
@@ -1706,7 +1641,6 @@ impl<D: SpanDecoder> Decodable<D> for SourceFile {
             }
         };
         let multibyte_chars: Vec<MultiByteChar> = Decodable::decode(d);
-        let non_narrow_chars: Vec<NonNarrowChar> = Decodable::decode(d);
         let stable_id = Decodable::decode(d);
         let normalized_pos: Vec<NormalizedPos> = Decodable::decode(d);
         let cnum: CrateNum = Decodable::decode(d);
@@ -1721,7 +1655,6 @@ impl<D: SpanDecoder> Decodable<D> for SourceFile {
             external_src: FreezeLock::frozen(ExternalSource::Unneeded),
             lines: FreezeLock::new(lines),
             multibyte_chars,
-            non_narrow_chars,
             normalized_pos,
             stable_id,
             cnum,
@@ -1809,8 +1742,7 @@ impl SourceFile {
         let source_len = src.len();
         let source_len = u32::try_from(source_len).map_err(|_| OffsetOverflowError)?;
 
-        let (lines, multibyte_chars, non_narrow_chars) =
-            analyze_source_file::analyze_source_file(&src);
+        let (lines, multibyte_chars) = analyze_source_file::analyze_source_file(&src);
 
         Ok(SourceFile {
             name,
@@ -1821,7 +1753,6 @@ impl SourceFile {
             source_len: RelativeBytePos::from_u32(source_len),
             lines: FreezeLock::frozen(SourceFileLines::Lines(lines)),
             multibyte_chars,
-            non_narrow_chars,
             normalized_pos,
             stable_id,
             cnum: LOCAL_CRATE,
@@ -2130,38 +2061,42 @@ impl SourceFile {
         let pos = self.relative_position(pos);
         let (line, col_or_chpos) = self.lookup_file_pos(pos);
         if line > 0 {
-            let col = col_or_chpos;
-            let linebpos = self.lines()[line - 1];
-            let col_display = {
-                let start_width_idx = self
-                    .non_narrow_chars
-                    .binary_search_by_key(&linebpos, |x| x.pos())
-                    .unwrap_or_else(|x| x);
-                let end_width_idx = self
-                    .non_narrow_chars
-                    .binary_search_by_key(&pos, |x| x.pos())
-                    .unwrap_or_else(|x| x);
-                let special_chars = end_width_idx - start_width_idx;
-                let non_narrow: usize = self.non_narrow_chars[start_width_idx..end_width_idx]
-                    .iter()
-                    .map(|x| x.width())
-                    .sum();
-                col.0 - special_chars + non_narrow
+            let Some(code) = self.get_line(line - 1) else {
+                // If we don't have the code available, it is ok as a fallback to return the bytepos
+                // instead of the "display" column, which is only used to properly show underlines
+                // in the terminal.
+                // FIXME: we'll want better handling of this in the future for the sake of tools
+                // that want to use the display col instead of byte offsets to modify Rust code, but
+                // that is a problem for another day, the previous code was already incorrect for
+                // both displaying *and* third party tools using the json output naïvely.
+                tracing::info!("couldn't find line {line} {:?}", self.name);
+                return (line, col_or_chpos, col_or_chpos.0);
             };
-            (line, col, col_display)
+            let display_col = code.chars().take(col_or_chpos.0).map(|ch| char_width(ch)).sum();
+            (line, col_or_chpos, display_col)
         } else {
-            let chpos = col_or_chpos;
-            let col_display = {
-                let end_width_idx = self
-                    .non_narrow_chars
-                    .binary_search_by_key(&pos, |x| x.pos())
-                    .unwrap_or_else(|x| x);
-                let non_narrow: usize =
-                    self.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
-                chpos.0 - end_width_idx + non_narrow
-            };
-            (0, chpos, col_display)
+            // This is never meant to happen?
+            (0, col_or_chpos, col_or_chpos.0)
         }
+    }
+}
+
+pub fn char_width(ch: char) -> usize {
+    // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is. For now,
+    // just accept that sometimes the code line will be longer than desired.
+    match ch {
+        '\t' => 4,
+        // Keep the following list in sync with `rustc_errors::emitter::OUTPUT_REPLACEMENTS`. These
+        // are control points that we replace before printing with a visible codepoint for the sake
+        // of being able to point at them with underlines.
+        '\u{0000}' | '\u{0001}' | '\u{0002}' | '\u{0003}' | '\u{0004}' | '\u{0005}'
+        | '\u{0006}' | '\u{0007}' | '\u{0008}' | '\u{000B}' | '\u{000C}' | '\u{000D}'
+        | '\u{000E}' | '\u{000F}' | '\u{0010}' | '\u{0011}' | '\u{0012}' | '\u{0013}'
+        | '\u{0014}' | '\u{0015}' | '\u{0016}' | '\u{0017}' | '\u{0018}' | '\u{0019}'
+        | '\u{001A}' | '\u{001B}' | '\u{001C}' | '\u{001D}' | '\u{001E}' | '\u{001F}'
+        | '\u{007F}' | '\u{202A}' | '\u{202B}' | '\u{202D}' | '\u{202E}' | '\u{2066}'
+        | '\u{2067}' | '\u{2068}' | '\u{202C}' | '\u{2069}' => 1,
+        _ => unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1),
     }
 }
 

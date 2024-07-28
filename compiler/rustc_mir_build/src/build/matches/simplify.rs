@@ -12,7 +12,7 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::matches::{MatchPair, PatternExtraData, TestCase};
+use crate::build::matches::{MatchPairTree, PatternExtraData, TestCase};
 use crate::build::Builder;
 use tracing::{debug, instrument};
 
@@ -24,7 +24,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn simplify_match_pairs<'pat>(
         &mut self,
-        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+        match_pairs: &mut Vec<MatchPairTree<'pat, 'tcx>>,
         extra_data: &mut PatternExtraData<'tcx>,
     ) {
         // In order to please the borrow checker, in a pattern like `x @ pat` we must lower the

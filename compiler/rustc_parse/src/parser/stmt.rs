@@ -3,7 +3,6 @@ use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
 use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
-use super::TrailingToken;
 use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
 };
@@ -73,6 +72,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::MissingLet,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(kw::Auto) && self.may_recover() {
             self.bump(); // `auto`
@@ -80,6 +80,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotAuto,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(sym::var) && self.may_recover() {
             self.bump(); // `var`
@@ -87,6 +88,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotVar,
+                force_collect,
             )?
         } else if self.check_path()
             && !self.token.is_qpath_start()
@@ -97,17 +99,17 @@ impl<'a> Parser<'a> {
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
-            match force_collect {
-                ForceCollect::Yes => {
-                    self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))?
+            let stmt = self.collect_tokens_trailing_token(
+                AttrWrapper::empty(),
+                force_collect,
+                |this, _empty_attrs| Ok((this.parse_stmt_path_start(lo, attrs)?, false)),
+            );
+            match stmt {
+                Ok(stmt) => stmt,
+                Err(mut err) => {
+                    self.suggest_add_missing_let_for_stmt(&mut err);
+                    return Err(err);
                 }
-                ForceCollect::No => match self.parse_stmt_path_start(lo, attrs) {
-                    Ok(stmt) => stmt,
-                    Err(mut err) => {
-                        self.suggest_add_missing_let_for_stmt(&mut err);
-                        return Err(err);
-                    }
-                },
             }
         } else if let Some(item) = self.parse_item_common(
             attrs.clone(),
@@ -124,12 +126,13 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
-            let e = match force_collect {
-                ForceCollect::Yes => self.collect_tokens_no_attrs(|this| {
-                    this.parse_expr_res(Restrictions::STMT_EXPR, attrs)
-                })?,
-                ForceCollect::No => self.parse_expr_res(Restrictions::STMT_EXPR, attrs)?,
-            };
+            let e = self.collect_tokens_trailing_token(
+                AttrWrapper::empty(),
+                force_collect,
+                |this, _empty_attrs| {
+                    Ok((this.parse_expr_res(Restrictions::STMT_EXPR, attrs)?, false))
+                },
+            )?;
             if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
@@ -149,11 +152,7 @@ impl<'a> Parser<'a> {
 
             if this.eat(&token::Not) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
-                if this.token == token::Semi {
-                    return Ok((stmt_mac, TrailingToken::Semi));
-                } else {
-                    return Ok((stmt_mac, TrailingToken::None));
-                }
+                return Ok((stmt_mac, this.token == token::Semi));
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
@@ -164,10 +163,10 @@ impl<'a> Parser<'a> {
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_dot_or_call_with(expr, lo, attrs)
+                this.parse_expr_dot_or_call_with(attrs, expr, lo)
             })?;
             // `DUMMY_SP` will get overwritten later in this function
-            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), TrailingToken::None))
+            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), false))
         })?;
 
         if let StmtKind::Expr(expr) = stmt.kind {
@@ -206,7 +205,7 @@ impl<'a> Parser<'a> {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
-            let e = self.parse_expr_dot_or_call_with(e, lo, attrs)?;
+            let e = self.parse_expr_dot_or_call_with(attrs, e, lo)?;
             let e = self
                 .parse_expr_assoc_with(0, LhsExpr::Parsed { expr: e, starts_statement: false })?;
             StmtKind::Expr(e)
@@ -236,16 +235,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         attrs: AttrWrapper,
         subdiagnostic: fn(Span) -> errors::InvalidVariableDeclarationSub,
+        force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
-        let stmt =
-            self.collect_tokens_trailing_token(attrs, ForceCollect::Yes, |this, attrs| {
-                let local = this.parse_local(attrs)?;
-                // FIXME - maybe capture semicolon in recovery?
-                Ok((
-                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
-                    TrailingToken::None,
-                ))
-            })?;
+        let stmt = self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+            let local = this.parse_local(attrs)?;
+            // FIXME - maybe capture semicolon in recovery?
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
+        })?;
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
@@ -261,11 +257,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             this.expect_keyword(kw::Let)?;
             let local = this.parse_local(attrs)?;
-            let trailing = if capture_semi && this.token.kind == token::Semi {
-                TrailingToken::Semi
-            } else {
-                TrailingToken::None
-            };
+            let trailing = capture_semi && this.token.kind == token::Semi;
             Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
         })
     }

@@ -182,8 +182,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
-        let pick =
-            self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
+        let scope = if let Some(only_method) = segment.res.opt_def_id() {
+            ProbeScope::Single(only_method)
+        } else {
+            ProbeScope::TraitsInScope
+        };
+
+        let pick = self.lookup_probe(segment.ident, self_ty, call_expr, scope)?;
 
         self.lint_edition_dependent_dot_call(
             self_ty, segment, span, call_expr, self_expr, &pick, args,

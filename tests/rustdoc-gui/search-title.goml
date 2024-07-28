@@ -1,0 +1,24 @@
+// Checks that the search changes the title
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+store-value: (title, "test_docs - Rust")
+assert-document-property: {"title": |title|}
+
+write-into: (".search-input", "test")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+wait-for: "#crate-search"
+
+assert-document-property: {"title": '"test" Search - Rust'}
+
+set-property: (".search-input", {"value": "another one"})
+// To be SURE that the search will be run.
+press-key: 'Enter'
+wait-for: "#crate-search"
+
+assert-document-property: {"title": '"another one" Search - Rust'}
+
+press-key: "Escape"
+
+assert-document-property: {"title": |title|}

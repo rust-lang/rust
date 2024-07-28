@@ -82,6 +82,11 @@ const fn max_iov() -> usize {
 }
 
 impl FileDesc {
+    #[inline]
+    pub fn try_clone(&self) -> io::Result<Self> {
+        self.duplicate()
+    }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::read(
@@ -120,6 +125,7 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         #[cfg(not(any(
             all(target_os = "linux", not(target_env = "musl")),
@@ -313,6 +319,7 @@ impl FileDesc {
         cfg!(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))
     }
 
+    #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         #[cfg(not(any(
             all(target_os = "linux", not(target_env = "musl")),

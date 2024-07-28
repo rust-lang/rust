@@ -24,7 +24,7 @@ mod foo {
 }
 use foo::*;
 
-const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
+const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
     fun(filter_positive());
 }
 

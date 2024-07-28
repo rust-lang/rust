@@ -8,7 +8,7 @@
 // Reason: the binary is executed
 //@ needs-profiler-support
 
-use run_make_support::{fs_wrapper, llvm_profdata, run, rustc};
+use run_make_support::{llvm_profdata, rfs, run, rustc};
 
 fn main() {
     // Generate the profile-guided-optimization (PGO) profiles
@@ -19,5 +19,5 @@ fn main() {
     // Use the profiles in compilation
     rustc().profile_use("merged.profdata").emit("dep-info").input("main.rs").run();
     // Check that the profile file is in the dep-info emit file
-    assert!(fs_wrapper::read_to_string("main.d").contains("merged.profdata"));
+    assert!(rfs::read_to_string("main.d").contains("merged.profdata"));
 }

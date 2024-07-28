@@ -37,7 +37,7 @@ declare_lint_pass! {
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
-        DEPRECATED_SAFE,
+        DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
@@ -1203,16 +1203,16 @@ declare_lint! {
     /// This was historically allowed, but is not the intended behavior
     /// according to the visibility rules. This is a [future-incompatible]
     /// lint to transition this to a hard error in the future. See [issue
-    /// #34537] for more details.
+    /// #127909] for more details.
     ///
-    /// [issue #34537]: https://github.com/rust-lang/rust/issues/34537
+    /// [issue #127909]: https://github.com/rust-lang/rust/issues/127909
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
     "detect public re-exports of private extern crates",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #127909 <https://github.com/rust-lang/rust/issues/127909>",
     };
 }
 
@@ -1424,7 +1424,7 @@ declare_lint! {
     Deny,
     "detects missing fragment specifiers in unused `macro_rules!` patterns",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
     };
 }
@@ -1984,14 +1984,18 @@ declare_lint! {
     ///
     /// ```rust
     /// trait MyIterator : Iterator {
-    ///     // is_sorted is an unstable method that already exists on the Iterator trait
-    ///     fn is_sorted(self) -> bool where Self: Sized {true}
+    ///     // is_partitioned is an unstable method that already exists on the Iterator trait
+    ///     fn is_partitioned<P>(self, predicate: P) -> bool
+    ///     where
+    ///         Self: Sized,
+    ///         P: FnMut(Self::Item) -> bool,
+    ///     {true}
     /// }
     ///
     /// impl<T: ?Sized> MyIterator for T where T: Iterator { }
     ///
     /// let x = vec![1, 2, 3];
-    /// let _ = x.iter().is_sorted();
+    /// let _ = x.iter().is_partitioned(|_| true);
     /// ```
     ///
     /// {{produces}}
@@ -2007,7 +2011,7 @@ declare_lint! {
     /// is an early-warning to let you know that there may be a collision in
     /// the future. This can be avoided by adding type annotations to
     /// disambiguate which trait method you intend to call, such as
-    /// `MyIterator::is_sorted(my_iter)` or renaming or removing the method.
+    /// `MyIterator::is_partitioned(my_iter, my_predicate)` or renaming or removing the method.
     ///
     /// [nightly channel]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
     /// [`feature` attribute]: https://doc.rust-lang.org/nightly/unstable-book/
@@ -4812,8 +4816,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `deprecated_safe` lint detects unsafe functions being used as safe
-    /// functions.
+    /// The `deprecated_safe_2024` lint detects unsafe functions being used as
+    /// safe functions.
     ///
     /// ### Example
     ///
@@ -4832,8 +4836,8 @@ declare_lint! {
     ///
     /// Rust [editions] allow the language to evolve without breaking backward
     /// compatibility. This lint catches code that uses `unsafe` functions that
-    /// were declared as safe (non-`unsafe`) in earlier editions. If you switch
-    /// the compiler to a new edition without updating the code, then it
+    /// were declared as safe (non-`unsafe`) in editions prior to Rust 2024. If
+    /// you switch the compiler to Rust 2024 without updating the code, then it
     /// will fail to compile if you are using a function previously marked as
     /// safe.
     ///
@@ -4850,7 +4854,7 @@ declare_lint! {
     /// future.
     ///
     /// [editions]: https://doc.rust-lang.org/edition-guide/
-    pub DEPRECATED_SAFE,
+    pub DEPRECATED_SAFE_2024,
     Allow,
     "detects unsafe functions being used as safe functions",
     @future_incompatible = FutureIncompatibleInfo {

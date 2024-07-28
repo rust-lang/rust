@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_in_test;
 use clippy_utils::source::{snippet, snippet_with_applicability};
@@ -97,17 +98,16 @@ declare_clippy_lint! {
     "lint `use _::*` statements"
 }
 
-#[derive(Default)]
 pub struct WildcardImports {
     warn_on_all: bool,
-    allowed_segments: FxHashSet<String>,
+    allowed_segments: &'static FxHashSet<String>,
 }
 
 impl WildcardImports {
-    pub fn new(warn_on_all: bool, allowed_wildcard_imports: FxHashSet<String>) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            warn_on_all,
-            allowed_segments: allowed_wildcard_imports,
+            warn_on_all: conf.warn_on_all_wildcard_imports,
+            allowed_segments: &conf.allowed_wildcard_imports,
         }
     }
 }
@@ -181,7 +181,7 @@ impl WildcardImports {
     fn check_exceptions(&self, cx: &LateContext<'_>, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
         item.span.from_expansion()
             || is_prelude_import(segments)
-            || is_allowed_via_config(segments, &self.allowed_segments)
+            || is_allowed_via_config(segments, self.allowed_segments)
             || (is_super_only_import(segments) && is_in_test(cx.tcx, item.hir_id()))
     }
 }

@@ -4,6 +4,7 @@ error: unreachable pattern
 LL |         Err(!),
    |         ^^^^^^
    |
+   = note: this pattern matches no values because `Void` is uninhabited
 note: the lint level is defined here
   --> $DIR/unreachable.rs:7:9
    |
@@ -15,30 +16,40 @@ error: unreachable pattern
    |
 LL |     let (Ok(_x) | Err(!)) = res_void;
    |                   ^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:22:12
    |
 LL |     if let Err(!) = res_void {}
    |            ^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:24:24
    |
 LL |     if let (Ok(true) | Err(!)) = res_void {}
    |                        ^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:26:23
    |
 LL |     for (Ok(mut _x) | Err(!)) in [res_void] {}
    |                       ^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:30:18
    |
 LL | fn foo((Ok(_x) | Err(!)): Result<bool, Void>) {}
    |                  ^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: aborting due to 6 previous errors
 

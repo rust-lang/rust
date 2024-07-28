@@ -1,10 +1,9 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-use crate::mem::transmute;
-
 use crate::any::Any;
 use crate::fmt;
 use crate::marker::PhantomData;
+use crate::mem::{transmute, ManuallyDrop};
 use crate::panic::AssertUnwindSafe;
 use crate::ptr;
 
@@ -429,7 +428,7 @@ impl<'a> ContextBuilder<'a> {
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`Wake`]: ../../alloc/task/trait.Wake.html
-#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
+#[repr(transparent)]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Waker {
     waker: RawWaker,
@@ -465,16 +464,14 @@ impl Waker {
     pub fn wake(self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
-        let wake = self.waker.vtable.wake;
-        let data = self.waker.data;
 
         // Don't call `drop` -- the waker will be consumed by `wake`.
-        crate::mem::forget(self);
+        let this = ManuallyDrop::new(self);
 
         // SAFETY: This is safe because `Waker::from_raw` is the only way
         // to initialize `wake` and `data` requiring the user to acknowledge
         // that the contract of `RawWaker` is upheld.
-        unsafe { (wake)(data) };
+        unsafe { (this.waker.vtable.wake)(this.waker.data) };
     }
 
     /// Wake up the task associated with this `Waker` without consuming the `Waker`.
@@ -695,7 +692,7 @@ impl fmt::Debug for Waker {
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`local_waker`]: core::task::Context::local_waker
 #[unstable(feature = "local_waker", issue = "118959")]
-#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
+#[repr(transparent)]
 pub struct LocalWaker {
     waker: RawWaker,
 }
@@ -726,16 +723,14 @@ impl LocalWaker {
     pub fn wake(self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
-        let wake = self.waker.vtable.wake;
-        let data = self.waker.data;
 
         // Don't call `drop` -- the waker will be consumed by `wake`.
-        crate::mem::forget(self);
+        let this = ManuallyDrop::new(self);
 
         // SAFETY: This is safe because `Waker::from_raw` is the only way
         // to initialize `wake` and `data` requiring the user to acknowledge
         // that the contract of `RawWaker` is upheld.
-        unsafe { (wake)(data) };
+        unsafe { (this.waker.vtable.wake)(this.waker.data) };
     }
 
     /// Wake up the task associated with this `LocalWaker` without consuming the `LocalWaker`.

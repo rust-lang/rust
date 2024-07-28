@@ -2,7 +2,7 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-104897.rs:5:18
    |
 LL | fn f(){(print!(á
-   |       --      -  ^
+   |       --      - ^
    |       ||      |
    |       ||      unclosed delimiter
    |       |unclosed delimiter

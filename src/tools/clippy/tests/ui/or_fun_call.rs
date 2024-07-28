@@ -318,4 +318,51 @@ fn host_effect() {
     Add::<i32>::add(1, 1).add(i32::MIN);
 }
 
+mod issue_10228 {
+    struct Entry;
+
+    impl Entry {
+        fn or_insert(self, _default: i32) {}
+        fn or_default(self) {
+            // Don't lint, suggested code is an infinite recursion
+            self.or_insert(Default::default())
+        }
+    }
+}
+
+// issue #12973
+fn fn_call_in_nested_expr() {
+    struct Foo {
+        val: String,
+    }
+
+    fn f() -> i32 {
+        1
+    }
+    let opt: Option<i32> = Some(1);
+
+    //~v ERROR: use of `unwrap_or` followed by a function call
+    let _ = opt.unwrap_or({ f() }); // suggest `.unwrap_or_else(f)`
+    //
+    //~v ERROR: use of `unwrap_or` followed by a function call
+    let _ = opt.unwrap_or(f() + 1); // suggest `.unwrap_or_else(|| f() + 1)`
+    //
+    //~v ERROR: use of `unwrap_or` followed by a function call
+    let _ = opt.unwrap_or({
+        let x = f();
+        x + 1
+    });
+    //~v ERROR: use of `map_or` followed by a function call
+    let _ = opt.map_or(f() + 1, |v| v); // suggest `.map_or_else(|| f() + 1, |v| v)`
+    //
+    //~v ERROR: use of `unwrap_or` to construct default value
+    let _ = opt.unwrap_or({ i32::default() });
+
+    let opt_foo = Some(Foo {
+        val: String::from("123"),
+    });
+    //~v ERROR: use of `unwrap_or` followed by a function call
+    let _ = opt_foo.unwrap_or(Foo { val: String::default() });
+}
+
 fn main() {}

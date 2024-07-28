@@ -82,6 +82,7 @@ pub fn from_target_feature(
                 Some(sym::prfchw_target_feature) => rust_features.prfchw_target_feature,
                 Some(sym::x86_amx_intrinsics) => rust_features.x86_amx_intrinsics,
                 Some(sym::xop_target_feature) => rust_features.xop_target_feature,
+                Some(sym::s390x_target_feature) => rust_features.s390x_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };

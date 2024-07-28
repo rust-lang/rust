@@ -364,7 +364,9 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
 }
 
 /// Given a `dyn Subtrait` and `dyn Supertrait` trait object, find the slot of
-/// // the trait vptr in the subtrait's vtable.
+/// the trait vptr in the subtrait's vtable.
+///
+/// A return value of `None` means that the original vtable can be reused.
 pub(crate) fn supertrait_vtable_slot<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (
@@ -373,20 +375,22 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
     ),
 ) -> Option<usize> {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
-
     let (source, target) = key;
+
+    // If the target principal is `None`, we can just return `None`.
+    let ty::Dynamic(target, _, _) = *target.kind() else {
+        bug!();
+    };
+    let target_principal = tcx
+        .normalize_erasing_regions(ty::ParamEnv::reveal_all(), target.principal()?)
+        .with_self_ty(tcx, tcx.types.trait_object_dummy_self);
+
+    // Given that we have a target principal, it is a bug for there not to be a source principal.
     let ty::Dynamic(source, _, _) = *source.kind() else {
         bug!();
     };
     let source_principal = tcx
         .normalize_erasing_regions(ty::ParamEnv::reveal_all(), source.principal().unwrap())
-        .with_self_ty(tcx, tcx.types.trait_object_dummy_self);
-
-    let ty::Dynamic(target, _, _) = *target.kind() else {
-        bug!();
-    };
-    let target_principal = tcx
-        .normalize_erasing_regions(ty::ParamEnv::reveal_all(), target.principal().unwrap())
         .with_self_ty(tcx, tcx.types.trait_object_dummy_self);
 
     let vtable_segment_callback = {

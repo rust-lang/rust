@@ -469,6 +469,12 @@
                 $location.path(lint.id);
             };
 
+            $scope.toggleExpansion = function(lints, isExpanded) {
+                lints.forEach(lint => {
+                    $scope.open[lint.id] = isExpanded;
+                });
+            }
+
             $scope.copyToClipboard = function (lint) {
                 const clipboard = document.getElementById("clipboard-" + lint.id);
                 if (clipboard) {

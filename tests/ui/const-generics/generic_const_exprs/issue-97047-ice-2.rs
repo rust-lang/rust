@@ -1,7 +1,7 @@
 //@ check-pass
 
-#![feature(adt_const_params, generic_const_exprs)]
-//~^ WARN the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
+#![feature(adt_const_params, unsized_const_params, generic_const_exprs)]
+//~^ WARN the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 //~^^ WARN the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 
 pub struct Changes<const CHANGES: &'static [&'static str]>

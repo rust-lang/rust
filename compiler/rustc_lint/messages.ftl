@@ -5,6 +5,11 @@ lint_ambiguous_glob_reexport = ambiguous glob re-exports
     .label_first_reexport = the name `{$name}` in the {$namespace} namespace is first re-exported here
     .label_duplicate_reexport = but the name `{$name}` in the {$namespace} namespace is also re-exported here
 
+lint_ambiguous_negative_literals = `-` has lower precedence than method calls, which might be unexpected
+    .example = e.g. `-4.abs()` equals `-4`; while `(-4).abs()` equals `4`
+    .negative_literal = add parentheses around the `-` and the literal to call the method on a negative literal
+    .current_behavior = add parentheses around the literal and the method call to keep the current behavior
+
 lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
     .addr_metadata_suggestion = use explicit `std::ptr::eq` method to compare metadata and addresses
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
@@ -139,13 +144,18 @@ lint_builtin_special_module_name_used_main = found module declaration for main.r
 
 lint_builtin_trivial_bounds = {$predicate_kind_name} bound {$predicate} does not depend on any type or lifetime parameters
 
-lint_builtin_type_alias_bounds_help = use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to associated types in type aliases
-
-lint_builtin_type_alias_generic_bounds = bounds on generic parameters are not enforced in type aliases
-    .suggestion = the bound will not be checked when the type alias is used, and should be removed
-
-lint_builtin_type_alias_where_clause = where clauses are not enforced in type aliases
-    .suggestion = the clause will not be checked when the type alias is used, and should be removed
+lint_builtin_type_alias_bounds_enable_feat_help = add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+lint_builtin_type_alias_bounds_label = will not be checked at usage sites of the type alias
+lint_builtin_type_alias_bounds_limitation_note = this is a known limitation of the type checker that may be lifted in a future edition.
+    see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+lint_builtin_type_alias_bounds_param_bounds = bounds on generic parameters in type aliases are not enforced
+    .suggestion = remove {$count ->
+        [one] this bound
+        *[other] these bounds
+    }
+lint_builtin_type_alias_bounds_qualify_assoc_tys_sugg = fully qualify this associated type
+lint_builtin_type_alias_bounds_where_clause = where clauses on type aliases are not enforced
+    .suggestion = remove this where clause
 
 lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
 lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
@@ -403,8 +413,9 @@ lint_inner_macro_attribute_unstable = inner macro attributes are unstable
 
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
-    .note = an LLVM bug makes these labels ambiguous with a binary literal number
-    .note = see <https://bugs.llvm.org/show_bug.cgi?id=36144> for more information
+    .help = start numbering with `2` instead
+    .note1 = an LLVM bug makes these labels ambiguous with a binary literal number on x86
+    .note2 = see <https://github.com/llvm/llvm-project/issues/99547> for more information
 
 lint_invalid_asm_label_format_arg = avoid using named labels in inline assembly
     .help = only local labels of the form `<number>:` should be used in inline asm
@@ -555,6 +566,9 @@ lint_non_fmt_panic_unused =
         *[other] arguments
     }
     .add_fmt_suggestion = or add a "{"{"}{"}"}" format string to use the message literally
+
+lint_non_glob_import_type_ir_inherent = non-glob import of `rustc_type_ir::inherent`
+    .suggestion = try using a glob import instead
 
 lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
 

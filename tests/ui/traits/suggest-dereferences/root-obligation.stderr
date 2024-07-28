@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `&char: Pattern<'_>` is not satisfied
+error[E0277]: the trait bound `&char: Pattern` is not satisfied
   --> $DIR/root-obligation.rs:6:38
    |
 LL |         .filter(|c| "aeiou".contains(c))
-   |                             -------- ^ the trait `Fn(char)` is not implemented for `char`, which is required by `&char: Pattern<'_>`
+   |                             -------- ^ the trait `Fn(char)` is not implemented for `char`, which is required by `&char: Pattern`
    |                             |
    |                             required by a bound introduced by this call
    |
    = note: required for `&char` to implement `FnOnce(char)`
-   = note: required for `&char` to implement `Pattern<'_>`
+   = note: required for `&char` to implement `Pattern`
 note: required by a bound in `core::str::<impl str>::contains`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 help: consider dereferencing here

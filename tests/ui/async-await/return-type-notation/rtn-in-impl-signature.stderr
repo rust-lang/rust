@@ -15,8 +15,9 @@ LL | impl Super1<'_, bar(..): Send> for () {}
    |
 help: consider removing this associated item constraint
    |
-LL | impl Super1<'_, bar(..): Send> for () {}
-   |               ~~~~~~~~~~~~~~~
+LL - impl Super1<'_, bar(..): Send> for () {}
+LL + impl Super1<'_> for () {}
+   |
 
 error[E0046]: not all trait items implemented, missing: `bar`
   --> $DIR/rtn-in-impl-signature.rs:10:1

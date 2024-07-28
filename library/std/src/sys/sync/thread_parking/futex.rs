@@ -1,15 +1,18 @@
+#![forbid(unsafe_op_in_unsafe_fn)]
 use crate::pin::Pin;
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Release};
-use crate::sys::futex::{futex_wait, futex_wake};
+use crate::sys::futex::{self, futex_wait, futex_wake};
 use crate::time::Duration;
 
-const PARKED: u32 = u32::MAX;
-const EMPTY: u32 = 0;
-const NOTIFIED: u32 = 1;
+type Atomic = futex::SmallAtomic;
+type State = futex::SmallPrimitive;
+
+const PARKED: State = State::MAX;
+const EMPTY: State = 0;
+const NOTIFIED: State = 1;
 
 pub struct Parker {
-    state: AtomicU32,
+    state: Atomic,
 }
 
 // Notes about memory ordering:
@@ -36,7 +39,7 @@ impl Parker {
     /// Construct the futex parker. The UNIX parker implementation
     /// requires this to happen in-place.
     pub unsafe fn new_in_place(parker: *mut Parker) {
-        parker.write(Self { state: AtomicU32::new(EMPTY) });
+        unsafe { parker.write(Self { state: Atomic::new(EMPTY) }) };
     }
 
     // Assumes this is only called by the thread that owns the Parker,

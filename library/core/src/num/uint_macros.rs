@@ -9,6 +9,7 @@ macro_rules! uint_impl {
         // literal is fine if they need to be multiple code tokens.
         // In non-comments, use the associated constants rather than these.
         BITS = $BITS:literal,
+        BITS_MINUS_ONE = $BITS_MINUS_ONE:literal,
         MAX = $MaxV:literal,
         rot = $rot:literal,
         rot_op = $rot_op:literal,
@@ -65,8 +66,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = 0b01001100", stringify!($SelfT), ";")]
-        ///
         /// assert_eq!(n.count_ones(), 3);
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.count_ones(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        /// assert_eq!(zero.count_ones(), 0);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -86,7 +92,11 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 0);")]
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        #[doc = concat!("assert_eq!(zero.count_zeros(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        /// assert_eq!(max.count_zeros(), 0);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -108,8 +118,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = ", stringify!($SelfT), "::MAX >> 2;")]
-        ///
         /// assert_eq!(n.leading_zeros(), 2);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        #[doc = concat!("assert_eq!(zero.leading_zeros(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        /// assert_eq!(max.leading_zeros(), 0);
         /// ```
         #[doc = concat!("[`ilog2`]: ", stringify!($SelfT), "::ilog2")]
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -130,8 +145,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = 0b0101000", stringify!($SelfT), ";")]
-        ///
         /// assert_eq!(n.trailing_zeros(), 3);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        #[doc = concat!("assert_eq!(zero.trailing_zeros(), ", stringify!($BITS), ");")]
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.trailing_zeros(), 0);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -150,8 +170,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = !(", stringify!($SelfT), "::MAX >> 2);")]
-        ///
         /// assert_eq!(n.leading_ones(), 2);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        /// assert_eq!(zero.leading_ones(), 0);
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.leading_ones(), ", stringify!($BITS), ");")]
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
@@ -171,8 +196,13 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("let n = 0b1010111", stringify!($SelfT), ";")]
-        ///
         /// assert_eq!(n.trailing_ones(), 3);
+        ///
+        #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
+        /// assert_eq!(zero.trailing_ones(), 0);
+        ///
+        #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
+        #[doc = concat!("assert_eq!(max.trailing_ones(), ", stringify!($BITS), ");")]
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
@@ -736,6 +766,67 @@ macro_rules! uint_impl {
             }
         }
 
+        #[doc = concat!(
+            "Checked integer subtraction. Computes `self - rhs` and checks if the result fits into an [`",
+            stringify!($SignedT), "`], returning `None` if overflow occurred."
+        )]
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(unsigned_signed_diff)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_signed_diff(2), Some(8));")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_signed_diff(10), Some(-8));")]
+        #[doc = concat!(
+            "assert_eq!(",
+            stringify!($SelfT),
+            "::MAX.checked_signed_diff(",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            "), None);"
+        )]
+        #[doc = concat!(
+            "assert_eq!((",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            ").checked_signed_diff(",
+            stringify!($SelfT),
+            "::MAX), Some(",
+            stringify!($SignedT),
+            "::MIN));"
+        )]
+        #[doc = concat!(
+            "assert_eq!((",
+            stringify!($SignedT),
+            "::MAX as ",
+            stringify!($SelfT),
+            " + 1).checked_signed_diff(0), None);"
+        )]
+        #[doc = concat!(
+            "assert_eq!(",
+            stringify!($SelfT),
+            "::MAX.checked_signed_diff(",
+            stringify!($SelfT),
+            "::MAX), Some(0));"
+        )]
+        /// ```
+        #[unstable(feature = "unsigned_signed_diff", issue = "126041")]
+        #[inline]
+        pub const fn checked_signed_diff(self, rhs: Self) -> Option<$SignedT> {
+            let res = self.wrapping_sub(rhs) as $SignedT;
+            let overflow = (self >= rhs) == (res < 0);
+
+            if !overflow {
+                Some(res)
+            } else {
+                None
+            }
+        }
+
         /// Checked integer multiplication. Computes `self * rhs`, returning
         /// `None` if overflow occurred.
         ///
@@ -1226,10 +1317,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog2(self) -> Option<u32> {
-            if let Some(x) = NonZero::new(self) {
-                Some(x.ilog2())
-            } else {
-                None
+            match NonZero::new(self) {
+                Some(x) => Some(x.ilog2()),
+                None => None,
             }
         }
 
@@ -1248,10 +1338,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
-            if let Some(x) = NonZero::new(self) {
-                Some(x.ilog10())
-            } else {
-                None
+            match NonZero::new(self) {
+                Some(x) => Some(x.ilog10()),
+                None => None,
             }
         }
 
@@ -1325,6 +1414,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));")]
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(", stringify!($BITS_MINUS_ONE), "), Some(0));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -2453,6 +2543,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(4), (0x10, false));")]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(132), (0x10, true));")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(", stringify!($BITS_MINUS_ONE), "), (0, false));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
@@ -2590,37 +2681,10 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            if self < 2 {
-                return self;
+            match NonZero::new(self) {
+                Some(x) => x.isqrt().get(),
+                None => 0,
             }
-
-            // The algorithm is based on the one presented in
-            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
-            // which cites as source the following C code:
-            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
-
-            let mut op = self;
-            let mut res = 0;
-            let mut one = 1 << (self.ilog2() & !1);
-
-            while one != 0 {
-                if op >= res + one {
-                    op -= res + one;
-                    res = (res >> 1) + one;
-                } else {
-                    res >>= 1;
-                }
-                one >>= 2;
-            }
-
-            // SAFETY: the result is positive and fits in an integer with half as many bits.
-            // Inform the optimizer about it.
-            unsafe {
-                hint::assert_unchecked(0 < res);
-                hint::assert_unchecked(res < 1 << (Self::BITS / 2));
-            }
-
-            res
         }
 
         /// Performs Euclidean division.

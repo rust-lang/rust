@@ -61,7 +61,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 
         for (def_id, info) in lctx.children {
             let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-            debug_assert!(matches!(owner, hir::MaybeOwner::Phantom));
+            debug_assert!(
+                matches!(owner, hir::MaybeOwner::Phantom),
+                "duplicate copy of {def_id:?} in lctx.children"
+            );
             *owner = info;
         }
     }
@@ -169,7 +172,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         hir_id: hir::HirId,
         ident: &mut Ident,
-        attrs: Option<&'hir [Attribute]>,
+        attrs: &'hir [Attribute],
         vis_span: Span,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
@@ -485,7 +488,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         vis_span: Span,
         ident: &mut Ident,
-        attrs: Option<&'hir [Attribute]>,
+        attrs: &'hir [Attribute],
     ) -> hir::ItemKind<'hir> {
         let path = &tree.prefix;
         let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
@@ -563,7 +566,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         // `ItemLocalId` and the new owner. (See `lower_node_id`)
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, vis_span, &mut ident, attrs);
-                        if let Some(attrs) = attrs {
+                        if !attrs.is_empty() {
                             this.attrs.insert(hir::ItemLocalId::ZERO, attrs);
                         }
 
@@ -713,7 +716,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id,
             def_id: self.local_def_id(v.id),
             data: self.lower_variant_data(hir_id, &v.data),
-            disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
+            disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const_to_anon_const(e)),
             ident: self.lower_ident(v.ident),
             span: self.lower_span(v.span),
         }
@@ -1522,8 +1525,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     continue;
                 }
                 let is_param = *is_param.get_or_insert_with(compute_is_param);
-                if !is_param {
-                    self.dcx().emit_err(MisplacedRelaxTraitBound { span: bound.span() });
+                if !is_param && !self.tcx.features().more_maybe_bounds {
+                    self.tcx
+                        .sess
+                        .create_feature_err(
+                            MisplacedRelaxTraitBound { span: bound.span() },
+                            sym::more_maybe_bounds,
+                        )
+                        .emit();
                 }
             }
         }
@@ -1601,7 +1610,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let Some((span, hir_id, def_id)) = host_param_parts {
             let const_node_id = self.next_node_id();
-            let anon_const =
+            let anon_const_did =
                 self.create_def(def_id, const_node_id, kw::Empty, DefKind::AnonConst, span);
 
             let const_id = self.next_id();
@@ -1609,7 +1618,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let bool_id = self.next_id();
 
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-            self.children.push((anon_const, hir::MaybeOwner::NonOwner(const_id)));
+            self.children.push((anon_const_did, hir::MaybeOwner::NonOwner(const_id)));
 
             let const_body = self.lower_body(|this| {
                 (
@@ -1624,6 +1633,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             });
 
+            let default_ac = self.arena.alloc(hir::AnonConst {
+                def_id: anon_const_did,
+                hir_id: const_id,
+                body: const_body,
+                span,
+            });
+            let default_ct = self.arena.alloc(hir::ConstArg {
+                hir_id: self.next_id(),
+                kind: hir::ConstArgKind::Anon(default_ac),
+                is_desugared_from_effects: false,
+            });
             let param = hir::GenericParam {
                 def_id,
                 hir_id,
@@ -1648,12 +1668,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )),
                     )),
                     // FIXME(effects) we might not need a default.
-                    default: Some(self.arena.alloc(hir::AnonConst {
-                        def_id: anon_const,
-                        hir_id: const_id,
-                        body: const_body,
-                        span,
-                    })),
+                    default: Some(default_ct),
                     is_host_effect: true,
                     synthetic: true,
                 },

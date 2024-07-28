@@ -11,7 +11,7 @@ LL |             c1(&mut Y);
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |             c1(addr_of_mut!(Y));
-   |                ~~~~~~~~~~~~~~~
+   |                ~~~~~~~~~~~~~ +
 
 warning: creating a mutable reference to mutable static is discouraged
   --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:27:16
@@ -25,7 +25,7 @@ LL |             c1(&mut Z);
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |             c1(addr_of_mut!(Z));
-   |                ~~~~~~~~~~~~~~~
+   |                ~~~~~~~~~~~~~ +
 
 warning: creating a mutable reference to mutable static is discouraged
   --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:64:37
@@ -39,7 +39,7 @@ LL |         borrowck_closures_unique::e(&mut X);
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |         borrowck_closures_unique::e(addr_of_mut!(X));
-   |                                     ~~~~~~~~~~~~~~~
+   |                                     ~~~~~~~~~~~~~ +
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:9:46

@@ -9,20 +9,6 @@ LL |         let y: Box<dyn Send> = x as Box<dyn Trait + Send>;
    = note: expected struct `Box<dyn Send>`
               found struct `Box<dyn Trait + Send>`
 
-error: cannot check whether the hidden type of opaque type satisfies auto traits
-  --> $DIR/unsized_coercion5.rs:16:32
-   |
-LL |         let y: Box<dyn Send> = x as Box<dyn Trait + Send>;
-   |                                ^
-   |
-   = note: fetching the hidden types of an opaque inside of the defining scope is not supported. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
-note: opaque type is declared here
-  --> $DIR/unsized_coercion5.rs:13:19
-   |
-LL | fn hello() -> Box<impl Trait + ?Sized> {
-   |                   ^^^^^^^^^^^^^^^^^^^
-   = note: required for the cast from `Box<impl Trait + ?Sized>` to `Box<dyn Trait + Send>`
-
 error[E0277]: the size for values of type `impl Trait + ?Sized` cannot be known at compilation time
   --> $DIR/unsized_coercion5.rs:16:32
    |
@@ -32,7 +18,7 @@ LL |         let y: Box<dyn Send> = x as Box<dyn Trait + Send>;
    = help: the trait `Sized` is not implemented for `impl Trait + ?Sized`
    = note: required for the cast from `Box<impl Trait + ?Sized>` to `Box<dyn Trait + Send>`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

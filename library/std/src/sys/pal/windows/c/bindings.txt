@@ -2059,6 +2059,7 @@ Windows.Win32.Networking.WinSock.SOCK_RDM
 Windows.Win32.Networking.WinSock.SOCK_SEQPACKET
 Windows.Win32.Networking.WinSock.SOCK_STREAM
 Windows.Win32.Networking.WinSock.SOCKADDR
+Windows.Win32.Networking.WinSock.SOCKADDR_STORAGE
 Windows.Win32.Networking.WinSock.SOCKADDR_UN
 Windows.Win32.Networking.WinSock.SOCKET
 Windows.Win32.Networking.WinSock.SOCKET_ERROR
@@ -2175,6 +2176,7 @@ Windows.Win32.Networking.WinSock.WSARecv
 Windows.Win32.Networking.WinSock.WSASend
 Windows.Win32.Networking.WinSock.WSASERVICE_NOT_FOUND
 Windows.Win32.Networking.WinSock.WSASocketW
+Windows.Win32.Networking.WinSock.WSAStartup
 Windows.Win32.Networking.WinSock.WSASYSCALLFAILURE
 Windows.Win32.Networking.WinSock.WSASYSNOTREADY
 Windows.Win32.Networking.WinSock.WSATRY_AGAIN
@@ -2419,6 +2421,7 @@ Windows.Win32.System.Console.STD_HANDLE
 Windows.Win32.System.Console.STD_INPUT_HANDLE
 Windows.Win32.System.Console.STD_OUTPUT_HANDLE
 Windows.Win32.System.Console.WriteConsoleW
+Windows.Win32.System.Diagnostics.Debug.AddVectoredExceptionHandler
 Windows.Win32.System.Diagnostics.Debug.ARM64_NT_NEON128
 Windows.Win32.System.Diagnostics.Debug.CONTEXT
 Windows.Win32.System.Diagnostics.Debug.EXCEPTION_RECORD
@@ -2462,6 +2465,7 @@ Windows.Win32.System.LibraryLoader.GetProcAddress
 Windows.Win32.System.Performance.QueryPerformanceCounter
 Windows.Win32.System.Performance.QueryPerformanceFrequency
 Windows.Win32.System.Pipes.CreateNamedPipeW
+Windows.Win32.System.Pipes.CreatePipe
 Windows.Win32.System.Pipes.NAMED_PIPE_MODE
 Windows.Win32.System.Pipes.PIPE_ACCEPT_REMOTE_CLIENTS
 Windows.Win32.System.Pipes.PIPE_CLIENT_END

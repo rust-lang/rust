@@ -12,15 +12,13 @@ use std::fmt;
 use std::io;
 use std::io::{Read, Write};
 use std::num::NonZero;
-use std::sync::atomic::{AtomicU32, Ordering};
 
-use smallvec::{smallvec, SmallVec};
 use tracing::{debug, trace};
 
 use rustc_ast::LitKind;
 use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{HashMapExt, Lock};
+use rustc_data_structures::sync::Lock;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -159,14 +157,9 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
     }
 }
 
-// Used to avoid infinite recursion when decoding cyclic allocations.
-type DecodingSessionId = NonZero<u32>;
-
 #[derive(Clone)]
 enum State {
     Empty,
-    InProgressNonAlloc(SmallVec<[DecodingSessionId; 1]>),
-    InProgress(SmallVec<[DecodingSessionId; 1]>, AllocId),
     Done(AllocId),
 }
 
@@ -180,13 +173,7 @@ pub struct AllocDecodingState {
 impl AllocDecodingState {
     #[inline]
     pub fn new_decoding_session(&self) -> AllocDecodingSession<'_> {
-        static DECODER_SESSION_ID: AtomicU32 = AtomicU32::new(0);
-        let counter = DECODER_SESSION_ID.fetch_add(1, Ordering::SeqCst);
-
-        // Make sure this is never zero.
-        let session_id = DecodingSessionId::new((counter & 0x7FFFFFFF) + 1).unwrap();
-
-        AllocDecodingSession { state: self, session_id }
+        AllocDecodingSession { state: self }
     }
 
     pub fn new(data_offsets: Vec<u64>) -> Self {
@@ -200,7 +187,6 @@ impl AllocDecodingState {
 #[derive(Copy, Clone)]
 pub struct AllocDecodingSession<'s> {
     state: &'s AllocDecodingState,
-    session_id: DecodingSessionId,
 }
 
 impl<'s> AllocDecodingSession<'s> {
@@ -220,70 +206,35 @@ impl<'s> AllocDecodingSession<'s> {
             (alloc_kind, decoder.position())
         });
 
+        // We are going to hold this lock during the entire decoding of this allocation, which may
+        // require that we decode other allocations. This cannot deadlock for two reasons:
+        //
+        // At the time of writing, it is only possible to create an allocation that contains a pointer
+        // to itself using the const_allocate intrinsic (which is for testing only), and even attempting
+        // to evaluate such consts blows the stack. If we ever grow a mechanism for producing
+        // cyclic allocations, we will need a new strategy for decoding that doesn't bring back
+        // https://github.com/rust-lang/rust/issues/126741.
+        //
+        // It is also impossible to create two allocations (call them A and B) where A is a pointer to B, and B
+        // is a pointer to A, because attempting to evaluate either of those consts will produce a
+        // query cycle, failing compilation.
+        let mut entry = self.state.decoding_state[idx].lock();
         // Check the decoding state to see if it's already decoded or if we should
         // decode it here.
-        let alloc_id = {
-            let mut entry = self.state.decoding_state[idx].lock();
-
-            match *entry {
-                State::Done(alloc_id) => {
-                    return alloc_id;
-                }
-                ref mut entry @ State::Empty => {
-                    // We are allowed to decode.
-                    match alloc_kind {
-                        AllocDiscriminant::Alloc => {
-                            // If this is an allocation, we need to reserve an
-                            // `AllocId` so we can decode cyclic graphs.
-                            let alloc_id = decoder.interner().reserve_alloc_id();
-                            *entry = State::InProgress(smallvec![self.session_id], alloc_id);
-                            Some(alloc_id)
-                        }
-                        AllocDiscriminant::Fn
-                        | AllocDiscriminant::Static
-                        | AllocDiscriminant::VTable => {
-                            // Fns and statics cannot be cyclic, and their `AllocId`
-                            // is determined later by interning.
-                            *entry = State::InProgressNonAlloc(smallvec![self.session_id]);
-                            None
-                        }
-                    }
-                }
-                State::InProgressNonAlloc(ref mut sessions) => {
-                    if sessions.contains(&self.session_id) {
-                        bug!("this should be unreachable");
-                    } else {
-                        // Start decoding concurrently.
-                        sessions.push(self.session_id);
-                        None
-                    }
-                }
-                State::InProgress(ref mut sessions, alloc_id) => {
-                    if sessions.contains(&self.session_id) {
-                        // Don't recurse.
-                        return alloc_id;
-                    } else {
-                        // Start decoding concurrently.
-                        sessions.push(self.session_id);
-                        Some(alloc_id)
-                    }
-                }
-            }
-        };
+        if let State::Done(alloc_id) = *entry {
+            return alloc_id;
+        }
 
         // Now decode the actual data.
         let alloc_id = decoder.with_position(pos, |decoder| {
             match alloc_kind {
                 AllocDiscriminant::Alloc => {
+                    trace!("creating memory alloc ID");
                     let alloc = <ConstAllocation<'tcx> as Decodable<_>>::decode(decoder);
-                    // We already have a reserved `AllocId`.
-                    let alloc_id = alloc_id.unwrap();
-                    trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
-                    decoder.interner().set_alloc_id_same_memory(alloc_id, alloc);
-                    alloc_id
+                    trace!("decoded alloc {:?}", alloc);
+                    decoder.interner().reserve_and_set_memory_alloc(alloc)
                 }
                 AllocDiscriminant::Fn => {
-                    assert!(alloc_id.is_none());
                     trace!("creating fn alloc ID");
                     let instance = ty::Instance::decode(decoder);
                     trace!("decoded fn alloc instance: {:?}", instance);
@@ -291,35 +242,26 @@ impl<'s> AllocDecodingSession<'s> {
                     // Here we cannot call `reserve_and_set_fn_alloc` as that would use a query, which
                     // is not possible in this context. That's why the allocation stores
                     // whether it is unique or not.
-                    let alloc_id =
-                        decoder.interner().reserve_and_set_fn_alloc_internal(instance, unique);
-                    alloc_id
+                    decoder.interner().reserve_and_set_fn_alloc_internal(instance, unique)
                 }
                 AllocDiscriminant::VTable => {
-                    assert!(alloc_id.is_none());
                     trace!("creating vtable alloc ID");
                     let ty = <Ty<'_> as Decodable<D>>::decode(decoder);
                     let poly_trait_ref =
                         <Option<ty::PolyExistentialTraitRef<'_>> as Decodable<D>>::decode(decoder);
                     trace!("decoded vtable alloc instance: {ty:?}, {poly_trait_ref:?}");
-                    let alloc_id =
-                        decoder.interner().reserve_and_set_vtable_alloc(ty, poly_trait_ref);
-                    alloc_id
+                    decoder.interner().reserve_and_set_vtable_alloc(ty, poly_trait_ref)
                 }
                 AllocDiscriminant::Static => {
-                    assert!(alloc_id.is_none());
                     trace!("creating extern static alloc ID");
                     let did = <DefId as Decodable<D>>::decode(decoder);
                     trace!("decoded static def-ID: {:?}", did);
-                    let alloc_id = decoder.interner().reserve_and_set_static_alloc(did);
-                    alloc_id
+                    decoder.interner().reserve_and_set_static_alloc(did)
                 }
             }
         });
 
-        self.state.decoding_state[idx].with_lock(|entry| {
-            *entry = State::Done(alloc_id);
-        });
+        *entry = State::Done(alloc_id);
 
         alloc_id
     }
@@ -562,12 +504,6 @@ impl<'tcx> TyCtxt<'tcx> {
         {
             bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
-    }
-
-    /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
-    /// twice for the same `(AllocId, Allocation)` pair.
-    fn set_alloc_id_same_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
-        self.alloc_map.lock().alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
     }
 }
 

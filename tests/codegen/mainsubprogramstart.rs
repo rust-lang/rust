@@ -1,4 +1,3 @@
-//@ ignore-windows
 //@ ignore-apple
 //@ ignore-wasi wasi codegens the main symbol differently
 

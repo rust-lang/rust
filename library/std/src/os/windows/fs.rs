@@ -471,6 +471,13 @@ pub trait MetadataExt {
     /// `fs::metadata` or `File::metadata`, then this will return `Some`.
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn file_index(&self) -> Option<u64>;
+
+    /// Returns the change time, which is the last time file metadata was changed, such as
+    /// renames, attributes, etc
+    ///
+    /// This will return `None` if the `Metadata` instance was not created using the `FILE_BASIC_INFO` type.
+    #[unstable(feature = "windows_change_time", issue = "121478")]
+    fn change_time(&self) -> Option<u64>;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -498,6 +505,9 @@ impl MetadataExt for Metadata {
     }
     fn file_index(&self) -> Option<u64> {
         self.as_inner().file_index()
+    }
+    fn change_time(&self) -> Option<u64> {
+        self.as_inner().changed_u64()
     }
 }
 

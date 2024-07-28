@@ -8,7 +8,7 @@
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, FileName, SourceFile, Span};
+use rustc_span::{char_width, FileLines, FileName, SourceFile, Span};
 
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
@@ -677,10 +677,7 @@ impl HumanEmitter {
             .skip(left)
             .take_while(|ch| {
                 // Make sure that the trimming on the right will fall within the terminal width.
-                // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char`
-                // is. For now, just accept that sometimes the code line will be longer than
-                // desired.
-                let next = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
+                let next = char_width(*ch);
                 if taken + next > right - left {
                     return false;
                 }
@@ -742,11 +739,7 @@ impl HumanEmitter {
         let left = margin.left(source_string.len());
 
         // Account for unicode characters of width !=0 that were removed.
-        let left = source_string
-            .chars()
-            .take(left)
-            .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
-            .sum();
+        let left = source_string.chars().take(left).map(|ch| char_width(ch)).sum();
 
         self.draw_line(
             buffer,
@@ -2039,7 +2032,7 @@ impl HumanEmitter {
                     let sub_len: usize =
                         if is_whitespace_addition { &part.snippet } else { part.snippet.trim() }
                             .chars()
-                            .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
+                            .map(|ch| char_width(ch))
                             .sum();
 
                     let offset: isize = offsets
@@ -2076,11 +2069,8 @@ impl HumanEmitter {
                     }
 
                     // length of the code after substitution
-                    let full_sub_len = part
-                        .snippet
-                        .chars()
-                        .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
-                        .sum::<usize>() as isize;
+                    let full_sub_len =
+                        part.snippet.chars().map(|ch| char_width(ch)).sum::<usize>() as isize;
 
                     // length of the code to be substituted
                     let snippet_len = span_end_pos as isize - span_start_pos as isize;
@@ -2568,18 +2558,53 @@ fn num_decimal_digits(num: usize) -> usize {
 }
 
 // We replace some characters so the CLI output is always consistent and underlines aligned.
+// Keep the following list in sync with `rustc_span::char_width`.
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
-    ('\t', "    "),   // We do our own tab replacement
+    ('\t', "    "),    // We do our own tab replacement
     ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
-    ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
-    ('\u{202B}', ""), // supported across CLIs and can cause confusion due to the bytes on disk
-    ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.
-    ('\u{202E}', ""),
-    ('\u{2066}', ""),
-    ('\u{2067}', ""),
-    ('\u{2068}', ""),
-    ('\u{202C}', ""),
-    ('\u{2069}', ""),
+    ('\u{202A}', "�"), // The following unicode text flow control characters are inconsistently
+    ('\u{202B}', "�"), // supported across CLIs and can cause confusion due to the bytes on disk
+    ('\u{202D}', "�"), // not corresponding to the visible source code, so we replace them always.
+    ('\u{202E}', "�"),
+    ('\u{2066}', "�"),
+    ('\u{2067}', "�"),
+    ('\u{2068}', "�"),
+    ('\u{202C}', "�"),
+    ('\u{2069}', "�"),
+    // In terminals without Unicode support the following will be garbled, but in *all* terminals
+    // the underlying codepoint will be as well. We could gate this replacement behind a "unicode
+    // support" gate.
+    ('\u{0000}', "␀"),
+    ('\u{0001}', "␁"),
+    ('\u{0002}', "␂"),
+    ('\u{0003}', "␃"),
+    ('\u{0004}', "␄"),
+    ('\u{0005}', "␅"),
+    ('\u{0006}', "␆"),
+    ('\u{0007}', "␇"),
+    ('\u{0008}', "␈"),
+    ('\u{000B}', "␋"),
+    ('\u{000C}', "␌"),
+    ('\u{000D}', "␍"),
+    ('\u{000E}', "␎"),
+    ('\u{000F}', "␏"),
+    ('\u{0010}', "␐"),
+    ('\u{0011}', "␑"),
+    ('\u{0012}', "␒"),
+    ('\u{0013}', "␓"),
+    ('\u{0014}', "␔"),
+    ('\u{0015}', "␕"),
+    ('\u{0016}', "␖"),
+    ('\u{0017}', "␗"),
+    ('\u{0018}', "␘"),
+    ('\u{0019}', "␙"),
+    ('\u{001A}', "␚"),
+    ('\u{001B}', "␛"),
+    ('\u{001C}', "␜"),
+    ('\u{001D}', "␝"),
+    ('\u{001E}', "␞"),
+    ('\u{001F}', "␟"),
+    ('\u{007F}', "␡"),
 ];
 
 fn normalize_whitespace(str: &str) -> String {

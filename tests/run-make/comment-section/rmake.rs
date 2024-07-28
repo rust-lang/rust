@@ -10,8 +10,9 @@
 use std::path::PathBuf;
 
 use run_make_support::llvm_readobj;
+use run_make_support::rfs;
 use run_make_support::rustc;
-use run_make_support::{cwd, env_var, read_dir, run_in_tmpdir};
+use run_make_support::{cwd, env_var, run_in_tmpdir};
 
 fn main() {
     let target = env_var("TARGET");
@@ -33,7 +34,7 @@ fn main() {
 
     // Check all object files (including temporary outputs) have a `.comment`
     // section with the expected content.
-    read_dir(cwd(), |f| {
+    rfs::read_dir_entries(cwd(), |f| {
         if !f.extension().is_some_and(|ext| ext == "o") {
             return;
         }

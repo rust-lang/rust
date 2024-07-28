@@ -8,19 +8,10 @@ LL |     for _ in 0..3 {
 LL |         Other::handle(value);
    |                       ^^^^^ value moved here, in previous iteration of loop
    |
-note: consider changing this parameter type in function `handle` to borrow instead if owning the value isn't necessary
-  --> $DIR/mut-borrow-in-loop-2.rs:8:22
+help: consider creating a fresh reborrow of `value` here
    |
-LL |     fn handle(value: T) -> Self;
-   |        ------        ^ this parameter takes ownership of the value
-   |        |
-   |        in this function
-help: consider moving the expression out of the loop so it is only moved once
-   |
-LL ~     let mut value = Other::handle(value);
-LL ~     for _ in 0..3 {
-LL ~         value;
-   |
+LL |         Other::handle(&mut *value);
+   |                       ++++++
 help: consider creating a fresh reborrow of `value` here
    |
 LL |         Other::handle(&mut *value);

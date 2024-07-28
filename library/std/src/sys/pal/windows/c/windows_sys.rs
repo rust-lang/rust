@@ -5,6 +5,7 @@ windows_targets::link!("advapi32.dll" "system" fn OpenProcessToken(processhandle
 windows_targets::link!("advapi32.dll" "system" "SystemFunction036" fn RtlGenRandom(randombuffer : *mut core::ffi::c_void, randombufferlength : u32) -> BOOLEAN);
 windows_targets::link!("kernel32.dll" "system" fn AcquireSRWLockExclusive(srwlock : *mut SRWLOCK));
 windows_targets::link!("kernel32.dll" "system" fn AcquireSRWLockShared(srwlock : *mut SRWLOCK));
+windows_targets::link!("kernel32.dll" "system" fn AddVectoredExceptionHandler(first : u32, handler : PVECTORED_EXCEPTION_HANDLER) -> *mut core::ffi::c_void);
 windows_targets::link!("kernel32.dll" "system" fn CancelIo(hfile : HANDLE) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn CloseHandle(hobject : HANDLE) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn CompareStringOrdinal(lpstring1 : PCWSTR, cchcount1 : i32, lpstring2 : PCWSTR, cchcount2 : i32, bignorecase : BOOL) -> COMPARESTRING_RESULT);
@@ -14,6 +15,7 @@ windows_targets::link!("kernel32.dll" "system" fn CreateEventW(lpeventattributes
 windows_targets::link!("kernel32.dll" "system" fn CreateFileW(lpfilename : PCWSTR, dwdesiredaccess : u32, dwsharemode : FILE_SHARE_MODE, lpsecurityattributes : *const SECURITY_ATTRIBUTES, dwcreationdisposition : FILE_CREATION_DISPOSITION, dwflagsandattributes : FILE_FLAGS_AND_ATTRIBUTES, htemplatefile : HANDLE) -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn CreateHardLinkW(lpfilename : PCWSTR, lpexistingfilename : PCWSTR, lpsecurityattributes : *const SECURITY_ATTRIBUTES) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn CreateNamedPipeW(lpname : PCWSTR, dwopenmode : FILE_FLAGS_AND_ATTRIBUTES, dwpipemode : NAMED_PIPE_MODE, nmaxinstances : u32, noutbuffersize : u32, ninbuffersize : u32, ndefaulttimeout : u32, lpsecurityattributes : *const SECURITY_ATTRIBUTES) -> HANDLE);
+windows_targets::link!("kernel32.dll" "system" fn CreatePipe(hreadpipe : *mut HANDLE, hwritepipe : *mut HANDLE, lppipeattributes : *const SECURITY_ATTRIBUTES, nsize : u32) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn CreateProcessW(lpapplicationname : PCWSTR, lpcommandline : PWSTR, lpprocessattributes : *const SECURITY_ATTRIBUTES, lpthreadattributes : *const SECURITY_ATTRIBUTES, binherithandles : BOOL, dwcreationflags : PROCESS_CREATION_FLAGS, lpenvironment : *const core::ffi::c_void, lpcurrentdirectory : PCWSTR, lpstartupinfo : *const STARTUPINFOW, lpprocessinformation : *mut PROCESS_INFORMATION) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn CreateSymbolicLinkW(lpsymlinkfilename : PCWSTR, lptargetfilename : PCWSTR, dwflags : SYMBOLIC_LINK_FLAGS) -> BOOLEAN);
 windows_targets::link!("kernel32.dll" "system" fn CreateThread(lpthreadattributes : *const SECURITY_ATTRIBUTES, dwstacksize : usize, lpstartaddress : LPTHREAD_START_ROUTINE, lpparameter : *const core::ffi::c_void, dwcreationflags : THREAD_CREATION_FLAGS, lpthreadid : *mut u32) -> HANDLE);
@@ -113,6 +115,7 @@ windows_targets::link!("ws2_32.dll" "system" fn WSAGetLastError() -> WSA_ERROR);
 windows_targets::link!("ws2_32.dll" "system" fn WSARecv(s : SOCKET, lpbuffers : *const WSABUF, dwbuffercount : u32, lpnumberofbytesrecvd : *mut u32, lpflags : *mut u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSASend(s : SOCKET, lpbuffers : *const WSABUF, dwbuffercount : u32, lpnumberofbytessent : *mut u32, dwflags : u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSASocketW(af : i32, r#type : i32, protocol : i32, lpprotocolinfo : *const WSAPROTOCOL_INFOW, g : u32, dwflags : u32) -> SOCKET);
+windows_targets::link!("ws2_32.dll" "system" fn WSAStartup(wversionrequested : u16, lpwsadata : *mut WSADATA) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn accept(s : SOCKET, addr : *mut SOCKADDR, addrlen : *mut i32) -> SOCKET);
 windows_targets::link!("ws2_32.dll" "system" fn bind(s : SOCKET, name : *const SOCKADDR, namelen : i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn closesocket(s : SOCKET) -> i32);
@@ -2283,6 +2286,12 @@ pub type EXCEPTION_DISPOSITION = i32;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: u32 = 15u32;
 #[repr(C)]
 #[derive(Clone, Copy)]
+pub struct EXCEPTION_POINTERS {
+    pub ExceptionRecord: *mut EXCEPTION_RECORD,
+    pub ContextRecord: *mut CONTEXT,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub struct EXCEPTION_RECORD {
     pub ExceptionCode: NTSTATUS,
     pub ExceptionFlags: u32,
@@ -2859,6 +2868,8 @@ pub type PTIMERAPCROUTINE = Option<
         dwtimerhighvalue: u32,
     ),
 >;
+pub type PVECTORED_EXCEPTION_HANDLER =
+    Option<unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32>;
 pub type PWSTR = *mut u16;
 pub const READ_CONTROL: FILE_ACCESS_RIGHTS = 131072u32;
 pub const REALTIME_PRIORITY_CLASS: PROCESS_CREATION_FLAGS = 256u32;
@@ -2887,6 +2898,14 @@ pub type SET_FILE_POINTER_MOVE_METHOD = u32;
 pub struct SOCKADDR {
     pub sa_family: ADDRESS_FAMILY,
     pub sa_data: [i8; 14],
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SOCKADDR_STORAGE {
+    pub ss_family: ADDRESS_FAMILY,
+    pub __ss_pad1: [i8; 6],
+    pub __ss_align: i64,
+    pub __ss_pad2: [i8; 112],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -3283,5 +3302,19 @@ pub struct XSAVE_FORMAT {
     pub XmmRegisters: [M128A; 8],
     pub Reserved4: [u8; 224],
 }
+
+#[cfg(target_arch = "arm")]
+#[repr(C)]
+pub struct WSADATA {
+    pub wVersion: u16,
+    pub wHighVersion: u16,
+    pub szDescription: [u8; 257],
+    pub szSystemStatus: [u8; 129],
+    pub iMaxSockets: u16,
+    pub iMaxUdpDg: u16,
+    pub lpVendorInfo: PSTR,
+}
+#[cfg(target_arch = "arm")]
+pub enum CONTEXT {}
 // ignore-tidy-filelength
 use super::windows_targets;

@@ -5,14 +5,14 @@
 
 use std::path::PathBuf;
 
-use run_make_support::{aux_build, fs_wrapper, rustc, source_root};
+use run_make_support::{aux_build, rfs, rustc, source_root};
 
 fn main() {
     aux_build().input("stable.rs").emit("metadata").run();
 
     let output =
         rustc().input("main.rs").emit("metadata").extern_("stable", "libstable.rmeta").run();
-    let version = fs_wrapper::read_to_string(source_root().join("src/version"));
+    let version = rfs::read_to_string(source_root().join("src/version"));
     let expected_string = format!("stable since {}", version.trim());
     output.assert_stderr_contains(expected_string);
 }

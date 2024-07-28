@@ -22,7 +22,7 @@ pub struct AmbiguousAssocItem<'a> {
     pub span: Span,
     pub assoc_kind: &'static str,
     pub assoc_name: Ident,
-    pub ty_param_name: &'a str,
+    pub qself: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -75,7 +75,7 @@ pub struct AssocItemNotFound<'a> {
     pub span: Span,
     pub assoc_name: Ident,
     pub assoc_kind: &'static str,
-    pub ty_param_name: &'a str,
+    pub qself: &'a str,
     #[subdiagnostic]
     pub label: Option<AssocItemNotFoundLabel<'a>>,
     #[subdiagnostic]
@@ -126,13 +126,32 @@ pub enum AssocItemNotFoundSugg<'a> {
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
-    #[suggestion(hir_analysis_assoc_item_not_found_other_sugg, code = "{suggested_name}")]
+    #[multipart_suggestion(
+        hir_analysis_assoc_item_not_found_similar_in_other_trait_qpath_sugg,
+        style = "verbose"
+    )]
+    SimilarInOtherTraitQPath {
+        #[suggestion_part(code = "<")]
+        lo: Span,
+        #[suggestion_part(code = " as {trait_ref}>")]
+        mi: Span,
+        #[suggestion_part(code = "{suggested_name}")]
+        hi: Option<Span>,
+        trait_ref: String,
+        suggested_name: Symbol,
+        identically_named: bool,
+        #[applicability]
+        applicability: Applicability,
+    },
+    #[suggestion(
+        hir_analysis_assoc_item_not_found_other_sugg,
+        code = "{suggested_name}",
+        applicability = "maybe-incorrect"
+    )]
     Other {
         #[primary_span]
         span: Span,
-        #[applicability]
-        applicability: Applicability,
-        ty_param_name: &'a str,
+        qself: &'a str,
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
@@ -273,6 +292,14 @@ pub struct MultipleRelaxedDefaultBounds {
 #[derive(Diagnostic)]
 #[diag(hir_analysis_copy_impl_on_non_adt, code = E0206)]
 pub struct CopyImplOnNonAdt {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_param_ty_impl_on_unsized)]
+pub struct ConstParamTyImplOnUnsized {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -1500,33 +1527,33 @@ pub struct StaticMutRef<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: StaticMutRefSugg,
+    pub sugg: MutRefSugg,
     pub shared: &'a str,
 }
 
 #[derive(Subdiagnostic)]
-pub enum StaticMutRefSugg {
-    #[suggestion(
+pub enum MutRefSugg {
+    #[multipart_suggestion(
         hir_analysis_suggestion,
         style = "verbose",
-        code = "addr_of!({var})",
         applicability = "maybe-incorrect"
     )]
     Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
+        #[suggestion_part(code = "addr_of!(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
     },
-    #[suggestion(
+    #[multipart_suggestion(
         hir_analysis_suggestion_mut,
         style = "verbose",
-        code = "addr_of_mut!({var})",
         applicability = "maybe-incorrect"
     )]
     Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
+        #[suggestion_part(code = "addr_of_mut!(")]
+        lo: Span,
+        #[suggestion_part(code = ")")]
+        hi: Span,
     },
 }
 
@@ -1539,34 +1566,8 @@ pub struct RefOfMutStatic<'a> {
     #[label]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: RefOfMutStaticSugg,
+    pub sugg: MutRefSugg,
     pub shared: &'a str,
-}
-
-#[derive(Subdiagnostic)]
-pub enum RefOfMutStaticSugg {
-    #[suggestion(
-        hir_analysis_suggestion,
-        style = "verbose",
-        code = "addr_of!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Shared {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
-    #[suggestion(
-        hir_analysis_suggestion_mut,
-        style = "verbose",
-        code = "addr_of_mut!({var})",
-        applicability = "maybe-incorrect"
-    )]
-    Mut {
-        #[primary_span]
-        span: Span,
-        var: String,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -1597,10 +1598,27 @@ pub(crate) struct UnusedGenericParameter {
     pub span: Span,
     pub param_name: Ident,
     pub param_def_kind: &'static str,
+    #[label(hir_analysis_usage_spans)]
+    pub usage_spans: Vec<Span>,
     #[subdiagnostic]
     pub help: UnusedGenericParameterHelp,
     #[help(hir_analysis_const_param_help)]
     pub const_param_help: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_recursive_generic_parameter)]
+pub(crate) struct RecursiveGenericParameter {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[label]
+    pub param_span: Span,
+    pub param_name: Ident,
+    pub param_def_kind: &'static str,
+    #[subdiagnostic]
+    pub help: UnusedGenericParameterHelp,
+    #[note]
+    pub note: (),
 }
 
 #[derive(Subdiagnostic)]
@@ -1611,6 +1629,20 @@ pub(crate) enum UnusedGenericParameterHelp {
     AdtNoPhantomData { param_name: Ident },
     #[help(hir_analysis_unused_generic_parameter_ty_alias_help)]
     TyAlias { param_name: Ident },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_unconstrained_generic_parameter)]
+pub(crate) struct UnconstrainedGenericParameter {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub param_name: Symbol,
+    pub param_def_kind: &'static str,
+    #[note(hir_analysis_const_param_note)]
+    pub const_param_note: Option<()>,
+    #[note(hir_analysis_const_param_note2)]
+    pub const_param_note2: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -1682,3 +1714,30 @@ pub struct InvalidReceiverTy<'tcx> {
 #[note]
 #[help]
 pub struct EffectsWithoutNextSolver;
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_inputs_stack_spill, code = E0798)]
+#[note]
+pub struct CmseCallInputsStackSpill {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub plural: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_output_stack_spill, code = E0798)]
+#[note(hir_analysis_note1)]
+#[note(hir_analysis_note2)]
+pub struct CmseCallOutputStackSpill {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_call_generic, code = E0798)]
+pub struct CmseCallGeneric {
+    #[primary_span]
+    pub span: Span,
+}

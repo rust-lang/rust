@@ -38,7 +38,7 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/opaque-and-lifetime-mismatch.rs:4:17
    |
 LL |     fn bar() -> Wrapper<impl Sized>;
-   |                 ^^^^^^^ ---------- help: remove this generic argument
+   |                 ^^^^^^^ ---------- help: remove the unnecessary generic argument
    |                 |
    |                 expected 0 generic arguments
    |
@@ -52,7 +52,7 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/opaque-and-lifetime-mismatch.rs:18:17
    |
 LL |     fn foo() -> Wrapper<impl Sized>;
-   |                 ^^^^^^^ ---------- help: remove this generic argument
+   |                 ^^^^^^^ ---------- help: remove the unnecessary generic argument
    |                 |
    |                 expected 0 generic arguments
    |
@@ -93,7 +93,7 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/opaque-and-lifetime-mismatch.rs:24:17
    |
 LL |     fn foo() -> Wrapper<impl Sized> {
-   |                 ^^^^^^^ ---------- help: remove this generic argument
+   |                 ^^^^^^^ ---------- help: remove the unnecessary generic argument
    |                 |
    |                 expected 0 generic arguments
    |

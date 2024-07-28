@@ -1,0 +1,32 @@
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/no-shadow-pin-self.rs:10:5
+   |
+LL |     fn method<'a>(self: Pin<&Self>, f: &'a u32) -> &'a u32 {
+   |     ------------------------------------------------------ expected `fn(Pin<&'1 Pin<P>>, &'a u32) -> &'a u32`
+...
+LL |     fn method(self: Pin<&Self>, f: &u32) -> &u32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(Pin<&'1 Pin<P>>, &'2 u32) -> &'1 u32`
+   |
+   = note: expected signature `fn(Pin<&'1 Pin<P>>, &'a u32) -> &'a u32`
+              found signature `fn(Pin<&'1 Pin<P>>, &'2 u32) -> &'1 u32`
+   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+   = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+
+error: lifetime may not live long enough
+  --> $DIR/no-shadow-pin-self.rs:12:9
+   |
+LL |     fn method(self: Pin<&Self>, f: &u32) -> &u32 {
+   |                         -          - let's call the lifetime of this reference `'1`
+   |                         |
+   |                         let's call the lifetime of this reference `'2`
+LL |
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn method<'a>(self: Pin<&Self>, f: &'a u32) -> &'a u32 {
+   |              ++++                       ++          ++
+
+error: aborting due to 2 previous errors
+

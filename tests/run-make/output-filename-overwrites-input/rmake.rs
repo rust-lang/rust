@@ -4,14 +4,14 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{fs_wrapper, rustc};
+use run_make_support::{rfs, rustc};
 
 fn main() {
-    fs_wrapper::copy("foo.rs", "foo");
+    rfs::copy("foo.rs", "foo");
     rustc().input("foo").output("foo").run_fail().assert_stderr_contains(
         r#"the input file "foo" would be overwritten by the generated executable"#,
     );
-    fs_wrapper::copy("bar.rs", "bar.rlib");
+    rfs::copy("bar.rs", "bar.rlib");
     rustc().input("bar.rlib").output("bar.rlib").run_fail().assert_stderr_contains(
         r#"the input file "bar.rlib" would be overwritten by the generated executable"#,
     );

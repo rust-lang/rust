@@ -187,7 +187,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .emit();
                         }
                         hir::InlineAsmOperand::Const {
-                            anon_const: self.lower_anon_const(anon_const),
+                            anon_const: self.lower_anon_const_to_anon_const(anon_const),
                         }
                     }
                     InlineAsmOperand::Sym { sym } => {
@@ -222,18 +222,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             };
 
                             // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_hir_id_owner;
+                            let parent_def_id = self.current_def_id_parent;
                             let node_id = self.next_node_id();
-                            self.create_def(
-                                parent_def_id.def_id,
-                                node_id,
-                                kw::Empty,
-                                DefKind::AnonConst,
-                                *op_sp,
-                            );
+                            // HACK(min_generic_const_args): see lower_anon_const
+                            if !expr.is_potential_trivial_const_arg() {
+                                self.create_def(
+                                    parent_def_id,
+                                    node_id,
+                                    kw::Empty,
+                                    DefKind::AnonConst,
+                                    *op_sp,
+                                );
+                            }
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
-                                anon_const: self.lower_anon_const(&anon_const),
+                                anon_const: self.lower_anon_const_to_anon_const(&anon_const),
                             }
                         }
                     }

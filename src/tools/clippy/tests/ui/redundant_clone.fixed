@@ -3,6 +3,7 @@
 #![allow(
     clippy::drop_non_drop,
     clippy::implicit_clone,
+    clippy::pathbuf_init_then_push,
     clippy::uninlined_format_args,
     clippy::unnecessary_literal_unwrap
 )]

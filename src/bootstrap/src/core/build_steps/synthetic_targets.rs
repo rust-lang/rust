@@ -64,7 +64,7 @@ fn create_synthetic_target(
     // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
-    let output = cmd.capture().run(builder).stdout();
+    let output = cmd.run_capture(builder).stdout();
     let mut spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
     let spec_map = spec.as_object_mut().unwrap();
 

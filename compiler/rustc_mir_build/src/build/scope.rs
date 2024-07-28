@@ -510,12 +510,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let target = self.cfg.start_new_block();
                 let source_info = self.source_info(span);
                 self.cfg.terminate(
-                    unpack!(normal_block),
+                    normal_block.into_block(),
                     source_info,
                     TerminatorKind::Goto { target },
                 );
                 self.cfg.terminate(
-                    unpack!(exit_block),
+                    exit_block.into_block(),
                     source_info,
                     TerminatorKind::Goto { target },
                 );
@@ -552,14 +552,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scope = IfThenScope { region_scope, else_drops: DropTree::new() };
         let previous_scope = mem::replace(&mut self.scopes.if_then_scope, Some(scope));
 
-        let then_block = unpack!(f(self));
+        let then_block = f(self).into_block();
 
         let if_then_scope = mem::replace(&mut self.scopes.if_then_scope, previous_scope).unwrap();
         assert!(if_then_scope.region_scope == region_scope);
 
-        let else_block = self
-            .build_exit_tree(if_then_scope.else_drops, region_scope, span, None)
-            .map_or_else(|| self.cfg.start_new_block(), |else_block_and| unpack!(else_block_and));
+        let else_block =
+            self.build_exit_tree(if_then_scope.else_drops, region_scope, span, None).map_or_else(
+                || self.cfg.start_new_block(),
+                |else_block_and| else_block_and.into_block(),
+            );
 
         (then_block, else_block)
     }
@@ -585,7 +587,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.push_scope(region_scope);
         let mut block;
         let rv = unpack!(block = f(self));
-        unpack!(block = self.pop_scope(region_scope, block));
+        block = self.pop_scope(region_scope, block).into_block();
         self.source_scope = source_scope;
         debug!(?block);
         block.and(rv)
@@ -657,7 +659,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some(destination), Some(value)) => {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.expr_into_dest(destination, block, value));
+                block = self.expr_into_dest(destination, block, value).into_block();
                 self.block_context.pop();
             }
             (Some(destination), None) => {
@@ -838,7 +840,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
-        unpack!(build_scope_drops(
+        build_scope_drops(
             &mut self.cfg,
             &mut self.scopes.unwind_drops,
             scope,
@@ -846,7 +848,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unwind_to,
             is_coroutine && needs_cleanup,
             self.arg_count,
-        ))
+        )
+        .into_block()
     }
 
     /// Possibly creates a new source scope if `current_root` and `parent_root`

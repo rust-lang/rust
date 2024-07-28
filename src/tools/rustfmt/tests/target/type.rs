@@ -153,8 +153,6 @@ const fn not_quite_const<S: ~const T>() -> i32 {
     <S as T>::CONST
 }
 
-struct S<T: ~const ?Sized>(std::marker::PhantomData<T>);
-
 impl ~const T {}
 
 fn apit(_: impl ~const T) {}

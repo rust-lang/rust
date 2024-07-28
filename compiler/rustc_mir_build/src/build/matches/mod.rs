@@ -122,8 +122,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::LogicalOp { op: op @ LogicalOp::And, lhs, rhs } => {
                 this.visit_coverage_branch_operation(op, expr_span);
-                let lhs_then_block = unpack!(this.then_else_break_inner(block, lhs, args));
-                let rhs_then_block = unpack!(this.then_else_break_inner(lhs_then_block, rhs, args));
+                let lhs_then_block = this.then_else_break_inner(block, lhs, args).into_block();
+                let rhs_then_block =
+                    this.then_else_break_inner(lhs_then_block, rhs, args).into_block();
                 rhs_then_block.unit()
             }
             ExprKind::LogicalOp { op: op @ LogicalOp::Or, lhs, rhs } => {
@@ -140,14 +141,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         )
                     });
-                let rhs_success_block = unpack!(this.then_else_break_inner(
-                    failure_block,
-                    rhs,
-                    ThenElseArgs {
-                        declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                        ..args
-                    },
-                ));
+                let rhs_success_block = this
+                    .then_else_break_inner(
+                        failure_block,
+                        rhs,
+                        ThenElseArgs {
+                            declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                            ..args
+                        },
+                    )
+                    .into_block();
 
                 // Make the LHS and RHS success arms converge to a common block.
                 // (We can't just make LHS goto RHS, because `rhs_success_block`
@@ -452,7 +455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()> {
-        let arm_end_blocks: Vec<_> = arm_candidates
+        let arm_end_blocks: Vec<BasicBlock> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
                 debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
@@ -503,6 +506,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     this.expr_into_dest(destination, arm_block, arm.body)
                 })
+                .into_block()
             })
             .collect();
 
@@ -513,10 +517,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             outer_source_info.span.with_lo(outer_source_info.span.hi() - BytePos::from_usize(1)),
         );
         for arm_block in arm_end_blocks {
-            let block = &self.cfg.basic_blocks[arm_block.0];
+            let block = &self.cfg.basic_blocks[arm_block];
             let last_location = block.statements.last().map(|s| s.source_info);
 
-            self.cfg.goto(unpack!(arm_block), last_location.unwrap_or(end_brace), end_block);
+            self.cfg.goto(arm_block, last_location.unwrap_or(end_brace), end_block);
         }
 
         self.source_scope = outer_source_info.scope;
@@ -524,12 +528,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         end_block.unit()
     }
 
-    /// Binds the variables and ascribes types for a given `match` arm or
-    /// `let` binding.
+    /// For a top-level `match` arm or a `let` binding, binds the variables and
+    /// ascribes types, and also checks the match arm guard (if present).
     ///
-    /// Also check if the guard matches, if it's provided.
     /// `arm_scope` should be `Some` if and only if this is called for a
     /// `match` arm.
+    ///
+    /// In the presence of or-patterns, a match arm might have multiple
+    /// sub-branches representing different ways to match, with each sub-branch
+    /// requiring its own bindings and its own copy of the guard. This method
+    /// handles those sub-branches individually, and then has them jump together
+    /// to a common block.
+    ///
+    /// Returns a single block that the match arm can be lowered into.
+    /// (For `let` bindings, this is the code that can use the bindings.)
     fn bind_pattern(
         &mut self,
         outer_source_info: SourceInfo,
@@ -622,7 +634,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                block = self.expr_into_dest(place, block, initializer_id).into_block();
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -634,12 +646,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Optimize the case of `let x: T = ...` to write directly
             // into `x` and then require that `T == typeof(x)`.
-            //
-            // Weirdly, this is needed to prevent the
-            // `intrinsic-move-val.rs` test case from crashing. That
-            // test works with uninitialized values in a rather
-            // dubious way, so it may be that the test is kind of
-            // broken.
             PatKind::AscribeUserType {
                 subpattern:
                     box Pat {
@@ -661,7 +667,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                block = self.expr_into_dest(place, block, initializer_id).into_block();
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -1018,7 +1024,8 @@ impl<'tcx> PatternExtraData<'tcx> {
     }
 }
 
-/// A pattern in a form suitable for generating code.
+/// A pattern in a form suitable for lowering the match tree, with all irrefutable
+/// patterns simplified away, and or-patterns sorted to the end.
 ///
 /// Here, "flat" indicates that the pattern's match pairs have been recursively
 /// simplified by [`Builder::simplify_match_pairs`]. They are not necessarily
@@ -1028,15 +1035,15 @@ impl<'tcx> PatternExtraData<'tcx> {
 #[derive(Debug, Clone)]
 struct FlatPat<'pat, 'tcx> {
     /// To match the pattern, all of these must be satisfied...
-    // Invariant: all the `MatchPair`s are recursively simplified.
+    // Invariant: all the match pairs are recursively simplified.
     // Invariant: or-patterns must be sorted to the end.
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
 }
 
 impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
-    /// Creates a `FlatPat` containing a simplified [`MatchPair`] list/forest
+    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
     /// for the given pattern.
     fn new(
         place: PlaceBuilder<'tcx>,
@@ -1044,43 +1051,96 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
         // First, recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![MatchPair::new(place, pattern, cx)];
+        let mut match_pairs = vec![MatchPairTree::for_pattern(place, pattern, cx)];
         let mut extra_data = PatternExtraData {
             span: pattern.span,
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
         };
-        // Partly-flatten and sort the match pairs, while recording extra data.
+        // Recursively remove irrefutable match pairs, while recording their
+        // bindings/ascriptions, and sort or-patterns after other match pairs.
         cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
 
         Self { match_pairs, extra_data }
     }
 }
 
+/// Candidates are a generalization of (a) top-level match arms, and
+/// (b) sub-branches of or-patterns, allowing the match-lowering process to handle
+/// them both in a mostly-uniform way. For example, the list of candidates passed
+/// to [`Builder::match_candidates`] will often contain a mixture of top-level
+/// candidates and or-pattern subcandidates.
+///
+/// At the start of match lowering, there is one candidate for each match arm.
+/// During match lowering, arms with or-patterns will be expanded into a tree
+/// of candidates, where each "leaf" candidate represents one of the ways for
+/// the arm pattern to successfully match.
 #[derive(Debug)]
 struct Candidate<'pat, 'tcx> {
     /// For the candidate to match, all of these must be satisfied...
-    // Invariant: all the `MatchPair`s are recursively simplified.
-    // Invariant: or-patterns must be sorted at the end.
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    ///
+    /// ---
+    /// Initially contains a list of match pairs created by [`FlatPat`], but is
+    /// subsequently mutated (in a queue-like way) while lowering the match tree.
+    /// When this list becomes empty, the candidate is fully matched and becomes
+    /// a leaf (see [`Builder::select_matched_candidate`]).
+    ///
+    /// Key mutations include:
+    ///
+    /// - When a match pair is fully satisfied by a test, it is removed from the
+    ///   list, and its subpairs are added instead (see [`Builder::sort_candidate`]).
+    /// - During or-pattern expansion, any leading or-pattern is removed, and is
+    ///   converted into subcandidates (see [`Builder::expand_and_match_or_candidates`]).
+    /// - After a candidate's subcandidates have been lowered, a copy of any remaining
+    ///   or-patterns is added to each leaf subcandidate
+    ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
+    ///
+    /// Invariants:
+    /// - All [`TestCase::Irrefutable`] patterns have been removed by simplification.
+    /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
+    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
-    // Invariant: at the end of the algorithm, this must never contain a `is_never` candidate
-    // because that would break binding consistency.
+    ///
+    /// ---
+    /// Initially a candidate has no subcandidates; they are added (and then immediately
+    /// lowered) during or-pattern expansion. Their main function is to serve as _output_
+    /// of match tree lowering, allowing later steps to see the leaf candidates that
+    /// represent a match of the entire match arm.
+    ///
+    /// A candidate no subcandidates is either incomplete (if it has match pairs left),
+    /// or is a leaf in the match tree. A candidate with one or more subcandidates is
+    /// an internal node in the match tree.
+    ///
+    /// Invariant: at the end of match tree lowering, this must not contain an
+    /// `is_never` candidate, because that would break binding consistency.
+    /// - See [`Builder::remove_never_subcandidates`].
     subcandidates: Vec<Candidate<'pat, 'tcx>>,
 
     /// ...and if there is a guard it must be evaluated; if it's `false` then branch to `otherwise_block`.
+    ///
+    /// ---
+    /// For subcandidates, this is copied from the parent candidate, so it indicates
+    /// whether the enclosing match arm has a guard.
     has_guard: bool,
 
-    /// If the candidate matches, bindings and ascriptions must be established.
+    /// Holds extra pattern data that was prepared by [`FlatPat`], including bindings and
+    /// ascriptions that must be established if this candidate succeeds.
     extra_data: PatternExtraData<'tcx>,
 
-    /// If we filled `self.subcandidate`, we store here the span of the or-pattern they came from.
-    // Invariant: it is `None` iff `subcandidates.is_empty()`.
+    /// When setting `self.subcandidates`, we store here the span of the or-pattern they came from.
+    ///
+    /// ---
+    /// Invariant: it is `None` iff `subcandidates.is_empty()`.
+    /// - FIXME: We sometimes don't unset this when clearing `subcandidates`.
     or_span: Option<Span>,
 
     /// The block before the `bindings` have been established.
+    ///
+    /// After the match tree has been lowered, [`Builder::lower_match_arms`]
+    /// will use this as the start point for lowering bindings and guards, and
+    /// then jump to a shared block containing the arm body.
     pre_binding_block: Option<BasicBlock>,
 
     /// The block to branch to if the guard or a nested candidate fails to match.
@@ -1122,7 +1182,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
-        matches!(&*self.match_pairs, [MatchPair { test_case: TestCase::Or { .. }, .. }, ..])
+        matches!(&*self.match_pairs, [MatchPairTree { test_case: TestCase::Or { .. }, .. }, ..])
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1140,14 +1200,24 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
 
 /// A depth-first traversal of the `Candidate` and all of its recursive
 /// subcandidates.
+///
+/// This signature is very generic, to support traversing candidate trees by
+/// reference or by value, and to allow a mutable "context" to be shared by the
+/// traversal callbacks. Most traversals can use the simpler
+/// [`Candidate::visit_leaves`] wrapper instead.
 fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
     candidate: C,
     context: &mut T,
+    // Called when visiting a "leaf" candidate (with no subcandidates).
     visit_leaf: &mut impl FnMut(C, &mut T),
+    // Called when visiting a "node" candidate (with one or more subcandidates).
+    // Returns an iterator over the candidate's children (by value or reference).
+    // Can perform setup before visiting the node's children.
     get_children: impl Copy + Fn(C, &mut T) -> I,
+    // Called after visiting a "node" candidate's children.
     complete_children: impl Copy + Fn(&mut T),
 ) where
-    C: Borrow<Candidate<'pat, 'tcx>>,
+    C: Borrow<Candidate<'pat, 'tcx>>, // Typically `Candidate` or `&mut Candidate`
     I: Iterator<Item = C>,
 {
     if candidate.borrow().subcandidates.is_empty() {
@@ -1178,6 +1248,24 @@ struct Ascription<'tcx> {
     variance: ty::Variance,
 }
 
+/// Partial summary of a [`thir::Pat`], indicating what sort of test should be
+/// performed to match/reject the pattern, and what the desired test outcome is.
+/// This avoids having to perform a full match on [`thir::PatKind`] in some places,
+/// and helps [`TestKind::Switch`] and [`TestKind::SwitchInt`] know what target
+/// values to use.
+///
+/// Created by [`MatchPairTree::for_pattern`], and then inspected primarily by:
+/// - [`Builder::pick_test_for_match_pair`] (to choose a test)
+/// - [`Builder::sort_candidate`] (to see how the test interacts with a match pair)
+///
+/// Two variants are unlike the others and deserve special mention:
+///
+/// - [`Self::Irrefutable`] is only used temporarily when building a [`MatchPairTree`].
+///   They are then flattened away by [`Builder::simplify_match_pairs`], with any
+///   bindings/ascriptions incorporated into the enclosing [`FlatPat`].
+/// - [`Self::Or`] are not tested directly like the other variants. Instead they
+///   participate in or-pattern expansion, where they are transformed into subcandidates.
+///   - See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
 enum TestCase<'pat, 'tcx> {
     Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
@@ -1202,7 +1290,7 @@ impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
 /// Each node also has a list of subpairs (possibly empty) that must also match,
 /// and a reference to the THIR pattern it represents.
 #[derive(Debug, Clone)]
-pub(crate) struct MatchPair<'pat, 'tcx> {
+pub(crate) struct MatchPairTree<'pat, 'tcx> {
     /// This place...
     ///
     /// ---
@@ -1220,6 +1308,12 @@ pub(crate) struct MatchPair<'pat, 'tcx> {
     test_case: TestCase<'pat, 'tcx>,
 
     /// ... and these subpairs must match.
+    ///
+    /// ---
+    /// Subpairs typically represent tests that can only be performed after their
+    /// parent has succeeded. For example, the pattern `Some(3)` might have an
+    /// outer match pair that tests for the variant `Some`, and then a subpair
+    /// that tests its field for the value `3`.
     subpairs: Vec<Self>,
 
     /// The pattern this was created from.
@@ -1230,15 +1324,22 @@ pub(crate) struct MatchPair<'pat, 'tcx> {
 #[derive(Clone, Debug, PartialEq)]
 enum TestKind<'tcx> {
     /// Test what enum variant a value is.
+    ///
+    /// The subset of expected variants is not stored here; instead they are
+    /// extracted from the [`TestCase`]s of the candidates participating in the
+    /// test.
     Switch {
         /// The enum type being tested.
         adt_def: ty::AdtDef<'tcx>,
     },
 
     /// Test what value an integer or `char` has.
+    ///
+    /// The test's target values are not stored here; instead they are extracted
+    /// from the [`TestCase`]s of the candidates participating in the test.
     SwitchInt,
 
-    /// Test what value a `bool` has.
+    /// Test whether a `bool` is `true` or `false`.
     If,
 
     /// Test for equality with value, possibly after an unsizing coercion to
@@ -1254,7 +1355,7 @@ enum TestKind<'tcx> {
     /// Test whether the value falls within an inclusive or exclusive range.
     Range(Box<PatRange<'tcx>>),
 
-    /// Test that the length of the slice is equal to `len`.
+    /// Test that the length of the slice is `== len` or `>= len`.
     Len { len: u64, op: BinOp },
 
     /// Call `Deref::deref[_mut]` on the value.
@@ -1381,20 +1482,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The main match algorithm. It begins with a set of candidates `candidates` and has the job of
     /// generating code that branches to an appropriate block if the scrutinee matches one of these
     /// candidates. The
-    /// candidates are sorted such that the first item in the list
+    /// candidates are ordered such that the first item in the list
     /// has the highest priority. When a candidate is found to match
     /// the value, we will set and generate a branch to the appropriate
     /// pre-binding block.
     ///
     /// If none of the candidates apply, we continue to the returned `otherwise_block`.
     ///
-    /// It might be surprising that the input can be non-exhaustive.
-    /// Indeed, for matches, initially, it is not, because all matches are
-    /// exhaustive in Rust. But during processing we sometimes divide
-    /// up the list of candidates and recurse with a non-exhaustive
-    /// list. This is how our lowering approach (called "backtracking
-    /// automaton" in the literature) works.
-    /// See [`Builder::test_candidates`] for more details.
+    /// Note that while `match` expressions in the Rust language are exhaustive,
+    /// candidate lists passed to this method are often _non-exhaustive_.
+    /// For example, the match lowering process will frequently divide up the
+    /// list of candidates, and recursively call this method with a non-exhaustive
+    /// subset of candidates.
+    /// See [`Builder::test_candidates`] for more details on this
+    /// "backtracking automata" approach.
     ///
     /// For an example of how we use `otherwise_block`, consider:
     /// ```
@@ -1474,14 +1575,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 return start_block;
             }
             [first, remaining @ ..] if first.match_pairs.is_empty() => {
-                // The first candidate has satisfied all its match pairs; we link it up and continue
-                // with the remaining candidates.
+                // The first candidate has satisfied all its match pairs.
+                // We record the blocks that will be needed by match arm lowering,
+                // and then continue with the remaining candidates.
                 let remainder_start = self.select_matched_candidate(first, start_block);
                 remainder_start.and(remaining)
             }
             candidates if candidates.iter().any(|candidate| candidate.starts_with_or_pattern()) => {
-                // If any candidate starts with an or-pattern, we have to expand the or-pattern before we
-                // can proceed further.
+                // If any candidate starts with an or-pattern, we want to expand or-patterns
+                // before we do any more tests.
+                //
+                // The only candidate we strictly _need_ to expand here is the first one.
+                // But by expanding other candidates as early as possible, we unlock more
+                // opportunities to include them in test outcomes, making the match tree
+                // smaller and simpler.
                 self.expand_and_match_or_candidates(span, scrutinee_span, start_block, candidates)
             }
             candidates => {
@@ -1547,10 +1654,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
     ) -> BlockAnd<&'b mut [&'c mut Candidate<'pat, 'tcx>]> {
-        // We can't expand or-patterns freely. The rule is: if the candidate has an
-        // or-pattern as its only remaining match pair, we can expand it freely. If it has
-        // other match pairs, we can expand it but we can't process more candidates after
-        // it.
+        // We can't expand or-patterns freely. The rule is:
+        // - If a candidate doesn't start with an or-pattern, we include it in
+        //   the expansion list as-is (i.e. it "expands" to itself).
+        // - If a candidate has an or-pattern as its only remaining match pair,
+        //   we can expand it.
+        // - If it starts with an or-pattern but also has other match pairs,
+        //   we can expand it, but we can't process more candidates after it.
         //
         // If we didn't stop, the `otherwise` cases could get mixed up. E.g. in the
         // following, or-pattern simplification (in `merge_trivial_subcandidates`) makes it
@@ -1567,20 +1677,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // }
         // ```
         //
-        // We therefore split the `candidates` slice in two, expand or-patterns in the first half,
+        // We therefore split the `candidates` slice in two, expand or-patterns in the first part,
         // and process the rest separately.
-        let mut expand_until = 0;
-        for (i, candidate) in candidates.iter().enumerate() {
-            expand_until = i + 1;
-            if candidate.match_pairs.len() > 1 && candidate.starts_with_or_pattern() {
-                // The candidate has an or-pattern as well as more match pairs: we must
-                // split the candidates list here.
-                break;
-            }
-        }
+        let expand_until = candidates
+            .iter()
+            .position(|candidate| {
+                // If a candidate starts with an or-pattern and has more match pairs,
+                // we can expand it, but we must stop expanding _after_ it.
+                candidate.match_pairs.len() > 1 && candidate.starts_with_or_pattern()
+            })
+            .map(|pos| pos + 1) // Stop _after_ the found candidate
+            .unwrap_or(candidates.len()); // Otherwise, include all candidates
         let (candidates_to_expand, remaining_candidates) = candidates.split_at_mut(expand_until);
 
         // Expand one level of or-patterns for each candidate in `candidates_to_expand`.
+        // We take care to preserve the relative ordering of candidates, so that
+        // or-patterns are expanded in their parent's relative position.
         let mut expanded_candidates = Vec::new();
         for candidate in candidates_to_expand.iter_mut() {
             if candidate.starts_with_or_pattern() {
@@ -1591,12 +1703,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subcandidate in candidate.subcandidates.iter_mut() {
                     expanded_candidates.push(subcandidate);
                 }
+                // Note that the subcandidates have been added to `expanded_candidates`,
+                // but `candidate` itself has not. If the last candidate has more match pairs,
+                // they are handled separately by `test_remaining_match_pairs_after_or`.
             } else {
+                // A candidate that doesn't start with an or-pattern has nothing to
+                // expand, so it is included in the post-expansion list as-is.
                 expanded_candidates.push(candidate);
             }
         }
 
-        // Process the expanded candidates.
+        // Recursively lower the part of the match tree represented by the
+        // expanded candidates. This is where subcandidates actually get lowered!
         let remainder_start = self.match_candidates(
             span,
             scrutinee_span,
@@ -1604,23 +1722,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expanded_candidates.as_mut_slice(),
         );
 
-        // Simplify subcandidates and process any leftover match pairs.
-        for candidate in candidates_to_expand {
+        // Postprocess subcandidates, and process any leftover match pairs.
+        // (Only the last candidate can possibly have more match pairs.)
+        debug_assert!({
+            let mut all_except_last = candidates_to_expand.iter().rev().skip(1);
+            all_except_last.all(|candidate| candidate.match_pairs.is_empty())
+        });
+        for candidate in candidates_to_expand.iter_mut() {
             if !candidate.subcandidates.is_empty() {
-                self.finalize_or_candidate(span, scrutinee_span, candidate);
+                self.merge_trivial_subcandidates(candidate);
+                self.remove_never_subcandidates(candidate);
             }
+        }
+        // It's important to perform the above simplifications _before_ dealing
+        // with remaining match pairs, to avoid exponential blowup if possible
+        // (for trivial or-patterns), and avoid useless work (for never patterns).
+        if let Some(last_candidate) = candidates_to_expand.last_mut() {
+            self.test_remaining_match_pairs_after_or(span, scrutinee_span, last_candidate);
         }
 
         remainder_start.and(remaining_candidates)
     }
 
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
-    /// subcandidate. Any candidate that has been expanded that way should be passed to
-    /// `finalize_or_candidate` after its subcandidates have been processed.
+    /// subcandidate. Any candidate that has been expanded this way should also be postprocessed
+    /// at the end of [`Self::expand_and_match_or_candidates`].
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
-        match_pair: MatchPair<'pat, 'tcx>,
+        match_pair: MatchPairTree<'pat, 'tcx>,
     ) {
         let TestCase::Or { pats } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
@@ -1633,7 +1763,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
     }
 
-    /// Simplify subcandidates and process any leftover match pairs. The candidate should have been
+    /// Try to merge all of the subcandidates of the given candidate into one. This avoids
+    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
     /// expanded with `create_or_subcandidates`.
     ///
     /// Given a pattern `(P | Q, R | S)` we (in principle) generate a CFG like
@@ -1686,56 +1817,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///      |
     ///     ...
     /// ```
-    fn finalize_or_candidate(
-        &mut self,
-        span: Span,
-        scrutinee_span: Span,
-        candidate: &mut Candidate<'_, 'tcx>,
-    ) {
-        if candidate.subcandidates.is_empty() {
-            return;
-        }
-
-        self.merge_trivial_subcandidates(candidate);
-
-        if !candidate.match_pairs.is_empty() {
-            let or_span = candidate.or_span.unwrap_or(candidate.extra_data.span);
-            let source_info = self.source_info(or_span);
-            // If more match pairs remain, test them after each subcandidate.
-            // We could add them to the or-candidates before the call to `test_or_pattern` but this
-            // would make it impossible to detect simplifiable or-patterns. That would guarantee
-            // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
-            let mut last_otherwise = None;
-            candidate.visit_leaves(|leaf_candidate| {
-                last_otherwise = leaf_candidate.otherwise_block;
-            });
-            let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
-            candidate.visit_leaves(|leaf_candidate| {
-                assert!(leaf_candidate.match_pairs.is_empty());
-                leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
-                let or_start = leaf_candidate.pre_binding_block.unwrap();
-                let otherwise =
-                    self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
-                // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
-                // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
-                // directly to `last_otherwise`. If there is a guard,
-                // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
-                // can't skip `Q`.
-                let or_otherwise = if leaf_candidate.has_guard {
-                    leaf_candidate.otherwise_block.unwrap()
-                } else {
-                    last_otherwise.unwrap()
-                };
-                self.cfg.goto(otherwise, source_info, or_otherwise);
-            });
-        }
-    }
-
-    /// Try to merge all of the subcandidates of the given candidate into one. This avoids
-    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
-    /// expanded with `create_or_subcandidates`.
+    ///
+    /// Note that this takes place _after_ the subcandidates have participated
+    /// in match tree lowering.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
-        if candidate.subcandidates.is_empty() || candidate.has_guard {
+        assert!(!candidate.subcandidates.is_empty());
+        if candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
         }
@@ -1744,45 +1831,117 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let can_merge = candidate.subcandidates.iter().all(|subcandidate| {
             subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty()
         });
-        if can_merge {
-            let mut last_otherwise = None;
-            let any_matches = self.cfg.start_new_block();
-            let or_span = candidate.or_span.take().unwrap();
-            let source_info = self.source_info(or_span);
-            if candidate.false_edge_start_block.is_none() {
-                candidate.false_edge_start_block =
-                    candidate.subcandidates[0].false_edge_start_block;
-            }
-            for subcandidate in mem::take(&mut candidate.subcandidates) {
-                let or_block = subcandidate.pre_binding_block.unwrap();
-                self.cfg.goto(or_block, source_info, any_matches);
-                last_otherwise = subcandidate.otherwise_block;
-            }
-            candidate.pre_binding_block = Some(any_matches);
-            assert!(last_otherwise.is_some());
-            candidate.otherwise_block = last_otherwise;
-        } else {
-            // Never subcandidates may have a set of bindings inconsistent with their siblings,
-            // which would break later code. So we filter them out. Note that we can't filter out
-            // top-level candidates this way.
-            candidate.subcandidates.retain_mut(|candidate| {
-                if candidate.extra_data.is_never {
-                    candidate.visit_leaves(|subcandidate| {
-                        let block = subcandidate.pre_binding_block.unwrap();
-                        // That block is already unreachable but needs a terminator to make the MIR well-formed.
-                        let source_info = self.source_info(subcandidate.extra_data.span);
-                        self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
-                    });
-                    false
-                } else {
-                    true
-                }
-            });
-            if candidate.subcandidates.is_empty() {
-                // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
-                candidate.pre_binding_block = Some(self.cfg.start_new_block());
-            }
+        if !can_merge {
+            return;
         }
+
+        let mut last_otherwise = None;
+        let shared_pre_binding_block = self.cfg.start_new_block();
+        // This candidate is about to become a leaf, so unset `or_span`.
+        let or_span = candidate.or_span.take().unwrap();
+        let source_info = self.source_info(or_span);
+
+        if candidate.false_edge_start_block.is_none() {
+            candidate.false_edge_start_block = candidate.subcandidates[0].false_edge_start_block;
+        }
+
+        // Remove the (known-trivial) subcandidates from the candidate tree,
+        // so that they aren't visible after match tree lowering, and wire them
+        // all to join up at a single shared pre-binding block.
+        // (Note that the subcandidates have already had their part of the match
+        // tree lowered by this point, which is why we can add a goto to them.)
+        for subcandidate in mem::take(&mut candidate.subcandidates) {
+            let subcandidate_block = subcandidate.pre_binding_block.unwrap();
+            self.cfg.goto(subcandidate_block, source_info, shared_pre_binding_block);
+            last_otherwise = subcandidate.otherwise_block;
+        }
+        candidate.pre_binding_block = Some(shared_pre_binding_block);
+        assert!(last_otherwise.is_some());
+        candidate.otherwise_block = last_otherwise;
+    }
+
+    /// Never subcandidates may have a set of bindings inconsistent with their siblings,
+    /// which would break later code. So we filter them out. Note that we can't filter out
+    /// top-level candidates this way.
+    fn remove_never_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
+        if candidate.subcandidates.is_empty() {
+            return;
+        }
+
+        candidate.subcandidates.retain_mut(|candidate| {
+            if candidate.extra_data.is_never {
+                candidate.visit_leaves(|subcandidate| {
+                    let block = subcandidate.pre_binding_block.unwrap();
+                    // That block is already unreachable but needs a terminator to make the MIR well-formed.
+                    let source_info = self.source_info(subcandidate.extra_data.span);
+                    self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                });
+                false
+            } else {
+                true
+            }
+        });
+        if candidate.subcandidates.is_empty() {
+            // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
+            candidate.pre_binding_block = Some(self.cfg.start_new_block());
+        }
+    }
+
+    /// If more match pairs remain, test them after each subcandidate.
+    /// We could have added them to the or-candidates during or-pattern expansion, but that
+    /// would make it impossible to detect simplifiable or-patterns. That would guarantee
+    /// exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
+    fn test_remaining_match_pairs_after_or(
+        &mut self,
+        span: Span,
+        scrutinee_span: Span,
+        candidate: &mut Candidate<'_, 'tcx>,
+    ) {
+        if candidate.match_pairs.is_empty() {
+            return;
+        }
+
+        let or_span = candidate.or_span.unwrap_or(candidate.extra_data.span);
+        let source_info = self.source_info(or_span);
+        let mut last_otherwise = None;
+        candidate.visit_leaves(|leaf_candidate| {
+            last_otherwise = leaf_candidate.otherwise_block;
+        });
+
+        let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
+        // We're testing match pairs that remained after an `Or`, so the remaining
+        // pairs should all be `Or` too, due to the sorting invariant.
+        debug_assert!(
+            remaining_match_pairs
+                .iter()
+                .all(|match_pair| matches!(match_pair.test_case, TestCase::Or { .. }))
+        );
+
+        // Visit each leaf candidate within this subtree, add a copy of the remaining
+        // match pairs to it, and then recursively lower the rest of the match tree
+        // from that point.
+        candidate.visit_leaves(|leaf_candidate| {
+            // At this point the leaf's own match pairs have all been lowered
+            // and removed, so `extend` and assignment are equivalent,
+            // but extending can also recycle any existing vector capacity.
+            assert!(leaf_candidate.match_pairs.is_empty());
+            leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
+
+            let or_start = leaf_candidate.pre_binding_block.unwrap();
+            let otherwise =
+                self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
+            // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
+            // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
+            // directly to `last_otherwise`. If there is a guard,
+            // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
+            // can't skip `Q`.
+            let or_otherwise = if leaf_candidate.has_guard {
+                leaf_candidate.otherwise_block.unwrap()
+            } else {
+                last_otherwise.unwrap()
+            };
+            self.cfg.goto(otherwise, source_info, or_otherwise);
+        });
     }
 
     /// Pick a test to run. Which test doesn't matter as long as it is guaranteed to fully match at
@@ -1804,8 +1963,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Range`]: TestKind::Range
     fn pick_test(&mut self, candidates: &[&mut Candidate<'_, 'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
-        let match_pair = &candidates.first().unwrap().match_pairs[0];
-        let test = self.test(match_pair);
+        let match_pair = &candidates[0].match_pairs[0];
+        let test = self.pick_test_for_match_pair(match_pair);
         // Unwrap is ok after simplification.
         let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
@@ -1813,16 +1972,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         (match_place, test)
     }
 
-    /// Given a test, we sort the input candidates into several buckets. If a candidate only matches
-    /// in one of the branches of `test`, we move it there. If it could match in more than one of
-    /// the branches of `test`, we stop sorting candidates.
+    /// Given a test, we partition the input candidates into several buckets.
+    /// If a candidate matches in exactly one of the branches of `test`
+    /// (and no other branches), we put it into the corresponding bucket.
+    /// If it could match in more than one of the branches of `test`, the test
+    /// doesn't usefully apply to it, and we stop partitioning candidates.
+    ///
+    /// Importantly, we also **mutate** the branched candidates to remove match pairs
+    /// that are entailed by the outcome of the test, and add any sub-pairs of the
+    /// removed pairs.
     ///
     /// This returns a pair of
     /// - the candidates that weren't sorted;
     /// - for each possible outcome of the test, the candidates that match in that outcome.
-    ///
-    /// Moreover, we transform the branched candidates to reflect the fact that we know which
-    /// outcome of `test` occurred.
     ///
     /// For example:
     /// ```
@@ -1836,14 +1998,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// # ;
     /// ```
     ///
-    /// Assume we are testing on `x`. There are 2 overlapping candidate sets:
-    /// - If the outcome is that `x` is true, candidates 0, 2, and 3
-    /// - If the outcome is that `x` is false, candidates 1 and 2
+    /// Assume we are testing on `x`. Conceptually, there are 2 overlapping candidate sets:
+    /// - If the outcome is that `x` is true, candidates {0, 2, 3} are possible
+    /// - If the outcome is that `x` is false, candidates {1, 2} are possible
     ///
-    /// Following our algorithm, candidate 0 is sorted into outcome `x == true`, candidate 1 goes
-    /// into outcome `x == false`, and candidate 2 and 3 remain unsorted.
+    /// Following our algorithm:
+    /// - Candidate 0 is sorted into outcome `x == true`
+    /// - Candidate 1 is sorted into outcome `x == false`
+    /// - Candidate 2 remains unsorted, because testing `x` has no effect on it
+    /// - Candidate 3 remains unsorted, because a previous candidate (2) was unsorted
+    ///   - This helps preserve the illusion that candidates are tested "in order"
     ///
-    /// The sorted candidates are transformed:
+    /// The sorted candidates are mutated to remove entailed match pairs:
     /// - candidate 0 becomes `[z @ true]` since we know that `x` was `true`;
     /// - candidate 1 becomes `[y @ false]` since we know that `x` was `false`.
     fn sort_candidates<'b, 'c, 'pat>(
@@ -1886,15 +2052,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         (candidates, target_candidates)
     }
 
-    /// This is the most subtle part of the match lowering algorithm. At this point, the input
-    /// candidates have been fully simplified, so all remaining match-pairs require some sort of
-    /// test.
+    /// This is the most subtle part of the match lowering algorithm. At this point, there are
+    /// no fully-satisfied candidates, and no or-patterns to expand, so we actually need to
+    /// perform some sort of test to make progress.
     ///
     /// Once we pick what sort of test we are going to perform, this test will help us winnow down
     /// our candidates. So we walk over the candidates (from high to low priority) and check. We
-    /// compute, for each outcome of the test, a transformed list of candidates. If a candidate
-    /// matches in a single branch of our test, we add it to the corresponding outcome. We also
-    /// transform it to record the fact that we know which outcome occurred.
+    /// compute, for each outcome of the test, a list of (modified) candidates. If a candidate
+    /// matches in exactly one branch of our test, we add it to the corresponding outcome. We also
+    /// **mutate its list of match pairs** if appropriate, to reflect the fact that we know which
+    /// outcome occurred.
     ///
     /// For example, if we are testing `x.0`'s variant, and we have a candidate `(x.0 @ Some(v), x.1
     /// @ 22)`, then we would have a resulting candidate of `((x.0 as Some).0 @ v, x.1 @ 22)` in the
@@ -1989,32 +2156,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
         start_block: BasicBlock,
     ) -> BlockAnd<&'b mut [&'c mut Candidate<'pat, 'tcx>]> {
-        // Extract the match-pair from the highest priority candidate and build a test from it.
+        // Choose a match pair from the first candidate, and use it to determine a
+        // test to perform that will confirm or refute that match pair.
         let (match_place, test) = self.pick_test(candidates);
 
         // For each of the N possible test outcomes, build the vector of candidates that applies if
-        // the test has that particular outcome.
+        // the test has that particular outcome. This also mutates the candidates to remove match
+        // pairs that are fully satisfied by the relevant outcome.
         let (remaining_candidates, target_candidates) =
             self.sort_candidates(match_place, &test, candidates);
 
-        // The block that we should branch to if none of the
-        // `target_candidates` match.
+        // The block that we should branch to if none of the `target_candidates` match.
         let remainder_start = self.cfg.start_new_block();
 
-        // For each outcome of test, process the candidates that still apply.
+        // For each outcome of the test, recursively lower the rest of the match tree
+        // from that point. (Note that we haven't lowered the actual test yet!)
         let target_blocks: FxIndexMap<_, _> = target_candidates
             .into_iter()
             .map(|(branch, mut candidates)| {
                 let branch_start = self.cfg.start_new_block();
+                // Recursively lower the rest of the match tree after the relevant outcome.
                 let branch_otherwise =
                     self.match_candidates(span, scrutinee_span, branch_start, &mut *candidates);
+
+                // Link up the `otherwise` block of the subtree to `remainder_start`.
                 let source_info = self.source_info(span);
                 self.cfg.goto(branch_otherwise, source_info, remainder_start);
                 (branch, branch_start)
             })
             .collect();
 
-        // Perform the test, branching to one of N blocks.
+        // Perform the chosen test, branching to one of the N subtrees prepared above
+        // (or to `remainder_start` if no outcome was satisfied).
         self.perform_test(
             span,
             scrutinee_span,
@@ -2153,92 +2326,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.ascribe_types(block, ascriptions);
 
-        // rust-lang/rust#27282: The `autoref` business deserves some
-        // explanation here.
-        //
-        // The intent of the `autoref` flag is that when it is true,
-        // then any pattern bindings of type T will map to a `&T`
-        // within the context of the guard expression, but will
-        // continue to map to a `T` in the context of the arm body. To
-        // avoid surfacing this distinction in the user source code
-        // (which would be a severe change to the language and require
-        // far more revision to the compiler), when `autoref` is true,
-        // then any occurrence of the identifier in the guard
-        // expression will automatically get a deref op applied to it.
-        //
-        // So an input like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { foo if inspect(foo)
-        //     => feed(foo), ... }
-        // ```
-        //
-        // will be treated as if it were really something like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { Foo { .. } if { let tmp1 = &place; inspect(*tmp1) }
-        //     => { let tmp2 = place; feed(tmp2) }, ... }
-        // ```
-        //
-        // And an input like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { ref mut foo if inspect(foo)
-        //     => feed(foo), ... }
-        // ```
-        //
-        // will be treated as if it were really something like:
-        //
-        // ```
-        // let place = Foo::new();
-        // match place { Foo { .. } if { let tmp1 = & &mut place; inspect(*tmp1) }
-        //     => { let tmp2 = &mut place; feed(tmp2) }, ... }
-        // ```
-        //
-        // In short, any pattern binding will always look like *some*
-        // kind of `&T` within the guard at least in terms of how the
-        // MIR-borrowck views it, and this will ensure that guard
-        // expressions cannot mutate their the match inputs via such
-        // bindings. (It also ensures that guard expressions can at
-        // most *copy* values from such bindings; non-Copy things
-        // cannot be moved via pattern bindings in guard expressions.)
-        //
-        // ----
-        //
-        // Implementation notes (under assumption `autoref` is true).
-        //
-        // To encode the distinction above, we must inject the
-        // temporaries `tmp1` and `tmp2`.
-        //
-        // There are two cases of interest: binding by-value, and binding by-ref.
-        //
-        // 1. Binding by-value: Things are simple.
-        //
-        //    * Establishing `tmp1` creates a reference into the
-        //      matched place. This code is emitted by
-        //      bind_matched_candidate_for_guard.
-        //
-        //    * `tmp2` is only initialized "lazily", after we have
-        //      checked the guard. Thus, the code that can trigger
-        //      moves out of the candidate can only fire after the
-        //      guard evaluated to true. This initialization code is
-        //      emitted by bind_matched_candidate_for_arm.
-        //
-        // 2. Binding by-reference: Things are tricky.
-        //
-        //    * Here, the guard expression wants a `&&` or `&&mut`
-        //      into the original input. This means we need to borrow
-        //      the reference that we create for the arm.
-        //    * So we eagerly create the reference for the arm and then take a
-        //      reference to that.
+        // Lower an instance of the arm guard (if present) for this candidate,
+        // and then perform bindings for the arm body.
         if let Some((arm, match_scope)) = arm_match_scope
             && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
 
+            // Bindings for guards require some extra handling to automatically
+            // insert implicit references/dereferences.
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
             let guard_frame = GuardFrame {
                 locals: bindings.clone().map(|b| GuardFrameLocal::new(b.var_id)).collect(),
@@ -2378,6 +2474,82 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    /// Binding for guards is a bit different from binding for the arm body,
+    /// because an extra layer of implicit reference/dereference is added.
+    ///
+    /// The idea is that any pattern bindings of type T will map to a `&T` within
+    /// the context of the guard expression, but will continue to map to a `T`
+    /// in the context of the arm body. To avoid surfacing this distinction in
+    /// the user source code (which would be a severe change to the language and
+    /// require far more revision to the compiler), any occurrence of the
+    /// identifier in the guard expression will automatically get a deref op
+    /// applied to it. (See the caller of [`Self::is_bound_var_in_guard`].)
+    ///
+    /// So an input like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { foo if inspect(foo)
+    ///     => feed(foo), ... }
+    /// ```
+    ///
+    /// will be treated as if it were really something like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { Foo { .. } if { let tmp1 = &place; inspect(*tmp1) }
+    ///     => { let tmp2 = place; feed(tmp2) }, ... }
+    /// ```
+    ///
+    /// And an input like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { ref mut foo if inspect(foo)
+    ///     => feed(foo), ... }
+    /// ```
+    ///
+    /// will be treated as if it were really something like:
+    ///
+    /// ```ignore (illustrative)
+    /// let place = Foo::new();
+    /// match place { Foo { .. } if { let tmp1 = & &mut place; inspect(*tmp1) }
+    ///     => { let tmp2 = &mut place; feed(tmp2) }, ... }
+    /// ```
+    /// ---
+    ///
+    /// ## Implementation notes
+    ///
+    /// To encode the distinction above, we must inject the
+    /// temporaries `tmp1` and `tmp2`.
+    ///
+    /// There are two cases of interest: binding by-value, and binding by-ref.
+    ///
+    /// 1. Binding by-value: Things are simple.
+    ///
+    ///    * Establishing `tmp1` creates a reference into the
+    ///      matched place. This code is emitted by
+    ///      [`Self::bind_matched_candidate_for_guard`].
+    ///
+    ///    * `tmp2` is only initialized "lazily", after we have
+    ///      checked the guard. Thus, the code that can trigger
+    ///      moves out of the candidate can only fire after the
+    ///      guard evaluated to true. This initialization code is
+    ///      emitted by [`Self::bind_matched_candidate_for_arm_body`].
+    ///
+    /// 2. Binding by-reference: Things are tricky.
+    ///
+    ///    * Here, the guard expression wants a `&&` or `&&mut`
+    ///      into the original input. This means we need to borrow
+    ///      the reference that we create for the arm.
+    ///    * So we eagerly create the reference for the arm and then take a
+    ///      reference to that.
+    ///
+    /// ---
+    ///
+    /// See these PRs for some historical context:
+    /// - <https://github.com/rust-lang/rust/pull/49870> (introduction of autoref)
+    /// - <https://github.com/rust-lang/rust/pull/59114> (always use autoref)
     fn bind_matched_candidate_for_guard<'b>(
         &mut self,
         block: BasicBlock,
@@ -2409,10 +2581,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             match binding.binding_mode.0 {
                 ByRef::No => {
+                    // The arm binding will be by value, so for the guard binding
+                    // just take a shared reference to the matched place.
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
                 ByRef::Yes(mutbl) => {
+                    // The arm binding will be by reference, so eagerly create it now.
                     let value_for_arm = self.storage_live_binding(
                         block,
                         binding.var_id,
@@ -2424,6 +2599,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let rvalue =
                         Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source);
                     self.cfg.push_assign(block, source_info, value_for_arm, rvalue);
+                    // For the guard binding, take a shared reference to that reference.
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, value_for_arm);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }

@@ -35,8 +35,8 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
-use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use std::iter;
@@ -205,9 +205,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     is_loop_move = true;
                 }
 
+                let mut has_suggest_reborrow = false;
                 if !seen_spans.contains(&move_span) {
                     if !closure {
-                        self.suggest_ref_or_clone(mpi, &mut err, &mut in_pattern, move_spans);
+                        self.suggest_ref_or_clone(
+                            mpi,
+                            &mut err,
+                            &mut in_pattern,
+                            move_spans,
+                            moved_place.as_ref(),
+                            &mut has_suggest_reborrow,
+                        );
                     }
 
                     let msg_opt = CapturedMessageOpt {
@@ -215,6 +223,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         is_loop_message,
                         is_move_msg,
                         is_loop_move,
+                        has_suggest_reborrow,
                         maybe_reinitialized_locations_is_empty: maybe_reinitialized_locations
                             .is_empty(),
                     };
@@ -259,17 +268,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             if is_loop_move & !in_pattern && !matches!(use_spans, UseSpans::ClosureUse { .. }) {
                 if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
-                    err.span_suggestion_verbose(
-                        span.shrink_to_lo(),
-                        format!(
-                            "consider creating a fresh reborrow of {} here",
-                            self.describe_place(moved_place)
-                                .map(|n| format!("`{n}`"))
-                                .unwrap_or_else(|| "the mutable reference".to_string()),
-                        ),
-                        "&mut *",
-                        Applicability::MachineApplicable,
-                    );
+                    self.suggest_reborrow(&mut err, span, moved_place);
                 }
             }
 
@@ -346,6 +345,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         err: &mut Diag<'infcx>,
         in_pattern: &mut bool,
         move_spans: UseSpans<'tcx>,
+        moved_place: PlaceRef<'tcx>,
+        has_suggest_reborrow: &mut bool,
     ) {
         let move_span = match move_spans {
             UseSpans::ClosureUse { capture_kind_span, .. } => capture_kind_span,
@@ -435,20 +436,49 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 let parent = self.infcx.tcx.parent_hir_node(expr.hir_id);
                 let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
-                    && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
                 {
-                    (def_id.as_local(), args, 1)
+                    (typeck.type_dependent_def_id(parent_expr.hir_id), args, 1)
                 } else if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call, args) = parent_expr.kind
                     && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
                 {
-                    (def_id.as_local(), args, 0)
+                    (Some(*def_id), args, 0)
                 } else {
                     (None, &[][..], 0)
                 };
+
+                // If the moved value is a mut reference, it is used in a
+                // generic function and it's type is a generic param, it can be
+                // reborrowed to avoid moving.
+                // for example:
+                // struct Y(u32);
+                // x's type is '& mut Y' and it is used in `fn generic<T>(x: T) {}`.
+                if let Some(def_id) = def_id
+                    && self.infcx.tcx.def_kind(def_id).is_fn_like()
+                    && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
+                    && let Some(arg) = self
+                        .infcx
+                        .tcx
+                        .fn_sig(def_id)
+                        .skip_binder()
+                        .skip_binder()
+                        .inputs()
+                        .get(pos + offset)
+                    && let ty::Param(_) = arg.kind()
+                {
+                    let place = &self.move_data.move_paths[mpi].place;
+                    let ty = place.ty(self.body, self.infcx.tcx).ty;
+                    if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
+                        *has_suggest_reborrow = true;
+                        self.suggest_reborrow(err, expr.span, moved_place);
+                        return;
+                    }
+                }
+
                 let mut can_suggest_clone = true;
                 if let Some(def_id) = def_id
-                    && let node = self.infcx.tcx.hir_node_by_def_id(def_id)
+                    && let Some(local_def_id) = def_id.as_local()
+                    && let node = self.infcx.tcx.hir_node_by_def_id(local_def_id)
                     && let Some(fn_sig) = node.fn_sig()
                     && let Some(ident) = node.ident()
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
@@ -620,6 +650,25 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
+    }
+
+    pub fn suggest_reborrow(
+        &self,
+        err: &mut Diag<'infcx>,
+        span: Span,
+        moved_place: PlaceRef<'tcx>,
+    ) {
+        err.span_suggestion_verbose(
+            span.shrink_to_lo(),
+            format!(
+                "consider creating a fresh reborrow of {} here",
+                self.describe_place(moved_place)
+                    .map(|n| format!("`{n}`"))
+                    .unwrap_or_else(|| "the mutable reference".to_string()),
+            ),
+            "&mut *",
+            Applicability::MachineApplicable,
+        );
     }
 
     fn report_use_of_uninitialized(
@@ -1257,37 +1306,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     // result of `foo(...)` won't help.
                     break 'outer;
                 }
-
-                // We're suggesting `.clone()` on an borrowed value. See if the expression we have
-                // is an argument to a function or method call, and try to suggest cloning the
-                // *result* of the call, instead of the argument. This is closest to what people
-                // would actually be looking for in most cases, with maybe the exception of things
-                // like `fn(T) -> T`, but even then it is reasonable.
-                let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
-                let mut prev = expr;
-                while let hir::Node::Expr(parent) = self.infcx.tcx.parent_hir_node(prev.hir_id) {
-                    if let hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) = parent.kind
-                        && let Some(call_ty) = typeck_results.node_type_opt(parent.hir_id)
-                        && let call_ty = call_ty.peel_refs()
-                        && (!call_ty
-                            .walk()
-                            .any(|t| matches!(t.unpack(), ty::GenericArgKind::Lifetime(_)))
-                            || if let ty::Alias(ty::Projection, _) = call_ty.kind() {
-                                // FIXME: this isn't quite right with lifetimes on assoc types,
-                                // but ignore for now. We will only suggest cloning if
-                                // `<Ty as Trait>::Assoc: Clone`, which should keep false positives
-                                // down to a managable ammount.
-                                true
-                            } else {
-                                false
-                            })
-                        && self.implements_clone(call_ty)
-                        && self.suggest_cloning_inner(err, call_ty, parent)
-                    {
-                        return;
-                    }
-                    prev = parent;
-                }
             }
         }
         let ty = ty.peel_refs();
@@ -1393,7 +1411,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             // See `tests/ui/moves/needs-clone-through-deref.rs`
             return false;
         }
+        // We don't want to suggest `.clone()` in a move closure, since the value has already been captured.
         if self.in_move_closure(expr) {
+            return false;
+        }
+        // We also don't want to suggest cloning a closure itself, since the value has already been captured.
+        if let hir::ExprKind::Closure(_) = expr.kind {
             return false;
         }
         // Try to find predicates on *generic params* that would allow copying `ty`
@@ -4255,17 +4278,35 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 // search for relevant arguments.
                 let mut arguments = Vec::new();
                 for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
-                    if let ty::Ref(argument_region, _, _) = argument.kind() {
-                        if argument_region == return_region {
-                            // Need to use the `rustc_middle::ty` types to compare against the
-                            // `return_region`. Then use the `rustc_hir` type to get only
-                            // the lifetime span.
-                            if let hir::TyKind::Ref(lifetime, _) = &fn_decl.inputs[index].kind {
+                    if let ty::Ref(argument_region, _, _) = argument.kind()
+                        && argument_region == return_region
+                    {
+                        // Need to use the `rustc_middle::ty` types to compare against the
+                        // `return_region`. Then use the `rustc_hir` type to get only
+                        // the lifetime span.
+                        match &fn_decl.inputs[index].kind {
+                            hir::TyKind::Ref(lifetime, _) => {
                                 // With access to the lifetime, we can get
                                 // the span of it.
                                 arguments.push((*argument, lifetime.ident.span));
-                            } else {
-                                bug!("ty type is a ref but hir type is not");
+                            }
+                            // Resolve `self` whose self type is `&T`.
+                            hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
+                                if let Res::SelfTyAlias { alias_to, .. } = path.res
+                                    && let Some(alias_to) = alias_to.as_local()
+                                    && let hir::Impl { self_ty, .. } = self
+                                        .infcx
+                                        .tcx
+                                        .hir_node_by_def_id(alias_to)
+                                        .expect_item()
+                                        .expect_impl()
+                                    && let hir::TyKind::Ref(lifetime, _) = self_ty.kind
+                                {
+                                    arguments.push((*argument, lifetime.ident.span));
+                                }
+                            }
+                            _ => {
+                                // Don't ICE though. It might be a type alias.
                             }
                         }
                     }

@@ -305,7 +305,6 @@ pub enum TypeKind {
     Pointer = 12,
     Vector = 13,
     Metadata = 14,
-    X86_MMX = 15,
     Token = 16,
     ScalableVector = 17,
     BFloat = 18,
@@ -330,7 +329,6 @@ impl TypeKind {
             TypeKind::Pointer => rustc_codegen_ssa::common::TypeKind::Pointer,
             TypeKind::Vector => rustc_codegen_ssa::common::TypeKind::Vector,
             TypeKind::Metadata => rustc_codegen_ssa::common::TypeKind::Metadata,
-            TypeKind::X86_MMX => rustc_codegen_ssa::common::TypeKind::X86_MMX,
             TypeKind::Token => rustc_codegen_ssa::common::TypeKind::Token,
             TypeKind::ScalableVector => rustc_codegen_ssa::common::TypeKind::ScalableVector,
             TypeKind::BFloat => rustc_codegen_ssa::common::TypeKind::BFloat,
@@ -2440,4 +2438,8 @@ extern "C" {
         callback: GetSymbolsCallback,
         error_callback: GetSymbolsErrorCallback,
     ) -> *mut c_void;
+
+    pub fn LLVMRustIs64BitSymbolicFile(buf_ptr: *const u8, buf_len: usize) -> bool;
+
+    pub fn LLVMRustIsECObject(buf_ptr: *const u8, buf_len: usize) -> bool;
 }
