@@ -1,4 +1,4 @@
-hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_name}` in bounds of `{$ty_param_name}`
+hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_name}` in bounds of `{$qself}`
     .label = ambiguous associated {$assoc_kind} `{$assoc_name}`
 
 hir_analysis_ambiguous_lifetime_bound =
@@ -12,16 +12,21 @@ hir_analysis_assoc_item_is_private = {$kind} `{$name}` is private
     .label = private {$kind}
     .defined_here_label = the {$kind} is defined here
 
-hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_name}` not found for `{$ty_param_name}`
+hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_name}` not found for `{$qself}`
 
 hir_analysis_assoc_item_not_found_found_in_other_trait_label = there is {$identically_named ->
         [true] an
         *[false] a similarly named
     } associated {$assoc_kind} `{$suggested_name}` in the trait `{$trait_name}`
 hir_analysis_assoc_item_not_found_label = associated {$assoc_kind} `{$assoc_name}` not found
-hir_analysis_assoc_item_not_found_other_sugg = `{$ty_param_name}` has the following associated {$assoc_kind}
+hir_analysis_assoc_item_not_found_other_sugg = `{$qself}` has the following associated {$assoc_kind}
+hir_analysis_assoc_item_not_found_similar_in_other_trait_qpath_sugg =
+    consider fully qualifying{$identically_named ->
+        [true] {""}
+        *[false] {" "}and renaming
+    } the associated {$assoc_kind}
 hir_analysis_assoc_item_not_found_similar_in_other_trait_sugg = change the associated {$assoc_kind} name to use `{$suggested_name}` from `{$trait_name}`
-hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg = and also change the associated {$assoc_kind} name
+hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg = ...and changing the associated {$assoc_kind} name
 hir_analysis_assoc_item_not_found_similar_sugg = there is an associated {$assoc_kind} with a similar name
 
 hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}
@@ -58,6 +63,23 @@ hir_analysis_cannot_capture_late_bound_ty =
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
+hir_analysis_cmse_call_generic =
+    function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+
+hir_analysis_cmse_call_inputs_stack_spill =
+    arguments for `"C-cmse-nonsecure-call"` function too large to pass via registers
+    .label = {$plural ->
+        [false] this argument doesn't
+        *[true] these arguments don't
+    } fit in the available registers
+    .note = functions with the `"C-cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+
+hir_analysis_cmse_call_output_stack_spill =
+    return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+    .label = this type doesn't fit in the available registers
+    .note1 = functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+    .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
 
 hir_analysis_coerce_unsized_multi = implementing the trait `CoerceUnsized` requires multiple coercions
@@ -81,6 +103,10 @@ hir_analysis_const_impl_for_non_const_trait =
 hir_analysis_const_param_ty_impl_on_non_adt =
     the trait `ConstParamTy` may not be implemented for this type
     .label = type is not a structure or enumeration
+
+hir_analysis_const_param_ty_impl_on_unsized =
+    the trait `ConstParamTy` may not be implemented for this type
+    .label = type is not `Sized`
 
 hir_analysis_const_specialize = cannot specialize on const impl with non-const impl
 
@@ -382,6 +408,10 @@ hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is no
 hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
     .label = `Self` is not a generic argument, but an alias to the type of the {$what}
 
+hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is only used recursively
+    .label = {$param_def_kind} must be used non-recursively in the definition
+    .note = all type parameters must be used in a non-recursive way in order to constrain their variance
+
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
@@ -515,6 +545,11 @@ hir_analysis_typeof_reserved_keyword_used =
     .suggestion = consider replacing `typeof(...)` with an actual type
     .label = reserved keyword
 
+hir_analysis_unconstrained_generic_parameter = the {$param_def_kind} `{$param_name}` is not constrained by the impl trait, self type, or predicates
+    .label = unconstrained {$param_def_kind}
+    .const_param_note = expressions using a const parameter must map each value to a distinct output value
+    .const_param_note2 = proving the result of expressions other than the parameter are unique is not supported
+
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
 
@@ -549,6 +584,8 @@ hir_analysis_unused_generic_parameter =
     {$param_def_kind} `{$param_name}` is never used
     .label = unused {$param_def_kind}
     .const_param_help = if you intended `{$param_name}` to be a const parameter, use `const {$param_name}: /* Type */` instead
+    .usage_spans = `{$param_name}` is named here, but is likely unused in the containing type
+
 hir_analysis_unused_generic_parameter_adt_help =
     consider removing `{$param_name}`, referring to it in a field, or using a marker such as `{$phantom_data}`
 hir_analysis_unused_generic_parameter_adt_no_phantom_data_help =

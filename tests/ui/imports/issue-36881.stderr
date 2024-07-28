@@ -2,7 +2,7 @@ error[E0432]: unresolved import `issue_36881_aux`
   --> $DIR/issue-36881.rs:5:9
    |
 LL |     use issue_36881_aux::Foo;
-   |         ^^^^^^^^^^^^^^^ maybe a missing crate `issue_36881_aux`?
+   |         ^^^^^^^^^^^^^^^ you might be missing crate `issue_36881_aux`
    |
    = help: consider adding `extern crate issue_36881_aux` to use the `issue_36881_aux` crate
 

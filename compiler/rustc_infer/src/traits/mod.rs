@@ -3,7 +3,6 @@
 //! [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
 mod engine;
-pub mod error_reporting;
 mod project;
 mod structural_impls;
 pub mod util;

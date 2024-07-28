@@ -73,6 +73,7 @@ mod noop_method_call;
 mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
+mod precedence;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
@@ -111,6 +112,7 @@ use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
+use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
@@ -120,7 +122,7 @@ use types::*;
 use unit_bindings::*;
 use unused::*;
 
-/// Useful for other parts of the compiler / Clippy.
+#[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
@@ -175,6 +177,7 @@ early_lint_methods!(
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             Expr2024: Expr2024,
+            Precedence: Precedence,
         ]
     ]
 );
@@ -322,6 +325,8 @@ fn register_builtins(store: &mut LintStore) {
         REFINING_IMPL_TRAIT_REACHABLE,
         REFINING_IMPL_TRAIT_INTERNAL
     );
+
+    add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
 
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");
@@ -573,6 +578,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
     store.register_late_mod_pass(|_| Box::new(TyTyKind));
+    store.register_lints(&TypeIr::get_lints());
+    store.register_late_mod_pass(|_| Box::new(TypeIr));
     store.register_lints(&Diagnostics::get_lints());
     store.register_late_mod_pass(|_| Box::new(Diagnostics));
     store.register_lints(&BadOptAccess::get_lints());
@@ -596,6 +603,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(PASS_BY_VALUE),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(USAGE_OF_QUALIFIED_TY),
+            LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
             LintId::of(EXISTING_DOC_KEYWORD),
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),

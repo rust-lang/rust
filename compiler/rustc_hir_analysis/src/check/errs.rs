@@ -1,5 +1,4 @@
 use rustc_hir as hir;
-use rustc_hir_pretty::qpath_to_string;
 use rustc_lint_defs::builtin::STATIC_MUT_REFS;
 use rustc_middle::ty::{Mutability, TyCtxt};
 use rustc_span::Span;
@@ -12,9 +11,17 @@ pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
     let hir_id = expr.hir_id;
     if let hir::ExprKind::AddrOf(borrow_kind, m, expr) = expr.kind
         && matches!(borrow_kind, hir::BorrowKind::Ref)
-        && let Some(var) = path_if_static_mut(tcx, expr)
+        && path_if_static_mut(expr)
     {
-        handle_static_mut_ref(tcx, span, var, span.edition().at_least_rust_2024(), m, hir_id);
+        handle_static_mut_ref(
+            tcx,
+            span,
+            span.with_hi(expr.span.lo()),
+            span.shrink_to_hi(),
+            span.edition().at_least_rust_2024(),
+            m,
+            hir_id,
+        );
     }
 }
 
@@ -24,12 +31,13 @@ pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
         && let hir::PatKind::Binding(ba, _, _, _) = loc.pat.kind
         && let hir::ByRef::Yes(rmutbl) = ba.0
         && let Some(init) = loc.init
-        && let Some(var) = path_if_static_mut(tcx, init)
+        && path_if_static_mut(init)
     {
         handle_static_mut_ref(
             tcx,
             init.span,
-            var,
+            init.span.shrink_to_lo(),
+            init.span.shrink_to_hi(),
             loc.span.edition().at_least_rust_2024(),
             rmutbl,
             stmt.hir_id,
@@ -37,38 +45,39 @@ pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
     }
 }
 
-fn path_if_static_mut(tcx: TyCtxt<'_>, expr: &hir::Expr<'_>) -> Option<String> {
+fn path_if_static_mut(expr: &hir::Expr<'_>) -> bool {
     if let hir::ExprKind::Path(qpath) = expr.kind
         && let hir::QPath::Resolved(_, path) = qpath
         && let hir::def::Res::Def(def_kind, _) = path.res
         && let hir::def::DefKind::Static { safety: _, mutability: Mutability::Mut, nested: false } =
             def_kind
     {
-        return Some(qpath_to_string(&tcx, &qpath));
+        return true;
     }
-    None
+    false
 }
 
 fn handle_static_mut_ref(
     tcx: TyCtxt<'_>,
     span: Span,
-    var: String,
+    lo: Span,
+    hi: Span,
     e2024: bool,
     mutable: Mutability,
     hir_id: hir::HirId,
 ) {
     if e2024 {
         let (sugg, shared) = if mutable == Mutability::Mut {
-            (errors::StaticMutRefSugg::Mut { span, var }, "mutable")
+            (errors::MutRefSugg::Mut { lo, hi }, "mutable")
         } else {
-            (errors::StaticMutRefSugg::Shared { span, var }, "shared")
+            (errors::MutRefSugg::Shared { lo, hi }, "shared")
         };
         tcx.dcx().emit_err(errors::StaticMutRef { span, sugg, shared });
     } else {
         let (sugg, shared) = if mutable == Mutability::Mut {
-            (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")
+            (errors::MutRefSugg::Mut { lo, hi }, "mutable")
         } else {
-            (errors::RefOfMutStaticSugg::Shared { span, var }, "shared")
+            (errors::MutRefSugg::Shared { lo, hi }, "shared")
         };
         tcx.emit_node_span_lint(
             STATIC_MUT_REFS,

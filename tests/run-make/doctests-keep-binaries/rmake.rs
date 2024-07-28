@@ -1,7 +1,7 @@
 // Check that valid binaries are persisted by running them, regardless of whether the
 // --run or --no-run option is used.
 
-use run_make_support::fs_wrapper::{create_dir, remove_dir_all};
+use run_make_support::rfs::{create_dir, remove_dir_all};
 use run_make_support::{run, rustc, rustdoc};
 use std::path::Path;
 

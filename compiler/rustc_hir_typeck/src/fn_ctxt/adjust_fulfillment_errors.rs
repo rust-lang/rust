@@ -338,8 +338,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindAmbiguousParameter<'_, 'tcx> {
             type Result = ControlFlow<ty::GenericArg<'tcx>>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-                if let Some(origin) = self.0.type_var_origin(ty)
-                    && let Some(def_id) = origin.param_def_id
+                if let ty::Infer(ty::TyVar(vid)) = *ty.kind()
+                    && let Some(def_id) = self.0.type_var_origin(vid).param_def_id
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
                     && let Some(arg) =

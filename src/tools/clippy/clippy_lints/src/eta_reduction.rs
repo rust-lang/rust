@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::error_reporting::traits::InferCtxtExt as _;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -178,7 +178,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                                 // 'cuz currently nothing changes after deleting this check.
                                 local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
                             }) {
-                                match cx.tcx.infer_ctxt().build().type_implements_fn_trait(
+                                match cx.tcx.infer_ctxt().build().err_ctxt().type_implements_fn_trait(
                                     cx.param_env,
                                     Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
                                     ty::PredicatePolarity::Positive,

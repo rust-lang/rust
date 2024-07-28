@@ -67,7 +67,7 @@ fn erase(context: &ImplicitCtxt<'_, '_>) -> *const () {
 
 #[inline]
 unsafe fn downcast<'a, 'tcx>(context: *const ()) -> &'a ImplicitCtxt<'a, 'tcx> {
-    &*(context as *const ImplicitCtxt<'a, 'tcx>)
+    unsafe { &*(context as *const ImplicitCtxt<'a, 'tcx>) }
 }
 
 /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.

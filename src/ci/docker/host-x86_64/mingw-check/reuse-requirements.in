@@ -11,4 +11,4 @@
 #    pip-compile --allow-unsafe --generate-hashes reuse-requirements.in
 #
 
-reuse
+reuse>=4.0,<5.0

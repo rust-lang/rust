@@ -11,6 +11,11 @@
 use crate::sync::atomic::AtomicU32;
 use crate::time::Duration;
 
+/// An atomic for use as a futex that is at least 8-bits but may be larger.
+pub type SmallAtomic = AtomicU32;
+/// Must be the underlying type of SmallAtomic
+pub type SmallPrimitive = u32;
+
 /// Wait for a futex_wake operation to wake us.
 ///
 /// Returns directly if the futex doesn't hold the expected value.

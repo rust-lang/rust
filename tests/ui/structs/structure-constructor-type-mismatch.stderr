@@ -68,7 +68,7 @@ error[E0107]: type alias takes 0 generic arguments but 1 generic argument was su
   --> $DIR/structure-constructor-type-mismatch.rs:48:15
    |
 LL |     let pt3 = PointF::<i32> {
-   |               ^^^^^^------- help: remove these generics
+   |               ^^^^^^------- help: remove the unnecessary generics
    |               |
    |               expected 0 generic arguments
    |
@@ -104,7 +104,7 @@ error[E0107]: type alias takes 0 generic arguments but 1 generic argument was su
   --> $DIR/structure-constructor-type-mismatch.rs:54:9
    |
 LL |         PointF::<u32> { .. } => {}
-   |         ^^^^^^------- help: remove these generics
+   |         ^^^^^^------- help: remove the unnecessary generics
    |         |
    |         expected 0 generic arguments
    |

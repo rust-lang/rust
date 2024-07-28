@@ -27,15 +27,15 @@ pub(crate) use valtrees::{eval_to_valtree, valtree_to_const_value};
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
 const VALTREE_MAX_NODES: usize = 100000;
 
-pub(crate) enum ValTreeCreationError {
+pub(crate) enum ValTreeCreationError<'tcx> {
     NodesOverflow,
     /// Values of this type, or this particular value, are not supported as valtrees.
-    NonSupportedType,
+    NonSupportedType(Ty<'tcx>),
 }
-pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError>;
+pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError<'tcx>>;
 
-impl From<InterpErrorInfo<'_>> for ValTreeCreationError {
-    fn from(err: InterpErrorInfo<'_>) -> Self {
+impl<'tcx> From<InterpErrorInfo<'tcx>> for ValTreeCreationError<'tcx> {
+    fn from(err: InterpErrorInfo<'tcx>) -> Self {
         ty::tls::with(|tcx| {
             bug!(
                 "Unexpected Undefined Behavior error during valtree construction: {}",

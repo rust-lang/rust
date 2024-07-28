@@ -67,4 +67,24 @@ fn test_nested() {
         ),
         &[&[], &[]],
     );
+    let ty = Ty::Tuple(&[Ty::Bool; 3]);
+    assert_intersects(
+        pats!(ty;
+            (true, true, _),
+            (true, _, true),
+            (false, _, _),
+        ),
+        &[&[], &[], &[]],
+    );
+    let ty = Ty::Tuple(&[Ty::Bool, Ty::Bool, Ty::U8]);
+    assert_intersects(
+        pats!(ty;
+            (true, _, _),
+            (_, true, 0..10),
+            (_, true, 10..),
+            (_, true, 3),
+            _,
+        ),
+        &[&[], &[], &[], &[1], &[0, 1, 2, 3]],
+    );
 }

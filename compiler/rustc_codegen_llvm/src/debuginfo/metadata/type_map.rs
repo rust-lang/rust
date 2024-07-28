@@ -36,7 +36,7 @@ mod private {
 
 /// A unique identifier for anything that we create a debuginfo node for.
 /// The types it contains are expected to already be normalized (which
-/// is debug_asserted in the constructors).
+/// is asserted in the constructors).
 ///
 /// Note that there are some things that only show up in debuginfo, like
 /// the separate type descriptions for each enum variant. These get an ID
@@ -58,12 +58,12 @@ pub(super) enum UniqueTypeId<'tcx> {
 
 impl<'tcx> UniqueTypeId<'tcx> {
     pub fn for_ty(tcx: TyCtxt<'tcx>, t: Ty<'tcx>) -> Self {
-        debug_assert_eq!(t, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t));
+        assert_eq!(t, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t));
         UniqueTypeId::Ty(t, private::HiddenZst)
     }
 
     pub fn for_enum_variant_part(tcx: TyCtxt<'tcx>, enum_ty: Ty<'tcx>) -> Self {
-        debug_assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
         UniqueTypeId::VariantPart(enum_ty, private::HiddenZst)
     }
 
@@ -72,7 +72,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
         enum_ty: Ty<'tcx>,
         variant_idx: VariantIdx,
     ) -> Self {
-        debug_assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
         UniqueTypeId::VariantStructType(enum_ty, variant_idx, private::HiddenZst)
     }
 
@@ -81,7 +81,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
         enum_ty: Ty<'tcx>,
         variant_idx: VariantIdx,
     ) -> Self {
-        debug_assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
         UniqueTypeId::VariantStructTypeCppLikeWrapper(enum_ty, variant_idx, private::HiddenZst)
     }
 
@@ -90,11 +90,8 @@ impl<'tcx> UniqueTypeId<'tcx> {
         self_type: Ty<'tcx>,
         implemented_trait: Option<PolyExistentialTraitRef<'tcx>>,
     ) -> Self {
-        debug_assert_eq!(
-            self_type,
-            tcx.normalize_erasing_regions(ParamEnv::reveal_all(), self_type)
-        );
-        debug_assert_eq!(
+        assert_eq!(self_type, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), self_type));
+        assert_eq!(
             implemented_trait,
             tcx.normalize_erasing_regions(ParamEnv::reveal_all(), implemented_trait)
         );
@@ -252,10 +249,7 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
     members: impl FnOnce(&CodegenCx<'ll, 'tcx>, &'ll DIType) -> SmallVec<&'ll DIType>,
     generics: impl FnOnce(&CodegenCx<'ll, 'tcx>) -> SmallVec<&'ll DIType>,
 ) -> DINodeCreationResult<'ll> {
-    debug_assert_eq!(
-        debug_context(cx).type_map.di_node_for_unique_id(stub_info.unique_type_id),
-        None
-    );
+    assert_eq!(debug_context(cx).type_map.di_node_for_unique_id(stub_info.unique_type_id), None);
 
     debug_context(cx).type_map.insert(stub_info.unique_type_id, stub_info.metadata);
 

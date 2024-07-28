@@ -1,6 +1,6 @@
 //@ build-pass
 
-#![feature(adt_const_params)]
+#![feature(adt_const_params, unsized_const_params)]
 #![allow(incomplete_features)]
 
 pub fn function_with_bytes<const BYTES: &'static [u8; 4]>() -> &'static [u8] {

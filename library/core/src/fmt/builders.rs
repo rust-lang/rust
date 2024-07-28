@@ -402,6 +402,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     }
 }
 
+/// A helper used to print list-like items with no special formatting.
 struct DebugInner<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
     result: fmt::Result,
@@ -578,7 +579,8 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.inner.result.and_then(|_| self.inner.fmt.write_str("}"))
+        self.inner.result = self.inner.result.and_then(|_| self.inner.fmt.write_str("}"));
+        self.inner.result
     }
 }
 
@@ -721,7 +723,8 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.inner.result.and_then(|_| self.inner.fmt.write_str("]"))
+        self.inner.result = self.inner.result.and_then(|_| self.inner.fmt.write_str("]"));
+        self.inner.result
     }
 }
 
@@ -1002,11 +1005,12 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.result.and_then(|_| {
+        self.result = self.result.and_then(|_| {
             assert!(!self.has_key, "attempted to finish a map with a partial entry");
 
             self.fmt.write_str("}")
-        })
+        });
+        self.result
     }
 
     fn is_pretty(&self) -> bool {
@@ -1026,7 +1030,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{}", value), "a");
 /// assert_eq!(format!("{:?}", value), "'a'");
 ///
-/// let wrapped = fmt::FormatterFn(|f| write!(f, "{:?}", &value));
+/// let wrapped = fmt::FormatterFn(|f| write!(f, "{value:?}"));
 /// assert_eq!(format!("{}", wrapped), "'a'");
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```

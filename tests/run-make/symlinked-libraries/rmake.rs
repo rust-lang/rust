@@ -8,11 +8,11 @@
 //@ ignore-cross-compile
 //@ needs-symlink
 
-use run_make_support::{create_symlink, dynamic_lib_name, fs_wrapper, rustc};
+use run_make_support::{dynamic_lib_name, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").arg("-Cprefer-dynamic").run();
-    fs_wrapper::create_dir_all("other");
-    create_symlink(dynamic_lib_name("foo"), "other");
+    rfs::create_dir_all("other");
+    rfs::create_symlink(dynamic_lib_name("foo"), "other");
     rustc().input("bar.rs").library_search_path("other").run();
 }

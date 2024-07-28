@@ -14,7 +14,7 @@ use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
-use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
+use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
 
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::fmt::Write;
@@ -49,12 +49,16 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
-    llvm::LLVMRustInstallErrorHandlers();
+    unsafe {
+        llvm::LLVMRustInstallErrorHandlers();
+    }
     // On Windows, an LLVM assertion will open an Abort/Retry/Ignore dialog
     // box for the purpose of launching a debugger. However, on CI this will
     // cause it to hang until it times out, which can take several hours.
     if std::env::var_os("CI").is_some() {
-        llvm::LLVMRustDisableSystemDialogsOnCrash();
+        unsafe {
+            llvm::LLVMRustDisableSystemDialogsOnCrash();
+        }
     }
 
     fn llvm_arg_to_arg_name(full_arg: &str) -> &str {
@@ -124,12 +128,12 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
-        llvm::LLVMRustTimeTraceProfilerInitialize();
+        unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() };
     }
 
     rustc_llvm::initialize_available_targets();
 
-    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
+    unsafe { llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr()) };
 }
 
 pub fn time_trace_profiler_finish(file_name: &Path) {
@@ -317,6 +321,10 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             }
         })
         .filter(|feature| {
+            // skip checking special features, as LLVM may not understands them
+            if RUSTC_SPECIAL_FEATURES.contains(feature) {
+                return true;
+            }
             // check that all features in a given smallvec are enabled
             for llvm_feature in to_llvm_features(sess, feature) {
                 let cstr = SmallCStr::new(llvm_feature);
@@ -442,8 +450,8 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
             let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
                 .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
             unsafe extern "C" fn callback(out: *mut c_void, string: *const c_char, len: usize) {
-                let out = &mut *(out as *mut &mut String);
-                let bytes = slice::from_raw_parts(string as *const u8, len);
+                let out = unsafe { &mut *(out as *mut &mut String) };
+                let bytes = unsafe { slice::from_raw_parts(string as *const u8, len) };
                 write!(out, "{}", String::from_utf8_lossy(bytes)).unwrap();
             }
             unsafe {
@@ -542,6 +550,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
     // -Ctarget-features
     let supported_features = sess.target.supported_target_features();
+    let (llvm_major, _, _) = get_version();
     let mut featsmap = FxHashMap::default();
     let feats = sess
         .opts
@@ -598,6 +607,13 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
             // rustc-specific features do not get passed down to LLVM…
             if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+                return None;
+            }
+
+            // if the target-feature is "backchain" and LLVM version is greater than 18
+            // then we also need to add "+backchain" to the target-features attribute.
+            // otherwise, we will only add the naked `backchain` attribute to the attribute-group.
+            if feature == "backchain" && llvm_major < 18 {
                 return None;
             }
             // ... otherwise though we run through `to_llvm_features` when

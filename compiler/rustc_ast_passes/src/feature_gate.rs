@@ -162,6 +162,22 @@ impl<'a> PostExpansionVisitor<'a> {
             crate::fluent_generated::ast_passes_forbidden_non_lifetime_param
         );
 
+        // FIXME(non_lifetime_binders): Const bound params are pretty broken.
+        // Let's keep users from using this feature accidentally.
+        if self.features.non_lifetime_binders {
+            let const_param_spans: Vec<_> = params
+                .iter()
+                .filter_map(|param| match param.kind {
+                    ast::GenericParamKind::Const { .. } => Some(param.ident.span),
+                    _ => None,
+                })
+                .collect();
+
+            if !const_param_spans.is_empty() {
+                self.sess.dcx().emit_err(errors::ForbiddenConstParam { const_param_spans });
+            }
+        }
+
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();

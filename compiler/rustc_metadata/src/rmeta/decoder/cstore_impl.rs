@@ -72,6 +72,15 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     }
 }
 
+impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
+    ProcessQueryValue<'tcx, Option<&'tcx [T]>> for Option<DecodeIterator<'a, 'tcx, T>>
+{
+    #[inline(always)]
+    fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> Option<&'tcx [T]> {
+        if let Some(iter) = self { Some(&*tcx.arena.alloc_from_iter(iter)) } else { None }
+    }
+}
+
 impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
     #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<DeprecationEntry> {
@@ -249,6 +258,7 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
     mir_const_qualif => { table }
     rendered_const => { table }
+    rendered_precise_capturing_args => { table }
     asyncness => { table_direct }
     fn_arg_names => { table }
     coroutine_kind => { table_direct }

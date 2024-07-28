@@ -40,7 +40,7 @@ impl Step for BuildManifest {
             panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
         });
 
-        let today = command("date").capture_stdout().arg("+%Y-%m-%d").run(builder).stdout();
+        let today = command("date").arg("+%Y-%m-%d").run_capture_stdout(builder).stdout();
 
         cmd.arg(sign);
         cmd.arg(distdir(builder));

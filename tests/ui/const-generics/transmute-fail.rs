@@ -10,11 +10,10 @@ fn foo<const W: usize, const H: usize>(v: [[u32;H+1]; W]) -> [[u32; W+1]; H] {
 }
 
 fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
-  //~^ ERROR mismatched types
-  //~| ERROR mismatched types
+  //~^ ERROR the constant `W` is not of type `usize`
   unsafe {
     std::mem::transmute(v)
-    //~^ ERROR cannot transmute between types
+    //~^ ERROR the constant `W` is not of type `usize`
   }
 }
 

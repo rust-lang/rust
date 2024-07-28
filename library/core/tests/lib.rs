@@ -16,7 +16,6 @@
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_intrinsic_copy)]
-#![feature(const_int_from_str)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_nonnull_new)]
 #![feature(const_pointer_is_aligned)]
@@ -45,7 +44,6 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
-#![feature(is_sorted)]
 #![feature(layout_for_ptr)]
 #![feature(pattern)]
 #![feature(slice_take)]
@@ -132,6 +130,7 @@ mod clone;
 mod cmp;
 mod const_ptr;
 mod convert;
+mod ffi;
 mod fmt;
 mod future;
 mod hash;

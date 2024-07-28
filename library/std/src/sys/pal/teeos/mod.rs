@@ -2,7 +2,7 @@
 //!
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Teeos.
-#![allow(unsafe_op_in_unsafe_fn)]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 

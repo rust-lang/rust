@@ -1,5 +1,6 @@
 use arrayvec::ArrayVec;
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::{
@@ -175,12 +176,11 @@ pub struct FormatArgs {
 }
 
 impl FormatArgs {
-    #[must_use]
-    pub fn new(format_args: FormatArgsStorage, msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
+    pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
         Self {
             format_args,
-            msrv,
-            ignore_mixed: allow_mixed_uninlined_format_args,
+            msrv: conf.msrv.clone(),
+            ignore_mixed: conf.allow_mixed_uninlined_format_args,
         }
     }
 }

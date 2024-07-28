@@ -18,6 +18,7 @@ pub trait Sized {}
 
 #[lang = "copy"]
 trait Copy {}
+impl<T: ?Sized> Copy for *mut T {}
 
 #[repr(simd)]
 pub struct i8x16([i8; 16]);

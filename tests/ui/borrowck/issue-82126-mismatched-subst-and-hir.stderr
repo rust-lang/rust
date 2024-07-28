@@ -2,7 +2,7 @@ error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supp
   --> $DIR/issue-82126-mismatched-subst-and-hir.rs:16:59
    |
 LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
-   |                                                           ^^^^^^^^^^^^---- help: remove these generics
+   |                                                           ^^^^^^^^^^^^---- help: remove the unnecessary generics
    |                                                           |
    |                                                           expected 0 lifetime arguments
    |
@@ -32,7 +32,7 @@ error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supp
   --> $DIR/issue-82126-mismatched-subst-and-hir.rs:16:59
    |
 LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
-   |                                                           ^^^^^^^^^^^^---- help: remove these generics
+   |                                                           ^^^^^^^^^^^^---- help: remove the unnecessary generics
    |                                                           |
    |                                                           expected 0 lifetime arguments
    |

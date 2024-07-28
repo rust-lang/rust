@@ -5,7 +5,7 @@
 // See https://github.com/rust-lang/rust/pull/16367
 
 use run_make_support::{
-    count_regex_matches_in_files_with_extension, cwd, fs_wrapper, has_extension, regex, rustc,
+    count_regex_matches_in_files_with_extension, cwd, has_extension, regex, rfs, rustc,
     shallow_find_files,
 };
 

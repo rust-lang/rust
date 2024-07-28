@@ -2,11 +2,15 @@ use std::cell::Cell;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
+use rustc_infer::infer::at::ToTrace;
+use rustc_infer::traits::ObligationCause;
+use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, info, info_span, instrument, trace};
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{
     CtfeProvenance, ErrorHandled, InvalidMetaKind, ReportedErrorInfo,
@@ -638,6 +642,32 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
             Err(error_reported) => throw_inval!(AlreadyReported(error_reported.into())),
         }
+    }
+
+    /// Check if the two things are equal in the current param_env, using an infctx to get proper
+    /// equality checks.
+    pub(super) fn eq_in_param_env<T>(&self, a: T, b: T) -> bool
+    where
+        T: PartialEq + TypeFoldable<TyCtxt<'tcx>> + ToTrace<'tcx>,
+    {
+        // Fast path: compare directly.
+        if a == b {
+            return true;
+        }
+        // Slow path: spin up an inference context to check if these traits are sufficiently equal.
+        let infcx = self.tcx.infer_ctxt().build();
+        let ocx = ObligationCtxt::new(&infcx);
+        let cause = ObligationCause::dummy_with_span(self.cur_span());
+        // equate the two trait refs after normalization
+        let a = ocx.normalize(&cause, self.param_env, a);
+        let b = ocx.normalize(&cause, self.param_env, b);
+        if ocx.eq(&cause, self.param_env, a, b).is_ok() {
+            if ocx.select_all_or_error().is_empty() {
+                // All good.
+                return true;
+            }
+        }
+        return false;
     }
 
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a

@@ -14,7 +14,7 @@ error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-imports-used.rs:11:5
    |
 LL | use foo::bar;
-   |     ^^^ maybe a missing crate `foo`?
+   |     ^^^ you might be missing crate `foo`
    |
    = help: consider adding `extern crate foo` to use the `foo` crate
 
@@ -22,7 +22,7 @@ error[E0432]: unresolved import `baz`
   --> $DIR/unresolved-imports-used.rs:12:5
    |
 LL | use baz::*;
-   |     ^^^ maybe a missing crate `baz`?
+   |     ^^^ you might be missing crate `baz`
    |
    = help: consider adding `extern crate baz` to use the `baz` crate
 
@@ -30,7 +30,7 @@ error[E0432]: unresolved import `foo2`
   --> $DIR/unresolved-imports-used.rs:14:5
    |
 LL | use foo2::bar2;
-   |     ^^^^ maybe a missing crate `foo2`?
+   |     ^^^^ you might be missing crate `foo2`
    |
    = help: consider adding `extern crate foo2` to use the `foo2` crate
 
@@ -38,7 +38,7 @@ error[E0432]: unresolved import `baz2`
   --> $DIR/unresolved-imports-used.rs:15:5
    |
 LL | use baz2::*;
-   |     ^^^^ maybe a missing crate `baz2`?
+   |     ^^^^ you might be missing crate `baz2`
    |
    = help: consider adding `extern crate baz2` to use the `baz2` crate
 

@@ -489,10 +489,8 @@ foo::{
 A *group* of imports is a set of imports on the same or sequential lines. One or
 more blank lines or other items (e.g., a function) separate groups of imports.
 
-Within a group of imports, imports must be version-sorted, except that
-non-lowercase characters (characters that can start an `UpperCamelCase`
-identifier) must be sorted before lowercase characters. Groups of imports must
-not be merged or re-ordered.
+Within a group of imports, imports must be version-sorted. Groups of imports
+must not be merged or re-ordered.
 
 E.g., input:
 
@@ -520,9 +518,7 @@ re-ordering.
 ### Ordering list import
 
 Names in a list import must be version-sorted, except that:
-- `self` and `super` always come first if present,
-- non-lowercase characters (characters that can start an `UpperCamelCase`
-  identifier) must be sorted before lowercase characters, and
+- `self` and `super` always come first if present, and
 - groups and glob imports always come last if present.
 
 This applies recursively. For example, `a::*` comes before `b::a` but `a::b`

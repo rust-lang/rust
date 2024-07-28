@@ -2,7 +2,9 @@ error: unreachable pattern
   --> $DIR/issue-65157-repeated-match-arm.rs:15:9
    |
 LL |         PartiallyInhabitedVariants::Struct { .. } => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ----------------------------------------- matches all the values already
+LL |         PartiallyInhabitedVariants::Struct { .. } => {},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
    |
 note: the lint level is defined here
   --> $DIR/issue-65157-repeated-match-arm.rs:2:9

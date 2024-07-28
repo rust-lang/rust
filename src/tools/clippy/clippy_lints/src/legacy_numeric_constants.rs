@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{Msrv, NUMERIC_ASSOCIATED_CONSTANTS};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::{get_parent_expr, is_from_proc_macro};
 use hir::def_id::DefId;
@@ -38,9 +39,10 @@ pub struct LegacyNumericConstants {
 }
 
 impl LegacyNumericConstants {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 

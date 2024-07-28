@@ -266,6 +266,7 @@ def get_known_directive_names():
 # To prevent duplicating the list of commmands between `compiletest` and `htmldocck`, we put
 # it into a common file which is included in rust code and parsed here.
 # FIXME: This setup is temporary until we figure out how to improve this situation.
+#        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.
 KNOWN_DIRECTIVE_NAMES = get_known_directive_names()
 
 LINE_PATTERN = re.compile(r'''

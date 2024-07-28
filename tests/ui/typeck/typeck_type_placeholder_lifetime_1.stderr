@@ -2,7 +2,7 @@ error[E0107]: struct takes 1 generic argument but 2 generic arguments were suppl
   --> $DIR/typeck_type_placeholder_lifetime_1.rs:9:12
    |
 LL |     let c: Foo<_, _> = Foo { r: &5 };
-   |            ^^^    - help: remove this generic argument
+   |            ^^^  --- help: remove the unnecessary generic argument
    |            |
    |            expected 1 generic argument
    |

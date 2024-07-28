@@ -4,11 +4,10 @@ macro_rules! test {
     (case: $test_name:ident,
      text: $text:expr,
      lines: $lines:expr,
-     multi_byte_chars: $multi_byte_chars:expr,
-     non_narrow_chars: $non_narrow_chars:expr,) => {
+     multi_byte_chars: $multi_byte_chars:expr,) => {
         #[test]
         fn $test_name() {
-            let (lines, multi_byte_chars, non_narrow_chars) = analyze_source_file($text);
+            let (lines, multi_byte_chars) = analyze_source_file($text);
 
             let expected_lines: Vec<RelativeBytePos> =
                 $lines.into_iter().map(RelativeBytePos).collect();
@@ -21,13 +20,6 @@ macro_rules! test {
                 .collect();
 
             assert_eq!(multi_byte_chars, expected_mbcs);
-
-            let expected_nncs: Vec<NonNarrowChar> = $non_narrow_chars
-                .into_iter()
-                .map(|(pos, width)| NonNarrowChar::new(RelativeBytePos(pos), width))
-                .collect();
-
-            assert_eq!(non_narrow_chars, expected_nncs);
         }
     };
 }
@@ -37,7 +29,6 @@ test!(
     text: "",
     lines: vec![],
     multi_byte_chars: vec![],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -45,7 +36,6 @@ test!(
     text: "a\nc",
     lines: vec![0, 2],
     multi_byte_chars: vec![],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -53,7 +43,6 @@ test!(
     text: "012345678\nabcdef012345678\na",
     lines: vec![0, 10, 26],
     multi_byte_chars: vec![],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -61,7 +50,6 @@ test!(
     text: "01234β789\nbcdef0123456789abcdef",
     lines: vec![0, 11],
     multi_byte_chars: vec![(5, 2)],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -69,7 +57,6 @@ test!(
     text: "01234\u{07}6789\nbcdef0123456789abcdef",
     lines: vec![0, 11],
     multi_byte_chars: vec![],
-    non_narrow_chars: vec![(5, 0)],
 );
 
 test!(
@@ -77,7 +64,6 @@ test!(
     text: "aβc",
     lines: vec![0],
     multi_byte_chars: vec![(1, 2)],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -85,7 +71,6 @@ test!(
     text: "0123456789abcΔf012345β",
     lines: vec![0],
     multi_byte_chars: vec![(13, 2), (22, 2)],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -93,7 +78,6 @@ test!(
     text: "0123456789abcdeΔ123456789abcdef01234",
     lines: vec![0],
     multi_byte_chars: vec![(15, 2)],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -101,7 +85,6 @@ test!(
     text: "0123456789abcdeΔ....",
     lines: vec![0],
     multi_byte_chars: vec![(15, 2)],
-    non_narrow_chars: vec![],
 );
 
 test!(
@@ -109,7 +92,6 @@ test!(
     text: "0\t2",
     lines: vec![0],
     multi_byte_chars: vec![],
-    non_narrow_chars: vec![(1, 4)],
 );
 
 test!(
@@ -117,7 +99,6 @@ test!(
     text: "01\t3456789abcdef01234567\u{07}9",
     lines: vec![0],
     multi_byte_chars: vec![],
-    non_narrow_chars: vec![(2, 4), (24, 0)],
 );
 
 test!(
@@ -125,5 +106,4 @@ test!(
     text: "01\t345\n789abcΔf01234567\u{07}9\nbcΔf",
     lines: vec![0, 7, 27],
     multi_byte_chars: vec![(13, 2), (29, 2)],
-    non_narrow_chars: vec![(2, 4), (24, 0)],
 );

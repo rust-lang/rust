@@ -16,7 +16,7 @@ mod assert {
     where
         Dst: BikeshedIntrinsicFrom< //~ ERROR trait takes at most 2 generic arguments but 5 generic arguments were supplied
             Src,
-            ASSUME_ALIGNMENT, //~ ERROR: mismatched types
+            ASSUME_ALIGNMENT,
             ASSUME_LIFETIMES,
             ASSUME_VALIDITY,
             ASSUME_VISIBILITY,

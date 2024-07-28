@@ -40,7 +40,7 @@ use crate::core::builder::{Builder, Kind};
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput};
+use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
@@ -439,7 +439,7 @@ impl Build {
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
-            let rust_submodules = ["src/doc/book", "library/backtrace", "library/stdarch"];
+            let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
                 build.update_submodule(Path::new(s));
             }
@@ -496,21 +496,21 @@ impl Build {
         // Therefore, all commands below are marked with `run_always()`, so that they also run in
         // dry run mode.
         let submodule_git = || {
-            let mut cmd = helpers::git(Some(&absolute_path)).capture_stdout();
+            let mut cmd = helpers::git(Some(&absolute_path));
             cmd.run_always();
             cmd
         };
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = submodule_git().args(["rev-parse", "HEAD"]).run(self).stdout();
+        let checked_out_hash =
+            submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(self).stdout();
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
         let recorded = helpers::git(Some(&self.src))
-            .capture_stdout()
             .run_always()
             .args(["ls-tree", "HEAD"])
             .arg(relative_path)
-            .run(self)
+            .run_capture_stdout(self)
             .stdout();
         let actual_hash = recorded
             .split_whitespace()
@@ -534,10 +534,10 @@ impl Build {
             // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
             // even though that has no relation to the upstream for the submodule.
             let current_branch = helpers::git(Some(&self.src))
-                .capture_stdout()
+                .allow_failure()
                 .run_always()
                 .args(["symbolic-ref", "--short", "HEAD"])
-                .run(self)
+                .run_capture_stdout(self)
                 .stdout_if_ok()
                 .map(|s| s.trim().to_owned());
 
@@ -556,17 +556,14 @@ impl Build {
             git.arg(relative_path);
             git
         };
-        if !update(true).run(self).is_success() {
+        if !update(true).run(self) {
             update(false).run(self);
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
-        let has_local_modifications = submodule_git()
-            .allow_failure()
-            .args(["diff-index", "--quiet", "HEAD"])
-            .run(self)
-            .is_failure();
+        let has_local_modifications =
+            !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(self);
         if has_local_modifications {
             submodule_git().args(["stash", "push"]).run(self);
         }
@@ -587,11 +584,10 @@ impl Build {
             return;
         }
         let output = helpers::git(Some(&self.src))
-            .capture()
             .args(["config", "--file"])
             .arg(self.config.src.join(".gitmodules"))
             .args(["--get-regexp", "path"])
-            .run(self)
+            .run_capture(self)
             .stdout();
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
@@ -869,14 +865,14 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
             s.to_path_buf()
         } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).capture_stdout().arg("--bindir").run(self).stdout();
+            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
             let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
             if filecheck.exists() {
                 filecheck
             } else {
                 // On Fedora the system LLVM installs FileCheck in the
                 // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).capture_stdout().arg("--libdir").run(self).stdout();
+                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
                 let lib_filecheck =
                     Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
                 if lib_filecheck.exists() {
@@ -943,7 +939,12 @@ impl Build {
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
     #[track_caller]
-    fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
+    fn run(
+        &self,
+        command: &mut BootstrapCommand,
+        stdout: OutputMode,
+        stderr: OutputMode,
+    ) -> CommandOutput {
         command.mark_as_executed();
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
@@ -956,19 +957,20 @@ impl Build {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
         });
 
-        let stdout = command.stdout.stdio();
-        command.as_command_mut().stdout(stdout);
-        let stderr = command.stderr.stdio();
-        command.as_command_mut().stderr(stderr);
+        let cmd = command.as_command_mut();
+        cmd.stdout(stdout.stdio());
+        cmd.stderr(stderr.stdio());
 
-        let output = command.as_command_mut().output();
+        let output = cmd.output();
 
         use std::fmt::Write;
 
         let mut message = String::new();
         let output: CommandOutput = match output {
             // Command has succeeded
-            Ok(output) if output.status.success() => output.into(),
+            Ok(output) if output.status.success() => {
+                CommandOutput::from_output(output, stdout, stderr)
+            }
             // Command has started, but then it failed
             Ok(output) => {
                 writeln!(
@@ -982,15 +984,15 @@ Executed at: {executed_at}"#,
                 )
                 .unwrap();
 
-                let output: CommandOutput = output.into();
+                let output: CommandOutput = CommandOutput::from_output(output, stdout, stderr);
 
                 // If the output mode is OutputMode::Capture, we can now print the output.
                 // If it is OutputMode::Print, then the output has already been printed to
                 // stdout/stderr, and we thus don't have anything captured to print anyway.
-                if command.stdout.captures() {
+                if stdout.captures() {
                     writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
                 }
-                if command.stderr.captures() {
+                if stderr.captures() {
                     writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
                 }
                 output
@@ -1003,7 +1005,7 @@ Executed at: {executed_at}"#,
             \nIt was not possible to execute the command: {e:?}"
                 )
                 .unwrap();
-                CommandOutput::did_not_start()
+                CommandOutput::did_not_start(stdout, stderr)
             }
         };
         if !output.is_success() {
@@ -1413,6 +1415,19 @@ Executed at: {executed_at}"#,
         None
     }
 
+    /// Returns whether it's requested that `wasm-component-ld` is built as part
+    /// of the sysroot. This is done either with the `extended` key in
+    /// `config.toml` or with the `tools` set.
+    fn build_wasm_component_ld(&self) -> bool {
+        if self.config.extended {
+            return true;
+        }
+        match &self.config.tools {
+            Some(set) => set.contains("wasm-component-ld"),
+            None => false,
+        }
+    }
+
     /// Returns the root of the "rootfs" image that this target will be using,
     /// if one was configured.
     ///
@@ -1515,7 +1530,6 @@ Executed at: {executed_at}"#,
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
             helpers::git(Some(&self.src))
-                .capture()
                 .arg("rev-list")
                 .arg("--count")
                 .arg("--merges")
@@ -1523,7 +1537,7 @@ Executed at: {executed_at}"#,
                     "refs/remotes/origin/{}..HEAD",
                     self.config.stage0_metadata.config.nightly_branch
                 ))
-                .run(self)
+                .run_capture(self)
                 .stdout()
         });
         let n = count.trim().parse().unwrap();
@@ -1958,21 +1972,19 @@ pub fn generate_smart_stamp_hash(
     additional_input: &str,
 ) -> String {
     let diff = helpers::git(Some(dir))
-        .capture_stdout()
         .allow_failure()
         .arg("diff")
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 
     let status = helpers::git(Some(dir))
-        .capture_stdout()
         .allow_failure()
         .arg("status")
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 

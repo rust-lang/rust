@@ -204,7 +204,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type_and_layout = cx.layout_of(enum_type);
     let enum_type_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -279,7 +279,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     let coroutine_type_and_layout = cx.layout_of(coroutine_type);
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -517,7 +517,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                     if is_128_bits {
                         DiscrKind::Exact128(discr_val)
                     } else {
-                        debug_assert_eq!(discr_val, discr_val as u64 as u128);
+                        assert_eq!(discr_val, discr_val as u64 as u128);
                         DiscrKind::Exact(discr_val as u64)
                     }
                 }
@@ -526,8 +526,8 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                     if is_128_bits {
                         DiscrKind::Range128(min, max)
                     } else {
-                        debug_assert_eq!(min, min as u64 as u128);
-                        debug_assert_eq!(max, max as u64 as u128);
+                        assert_eq!(min, min as u64 as u128);
+                        assert_eq!(max, max as u64 as u128);
                         DiscrKind::Range(min as u64, max as u64)
                     }
                 }
@@ -815,7 +815,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
         }
     }));
 
-    debug_assert_eq!(
+    assert_eq!(
         cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field).ty),
         cx.size_and_align_of(super::tag_base_type(cx, enum_type_and_layout))
     );

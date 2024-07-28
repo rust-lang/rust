@@ -37,82 +37,74 @@ declare_lint_pass!(NeedlessBorrowedRef => [NEEDLESS_BORROWED_REFERENCE]);
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, ref_pat: &'tcx Pat<'_>) {
-        if ref_pat.span.from_expansion() {
-            // OK, simple enough, lints doesn't check in macro.
-            return;
-        }
-
-        // Do not lint patterns that are part of an OR `|` pattern, the binding mode must match in all arms
-        for (_, node) in cx.tcx.hir().parent_iter(ref_pat.hir_id) {
-            let Node::Pat(pat) = node else { break };
-
-            if matches!(pat.kind, PatKind::Or(_)) {
-                return;
+        if let PatKind::Ref(pat, Mutability::Not) = ref_pat.kind
+            && !ref_pat.span.from_expansion()
+            && cx
+                .tcx
+                .hir()
+                .parent_iter(ref_pat.hir_id)
+                .map_while(|(_, parent)| if let Node::Pat(pat) = parent { Some(pat) } else { None })
+                // Do not lint patterns that are part of an OR `|` pattern, the binding mode must match in all arms
+                .all(|pat| !matches!(pat.kind, PatKind::Or(_)))
+        {
+            match pat.kind {
+                // Check sub_pat got a `ref` keyword (excluding `ref mut`).
+                PatKind::Binding(BindingMode::REF, _, ident, None) => {
+                    span_lint_and_then(
+                        cx,
+                        NEEDLESS_BORROWED_REFERENCE,
+                        ref_pat.span,
+                        "this pattern takes a reference on something that is being dereferenced",
+                        |diag| {
+                            // `&ref ident`
+                            //  ^^^^^
+                            let span = ref_pat.span.until(ident.span);
+                            diag.span_suggestion_verbose(
+                                span,
+                                "try removing the `&ref` part",
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
+                },
+                // Slices where each element is `ref`: `&[ref a, ref b, ..., ref z]`
+                PatKind::Slice(
+                    before,
+                    None
+                    | Some(Pat {
+                        kind: PatKind::Wild, ..
+                    }),
+                    after,
+                ) => {
+                    check_subpatterns(
+                        cx,
+                        "dereferencing a slice pattern where every element takes a reference",
+                        ref_pat,
+                        pat,
+                        itertools::chain(before, after),
+                    );
+                },
+                PatKind::Tuple(subpatterns, _) | PatKind::TupleStruct(_, subpatterns, _) => {
+                    check_subpatterns(
+                        cx,
+                        "dereferencing a tuple pattern where every element takes a reference",
+                        ref_pat,
+                        pat,
+                        subpatterns,
+                    );
+                },
+                PatKind::Struct(_, fields, _) => {
+                    check_subpatterns(
+                        cx,
+                        "dereferencing a struct pattern where every field's pattern takes a reference",
+                        ref_pat,
+                        pat,
+                        fields.iter().map(|field| field.pat),
+                    );
+                },
+                _ => {},
             }
-        }
-
-        // Only lint immutable refs, because `&mut ref T` may be useful.
-        let PatKind::Ref(pat, Mutability::Not) = ref_pat.kind else {
-            return;
-        };
-
-        match pat.kind {
-            // Check sub_pat got a `ref` keyword (excluding `ref mut`).
-            PatKind::Binding(BindingMode::REF, _, ident, None) => {
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_BORROWED_REFERENCE,
-                    ref_pat.span,
-                    "this pattern takes a reference on something that is being dereferenced",
-                    |diag| {
-                        // `&ref ident`
-                        //  ^^^^^
-                        let span = ref_pat.span.until(ident.span);
-                        diag.span_suggestion_verbose(
-                            span,
-                            "try removing the `&ref` part",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
-            },
-            // Slices where each element is `ref`: `&[ref a, ref b, ..., ref z]`
-            PatKind::Slice(
-                before,
-                None
-                | Some(Pat {
-                    kind: PatKind::Wild, ..
-                }),
-                after,
-            ) => {
-                check_subpatterns(
-                    cx,
-                    "dereferencing a slice pattern where every element takes a reference",
-                    ref_pat,
-                    pat,
-                    itertools::chain(before, after),
-                );
-            },
-            PatKind::Tuple(subpatterns, _) | PatKind::TupleStruct(_, subpatterns, _) => {
-                check_subpatterns(
-                    cx,
-                    "dereferencing a tuple pattern where every element takes a reference",
-                    ref_pat,
-                    pat,
-                    subpatterns,
-                );
-            },
-            PatKind::Struct(_, fields, _) => {
-                check_subpatterns(
-                    cx,
-                    "dereferencing a struct pattern where every field's pattern takes a reference",
-                    ref_pat,
-                    pat,
-                    fields.iter().map(|field| field.pat),
-                );
-            },
-            _ => {},
         }
     }
 }

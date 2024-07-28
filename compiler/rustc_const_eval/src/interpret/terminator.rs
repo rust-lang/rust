@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use either::Either;
-use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
 use rustc_middle::{
@@ -867,7 +866,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
-                let (dyn_trait, dyn_ty, adjusted_recv) = if let ty::Dynamic(data, _, ty::DynStar) =
+                let (trait_, dyn_ty, adjusted_recv) = if let ty::Dynamic(data, _, ty::DynStar) =
                     receiver_place.layout.ty.kind()
                 {
                     let recv = self.unpack_dyn_star(&receiver_place, data)?;
@@ -898,20 +897,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     (receiver_trait.principal(), dyn_ty, receiver_place.ptr())
                 };
 
-                // Now determine the actual method to call. We can do that in two different ways and
-                // compare them to ensure everything fits.
-                let vtable_entries = if let Some(dyn_trait) = dyn_trait {
-                    let trait_ref = dyn_trait.with_self_ty(*self.tcx, dyn_ty);
-                    let trait_ref = self.tcx.erase_regions(trait_ref);
-                    self.tcx.vtable_entries(trait_ref)
-                } else {
-                    TyCtxt::COMMON_VTABLE_ENTRIES
-                };
+                // Now determine the actual method to call. Usually we use the easy way of just
+                // looking up the method at index `idx`.
+                let vtable_entries = self.vtable_entries(trait_, dyn_ty);
                 let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
                 };
                 trace!("Virtual call dispatches to {fn_inst:#?}");
+                // We can also do the lookup based on `def_id` and `dyn_ty`, and check that that
+                // produces the same result.
                 if cfg!(debug_assertions) {
                     let tcx = *self.tcx;
 

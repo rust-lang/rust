@@ -249,7 +249,7 @@ fn check_explicit_predicates<'tcx>(
     let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
 
     for (outlives_predicate, &span) in explicit_predicates.as_ref().skip_binder() {
-        debug!("outlives_predicate = {:?}", &outlives_predicate);
+        debug!("outlives_predicate = {outlives_predicate:?}");
 
         // Careful: If we are inferring the effects of a `dyn Trait<..>`
         // type, then when we look up the predicates for `Trait`,
@@ -289,12 +289,12 @@ fn check_explicit_predicates<'tcx>(
             && let GenericArgKind::Type(ty) = outlives_predicate.0.unpack()
             && ty.walk().any(|arg| arg == self_ty.into())
         {
-            debug!("skipping self ty = {:?}", &ty);
+            debug!("skipping self ty = {ty:?}");
             continue;
         }
 
         let predicate = explicit_predicates.rebind(*outlives_predicate).instantiate(tcx, args);
-        debug!("predicate = {:?}", &predicate);
+        debug!("predicate = {predicate:?}");
         insert_outlives_predicate(tcx, predicate.0, predicate.1, span, required_predicates);
     }
 }

@@ -16,7 +16,7 @@ use rustc_span::Span;
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
                                         `literal`, `path`, `meta`, `tt`, `item` and `vis`";
-const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
+pub const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
                                              `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, \
                                              `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
                                              `item` and `vis`";

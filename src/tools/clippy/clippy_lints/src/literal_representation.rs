@@ -1,6 +1,7 @@
 //! Lints concerned with the grouping of digits with underscores in integral or
 //! floating-point literal expressions.
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
 use clippy_utils::source::snippet_opt;
@@ -218,7 +219,6 @@ impl WarningType {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct LiteralDigitGrouping {
     lint_fraction_readability: bool,
 }
@@ -245,13 +245,13 @@ impl EarlyLintPass for LiteralDigitGrouping {
 const UUID_GROUP_LENS: [usize; 5] = [8, 4, 4, 4, 12];
 
 impl LiteralDigitGrouping {
-    pub fn new(lint_fraction_readability: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            lint_fraction_readability,
+            lint_fraction_readability: conf.unreadable_literal_lint_fractions,
         }
     }
 
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
+    fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         if let Some(src) = snippet_opt(cx, span)
             && let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
@@ -437,7 +437,6 @@ impl LiteralDigitGrouping {
 }
 
 #[expect(clippy::module_name_repetitions)]
-#[derive(Copy, Clone)]
 pub struct DecimalLiteralRepresentation {
     threshold: u64,
 }
@@ -455,11 +454,12 @@ impl EarlyLintPass for DecimalLiteralRepresentation {
 }
 
 impl DecimalLiteralRepresentation {
-    #[must_use]
-    pub fn new(threshold: u64) -> Self {
-        Self { threshold }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            threshold: conf.literal_representation_threshold,
+        }
     }
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
+    fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         // Lint integral literals.
         if let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let LitKind::Int(val, _) = lit_kind

@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::macros::macro_backtrace;
@@ -27,15 +28,14 @@ declare_clippy_lint! {
 }
 
 pub struct LargeStackArrays {
-    maximum_allowed_size: u128,
+    maximum_allowed_size: u64,
     prev_vec_macro_callsite: Option<Span>,
 }
 
 impl LargeStackArrays {
-    #[must_use]
-    pub fn new(maximum_allowed_size: u128) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            maximum_allowed_size,
+            maximum_allowed_size: conf.array_size_threshold,
             prev_vec_macro_callsite: None,
         }
     }
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
                     })
                 )
             })
-            && self.maximum_allowed_size < u128::from(element_count) * u128::from(element_size)
+            && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
         {
             span_lint_and_then(
                 cx,
@@ -106,13 +106,12 @@ fn might_be_expanded<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
     ///
     /// This is a fail-safe to a case where even the `is_from_proc_macro` is unable to determain the
     /// correct result.
-    fn repeat_expr_might_be_expanded<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
-        let ExprKind::Repeat(_, ArrayLen::Body(anon_const)) = expr.kind else {
+    fn repeat_expr_might_be_expanded(expr: &Expr<'_>) -> bool {
+        let ExprKind::Repeat(_, ArrayLen::Body(len_ct)) = expr.kind else {
             return false;
         };
-        let len_span = cx.tcx.def_span(anon_const.def_id);
-        !expr.span.contains(len_span)
+        !expr.span.contains(len_ct.span())
     }
 
-    expr.span.from_expansion() || is_from_proc_macro(cx, expr) || repeat_expr_might_be_expanded(cx, expr)
+    expr.span.from_expansion() || is_from_proc_macro(cx, expr) || repeat_expr_might_be_expanded(expr)
 }

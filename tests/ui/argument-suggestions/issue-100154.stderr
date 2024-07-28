@@ -2,7 +2,7 @@ error[E0107]: function takes 0 generic arguments but 1 generic argument was supp
   --> $DIR/issue-100154.rs:4:5
    |
 LL |     foo::<()>(());
-   |     ^^^------ help: remove these generics
+   |     ^^^------ help: remove the unnecessary generics
    |     |
    |     expected 0 generic arguments
    |

@@ -669,7 +669,7 @@ pub(crate) struct MacroSuggMovePosition {
 #[note(resolve_missing_macro_rules_name)]
 pub(crate) struct MaybeMissingMacroRulesName {
     #[primary_span]
-    pub(crate) span: Span,
+    pub(crate) spans: MultiSpan,
 }
 
 #[derive(Subdiagnostic)]
@@ -1228,6 +1228,15 @@ pub(crate) struct FoundItemConfigureOut {
 #[note(resolve_item_was_behind_feature)]
 pub(crate) struct ItemWasBehindFeature {
     pub(crate) feature: Symbol,
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_item_was_cfg_out)]
+pub(crate) struct ItemWasCfgOut {
+    #[primary_span]
+    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -11,7 +11,7 @@ LL |     let rb = &B;
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |     let rb = addr_of!(B);
-   |              ~~~~~~~~~~~
+   |              ~~~~~~~~~ +
 
 warning: creating a shared reference to mutable static is discouraged
   --> $DIR/safe-extern-statics-mut.rs:15:15
@@ -25,7 +25,7 @@ LL |     let xrb = &XB;
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |     let xrb = addr_of!(XB);
-   |               ~~~~~~~~~~~~
+   |               ~~~~~~~~~  +
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
   --> $DIR/safe-extern-statics-mut.rs:11:13

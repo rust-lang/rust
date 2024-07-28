@@ -1,6 +1,5 @@
 //@ aux-build:nounwind.rs
 //@ compile-flags: -C no-prepopulate-passes -C panic=abort -C metadata=a
-//@ ignore-windows
 //@ ignore-android
 
 #![crate_type = "lib"]

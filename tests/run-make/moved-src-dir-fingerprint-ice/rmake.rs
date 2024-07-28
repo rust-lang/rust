@@ -17,20 +17,20 @@
 //@ ignore-nvptx64-nvidia-cuda
 // FIXME: can't find crate for 'std'
 
-use run_make_support::{fs_wrapper, rust_lib_name, rustc};
+use run_make_support::{rfs, rust_lib_name, rustc};
 
 fn main() {
-    fs_wrapper::create_dir("incr");
-    fs_wrapper::create_dir("first_src");
-    fs_wrapper::create_dir("output");
-    fs_wrapper::rename("my_lib.rs", "first_src/my_lib.rs");
-    fs_wrapper::rename("main.rs", "first_src/main.rs");
+    rfs::create_dir("incr");
+    rfs::create_dir("first_src");
+    rfs::create_dir("output");
+    rfs::rename("my_lib.rs", "first_src/my_lib.rs");
+    rfs::rename("main.rs", "first_src/main.rs");
     // Build from "first_src"
     std::env::set_current_dir("first_src").unwrap();
     rustc().input("my_lib.rs").incremental("incr").crate_type("lib").run();
     rustc().input("main.rs").incremental("incr").extern_("my_lib", rust_lib_name("my_lib")).run();
     std::env::set_current_dir("..").unwrap();
-    fs_wrapper::rename("first_src", "second_src");
+    rfs::rename("first_src", "second_src");
     std::env::set_current_dir("second_src").unwrap();
     // Build from "second_src" - the output and incremental directory remain identical
     rustc().input("my_lib.rs").incremental("incr").crate_type("lib").run();

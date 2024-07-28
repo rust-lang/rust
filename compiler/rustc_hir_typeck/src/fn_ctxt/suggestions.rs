@@ -32,8 +32,8 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1107,12 +1107,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .instantiate_bound_regions_with_erased(Binder::bind_with_vars(ty, bound_vars));
                 let ty = match self.tcx.asyncness(fn_id) {
-                    ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
-                        span_bug!(
-                            fn_decl.output.span(),
-                            "failed to get output type of async function"
-                        )
-                    }),
+                    ty::Asyncness::Yes => {
+                        self.err_ctxt().get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                            span_bug!(
+                                fn_decl.output.span(),
+                                "failed to get output type of async function"
+                            )
+                        })
+                    }
                     ty::Asyncness::No => ty,
                 };
                 let ty = self.normalize(expr.span, ty);

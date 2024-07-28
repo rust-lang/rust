@@ -44,6 +44,7 @@ mod imp {
     use crate::ops::Range;
     use crate::ptr;
     use crate::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
+    use crate::sync::OnceLock;
     use crate::sys::pal::unix::os;
     use crate::thread;
 
@@ -86,13 +87,18 @@ mod imp {
     // out many large systems and all implementations allow returning from a
     // signal handler to work. For a more detailed explanation see the
     // comments on #26458.
+    /// SIGSEGV/SIGBUS entry point
+    /// # Safety
+    /// Rust doesn't call this, it *gets called*.
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe extern "C" fn signal_handler(
         signum: libc::c_int,
         info: *mut libc::siginfo_t,
         _data: *mut libc::c_void,
     ) {
         let (start, end) = GUARD.get();
-        let addr = (*info).si_addr() as usize;
+        // SAFETY: this pointer is provided by the system and will always point to a valid `siginfo_t`.
+        let addr = unsafe { (*info).si_addr().addr() };
 
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
@@ -104,9 +110,11 @@ mod imp {
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
-            let mut action: sigaction = mem::zeroed();
+            // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
+            let mut action: sigaction = unsafe { mem::zeroed() };
             action.sa_sigaction = SIG_DFL;
-            sigaction(signum, &action, ptr::null_mut());
+            // SAFETY: pray this is a well-behaved POSIX implementation of fn sigaction
+            unsafe { sigaction(signum, &action, ptr::null_mut()) };
 
             // See comment above for why this function returns.
         }
@@ -116,32 +124,45 @@ mod imp {
     static MAIN_ALTSTACK: AtomicPtr<libc::c_void> = AtomicPtr::new(ptr::null_mut());
     static NEED_ALTSTACK: AtomicBool = AtomicBool::new(false);
 
+    /// # Safety
+    /// Must be called only once
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn init() {
         PAGE_SIZE.store(os::page_size(), Ordering::Relaxed);
 
         // Always write to GUARD to ensure the TLS variable is allocated.
-        let guard = install_main_guard().unwrap_or(0..0);
+        let guard = unsafe { install_main_guard().unwrap_or(0..0) };
         GUARD.set((guard.start, guard.end));
 
-        let mut action: sigaction = mem::zeroed();
+        // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
+        let mut action: sigaction = unsafe { mem::zeroed() };
         for &signal in &[SIGSEGV, SIGBUS] {
-            sigaction(signal, ptr::null_mut(), &mut action);
+            // SAFETY: just fetches the current signal handler into action
+            unsafe { sigaction(signal, ptr::null_mut(), &mut action) };
             // Configure our signal handler if one is not already set.
             if action.sa_sigaction == SIG_DFL {
+                if !NEED_ALTSTACK.load(Ordering::Relaxed) {
+                    // haven't set up our sigaltstack yet
+                    NEED_ALTSTACK.store(true, Ordering::Release);
+                    let handler = unsafe { make_handler(true) };
+                    MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
+                    mem::forget(handler);
+                }
                 action.sa_flags = SA_SIGINFO | SA_ONSTACK;
                 action.sa_sigaction = signal_handler as sighandler_t;
-                sigaction(signal, &action, ptr::null_mut());
-                NEED_ALTSTACK.store(true, Ordering::Relaxed);
+                // SAFETY: only overriding signals if the default is set
+                unsafe { sigaction(signal, &action, ptr::null_mut()) };
             }
         }
-
-        let handler = make_handler(true);
-        MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
-        mem::forget(handler);
     }
 
+    /// # Safety
+    /// Must be called only once
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn cleanup() {
-        drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed));
+        // FIXME: I probably cause more bugs than I'm worth!
+        // see https://github.com/rust-lang/rust/issues/111272
+        unsafe { drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed)) };
     }
 
     unsafe fn get_stack() -> libc::stack_t {
@@ -186,34 +207,48 @@ mod imp {
         libc::stack_t { ss_sp: stackp, ss_flags: 0, ss_size: sigstack_size }
     }
 
+    /// # Safety
+    /// Mutates the alternate signal stack
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn make_handler(main_thread: bool) -> Handler {
-        if !NEED_ALTSTACK.load(Ordering::Relaxed) {
+        if !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
         if !main_thread {
             // Always write to GUARD to ensure the TLS variable is allocated.
-            let guard = current_guard().unwrap_or(0..0);
+            let guard = unsafe { current_guard() }.unwrap_or(0..0);
             GUARD.set((guard.start, guard.end));
         }
 
-        let mut stack = mem::zeroed();
-        sigaltstack(ptr::null(), &mut stack);
+        // SAFETY: assuming stack_t is zero-initializable
+        let mut stack = unsafe { mem::zeroed() };
+        // SAFETY: reads current stack_t into stack
+        unsafe { sigaltstack(ptr::null(), &mut stack) };
         // Configure alternate signal stack, if one is not already set.
         if stack.ss_flags & SS_DISABLE != 0 {
-            stack = get_stack();
-            sigaltstack(&stack, ptr::null_mut());
+            // SAFETY: We warned our caller this would happen!
+            unsafe {
+                stack = get_stack();
+                sigaltstack(&stack, ptr::null_mut());
+            }
             Handler { data: stack.ss_sp as *mut libc::c_void }
         } else {
             Handler::null()
         }
     }
 
+    /// # Safety
+    /// Must be called
+    /// - only with our handler or nullptr
+    /// - only when done with our altstack
+    /// This disables the alternate signal stack!
+    #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn drop_handler(data: *mut libc::c_void) {
         if !data.is_null() {
             let sigstack_size = sigstack_size();
             let page_size = PAGE_SIZE.load(Ordering::Relaxed);
-            let stack = libc::stack_t {
+            let disabling_stack = libc::stack_t {
                 ss_sp: ptr::null_mut(),
                 ss_flags: SS_DISABLE,
                 // Workaround for bug in macOS implementation of sigaltstack
@@ -222,10 +257,11 @@ mod imp {
                 // both ss_sp and ss_size should be ignored in this case.
                 ss_size: sigstack_size,
             };
-            sigaltstack(&stack, ptr::null_mut());
-            // We know from `get_stackp` that the alternate stack we installed is part of a mapping
-            // that started one page earlier, so walk back a page and unmap from there.
-            munmap(data.sub(page_size), sigstack_size + page_size);
+            // SAFETY: we warned the caller this disables the alternate signal stack!
+            unsafe { sigaltstack(&disabling_stack, ptr::null_mut()) };
+            // SAFETY: We know from `get_stackp` that the alternate stack we installed is part of
+            // a mapping that started one page earlier, so walk back a page and unmap from there.
+            unsafe { munmap(data.sub(page_size), sigstack_size + page_size) };
         }
     }
 
@@ -306,9 +342,8 @@ mod imp {
         ret
     }
 
-    unsafe fn get_stack_start_aligned() -> Option<*mut libc::c_void> {
-        let page_size = PAGE_SIZE.load(Ordering::Relaxed);
-        let stackptr = get_stack_start()?;
+    fn stack_start_aligned(page_size: usize) -> Option<*mut libc::c_void> {
+        let stackptr = unsafe { get_stack_start()? };
         let stackaddr = stackptr.addr();
 
         // Ensure stackaddr is page aligned! A parent process might
@@ -325,107 +360,137 @@ mod imp {
         })
     }
 
+    #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard() -> Option<Range<usize>> {
         let page_size = PAGE_SIZE.load(Ordering::Relaxed);
-        if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
-            // Linux doesn't allocate the whole stack right away, and
-            // the kernel has its own stack-guard mechanism to fault
-            // when growing too close to an existing mapping. If we map
-            // our own guard, then the kernel starts enforcing a rather
-            // large gap above that, rendering much of the possible
-            // stack space useless. See #43052.
-            //
-            // Instead, we'll just note where we expect rlimit to start
-            // faulting, so our handler can report "stack overflow", and
-            // trust that the kernel's own stack guard will work.
-            let stackptr = get_stack_start_aligned()?;
-            let stackaddr = stackptr.addr();
-            Some(stackaddr - page_size..stackaddr)
-        } else if cfg!(all(target_os = "linux", target_env = "musl")) {
-            // For the main thread, the musl's pthread_attr_getstack
-            // returns the current stack size, rather than maximum size
-            // it can eventually grow to. It cannot be used to determine
-            // the position of kernel's stack guard.
-            None
-        } else if cfg!(target_os = "freebsd") {
-            // FreeBSD's stack autogrows, and optionally includes a guard page
-            // at the bottom. If we try to remap the bottom of the stack
-            // ourselves, FreeBSD's guard page moves upwards. So we'll just use
-            // the builtin guard page.
-            let stackptr = get_stack_start_aligned()?;
-            let guardaddr = stackptr.addr();
-            // Technically the number of guard pages is tunable and controlled
-            // by the security.bsd.stack_guard_page sysctl.
-            // By default it is 1, checking once is enough since it is
-            // a boot time config value.
-            static PAGES: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
 
-            let pages = PAGES.get_or_init(|| {
-                use crate::sys::weak::dlsym;
-                dlsym!(fn sysctlbyname(*const libc::c_char, *mut libc::c_void, *mut libc::size_t, *const libc::c_void, libc::size_t) -> libc::c_int);
-                let mut guard: usize = 0;
-                let mut size = crate::mem::size_of_val(&guard);
-                let oid = crate::ffi::CStr::from_bytes_with_nul(
-                    b"security.bsd.stack_guard_page\0",
-                )
-                .unwrap();
-                match sysctlbyname.get() {
-                    Some(fcn) => {
-                        if fcn(oid.as_ptr(), core::ptr::addr_of_mut!(guard) as *mut _, core::ptr::addr_of_mut!(size) as *mut _, crate::ptr::null_mut(), 0) == 0 {
-                            guard
-                        } else {
-                            1
-                        }
-                    },
-                    _ => 1,
-                }
-            });
-            Some(guardaddr..guardaddr + pages * page_size)
-        } else if cfg!(any(target_os = "openbsd", target_os = "netbsd")) {
-            // OpenBSD stack already includes a guard page, and stack is
-            // immutable.
-            // NetBSD stack includes the guard page.
-            //
-            // We'll just note where we expect rlimit to start
-            // faulting, so our handler can report "stack overflow", and
-            // trust that the kernel's own stack guard will work.
-            let stackptr = get_stack_start_aligned()?;
-            let stackaddr = stackptr.addr();
-            Some(stackaddr - page_size..stackaddr)
-        } else {
-            // Reallocate the last page of the stack.
-            // This ensures SIGBUS will be raised on
-            // stack overflow.
-            // Systems which enforce strict PAX MPROTECT do not allow
-            // to mprotect() a mapping with less restrictive permissions
-            // than the initial mmap() used, so we mmap() here with
-            // read/write permissions and only then mprotect() it to
-            // no permissions at all. See issue #50313.
-            let stackptr = get_stack_start_aligned()?;
-            let result = mmap64(
+        unsafe {
+            // this way someone on any unix-y OS can check that all these compile
+            if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
+                install_main_guard_linux(page_size)
+            } else if cfg!(all(target_os = "linux", target_env = "musl")) {
+                install_main_guard_linux_musl(page_size)
+            } else if cfg!(target_os = "freebsd") {
+                install_main_guard_freebsd(page_size)
+            } else if cfg!(any(target_os = "netbsd", target_os = "openbsd")) {
+                install_main_guard_bsds(page_size)
+            } else {
+                install_main_guard_default(page_size)
+            }
+        }
+    }
+
+    #[forbid(unsafe_op_in_unsafe_fn)]
+    unsafe fn install_main_guard_linux(page_size: usize) -> Option<Range<usize>> {
+        // Linux doesn't allocate the whole stack right away, and
+        // the kernel has its own stack-guard mechanism to fault
+        // when growing too close to an existing mapping. If we map
+        // our own guard, then the kernel starts enforcing a rather
+        // large gap above that, rendering much of the possible
+        // stack space useless. See #43052.
+        //
+        // Instead, we'll just note where we expect rlimit to start
+        // faulting, so our handler can report "stack overflow", and
+        // trust that the kernel's own stack guard will work.
+        let stackptr = stack_start_aligned(page_size)?;
+        let stackaddr = stackptr.addr();
+        Some(stackaddr - page_size..stackaddr)
+    }
+
+    #[forbid(unsafe_op_in_unsafe_fn)]
+    unsafe fn install_main_guard_linux_musl(_page_size: usize) -> Option<Range<usize>> {
+        // For the main thread, the musl's pthread_attr_getstack
+        // returns the current stack size, rather than maximum size
+        // it can eventually grow to. It cannot be used to determine
+        // the position of kernel's stack guard.
+        None
+    }
+
+    #[forbid(unsafe_op_in_unsafe_fn)]
+    unsafe fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
+        // FreeBSD's stack autogrows, and optionally includes a guard page
+        // at the bottom. If we try to remap the bottom of the stack
+        // ourselves, FreeBSD's guard page moves upwards. So we'll just use
+        // the builtin guard page.
+        let stackptr = stack_start_aligned(page_size)?;
+        let guardaddr = stackptr.addr();
+        // Technically the number of guard pages is tunable and controlled
+        // by the security.bsd.stack_guard_page sysctl.
+        // By default it is 1, checking once is enough since it is
+        // a boot time config value.
+        static PAGES: OnceLock<usize> = OnceLock::new();
+
+        let pages = PAGES.get_or_init(|| {
+            use crate::sys::weak::dlsym;
+            dlsym!(fn sysctlbyname(*const libc::c_char, *mut libc::c_void, *mut libc::size_t, *const libc::c_void, libc::size_t) -> libc::c_int);
+            let mut guard: usize = 0;
+            let mut size = mem::size_of_val(&guard);
+            let oid = c"security.bsd.stack_guard_page";
+            match sysctlbyname.get() {
+                Some(fcn) if unsafe {
+                    fcn(oid.as_ptr(),
+                        ptr::addr_of_mut!(guard).cast(),
+                        ptr::addr_of_mut!(size),
+                        ptr::null_mut(),
+                        0) == 0
+                } => guard,
+                _ => 1,
+            }
+        });
+        Some(guardaddr..guardaddr + pages * page_size)
+    }
+
+    #[forbid(unsafe_op_in_unsafe_fn)]
+    unsafe fn install_main_guard_bsds(page_size: usize) -> Option<Range<usize>> {
+        // OpenBSD stack already includes a guard page, and stack is
+        // immutable.
+        // NetBSD stack includes the guard page.
+        //
+        // We'll just note where we expect rlimit to start
+        // faulting, so our handler can report "stack overflow", and
+        // trust that the kernel's own stack guard will work.
+        let stackptr = stack_start_aligned(page_size)?;
+        let stackaddr = stackptr.addr();
+        Some(stackaddr - page_size..stackaddr)
+    }
+
+    #[forbid(unsafe_op_in_unsafe_fn)]
+    unsafe fn install_main_guard_default(page_size: usize) -> Option<Range<usize>> {
+        // Reallocate the last page of the stack.
+        // This ensures SIGBUS will be raised on
+        // stack overflow.
+        // Systems which enforce strict PAX MPROTECT do not allow
+        // to mprotect() a mapping with less restrictive permissions
+        // than the initial mmap() used, so we mmap() here with
+        // read/write permissions and only then mprotect() it to
+        // no permissions at all. See issue #50313.
+        let stackptr = stack_start_aligned(page_size)?;
+        let result = unsafe {
+            mmap64(
                 stackptr,
                 page_size,
                 PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_ANON | MAP_FIXED,
                 -1,
                 0,
-            );
-            if result != stackptr || result == MAP_FAILED {
-                panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
-            }
-
-            let result = mprotect(stackptr, page_size, PROT_NONE);
-            if result != 0 {
-                panic!("failed to protect the guard page: {}", io::Error::last_os_error());
-            }
-
-            let guardaddr = stackptr.addr();
-
-            Some(guardaddr..guardaddr + page_size)
+            )
+        };
+        if result != stackptr || result == MAP_FAILED {
+            panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
         }
+
+        let result = unsafe { mprotect(stackptr, page_size, PROT_NONE) };
+        if result != 0 {
+            panic!("failed to protect the guard page: {}", io::Error::last_os_error());
+        }
+
+        let guardaddr = stackptr.addr();
+
+        Some(guardaddr..guardaddr + page_size)
     }
 
     #[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "solaris"))]
+    // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
         let stackptr = get_stack_start()?;
         let stackaddr = stackptr.addr();
@@ -440,6 +505,7 @@ mod imp {
         target_os = "netbsd",
         target_os = "l4re"
     ))]
+    // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();

@@ -3,6 +3,7 @@
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
+use build_helper::git::{get_git_merge_base, output_result, GitConfig};
 use build_helper::util::fail;
 use std::env;
 use std::ffi::OsStr;
@@ -202,7 +203,9 @@ pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
             || target.contains("aarch64")
             || target.contains("s390x")
             || target.contains("riscv64gc")
-    } else if target.contains("darwin") || target.is_windows() {
+    } else if target.contains("darwin") {
+        target.contains("x86_64") || target.contains("aarch64")
+    } else if target.is_windows() {
         target.contains("x86_64")
     } else {
         false
@@ -344,7 +347,7 @@ pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> 
     let mut builtins_locator = command(clang_cl_path);
     builtins_locator.args(["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
 
-    let clang_rt_builtins = builtins_locator.capture_stdout().run(builder).stdout();
+    let clang_rt_builtins = builtins_locator.run_capture_stdout(builder).stdout();
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
     assert!(
         clang_rt_builtins.exists(),
@@ -369,9 +372,9 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
     let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
         let newer_version = match lld_mode {
             LldMode::External => {
-                let mut cmd = command("lld").capture_stdout();
+                let mut cmd = command("lld");
                 cmd.arg("-flavor").arg("ld").arg("--version");
-                let out = cmd.run(builder).stdout();
+                let out = cmd.run_capture_stdout(builder).stdout();
                 match (out.find(char::is_numeric), out.find('.')) {
                     (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
                     _ => true,
@@ -520,4 +523,27 @@ pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     }
 
     git
+}
+
+/// Returns the closest commit available from upstream for the given `author` and `target_paths`.
+///
+/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
+pub fn get_closest_merge_base_commit(
+    source_dir: Option<&Path>,
+    config: &GitConfig<'_>,
+    author: &str,
+    target_paths: &[PathBuf],
+) -> Result<String, String> {
+    let mut git = git(source_dir);
+
+    let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
+
+    git.arg(Path::new("rev-list"));
+    git.args([&format!("--author={author}"), "-n1", "--first-parent", &merge_base]);
+
+    if !target_paths.is_empty() {
+        git.arg("--").args(target_paths);
+    }
+
+    Ok(output_result(git.as_command_mut())?.trim().to_owned())
 }

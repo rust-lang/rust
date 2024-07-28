@@ -10,6 +10,7 @@ use rustc_hir::{ExprKind, HirId, Node, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_span::{sym, Span};
+use std::ops::ControlFlow;
 
 use super::MAP_UNWRAP_OR;
 
@@ -54,15 +55,14 @@ pub(super) fn check<'tcx>(
             let mut reference_visitor = ReferenceVisitor {
                 cx,
                 identifiers: unwrap_visitor.identifiers,
-                found_reference: false,
                 unwrap_or_span: unwrap_arg.span,
             };
 
             let map = cx.tcx.hir();
             let body = map.body_owned_by(map.enclosing_body_owner(expr.hir_id));
-            reference_visitor.visit_body(body);
 
-            if reference_visitor.found_reference {
+            // Visit the body, and return if we've found a reference
+            if reference_visitor.visit_body(body).is_break() {
                 return;
             }
         }
@@ -151,29 +151,27 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
 struct ReferenceVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     identifiers: FxHashSet<HirId>,
-    found_reference: bool,
     unwrap_or_span: Span,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReferenceVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::All;
-    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'_>) {
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'_>) -> ControlFlow<()> {
         // If we haven't found a reference yet, check if this references
         // one of the locals that was moved in the `unwrap_or` argument.
         // We are only interested in exprs that appear before the `unwrap_or` call.
-        if !self.found_reference {
-            if expr.span < self.unwrap_or_span
-                && let ExprKind::Path(ref path) = expr.kind
-                && let QPath::Resolved(_, path) = path
-                && let Res::Local(local_id) = path.res
-                && let Node::Pat(pat) = self.cx.tcx.hir_node(local_id)
-                && let PatKind::Binding(_, local_id, ..) = pat.kind
-                && self.identifiers.contains(&local_id)
-            {
-                self.found_reference = true;
-            }
-            rustc_hir::intravisit::walk_expr(self, expr);
+        if expr.span < self.unwrap_or_span
+            && let ExprKind::Path(ref path) = expr.kind
+            && let QPath::Resolved(_, path) = path
+            && let Res::Local(local_id) = path.res
+            && let Node::Pat(pat) = self.cx.tcx.hir_node(local_id)
+            && let PatKind::Binding(_, local_id, ..) = pat.kind
+            && self.identifiers.contains(&local_id)
+        {
+            return ControlFlow::Break(());
         }
+        rustc_hir::intravisit::walk_expr(self, expr)
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

@@ -232,7 +232,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
 enum SigDropHolder {
     /// No values with significant drop present in this expression.
     ///
-    /// Expressions that we've emited lints do not count.
+    /// Expressions that we've emitted lints do not count.
     None,
     /// Some field in this expression references to values with significant drop.
     ///
@@ -426,7 +426,7 @@ fn ty_has_erased_regions(ty: Ty<'_>) -> bool {
 
 impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
-        // We've emited a lint on some neighborhood expression. That lint will suggest to move out the
+        // We've emitted a lint on some neighborhood expression. That lint will suggest to move out the
         // _parent_ expression (not the expression itself). Since we decide to move out the parent
         // expression, it is pointless to continue to process the current expression.
         if self.sig_drop_holder == SigDropHolder::Moved {
@@ -450,7 +450,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
                 ExprKind::Assign(lhs, _, _) | ExprKind::AssignOp(_, lhs, _)
                     if lhs.hir_id == ex.hir_id && self.sig_drop_holder == SigDropHolder::Moved =>
                 {
-                    // Never move out only the assignee. Instead, we should always move out the whole assigment.
+                    // Never move out only the assignee. Instead, we should always move out the whole assignment.
                     self.replace_current_sig_drop(parent_ex.span, true, 0);
                 },
                 _ => {

@@ -339,7 +339,7 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
         }
     }
 
-    debug!("path_str: {:?}\nstripped segments: {:?}", path_str, &stripped_segments);
+    debug!("path_str: {path_str:?}\nstripped segments: {stripped_segments:?}");
 
     let stripped_path = stripped_segments.join("::");
 

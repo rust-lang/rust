@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
-derivative = "2.2.0"
+derive-where = "1.2.7"
 rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
@@ -20,10 +20,10 @@ tracing = "0.1"
 [features]
 default = ["nightly"]
 nightly = [
+    "dep:rustc_data_structures",
+    "dep:rustc_macros",
+    "dep:rustc_serialize",
     "rustc_ast_ir/nightly",
-    "rustc_data_structures",
     "rustc_index/nightly",
-    "rustc_macros",
-    "rustc_serialize",
     "rustc_type_ir/nightly",
 ]

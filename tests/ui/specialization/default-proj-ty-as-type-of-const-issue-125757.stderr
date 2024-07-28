@@ -20,17 +20,5 @@ note: required by a const generic parameter in `Wrapper`
 LL | struct Wrapper<const C: <i32 as Trait>::Type> {}
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `Wrapper`
 
-error[E0308]: mismatched types
-  --> $DIR/default-proj-ty-as-type-of-const-issue-125757.rs:15:30
-   |
-LL | impl<const C: usize> Wrapper<C> {}
-   |                              ^ expected associated type, found `usize`
-   |
-   = note: expected associated type `<i32 as Trait>::Type`
-                         found type `usize`
-   = help: consider constraining the associated type `<i32 as Trait>::Type` to `usize`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

@@ -20,6 +20,9 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
+use crate::lints::lint_nonexhaustive_missing_variants;
+use crate::pat_column::PatternColumn;
+use crate::usefulness::{compute_match_usefulness, PlaceValidity};
 use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
 
 use crate::constructor::Constructor::*;
@@ -29,6 +32,8 @@ pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcPatCtxt<'p
 pub type ConstructorSet<'p, 'tcx> = crate::constructor::ConstructorSet<RustcPatCtxt<'p, 'tcx>>;
 pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<RustcPatCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcPatCtxt<'p, 'tcx>>;
+pub type RedundancyExplanation<'p, 'tcx> =
+    crate::usefulness::RedundancyExplanation<'p, RustcPatCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcPatCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
     crate::usefulness::UsefulnessReport<'p, RustcPatCtxt<'p, 'tcx>>;
@@ -40,8 +45,14 @@ pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcPatCtxt<'p, 'tcx>>;
 ///
 /// Use `.inner()` or deref to get to the `Ty<'tcx>`.
 #[repr(transparent)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RevealedTy<'tcx>(Ty<'tcx>);
+
+impl<'tcx> fmt::Display for RevealedTy<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(fmt)
+    }
+}
 
 impl<'tcx> fmt::Debug for RevealedTy<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -462,7 +473,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     // This is a box pattern.
                     ty::Adt(adt, ..) if adt.is_box() => Struct,
                     ty::Ref(..) => Ref,
-                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
+                    _ => span_bug!(
+                        pat.span,
+                        "pattern has unexpected type: pat: {:?}, ty: {:?}",
+                        pat.kind,
+                        ty.inner()
+                    ),
                 };
             }
             PatKind::DerefPattern { .. } => {
@@ -518,7 +534,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))
                             .collect();
                     }
-                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
+                    _ => span_bug!(
+                        pat.span,
+                        "pattern has unexpected type: pat: {:?}, ty: {}",
+                        pat.kind,
+                        ty.inner()
+                    ),
                 }
             }
             PatKind::Constant { value } => {
@@ -663,7 +684,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             }
                         }
                     }
-                    _ => bug!("invalid type for range pattern: {}", ty.inner()),
+                    _ => span_bug!(pat.span, "invalid type for range pattern: {}", ty.inner()),
                 };
                 fields = vec![];
                 arity = 0;
@@ -674,7 +695,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         Some(length.eval_target_usize(cx.tcx, cx.param_env) as usize)
                     }
                     ty::Slice(_) => None,
-                    _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", ty),
+                    _ => span_bug!(pat.span, "bad ty {} for slice pattern", ty.inner()),
                 };
                 let kind = if slice.is_some() {
                     SliceKind::VarLen(prefix.len(), suffix.len())
@@ -1041,4 +1062,27 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     let mut pats = Vec::new();
     expand(pat, &mut pats);
     pats
+}
+
+/// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
+/// useful, and runs some lints.
+pub fn analyze_match<'p, 'tcx>(
+    tycx: &RustcPatCtxt<'p, 'tcx>,
+    arms: &[MatchArm<'p, 'tcx>],
+    scrut_ty: Ty<'tcx>,
+    pattern_complexity_limit: Option<usize>,
+) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
+    let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
+    let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
+    let report =
+        compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity, pattern_complexity_limit)?;
+
+    // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
+    // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
+    if tycx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
+        let pat_column = PatternColumn::new(arms);
+        lint_nonexhaustive_missing_variants(tycx, arms, &pat_column, scrut_ty)?;
+    }
+
+    Ok(report)
 }

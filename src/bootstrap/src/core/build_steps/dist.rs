@@ -182,7 +182,7 @@ fn make_win_dist(
     //Ask gcc where it keeps its stuff
     let mut cmd = command(builder.cc(target));
     cmd.arg("-print-search-dirs");
-    let gcc_out = cmd.capture_stdout().run(builder).stdout();
+    let gcc_out = cmd.run_capture_stdout(builder).stdout();
 
     let mut bin_path: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap_or_default()).collect();
     let mut lib_path = Vec::new();
@@ -471,6 +471,11 @@ impl Step for Rustc {
                         &self_contained_lld_dst_dir.join(&exe_name),
                     );
                 }
+            }
+            if builder.build_wasm_component_ld() {
+                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+                let ld = exe("wasm-component-ld", compiler.host);
+                builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld));
             }
 
             // Man pages
@@ -1040,6 +1045,8 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./src/tools/opt-dist/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rustc-perf/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./src/tools/rustbook/Cargo.toml"))
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
@@ -1060,7 +1067,7 @@ impl Step for PlainSourceTarball {
                 cmd.arg("--sync").arg(manifest_path);
             }
 
-            let config = cmd.capture().run(builder).stdout();
+            let config = cmd.run_capture(builder).stdout();
 
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
@@ -2068,7 +2075,7 @@ fn maybe_install_llvm(
         let mut cmd = command(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
-        let files = cmd.capture_stdout().run(builder).stdout();
+        let files = cmd.run_capture_stdout(builder).stdout();
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {

@@ -2,7 +2,7 @@ error[E0432]: unresolved import `doesnt_exist`
   --> $DIR/issue-81413.rs:7:9
    |
 LL | pub use doesnt_exist::*;
-   |         ^^^^^^^^^^^^ maybe a missing crate `doesnt_exist`?
+   |         ^^^^^^^^^^^^ you might be missing crate `doesnt_exist`
    |
    = help: consider adding `extern crate doesnt_exist` to use the `doesnt_exist` crate
 

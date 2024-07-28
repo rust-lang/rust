@@ -1,5 +1,5 @@
 error: `f32` is forbidden as the type of a const generic parameter
-  --> $DIR/float-generic.rs:5:17
+  --> $DIR/float-generic.rs:7:17
    |
 LL | fn foo<const F: f32>() {}
    |                 ^^^

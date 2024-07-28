@@ -2932,7 +2932,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
 
         // Update document title to maintain a meaningful browser history
-        searchState.title = "Results for " + query.original + " - Rust";
+        searchState.title = "\"" + query.original + "\" Search - Rust";
 
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.

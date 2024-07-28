@@ -15,23 +15,27 @@ LL |
 LL ~ struct B<T>(Box<A<A<T>>>);
    |
 
-error[E0392]: type parameter `T` is never used
-  --> $DIR/issue-105231.rs:2:10
+error: type parameter `T` is only used recursively
+  --> $DIR/issue-105231.rs:2:15
    |
 LL | struct A<T>(B<T>);
-   |          ^ unused type parameter
+   |          -    ^
+   |          |
+   |          type parameter must be used non-recursively in the definition
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
-error[E0392]: type parameter `T` is never used
-  --> $DIR/issue-105231.rs:5:10
+error: type parameter `T` is only used recursively
+  --> $DIR/issue-105231.rs:5:17
    |
 LL | struct B<T>(A<A<T>>);
-   |          ^ unused type parameter
+   |          -      ^
+   |          |
+   |          type parameter must be used non-recursively in the definition
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error[E0275]: overflow evaluating the requirement `A<A<A<A<A<A<A<...>>>>>>>: Send`
    |
@@ -44,5 +48,5 @@ LL | struct B<T>(A<A<T>>);
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0072, E0275, E0392.
+Some errors have detailed explanations: E0072, E0275.
 For more information about an error, try `rustc --explain E0072`.

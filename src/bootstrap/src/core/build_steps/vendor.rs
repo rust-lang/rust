@@ -34,8 +34,10 @@ impl Step for Vendor {
             cmd.arg("--versioned-dirs");
         }
 
-        // cargo submodule must be present for `x vendor` to work.
-        builder.build.update_submodule(Path::new("src/tools/cargo"));
+        // These submodules must be present for `x vendor` to work.
+        for path in ["src/tools/cargo", "src/doc/book"] {
+            builder.build.update_submodule(Path::new(path));
+        }
 
         // Sync these paths by default.
         for p in [
@@ -44,6 +46,7 @@ impl Step for Vendor {
             "compiler/rustc_codegen_cranelift/Cargo.toml",
             "compiler/rustc_codegen_gcc/Cargo.toml",
             "src/bootstrap/Cargo.toml",
+            "src/tools/rustbook/Cargo.toml",
         ] {
             cmd.arg("--sync").arg(builder.src.join(p));
         }

@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 #[cfg(feature = "nightly")]
@@ -25,15 +26,12 @@ use crate::{self as ty, Interner};
 /// e.g., `liberate_late_bound_regions`).
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "T: Clone"),
-    Copy(bound = "T: Copy"),
-    Hash(bound = "T: Hash"),
-    PartialEq(bound = "T: PartialEq"),
-    Eq(bound = "T: Eq"),
-    Debug(bound = "T: Debug")
-)]
+#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(Hash; I: Interner, T: Hash)]
+#[derive_where(PartialEq; I: Interner, T: PartialEq)]
+#[derive_where(Eq; I: Interner, T: Eq)]
+#[derive_where(Debug; I: Interner, T: Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
     value: T,
@@ -49,10 +47,10 @@ where
 {
     type Lifted = Binder<U, T::Lifted>;
 
-    fn lift_to_tcx(self, tcx: U) -> Option<Self::Lifted> {
+    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
         Some(Binder {
-            value: self.value.lift_to_tcx(tcx)?,
-            bound_vars: self.bound_vars.lift_to_tcx(tcx)?,
+            value: self.value.lift_to_interner(cx)?,
+            bound_vars: self.bound_vars.lift_to_interner(cx)?,
         })
     }
 }
@@ -351,21 +349,18 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 ///
 /// If you don't have anything to `instantiate`, you may be looking for
 /// [`instantiate_identity`](EarlyBinder::instantiate_identity) or [`skip_binder`](EarlyBinder::skip_binder).
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "T: Clone"),
-    Copy(bound = "T: Copy"),
-    PartialEq(bound = "T: PartialEq"),
-    Eq(bound = "T: Eq"),
-    Ord(bound = "T: Ord"),
-    PartialOrd(bound = "T: Ord"),
-    Hash(bound = "T: Hash"),
-    Debug(bound = "T: Debug")
-)]
+#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(PartialEq; I: Interner, T: PartialEq)]
+#[derive_where(Eq; I: Interner, T: Eq)]
+#[derive_where(Ord; I: Interner, T: Ord)]
+#[derive_where(PartialOrd; I: Interner, T: Ord)]
+#[derive_where(Hash; I: Interner, T: Hash)]
+#[derive_where(Debug; I: Interner, T: Debug)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
-    #[derivative(Debug = "ignore")]
+    #[derive_where(skip(Debug))]
     _tcx: PhantomData<I>,
 }
 
@@ -439,11 +434,11 @@ impl<I: Interner, Iter: IntoIterator> EarlyBinder<I, Iter>
 where
     Iter::Item: TypeFoldable<I>,
 {
-    pub fn iter_instantiated<A>(self, tcx: I, args: A) -> IterInstantiated<I, Iter, A>
+    pub fn iter_instantiated<A>(self, cx: I, args: A) -> IterInstantiated<I, Iter, A>
     where
         A: SliceLike<Item = I::GenericArg>,
     {
-        IterInstantiated { it: self.value.into_iter(), tcx, args }
+        IterInstantiated { it: self.value.into_iter(), cx, args }
     }
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
@@ -455,7 +450,7 @@ where
 
 pub struct IterInstantiated<I: Interner, Iter: IntoIterator, A> {
     it: Iter::IntoIter,
-    tcx: I,
+    cx: I,
     args: A,
 }
 
@@ -469,7 +464,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         Some(
             EarlyBinder { value: self.it.next()?, _tcx: PhantomData }
-                .instantiate(self.tcx, self.args),
+                .instantiate(self.cx, self.args),
         )
     }
 
@@ -487,7 +482,7 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         Some(
             EarlyBinder { value: self.it.next_back()?, _tcx: PhantomData }
-                .instantiate(self.tcx, self.args),
+                .instantiate(self.cx, self.args),
         )
     }
 }
@@ -507,10 +502,10 @@ where
 {
     pub fn iter_instantiated_copied(
         self,
-        tcx: I,
+        cx: I,
         args: &'s [I::GenericArg],
     ) -> IterInstantiatedCopied<'s, I, Iter> {
-        IterInstantiatedCopied { it: self.value.into_iter(), tcx, args }
+        IterInstantiatedCopied { it: self.value.into_iter(), cx, args }
     }
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
@@ -522,7 +517,7 @@ where
 
 pub struct IterInstantiatedCopied<'a, I: Interner, Iter: IntoIterator> {
     it: Iter::IntoIter,
-    tcx: I,
+    cx: I,
     args: &'a [I::GenericArg],
 }
 
@@ -535,7 +530,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.it.next().map(|value| {
-            EarlyBinder { value: *value, _tcx: PhantomData }.instantiate(self.tcx, self.args)
+            EarlyBinder { value: *value, _tcx: PhantomData }.instantiate(self.cx, self.args)
         })
     }
 
@@ -552,7 +547,7 @@ where
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.it.next_back().map(|value| {
-            EarlyBinder { value: *value, _tcx: PhantomData }.instantiate(self.tcx, self.args)
+            EarlyBinder { value: *value, _tcx: PhantomData }.instantiate(self.cx, self.args)
         })
     }
 }
@@ -589,11 +584,11 @@ impl<I: Interner, T: Iterator> Iterator for EarlyBinderIter<I, T> {
 }
 
 impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
-    pub fn instantiate<A>(self, tcx: I, args: A) -> T
+    pub fn instantiate<A>(self, cx: I, args: A) -> T
     where
         A: SliceLike<Item = I::GenericArg>,
     {
-        let mut folder = ArgFolder { tcx, args: args.as_slice(), binders_passed: 0 };
+        let mut folder = ArgFolder { cx, args: args.as_slice(), binders_passed: 0 };
         self.value.fold_with(&mut folder)
     }
 
@@ -619,7 +614,7 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
 // The actual instantiation engine itself is a type folder.
 
 struct ArgFolder<'a, I: Interner> {
-    tcx: I,
+    cx: I,
     args: &'a [I::GenericArg],
 
     /// Number of region binders we have passed through while doing the instantiation
@@ -629,7 +624,7 @@ struct ArgFolder<'a, I: Interner> {
 impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
     #[inline]
     fn cx(&self) -> I {
-        self.tcx
+        self.cx
     }
 
     fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
@@ -858,6 +853,6 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             return region;
         }
-        ty::fold::shift_region(self.tcx, region, self.binders_passed)
+        ty::fold::shift_region(self.cx, region, self.binders_passed)
     }
 }

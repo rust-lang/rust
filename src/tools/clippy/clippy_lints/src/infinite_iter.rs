@@ -226,13 +226,14 @@ const INFINITE_COLLECTORS: &[Symbol] = &[
 fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
         ExprKind::MethodCall(method, receiver, args, _) => {
+            let method_str = method.ident.name.as_str();
             for &(name, len) in &COMPLETING_METHODS {
-                if method.ident.name.as_str() == name && args.len() == len {
+                if method_str == name && args.len() == len {
                     return is_infinite(cx, receiver);
                 }
             }
             for &(name, len) in &POSSIBLY_COMPLETING_METHODS {
-                if method.ident.name.as_str() == name && args.len() == len {
+                if method_str == name && args.len() == len {
                     return MaybeInfinite.and(is_infinite(cx, receiver));
                 }
             }

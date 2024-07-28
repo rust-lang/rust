@@ -20,7 +20,7 @@ error[E0107]: enum takes 0 lifetime arguments but 1 lifetime argument was suppli
   --> $DIR/E0107.rs:17:10
    |
 LL |     bar: Bar<'a>,
-   |          ^^^---- help: remove these generics
+   |          ^^^---- help: remove the unnecessary generics
    |          |
    |          expected 0 lifetime arguments
    |
@@ -34,7 +34,7 @@ error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were sup
   --> $DIR/E0107.rs:21:11
    |
 LL |     foo2: Foo<'a, 'b, 'c>,
-   |           ^^^     ------ help: remove these lifetime arguments
+   |           ^^^   -------- help: remove the lifetime arguments
    |           |
    |           expected 1 lifetime argument
    |
@@ -48,7 +48,7 @@ error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were sup
   --> $DIR/E0107.rs:25:11
    |
 LL |     qux1: Qux<'a, 'b, i32>,
-   |           ^^^     -- help: remove this lifetime argument
+   |           ^^^   ---- help: remove the lifetime argument
    |           |
    |           expected 1 lifetime argument
    |
@@ -62,7 +62,7 @@ error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were sup
   --> $DIR/E0107.rs:29:11
    |
 LL |     qux2: Qux<'a, i32, 'b>,
-   |           ^^^          -- help: remove this lifetime argument
+   |           ^^^   --------- help: remove the lifetime argument
    |           |
    |           expected 1 lifetime argument
    |
@@ -76,7 +76,7 @@ error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were sup
   --> $DIR/E0107.rs:33:11
    |
 LL |     qux3: Qux<'a, 'b, 'c, i32>,
-   |           ^^^     ------ help: remove these lifetime arguments
+   |           ^^^   -------- help: remove the lifetime arguments
    |           |
    |           expected 1 lifetime argument
    |
@@ -90,7 +90,7 @@ error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were sup
   --> $DIR/E0107.rs:37:11
    |
 LL |     qux4: Qux<'a, i32, 'b, 'c>,
-   |           ^^^          ------ help: remove these lifetime arguments
+   |           ^^^   ------------- help: remove the lifetime arguments
    |           |
    |           expected 1 lifetime argument
    |
@@ -104,7 +104,7 @@ error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were sup
   --> $DIR/E0107.rs:41:11
    |
 LL |     qux5: Qux<'a, 'b, i32, 'c>,
-   |           ^^^     -- help: remove this lifetime argument
+   |           ^^^   ---- help: remove the lifetime argument
    |           |
    |           expected 1 lifetime argument
    |
@@ -118,7 +118,7 @@ error[E0107]: struct takes 0 lifetime arguments but 2 lifetime arguments were su
   --> $DIR/E0107.rs:45:11
    |
 LL |     quux: Quux<'a, i32, 'b>,
-   |           ^^^^ -- help: remove this lifetime argument
+   |           ^^^^ -- help: remove the lifetime argument
    |           |
    |           expected 0 lifetime arguments
    |

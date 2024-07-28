@@ -2,7 +2,7 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/test-2.rs:9:8
    |
 LL |     10.dup::<i32>();
-   |        ^^^------- help: remove these generics
+   |        ^^^------- help: remove the unnecessary generics
    |        |
    |        expected 0 generic arguments
    |
@@ -16,7 +16,7 @@ error[E0107]: method takes 1 generic argument but 2 generic arguments were suppl
   --> $DIR/test-2.rs:11:8
    |
 LL |     10.blah::<i32, i32>();
-   |        ^^^^        --- help: remove this generic argument
+   |        ^^^^      ----- help: remove the unnecessary generic argument
    |        |
    |        expected 1 generic argument
    |

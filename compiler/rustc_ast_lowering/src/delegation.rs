@@ -38,7 +38,7 @@
 
 use crate::{ImplTraitPosition, ResolverAstLoweringExt};
 
-use super::{ImplTraitContext, LoweringContext, ParamMode};
+use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
@@ -259,8 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self_param_id: pat_node_id,
                     };
                     self_resolver.visit_block(block);
-                    let block = this.lower_block(block, false);
-                    this.mk_expr(hir::ExprKind::Block(block, None), block.span)
+                    this.lower_target_expr(&block)
                 } else {
                     let pat_hir_id = this.lower_node_id(pat_node_id);
                     this.generate_arg(pat_hir_id, span)
@@ -273,26 +272,81 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    // Generates fully qualified call for the resulting body.
+    // FIXME(fn_delegation): Alternatives for target expression lowering:
+    // https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600.
+    fn lower_target_expr(&mut self, block: &Block) -> hir::Expr<'hir> {
+        if block.stmts.len() == 1
+            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+        {
+            return self.lower_expr_mut(expr);
+        }
+
+        let block = self.lower_block(block, false);
+        self.mk_expr(hir::ExprKind::Block(block, None), block.span)
+    }
+
+    // Generates expression for the resulting body. If possible, `MethodCall` is used
+    // to allow autoref/autoderef for target expression. For example in:
+    //
+    // trait Trait : Sized {
+    //     fn by_value(self) -> i32 { 1 }
+    //     fn by_mut_ref(&mut self) -> i32 { 2 }
+    //     fn by_ref(&self) -> i32 { 3 }
+    // }
+    //
+    // struct NewType(SomeType);
+    // impl Trait for NewType {
+    //     reuse Trait::* { self.0 }
+    // }
+    //
+    // `self.0` will automatically coerce.
     fn finalize_body_lowering(
         &mut self,
         delegation: &Delegation,
         args: Vec<hir::Expr<'hir>>,
         span: Span,
     ) -> hir::Expr<'hir> {
-        let path = self.lower_qpath(
-            delegation.id,
-            &delegation.qself,
-            &delegation.path,
-            ParamMode::Optional,
-            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-            None,
-        );
-
         let args = self.arena.alloc_from_iter(args);
-        let path_expr = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(path), span));
-        let call = self.arena.alloc(self.mk_expr(hir::ExprKind::Call(path_expr, args), span));
 
+        let has_generic_args =
+            delegation.path.segments.iter().rev().skip(1).any(|segment| segment.args.is_some());
+
+        let call = if self
+            .get_resolution_id(delegation.id, span)
+            .and_then(|def_id| Ok(self.has_self(def_id, span)))
+            .unwrap_or_default()
+            && delegation.qself.is_none()
+            && !has_generic_args
+        {
+            let ast_segment = delegation.path.segments.last().unwrap();
+            let segment = self.lower_path_segment(
+                delegation.path.span,
+                ast_segment,
+                ParamMode::Optional,
+                ParenthesizedGenericArgs::Err,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
+            let segment = self.arena.alloc(segment);
+
+            self.arena.alloc(hir::Expr {
+                hir_id: self.next_id(),
+                kind: hir::ExprKind::MethodCall(segment, &args[0], &args[1..], span),
+                span,
+            })
+        } else {
+            let path = self.lower_qpath(
+                delegation.id,
+                &delegation.qself,
+                &delegation.path,
+                ParamMode::Optional,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
+
+            let callee_path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(path), span));
+            self.arena.alloc(self.mk_expr(hir::ExprKind::Call(callee_path, args), span))
+        };
         let block = self.arena.alloc(hir::Block {
             stmts: &[],
             expr: Some(call),

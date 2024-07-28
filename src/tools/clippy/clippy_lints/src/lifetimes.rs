@@ -22,6 +22,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -380,11 +381,8 @@ fn could_use_elision<'tcx>(
             return None;
         }
 
-        let mut checker = BodyLifetimeChecker {
-            lifetimes_used_in_body: false,
-        };
-        checker.visit_expr(body.value);
-        if checker.lifetimes_used_in_body {
+        let mut checker = BodyLifetimeChecker;
+        if checker.visit_expr(body.value).is_break() {
             return None;
         }
     }
@@ -545,7 +543,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }
-                for bound in bounds {
+                for (bound, _) in bounds {
                     self.visit_poly_trait_ref(bound);
                 }
             },
@@ -694,15 +692,15 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     }
 }
 
-struct BodyLifetimeChecker {
-    lifetimes_used_in_body: bool,
-}
+struct BodyLifetimeChecker;
 
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
+    type Result = ControlFlow<()>;
     // for lifetimes as parameters of generics
-    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) -> ControlFlow<()> {
         if !lifetime.is_anonymous() && lifetime.ident.name != kw::StaticLifetime {
-            self.lifetimes_used_in_body = true;
+            return ControlFlow::Break(());
         }
+        ControlFlow::Continue(())
     }
 }

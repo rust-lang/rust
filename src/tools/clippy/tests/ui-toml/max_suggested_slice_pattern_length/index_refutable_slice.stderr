@@ -1,5 +1,5 @@
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui-toml/max_suggested_slice_pattern_length/index_refutable_slice.rs:5:17
+  --> tests/ui-toml/max_suggested_slice_pattern_length/index_refutable_slice.rs:7:17
    |
 LL |     if let Some(slice) = slice {
    |                 ^^^^^

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use run_make_support::{fs_wrapper, rustc};
+use run_make_support::{rfs, rustc};
 
 fn emit_and_check(out_dir: &Path, out_file: &str, format: &str) {
     let out_file = out_dir.join(out_file);
@@ -11,7 +11,7 @@ fn emit_and_check(out_dir: &Path, out_file: &str, format: &str) {
 fn main() {
     let out_dir = Path::new("emit");
 
-    fs_wrapper::create_dir(&out_dir);
+    rfs::create_dir(&out_dir);
 
     emit_and_check(&out_dir, "libfoo.s", "asm");
     emit_and_check(&out_dir, "libfoo.bc", "llvm-bc");

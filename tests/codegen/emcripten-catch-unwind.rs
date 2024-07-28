@@ -16,6 +16,8 @@ trait Freeze {}
 #[lang = "copy"]
 trait Copy {}
 
+impl<T> Copy for *mut T {}
+
 #[rustc_intrinsic]
 fn size_of<T>() -> usize {
     loop {}

@@ -1182,12 +1182,12 @@ pub struct InteriorMut<'tcx> {
 }
 
 impl<'tcx> InteriorMut<'tcx> {
-    pub fn new(cx: &LateContext<'tcx>, ignore_interior_mutability: &[String]) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, ignore_interior_mutability: &[String]) -> Self {
         let ignored_def_ids = ignore_interior_mutability
             .iter()
             .flat_map(|ignored_ty| {
                 let path: Vec<&str> = ignored_ty.split("::").collect();
-                def_path_def_ids(cx, path.as_slice())
+                def_path_def_ids(tcx, path.as_slice())
             })
             .collect();
 
@@ -1197,10 +1197,10 @@ impl<'tcx> InteriorMut<'tcx> {
         }
     }
 
-    pub fn without_pointers(cx: &LateContext<'tcx>, ignore_interior_mutability: &[String]) -> Self {
+    pub fn without_pointers(tcx: TyCtxt<'tcx>, ignore_interior_mutability: &[String]) -> Self {
         Self {
             ignore_pointers: true,
-            ..Self::new(cx, ignore_interior_mutability)
+            ..Self::new(tcx, ignore_interior_mutability)
         }
     }
 

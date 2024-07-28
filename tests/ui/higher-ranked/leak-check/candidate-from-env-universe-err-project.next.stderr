@@ -9,10 +9,6 @@ note: required by a bound in `trait_bound`
    |
 LL | fn trait_bound<T: for<'a> Trait<'a>>() {}
    |                   ^^^^^^^^^^^^^^^^^ required by this bound in `trait_bound`
-help: consider further restricting this bound
-   |
-LL | fn function1<T: Trait<'static> + for<'a> Trait<'a>>() {
-   |                                +++++++++++++++++++
 
 error[E0277]: the trait bound `for<'a> T: Trait<'a>` is not satisfied
   --> $DIR/candidate-from-env-universe-err-project.rs:38:24
@@ -25,10 +21,6 @@ note: required by a bound in `projection_bound`
    |
 LL | fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `projection_bound`
-help: consider further restricting this bound
-   |
-LL | fn function2<T: Trait<'static, Assoc = usize> + for<'a> Trait<'a>>() {
-   |                                               +++++++++++++++++++
 
 error[E0271]: type mismatch resolving `<T as Trait<'a>>::Assoc == usize`
   --> $DIR/candidate-from-env-universe-err-project.rs:38:24

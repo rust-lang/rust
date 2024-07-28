@@ -26,11 +26,7 @@ impl<'a, 'gcc, 'tcx> AbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         } else {
             false
         };
-        if on_stack {
-            param.to_lvalue().get_address(None)
-        } else {
-            param.to_rvalue()
-        }
+        if on_stack { param.to_lvalue().get_address(None) } else { param.to_rvalue() }
     }
 }
 

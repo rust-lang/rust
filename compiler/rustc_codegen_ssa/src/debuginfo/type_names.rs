@@ -459,7 +459,7 @@ fn push_debuginfo_type_name<'tcx>(
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
-        debug_assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
+        assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
         output.push_str("enum2$<");
         push_inner(output, visited);
         push_close_angle_bracket(true, output);
@@ -660,7 +660,7 @@ fn push_generic_params_internal<'tcx>(
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    debug_assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
+    assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
     let mut args = args.non_erasable_generics(tcx, def_id).peekable();
     if args.peek().is_none() {
         return false;

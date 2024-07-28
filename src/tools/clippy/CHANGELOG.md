@@ -6,11 +6,53 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[ca3b3937...master](https://github.com/rust-lang/rust-clippy/compare/ca3b3937...master)
+[c9139bd5...master](https://github.com/rust-lang/rust-clippy/compare/c9139bd5...master)
+
+## Rust 1.80
+
+Current stable, released 2024-07-25
+
+[View all 68 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-04-18T22%3A50%3A22Z..2024-05-30T08%3A26%3A18Z+base%3Amaster)
+
+### New Lints
+
+* Added [`while_float`] to `nursery`
+  [#12765](https://github.com/rust-lang/rust-clippy/pull/12765)
+* Added [`macro_metavars_in_unsafe`] to `suspicious`
+  [#12107](https://github.com/rust-lang/rust-clippy/pull/12107)
+* Added [`renamed_function_params`] to `restriction`
+  [#11540](https://github.com/rust-lang/rust-clippy/pull/11540)
+* Added [`doc_lazy_continuation`] to `style`
+  [#12770](https://github.com/rust-lang/rust-clippy/pull/12770)
+
+### Moves and Deprecations
+
+* Moved [`assigning_clones`] to `pedantic` (From `perf` now allow-by-default)
+  [#12779](https://github.com/rust-lang/rust-clippy/pull/12779)
+* Moved [`single_char_pattern`] to `pedantic` (From `perf` now allow-by-default)
+  [#11852](https://github.com/rust-lang/rust-clippy/pull/11852)
+
+### Enhancements
+
+* [`panic`]: Added [`allow-panic-in-tests`] configuration to allow the lint in tests
+  [#12803](https://github.com/rust-lang/rust-clippy/pull/12803)
+* [`missing_const_for_fn`]: Now respects the [`msrv`] configuration
+  [#12713](https://github.com/rust-lang/rust-clippy/pull/12713)
+* [`missing_panics_doc`]: No longer lints on compile-time panics
+  [#12790](https://github.com/rust-lang/rust-clippy/pull/12790)
+* [`collapsible_match`]: Now considers the [`msrv`] configuration for the suggestion
+  [#12745](https://github.com/rust-lang/rust-clippy/pull/12745)
+* [`useless_vec`]: Added [`allow-useless-vec-in-tests`] configuration to allow the lint in tests
+  [#12725](https://github.com/rust-lang/rust-clippy/pull/12725)
+
+### Suggestion Fixes/Improvements
+
+* [`single_match`], [`single_match_else`]: Suggestions are now machine-applicable
+  [#12726](https://github.com/rust-lang/rust-clippy/pull/12726)
 
 ## Rust 1.79
 
-Current stable, released 2024-06-13
+Released 2024-06-13
 
 [View all 102 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-03-08T11%3A13%3A58Z..2024-04-18T15%3A50%3A50Z+base%3Amaster)
 
@@ -5712,6 +5754,7 @@ Released 2018-09-13
 [`partialeq_to_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_to_none
 [`path_buf_push_overwrite`]: https://rust-lang.github.io/rust-clippy/master/index.html#path_buf_push_overwrite
 [`path_ends_with_ext`]: https://rust-lang.github.io/rust-clippy/master/index.html#path_ends_with_ext
+[`pathbuf_init_then_push`]: https://rust-lang.github.io/rust-clippy/master/index.html#pathbuf_init_then_push
 [`pattern_type_mismatch`]: https://rust-lang.github.io/rust-clippy/master/index.html#pattern_type_mismatch
 [`permissions_set_readonly_false`]: https://rust-lang.github.io/rust-clippy/master/index.html#permissions_set_readonly_false
 [`positional_named_format_parameters`]: https://rust-lang.github.io/rust-clippy/master/index.html#positional_named_format_parameters

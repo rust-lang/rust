@@ -2,7 +2,7 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/issue-58451.rs:12:9
    |
 LL |     f(&[f()]);
-   |         ^-- an argument is missing
+   |         ^-- argument #1 is missing
    |
 note: function defined here
   --> $DIR/issue-58451.rs:5:4

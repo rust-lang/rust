@@ -28,3 +28,14 @@ LL |     { $+ } => {
 
 error: aborting due to 4 previous errors
 
+Future incompatibility report: Future breakage diagnostic:
+error: missing fragment specifier
+  --> $DIR/issue-33569.rs:2:8
+   |
+LL |     { $+ } => {
+   |        ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
+   = note: `#[deny(missing_fragment_specifier)]` on by default
+

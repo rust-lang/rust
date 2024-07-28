@@ -1214,11 +1214,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             && let ty::Alias(_, alias_ty) =
                 self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
             && alias_ty.def_id == def_id
+            && let generics = self.tcx().generics_of(fn_def_id)
+            // FIXME(return_type_notation): We only support lifetime params for now.
+            && generics.own_params.iter().all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
         {
-            let num_args = self.tcx().generics_of(fn_def_id).count();
+            let num_args = generics.count();
             write!(self, " {{ ")?;
             self.print_def_path(fn_def_id, &args[..num_args])?;
-            write!(self, "() }}")?;
+            write!(self, "(..) }}")?;
         }
 
         Ok(())
@@ -2624,7 +2627,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             self.prepare_region_info(value);
         }
 
-        debug!("self.used_region_names: {:?}", &self.used_region_names);
+        debug!("self.used_region_names: {:?}", self.used_region_names);
 
         let mut empty = true;
         let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {
