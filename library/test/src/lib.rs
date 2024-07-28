@@ -23,6 +23,7 @@
 #![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]
 #![feature(test)]
+#![cfg_attr(target_os = "fuchsia", feature(fuchsia_exit_status))]
 #![allow(internal_features)]
 
 pub use self::bench::{black_box, Bencher};
