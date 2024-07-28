@@ -103,6 +103,7 @@
 #![deny(ffi_unwind_calls)]
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
+#![warn(rustdoc::unescaped_backticks)]
 //
 // Library features:
 // tidy-alphabetical-start
