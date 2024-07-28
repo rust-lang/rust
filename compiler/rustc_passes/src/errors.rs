@@ -80,13 +80,6 @@ pub struct AttrShouldBeAppliedToFn {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_tracked_caller, code = E0736)]
-pub struct NakedTrackedCaller {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn, code = E0739)]
 pub struct TrackedCallerWrongLocation {
     #[primary_span]
@@ -1124,13 +1117,6 @@ pub struct UnlabeledCfInWhileCondition<'a> {
     pub cf_type: &'a str,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_cannot_inline_naked_function)]
-pub struct CannotInlineNakedFunction {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(passes_undefined_naked_function_abi)]
 pub struct UndefinedNakedFunctionAbi;
@@ -1194,6 +1180,17 @@ pub struct NakedFunctionsMustUseNoreturn {
     pub span: Span,
     #[suggestion(code = ", options(noreturn)", applicability = "machine-applicable")]
     pub last_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_naked_functions_incompatible_attribute, code = E0736)]
+pub struct NakedFunctionIncompatibleAttribute {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(passes_naked_attribute)]
+    pub naked_span: Span,
+    pub attr: Symbol,
 }
 
 #[derive(Diagnostic)]

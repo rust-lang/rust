@@ -4069,7 +4069,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
     /// let empty: [i32; 0] = [];
     ///
     /// assert!([1, 2, 2, 9].is_sorted());
@@ -4079,7 +4078,7 @@ impl<T> [T] {
     /// assert!(![0.0, 1.0, f32::NAN].is_sorted());
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn is_sorted(&self) -> bool
     where
@@ -4096,8 +4095,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!([1, 2, 2, 9].is_sorted_by(|a, b| a <= b));
     /// assert!(![1, 2, 2, 9].is_sorted_by(|a, b| a < b));
     ///
@@ -4108,7 +4105,7 @@ impl<T> [T] {
     /// assert!(empty.is_sorted_by(|a, b| false));
     /// assert!(empty.is_sorted_by(|a, b| true));
     /// ```
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn is_sorted_by<'a, F>(&'a self, mut compare: F) -> bool
     where
@@ -4128,13 +4125,11 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
     /// assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn is_sorted_by_key<'a, F, K>(&'a self, f: F) -> bool
     where
