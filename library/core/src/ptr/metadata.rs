@@ -81,7 +81,7 @@ pub trait Pointee {
 // NOTE: don’t stabilize this before trait aliases are stable in the language?
 pub trait Thin = Pointee<Metadata = ()>;
 
-/// Extract the metadata component of a pointer.
+/// Extracts the metadata component of a pointer.
 ///
 /// Values of type `*mut T`, `&T`, or `&mut T` can be passed directly to this function
 /// as they implicitly coerce to `*const T`.

@@ -321,7 +321,7 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
-    /// Return an array reference to the first `N` items in the slice.
+    /// Returns an array reference to the first `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -350,7 +350,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the first `N` items in the slice.
+    /// Returns a mutable array reference to the first `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -381,7 +381,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return an array reference to the first `N` items in the slice and the remaining slice.
+    /// Returns an array reference to the first `N` items in the slice and the remaining slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -413,7 +413,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the first `N` items in the slice and the remaining
+    /// Returns a mutable array reference to the first `N` items in the slice and the remaining
     /// slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
@@ -451,7 +451,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return an array reference to the last `N` items in the slice and the remaining slice.
+    /// Returns an array reference to the last `N` items in the slice and the remaining slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -483,7 +483,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the last `N` items in the slice and the remaining
+    /// Returns a mutable array reference to the last `N` items in the slice and the remaining
     /// slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
@@ -521,7 +521,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return an array reference to the last `N` items in the slice.
+    /// Returns an array reference to the last `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -554,7 +554,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the last `N` items in the slice.
+    /// Returns a mutable array reference to the last `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -828,7 +828,7 @@ impl<T> [T] {
         //   - Both pointers are part of the same object, as pointing directly
         //     past the object also counts.
         //
-        //   - The size of the slice is never larger than isize::MAX bytes, as
+        //   - The size of the slice is never larger than `isize::MAX` bytes, as
         //     noted here:
         //       - https://github.com/rust-lang/unsafe-code-guidelines/issues/102#issuecomment-473340447
         //       - https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -839,7 +839,7 @@ impl<T> [T] {
         //   - There is no wrapping around involved, as slices do not wrap past
         //     the end of the address space.
         //
-        // See the documentation of pointer::add.
+        // See the documentation of [`pointer::add`].
         let end = unsafe { start.add(self.len()) };
         start..end
     }
@@ -3021,7 +3021,7 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
-    /// Reorder the slice such that the element at `index` after the reordering is at its final
+    /// Reorders the slice such that the element at `index` after the reordering is at its final
     /// sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
@@ -3082,7 +3082,7 @@ impl<T> [T] {
         sort::select::partition_at_index(self, index, T::lt)
     }
 
-    /// Reorder the slice with a comparator function such that the element at `index` after the
+    /// Reorders the slice with a comparator function such that the element at `index` after the
     /// reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
@@ -3147,7 +3147,7 @@ impl<T> [T] {
         sort::select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
-    /// Reorder the slice with a key extraction function such that the element at `index` after the
+    /// Reorders the slice with a key extraction function such that the element at `index` after the
     /// reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
@@ -3405,8 +3405,10 @@ impl<T> [T] {
 
     /// Rotates the slice in-place such that the first `mid` elements of the
     /// slice move to the end while the last `self.len() - mid` elements move to
-    /// the front. After calling `rotate_left`, the element previously at index
-    /// `mid` will become the first element in the slice.
+    /// the front.
+    ///
+    /// After calling `rotate_left`, the element previously at index `mid` will
+    /// become the first element in the slice.
     ///
     /// # Panics
     ///
@@ -3448,8 +3450,10 @@ impl<T> [T] {
 
     /// Rotates the slice in-place such that the first `self.len() - k`
     /// elements of the slice move to the end while the last `k` elements move
-    /// to the front. After calling `rotate_right`, the element previously at
-    /// index `self.len() - k` will become the first element in the slice.
+    /// to the front.
+    ///
+    /// After calling `rotate_right`, the element previously at index `self.len()
+    /// - k` will become the first element in the slice.
     ///
     /// # Panics
     ///
@@ -3819,7 +3823,7 @@ impl<T> [T] {
         (us_len, ts_len)
     }
 
-    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
+    /// Transmutes the slice to a slice of another type, ensuring alignment of the types is
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
@@ -3884,7 +3888,7 @@ impl<T> [T] {
         }
     }
 
-    /// Transmute the mutable slice to a mutable slice of another type, ensuring alignment of the
+    /// Transmutes the mutable slice to a mutable slice of another type, ensuring alignment of the
     /// types is maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
@@ -3957,7 +3961,7 @@ impl<T> [T] {
         }
     }
 
-    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
+    /// Splits a slice into a prefix, a middle of aligned SIMD types, and a suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to`], so inherits the same
     /// guarantees as that method.
@@ -4021,7 +4025,7 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    /// Split a mutable slice into a mutable prefix, a middle of aligned SIMD types,
+    /// Splits a mutable slice into a mutable prefix, a middle of aligned SIMD types,
     /// and a mutable suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to_mut`], so inherits the same

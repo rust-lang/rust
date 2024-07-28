@@ -30,7 +30,7 @@ impl Parker {
         Parker { state: AtomicI8::new(EMPTY), tid: UnsafeCell::new(None) }
     }
 
-    /// Create a new thread parker. UNIX requires this to happen in-place.
+    /// Creates a new thread parker. UNIX requires this to happen in-place.
     pub unsafe fn new_in_place(parker: *mut Parker) {
         parker.write(Parker::new())
     }

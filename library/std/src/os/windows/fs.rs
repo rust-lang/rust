@@ -631,7 +631,7 @@ pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
 }
 
-/// Create a junction point.
+/// Creates a junction point.
 ///
 /// The `link` path will be a directory junction pointing to the original path.
 /// If `link` is a relative path then it will be made absolute prior to creating the junction point.

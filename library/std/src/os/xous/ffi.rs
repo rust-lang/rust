@@ -274,7 +274,7 @@ fn connect_impl(address: ServerAddress, blocking: bool) -> Result<Connection, Er
     }
 }
 
-/// Connect to a Xous server represented by the specified `address`.
+/// Connects to a Xous server represented by the specified `address`.
 ///
 /// The current thread will block until the server is available. Returns
 /// an error if the server cannot accept any more connections.
@@ -282,7 +282,7 @@ pub(crate) fn connect(address: ServerAddress) -> Result<Connection, Error> {
     connect_impl(address, true)
 }
 
-/// Attempt to connect to a Xous server represented by the specified `address`.
+/// Attempts to connect to a Xous server represented by the specified `address`.
 ///
 /// If the server does not exist then None is returned.
 pub(crate) fn try_connect(address: ServerAddress) -> Result<Option<Connection>, Error> {
@@ -293,7 +293,7 @@ pub(crate) fn try_connect(address: ServerAddress) -> Result<Option<Connection>, 
     }
 }
 
-/// Terminate the current process and return the specified code to the parent process.
+/// Terminates the current process and returns the specified code to the parent process.
 pub(crate) fn exit(return_code: u32) -> ! {
     let a0 = Syscall::TerminateProcess as usize;
     let a1 = return_code as usize;
@@ -320,7 +320,7 @@ pub(crate) fn exit(return_code: u32) -> ! {
     unreachable!();
 }
 
-/// Suspend the current thread and allow another thread to run. This thread may
+/// Suspends the current thread and allow another thread to run. This thread may
 /// continue executing again immediately if there are no other threads available
 /// to run on the system.
 pub(crate) fn do_yield() {
@@ -348,9 +348,11 @@ pub(crate) fn do_yield() {
     };
 }
 
-/// Allocate memory from the system. An optional physical and/or virtual address
-/// may be specified in order to ensure memory is allocated at specific offsets,
-/// otherwise the kernel will select an address.
+/// Allocates memory from the system.
+///
+/// An optional physical and/or virtual address may be specified in order to
+/// ensure memory is allocated at specific offsets, otherwise the kernel will
+/// select an address.
 ///
 /// # Safety
 ///
@@ -400,7 +402,7 @@ pub(crate) unsafe fn map_memory<T>(
     }
 }
 
-/// Destroy the given memory, returning it to the compiler.
+/// Destroys the given memory, returning it to the compiler.
 ///
 /// Safety: The memory pointed to by `range` should not be used after this
 /// function returns, even if this function returns Err().
@@ -439,9 +441,10 @@ pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     }
 }
 
-/// Adjust the memory flags for the given range. This can be used to remove flags
-/// from a given region in order to harden memory access. Note that flags may
-/// only be removed and may never be added.
+/// Adjusts the memory flags for the given range.
+///
+/// This can be used to remove flags from a given region in order to harden
+/// memory access. Note that flags may only be removed and may never be added.
 ///
 /// Safety: The memory pointed to by `range` may become inaccessible or have its
 /// mutability removed. It is up to the caller to ensure that the flags specified
@@ -484,7 +487,7 @@ pub(crate) unsafe fn update_memory_flags<T>(
     }
 }
 
-/// Create a thread with a given stack and up to four arguments
+/// Creates a thread with a given stack and up to four arguments.
 pub(crate) fn create_thread(
     start: *mut usize,
     stack: *mut [u8],
@@ -527,7 +530,7 @@ pub(crate) fn create_thread(
     }
 }
 
-/// Wait for the given thread to terminate and return the exit code from that thread.
+/// Waits for the given thread to terminate and returns the exit code from that thread.
 pub(crate) fn join_thread(thread_id: ThreadId) -> Result<usize, Error> {
     let mut a0 = Syscall::JoinThread as usize;
     let mut a1 = thread_id.into();
@@ -567,7 +570,7 @@ pub(crate) fn join_thread(thread_id: ThreadId) -> Result<usize, Error> {
     }
 }
 
-/// Get the current thread's ID
+/// Gets the current thread's ID.
 pub(crate) fn thread_id() -> Result<ThreadId, Error> {
     let mut a0 = Syscall::GetThreadId as usize;
     let mut a1 = 0;
@@ -603,7 +606,7 @@ pub(crate) fn thread_id() -> Result<ThreadId, Error> {
     }
 }
 
-/// Adjust the given `knob` limit to match the new value `new`. The current value must
+/// Adjusts the given `knob` limit to match the new value `new`. The current value must
 /// match the `current` in order for this to take effect.
 ///
 /// The new value is returned as a result of this call. If the call fails, then the old

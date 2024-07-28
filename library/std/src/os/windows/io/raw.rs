@@ -44,7 +44,7 @@ pub trait AsRawHandle {
     fn as_raw_handle(&self) -> RawHandle;
 }
 
-/// Construct I/O objects from raw handles.
+/// Constructs I/O objects from raw handles.
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawHandle {
     /// Constructs a new I/O object from the specified raw handle.

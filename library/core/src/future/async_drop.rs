@@ -205,7 +205,7 @@ async unsafe fn slice<T>(s: *mut [T]) {
     }
 }
 
-/// Construct a chain of two futures, which awaits them sequentially as
+/// Constructs a chain of two futures, which awaits them sequentially as
 /// a future.
 #[lang = "async_drop_chain"]
 async fn chain<F, G>(first: F, last: G)
@@ -235,8 +235,8 @@ async unsafe fn defer<T: ?Sized>(to_drop: *mut T) {
 ///
 /// # Safety
 ///
-/// User should carefully manage returned future, since it would
-/// try creating an immutable referece from `this` and get pointee's
+/// Users should carefully manage the returned future, since it would
+/// try creating an immutable reference from `this` and get pointee's
 /// discriminant.
 // FIXME(zetanumbers): Send and Sync impls
 #[lang = "async_drop_either"]

@@ -637,7 +637,7 @@ impl File {
         Ok(())
     }
 
-    /// Get only basic file information such as attributes and file times.
+    /// Gets only basic file information such as attributes and file times.
     fn basic_info(&self) -> io::Result<c::FILE_BASIC_INFO> {
         unsafe {
             let mut info: c::FILE_BASIC_INFO = mem::zeroed();

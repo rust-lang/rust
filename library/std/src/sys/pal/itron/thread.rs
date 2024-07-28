@@ -308,7 +308,7 @@ impl Drop for Thread {
     }
 }
 
-/// Terminate and delete the specified task.
+/// Terminates and deletes the specified task.
 ///
 /// This function will abort if `deleted_task` refers to the calling task.
 ///
@@ -337,7 +337,7 @@ unsafe fn terminate_and_delete_task(deleted_task: abi::ID) {
     expect_success_aborting(unsafe { abi::del_tsk(deleted_task) }, &"del_tsk");
 }
 
-/// Terminate and delete the calling task.
+/// Terminates and deletes the calling task.
 ///
 /// Atomicity is not required - i.e., it can be assumed that other threads won't
 /// `ter_tsk` the calling task while this function is still in progress. (This

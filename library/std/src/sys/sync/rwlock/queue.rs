@@ -186,7 +186,7 @@ struct Node {
 }
 
 impl Node {
-    /// Create a new queue node.
+    /// Creates a new queue node.
     fn new(write: bool) -> Node {
         Node {
             next: AtomicLink::new(None),

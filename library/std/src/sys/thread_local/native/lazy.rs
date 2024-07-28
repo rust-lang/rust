@@ -39,7 +39,7 @@ where
         Storage { state: UnsafeCell::new(State::Initial) }
     }
 
-    /// Get a pointer to the TLS value, potentially initializing it with the
+    /// Gets a pointer to the TLS value, potentially initializing it with the
     /// provided parameters. If the TLS variable has been destroyed, a null
     /// pointer is returned.
     ///

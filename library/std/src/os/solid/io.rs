@@ -98,7 +98,7 @@ pub struct OwnedFd {
 }
 
 impl BorrowedFd<'_> {
-    /// Return a `BorrowedFd` holding the given raw file descriptor.
+    /// Returns a `BorrowedFd` holding the given raw file descriptor.
     ///
     /// # Safety
     ///

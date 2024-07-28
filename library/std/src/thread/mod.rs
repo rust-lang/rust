@@ -849,7 +849,7 @@ pub fn panicking() -> bool {
     panicking::panicking()
 }
 
-/// Use [`sleep`].
+/// Uses [`sleep`].
 ///
 /// Puts the current thread to sleep for at least the specified amount of time.
 ///
@@ -1120,7 +1120,7 @@ pub fn park() {
     forget(guard);
 }
 
-/// Use [`park_timeout`].
+/// Uses [`park_timeout`].
 ///
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).

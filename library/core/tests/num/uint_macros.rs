@@ -261,6 +261,14 @@ macro_rules! uint_module {
             }
 
             #[test]
+            fn test_is_next_multiple_of() {
+                assert!((12 as $T).is_multiple_of(4));
+                assert!(!(12 as $T).is_multiple_of(5));
+                assert!((0 as $T).is_multiple_of(0));
+                assert!(!(12 as $T).is_multiple_of(0));
+            }
+
+            #[test]
             fn test_carrying_add() {
                 assert_eq!($T::MAX.carrying_add(1, false), (0, true));
                 assert_eq!($T::MAX.carrying_add(0, true), (0, true));

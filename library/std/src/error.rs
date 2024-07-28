@@ -234,7 +234,7 @@ impl<E> Report<E>
 where
     Report<E>: From<E>,
 {
-    /// Create a new `Report` from an input error.
+    /// Creates a new `Report` from an input error.
     #[unstable(feature = "error_reporter", issue = "90172")]
     pub fn new(error: E) -> Report<E> {
         Self::from(error)

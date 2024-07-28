@@ -44,7 +44,7 @@ impl Debug for BorrowedBuf<'_> {
     }
 }
 
-/// Create a new `BorrowedBuf` from a fully initialized slice.
+/// Creates a new `BorrowedBuf` from a fully initialized slice.
 impl<'data> From<&'data mut [u8]> for BorrowedBuf<'data> {
     #[inline]
     fn from(slice: &'data mut [u8]) -> BorrowedBuf<'data> {
@@ -59,7 +59,7 @@ impl<'data> From<&'data mut [u8]> for BorrowedBuf<'data> {
     }
 }
 
-/// Create a new `BorrowedBuf` from an uninitialized buffer.
+/// Creates a new `BorrowedBuf` from an uninitialized buffer.
 ///
 /// Use `set_init` if part of the buffer is known to be already initialized.
 impl<'data> From<&'data mut [MaybeUninit<u8>]> for BorrowedBuf<'data> {
@@ -174,7 +174,7 @@ pub struct BorrowedCursor<'a> {
 }
 
 impl<'a> BorrowedCursor<'a> {
-    /// Reborrow this cursor by cloning it with a smaller lifetime.
+    /// Reborrows this cursor by cloning it with a smaller lifetime.
     ///
     /// Since a cursor maintains unique access to its underlying buffer, the borrowed cursor is
     /// not accessible while the new cursor exists.
@@ -247,7 +247,7 @@ impl<'a> BorrowedCursor<'a> {
         unsafe { self.buf.buf.get_unchecked_mut(self.buf.filled..) }
     }
 
-    /// Advance the cursor by asserting that `n` bytes have been filled.
+    /// Advances the cursor by asserting that `n` bytes have been filled.
     ///
     /// After advancing, the `n` bytes are no longer accessible via the cursor and can only be
     /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
@@ -268,7 +268,7 @@ impl<'a> BorrowedCursor<'a> {
         self
     }
 
-    /// Advance the cursor by asserting that `n` bytes have been filled.
+    /// Advances the cursor by asserting that `n` bytes have been filled.
     ///
     /// After advancing, the `n` bytes are no longer accessible via the cursor and can only be
     /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
