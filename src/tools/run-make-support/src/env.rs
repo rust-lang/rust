@@ -17,3 +17,10 @@ pub fn env_var_os(name: &str) -> OsString {
         None => panic!("failed to retrieve environment variable {name:?}"),
     }
 }
+
+/// Check if `NO_DEBUG_ASSERTIONS` is set (usually this may be set in CI jobs).
+#[track_caller]
+#[must_use]
+pub fn no_debug_assertions() -> bool {
+    std::env::var_os("NO_DEBUG_ASSERTIONS").is_some()
+}
