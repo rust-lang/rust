@@ -2732,6 +2732,10 @@ impl<A: Allocator> From<Box<str, A>> for String<A> {
     }
 }
 
+// When compiling in test mode, `Box` is not actually local, so this impl is incoherent
+// since `A` is the "main" type.
+// To work around this, restrict this impl to `A = Global` under cfg(test).
+#[cfg(not(test))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_str", since = "1.20.0")]
 impl<A: Allocator> From<String<A>> for Box<str, A> {
@@ -2747,6 +2751,27 @@ impl<A: Allocator> From<String<A>> for Box<str, A> {
     /// assert_eq!("hello world", s3)
     /// ```
     fn from(s: String<A>) -> Box<str, A> {
+        s.into_boxed_str()
+    }
+}
+
+// See above `impl<A: Allocator> From<String<A>> for Box<str, A>`
+#[cfg(test)]
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "box_from_str", since = "1.20.0")]
+impl From<String> for Box<str> {
+    /// Converts the given [`String`] to a boxed `str` slice that is owned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s1: String = String::from("hello world");
+    /// let s2: Box<str> = Box::from(s1);
+    /// let s3: String = String::from(s2);
+    ///
+    /// assert_eq!("hello world", s3)
+    /// ```
+    fn from(s: String) -> Box<str> {
         s.into_boxed_str()
     }
 }
