@@ -192,6 +192,10 @@ impl FileDescription for NullOutput {
 pub struct FileDescriptor(Rc<RefCell<Box<dyn FileDescription>>>);
 
 impl FileDescriptor {
+    fn new(fd: impl FileDescription) -> Self {
+        FileDescriptor(Rc::new(RefCell::new(Box::new(fd))))
+    }
+
     pub fn borrow(&self) -> Ref<'_, dyn FileDescription> {
         Ref::map(self.0.borrow(), |fd| fd.as_ref())
     }
@@ -239,14 +243,14 @@ impl FdTable {
         fds
     }
 
-    /// Insert a file descriptor to the FdTable.
-    pub fn insert_fd<T: FileDescription>(&mut self, fd: T) -> i32 {
-        let file_handle = FileDescriptor(Rc::new(RefCell::new(Box::new(fd))));
+    /// Insert a new file description to the FdTable.
+    pub fn insert_fd(&mut self, fd: impl FileDescription) -> i32 {
+        let file_handle = FileDescriptor::new(fd);
         self.insert_fd_with_min_fd(file_handle, 0)
     }
 
     /// Insert a new FD that is at least `min_fd`.
-    pub fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptor, min_fd: i32) -> i32 {
+    fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptor, min_fd: i32) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
