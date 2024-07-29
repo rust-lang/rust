@@ -102,18 +102,23 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     .meta_item_list()
                     .unwrap_or_default()
                     .into_iter()
-                    .find(|item| item.has_name(sym::todo))
+                    .find(|item| item.has_name(sym::audit_that))
                     .map(|item| {
                         item.value_str().expect(
-                            "`#[rustc_deprecated_safe_2024(todo)]` must have a string value",
+                            "`#[rustc_deprecated_safe_2024(audit_that)]` must have a string value",
                         )
                     });
 
                 let sm = self.tcx.sess.source_map();
+                let guarantee = suggestion
+                    .as_ref()
+                    .map(|suggestion| format!("that {}", suggestion))
+                    .unwrap_or_else(|| String::from("its unsafe preconditions"));
                 let suggestion = suggestion
                     .and_then(|suggestion| {
-                        sm.indentation_before(span)
-                            .map(|indent| format!("{}// TODO: {}\n", indent, suggestion)) // ignore-tidy-todo
+                        sm.indentation_before(span).map(|indent| {
+                            format!("{}// TODO: Audit that {}.\n", indent, suggestion) // ignore-tidy-todo
+                        })
                     })
                     .unwrap_or_default();
 
@@ -124,6 +129,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     CallToDeprecatedSafeFnRequiresUnsafe {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
+                        guarantee,
                         sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
                             start_of_line_suggestion: suggestion,
                             start_of_line: sm.span_extend_to_line(span).shrink_to_lo(),

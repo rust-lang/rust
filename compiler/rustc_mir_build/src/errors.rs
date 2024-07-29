@@ -28,6 +28,7 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
     #[label]
     pub(crate) span: Span,
     pub(crate) function: String,
+    pub(crate) guarantee: String,
     #[subdiagnostic]
     pub(crate) sub: CallToDeprecatedSafeFnRequiresUnsafeSub,
 }
