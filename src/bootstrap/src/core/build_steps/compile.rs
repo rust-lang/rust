@@ -1488,7 +1488,7 @@ pub fn compiler_file(
     let mut cmd = command(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={file}"));
-    let out = cmd.run_capture_stdout(builder).stdout();
+    let out = cmd.capture_stdout().run(builder).stdout();
     PathBuf::from(out.trim())
 }
 
@@ -1852,7 +1852,7 @@ impl Step for Assemble {
                 builder.ensure(llvm::Llvm { target: target_compiler.host });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 let llvm_bin_dir =
-                    command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                    command(llvm_config).capture_stdout().arg("--bindir").run(builder).stdout();
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
@@ -2178,7 +2178,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = t!(t!(path.metadata()).modified());
-    command("strip").arg("--strip-debug").arg(path).run_capture(builder);
+    command("strip").capture().arg("--strip-debug").arg(path).run(builder);
 
     let file = t!(fs::File::open(path));
 

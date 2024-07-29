@@ -169,7 +169,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
 }
 
 fn check_if_tidy_is_installed(builder: &Builder<'_>) -> bool {
-    command("tidy").allow_failure().arg("--version").run_capture_stdout(builder).is_success()
+    command("tidy").capture_stdout().allow_failure().arg("--version").run(builder).is_success()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -468,7 +468,7 @@ impl Miri {
         cargo.arg("--print-sysroot");
 
         builder.verbose(|| println!("running: {cargo:?}"));
-        let stdout = cargo.run_capture_stdout(builder).stdout();
+        let stdout = cargo.capture_stdout().run(builder).stdout();
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
         builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
@@ -749,7 +749,7 @@ impl Step for Clippy {
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
-        if cargo.allow_failure().run(builder) {
+        if cargo.allow_failure().run(builder).is_success() {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -904,12 +904,12 @@ fn get_browser_ui_test_version_inner(
     npm: &Path,
     global: bool,
 ) -> Option<String> {
-    let mut command = command(npm);
+    let mut command = command(npm).capture();
     command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
     if global {
         command.arg("--global");
     }
-    let lines = command.allow_failure().run_capture(builder).stdout();
+    let lines = command.allow_failure().run(builder).stdout();
     lines
         .lines()
         .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
@@ -1846,17 +1846,19 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let lldb_exe = builder.config.lldb.clone().unwrap_or_else(|| PathBuf::from("lldb"));
         let lldb_version = command(&lldb_exe)
+            .capture()
             .allow_failure()
             .arg("--version")
-            .run_capture(builder)
+            .run(builder)
             .stdout_if_ok()
             .and_then(|v| if v.trim().is_empty() { None } else { Some(v) });
         if let Some(ref vers) = lldb_version {
             cmd.arg("--lldb-version").arg(vers);
             let lldb_python_dir = command(&lldb_exe)
                 .allow_failure()
+                .capture_stdout()
                 .arg("-P")
-                .run_capture_stdout(builder)
+                .run(builder)
                 .stdout_if_ok()
                 .map(|p| p.lines().next().expect("lldb Python dir not found").to_string());
             if let Some(ref dir) = lldb_python_dir {
@@ -1915,9 +1917,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
                 let llvm_version =
-                    command(&llvm_config).arg("--version").run_capture_stdout(builder).stdout();
-                let llvm_components =
-                    command(&llvm_config).arg("--components").run_capture_stdout(builder).stdout();
+                    builder.run(command(&llvm_config).capture_stdout().arg("--version")).stdout();
+                let llvm_components = builder
+                    .run(command(&llvm_config).capture_stdout().arg("--components"))
+                    .stdout();
                 // Remove trailing newline from llvm-config output.
                 cmd.arg("--llvm-version")
                     .arg(llvm_version.trim())
@@ -1937,7 +1940,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // platform-specific environment variable as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
-                    command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
+                    builder.run(command(&llvm_config).capture_stdout().arg("--libdir")).stdout();
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
@@ -2209,7 +2212,7 @@ impl BookTest {
             compiler.host,
         );
         let _time = helpers::timeit(builder);
-        let toolstate = if rustbook_cmd.delay_failure().run(builder) {
+        let toolstate = if rustbook_cmd.delay_failure().run(builder).is_success() {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2352,7 +2355,7 @@ impl Step for ErrorIndex {
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = helpers::timeit(builder);
-        tool.run_capture(builder);
+        tool.capture().run(builder);
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
@@ -2383,10 +2386,9 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 
     cmd = cmd.delay_failure();
     if !builder.config.verbose_tests {
-        cmd.run_capture(builder).is_success()
-    } else {
-        cmd.run(builder)
+        cmd = cmd.capture();
     }
+    cmd.run(builder).is_success()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2412,8 +2414,11 @@ impl Step for RustcGuide {
         let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook).delay_failure();
         rustbook_cmd.arg("linkcheck").arg(&src);
-        let toolstate =
-            if rustbook_cmd.run(builder) { ToolState::TestPass } else { ToolState::TestFail };
+        let toolstate = if rustbook_cmd.run(builder).is_success() {
+            ToolState::TestPass
+        } else {
+            ToolState::TestFail
+        };
         builder.save_toolstate("rustc-dev-guide", toolstate);
     }
 }
@@ -2925,7 +2930,7 @@ impl Step for RemoteCopyLibs {
             let f = t!(f);
             let name = f.file_name().into_string().unwrap();
             if helpers::is_dylib(&name) {
-                command(&tool).arg("push").arg(f.path()).run(builder);
+                builder.run(command(&tool).arg("push").arg(f.path()));
             }
         }
     }
@@ -2956,21 +2961,21 @@ impl Step for Distcheck {
         builder.ensure(dist::PlainSourceTarball);
         builder.ensure(dist::Src);
 
-        command("tar")
-            .arg("-xf")
+        let mut cmd = command("tar");
+        cmd.arg("-xf")
             .arg(builder.ensure(dist::PlainSourceTarball).tarball())
             .arg("--strip-components=1")
-            .current_dir(&dir)
-            .run(builder);
-        command("./configure")
-            .args(&builder.config.configure_args)
-            .arg("--enable-vendor")
-            .current_dir(&dir)
-            .run(builder);
-        command(helpers::make(&builder.config.build.triple))
-            .arg("check")
-            .current_dir(&dir)
-            .run(builder);
+            .current_dir(&dir);
+        cmd.run(builder);
+        builder.run(
+            command("./configure")
+                .args(&builder.config.configure_args)
+                .arg("--enable-vendor")
+                .current_dir(&dir),
+        );
+        builder.run(
+            command(helpers::make(&builder.config.build.triple)).arg("check").current_dir(&dir),
+        );
 
         // Now make sure that rust-src has all of libstd's dependencies
         builder.info("Distcheck rust-src");
@@ -2978,23 +2983,24 @@ impl Step for Distcheck {
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 
-        command("tar")
-            .arg("-xf")
+        let mut cmd = command("tar");
+        cmd.arg("-xf")
             .arg(builder.ensure(dist::Src).tarball())
             .arg("--strip-components=1")
-            .current_dir(&dir)
-            .run(builder);
+            .current_dir(&dir);
+        cmd.run(builder);
 
         let toml = dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
-        command(&builder.initial_cargo)
-            // Will read the libstd Cargo.toml
-            // which uses the unstable `public-dependency` feature.
-            .env("RUSTC_BOOTSTRAP", "1")
-            .arg("generate-lockfile")
-            .arg("--manifest-path")
-            .arg(&toml)
-            .current_dir(&dir)
-            .run(builder);
+        builder.run(
+            command(&builder.initial_cargo)
+                // Will read the libstd Cargo.toml
+                // which uses the unstable `public-dependency` feature.
+                .env("RUSTC_BOOTSTRAP", "1")
+                .arg("generate-lockfile")
+                .arg("--manifest-path")
+                .arg(&toml)
+                .current_dir(&dir),
+        );
     }
 }
 

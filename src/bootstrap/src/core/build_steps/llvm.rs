@@ -472,7 +472,7 @@ impl Step for Llvm {
                 builder.ensure(Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
                 let llvm_bindir =
-                    command(&llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                    command(&llvm_config).capture_stdout().arg("--bindir").run(builder).stdout();
                 let host_bin = Path::new(llvm_bindir.trim());
                 cfg.define(
                     "LLVM_TABLEGEN",
@@ -523,7 +523,7 @@ impl Step for Llvm {
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
             let version =
-                command(&res.llvm_config).arg("--version").run_capture_stdout(builder).stdout();
+                command(&res.llvm_config).capture_stdout().arg("--version").run(builder).stdout();
             let major = version.split('.').next().unwrap();
 
             match &llvm_version_suffix {
@@ -579,7 +579,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
         return;
     }
 
-    let version = command(llvm_config).arg("--version").run_capture_stdout(builder).stdout();
+    let version = command(llvm_config).capture_stdout().arg("--version").run(builder).stdout();
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
         if major >= 17 {
