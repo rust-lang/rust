@@ -117,9 +117,11 @@ export function isValidExecutable(path: string, extraEnv: Env): boolean {
         env: { ...process.env, ...extraEnv },
     });
 
-    const printOutput = res.error ? log.warn : log.info;
-    printOutput(path, "--version:", res);
-
+    if (res.error) {
+        log.warn(path, "--version:", res);
+    } else {
+        log.info(path, "--version:", res);
+    }
     return res.status === 0;
 }
 
