@@ -564,18 +564,8 @@ pub struct Std {
 }
 
 impl Std {
-    pub(crate) fn new(
-        stage: u32,
-        target: TargetSelection,
-        builder: &Builder<'_>,
-        format: DocumentationFormat,
-    ) -> Self {
-        let crates = builder
-            .in_tree_crates("sysroot", Some(target))
-            .into_iter()
-            .map(|krate| krate.name.to_string())
-            .collect();
-        Std { stage, target, format, crates }
+    pub(crate) fn new(stage: u32, target: TargetSelection, format: DocumentationFormat) -> Self {
+        Std { stage, target, format, crates: vec![] }
     }
 }
 
@@ -589,6 +579,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        let crates = compile::std_crates_for_run_make(&run);
         run.builder.ensure(Std {
             stage: run.builder.top_stage,
             target: run.target,
@@ -597,7 +588,7 @@ impl Step for Std {
             } else {
                 DocumentationFormat::Html
             },
-            crates: run.make_run_crates(Alias::Library),
+            crates,
         });
     }
 
@@ -695,13 +686,6 @@ fn doc_std(
     extra_args: &[&str],
     requested_crates: &[String],
 ) {
-    if builder.no_std(target) == Some(true) {
-        panic!(
-            "building std documentation for no_std target {target} is not supported\n\
-             Set `docs = false` in the config to disable documentation, or pass `--skip library`."
-        );
-    }
-
     let compiler = builder.compiler(stage, builder.config.build);
 
     let target_doc_dir_name = if format == DocumentationFormat::Json { "json-doc" } else { "doc" };

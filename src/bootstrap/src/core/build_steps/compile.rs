@@ -123,11 +123,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // If the paths include "library", build the entire standard library.
-        let has_alias =
-            run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_alias { Default::default() } else { run.cargo_crates_in_set() };
-
+        let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -423,6 +419,28 @@ fn copy_self_contained_objects(
     }
 
     target_deps
+}
+
+/// Resolves standard library crates for `Std::run_make` for any build kind (like check, build, clippy, etc.).
+pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
+    // FIXME: Extend builder tests to cover the `crates` field of `Std` instances.
+    if cfg!(feature = "bootstrap-self-test") {
+        return vec![];
+    }
+
+    let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
+    let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
+
+    // For no_std targets, do not add any additional crates to the compilation other than what `compile::std_cargo` already adds for no_std targets.
+    if target_is_no_std {
+        vec![]
+    }
+    // If the paths include "library", build the entire standard library.
+    else if has_alias {
+        run.make_run_crates(builder::Alias::Library)
+    } else {
+        run.cargo_crates_in_set()
+    }
 }
 
 /// Configure cargo to compile the standard library, adding appropriate env vars

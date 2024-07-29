@@ -106,7 +106,6 @@ impl Step for JsonDocs {
         builder.ensure(crate::core::build_steps::doc::Std::new(
             builder.top_stage,
             host,
-            builder,
             DocumentationFormat::Json,
         ));
 
