@@ -14,12 +14,12 @@ fn get_dyn_size() -> usize {
 fn main() {
     let a = ["a", 10];
     //~^ ERROR mismatched types
-    //~| HELP replace comma with semicolon to create an array
+    //~| HELP replace the comma with a semicolon to create an array
 
     const size_b: usize = 20;
     let b = [Type, size_b];
     //~^ ERROR mismatched types
-    //~| HELP replace comma with semicolon to create an array
+    //~| HELP replace the comma with a semicolon to create an array
 
     let size_c: usize = 13;
     let c = [Type, size_c];
@@ -35,7 +35,7 @@ fn main() {
 
     let f = ["f", get_size()];
     //~^ ERROR mismatched types
-    //~| HELP replace comma with semicolon to create an array
+    //~| HELP replace the comma with a semicolon to create an array
 
     let m = ["m", get_dyn_size()];
     //~^ ERROR mismatched types
@@ -43,20 +43,20 @@ fn main() {
     // is_vec, is_clone, is_usize_like
     let g = vec![String::new(), 10];
     //~^ ERROR mismatched types
-    //~| HELP replace comma with semicolon to create a vector
+    //~| HELP replace the comma with a semicolon to create a vector
 
     let dyn_size = 10;
     let h = vec![Type, dyn_size];
     //~^ ERROR mismatched types
-    //~| HELP replace comma with semicolon to create a vector
+    //~| HELP replace the comma with a semicolon to create a vector
 
     let i = vec![Type, get_dyn_size()];
     //~^ ERROR mismatched types
-    //~| HELP replace comma with semicolon to create a vector
+    //~| HELP replace the comma with a semicolon to create a vector
 
     let k = vec!['c', 10];
     //~^ ERROR mismatched types
-    //~| HELP replace comma with semicolon to create a vector
+    //~| HELP replace the comma with a semicolon to create a vector
 
     let j = vec![Type, 10_u8];
     //~^ ERROR mismatched types
