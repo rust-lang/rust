@@ -151,7 +151,6 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             let conf = clippy_config::Conf::read(sess, &conf_path);
             clippy_lints::register_lints(lint_store, conf);
             clippy_lints::register_pre_expansion_lints(lint_store, conf);
-            clippy_lints::register_renamed(lint_store);
         }));
 
         // FIXME: #4825; This is required, because Clippy lints that are based on MIR have to be

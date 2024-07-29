@@ -1,4 +1,3 @@
-use crate::utils::internal_lints::metadata_collector::is_deprecated_lint;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
@@ -144,25 +143,17 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
         }
 
         if let hir::ItemKind::Static(ty, Mutability::Not, body_id) = item.kind {
-            let is_lint_ref_ty = is_lint_ref_type(cx, ty);
-            if is_deprecated_lint(cx, ty) || is_lint_ref_ty {
+            if is_lint_ref_type(cx, ty) {
                 check_invalid_clippy_version_attribute(cx, item);
 
                 let expr = &cx.tcx.hir().body(body_id).value;
-                let fields;
-                if is_lint_ref_ty {
-                    if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind
-                        && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind
-                    {
-                        fields = struct_fields;
-                    } else {
-                        return;
-                    }
-                } else if let ExprKind::Struct(_, struct_fields, _) = expr.kind {
-                    fields = struct_fields;
+                let fields = if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind
+                    && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind
+                {
+                    struct_fields
                 } else {
                     return;
-                }
+                };
 
                 let field = fields
                     .iter()
@@ -175,25 +166,15 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                 }) = field.expr.kind
                 {
                     let sym_str = sym.as_str();
-                    if is_lint_ref_ty {
-                        if sym_str == "default lint description" {
-                            span_lint(
-                                cx,
-                                DEFAULT_LINT,
-                                item.span,
-                                format!("the lint `{}` has the default lint description", item.ident.name),
-                            );
-                        }
-
-                        self.declared_lints.insert(item.ident.name, item.span);
-                    } else if sym_str == "default deprecation note" {
+                    if sym_str == "default lint description" {
                         span_lint(
                             cx,
-                            DEFAULT_DEPRECATION_REASON,
+                            DEFAULT_LINT,
                             item.span,
-                            format!("the lint `{}` has the default deprecation reason", item.ident.name),
+                            format!("the lint `{}` has the default lint description", item.ident.name),
                         );
                     }
+                    self.declared_lints.insert(item.ident.name, item.span);
                 }
             }
         } else if let Some(macro_call) = root_macro_call_first_node(cx, item) {
