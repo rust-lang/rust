@@ -1,3 +1,4 @@
+//! Builtin macros and attributes
 #[macro_use]
 mod quote;
 
