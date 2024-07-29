@@ -32,7 +32,7 @@ use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
@@ -988,6 +988,7 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
                 f,
                 r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
                 path = join_with_double_colon(&fqp),
+                text = EscapeBodyText(text.as_str()),
             )
         } else {
             f.write_str(text.as_str())

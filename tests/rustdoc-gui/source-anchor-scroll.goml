@@ -11,7 +11,7 @@ click: '//a[text() = "barbar" and @href="#5-7"]'
 assert-property: ("html", {"scrollTop": "123"})
 click: '//a[text() = "bar" and @href="#28-36"]'
 assert-property: ("html", {"scrollTop": "154"})
-click: '//a[text() = "sub_fn" and @href="#2-4"]'
+click: '//a[normalize-space() = "sub_fn" and @href="#2-4"]'
 assert-property: ("html", {"scrollTop": "51"})
 
 // We now check that clicking on lines doesn't change the scroll
