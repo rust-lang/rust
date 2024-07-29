@@ -1,5 +1,5 @@
-- // MIR for `unwrap_unchecked` before InstSimplify
-+ // MIR for `unwrap_unchecked` after InstSimplify
+- // MIR for `unwrap_unchecked` before InstSimplify-after-simplifycfg
++ // MIR for `unwrap_unchecked` after InstSimplify-after-simplifycfg
   
   fn unwrap_unchecked(_1: Option<i32>) -> i32 {
       debug x => _1;

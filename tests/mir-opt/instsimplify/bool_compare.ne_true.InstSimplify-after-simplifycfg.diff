@@ -1,5 +1,5 @@
-- // MIR for `ne_true` before InstSimplify
-+ // MIR for `ne_true` after InstSimplify
+- // MIR for `ne_true` before InstSimplify-after-simplifycfg
++ // MIR for `ne_true` after InstSimplify-after-simplifycfg
   
   fn ne_true(_1: bool) -> u32 {
       debug x => _1;

@@ -1,5 +1,5 @@
-- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone` before InstSimplify
-+ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone` after InstSimplify
+- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone` before InstSimplify-after-simplifycfg
++ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone` after InstSimplify-after-simplifycfg
   
   fn <impl at $DIR/combine_clone_of_primitives.rs:5:10: 5:15>::clone(_1: &MyThing<T>) -> MyThing<T> {
       debug self => _1;
@@ -21,7 +21,7 @@
           _4 = &((*_1).0: T);
 -         _3 = &(*_4);
 +         _3 = _4;
-          _2 = <T as Clone>::clone(move _3) -> [return: bb1, unwind continue];
+          _2 = <T as Clone>::clone(move _3) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
@@ -31,7 +31,7 @@
           StorageLive(_7);
           _7 = &((*_1).1: u64);
 -         _6 = &(*_7);
--         _5 = <u64 as Clone>::clone(move _6) -> [return: bb2, unwind: bb4];
+-         _5 = <u64 as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
 +         _6 = _7;
 +         _5 = (*_6);
 +         goto -> bb2;
@@ -44,7 +44,7 @@
           StorageLive(_10);
           _10 = &((*_1).2: [f32; 3]);
 -         _9 = &(*_10);
--         _8 = <[f32; 3] as Clone>::clone(move _9) -> [return: bb3, unwind: bb4];
+-         _8 = <[f32; 3] as Clone>::clone(move _9) -> [return: bb3, unwind unreachable];
 +         _9 = _10;
 +         _8 = (*_9);
 +         goto -> bb3;
@@ -60,14 +60,6 @@
           StorageDead(_7);
           StorageDead(_4);
           return;
-      }
-  
-      bb4 (cleanup): {
-          drop(_2) -> [return: bb5, unwind terminate(cleanup)];
-      }
-  
-      bb5 (cleanup): {
-          resume;
       }
   }
   

@@ -1,5 +1,5 @@
-- // MIR for `removable` before InstSimplify
-+ // MIR for `removable` after InstSimplify
+- // MIR for `removable` before InstSimplify-after-simplifycfg
++ // MIR for `removable` after InstSimplify-after-simplifycfg
   
   fn removable() -> () {
       let mut _0: ();

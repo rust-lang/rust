@@ -1,5 +1,5 @@
-- // MIR for `generic_ref` before InstSimplify
-+ // MIR for `generic_ref` after InstSimplify
+- // MIR for `generic_ref` before InstSimplify-after-simplifycfg
++ // MIR for `generic_ref` after InstSimplify-after-simplifycfg
   
   fn generic_ref() -> () {
       let mut _0: ();

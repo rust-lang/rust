@@ -26,9 +26,9 @@ fn foo(_1: T, _2: &i32) -> i32 {
         _4 = &_3;
         StorageLive(_5);
         StorageLive(_6);
-        _6 = &(*_2);
+        _6 = _2;
         StorageLive(_7);
-        _7 = &(*_2);
+        _7 = _2;
         _5 = (move _6, move _7);
         StorageLive(_8);
         _8 = move (_5.0: &i32);

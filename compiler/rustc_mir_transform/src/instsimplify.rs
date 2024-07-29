@@ -13,9 +13,25 @@ use rustc_target::spec::abi::Abi;
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::take_array;
 
-pub struct InstSimplify;
+pub enum InstSimplify {
+    BeforeInline,
+    AfterSimplifyCfg,
+}
+
+impl InstSimplify {
+    pub fn name(&self) -> &'static str {
+        match self {
+            InstSimplify::BeforeInline => "InstSimplify-before-inline",
+            InstSimplify::AfterSimplifyCfg => "InstSimplify-after-simplifycfg",
+        }
+    }
+}
 
 impl<'tcx> MirPass<'tcx> for InstSimplify {
+    fn name(&self) -> &'static str {
+        self.name()
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

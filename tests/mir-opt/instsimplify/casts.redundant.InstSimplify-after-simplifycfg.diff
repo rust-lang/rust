@@ -1,5 +1,5 @@
-- // MIR for `redundant` before InstSimplify
-+ // MIR for `redundant` after InstSimplify
+- // MIR for `redundant` before InstSimplify-after-simplifycfg
++ // MIR for `redundant` after InstSimplify-after-simplifycfg
   
   fn redundant(_1: *const &u8) -> *const &u8 {
       debug x => _1;
