@@ -2921,7 +2921,7 @@ impl<'a, K, V> Cursor<'a, K, V> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&self) -> Option<(&'a K, &'a V)> {
         self.clone().next()
@@ -2963,7 +2963,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&mut self) -> Option<(&K, &mut V)> {
         let (k, v) = self.inner.peek_next()?;
@@ -3061,7 +3061,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&mut self) -> Option<(&mut K, &mut V)> {
         let current = self.current.as_mut()?;
