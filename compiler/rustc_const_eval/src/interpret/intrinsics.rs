@@ -243,7 +243,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (a_offset, b_offset, is_addr) = if M::Provenance::OFFSET_IS_ADDR {
                     (a.addr().bytes(), b.addr().bytes(), /*is_addr*/ true)
                 } else {
-                    match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
+                    match (self.ptr_try_get_alloc_id(a, 0), self.ptr_try_get_alloc_id(b, 0)) {
                         (Err(a), Err(b)) => {
                             // Neither pointer points to an allocation, so they are both absolute.
                             (a, b, /*is_addr*/ true)
@@ -312,7 +312,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Check that the memory between them is dereferenceable at all, starting from the
-                // base pointer: `dist` is `a - b`, so it is based on `b`.
+                // origin pointer: `dist` is `a - b`, so it is based on `b`.
                 self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)?;
                 // Then check that this is also dereferenceable from `a`. This ensures that they are
                 // derived from the same allocation.

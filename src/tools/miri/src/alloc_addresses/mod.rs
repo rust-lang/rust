@@ -105,15 +105,17 @@ impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Returns the exposed `AllocId` that corresponds to the specified addr,
     // or `None` if the addr is out of bounds
-    fn alloc_id_from_addr(&self, addr: u64) -> Option<AllocId> {
+    fn alloc_id_from_addr(&self, addr: u64, size: i64) -> Option<AllocId> {
         let ecx = self.eval_context_ref();
         let global_state = ecx.machine.alloc_addresses.borrow();
         assert!(global_state.provenance_mode != ProvenanceMode::Strict);
 
+        // We always search the allocation to the right of this address. So if the size is structly
+        // negative, we have to search for `addr-1` instead.
+        let addr = if size >= 0 { addr } else { addr.saturating_sub(1) };
         let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
 
         // Determine the in-bounds provenance for this pointer.
-        // (This is only called on an actual access, so in-bounds is the only possible kind of provenance.)
         let alloc_id = match pos {
             Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
             Err(0) => None,
@@ -318,7 +320,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// When a pointer is used for a memory access, this computes where in which allocation the
     /// access is going.
-    fn ptr_get_alloc(&self, ptr: interpret::Pointer<Provenance>) -> Option<(AllocId, Size)> {
+    fn ptr_get_alloc(
+        &self,
+        ptr: interpret::Pointer<Provenance>,
+        size: i64,
+    ) -> Option<(AllocId, Size)> {
         let ecx = self.eval_context_ref();
 
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
@@ -327,7 +333,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             alloc_id
         } else {
             // A wildcard pointer.
-            ecx.alloc_id_from_addr(addr.bytes())?
+            ecx.alloc_id_from_addr(addr.bytes(), size)?
         };
 
         // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_root_pointer
