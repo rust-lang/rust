@@ -2552,7 +2552,7 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
-                    let mut source_root = source_root;
+                    let mut source_root = source_root.as_ref();
                     while let Some(sr) = source_root {
                         if let Some((file, _)) = self.ratoml_file.get(&sr) {
                             match file {
@@ -2568,7 +2568,7 @@ macro_rules! _impl_for_config_data {
                                 }
                             }
                         }
-                        source_root = self.source_root_parent_map.get(&sr).copied();
+                        source_root = self.source_root_parent_map.get(&sr);
                     }
 
                     if let Some(v) = self.client_config.0.local.$field.as_ref() {
@@ -2596,7 +2596,7 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root : Option<SourceRootId>) -> &$ty {
-                    let mut source_root = source_root;
+                    let mut source_root = source_root.as_ref();
                     while let Some(sr) = source_root {
                         if let Some((file, _)) = self.ratoml_file.get(&sr) {
                             match file {
@@ -2609,7 +2609,7 @@ macro_rules! _impl_for_config_data {
                             }
                         }
 
-                        source_root = self.source_root_parent_map.get(&sr).copied();
+                        source_root = self.source_root_parent_map.get(&sr);
                     }
 
                     if let Some(v) = self.client_config.0.global.$field.as_ref() {
