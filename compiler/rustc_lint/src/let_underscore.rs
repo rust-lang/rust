@@ -104,7 +104,6 @@ const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::LetStmt<'_>) {
         if matches!(local.source, rustc_hir::LocalSource::AsyncFn) {
             return;
@@ -156,12 +155,12 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 is_assign_desugar: matches!(local.source, rustc_hir::LocalSource::AssignDesugar(_)),
             };
             if is_sync_lock {
-                let mut span = MultiSpan::from_span(pat.span);
-                span.push_span_label(
-                    pat.span,
-                    "this lock is not assigned to a binding and is immediately dropped".to_string(),
+                let span = MultiSpan::from_span(pat.span);
+                cx.emit_span_lint(
+                    LET_UNDERSCORE_LOCK,
+                    span,
+                    NonBindingLet::SyncLock { sub, pat: pat.span },
                 );
-                cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
             // Only emit let_underscore_drop for top-level `_` patterns.
             } else if can_use_init.is_some() {
                 cx.emit_span_lint(LET_UNDERSCORE_DROP, local.span, NonBindingLet::DropType { sub });
