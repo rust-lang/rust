@@ -116,8 +116,14 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
-        let mut cargo =
-            builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, "clippy");
+        let mut cargo = builder::Cargo::new(
+            builder,
+            compiler,
+            Mode::Std,
+            SourceType::InTree,
+            target,
+            Kind::Clippy,
+        );
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
@@ -178,7 +184,7 @@ impl Step for Rustc {
             builder.ensure(compile::Std::new(compiler, compiler.host));
             builder.ensure(compile::Std::new(compiler, target));
         } else {
-            builder.ensure(check::Std::new(target));
+            builder.ensure(check::Std::new_with_build_kind(target, Some(Kind::Check)));
         }
 
         let mut cargo = builder::Cargo::new(
@@ -187,7 +193,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            "clippy",
+            Kind::Clippy,
         );
 
         rustc_cargo(builder, &mut cargo, target, &compiler);
@@ -245,14 +251,14 @@ macro_rules! lint_any {
                 let compiler = builder.compiler(builder.top_stage, builder.config.build);
                 let target = self.target;
 
-                builder.ensure(check::Rustc::new(target, builder));
+                builder.ensure(check::Rustc::new_with_build_kind(target, builder, Some(Kind::Check)));
 
                 let cargo = prepare_tool_cargo(
                     builder,
                     compiler,
                     Mode::ToolRustc,
                     target,
-                    "clippy",
+                    Kind::Clippy,
                     $path,
                     SourceType::InTree,
                     &[],

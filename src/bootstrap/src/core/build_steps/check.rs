@@ -12,16 +12,6 @@ use crate::core::builder::{
 use crate::core::config::TargetSelection;
 use crate::{Compiler, Mode, Subcommand};
 
-pub fn cargo_subcommand(kind: Kind) -> &'static str {
-    match kind {
-        Kind::Check
-        // We ensure check steps for both std and rustc from build_steps/clippy, so handle `Kind::Clippy` as well.
-        | Kind::Clippy => "check",
-        Kind::Fix => "fix",
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
@@ -31,11 +21,22 @@ pub struct Std {
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Vec<String>,
+    /// Override `Builder::kind` on cargo invocations.
+    ///
+    /// By default, `Builder::kind` is propagated as the subcommand to the cargo invocations.
+    /// However, there are cases when this is not desirable. For example, when running `x clippy $tool_name`,
+    /// passing `Builder::kind` to cargo invocations would run clippy on the entire compiler and library,
+    /// which is not useful if we only want to lint a few crates with specific rules.
+    override_build_kind: Option<Kind>,
 }
 
 impl Std {
     pub fn new(target: TargetSelection) -> Self {
-        Self { target, crates: vec![] }
+        Self::new_with_build_kind(target, None)
+    }
+
+    pub fn new_with_build_kind(target: TargetSelection, kind: Option<Kind>) -> Self {
+        Self { target, crates: vec![], override_build_kind: kind }
     }
 }
 
@@ -49,7 +50,7 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Library);
-        run.builder.ensure(Std { target: run.target, crates });
+        run.builder.ensure(Std { target: run.target, crates, override_build_kind: None });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -64,7 +65,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            self.override_build_kind.unwrap_or(builder.kind),
         );
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -118,7 +119,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            self.override_build_kind.unwrap_or(builder.kind),
         );
 
         // If we're not in stage 0, tests and examples will fail to compile
@@ -159,16 +160,31 @@ pub struct Rustc {
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Vec<String>,
+    /// Override `Builder::kind` on cargo invocations.
+    ///
+    /// By default, `Builder::kind` is propagated as the subcommand to the cargo invocations.
+    /// However, there are cases when this is not desirable. For example, when running `x clippy $tool_name`,
+    /// passing `Builder::kind` to cargo invocations would run clippy on the entire compiler and library,
+    /// which is not useful if we only want to lint a few crates with specific rules.
+    override_build_kind: Option<Kind>,
 }
 
 impl Rustc {
     pub fn new(target: TargetSelection, builder: &Builder<'_>) -> Self {
+        Self::new_with_build_kind(target, builder, None)
+    }
+
+    pub fn new_with_build_kind(
+        target: TargetSelection,
+        builder: &Builder<'_>,
+        kind: Option<Kind>,
+    ) -> Self {
         let crates = builder
             .in_tree_crates("rustc-main", Some(target))
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        Self { target, crates }
+        Self { target, crates, override_build_kind: kind }
     }
 }
 
@@ -183,7 +199,7 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc { target: run.target, crates });
+        run.builder.ensure(Rustc { target: run.target, crates, override_build_kind: None });
     }
 
     /// Builds the compiler.
@@ -204,7 +220,7 @@ impl Step for Rustc {
             builder.ensure(crate::core::build_steps::compile::Std::new(compiler, compiler.host));
             builder.ensure(crate::core::build_steps::compile::Std::new(compiler, target));
         } else {
-            builder.ensure(Std::new(target));
+            builder.ensure(Std::new_with_build_kind(target, self.override_build_kind));
         }
 
         let mut cargo = builder::Cargo::new(
@@ -213,7 +229,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            self.override_build_kind.unwrap_or(builder.kind),
         );
 
         rustc_cargo(builder, &mut cargo, target, &compiler);
@@ -291,7 +307,7 @@ impl Step for CodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            cargo_subcommand(builder.kind),
+            builder.kind,
         );
 
         cargo
@@ -349,7 +365,7 @@ impl Step for RustAnalyzer {
             compiler,
             Mode::ToolRustc,
             target,
-            cargo_subcommand(builder.kind),
+            builder.kind,
             "src/tools/rust-analyzer",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
@@ -417,7 +433,7 @@ macro_rules! tool_check_step {
                     compiler,
                     Mode::ToolRustc,
                     target,
-                    cargo_subcommand(builder.kind),
+                    builder.kind,
                     $path,
                     $source_type,
                     &[],
