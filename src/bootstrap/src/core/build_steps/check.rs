@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use crate::core::build_steps::compile::{
-    add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
+    add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
 use crate::core::build_steps::tool::{prepare_tool_cargo, SourceType};
 use crate::core::builder::{
@@ -49,7 +49,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.make_run_crates(Alias::Library);
+        let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std { target: run.target, crates, override_build_kind: None });
     }
 

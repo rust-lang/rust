@@ -847,7 +847,6 @@ impl Step for RustdocJSStd {
         builder.ensure(crate::core::build_steps::doc::Std::new(
             builder.top_stage,
             self.target,
-            builder,
             DocumentationFormat::Html,
         ));
         let _guard = builder.msg(

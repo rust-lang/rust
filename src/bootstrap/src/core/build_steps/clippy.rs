@@ -4,6 +4,7 @@ use super::compile::{librustc_stamp, libstd_stamp, run_cargo, rustc_cargo, std_c
 use super::tool::{prepare_tool_cargo, SourceType};
 use super::{check, compile};
 use crate::builder::{Builder, ShouldRun};
+use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
 use crate::core::builder::{crate_description, Alias, Kind, RunConfig, Step};
 use crate::{Mode, Subcommand, TargetSelection};
@@ -106,7 +107,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.make_run_crates(Alias::Library);
+        let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std { target: run.target, crates });
     }
 
