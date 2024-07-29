@@ -1207,25 +1207,29 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir().expect_item(def_id);
 
-    let (is_auto, safety, items) = match item.kind {
+    let (is_alias, is_auto, safety, items) = match item.kind {
         hir::ItemKind::Trait(is_auto, safety, .., items) => {
-            (is_auto == hir::IsAuto::Yes, safety, items)
+            (false, is_auto == hir::IsAuto::Yes, safety, items)
         }
-        hir::ItemKind::TraitAlias(..) => (false, hir::Safety::Safe, &[][..]),
+        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe, &[][..]),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
-    let constness = if tcx.has_attr(def_id, sym::const_trait) {
+    // Only regular traits can be const.
+    let constness = if !is_alias && tcx.has_attr(def_id, sym::const_trait) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
     };
+
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
-    let is_marker = tcx.has_attr(def_id, sym::marker);
+    // Only regular traits can be marker.
+    let is_marker = !is_alias && tcx.has_attr(def_id, sym::marker);
+
     let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
     let is_fundamental = tcx.has_attr(def_id, sym::fundamental);
 
