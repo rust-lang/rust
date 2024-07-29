@@ -26,7 +26,7 @@ use std::sync::OnceLock;
 use std::time::SystemTime;
 use std::{env, io, str};
 
-use build_helper::ci::{gha, CiEnv};
+use build_helper::ci::gha;
 use build_helper::exit;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
@@ -168,7 +168,6 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
-    ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
 
@@ -400,7 +399,6 @@ impl Build {
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
-            ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
 
