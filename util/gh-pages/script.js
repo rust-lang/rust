@@ -575,6 +575,32 @@ function setTheme(theme, store) {
     }
 }
 
+function handleShortcut(ev) {
+    if (ev.ctrlKey || ev.altKey || ev.metaKey) {
+        return;
+    }
+
+    if (document.activeElement.tagName === "INPUT") {
+        if (ev.key === "Escape") {
+            document.activeElement.blur();
+        }
+    } else {
+        switch (ev.key) {
+            case "s":
+            case "S":
+            case "/":
+                ev.preventDefault(); // To prevent the key to be put into the input.
+                document.getElementById("search-input").focus();
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+document.addEventListener("keypress", handleShortcut);
+document.addEventListener("keydown", handleShortcut);
+
 // loading the theme after the initial load
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
 const theme = localStorage.getItem('clippy-lint-list-theme');
