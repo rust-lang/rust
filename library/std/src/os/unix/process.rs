@@ -114,7 +114,7 @@ pub trait CommandExt: Sealed {
     /// `before_exec` used to be a safe method, but it needs to be unsafe since the closure may only
     /// perform operations that are *async-signal-safe*. Hence it got deprecated in favor of the
     /// unsafe [`pre_exec`]. Meanwhile, Rust gained the ability to make an existing safe method
-    /// fully unsafe in a new edition, which is how `before_exec` became `unsafe`It still also
+    /// fully unsafe in a new edition, which is how `before_exec` became `unsafe`. It still also
     /// remains deprecated; `pre_exec` should be used instead.
     ///
     /// [`pre_exec`]: CommandExt::pre_exec
