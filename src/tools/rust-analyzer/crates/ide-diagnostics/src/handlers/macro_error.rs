@@ -48,7 +48,7 @@ macro_rules! include { () => {} }
 macro_rules! compile_error { () => {} }
 
   include!("doesntexist");
-//^^^^^^^ error: failed to load file `doesntexist`
+         //^^^^^^^^^^^^^ error: failed to load file `doesntexist`
 
   compile_error!("compile_error macro works");
 //^^^^^^^^^^^^^ error: compile_error macro works
@@ -128,7 +128,7 @@ macro_rules! env { () => {} }
 macro_rules! concat { () => {} }
 
   include!(concat!(env!("OUT_DIR"), "/out.rs"));
-//^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
+                      //^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
 "#,
         );
     }
@@ -163,20 +163,25 @@ macro_rules! include {}
 
 #[rustc_builtin_macro]
 macro_rules! compile_error {}
+#[rustc_builtin_macro]
+macro_rules! concat {}
 
 fn main() {
     // Test a handful of built-in (eager) macros:
 
     include!(invalid);
-  //^^^^^^^ error: expected string literal
+           //^^^^^^^ error: expected string literal
     include!("does not exist");
-  //^^^^^^^ error: failed to load file `does not exist`
+           //^^^^^^^^^^^^^^^^ error: failed to load file `does not exist`
+
+    include!(concat!("does ", "not ", "exist"));
+                  //^^^^^^^^^^^^^^^^^^^^^^^^^^ error: failed to load file `does not exist`
 
     env!(invalid);
-  //^^^ error: expected string literal
+       //^^^^^^^ error: expected string literal
 
     env!("OUT_DIR");
-  //^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
+       //^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
 
     compile_error!("compile_error works");
   //^^^^^^^^^^^^^ error: compile_error works
@@ -201,7 +206,7 @@ fn f() {
     m!();
 
     m!(hi);
-  //^ error: leftover tokens
+    //^ error: leftover tokens
 }
       "#,
         );

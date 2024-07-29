@@ -837,13 +837,17 @@ fn macro_call_diagnostics(
         let node =
             InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
         let (message, error) = err.render_to_string(db.upcast());
-        let precise_location = Some(
-            err.span().range
-                + db.ast_id_map(err.span().anchor.file_id.into())
-                    .get_erased(err.span().anchor.ast_id)
-                    .text_range()
-                    .start(),
-        );
+        let precise_location = if err.span().anchor.file_id == file_id {
+            Some(
+                err.span().range
+                    + db.ast_id_map(err.span().anchor.file_id.into())
+                        .get_erased(err.span().anchor.ast_id)
+                        .text_range()
+                        .start(),
+            )
+        } else {
+            None
+        };
         acc.push(MacroError { node, precise_location, message, error }.into());
     }
 
@@ -1798,13 +1802,17 @@ impl DefWithBody {
                 BodyDiagnostic::MacroError { node, err } => {
                     let (message, error) = err.render_to_string(db.upcast());
 
-                    let precise_location = Some(
-                        err.span().range
-                            + db.ast_id_map(err.span().anchor.file_id.into())
-                                .get_erased(err.span().anchor.ast_id)
-                                .text_range()
-                                .start(),
-                    );
+                    let precise_location = if err.span().anchor.file_id == node.file_id {
+                        Some(
+                            err.span().range
+                                + db.ast_id_map(err.span().anchor.file_id.into())
+                                    .get_erased(err.span().anchor.ast_id)
+                                    .text_range()
+                                    .start(),
+                        )
+                    } else {
+                        None
+                    };
                     MacroError {
                         node: (*node).map(|it| it.into()),
                         precise_location,

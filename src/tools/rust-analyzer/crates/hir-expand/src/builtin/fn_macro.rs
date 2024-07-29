@@ -460,10 +460,10 @@ fn compile_error_expand(
     let err = match &*tt.token_trees {
         [tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             symbol: text,
-            span,
+            span: _,
             kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
             suffix: _,
-        }))] => ExpandError::other(*span, Box::from(unescape_str(text).as_str())),
+        }))] => ExpandError::other(span, Box::from(unescape_str(text).as_str())),
         _ => ExpandError::other(span, "`compile_error!` argument must be a string"),
     };
 
@@ -706,18 +706,19 @@ fn relative_file(
 fn parse_string(tt: &tt::Subtree) -> Result<(Symbol, Span), ExpandError> {
     tt.token_trees
         .first()
+        .ok_or(tt.delimiter.open.cover(tt.delimiter.close))
         .and_then(|tt| match tt {
             tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
                 symbol: text,
                 span,
                 kind: tt::LitKind::Str,
                 suffix: _,
-            })) => Some((unescape_str(text), *span)),
+            })) => Ok((unescape_str(text), *span)),
             // FIXME: We wrap expression fragments in parentheses which can break this expectation
             // here
             // Remove this once we handle none delims correctly
-            tt::TokenTree::Subtree(t) if t.delimiter.kind == DelimiterKind::Parenthesis => {
-                t.token_trees.first().and_then(|tt| match tt {
+            tt::TokenTree::Subtree(tt) if tt.delimiter.kind == DelimiterKind::Parenthesis => {
+                tt.token_trees.first().and_then(|tt| match tt {
                     tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
                         symbol: text,
                         span,
@@ -727,9 +728,11 @@ fn parse_string(tt: &tt::Subtree) -> Result<(Symbol, Span), ExpandError> {
                     _ => None,
                 })
             }
-            _ => None,
+            .ok_or(tt.delimiter.open.cover(tt.delimiter.close)),
+            ::tt::TokenTree::Leaf(l) => Err(*l.span()),
+            ::tt::TokenTree::Subtree(tt) => Err(tt.delimiter.open.cover(tt.delimiter.close)),
         })
-        .ok_or(ExpandError::other(tt.delimiter.open, "expected string literal"))
+        .map_err(|span| ExpandError::other(span, "expected string literal"))
 }
 
 fn include_expand(
@@ -763,7 +766,8 @@ pub fn include_input_to_file_id(
     arg_id: MacroCallId,
     arg: &tt::Subtree,
 ) -> Result<EditionedFileId, ExpandError> {
-    relative_file(db, arg_id, parse_string(arg)?.0.as_str(), false, arg.delimiter.open)
+    let (s, span) = parse_string(arg)?;
+    relative_file(db, arg_id, s.as_str(), false, span)
 }
 
 fn include_bytes_expand(
