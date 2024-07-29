@@ -1101,6 +1101,8 @@ enum CandidateState<'pat, 'tcx> {
         /// - See [`Builder::remove_never_subcandidates`].
         /// Invariant: this must not be empty.
         subcandidates: Vec<Candidate<'pat, 'tcx>>,
+        /// Whether the subcandidates should be merged together after they've been processed.
+        simplify: bool,
         /// Any match pairs that may remain. They will be processed in
         /// `test_remaining_match_pairs_after_or`.
         remaining_match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
@@ -1981,9 +1983,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let CandidateState::Incomplete { match_pairs, .. } = &mut candidate.state else { bug!() };
         let match_pair = match_pairs.remove(0);
         let remaining_match_pairs = mem::take(match_pairs);
-        let TestCase::Or { pats, .. } = match_pair.test_case else { bug!() };
+        let TestCase::Or { pats, contains_bindings } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
         let or_span = match_pair.pattern.span;
+        let simplify = !candidate.has_guard && !contains_bindings;
         let mut subcandidates: Vec<_> = pats
             .into_vec()
             .into_iter()
@@ -1991,7 +1994,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .collect();
         subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
         candidate.state =
-            CandidateState::Expanded { or_span, subcandidates, remaining_match_pairs };
+            CandidateState::Expanded { or_span, subcandidates, simplify, remaining_match_pairs };
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
@@ -2083,24 +2086,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Note that this takes place _after_ the subcandidates have participated
     /// in match tree lowering.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
-        let CandidateState::Expanded { subcandidates, or_span, remaining_match_pairs, .. } =
-            &mut candidate.state
+        let CandidateState::Expanded {
+            subcandidates,
+            or_span,
+            simplify: true,
+            remaining_match_pairs,
+            ..
+        } = &mut candidate.state
         else {
             return;
         };
-        if candidate.has_guard {
-            // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
-            return;
-        }
-
-        // FIXME(or_patterns; matthewjasper) Try to be more aggressive here.
-        let can_merge = subcandidates.iter().all(|subcandidate| {
-            !matches!(subcandidate.state, CandidateState::Expanded { .. })
-                && subcandidate.extra_data.is_empty()
-        });
-        if !can_merge {
-            return;
-        }
 
         let mut last_otherwise = None;
         let shared_pre_binding_block = self.cfg.start_new_block();
