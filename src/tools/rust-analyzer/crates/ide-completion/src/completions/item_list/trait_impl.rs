@@ -195,9 +195,13 @@ fn add_function_impl(
     });
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(format!("{}fn {}", if is_async { "async "} else { "" },fn_name.display(ctx.db)))
-        .set_documentation(func.docs(ctx.db))
-        .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+    item.lookup_by(format!(
+        "{}fn {}",
+        if is_async { "async " } else { "" },
+        fn_name.display(ctx.db)
+    ))
+    .set_documentation(func.docs(ctx.db))
+    .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
     if let Some(source) = ctx.sema.source(func) {
         let assoc_item = ast::AssocItem::Fn(source.value);

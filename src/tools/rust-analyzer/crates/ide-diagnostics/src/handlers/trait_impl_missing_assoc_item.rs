@@ -13,7 +13,7 @@ pub(crate) fn trait_impl_missing_assoc_item(
 ) -> Diagnostic {
     let missing = d.missing.iter().format_with(", ", |(name, item), f| {
         f(&match *item {
-            hir::AssocItem::Function(func) if func.is_async(ctx.sema.db)  => "`async fn ",
+            hir::AssocItem::Function(func) if func.is_async(ctx.sema.db) => "`async fn ",
             hir::AssocItem::Function(_) => "`fn ",
             hir::AssocItem::Const(_) => "`const ",
             hir::AssocItem::TypeAlias(_) => "`type ",
