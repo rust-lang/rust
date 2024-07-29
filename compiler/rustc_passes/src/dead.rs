@@ -833,8 +833,9 @@ fn check_item<'tcx>(
                 if let Some(fn_sig) =
                     tcx.hir().fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
                 {
-                    may_construct_self =
-                        matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None);
+                    may_construct_self = matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
+                            // Also considering const functions with `&self` to fix #128272
+                            || fn_sig.header.is_const() && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::RefImm);
                 }
 
                 // for trait impl blocks,
