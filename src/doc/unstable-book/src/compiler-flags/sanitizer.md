@@ -787,6 +787,10 @@ A runtime must be provided by the application or operating system.
 
 See the [Clang ShadowCallStack documentation][clang-scs] for more details.
 
+* `aarch64-unknown-none`
+
+In addition to support from a runtime by the application or operating system, the `-Zfixed-x18` flag is also mandatory.
+
 # ThreadSanitizer
 
 ThreadSanitizer is a data race detection tool. It is supported on the following
