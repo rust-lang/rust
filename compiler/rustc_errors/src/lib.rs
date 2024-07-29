@@ -61,7 +61,7 @@ use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::LintExpectationId;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Loc, Span, DUMMY_SP};
+use rustc_span::{AttrId, Loc, Span, DUMMY_SP};
 use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -1086,7 +1086,7 @@ impl<'a> DiagCtxtHandle<'a> {
 
     pub fn update_unstable_expectation_id(
         &self,
-        unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
+        unstable_to_stable: FxIndexMap<AttrId, LintExpectationId>,
     ) {
         let mut inner = self.inner.borrow_mut();
         let diags = std::mem::take(&mut inner.unstable_expect_diagnostics);
@@ -1095,7 +1095,7 @@ impl<'a> DiagCtxtHandle<'a> {
         if !diags.is_empty() {
             inner.suppressed_expected_diag = true;
             for mut diag in diags.into_iter() {
-                diag.update_unstable_expectation_id(unstable_to_stable);
+                diag.update_unstable_expectation_id(&unstable_to_stable);
 
                 // Here the diagnostic is given back to `emit_diagnostic` where it was first
                 // intercepted. Now it should be processed as usual, since the unstable expectation
@@ -1107,11 +1107,11 @@ impl<'a> DiagCtxtHandle<'a> {
         inner
             .stashed_diagnostics
             .values_mut()
-            .for_each(|(diag, _guar)| diag.update_unstable_expectation_id(unstable_to_stable));
+            .for_each(|(diag, _guar)| diag.update_unstable_expectation_id(&unstable_to_stable));
         inner
             .future_breakage_diagnostics
             .iter_mut()
-            .for_each(|diag| diag.update_unstable_expectation_id(unstable_to_stable));
+            .for_each(|diag| diag.update_unstable_expectation_id(&unstable_to_stable));
     }
 
     /// This methods steals all [`LintExpectationId`]s that are stored inside
@@ -1557,7 +1557,7 @@ impl DiagCtxtInner {
                 if let LintExpectationId::Unstable { .. } = expect_id {
                     unreachable!(); // this case was handled at the top of this function
                 }
-                self.fulfilled_expectations.insert(expect_id.normalize());
+                self.fulfilled_expectations.insert(expect_id);
                 if let Expect(_) = diagnostic.level {
                     // Nothing emitted here for expected lints.
                     TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
