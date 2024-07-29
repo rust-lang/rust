@@ -1,8 +1,6 @@
 //! Logic for transforming the raw code given by the user into something actually
 //! runnable, e.g. by adding a `main` function if it doesn't already exist.
 
-use crate::html::markdown::LangString;
-
 use std::io;
 
 use rustc_ast as ast;
@@ -18,6 +16,7 @@ use rustc_span::symbol::sym;
 use rustc_span::FileName;
 
 use super::GlobalTestOptions;
+use crate::html::markdown::LangString;
 
 /// This struct contains information about the doctest itself which is then used to generate
 /// doctest source code appropriately.

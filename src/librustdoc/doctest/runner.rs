@@ -1,7 +1,7 @@
+use std::fmt::Write;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::edition::Edition;
-
-use std::fmt::Write;
 
 use crate::doctest::{
     run_test, DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDocTest,

@@ -1,5 +1,6 @@
-use run_make_support::{cwd, diff, rustc, rustdoc};
 use std::path::Path;
+
+use run_make_support::{cwd, diff, rustc, rustdoc};
 
 fn test_and_compare(input_file: &str, stdout_file: &str, edition: &str, dep: &Path) {
     let mut cmd = rustdoc();
