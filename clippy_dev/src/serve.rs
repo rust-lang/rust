@@ -1,5 +1,3 @@
-use std::ffi::OsStr;
-use std::num::ParseIntError;
 use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, SystemTime};
@@ -57,9 +55,4 @@ fn mtime(path: impl AsRef<Path>) -> SystemTime {
             .and_then(|metadata| metadata.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH)
     }
-}
-
-#[allow(clippy::missing_errors_doc)]
-pub fn validate_port(arg: &OsStr) -> Result<(), ParseIntError> {
-    arg.to_string_lossy().parse::<u16>().map(|_| ())
 }

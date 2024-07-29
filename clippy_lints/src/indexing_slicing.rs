@@ -70,8 +70,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// # #![allow(unused)]
-    ///
     /// # let x = vec![0; 5];
     /// # let y = [0, 1, 2, 3];
     /// x.get(2);
