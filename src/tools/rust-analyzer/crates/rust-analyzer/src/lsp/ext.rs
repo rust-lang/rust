@@ -75,14 +75,6 @@ impl Request for MemoryUsage {
     const METHOD: &'static str = "rust-analyzer/memoryUsage";
 }
 
-pub enum ShuffleCrateGraph {}
-
-impl Request for ShuffleCrateGraph {
-    type Params = ();
-    type Result = ();
-    const METHOD: &'static str = "rust-analyzer/shuffleCrateGraph";
-}
-
 pub enum ReloadWorkspace {}
 
 impl Request for ReloadWorkspace {

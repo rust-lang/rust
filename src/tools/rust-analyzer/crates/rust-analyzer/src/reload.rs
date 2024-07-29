@@ -16,8 +16,7 @@
 use std::{iter, mem};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
-use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros};
-use ide::CrateId;
+use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
 use ide_db::{
     base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, Version},
     FxHashMap,
@@ -371,43 +370,44 @@ impl GlobalState {
                 }
             };
 
-            let mut res = FxHashMap::default();
+            let mut builder = ProcMacrosBuilder::default();
             let chain = proc_macro_clients
                 .iter()
                 .map(|res| res.as_ref().map_err(|e| e.to_string()))
-                .chain(iter::repeat_with(|| Err("Proc macros servers are not running".into())));
+                .chain(iter::repeat_with(|| Err("proc-macro-srv is not running".into())));
             for (client, paths) in chain.zip(paths) {
-                res.extend(paths.into_iter().map(move |(crate_id, res)| {
-                    (
-                        crate_id,
-                        res.map_or_else(
-                            |_| Err("proc macro crate is missing dylib".to_owned()),
-                            |(crate_name, path)| {
-                                progress(path.to_string());
-                                client.as_ref().map_err(Clone::clone).and_then(|client| {
-                                    load_proc_macro(
-                                        client,
-                                        &path,
-                                        crate_name
-                                            .as_deref()
-                                            .and_then(|crate_name| {
-                                                ignored_proc_macros.iter().find_map(
-                                                    |(name, macros)| {
-                                                        eq_ignore_underscore(name, crate_name)
+                paths
+                    .into_iter()
+                    .map(move |(crate_id, res)| {
+                        (
+                            crate_id,
+                            res.map_or_else(
+                                |e| Err((e, true)),
+                                |(crate_name, path)| {
+                                    progress(path.to_string());
+                                    client.as_ref().map_err(|it| (it.clone(), true)).and_then(
+                                        |client| {
+                                            load_proc_macro(
+                                                client,
+                                                &path,
+                                                ignored_proc_macros
+                                                    .iter()
+                                                    .find_map(|(name, macros)| {
+                                                        eq_ignore_underscore(name, &crate_name)
                                                             .then_some(&**macros)
-                                                    },
-                                                )
-                                            })
-                                            .unwrap_or_default(),
+                                                    })
+                                                    .unwrap_or_default(),
+                                            )
+                                        },
                                     )
-                                })
-                            },
-                        ),
-                    )
-                }));
+                                },
+                            ),
+                        )
+                    })
+                    .for_each(|(krate, res)| builder.insert(krate, res));
             }
 
-            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(res))).unwrap();
+            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(builder.build()))).unwrap();
         });
     }
 
@@ -667,10 +667,17 @@ impl GlobalState {
             change.set_proc_macros(
                 crate_graph
                     .iter()
-                    .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
+                    .map(|id| (id, Err(("proc-macro has not been built yet".to_owned(), true))))
                     .collect(),
             );
             self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
+        } else {
+            change.set_proc_macros(
+                crate_graph
+                    .iter()
+                    .map(|id| (id, Err(("proc-macro expansion is disabled".to_owned(), false))))
+                    .collect(),
+            );
         }
         change.set_crate_graph(crate_graph);
         change.set_target_data_layouts(layouts);
@@ -809,12 +816,7 @@ pub fn ws_to_crate_graph(
     workspaces: &[ProjectWorkspace],
     extra_env: &FxHashMap<String, String>,
     mut load: impl FnMut(&AbsPath) -> Option<vfs::FileId>,
-) -> (
-    CrateGraph,
-    Vec<FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>>,
-    Vec<Result<Arc<str>, Arc<str>>>,
-    Vec<Option<Version>>,
-) {
+) -> (CrateGraph, Vec<ProcMacroPaths>, Vec<Result<Arc<str>, Arc<str>>>, Vec<Option<Version>>) {
     let mut crate_graph = CrateGraph::default();
     let mut proc_macro_paths = Vec::default();
     let mut layouts = Vec::default();

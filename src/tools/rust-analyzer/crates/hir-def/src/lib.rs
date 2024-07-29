@@ -75,9 +75,7 @@ use base_db::{
     CrateId,
 };
 use hir_expand::{
-    builtin_attr_macro::BuiltinAttrExpander,
-    builtin_derive_macro::BuiltinDeriveExpander,
-    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
     impl_intern_lookup,
@@ -1436,7 +1434,10 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         });
 
         let Some((call_site, path)) = path else {
-            return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
+            return Ok(ExpandResult::only_err(ExpandError::other(
+                span_map.span_for_range(self.value.syntax().text_range()),
+                "malformed macro invocation",
+            )));
         };
 
         macro_call_as_call_id_with_eager(

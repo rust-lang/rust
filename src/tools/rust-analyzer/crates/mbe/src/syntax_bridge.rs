@@ -212,15 +212,12 @@ where
 }
 
 /// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep<S>(
-    tt: &tt::Subtree<S>,
+pub fn parse_exprs_with_sep(
+    tt: &tt::Subtree<span::Span>,
     sep: char,
-    span: S,
+    span: span::Span,
     edition: Edition,
-) -> Vec<tt::Subtree<S>>
-where
-    S: Copy + fmt::Debug,
-{
+) -> Vec<tt::Subtree<span::Span>> {
     if tt.token_trees.is_empty() {
         return Vec::new();
     }
@@ -229,7 +226,12 @@ where
     let mut res = Vec::new();
 
     while iter.peek_n(0).is_some() {
-        let expanded = crate::expect_fragment(&mut iter, parser::PrefixEntryPoint::Expr, edition);
+        let expanded = crate::expect_fragment(
+            &mut iter,
+            parser::PrefixEntryPoint::Expr,
+            edition,
+            tt::DelimSpan { open: tt.delimiter.open, close: tt.delimiter.close },
+        );
 
         res.push(match expanded.value {
             None => break,

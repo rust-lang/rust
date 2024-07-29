@@ -1,5 +1,5 @@
 //! A set of high-level utility fixture methods to use in tests.
-use std::{iter, mem, ops::Not, str::FromStr, sync};
+use std::{iter, mem, str::FromStr, sync};
 
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileChange,
@@ -11,7 +11,7 @@ use hir_expand::{
     db::ExpandDatabase,
     files::FilePosition,
     proc_macro::{
-        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacros,
+        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacrosBuilder,
     },
     FileRange,
 };
@@ -303,7 +303,7 @@ impl ChangeFixture {
             }
         }
 
-        let mut proc_macros = ProcMacros::default();
+        let mut proc_macros = ProcMacrosBuilder::default();
         if !proc_macro_names.is_empty() {
             let proc_lib_file = file_id;
 
@@ -354,7 +354,7 @@ impl ChangeFixture {
 
         let mut change = ChangeWithProcMacros {
             source_change,
-            proc_macros: proc_macros.is_empty().not().then_some(proc_macros),
+            proc_macros: Some(proc_macros.build()),
             toolchains: Some(iter::repeat(toolchain).take(crate_graph.len()).collect()),
             target_data_layouts: Some(
                 iter::repeat(target_data_layout).take(crate_graph.len()).collect(),

@@ -934,7 +934,10 @@ fn project_json_to_crate_graph(
                 if *is_proc_macro {
                     if let Some(path) = proc_macro_dylib_path.clone() {
                         let node = Ok((
-                            display_name.as_ref().map(|it| it.canonical_name().as_str().to_owned()),
+                            display_name
+                                .as_ref()
+                                .map(|it| it.canonical_name().as_str().to_owned())
+                                .unwrap_or_else(|| format!("crate{}", idx.0)),
                             path,
                         ));
                         proc_macros.insert(crate_graph_crate_id, node);
@@ -1355,8 +1358,8 @@ fn add_target_crate_root(
     );
     if let TargetKind::Lib { is_proc_macro: true } = kind {
         let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
-            Some(it) => it.cloned().map(|path| Ok((Some(cargo_name.to_owned()), path))),
-            None => Some(Err("crate has not yet been built".to_owned())),
+            Some(it) => it.cloned().map(|path| Ok((cargo_name.to_owned(), path))),
+            None => Some(Err("proc-macro crate is missing its build data".to_owned())),
         };
         if let Some(proc_macro) = proc_macro {
             proc_macros.insert(crate_id, proc_macro);

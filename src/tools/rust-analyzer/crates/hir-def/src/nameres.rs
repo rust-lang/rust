@@ -145,8 +145,6 @@ struct DefMapCrateData {
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
-    /// The error that occurred when failing to load the proc-macro dll.
-    proc_macro_loading_error: Option<Box<str>>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<Symbol>,
@@ -169,7 +167,6 @@ impl DefMapCrateData {
             extern_prelude: FxIndexMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
-            proc_macro_loading_error: None,
             registered_attrs: Vec::new(),
             registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
             unstable_features: FxHashSet::default(),
@@ -189,7 +186,6 @@ impl DefMapCrateData {
             registered_attrs,
             registered_tools,
             unstable_features,
-            proc_macro_loading_error: _,
             rustc_coherence_is_core: _,
             no_core: _,
             no_std: _,
@@ -472,10 +468,6 @@ impl DefMap {
 
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.data.fn_proc_macro_mapping.get(&id).copied()
-    }
-
-    pub fn proc_macro_loading_error(&self) -> Option<&str> {
-        self.data.proc_macro_loading_error.as_deref()
     }
 
     pub fn krate(&self) -> CrateId {

@@ -6,9 +6,7 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 pub mod attrs;
-pub mod builtin_attr_macro;
-pub mod builtin_derive_macro;
-pub mod builtin_fn_macro;
+pub mod builtin;
 pub mod change;
 pub mod db;
 pub mod declarative;
@@ -19,7 +17,6 @@ pub mod inert_attr_macro;
 pub mod mod_path;
 pub mod name;
 pub mod proc_macro;
-pub mod quote;
 pub mod span_map;
 
 mod cfg_process;
@@ -29,7 +26,7 @@ use attrs::collect_attrs;
 use rustc_hash::FxHashMap;
 use triomphe::Arc;
 
-use std::{fmt, hash::Hash};
+use std::hash::Hash;
 
 use base_db::{salsa::InternValueTrivial, CrateId};
 use either::Either;
@@ -44,9 +41,10 @@ use syntax::{
 
 use crate::{
     attrs::AttrId,
-    builtin_attr_macro::BuiltinAttrExpander,
-    builtin_derive_macro::BuiltinDeriveExpander,
-    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin::{
+        include_input_to_file_id, BuiltinAttrExpander, BuiltinDeriveExpander,
+        BuiltinFnLikeExpander, EagerExpander,
+    },
     db::ExpandDatabase,
     mod_path::ModPath,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
@@ -126,46 +124,79 @@ impl_intern_lookup!(
 pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum ExpandError {
-    UnresolvedProcMacro(CrateId),
-    /// The macro expansion is disabled.
-    MacroDisabled,
-    MacroDefinition,
-    Mbe(mbe::ExpandError),
-    RecursionOverflow,
-    Other(Arc<Box<str>>),
-    ProcMacroPanic(Arc<Box<str>>),
+pub struct ExpandError {
+    inner: Arc<(ExpandErrorKind, Span)>,
 }
 
 impl ExpandError {
-    pub fn other(msg: impl Into<Box<str>>) -> Self {
-        ExpandError::Other(Arc::new(msg.into()))
+    pub fn new(span: Span, kind: ExpandErrorKind) -> Self {
+        ExpandError { inner: Arc::new((kind, span)) }
+    }
+    pub fn other(span: Span, msg: impl Into<Box<str>>) -> Self {
+        ExpandError { inner: Arc::new((ExpandErrorKind::Other(msg.into()), span)) }
+    }
+    pub fn kind(&self) -> &ExpandErrorKind {
+        &self.inner.0
+    }
+    pub fn span(&self) -> Span {
+        self.inner.1
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum ExpandErrorKind {
+    /// Attribute macro expansion is disabled.
+    ProcMacroAttrExpansionDisabled,
+    MissingProcMacroExpander(CrateId),
+    /// The macro for this call is disabled.
+    MacroDisabled,
+    /// The macro definition has errors.
+    MacroDefinition,
+    Mbe(mbe::ExpandErrorKind),
+    RecursionOverflow,
+    Other(Box<str>),
+    ProcMacroPanic(Box<str>),
+}
+
+impl ExpandError {
+    pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> (String, bool) {
+        self.inner.0.render_to_string(db)
+    }
+}
+
+impl ExpandErrorKind {
+    pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> (String, bool) {
+        match self {
+            ExpandErrorKind::ProcMacroAttrExpansionDisabled => {
+                ("procedural attribute macro expansion is disabled".to_owned(), false)
+            }
+            ExpandErrorKind::MacroDisabled => {
+                ("proc-macro is explicitly disabled".to_owned(), false)
+            }
+            &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
+                match db.proc_macros().get_error_for_crate(def_crate) {
+                    Some((e, hard_err)) => (e.to_owned(), hard_err),
+                    None => ("missing expander".to_owned(), true),
+                }
+            }
+            ExpandErrorKind::MacroDefinition => {
+                ("macro definition has parse errors".to_owned(), true)
+            }
+            ExpandErrorKind::Mbe(e) => (e.to_string(), true),
+            ExpandErrorKind::RecursionOverflow => {
+                ("overflow expanding the original macro".to_owned(), true)
+            }
+            ExpandErrorKind::Other(e) => ((**e).to_owned(), true),
+            ExpandErrorKind::ProcMacroPanic(e) => ((**e).to_owned(), true),
+        }
     }
 }
 
 impl From<mbe::ExpandError> for ExpandError {
     fn from(mbe: mbe::ExpandError) -> Self {
-        Self::Mbe(mbe)
+        ExpandError { inner: Arc::new((ExpandErrorKind::Mbe(mbe.inner.1.clone()), mbe.inner.0)) }
     }
 }
-
-impl fmt::Display for ExpandError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ExpandError::UnresolvedProcMacro(_) => f.write_str("unresolved proc-macro"),
-            ExpandError::Mbe(it) => it.fmt(f),
-            ExpandError::RecursionOverflow => f.write_str("overflow expanding the original macro"),
-            ExpandError::ProcMacroPanic(it) => {
-                f.write_str("proc-macro panicked: ")?;
-                f.write_str(it)
-            }
-            ExpandError::Other(it) => f.write_str(it),
-            ExpandError::MacroDisabled => f.write_str("macro disabled"),
-            ExpandError::MacroDefinition => f.write_str("macro definition has parse errors"),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
     pub def: MacroDefId,
@@ -277,11 +308,9 @@ impl HirFileIdExt for HirFileId {
                     let loc = db.lookup_intern_macro_call(file.macro_call_id);
                     if loc.def.is_include() {
                         if let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind {
-                            if let Ok(it) = builtin_fn_macro::include_input_to_file_id(
-                                db,
-                                file.macro_call_id,
-                                &eager.arg,
-                            ) {
+                            if let Ok(it) =
+                                include_input_to_file_id(db, file.macro_call_id, &eager.arg)
+                            {
                                 break it;
                             }
                         }
@@ -572,9 +601,7 @@ impl MacroCallLoc {
     ) -> Option<EditionedFileId> {
         if self.def.is_include() {
             if let MacroCallKind::FnLike { eager: Some(eager), .. } = &self.kind {
-                if let Ok(it) =
-                    builtin_fn_macro::include_input_to_file_id(db, macro_call_id, &eager.arg)
-                {
+                if let Ok(it) = include_input_to_file_id(db, macro_call_id, &eager.arg) {
                     return Some(it);
                 }
             }

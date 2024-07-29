@@ -141,7 +141,6 @@ function createCommands(): Record<string, CommandFactory> {
 
         analyzerStatus: { enabled: commands.analyzerStatus },
         memoryUsage: { enabled: commands.memoryUsage },
-        shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
         rebuildProcMacros: { enabled: commands.rebuildProcMacros },
         matchingBrace: { enabled: commands.matchingBrace },

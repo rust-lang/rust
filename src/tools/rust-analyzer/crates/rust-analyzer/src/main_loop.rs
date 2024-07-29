@@ -1018,7 +1018,6 @@ impl GlobalState {
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
             .on_sync_mut::<lsp_ext::RebuildProcMacros>(handlers::handle_proc_macros_rebuild)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
-            .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
             .on_sync_mut::<lsp_ext::RunTest>(handlers::handle_run_test)
             // Request handlers which are related to the user typing
             // are run on the main thread to reduce latency:
@@ -1054,6 +1053,7 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_request::GotoDeclaration>(handlers::handle_goto_declaration)
             .on::<NO_RETRY, lsp_request::GotoImplementation>(handlers::handle_goto_implementation)
             .on::<NO_RETRY, lsp_request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
+            // FIXME: This should not be tried as it contains offsets that can get outdated!
             .on::<RETRY, lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
             .on::<RETRY, lsp_request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
             .on::<NO_RETRY, lsp_request::CodeLensRequest>(handlers::handle_code_lens)

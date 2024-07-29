@@ -19,7 +19,7 @@ use hir_def::{
 };
 use hir_expand::{
     attrs::collect_attrs,
-    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::InRealFile,
     name::AsName,

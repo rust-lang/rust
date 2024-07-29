@@ -33,6 +33,16 @@ pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
 
 pub type Span = SpanData<SyntaxContextId>;
 
+impl Span {
+    pub fn cover(self, other: Span) -> Span {
+        if self.anchor != other.anchor {
+            return self;
+        }
+        let range = self.range.cover(other.range);
+        Span { range, ..self }
+    }
+}
+
 /// Spans represent a region of code, used by the IDE to be able link macro inputs and outputs
 /// together. Positions in spans are relative to some [`SpanAnchor`] to make them more incremental
 /// friendly.

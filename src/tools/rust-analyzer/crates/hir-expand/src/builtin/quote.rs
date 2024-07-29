@@ -17,22 +17,21 @@ pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
 // 2. #()* pattern repetition not supported now
 //    * But we can do it manually, see `test_quote_derive_copy_hack`
 #[doc(hidden)]
-#[macro_export]
-macro_rules! __quote {
+macro_rules! quote_impl__ {
     ($span:ident) => {
         Vec::<$crate::tt::TokenTree>::new()
     };
 
     ( @SUBTREE($span:ident) $delim:ident $($tt:tt)* ) => {
         {
-            let children = $crate::__quote!($span $($tt)*);
+            let children = $crate::builtin::quote::__quote!($span $($tt)*);
             $crate::tt::Subtree {
                 delimiter: crate::tt::Delimiter {
                     kind: crate::tt::DelimiterKind::$delim,
                     open: $span,
                     close: $span,
                 },
-                token_trees: $crate::quote::IntoTt::to_tokens(children).into_boxed_slice(),
+                token_trees: $crate::builtin::quote::IntoTt::to_tokens(children).into_boxed_slice(),
             }
         }
     };
@@ -69,9 +68,9 @@ macro_rules! __quote {
     // hash variable
     ($span:ident # $first:ident $($tail:tt)* ) => {
         {
-            let token = $crate::quote::ToTokenTree::to_token($first, $span);
+            let token = $crate::builtin::quote::ToTokenTree::to_token($first, $span);
             let mut tokens = vec![token.into()];
-            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $($tail)*));
+            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
             tokens.append(&mut tail_tokens);
             tokens
         }
@@ -79,22 +78,22 @@ macro_rules! __quote {
 
     ($span:ident ## $first:ident $($tail:tt)* ) => {
         {
-            let mut tokens = $first.into_iter().map(|it| $crate::quote::ToTokenTree::to_token(it, $span)).collect::<Vec<crate::tt::TokenTree>>();
-            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $($tail)*));
+            let mut tokens = $first.into_iter().map(|it| $crate::builtin::quote::ToTokenTree::to_token(it, $span)).collect::<Vec<crate::tt::TokenTree>>();
+            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
             tokens.append(&mut tail_tokens);
             tokens
         }
     };
 
     // Brace
-    ($span:ident  { $($tt:tt)* } ) => { $crate::__quote!(@SUBTREE($span) Brace $($tt)*) };
+    ($span:ident  { $($tt:tt)* } ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Brace $($tt)*) };
     // Bracket
-    ($span:ident  [ $($tt:tt)* ] ) => { $crate::__quote!(@SUBTREE($span) Bracket $($tt)*) };
+    ($span:ident  [ $($tt:tt)* ] ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Bracket $($tt)*) };
     // Parenthesis
-    ($span:ident  ( $($tt:tt)* ) ) => { $crate::__quote!(@SUBTREE($span) Parenthesis $($tt)*) };
+    ($span:ident  ( $($tt:tt)* ) ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Parenthesis $($tt)*) };
 
     // Literal
-    ($span:ident $tt:literal ) => { vec![$crate::quote::ToTokenTree::to_token($tt, $span).into()] };
+    ($span:ident $tt:literal ) => { vec![$crate::builtin::quote::ToTokenTree::to_token($tt, $span).into()] };
     // Ident
     ($span:ident $tt:ident ) => {
         vec![ {
@@ -108,36 +107,37 @@ macro_rules! __quote {
 
     // Puncts
     // FIXME: Not all puncts are handled
-    ($span:ident -> ) => {$crate::__quote!(@PUNCT($span) '-', '>')};
-    ($span:ident & ) => {$crate::__quote!(@PUNCT($span) '&')};
-    ($span:ident , ) => {$crate::__quote!(@PUNCT($span) ',')};
-    ($span:ident : ) => {$crate::__quote!(@PUNCT($span) ':')};
-    ($span:ident ; ) => {$crate::__quote!(@PUNCT($span) ';')};
-    ($span:ident :: ) => {$crate::__quote!(@PUNCT($span) ':', ':')};
-    ($span:ident . ) => {$crate::__quote!(@PUNCT($span) '.')};
-    ($span:ident < ) => {$crate::__quote!(@PUNCT($span) '<')};
-    ($span:ident > ) => {$crate::__quote!(@PUNCT($span) '>')};
-    ($span:ident ! ) => {$crate::__quote!(@PUNCT($span) '!')};
+    ($span:ident -> ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '-', '>')};
+    ($span:ident & ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '&')};
+    ($span:ident , ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ',')};
+    ($span:ident : ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ':')};
+    ($span:ident ; ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ';')};
+    ($span:ident :: ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ':', ':')};
+    ($span:ident . ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '.')};
+    ($span:ident < ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '<')};
+    ($span:ident > ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '>')};
+    ($span:ident ! ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '!')};
 
     ($span:ident $first:tt $($tail:tt)+ ) => {
         {
-            let mut tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $first ));
-            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $($tail)*));
+            let mut tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $first ));
+            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
 
             tokens.append(&mut tail_tokens);
             tokens
         }
     };
 }
+pub(super) use quote_impl__ as __quote;
 
 /// FIXME:
 /// It probably should implement in proc-macro
-#[macro_export]
-macro_rules! quote {
+macro_rules! quote_impl {
     ($span:ident=> $($tt:tt)* ) => {
-        $crate::quote::IntoTt::to_subtree($crate::__quote!($span $($tt)*), $span)
+        $crate::builtin::quote::IntoTt::to_subtree($crate::builtin::quote::__quote!($span $($tt)*), $span)
     }
 }
+pub(super) use quote_impl as quote;
 
 pub(crate) trait IntoTt {
     fn to_subtree(self, span: Span) -> crate::tt::Subtree;
@@ -231,6 +231,8 @@ mod tests {
     use intern::Symbol;
     use span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
     use syntax::{TextRange, TextSize};
+
+    use super::quote;
 
     const DUMMY: tt::Span = tt::Span {
         range: TextRange::empty(TextSize::new(0)),

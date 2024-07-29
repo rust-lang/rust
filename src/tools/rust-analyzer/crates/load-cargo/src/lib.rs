@@ -68,11 +68,14 @@ pub fn load_workspace(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into)),
+            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into))
+            .map_err(|e| (e, true)),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroServer::spawn(path, extra_env).map_err(Into::into)
+            ProcMacroServer::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
         }
-        ProcMacroServerChoice::None => Err(anyhow::format_err!("proc macro server disabled")),
+        ProcMacroServerChoice::None => {
+            Err((anyhow::format_err!("proc macro server disabled"), false))
+        }
     };
 
     let (crate_graph, proc_macros) = ws.to_crate_graph(
@@ -87,7 +90,7 @@ pub fn load_workspace(
     let proc_macros = {
         let proc_macro_server = match &proc_macro_server {
             Ok(it) => Ok(it),
-            Err(e) => Err(e.to_string()),
+            Err((e, hard_err)) => Err((e.to_string(), *hard_err)),
         };
         proc_macros
             .into_iter()
@@ -95,7 +98,7 @@ pub fn load_workspace(
                 (
                     crate_id,
                     path.map_or_else(
-                        |_| Err("proc macro crate is missing dylib".to_owned()),
+                        |e| Err((e, true)),
                         |(_, path)| {
                             proc_macro_server.as_ref().map_err(Clone::clone).and_then(
                                 |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
@@ -355,8 +358,7 @@ impl SourceRootConfig {
     }
 }
 
-/// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
-/// with an identity dummy expander.
+/// Load the proc-macros for the given lib path, disabling all expanders whose names are in `ignored_macros`.
 pub fn load_proc_macro(
     server: &ProcMacroServer,
     path: &AbsPath,
@@ -383,7 +385,7 @@ pub fn load_proc_macro(
         }
         Err(e) => {
             tracing::warn!("proc-macro loading for {path} failed: {e}");
-            Err(e)
+            Err((e, true))
         }
     }
 }
