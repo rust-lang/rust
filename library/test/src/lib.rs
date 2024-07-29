@@ -24,6 +24,7 @@
 #![feature(panic_can_unwind)]
 #![feature(test)]
 #![allow(internal_features)]
+#![warn(rustdoc::unescaped_backticks)]
 
 pub use cli::TestOpts;
 

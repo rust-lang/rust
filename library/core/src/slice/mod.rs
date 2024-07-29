@@ -3435,8 +3435,8 @@ impl<T> [T] {
     /// elements of the slice move to the end while the last `k` elements move
     /// to the front.
     ///
-    /// After calling `rotate_right`, the element previously at index `self.len()
-    /// - k` will become the first element in the slice.
+    /// After calling `rotate_right`, the element previously at index
+    /// `self.len() - k` will become the first element in the slice.
     ///
     /// # Panics
     ///

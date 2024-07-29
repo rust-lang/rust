@@ -780,7 +780,7 @@ where
 ///
 /// The caller must also ensure that the memory the pointer (non-transitively) points to is never
 /// written to (except inside an `UnsafeCell`) using this pointer or any pointer derived from it. If
-/// you need to mutate the pointee, use [`from_mut`]`. Specifically, to turn a mutable reference `m:
+/// you need to mutate the pointee, use [`from_mut`]. Specifically, to turn a mutable reference `m:
 /// &mut T` into `*const T`, prefer `from_mut(m).cast_const()` to obtain a pointer that can later be
 /// used for mutation.
 ///
