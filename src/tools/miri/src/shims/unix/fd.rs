@@ -213,7 +213,7 @@ impl FileDescriptor {
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    pub fds: BTreeMap<i32, FileDescriptor>,
+    fds: BTreeMap<i32, FileDescriptor>,
 }
 
 impl VisitProvenance for FdTable {
