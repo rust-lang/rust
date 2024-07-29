@@ -292,6 +292,8 @@ declare_features! (
     (accepted, non_exhaustive, "1.40.0", Some(44109)),
     /// Allows `foo.rs` as an alternative to `foo/mod.rs`.
     (accepted, non_modrs_mods, "1.30.0", Some(44660)),
+    /// Allows using multiple nested field accesses in offset_of!
+    (accepted, offset_of_nested, "CURRENT_RUSTC_VERSION", Some(120140)),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883)),
     /// Allows using `+bundle,+whole-archive` link modifiers with native libs.

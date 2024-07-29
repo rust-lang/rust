@@ -73,24 +73,26 @@ fn adt_of<'tcx>(ty: &hir::Ty<'tcx>) -> Option<(LocalDefId, DefKind)> {
 }
 
 fn struct_all_fields_are_public(tcx: TyCtxt<'_>, id: LocalDefId) -> bool {
-    // treat PhantomData and positional ZST as public,
-    // we don't want to lint types which only have them,
-    // cause it's a common way to use such types to check things like well-formedness
-    tcx.adt_def(id).all_fields().all(|field| {
+    let adt_def = tcx.adt_def(id);
+
+    // skip types contain fields of unit and never type,
+    // it's usually intentional to make the type not constructible
+    let not_require_constructor = adt_def.all_fields().any(|field| {
         let field_type = tcx.type_of(field.did).instantiate_identity();
-        if field_type.is_phantom_data() {
-            return true;
-        }
-        let is_positional = field.name.as_str().starts_with(|c: char| c.is_ascii_digit());
-        if is_positional
-            && tcx
-                .layout_of(tcx.param_env(field.did).and(field_type))
-                .map_or(true, |layout| layout.is_zst())
-        {
-            return true;
-        }
-        field.vis.is_public()
-    })
+        field_type.is_unit() || field_type.is_never()
+    });
+
+    not_require_constructor
+        || adt_def.all_fields().all(|field| {
+            let field_type = tcx.type_of(field.did).instantiate_identity();
+            // skip fields of PhantomData,
+            // cause it's a common way to check things like well-formedness
+            if field_type.is_phantom_data() {
+                return true;
+            }
+
+            field.vis.is_public()
+        })
 }
 
 /// check struct and its fields are public or not,

@@ -29,7 +29,7 @@ use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
@@ -423,7 +423,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         "<div class=\"item-name\"><code>{}extern crate {} as {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
-                        myitem.name.unwrap(),
+                        EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     ),
                     None => write!(
                         w,
@@ -520,7 +520,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         {stab_tags}\
                      </div>\
                      {docs_before}{docs}{docs_after}",
-                    name = myitem.name.unwrap(),
+                    name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     visibility_and_hidden = visibility_and_hidden,
                     stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
@@ -558,7 +558,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             display_fn(move |f| {
                 write!(
                     f,
-                    r#"<span class="stab {class}" title="{title}">{contents}</span>"#,
+                    r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
                     title = Escape(title),
                 )
             })

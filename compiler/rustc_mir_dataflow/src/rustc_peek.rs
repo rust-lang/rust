@@ -16,7 +16,7 @@ use crate::impls::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
 };
 use crate::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
-use crate::{Analysis, JoinSemiLattice, MoveDataParamEnv, ResultsCursor};
+use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 
 pub struct SanityCheck;
 
@@ -46,10 +46,9 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 
         let param_env = tcx.param_env(def_id);
         let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
-        let mdpe = MoveDataParamEnv { move_data, param_env };
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
-            let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+            let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
@@ -57,7 +56,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
-            let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
+            let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
@@ -65,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
-            let flow_def_inits = DefinitelyInitializedPlaces::new(body, &mdpe)
+            let flow_def_inits = DefinitelyInitializedPlaces::new(body, &move_data)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 

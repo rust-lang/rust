@@ -23,11 +23,12 @@ assert-css: (
 // table like view
 assert-css: (".desc.docblock-short", { "padding-left": "0px" })
 compare-elements-position-near: (
-    "//*[@class='item-name']//a[text()='replaced_function']",
+    "//*[@class='item-name']//a[normalize-space()='replaced_function']",
     ".item-name .stab.deprecated",
     {"y": 2},
 )
-compare-elements-position: (
+// "Unix" part is on second line
+compare-elements-position-false: (
     ".item-name .stab.deprecated",
     ".item-name .stab.portability",
     ["y"],
@@ -35,8 +36,8 @@ compare-elements-position: (
 
 // Ensure no wrap
 compare-elements-position: (
-    "//*[@class='item-name']//a[text()='replaced_function']/..",
-    "//*[@class='desc docblock-short'][text()='a thing with a label']",
+    "//*[@class='item-name']//a[normalize-space()='replaced_function']/..",
+    "//*[@class='desc docblock-short'][normalize-space()='a thing with a label']",
     ["y"],
 )
 
@@ -45,7 +46,7 @@ set-window-size: (600, 600)
 // staggered layout with 2em spacing
 assert-css: (".desc.docblock-short", { "padding-left": "32px" })
 compare-elements-position-near: (
-    "//*[@class='item-name']//a[text()='replaced_function']",
+    "//*[@class='item-name']//a[normalize-space()='replaced_function']",
     ".item-name .stab.deprecated",
     {"y": 2},
 )
@@ -57,13 +58,13 @@ compare-elements-position: (
 
 // Ensure wrap
 compare-elements-position-false: (
-    "//*[@class='item-name']//a[text()='replaced_function']/..",
-    "//*[@class='desc docblock-short'][text()='a thing with a label']",
+    "//*[@class='item-name']//a[normalize-space()='replaced_function']/..",
+    "//*[@class='desc docblock-short'][normalize-space()='a thing with a label']",
     ["y"],
 )
 compare-elements-position-false: (
     ".item-name .stab.deprecated",
-    "//*[@class='desc docblock-short'][text()='a thing with a label']",
+    "//*[@class='desc docblock-short'][normalize-space()='a thing with a label']",
     ["y"],
 )
 
@@ -73,7 +74,7 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/cfgs/index.html"
 // This part of the tags should not be on the same line as the beginning since the width
 // is too small for that.
 compare-elements-position-false: (
-    "//*[@class='stab portability']/code[text()='appservice-api-c']",
-    "//*[@class='stab portability']/code[text()='server']",
+    "//*[@class='stab portability']/code[normalize-space()='appservice-api-c']",
+    "//*[@class='stab portability']/code[normalize-space()='server']",
     ["y"],
 )

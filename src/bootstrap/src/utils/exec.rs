@@ -175,8 +175,8 @@ impl BootstrapCommand {
     }
 
     /// If in a CI environment, forces the command to run with colors.
-    pub fn force_coloring_in_ci(&mut self, ci_env: CiEnv) {
-        if ci_env != CiEnv::None {
+    pub fn force_coloring_in_ci(&mut self) {
+        if CiEnv::is_ci() {
             // Due to use of stamp/docker, the output stream of bootstrap is not
             // a TTY in CI, so coloring is by-default turned off.
             // The explicit `TERM=xterm` environment is needed for
