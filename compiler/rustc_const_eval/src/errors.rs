@@ -8,9 +8,9 @@ use rustc_errors::{
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::interpret::{
-    CheckInAllocMsg, ExpectedKind, InterpError, InvalidMetaKind, InvalidProgramInfo, Misalignment,
-    PointerKind, ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
-    ValidationErrorInfo,
+    CheckInAllocMsg, CtfeProvenance, ExpectedKind, InterpError, InvalidMetaKind,
+    InvalidProgramInfo, Misalignment, Pointer, PointerKind, ResourceExhaustionInfo,
+    UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::Span;
@@ -490,10 +490,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidMeta(InvalidMetaKind::TooBig) => const_eval_invalid_meta,
             UnterminatedCString(_) => const_eval_unterminated_c_string,
             PointerUseAfterFree(_, _) => const_eval_pointer_use_after_free,
-            PointerOutOfBounds { ptr_size: Size::ZERO, .. } => const_eval_zst_pointer_out_of_bounds,
             PointerOutOfBounds { .. } => const_eval_pointer_out_of_bounds,
-            DanglingIntPointer(0, _) => const_eval_dangling_null_pointer,
-            DanglingIntPointer(_, _) => const_eval_dangling_int_pointer,
+            DanglingIntPointer { addr: 0, .. } => const_eval_dangling_null_pointer,
+            DanglingIntPointer { .. } => const_eval_dangling_int_pointer,
             AlignmentCheckFailed { .. } => const_eval_alignment_check_failed,
             WriteToReadOnly(_) => const_eval_write_to_read_only,
             DerefFunctionPointer(_) => const_eval_deref_function_pointer,
@@ -575,18 +574,33 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("alloc_id", alloc_id)
                     .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
-            PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => {
-                diag.arg("alloc_id", alloc_id)
-                    .arg("alloc_size", alloc_size.bytes())
-                    .arg("ptr_offset", ptr_offset)
-                    .arg("ptr_size", ptr_size.bytes())
+            PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, inbounds_size, msg } => {
+                diag.arg("alloc_size", alloc_size.bytes())
+                    .arg("inbounds_size", inbounds_size.bytes())
                     .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                diag.arg(
+                    "pointer",
+                    Pointer::new(
+                        Some(CtfeProvenance::from(alloc_id)),
+                        Size::from_bytes(ptr_offset as u64),
+                    )
+                    .to_string(),
+                );
+                diag.arg("ptr_offset_is_neg", ptr_offset < 0);
+                diag.arg(
+                    "alloc_size_minus_ptr_offset",
+                    alloc_size.bytes().saturating_sub(ptr_offset as u64),
+                );
             }
-            DanglingIntPointer(ptr, msg) => {
-                if ptr != 0 {
-                    diag.arg("pointer", format!("{ptr:#x}[noalloc]"));
+            DanglingIntPointer { addr, inbounds_size, msg } => {
+                if addr != 0 {
+                    diag.arg(
+                        "pointer",
+                        Pointer::<Option<CtfeProvenance>>::from_addr_invalid(addr).to_string(),
+                    );
                 }
 
+                diag.arg("inbounds_size", inbounds_size.bytes());
                 diag.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             AlignmentCheckFailed(Misalignment { required, has }, msg) => {
