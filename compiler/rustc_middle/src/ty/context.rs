@@ -4,36 +4,14 @@
 
 pub mod tls;
 
-pub use rustc_type_ir::lift::Lift;
+use std::assert_matches::assert_matches;
+use std::borrow::Borrow;
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::ops::{Bound, Deref};
+use std::{fmt, iter, mem};
 
-use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::lint_level;
-use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::resolve_bound_vars;
-use crate::middle::stability;
-use crate::mir::interpret::{self, Allocation, ConstAllocation};
-use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::plumbing::QuerySystem;
-use crate::query::LocalCrate;
-use crate::query::Providers;
-use crate::query::{IntoQueryParam, TyCtxtAt};
-use crate::thir::Thir;
-use crate::traits;
-use crate::traits::solve;
-use crate::traits::solve::{
-    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
-};
-use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
-use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericParamDefKind,
-    ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern, PatternKind,
-    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity, Region,
-    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, Visibility,
-};
-use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -74,20 +52,37 @@ use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx}
 use rustc_target::spec::abi;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::solve::SolverMode;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{search_graph, CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
 use tracing::{debug, instrument};
 
-use std::assert_matches::assert_matches;
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::iter;
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::{Bound, Deref};
+use crate::arena::Arena;
+use crate::dep_graph::{DepGraph, DepKindStruct};
+use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
+use crate::lint::lint_level;
+use crate::metadata::ModChild;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::{resolve_bound_vars, stability};
+use crate::mir::interpret::{self, Allocation, ConstAllocation};
+use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::query::plumbing::QuerySystem;
+use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
+use crate::thir::Thir;
+use crate::traits;
+use crate::traits::solve;
+use crate::traits::solve::{
+    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
+};
+use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
+use crate::ty::{
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
+    GenericArgsRef, GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst,
+    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
+    Visibility,
+};
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {

@@ -1,17 +1,20 @@
 use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_errors::{codes::*, struct_span_code_err, DiagMessage, SubdiagMessage};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, DiagMessage, SubdiagMessage};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
-use rustc_hir::{lang_items, weak_lang_items::WEAK_LANG_ITEMS, LangItem};
+use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
+use rustc_hir::{lang_items, LangItem};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_session::{lint, parse::feature_err};
+use rustc_session::lint;
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 use rustc_target::spec::{abi, SanitizerSet};

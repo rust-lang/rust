@@ -1,3 +1,10 @@
+use std::cell::{RefCell, RefMut};
+use std::cmp::Ordering;
+use std::fmt;
+use std::rc::Rc;
+
+use itertools::Itertools;
+use rinja::Template;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -8,10 +15,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::VariantIdx;
-use std::cell::{RefCell, RefMut};
-use std::cmp::Ordering;
-use std::fmt;
-use std::rc::Rc;
 
 use super::type_layout::document_type_layout;
 use super::{
@@ -35,9 +38,6 @@ use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-
-use itertools::Itertools;
-use rinja::Template;
 
 /// Generates a Rinja template struct for rendering items with common methods.
 ///

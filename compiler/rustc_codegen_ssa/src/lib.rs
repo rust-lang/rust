@@ -17,9 +17,12 @@
 //! The backend-agnostic functions of this crate use functions defined in various traits that
 //! have to be implemented by each backend.
 
+use std::collections::BTreeSet;
+use std::io;
+use std::path::{Path, PathBuf};
+
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::CrateNum;
@@ -36,9 +39,6 @@ use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use std::collections::BTreeSet;
-use std::io;
-use std::path::{Path, PathBuf};
 
 pub mod assert_module_sources;
 pub mod back;

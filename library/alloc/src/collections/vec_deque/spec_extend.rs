@@ -1,9 +1,9 @@
-use crate::alloc::Allocator;
-use crate::vec;
 use core::iter::TrustedLen;
 use core::slice;
 
 use super::VecDeque;
+use crate::alloc::Allocator;
+use crate::vec;
 
 // Specialization trait used for VecDeque::extend
 pub(super) trait SpecExtend<T, I> {

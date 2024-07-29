@@ -34,11 +34,11 @@ use rustc_middle::mir::{
     LocalDecl, MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
     SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
-use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, span_bug};
-use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
+use rustc_middle::{bug, query, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
 #[macro_use]

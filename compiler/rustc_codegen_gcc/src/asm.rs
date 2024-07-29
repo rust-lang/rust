@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
@@ -6,12 +8,10 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmMethods, BaseTypeMethods, BuilderMethods, GlobalAsmOperandRef,
     InlineAsmOperandRef,
 };
-
-use rustc_middle::{bug, ty::Instance};
+use rustc_middle::bug;
+use rustc_middle::ty::Instance;
 use rustc_span::Span;
 use rustc_target::asm::*;
-
-use std::borrow::Cow;
 
 use crate::builder::Builder;
 use crate::callee::get_fn;

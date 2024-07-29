@@ -9,8 +9,9 @@
 // algorithm should not matter to the caller of the methods, which is why it is not noted in the
 // documentation.
 
-use crate::symbol::Symbol;
 use std::{cmp, mem};
+
+use crate::symbol::Symbol;
 
 #[cfg(test)]
 mod tests;

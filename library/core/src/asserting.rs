@@ -9,10 +9,8 @@
 #![doc(hidden)]
 #![unstable(feature = "generic_assert_internals", issue = "44838")]
 
-use crate::{
-    fmt::{Debug, Formatter},
-    marker::PhantomData,
-};
+use crate::fmt::{Debug, Formatter};
+use crate::marker::PhantomData;
 
 // ***** TryCapture - Generic *****
 

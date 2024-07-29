@@ -8,15 +8,16 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use crate::{constrained_generic_params as cgp, errors::UnconstrainedGenericParameter};
 use min_specialization::check_min_specialization;
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
+
+use crate::constrained_generic_params as cgp;
+use crate::errors::UnconstrainedGenericParameter;
 
 mod min_specialization;
 

@@ -34,17 +34,16 @@
 #[cfg(test)]
 mod tests;
 
+#[stable(feature = "time", since = "1.3.0")]
+pub use core::time::Duration;
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+pub use core::time::TryFromFloatSecsError;
+
 use crate::error::Error;
 use crate::fmt;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::time;
 use crate::sys_common::{FromInner, IntoInner};
-
-#[stable(feature = "time", since = "1.3.0")]
-pub use core::time::Duration;
-
-#[stable(feature = "duration_checked_float", since = "1.66.0")]
-pub use core::time::TryFromFloatSecsError;
 
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].

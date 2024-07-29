@@ -44,16 +44,9 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
-use typeck_root_ctxt::TypeckRootCtxt;
-
-use crate::check::check_fn;
-use crate::coercion::DynamicCoerceMany;
-use crate::diverges::Diverges;
-use crate::expectation::Expectation;
-use crate::fn_ctxt::LoweredTy;
-use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuaranteed};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -67,6 +60,14 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use typeck_root_ctxt::TypeckRootCtxt;
+
+use crate::check::check_fn;
+use crate::coercion::DynamicCoerceMany;
+use crate::diverges::Diverges;
+use crate::expectation::Expectation;
+use crate::fn_ctxt::LoweredTy;
+use crate::gather_locals::GatherLocalsVisitor;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

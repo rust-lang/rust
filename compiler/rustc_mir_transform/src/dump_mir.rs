@@ -3,11 +3,11 @@
 use std::fs::File;
 use std::io;
 
-use crate::MirPass;
-use rustc_middle::mir::write_mir_pretty;
-use rustc_middle::mir::Body;
+use rustc_middle::mir::{write_mir_pretty, Body};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
+
+use crate::MirPass;
 
 pub struct Marker(pub &'static str);
 

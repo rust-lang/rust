@@ -5,14 +5,10 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::io::Write;
-use std::process;
+use std::fs::{self, OpenOptions};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::str::FromStr;
-use std::{
-    env,
-    fs::{self, OpenOptions},
-    io::{self, BufRead, BufReader, IsTerminal},
-};
+use std::{env, process};
 
 use bootstrap::{
     find_recent_config_change_ids, human_readable_changes, t, Build, Config, Subcommand,

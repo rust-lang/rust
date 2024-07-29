@@ -81,7 +81,6 @@ macro_rules! assert_unsafe_precondition {
 }
 #[unstable(feature = "ub_checks", issue = "none")]
 pub use assert_unsafe_precondition;
-
 /// Checking library UB is always enabled when UB-checking is done
 /// (and we use a reexport so that there is no unnecessary wrapper function).
 #[unstable(feature = "ub_checks", issue = "none")]

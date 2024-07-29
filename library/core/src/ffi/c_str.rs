@@ -3,16 +3,11 @@
 use crate::cmp::Ordering;
 use crate::error::Error;
 use crate::ffi::c_char;
-use crate::fmt;
-use crate::intrinsics;
 use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
-use crate::ops;
-use crate::ptr::addr_of;
-use crate::ptr::NonNull;
-use crate::slice;
+use crate::ptr::{addr_of, NonNull};
 use crate::slice::memchr;
-use crate::str;
+use crate::{fmt, intrinsics, ops, slice, str};
 
 // FIXME: because this is doc(inline)d, we *have* to use intra-doc links because the actual link
 //   depends on where the item is being documented. however, since this is libcore, we can't

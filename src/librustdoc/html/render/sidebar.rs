@@ -1,17 +1,18 @@
-use std::{borrow::Cow, rc::Rc};
+use std::borrow::Cow;
+use std::rc::Rc;
 
 use rinja::Template;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{def::CtorKind, def_id::DefIdSet};
+use rustc_hir::def::CtorKind;
+use rustc_hir::def_id::DefIdSet;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::{
-    clean,
-    formats::{item_type::ItemType, Impl},
-    html::{format::Buffer, markdown::IdMap},
-};
-
 use super::{item_ty_to_section, Context, ItemSection};
+use crate::clean;
+use crate::formats::item_type::ItemType;
+use crate::formats::Impl;
+use crate::html::format::Buffer;
+use crate::html::markdown::IdMap;
 
 #[derive(Template)]
 #[template(path = "sidebar.html")]

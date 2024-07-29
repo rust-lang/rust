@@ -3,9 +3,9 @@ use std::marker::PhantomData;
 use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
+use crate::inherent::*;
 use crate::outlives::{push_outlives_components, Component};
-use crate::{self as ty, Interner};
-use crate::{inherent::*, Upcast as _};
+use crate::{self as ty, Interner, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means

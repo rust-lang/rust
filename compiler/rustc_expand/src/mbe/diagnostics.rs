@@ -1,9 +1,5 @@
-use crate::base::{DummyResult, ExtCtxt, MacResult};
-use crate::expand::{parse_ast_fragment, AstFragmentKind};
-use crate::mbe::{
-    macro_parser::{MatcherLoc, NamedParseResult, ParseResult::*, TtParser},
-    macro_rules::{try_match_macro, Tracker},
-};
+use std::borrow::Cow;
+
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
@@ -13,10 +9,14 @@ use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
-use std::borrow::Cow;
 use tracing::debug;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
+use crate::base::{DummyResult, ExtCtxt, MacResult};
+use crate::expand::{parse_ast_fragment, AstFragmentKind};
+use crate::mbe::macro_parser::ParseResult::*;
+use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
+use crate::mbe::macro_rules::{try_match_macro, Tracker};
 
 pub(super) fn failed_to_match_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,

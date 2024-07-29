@@ -1,17 +1,17 @@
 //! Performs various peephole optimizations.
 
-use crate::simplify::simplify_duplicate_switch_targets;
-use crate::take_array;
 use rustc_ast::attr;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout;
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, layout, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
+
+use crate::simplify::simplify_duplicate_switch_targets;
+use crate::take_array;
 
 pub struct InstSimplify;
 

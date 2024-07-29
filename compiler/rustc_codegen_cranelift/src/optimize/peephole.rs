@@ -1,6 +1,7 @@
 //! Peephole optimizations that can be performed while creating clif ir.
 
-use cranelift_codegen::ir::{condcodes::IntCC, InstructionData, Opcode, Value, ValueDef};
+use cranelift_codegen::ir::condcodes::IntCC;
+use cranelift_codegen::ir::{InstructionData, Opcode, Value, ValueDef};
 use cranelift_frontend::FunctionBuilder;
 
 /// If the given value was produced by the lowering of `Rvalue::Not` return the input and true,

@@ -1,5 +1,6 @@
-use crate::spec::{cvs, RelroLevel, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
+
+use crate::spec::{cvs, RelroLevel, SplitDebuginfo, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {

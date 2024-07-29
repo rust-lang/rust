@@ -1,12 +1,11 @@
-use crate::fmt;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
 use crate::net::test::{next_test_ip4, next_test_ip6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
-use crate::thread;
 use crate::time::{Duration, Instant};
+use crate::{fmt, thread};
 
 fn each_ip(f: &mut dyn FnMut(SocketAddr)) {
     f(next_test_ip4());

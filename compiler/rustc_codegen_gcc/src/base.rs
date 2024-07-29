@@ -19,8 +19,7 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{gcc_util, new_context, LockedTargetInfo};
-use crate::{GccContext, SyncContext};
+use crate::{gcc_util, new_context, GccContext, LockedTargetInfo, SyncContext};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {

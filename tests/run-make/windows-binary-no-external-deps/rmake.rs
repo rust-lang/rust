@@ -2,9 +2,10 @@
 //! a "hello world" application by setting `PATH` to `C:\Windows\System32`.
 //@ only-windows
 
-use run_make_support::{cwd, env_var, rustc};
 use std::path::PathBuf;
 use std::process::Command;
+
+use run_make_support::{cwd, env_var, rustc};
 
 fn main() {
     rustc().input("hello.rs").run();

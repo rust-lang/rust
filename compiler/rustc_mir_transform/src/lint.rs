@@ -2,6 +2,8 @@
 //! It can be used to locate problems in MIR building or optimizations. It assumes that all code
 //! can be executed, so it has false positives.
 
+use std::borrow::Cow;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -10,7 +12,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use std::borrow::Cow;
 
 pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
     let always_live_locals = &always_storage_live_locals(body);

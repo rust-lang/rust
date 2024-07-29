@@ -1,8 +1,10 @@
-use crate::parser::{unescape_llvm_string_contents, Parser};
-use anyhow::{anyhow, ensure};
-use regex::Regex;
 use std::collections::HashMap;
 use std::sync::OnceLock;
+
+use anyhow::{anyhow, ensure};
+use regex::Regex;
+
+use crate::parser::{unescape_llvm_string_contents, Parser};
 
 /// Scans through the contents of an LLVM IR assembly file to find `__llvm_prf_names`
 /// entries, decodes them, and creates a table that maps name hash values to

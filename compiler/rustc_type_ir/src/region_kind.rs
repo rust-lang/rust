@@ -1,13 +1,13 @@
+use std::fmt;
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-use std::fmt;
-
-use crate::{DebruijnIndex, Interner};
 
 use self::RegionKind::*;
+use crate::{DebruijnIndex, Interner};
 
 rustc_index::newtype_index! {
     /// A **region** **v**ariable **ID**.

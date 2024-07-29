@@ -1,8 +1,9 @@
+use std::ops::Bound::{Excluded, Included};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+
 use super::*;
 use crate::testing::crash_test::{CrashTestDummy, Panic};
 use crate::testing::rng::DeterministicRng;
-use std::ops::Bound::{Excluded, Included};
-use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]
 fn test_clone_eq() {

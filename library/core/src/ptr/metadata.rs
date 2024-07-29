@@ -2,8 +2,7 @@
 
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::intrinsics::aggregate_raw_ptr;
-use crate::intrinsics::ptr_metadata;
+use crate::intrinsics::{aggregate_raw_ptr, ptr_metadata};
 use crate::marker::Freeze;
 use crate::ptr::NonNull;
 

@@ -1,24 +1,25 @@
 use std::ops::Range;
 
-use crate::errors;
-use crate::lexer::unicode_chars::UNICODE_ARRAY;
-use crate::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{codes::*, Applicability, Diag, DiagCtxtHandle, StashKey};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
-use rustc_lexer::{Base, DocStyle, RawStrError};
-use rustc_lexer::{Cursor, LiteralKind};
+use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
-use rustc_span::{edition::Edition, BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span};
 use tracing::debug;
+
+use crate::lexer::unicode_chars::UNICODE_ARRAY;
+use crate::{errors, make_unclosed_delims_error};
 
 mod diagnostics;
 mod tokentrees;

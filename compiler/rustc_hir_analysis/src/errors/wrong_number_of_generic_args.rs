@@ -1,11 +1,10 @@
-use rustc_errors::{
-    codes::*, pluralize, Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan,
-};
+use std::iter;
+
+use rustc_errors::codes::*;
+use rustc_errors::{pluralize, Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_span::def_id::DefId;
-use std::iter;
-
 use GenericArgsInfo::*;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.

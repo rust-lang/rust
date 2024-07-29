@@ -9,7 +9,8 @@ use rustdoc_json_types::{
 };
 use serde_json::Value;
 
-use crate::{item_kind::Kind, json_find, Error, ErrorKind};
+use crate::item_kind::Kind;
+use crate::{json_find, Error, ErrorKind};
 
 // This is a rustc implementation detail that we rely on here
 const LOCAL_CRATE_ID: u32 = 0;

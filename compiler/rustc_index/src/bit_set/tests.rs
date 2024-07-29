@@ -2,6 +2,7 @@ use super::*;
 
 extern crate test;
 use std::hint::black_box;
+
 use test::Bencher;
 
 #[test]

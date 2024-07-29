@@ -28,51 +28,38 @@ mod take;
 mod take_while;
 mod zip;
 
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+pub use self::array_chunks::ArrayChunks;
+#[unstable(feature = "std_internals", issue = "none")]
+pub use self::by_ref_sized::ByRefSized;
+#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
+pub use self::chain::chain;
+#[stable(feature = "iter_cloned", since = "1.1.0")]
+pub use self::cloned::Cloned;
+#[stable(feature = "iter_copied", since = "1.36.0")]
+pub use self::copied::Copied;
+#[stable(feature = "iterator_flatten", since = "1.29.0")]
+pub use self::flatten::Flatten;
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+pub use self::intersperse::{Intersperse, IntersperseWith};
+#[stable(feature = "iter_map_while", since = "1.57.0")]
+pub use self::map_while::MapWhile;
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+pub use self::map_windows::MapWindows;
+#[stable(feature = "iterator_step_by", since = "1.28.0")]
+pub use self::step_by::StepBy;
+#[stable(feature = "iter_zip", since = "1.59.0")]
+pub use self::zip::zip;
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::zip::TrustedRandomAccess;
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::zip::TrustedRandomAccessNoCoerce;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     chain::Chain, cycle::Cycle, enumerate::Enumerate, filter::Filter, filter_map::FilterMap,
     flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peekable::Peekable, rev::Rev,
     scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
-
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-pub use self::array_chunks::ArrayChunks;
-
-#[unstable(feature = "std_internals", issue = "none")]
-pub use self::by_ref_sized::ByRefSized;
-
-#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
-pub use self::chain::chain;
-
-#[stable(feature = "iter_cloned", since = "1.1.0")]
-pub use self::cloned::Cloned;
-
-#[stable(feature = "iterator_step_by", since = "1.28.0")]
-pub use self::step_by::StepBy;
-
-#[stable(feature = "iterator_flatten", since = "1.29.0")]
-pub use self::flatten::Flatten;
-
-#[stable(feature = "iter_copied", since = "1.36.0")]
-pub use self::copied::Copied;
-
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-pub use self::intersperse::{Intersperse, IntersperseWith};
-
-#[stable(feature = "iter_map_while", since = "1.57.0")]
-pub use self::map_while::MapWhile;
-
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
-pub use self::map_windows::MapWindows;
-
-#[unstable(feature = "trusted_random_access", issue = "none")]
-pub use self::zip::TrustedRandomAccess;
-
-#[unstable(feature = "trusted_random_access", issue = "none")]
-pub use self::zip::TrustedRandomAccessNoCoerce;
-
-#[stable(feature = "iter_zip", since = "1.59.0")]
-pub use self::zip::zip;
 
 /// This trait provides transitive access to source-stage in an iterator-adapter pipeline
 /// under the conditions that

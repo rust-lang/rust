@@ -65,9 +65,6 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::errors::GenericArgsOnOverriddenImpl;
-use crate::{constrained_generic_params as cgp, errors};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -75,12 +72,14 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{self, GenericArg, GenericArgs, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_args_with_cause, wf, ObligationCtxt};
+
+use crate::errors::GenericArgsOnOverriddenImpl;
+use crate::{constrained_generic_params as cgp, errors};
 
 pub(super) fn check_min_specialization(
     tcx: TyCtxt<'_>,

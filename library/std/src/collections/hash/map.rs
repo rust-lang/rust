@@ -1,13 +1,11 @@
 #[cfg(test)]
 mod tests;
 
-use self::Entry::*;
-
 use hashbrown::hash_map as base;
 
+use self::Entry::*;
 use crate::borrow::Borrow;
-use crate::collections::TryReserveError;
-use crate::collections::TryReserveErrorKind;
+use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::error::Error;
 use crate::fmt::{self, Debug};
 use crate::hash::{BuildHasher, Hash, RandomState};

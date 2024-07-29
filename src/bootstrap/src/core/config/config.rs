@@ -4,29 +4,27 @@
 //! how the build runs.
 
 use std::cell::{Cell, RefCell};
-use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fmt::{self, Display};
-use std::fs;
 use std::io::IsTerminal;
 use std::path::{absolute, Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::OnceLock;
+use std::{cmp, env, fs};
+
+use build_helper::exit;
+use build_helper::git::GitConfig;
+use serde::{Deserialize, Deserializer};
+use serde_derive::Deserialize;
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
+pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, get_closest_merge_base_commit, output, t};
-use build_helper::exit;
-use serde::{Deserialize, Deserializer};
-use serde_derive::Deserialize;
-
-pub use crate::core::config::flags::Subcommand;
-use build_helper::git::GitConfig;
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {

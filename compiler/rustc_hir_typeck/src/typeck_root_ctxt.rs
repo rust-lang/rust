@@ -1,4 +1,5 @@
-use super::callee::DeferredCallResolution;
+use std::cell::RefCell;
+use std::ops::Deref;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -15,8 +16,7 @@ use rustc_trait_selection::traits::{
     self, FulfillmentError, PredicateObligation, TraitEngine, TraitEngineExt as _,
 };
 
-use std::cell::RefCell;
-use std::ops::Deref;
+use super::callee::DeferredCallResolution;
 
 /// Data shared between a "typeck root" and its nested bodies,
 /// e.g. closures defined within the function. For example:

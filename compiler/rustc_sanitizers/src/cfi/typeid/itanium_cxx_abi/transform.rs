@@ -4,6 +4,8 @@
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
 
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
@@ -12,9 +14,9 @@ use rustc_middle::ty::{
     self, ExistentialPredicateStableCmpExt as _, Instance, InstanceKind, IntTy, List, TraitRef, Ty,
     TyCtxt, TypeFoldable, TypeVisitableExt, UintTy,
 };
-use rustc_span::{def_id::DefId, sym};
+use rustc_span::def_id::DefId;
+use rustc_span::sym;
 use rustc_trait_selection::traits;
-use std::iter;
 use tracing::{debug, instrument};
 
 use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;

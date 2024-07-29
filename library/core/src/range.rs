@@ -25,15 +25,13 @@ mod iter;
 pub mod legacy;
 
 #[doc(inline)]
-pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive};
-
+pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
 use Bound::{Excluded, Included, Unbounded};
 
 #[doc(inline)]
 pub use crate::iter::Step;
-
 #[doc(inline)]
-pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
+pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive};
 
 /// A (half-open) range bounded inclusively below and exclusively above
 /// (`start..end` in a future edition).

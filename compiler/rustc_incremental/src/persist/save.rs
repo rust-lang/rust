@@ -1,5 +1,6 @@
-use crate::assert_dep_graph::assert_dep_graph;
-use crate::errors;
+use std::fs;
+use std::sync::Arc;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{
@@ -9,15 +10,13 @@ use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
-use std::fs;
-use std::sync::Arc;
 use tracing::debug;
 
 use super::data::*;
-use super::dirty_clean;
-use super::file_format;
 use super::fs::*;
-use super::work_product;
+use super::{dirty_clean, file_format, work_product};
+use crate::assert_dep_graph::assert_dep_graph;
+use crate::errors;
 
 /// Saves and writes the [`DepGraph`] to the file system.
 ///

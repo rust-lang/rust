@@ -17,6 +17,7 @@ use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 
+use crate::constructor::Constructor::*;
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
@@ -24,8 +25,6 @@ use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
 use crate::usefulness::{compute_match_usefulness, PlaceValidity};
 use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
-
-use crate::constructor::Constructor::*;
 
 // Re-export rustc-specific versions of all these types.
 pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcPatCtxt<'p, 'tcx>>;

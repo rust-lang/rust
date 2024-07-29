@@ -3,25 +3,27 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::iter;
+use std::ops::ControlFlow;
+
 use either::Either;
 use hir::{ClosureKind, Path};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Map, Visitor};
-use rustc_hir::{CoroutineDesugaring, PatField};
-use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
+use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem, PatField};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::mir::VarDebugInfoContents;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, CallSource, ClearCrossCrate, ConstraintCategory,
     FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
     Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind, VarBindingForm,
+    TerminatorKind, VarBindingForm, VarDebugInfoContents,
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
@@ -30,8 +32,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
-use rustc_span::def_id::DefId;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
@@ -39,22 +40,14 @@ use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
-use std::iter;
-use std::ops::ControlFlow;
 
-use crate::borrow_set::TwoPhaseActivation;
-use crate::borrowck_errors;
+use super::explain_borrow::{BorrowExplanation, LaterUseKind};
+use super::{DescribePlaceOpt, RegionName, RegionNameSource, UseSpans};
+use crate::borrow_set::{BorrowData, TwoPhaseActivation};
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
-use crate::diagnostics::{find_all_local_uses, CapturedMessageOpt};
-use crate::{
-    borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
-    InitializationRequiringAction, MirBorrowckCtxt, WriteKind,
-};
-
-use super::{
-    explain_borrow::{BorrowExplanation, LaterUseKind},
-    DescribePlaceOpt, RegionName, RegionNameSource, UseSpans,
-};
+use crate::diagnostics::{find_all_local_uses, CapturedMessageOpt, Instance};
+use crate::prefixes::IsPrefixOf;
+use crate::{borrowck_errors, InitializationRequiringAction, MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
 struct MoveSite {

@@ -1,11 +1,12 @@
+use std::rc::Rc;
+
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
 use rustc_hir::def::DefKind;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_infer::infer::outlives;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
-use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::{outlives, InferCtxt};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::traits::ObligationCause;
@@ -14,14 +15,10 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
-use std::rc::Rc;
 use type_op::TypeOpOutput;
 
-use crate::{
-    type_check::constraint_conversion,
-    type_check::{Locations, MirTypeckRegionConstraints},
-    universal_regions::UniversalRegions,
-};
+use crate::type_check::{constraint_conversion, Locations, MirTypeckRegionConstraints};
+use crate::universal_regions::UniversalRegions;
 
 #[derive(Debug)]
 pub(crate) struct UniversalRegionRelations<'tcx> {

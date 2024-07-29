@@ -1,10 +1,8 @@
 // edition:2021
 
-use core::{
-    marker::PhantomPinned,
-    mem::{drop as stuff, transmute},
-    pin::{pin, Pin},
-};
+use core::marker::PhantomPinned;
+use core::mem::{drop as stuff, transmute};
+use core::pin::{pin, Pin};
 
 #[test]
 fn basic() {

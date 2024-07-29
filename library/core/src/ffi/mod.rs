@@ -9,19 +9,16 @@
 #![stable(feature = "core_ffi", since = "1.30.0")]
 #![allow(non_camel_case_types)]
 
-use crate::fmt;
-
-#[doc(no_inline)]
-#[stable(feature = "core_c_str", since = "1.64.0")]
-pub use self::c_str::FromBytesWithNulError;
-
-#[doc(no_inline)]
-#[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
-pub use self::c_str::FromBytesUntilNulError;
-
 #[doc(inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub use self::c_str::CStr;
+#[doc(no_inline)]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
+pub use self::c_str::FromBytesUntilNulError;
+#[doc(no_inline)]
+#[stable(feature = "core_c_str", since = "1.64.0")]
+pub use self::c_str::FromBytesWithNulError;
+use crate::fmt;
 
 #[unstable(feature = "c_str_module", issue = "112134")]
 pub mod c_str;

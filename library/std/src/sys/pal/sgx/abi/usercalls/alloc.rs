@@ -1,18 +1,16 @@
 #![allow(unused)]
 
+use fortanix_sgx_abi::*;
+
+use super::super::mem::{is_enclave_range, is_user_range};
 use crate::arch::asm;
 use crate::cell::UnsafeCell;
-use crate::cmp;
 use crate::convert::TryInto;
-use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
 use crate::ptr::{self, NonNull};
-use crate::slice;
 use crate::slice::SliceIndex;
-
-use super::super::mem::{is_enclave_range, is_user_range};
-use fortanix_sgx_abi::*;
+use crate::{cmp, intrinsics, slice};
 
 /// A type that can be safely read from or written to userspace.
 ///

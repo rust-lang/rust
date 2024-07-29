@@ -1,10 +1,10 @@
 // Helpers for handling cast expressions, used in both
 // typeck and codegen.
 
-use crate::ty::{self, Ty};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_middle::mir;
 
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use crate::ty::{self, Ty};
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

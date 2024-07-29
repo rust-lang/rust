@@ -1,8 +1,8 @@
+use hermit_abi::{c_void, iovec};
+
 use crate::marker::PhantomData;
 use crate::os::hermit::io::{AsFd, AsRawFd};
 use crate::slice;
-
-use hermit_abi::{c_void, iovec};
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]

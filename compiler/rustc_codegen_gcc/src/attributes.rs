@@ -9,8 +9,9 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty;
 use rustc_span::symbol::sym;
 
+use crate::context::CodegenCx;
+use crate::errors::TiedTargetFeatures;
 use crate::gcc_util::{check_tied_features, to_gcc_features};
-use crate::{context::CodegenCx, errors::TiedTargetFeatures};
 
 /// Get GCC attribute for the provided inline heuristic.
 #[cfg(feature = "master")]

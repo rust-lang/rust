@@ -1,7 +1,3 @@
-use crate::base::{self, *};
-use crate::errors;
-use crate::proc_macro_server;
-
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
@@ -10,6 +6,9 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::Span;
+
+use crate::base::{self, *};
+use crate::{errors, proc_macro_server};
 
 struct MessagePipe<T> {
     tx: std::sync::mpsc::SyncSender<T>,

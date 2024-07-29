@@ -1,12 +1,9 @@
-use crate::check::intrinsicck::InlineAsmCtxt;
+use std::cell::LazyCell;
+use std::ops::ControlFlow;
 
-use super::compare_impl_item::check_type_bounds;
-use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
-use super::*;
-use rustc_attr as attr;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::{codes::*, MultiSpan};
-use rustc_hir as hir;
+use rustc_errors::codes::*;
+use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
@@ -19,9 +16,9 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
-use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    AdtDef, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    AdtDef, GenericArgKind, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_target::abi::FieldIdx;
@@ -30,9 +27,11 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
+use {rustc_attr as attr, rustc_hir as hir};
 
-use std::cell::LazyCell;
-use std::ops::ControlFlow;
+use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_impl_ty};
+use super::*;
+use crate::check::intrinsicck::InlineAsmCtxt;
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
     match tcx.sess.target.is_abi_supported(abi) {

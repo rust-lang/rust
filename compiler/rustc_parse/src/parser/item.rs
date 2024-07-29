@@ -1,9 +1,6 @@
-use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
-use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing};
-use crate::errors::{self, MacroExpandsToAdtField};
-use crate::fluent_generated as fluent;
-use crate::maybe_whole;
+use std::fmt::Write;
+use std::mem;
+
 use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
@@ -12,17 +9,20 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, PResult, StashKey};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, PResult, StashKey};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::source_map;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::{Span, DUMMY_SP};
-use std::fmt::Write;
-use std::mem;
+use rustc_span::{source_map, ErrorGuaranteed, Span, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
 use tracing::debug;
+
+use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
+use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing};
+use crate::errors::{self, MacroExpandsToAdtField};
+use crate::{fluent_generated as fluent, maybe_whole};
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.

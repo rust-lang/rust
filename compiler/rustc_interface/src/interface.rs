@@ -1,13 +1,13 @@
-use crate::util;
+use std::path::PathBuf;
+use std::result;
+use std::sync::Arc;
 
-use rustc_ast::token;
-use rustc_ast::{LitKind, MetaItemKind};
+use rustc_ast::{token, LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::{defer, jobserver};
 use rustc_errors::registry::Registry;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
@@ -24,10 +24,9 @@ use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
-use std::path::PathBuf;
-use std::result;
-use std::sync::Arc;
 use tracing::trace;
+
+use crate::util;
 
 pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 

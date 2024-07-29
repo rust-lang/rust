@@ -1,6 +1,3 @@
-use crate::cfg_eval::cfg_eval;
-use crate::errors;
-
 use rustc_ast as ast;
 use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, Safety, StmtKind};
 use rustc_expand::base::{
@@ -11,6 +8,9 @@ use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span};
+
+use crate::cfg_eval::cfg_eval;
+use crate::errors;
 
 pub(crate) struct Expander {
     pub is_const: bool,

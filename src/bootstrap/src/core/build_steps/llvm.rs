@@ -8,24 +8,23 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::{env, io};
+
+use build_helper::ci::CiEnv;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::channel;
+use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date,
 };
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
-
-use crate::utils::exec::command;
-use build_helper::ci::CiEnv;
 
 #[derive(Clone)]
 pub struct LlvmResult {

@@ -60,9 +60,10 @@ impl Ref for ! {
 
 #[cfg(feature = "rustc")]
 pub mod rustc {
+    use std::fmt::{self, Write};
+
     use rustc_middle::mir::Mutability;
     use rustc_middle::ty::{self, Ty};
-    use std::fmt::{self, Write};
 
     /// A reference in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]

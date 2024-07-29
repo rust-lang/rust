@@ -1,6 +1,4 @@
-use crate::FnCtxt;
-use rustc_errors::MultiSpan;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -17,6 +15,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
 
 use super::method::probe;
+use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_type_mismatch_suggestions(

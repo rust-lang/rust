@@ -1,11 +1,11 @@
-use crate::back::write::{
-    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
-};
-use crate::errors::{
-    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
-};
-use crate::llvm::{self, build_string};
-use crate::{LlvmCodegenBackend, ModuleLlvm};
+use std::collections::BTreeMap;
+use std::ffi::{CStr, CString};
+use std::fs::File;
+use std::mem::ManuallyDrop;
+use std::path::Path;
+use std::sync::Arc;
+use std::{io, iter, slice};
+
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
@@ -22,15 +22,14 @@ use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel
 use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
 
-use std::collections::BTreeMap;
-use std::ffi::{CStr, CString};
-use std::fs::File;
-use std::io;
-use std::iter;
-use std::mem::ManuallyDrop;
-use std::path::Path;
-use std::slice;
-use std::sync::Arc;
+use crate::back::write::{
+    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
+};
+use crate::errors::{
+    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
+};
+use crate::llvm::{self, build_string};
+use crate::{LlvmCodegenBackend, ModuleLlvm};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.

@@ -1,9 +1,8 @@
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_middle::bug;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, VariantIdx};
 use tracing::{debug, instrument, trace};
@@ -13,10 +12,9 @@ use super::machine::CompileTimeInterpCx;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessMutGlobal;
 use crate::errors::MaxNumNodesInConstErr;
-use crate::interpret::MPlaceTy;
 use crate::interpret::{
-    intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MemPlaceMeta, MemoryKind, PlaceTy,
-    Projectable, Scalar,
+    intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MPlaceTy, MemPlaceMeta, MemoryKind,
+    PlaceTy, Projectable, Scalar,
 };
 
 #[instrument(skip(ecx), level = "debug")]

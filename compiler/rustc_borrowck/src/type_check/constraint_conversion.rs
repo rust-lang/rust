@@ -14,12 +14,10 @@ use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::ScrubbedTraitError;
 
-use crate::{
-    constraints::OutlivesConstraint,
-    region_infer::TypeTest,
-    type_check::{Locations, MirTypeckRegionConstraints},
-    universal_regions::UniversalRegions,
-};
+use crate::constraints::OutlivesConstraint;
+use crate::region_infer::TypeTest;
+use crate::type_check::{Locations, MirTypeckRegionConstraints};
+use crate::universal_regions::UniversalRegions;
 
 pub(crate) struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,

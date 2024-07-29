@@ -1,19 +1,14 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
-use crate::fmt;
+use crate::ffi::{c_int, c_void};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
-use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use crate::ptr;
 use crate::sys::common::small_c_string::run_with_cstr;
-use crate::sys::net::netc as c;
-use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
+use crate::sys::net::{cvt, cvt_gai, cvt_r, init, netc as c, wrlen_t, Socket};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
-
-use crate::ffi::{c_int, c_void};
+use crate::{cmp, fmt, mem, ptr};
 
 cfg_if::cfg_if! {
     if #[cfg(any(

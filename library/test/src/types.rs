@@ -4,14 +4,13 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::mpsc::Sender;
 
-use super::__rust_begin_short_backtrace;
-use super::bench::Bencher;
-use super::event::CompletedTest;
-use super::options;
-
 pub use NamePadding::*;
 pub use TestFn::*;
 pub use TestName::*;
+
+use super::bench::Bencher;
+use super::event::CompletedTest;
+use super::{__rust_begin_short_backtrace, options};
 
 /// Type of the test according to the [Rust book](https://doc.rust-lang.org/cargo/guide/tests.html)
 /// conventions.

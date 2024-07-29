@@ -1,15 +1,9 @@
-use std::{
-    ops::Deref,
-    sync::{
-        atomic::{self, AtomicBool},
-        Arc,
-    },
-};
+use std::ops::Deref;
+use std::sync::atomic::{self, AtomicBool};
+use std::sync::Arc;
 
-use crate::{
-    defer,
-    owned_slice::{slice_owned, try_slice_owned, OwnedSlice},
-};
+use crate::defer;
+use crate::owned_slice::{slice_owned, try_slice_owned, OwnedSlice};
 
 #[test]
 fn smoke() {

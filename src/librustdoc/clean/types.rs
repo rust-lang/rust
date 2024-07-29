@@ -3,19 +3,14 @@ use std::cell::RefCell;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::Arc;
-use std::sync::OnceLock as OnceCell;
+use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
-use thin_vec::ThinVec;
-
-use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -35,7 +30,15 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{FileName, Loc, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use thin_vec::ThinVec;
+use {rustc_ast as ast, rustc_hir as hir};
 
+pub(crate) use self::ItemKind::*;
+pub(crate) use self::SelfTy::*;
+pub(crate) use self::Type::{
+    Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
+    RawPointer, Slice, Tuple,
+};
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
 use crate::clean::inline::{self, print_inlined_const};
@@ -45,13 +48,6 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
-
-pub(crate) use self::ItemKind::*;
-pub(crate) use self::SelfTy::*;
-pub(crate) use self::Type::{
-    Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, Slice, Tuple,
-};
 
 #[cfg(test)]
 mod tests;
@@ -2586,8 +2582,9 @@ pub(crate) enum AssocItemConstraintKind {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Crate, 64); // frequently moved by-value
     static_assert_size!(DocFragment, 32);

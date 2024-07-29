@@ -5,9 +5,9 @@
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
 
-use rustc_data_structures::base_n::ToBaseN;
-use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
-use rustc_data_structures::base_n::CASE_INSENSITIVE;
+use std::fmt::Write as _;
+
+use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY, CASE_INSENSITIVE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
@@ -20,7 +20,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
-use std::fmt::Write as _;
 use tracing::instrument;
 
 use crate::cfi::typeid::itanium_cxx_abi::transform::{TransformTy, TransformTyOptions};

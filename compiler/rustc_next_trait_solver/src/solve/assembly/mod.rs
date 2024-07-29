@@ -3,12 +3,11 @@
 pub(super) mod structural_traits;
 
 use derive_where::derive_where;
-use rustc_type_ir::elaborate;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, Interner, Upcast as _};
+use rustc_type_ir::{self as ty, elaborate, Interner, Upcast as _};
 use tracing::{debug, instrument};
 
 use crate::delegate::SolverDelegate;

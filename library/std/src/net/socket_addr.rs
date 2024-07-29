@@ -2,19 +2,14 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
-use crate::io;
-use crate::iter;
-use crate::mem;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
+
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use crate::option;
-use crate::slice;
 use crate::sys::net::netc as c;
 use crate::sys_common::net::LookupHost;
 use crate::sys_common::{FromInner, IntoInner};
-use crate::vec;
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
+use crate::{io, iter, mem, option, slice, vec};
 
 impl FromInner<c::sockaddr_in> for SocketAddrV4 {
     fn from_inner(addr: c::sockaddr_in) -> SocketAddrV4 {

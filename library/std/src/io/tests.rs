@@ -1,7 +1,8 @@
 use super::{repeat, BorrowedBuf, Cursor, SeekFrom};
 use crate::cmp::{self, min};
-use crate::io::{self, IoSlice, IoSliceMut, DEFAULT_BUF_SIZE};
-use crate::io::{BufRead, BufReader, Read, Seek, Write};
+use crate::io::{
+    self, BufRead, BufReader, IoSlice, IoSliceMut, Read, Seek, Write, DEFAULT_BUF_SIZE,
+};
 use crate::mem::MaybeUninit;
 use crate::ops::Deref;
 

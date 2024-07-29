@@ -6,11 +6,10 @@
 #![feature(custom_mir)]
 #![allow(unreachable_code)]
 
-use std::intrinsics::{transmute, transmute_unchecked};
-use std::mem::MaybeUninit;
-
 // Some of these need custom MIR to not get removed by MIR optimizations.
 use std::intrinsics::mir::*;
+use std::intrinsics::{transmute, transmute_unchecked};
+use std::mem::MaybeUninit;
 
 pub enum ZstNever {}
 

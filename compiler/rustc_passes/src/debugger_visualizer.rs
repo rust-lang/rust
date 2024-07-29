@@ -3,11 +3,9 @@
 use rustc_ast::Attribute;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
-use rustc_middle::{
-    middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType},
-    query::{LocalCrate, Providers},
-    ty::TyCtxt,
-};
+use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_middle::query::{LocalCrate, Providers};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::sym;
 

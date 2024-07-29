@@ -5,15 +5,14 @@ use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges}
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::{debug, instrument};
 
-use crate::drop_flag_effects_for_function_entry;
-use crate::drop_flag_effects_for_location;
 use crate::elaborate_drops::DropFlagState;
 use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
-use crate::on_lookup_result_bits;
-use crate::MoveDataParamEnv;
-use crate::{drop_flag_effects, on_all_children_bits};
-use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis, MaybeReachable};
+use crate::{
+    drop_flag_effects, drop_flag_effects_for_function_entry, drop_flag_effects_for_location,
+    lattice, on_all_children_bits, on_lookup_result_bits, AnalysisDomain, GenKill, GenKillAnalysis,
+    MaybeReachable, MoveDataParamEnv,
+};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow

@@ -1,4 +1,3 @@
-use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::cmp::{max, min};
@@ -12,8 +11,8 @@ use super::map::{BTreeMap, Keys};
 use super::merge_iter::MergeIterInner;
 use super::set_val::SetValZST;
 use super::Recover;
-
 use crate::alloc::{Allocator, Global};
+use crate::vec::Vec;
 
 /// An ordered set based on a B-Tree.
 ///

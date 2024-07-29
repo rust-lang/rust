@@ -9,10 +9,11 @@
 
 extern crate self as rustc_type_ir;
 
-#[cfg(feature = "nightly")]
-use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 use std::fmt;
 use std::hash::Hash;
+
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
 // These modules are `pub` since they are not glob-imported.
 #[macro_use]

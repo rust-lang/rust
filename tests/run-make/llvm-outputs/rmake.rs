@@ -1,7 +1,8 @@
 // test that directories get created when emitting llvm bitcode and IR
 
-use run_make_support::{cwd, run_in_tmpdir, rustc};
 use std::path::PathBuf;
+
+use run_make_support::{cwd, run_in_tmpdir, rustc};
 
 fn main() {
     let mut path_bc = PathBuf::new();

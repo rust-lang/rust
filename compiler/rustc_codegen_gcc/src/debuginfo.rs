@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use gccjit::{Location, RValue};
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoMethods};
@@ -10,7 +12,6 @@ use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, Span, Symbol};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Size;
-use std::ops::Range;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;

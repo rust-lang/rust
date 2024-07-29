@@ -223,12 +223,9 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use self::Ordering::*;
-
 use crate::cell::UnsafeCell;
-use crate::fmt;
-use crate::intrinsics;
-
 use crate::hint::spin_loop;
+use crate::{fmt, intrinsics};
 
 // Some architectures don't have byte-sized atomics, which results in LLVM
 // emulating them using a LL/SC loop. However for AtomicBool we can take

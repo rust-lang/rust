@@ -1,10 +1,9 @@
 use std::path::Path;
 
-use crate::command::Command;
-use crate::{env_var, is_msvc, is_windows, uname};
-
 // FIXME(jieyouxu): can we get rid of the `cygpath` external dependency?
 use super::cygpath::get_windows_path;
+use crate::command::Command;
+use crate::{env_var, is_msvc, is_windows, uname};
 
 /// Construct a new platform-specific C compiler invocation.
 ///

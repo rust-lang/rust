@@ -3,9 +3,10 @@
 
 //@ ignore-cross-compile
 
+use std::fs;
+
 use run_make_support::rfs::remove_file;
 use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
-use std::fs;
 
 fn main() {
     rustc().input("foo.rs").run();

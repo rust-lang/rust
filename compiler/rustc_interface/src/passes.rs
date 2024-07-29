@@ -1,7 +1,9 @@
-use crate::errors;
-use crate::interface::{Compiler, Result};
-use crate::proc_macro_decls;
-use crate::util;
+use std::any::Any;
+use std::ffi::OsString;
+use std::io::{self, BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock};
+use std::{env, fs, iter};
 
 use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -27,22 +29,17 @@ use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::output::filename_for_input;
-use rustc_session::output::{collect_crate_types, find_crate_name};
+use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
-
-use std::any::Any;
-use std::ffi::OsString;
-use std::io::{self, BufWriter, Write};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
-use std::{env, fs, iter};
 use tracing::{info, instrument};
+
+use crate::interface::{Compiler, Result};
+use crate::{errors, proc_macro_decls, util};
 
 pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
     let krate = sess

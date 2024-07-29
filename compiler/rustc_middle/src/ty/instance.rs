@@ -1,10 +1,7 @@
-use crate::error;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::print::{shrunk_instance_name, FmtPrinter, Printer};
-use crate::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-};
+use std::assert_matches::assert_matches;
+use std::fmt;
+use std::path::PathBuf;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -18,9 +15,13 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use tracing::{debug, instrument};
 
-use std::assert_matches::assert_matches;
-use std::fmt;
-use std::path::PathBuf;
+use crate::error;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::ty::print::{shrunk_instance_name, FmtPrinter, Printer};
+use crate::ty::{
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
 ///

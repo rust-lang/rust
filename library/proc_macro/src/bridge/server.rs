@@ -1,9 +1,9 @@
 //! Server-side traits.
 
-use super::*;
-
 use std::cell::Cell;
 use std::marker::PhantomData;
+
+use super::*;
 
 macro_rules! define_server_handles {
     (

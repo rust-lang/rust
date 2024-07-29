@@ -1,11 +1,10 @@
-use crate::{
-    io,
-    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
-    pipe::{PipeReader, PipeWriter},
-    process::Stdio,
-    sys::{fd::FileDesc, pipe::anon_pipe},
-    sys_common::{FromInner, IntoInner},
-};
+use crate::io;
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::pipe::{PipeReader, PipeWriter};
+use crate::process::Stdio;
+use crate::sys::fd::FileDesc;
+use crate::sys::pipe::anon_pipe;
+use crate::sys_common::{FromInner, IntoInner};
 
 pub(crate) type AnonPipe = FileDesc;
 

@@ -15,11 +15,9 @@ mod tests;
 
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::path::{Path, PathBuf};
-use crate::sys;
 use crate::sys::os as os_imp;
+use crate::{fmt, io, sys};
 
 /// Returns the current working directory as a [`PathBuf`].
 ///

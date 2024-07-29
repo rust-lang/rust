@@ -1,19 +1,19 @@
-use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::fixup::FixupContext;
-use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
+use std::fmt::Write;
+
 use ast::{ForLoopKind, MatchKind};
 use itertools::{Itertools, Position};
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
-use rustc_ast::{self as ast, BlockCheckMode};
 use rustc_ast::{
-    FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount, FormatDebugHex, FormatSign,
-    FormatTrait,
+    self as ast, token, BlockCheckMode, FormatAlignment, FormatArgPosition, FormatArgsPiece,
+    FormatCount, FormatDebugHex, FormatSign, FormatTrait,
 };
-use std::fmt::Write;
+
+use crate::pp::Breaks::Inconsistent;
+use crate::pprust::state::fixup::FixupContext;
+use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 impl<'a> State<'a> {
     fn print_else(&mut self, els: Option<&ast::Expr>) {

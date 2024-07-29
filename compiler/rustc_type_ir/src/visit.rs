@@ -41,11 +41,12 @@
 //! - u.visit_with(visitor)
 //! ```
 
+use std::fmt;
+use std::ops::ControlFlow;
+
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_ast_ir::{try_visit, walk_visitable_list};
 use rustc_index::{Idx, IndexVec};
-use std::fmt;
-use std::ops::ControlFlow;
 
 use crate::data_structures::Lrc;
 use crate::inherent::*;

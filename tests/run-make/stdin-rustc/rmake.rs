@@ -1,7 +1,8 @@
 //! This test checks rustc `-` (stdin) support
 
-use run_make_support::{is_windows, rustc};
 use std::path::PathBuf;
+
+use run_make_support::{is_windows, rustc};
 
 const HELLO_WORLD: &str = r#"
 fn main() {

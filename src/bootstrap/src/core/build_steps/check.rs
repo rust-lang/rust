@@ -1,5 +1,7 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
+use std::path::PathBuf;
+
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
 };
@@ -9,7 +11,6 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::{Compiler, Mode, Subcommand};
-use std::path::PathBuf;
 
 pub fn cargo_subcommand(kind: Kind) -> &'static str {
     match kind {

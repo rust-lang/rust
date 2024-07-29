@@ -1,13 +1,12 @@
 use std::iter;
-use tracing::debug;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable};
+use tracing::debug;
 
 use crate::query::LocalCrate;
 use crate::traits::specialization_graph;

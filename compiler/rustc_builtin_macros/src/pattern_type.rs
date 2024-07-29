@@ -1,4 +1,6 @@
-use rustc_ast::{ast, ptr::P, tokenstream::TokenStream, Pat, Ty};
+use rustc_ast::ptr::P;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{ast, Pat, Ty};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::{sym, Span};

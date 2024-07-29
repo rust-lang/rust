@@ -1,6 +1,5 @@
 use core::mem::*;
 use core::ptr;
-
 #[cfg(panic = "unwind")]
 use std::rc::Rc;
 

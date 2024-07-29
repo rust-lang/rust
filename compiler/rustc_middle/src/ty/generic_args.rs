@@ -1,28 +1,27 @@
 // Generic arguments.
 
-use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{
-    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs, Lift, List, Ty, TyCtxt,
-};
+use core::intrinsics;
+use std::marker::PhantomData;
+use std::mem;
+use std::num::NonZero;
+use std::ptr::NonNull;
 
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::extension;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
-use core::intrinsics;
-use std::marker::PhantomData;
-use std::mem;
-use std::num::NonZero;
-use std::ptr::NonNull;
+use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::ty::visit::{TypeVisitable, TypeVisitor};
+use crate::ty::{
+    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs, Lift, List, Ty, TyCtxt,
+};
 
 pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
 pub type TermKind<'tcx> = rustc_type_ir::TermKind<TyCtxt<'tcx>>;

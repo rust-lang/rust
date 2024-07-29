@@ -1,5 +1,7 @@
-use derive_where::derive_where;
+use std::fmt;
 
+use derive_where::derive_where;
+use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -7,14 +9,11 @@ use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
-use std::fmt;
 
 pub use self::closure::*;
 use self::TyKind::*;
 use crate::inherent::*;
 use crate::{self as ty, DebruijnIndex, Interner};
-
-use rustc_ast_ir::Mutability;
 
 mod closure;
 

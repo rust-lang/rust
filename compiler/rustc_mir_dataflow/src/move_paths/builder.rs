@@ -1,3 +1,5 @@
+use std::mem;
+
 use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
@@ -6,12 +8,10 @@ use rustc_middle::{bug, span_bug};
 use smallvec::{smallvec, SmallVec};
 use tracing::debug;
 
-use std::mem;
-
 use super::abs_domain::Lift;
-use super::{Init, InitIndex, InitKind, InitLocation, LookupResult};
 use super::{
-    LocationMap, MoveData, MoveOut, MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
+    Init, InitIndex, InitKind, InitLocation, LocationMap, LookupResult, MoveData, MoveOut,
+    MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
 };
 
 struct MoveDataBuilder<'a, 'tcx, F> {

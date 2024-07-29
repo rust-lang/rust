@@ -1,9 +1,10 @@
 // The compiler code necessary to support the compile_error! extension.
 
-use crate::util::get_single_str_from_tts;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::Span;
+
+use crate::util::get_single_str_from_tts;
 
 pub(crate) fn expand_compile_error<'cx>(
     cx: &'cx mut ExtCtxt<'_>,

@@ -2,13 +2,12 @@ use core::fmt::{self, Debug};
 use core::marker::PhantomData;
 use core::mem;
 
-use crate::alloc::{Allocator, Global};
+use Entry::*;
 
 use super::super::borrow::DormantMutRef;
 use super::super::node::{marker, Handle, NodeRef};
 use super::BTreeMap;
-
-use Entry::*;
+use crate::alloc::{Allocator, Global};
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
 ///

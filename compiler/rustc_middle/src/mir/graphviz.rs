@@ -1,7 +1,8 @@
+use std::io::{self, Write};
+
 use gsgdt::GraphvizSettings;
 use rustc_graphviz as dot;
 use rustc_middle::mir::*;
-use std::io::{self, Write};
 
 use super::generic_graph::mir_fn_to_generic_graph;
 use super::pretty::dump_mir_def_ids;

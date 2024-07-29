@@ -1,11 +1,8 @@
-use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
-use crate::query::IntoQueryParam;
-use crate::query::Providers;
-use crate::ty::GenericArgKind;
-use crate::ty::{
-    ConstInt, Expr, ParamConst, ScalarInt, Term, TermKind, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-};
+use std::cell::Cell;
+use std::fmt::{self, Write as _};
+use std::iter;
+use std::ops::{Deref, DerefMut};
+
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -25,13 +22,14 @@ use rustc_target::spec::abi::Abi;
 use rustc_type_ir::{elaborate, Upcast as _};
 use smallvec::SmallVec;
 
-use std::cell::Cell;
-use std::fmt::{self, Write as _};
-use std::iter;
-use std::ops::{Deref, DerefMut};
-
 // `pretty` is a separate module only for organization.
 use super::*;
+use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
+use crate::query::{IntoQueryParam, Providers};
+use crate::ty::{
+    ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+};
 
 macro_rules! p {
     (@$lit:literal) => {

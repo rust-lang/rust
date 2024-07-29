@@ -1,7 +1,8 @@
 //! Provide information about the machine that this is being compiled into.
 
-use crate::compiler_interface::with;
 use serde::Serialize;
+
+use crate::compiler_interface::with;
 
 /// The properties of the target machine being compiled into.
 #[derive(Clone, PartialEq, Eq, Serialize)]

@@ -2,11 +2,9 @@ use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
-use std::ops::Bound;
 use std::ops::Bound::*;
-use std::ops::RangeBounds;
-use std::panic;
-use std::str;
+use std::ops::{Bound, RangeBounds};
+use std::{panic, str};
 
 pub trait IntoCow<'a, B: ?Sized>
 where

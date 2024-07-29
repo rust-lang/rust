@@ -1,6 +1,7 @@
 #![allow(deprecated)]
 
 use core::hash::*;
+
 use test::{black_box, Bencher};
 
 fn hash_bytes<H: Hasher>(mut s: H, x: &[u8]) -> u64 {

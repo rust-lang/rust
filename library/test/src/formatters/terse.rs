@@ -1,15 +1,12 @@
-use std::{io, io::prelude::Write};
+use std::io;
+use std::io::prelude::Write;
 
 use super::OutputFormatter;
-use crate::{
-    bench::fmt_bench_samples,
-    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
-    term,
-    test_result::TestResult,
-    time,
-    types::NamePadding,
-    types::TestDesc,
-};
+use crate::bench::fmt_bench_samples;
+use crate::console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation};
+use crate::test_result::TestResult;
+use crate::types::{NamePadding, TestDesc};
+use crate::{term, time};
 
 // We insert a '\n' when the output hits 100 columns in quiet mode. 88 test
 // result chars leaves 12 chars for a progress count like " 11704/12853".

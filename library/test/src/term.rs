@@ -12,7 +12,8 @@
 
 #![deny(missing_docs)]
 
-use std::io::{self, prelude::*};
+use std::io::prelude::*;
+use std::io::{self};
 
 pub(crate) use terminfo::TerminfoTerminal;
 #[cfg(windows)]

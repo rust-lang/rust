@@ -1,9 +1,11 @@
-use crate::ty::{self, Ty, TyCtxt};
+use std::cmp;
+use std::marker::PhantomData;
+
 use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
-use std::cmp;
-use std::marker::PhantomData;
+
+use crate::ty::{self, Ty, TyCtxt};
 
 pub trait ToType {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;

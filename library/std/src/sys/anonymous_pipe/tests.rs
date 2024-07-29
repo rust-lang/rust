@@ -1,7 +1,5 @@
-use crate::{
-    io::{Read, Write},
-    pipe::pipe,
-};
+use crate::io::{Read, Write};
+use crate::pipe::pipe;
 
 #[test]
 fn pipe_creation_clone_and_rw() {

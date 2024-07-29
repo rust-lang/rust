@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 
+use rinja::Template;
 use rustc_data_structures::fx::FxHashMap;
 
+use super::static_files::{StaticFiles, STATIC_FILES};
 use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
-
-use rinja::Template;
-
-use super::static_files::{StaticFiles, STATIC_FILES};
 
 #[derive(Clone)]
 pub(crate) struct Layout {

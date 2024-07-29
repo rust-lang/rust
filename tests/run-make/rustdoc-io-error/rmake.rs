@@ -14,8 +14,9 @@
 // `mkfs.ext4 -d`, as well as mounting a loop device for the rootfs.
 //@ ignore-windows - the `set_readonly` functions doesn't work on folders.
 
-use run_make_support::{path, rustdoc};
 use std::fs;
+
+use run_make_support::{path, rustdoc};
 
 fn main() {
     let out_dir = path("rustdoc-io-error");

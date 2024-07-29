@@ -1,7 +1,6 @@
-use std::env;
 use std::ffi::OsStr;
-use std::panic;
 use std::path::{Path, PathBuf};
+use std::{env, panic};
 
 use crate::command::{Command, CompletedProcess};
 use crate::util::{handle_failed_output, set_host_rpath};

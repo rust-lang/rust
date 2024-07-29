@@ -1,8 +1,9 @@
 //! Errors emitted by symbol_mangling.
 
+use std::fmt;
+
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_span::Span;
-use std::fmt;
 
 pub struct TestOutput {
     pub span: Span,

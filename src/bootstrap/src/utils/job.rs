@@ -40,27 +40,24 @@ pub unsafe fn setup(build: &mut crate::Build) {
 /// Note that this is a Windows specific module as none of this logic is required on Unix.
 #[cfg(windows)]
 mod for_windows {
-    use crate::Build;
-    use std::env;
     use std::ffi::c_void;
-    use std::io;
-    use std::mem;
+    use std::{env, io, mem};
 
-    use windows::{
-        core::PCWSTR,
-        Win32::Foundation::{CloseHandle, DuplicateHandle, DUPLICATE_SAME_ACCESS, HANDLE},
-        Win32::System::Diagnostics::Debug::{
-            SetErrorMode, SEM_NOGPFAULTERRORBOX, THREAD_ERROR_MODE,
-        },
-        Win32::System::JobObjects::{
-            AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
-            SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PRIORITY_CLASS,
-        },
-        Win32::System::Threading::{
-            GetCurrentProcess, OpenProcess, BELOW_NORMAL_PRIORITY_CLASS, PROCESS_DUP_HANDLE,
-        },
+    use windows::core::PCWSTR;
+    use windows::Win32::Foundation::{CloseHandle, DuplicateHandle, DUPLICATE_SAME_ACCESS, HANDLE};
+    use windows::Win32::System::Diagnostics::Debug::{
+        SetErrorMode, SEM_NOGPFAULTERRORBOX, THREAD_ERROR_MODE,
     };
+    use windows::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
+        SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PRIORITY_CLASS,
+    };
+    use windows::Win32::System::Threading::{
+        GetCurrentProcess, OpenProcess, BELOW_NORMAL_PRIORITY_CLASS, PROCESS_DUP_HANDLE,
+    };
+
+    use crate::Build;
 
     pub unsafe fn setup(build: &mut Build) {
         // Enable the Windows Error Reporting dialog which msys disables,

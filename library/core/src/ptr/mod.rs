@@ -409,13 +409,9 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::cmp::Ordering;
-use crate::fmt;
-use crate::hash;
-use crate::intrinsics;
 use crate::marker::FnPtr;
-use crate::ub_checks;
-
 use crate::mem::{self, MaybeUninit};
+use crate::{fmt, hash, intrinsics, ub_checks};
 
 mod alignment;
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
@@ -423,12 +419,10 @@ pub use alignment::Alignment;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
-pub use crate::intrinsics::copy_nonoverlapping;
-
+pub use crate::intrinsics::copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
-pub use crate::intrinsics::copy;
-
+pub use crate::intrinsics::copy_nonoverlapping;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;

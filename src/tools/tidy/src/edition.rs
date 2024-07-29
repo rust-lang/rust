@@ -1,7 +1,8 @@
 //! Tidy check to ensure that crate `edition` is '2018' or '2021'.
 
-use crate::walk::{filter_dirs, walk};
 use std::path::Path;
+
+use crate::walk::{filter_dirs, walk};
 
 fn is_edition_2021(mut line: &str) -> bool {
     line = line.trim();

@@ -131,22 +131,21 @@
 //! [attempt 2]: https://github.com/rust-lang/rust/pull/71003
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
 
-use crate::MirPass;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry, IndexOccupiedEntry};
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc_middle::mir::HasLocalDecls;
-use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
-    traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, Rvalue,
-    Statement, StatementKind, TerminatorKind,
+    dump_mir, traversal, Body, HasLocalDecls, InlineAsmOperand, Local, LocalKind, Location,
+    Operand, PassWhere, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
 use rustc_mir_dataflow::points::{save_as_intervals, DenseLocationMap, PointIndex};
 use rustc_mir_dataflow::Analysis;
+
+use crate::MirPass;
 
 pub struct DestinationPropagation;
 

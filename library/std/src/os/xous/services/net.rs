@@ -1,6 +1,7 @@
+use core::sync::atomic::{AtomicU32, Ordering};
+
 use crate::os::xous::ffi::Connection;
 use crate::os::xous::services::connect;
-use core::sync::atomic::{AtomicU32, Ordering};
 
 pub(crate) enum NetBlockingScalar {
     StdGetTtlUdp(u16 /* fd */),                /* 36 */

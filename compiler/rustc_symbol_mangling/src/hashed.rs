@@ -1,9 +1,10 @@
-use crate::v0;
+use std::fmt::Write;
+
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::ty::{Instance, TyCtxt};
 
-use std::fmt::Write;
+use crate::v0;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,

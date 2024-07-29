@@ -1,4 +1,5 @@
-use crate::sync::atomic::{AtomicU32, Ordering::Relaxed};
+use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::Ordering::Relaxed;
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
 use crate::sys::sync::Mutex;
 use crate::time::Duration;

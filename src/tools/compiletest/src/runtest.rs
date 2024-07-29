@@ -1,45 +1,37 @@
 // ignore-tidy-filelength
 
-use crate::common::{
-    expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
-};
-use crate::common::{incremental_dir, output_base_dir, output_base_name, output_testname_unique};
-use crate::common::{Assembly, Crashes, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
-use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
-use crate::common::{CompareMode, FailMode, PassMode};
-use crate::common::{Config, TestPaths};
-use crate::common::{CoverageMap, CoverageRun, Pretty, RunPassValgrind};
-use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
-use crate::compute_diff::{write_diff, write_filtered_diff};
-use crate::errors::{self, Error, ErrorKind};
-use crate::header::TestProps;
-use crate::json;
-use crate::read2::{read2_abbreviated, Truncated};
-use crate::util::{add_dylib_path, copy_dir_all, dylib_env_var, logv, static_regex, PathBufExt};
-use crate::ColorConfig;
-use colored::Colorize;
-use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
-use regex::{Captures, Regex};
-use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, create_dir_all, File, OpenOptions};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
-use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::str;
 use std::sync::Arc;
+use std::{env, iter, str};
 
 use anyhow::Context;
+use colored::Colorize;
 use glob::glob;
+use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
+use regex::{Captures, Regex};
+use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use tracing::*;
 
-use crate::extract_gdb_version;
-use crate::is_android_gdb_target;
+use crate::common::{
+    expected_output_path, incremental_dir, output_base_dir, output_base_name,
+    output_testname_unique, Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap,
+    CoverageRun, Crashes, DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode,
+    Pretty, RunMake, RunPassValgrind, Rustdoc, RustdocJson, TestPaths, Ui, UI_EXTENSIONS, UI_FIXED,
+    UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
+};
+use crate::compute_diff::{write_diff, write_filtered_diff};
+use crate::errors::{self, Error, ErrorKind};
+use crate::header::TestProps;
+use crate::read2::{read2_abbreviated, Truncated};
+use crate::util::{add_dylib_path, copy_dir_all, dylib_env_var, logv, static_regex, PathBufExt};
+use crate::{extract_gdb_version, is_android_gdb_target, json, ColorConfig};
 
 mod coverage;
 mod debugger;

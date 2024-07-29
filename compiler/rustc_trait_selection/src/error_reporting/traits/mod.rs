@@ -19,10 +19,9 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
 
+pub use self::overflow::*;
 use crate::error_reporting::TypeErrCtxt;
 use crate::traits::{FulfillmentError, FulfillmentErrorCode};
-
-pub use self::overflow::*;
 
 // When outputting impl candidates, prefer showing those that are more similar.
 //

@@ -2,16 +2,14 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
-use self::EvaluationResult::*;
-
-use super::{SelectionError, SelectionResult};
 use rustc_errors::ErrorGuaranteed;
-
-use crate::ty;
-
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TypeVisitable};
 use rustc_query_system::cache::Cache;
+
+use self::EvaluationResult::*;
+use super::{SelectionError, SelectionResult};
+use crate::ty;
 
 pub type SelectionCache<'tcx> = Cache<
     // This cache does not use `ParamEnvAnd` in its keys because `ParamEnv::and` can replace

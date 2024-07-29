@@ -1,8 +1,8 @@
-use super::*;
+use core::hint::black_box;
 
+use super::*;
 use crate::collections::{BTreeSet, HashSet};
 use crate::hash::DefaultHasher;
-use core::hint::black_box;
 
 #[allow(unknown_lints, unused_macro_rules)]
 macro_rules! t (

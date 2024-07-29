@@ -30,41 +30,36 @@ mod simplify;
 pub(crate) mod types;
 pub(crate) mod utils;
 
-use rustc_ast as ast;
+use std::borrow::Cow;
+use std::collections::BTreeMap;
+use std::mem;
+
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
-use rustc_errors::{codes::*, struct_span_code_err, FatalError};
-use rustc_hir as hir;
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, FatalError};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::lower_ty;
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::ExpnKind;
 use rustc_trait_selection::traits::wf::object_region_bounds;
-
-use std::borrow::Cow;
-use std::collections::BTreeMap;
-use std::mem;
 use thin_vec::ThinVec;
-
-use crate::core::DocContext;
-use crate::formats::item_type::ItemType;
-use crate::visit_ast::Module as DocModule;
-
 use utils::*;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
 pub(crate) use self::types::*;
 pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blanket_impls};
+use crate::core::DocContext;
+use crate::formats::item_type::ItemType;
+use crate::visit_ast::Module as DocModule;
 
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];

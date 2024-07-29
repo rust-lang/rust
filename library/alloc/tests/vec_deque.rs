@@ -1,15 +1,16 @@
 use core::num::NonZero;
 use std::assert_matches::assert_matches;
+use std::collections::vec_deque::Drain;
 use std::collections::TryReserveErrorKind::*;
-use std::collections::{vec_deque::Drain, VecDeque};
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use crate::hash;
-
 use Taggy::*;
 use Taggypar::*;
+
+use crate::hash;
 
 #[test]
 fn test_simple() {

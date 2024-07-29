@@ -16,17 +16,15 @@ mod tests;
 mod spin_mutex;
 mod unsafe_list;
 
-use crate::num::NonZero;
-use crate::ops::{Deref, DerefMut};
-use crate::panic::{self, AssertUnwindSafe};
-use crate::time::Duration;
-
-use super::abi::thread;
-use super::abi::usercalls;
 use fortanix_sgx_abi::{Tcs, EV_UNPARK, WAIT_INDEFINITE};
 
 pub use self::spin_mutex::{try_lock_or_false, SpinMutex, SpinMutexGuard};
 use self::unsafe_list::{UnsafeList, UnsafeListEntry};
+use super::abi::{thread, usercalls};
+use crate::num::NonZero;
+use crate::ops::{Deref, DerefMut};
+use crate::panic::{self, AssertUnwindSafe};
+use crate::time::Duration;
 
 /// An queue entry in a `WaitQueue`.
 struct WaitEntry {

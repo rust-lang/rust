@@ -2,8 +2,9 @@
 
 #![unstable(feature = "uefi_std", issue = "100499")]
 
+use crate::ffi::c_void;
+use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-use crate::{ffi::c_void, ptr::NonNull};
 
 static SYSTEM_TABLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
 static IMAGE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());

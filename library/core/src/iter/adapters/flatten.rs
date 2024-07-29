@@ -1,13 +1,11 @@
 use crate::iter::adapters::SourceIter;
 use crate::iter::{
-    Cloned, Copied, Filter, FilterMap, Fuse, FusedIterator, InPlaceIterable, Map, TrustedFused,
-    TrustedLen,
+    Cloned, Copied, Empty, Filter, FilterMap, Fuse, FusedIterator, InPlaceIterable, Map, Once,
+    OnceWith, TrustedFused, TrustedLen,
 };
-use crate::iter::{Empty, Once, OnceWith};
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
-use crate::result;
-use crate::{array, fmt, option};
+use crate::{array, fmt, option, result};
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.

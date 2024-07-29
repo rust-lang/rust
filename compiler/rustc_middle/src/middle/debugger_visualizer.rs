@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use std::path::PathBuf;
 
 #[derive(HashStable)]
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]

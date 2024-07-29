@@ -2,7 +2,8 @@
 
 // Tests that WS2_32.dll is not unnecessarily linked, see issue #85441
 
-use run_make_support::object::{self, read::Object};
+use run_make_support::object::read::Object;
+use run_make_support::object::{self};
 use run_make_support::{rfs, rustc};
 
 fn main() {

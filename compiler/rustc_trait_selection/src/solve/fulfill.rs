@@ -15,11 +15,10 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
 use rustc_span::symbol::sym;
 
-use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
-
 use super::delegate::SolverDelegate;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use super::Certainty;
+use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
 
 /// A trait engine using the new trait solver.
 ///

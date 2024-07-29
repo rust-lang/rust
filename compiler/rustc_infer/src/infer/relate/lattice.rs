@@ -17,13 +17,12 @@
 //!
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
+use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::{self, Ty, TyVar};
+
 use super::combine::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt};
 use crate::traits::ObligationCause;
-
-use rustc_middle::ty::relate::RelateResult;
-use rustc_middle::ty::TyVar;
-use rustc_middle::ty::{self, Ty};
 
 /// Trait for returning data about a lattice, and for abstracting
 /// over the "direction" of the lattice operation (LUB/GLB).

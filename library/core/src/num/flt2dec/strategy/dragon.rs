@@ -6,9 +6,7 @@
 
 use crate::cmp::Ordering;
 use crate::mem::MaybeUninit;
-
-use crate::num::bignum::Big32x40 as Big;
-use crate::num::bignum::Digit32 as Digit;
+use crate::num::bignum::{Big32x40 as Big, Digit32 as Digit};
 use crate::num::flt2dec::estimator::estimate_scaling_factor;
 use crate::num::flt2dec::{round_up, Decoded, MAX_SIG_DIGITS};
 

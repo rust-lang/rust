@@ -1,8 +1,9 @@
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+
 use pathdiff::diff_paths;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::try_canonicalize;
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
 use tracing::debug;
 
 pub struct RPathConfig<'a> {

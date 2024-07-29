@@ -297,14 +297,11 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
-use crate::fmt;
-use crate::mem::take;
-use crate::ops::{Deref, DerefMut};
-use crate::slice;
-use crate::str;
-use crate::sys;
+#[unstable(feature = "read_buf", issue = "78485")]
+pub use core::io::{BorrowedBuf, BorrowedCursor};
 use core::slice::memchr;
+
+pub(crate) use error::const_io_error;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
@@ -328,10 +325,9 @@ pub use self::{
     stdio::{stderr, stdin, stdout, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock},
     util::{empty, repeat, sink, Empty, Repeat, Sink},
 };
-
-#[unstable(feature = "read_buf", issue = "78485")]
-pub use core::io::{BorrowedBuf, BorrowedCursor};
-pub(crate) use error::const_io_error;
+use crate::mem::take;
+use crate::ops::{Deref, DerefMut};
+use crate::{cmp, fmt, slice, str, sys};
 
 mod buffered;
 pub(crate) mod copy;

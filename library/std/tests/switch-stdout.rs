@@ -5,11 +5,10 @@ use std::io::{Read, Write};
 
 mod common;
 
-#[cfg(windows)]
-use std::os::windows::io::OwnedHandle;
-
 #[cfg(unix)]
 use std::os::fd::OwnedFd;
+#[cfg(windows)]
+use std::os::windows::io::OwnedHandle;
 
 #[cfg(unix)]
 fn switch_stdout_to(file: OwnedFd) -> OwnedFd {

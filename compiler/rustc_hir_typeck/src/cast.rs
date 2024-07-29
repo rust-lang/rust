@@ -28,12 +28,9 @@
 //! expression, `e as U2` is not necessarily so (in fact it will only be valid if
 //! `U1` coerces to `U2`).
 
-use super::FnCtxt;
-
-use crate::errors;
-use crate::type_error_struct;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
@@ -41,14 +38,15 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitableExt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
+
+use super::FnCtxt;
+use crate::{errors, type_error_struct};
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.

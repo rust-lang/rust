@@ -1,7 +1,7 @@
+use std::path::{Path, PathBuf};
+
 use crate::config::ConfigInfo;
 use crate::utils::{git_clone, run_command_with_output};
-
-use std::path::{Path, PathBuf};
 
 fn show_usage() {
     println!(

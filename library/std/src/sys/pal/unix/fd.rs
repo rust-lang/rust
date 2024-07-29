@@ -3,12 +3,6 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
-use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys::cvt;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
-
 #[cfg(any(
     target_os = "android",
     target_os = "linux",
@@ -25,6 +19,12 @@ use libc::off64_t;
     target_os = "hurd",
 )))]
 use libc::off_t as off64_t;
+
+use crate::cmp;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::sys::cvt;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);

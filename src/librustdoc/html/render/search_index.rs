@@ -3,6 +3,7 @@ pub(crate) mod encode;
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, VecDeque};
 
+use encode::{bitmap_to_string, write_vlqhex_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -18,8 +19,6 @@ use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
-
-use encode::{bitmap_to_string, write_vlqhex_to_string};
 
 /// The serialized search description sharded version
 ///

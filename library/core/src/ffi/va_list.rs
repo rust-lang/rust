@@ -3,7 +3,6 @@
 //! Better known as "varargs".
 
 use crate::ffi::c_void;
-
 #[allow(unused_imports)]
 use crate::fmt;
 use crate::marker::PhantomData;

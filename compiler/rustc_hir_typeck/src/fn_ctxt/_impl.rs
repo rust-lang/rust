@@ -1,8 +1,6 @@
-use crate::callee::{self, DeferredCallResolution};
-use crate::errors::{self, CtorIsPrivate};
-use crate::method::{self, MethodCallee};
-use crate::rvalue_scopes;
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
+use std::collections::hash_map::Entry;
+use std::slice;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
@@ -26,9 +24,9 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, GenericParamDefKind, IsIdentity, Ty, TyCtxt, UserType,
+    self, AdtKind, CanonicalUserType, GenericArgKind, GenericArgsRef, GenericParamDefKind,
+    IsIdentity, Ty, TyCtxt, UserArgs, UserSelfTy, UserType,
 };
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef, UserArgs, UserSelfTy};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
@@ -41,8 +39,10 @@ use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };
 
-use std::collections::hash_map::Entry;
-use std::slice;
+use crate::callee::{self, DeferredCallResolution};
+use crate::errors::{self, CtorIsPrivate};
+use crate::method::{self, MethodCallee};
+use crate::{rvalue_scopes, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the

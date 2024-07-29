@@ -1,33 +1,24 @@
 use std::borrow::Cow;
 
 use either::Either;
-use tracing::trace;
-
-use rustc_middle::{
-    bug, mir, span_bug,
-    ty::{
-        self,
-        layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout},
-        AdtDef, Instance, Ty,
-    },
-};
-use rustc_span::{source_map::Spanned, sym};
-use rustc_target::abi::{self, FieldIdx};
-use rustc_target::abi::{
-    call::{ArgAbi, FnAbi, PassMode},
-    Integer,
-};
+use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, AdtDef, Instance, Ty};
+use rustc_middle::{bug, mir, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::sym;
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::abi::{self, FieldIdx, Integer};
 use rustc_target::spec::abi::Abi;
+use tracing::trace;
 
 use super::{
     throw_ub, throw_ub_custom, throw_unsup_format, CtfeProvenance, FnVal, ImmTy, InterpCx,
     InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable, Provenance, Scalar,
     StackPopCleanup,
 };
-use crate::{
-    fluent_generated as fluent,
-    interpret::{eval_context::StackPopInfo, ReturnAction},
-};
+use crate::fluent_generated as fluent;
+use crate::interpret::eval_context::StackPopInfo;
+use crate::interpret::ReturnAction;
 
 /// An argment passed to a function.
 #[derive(Clone, Debug)]

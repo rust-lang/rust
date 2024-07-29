@@ -1,11 +1,10 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::any::Any;
-use crate::fmt;
 use crate::marker::PhantomData;
 use crate::mem::{transmute, ManuallyDrop};
 use crate::panic::AssertUnwindSafe;
-use crate::ptr;
+use crate::{fmt, ptr};
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
 /// or a [`LocalWaker`] which provides customized wakeup behavior.

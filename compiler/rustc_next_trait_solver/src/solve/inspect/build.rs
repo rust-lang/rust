@@ -13,10 +13,9 @@ use rustc_type_ir::{self as ty, search_graph, Interner};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::eval_ctxt::canonical;
-use crate::solve::inspect;
 use crate::solve::{
-    CanonicalInput, Certainty, GenerateProofTree, Goal, GoalEvaluationKind, GoalSource, QueryInput,
-    QueryResult,
+    inspect, CanonicalInput, Certainty, GenerateProofTree, Goal, GoalEvaluationKind, GoalSource,
+    QueryInput, QueryResult,
 };
 
 /// The core data structure when building proof trees.

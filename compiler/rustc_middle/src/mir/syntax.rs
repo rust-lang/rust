@@ -3,30 +3,25 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
-use super::{BasicBlock, Const, Local, UserTypeProjection};
-
-use crate::mir::coverage::CoverageKind;
-use crate::traits::Reveal;
-use crate::ty::adjustment::PointerCoercion;
-use crate::ty::GenericArgsRef;
-use crate::ty::{self, List, Ty};
-use crate::ty::{Region, UserTypeAnnotationIndex};
-
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::def_id::DefId;
 use rustc_hir::CoroutineKind;
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::source_map::Spanned;
-use rustc_target::abi::{FieldIdx, VariantIdx};
-
-use rustc_ast::Mutability;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
+
+use super::{BasicBlock, Const, Local, UserTypeProjection};
+use crate::mir::coverage::CoverageKind;
+use crate::traits::Reveal;
+use crate::ty::adjustment::PointerCoercion;
+use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -1583,8 +1578,9 @@ pub enum BinOp {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(AggregateKind<'_>, 32);
     static_assert_size!(Operand<'_>, 24);

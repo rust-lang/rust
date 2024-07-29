@@ -1,13 +1,11 @@
-use crate::error_reporting::TypeErrCtxt;
-use crate::errors::{
-    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
-    SourceKindMultiSuggestion, SourceKindSubdiag,
-};
-use crate::infer::InferCtxt;
-use rustc_errors::{codes::*, Diag, IntoDiagArg};
+use std::borrow::Cow;
+use std::iter;
+use std::path::PathBuf;
+
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::def::{CtorOf, DefKind, Namespace};
+use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
@@ -21,9 +19,13 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
-use std::borrow::Cow;
-use std::iter;
-use std::path::PathBuf;
+
+use crate::error_reporting::TypeErrCtxt;
+use crate::errors::{
+    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
+    SourceKindMultiSuggestion, SourceKindSubdiag,
+};
+use crate::infer::InferCtxt;
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282

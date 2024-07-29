@@ -30,9 +30,9 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use super::FnCtxt;
+use std::iter;
 
-use crate::expr_use_visitor as euv;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
@@ -49,14 +49,12 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::sym;
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{sym, BytePos, Pos, Span, Symbol};
+use rustc_target::abi::FIRST_VARIANT;
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_target::abi::FIRST_VARIANT;
-
-use std::iter;
+use super::FnCtxt;
+use crate::expr_use_visitor as euv;
 
 /// Describe the relationship between the paths of two places
 /// eg:

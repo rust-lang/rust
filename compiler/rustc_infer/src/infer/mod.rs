@@ -1,55 +1,56 @@
+use std::cell::{Cell, RefCell};
+use std::fmt;
+
 pub use at::DefineOpaqueTypes;
+use free_regions::RegionRelations;
 pub use freshen::TypeFreshener;
+use lexical_region_resolve::LexicalRegionResolutions;
 pub use lexical_region_resolve::RegionResolutionError;
-pub use relate::combine::CombineFields;
-pub use relate::combine::PredicateEmittingRelation;
+use opaque_types::OpaqueTypeStorage;
+use region_constraints::{
+    GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
+};
+pub use relate::combine::{CombineFields, PredicateEmittingRelation};
 pub use relate::StructurallyRelateAliases;
-use rustc_errors::DiagCtxtHandle;
+use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::unify as ut;
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_middle::infer::unify_key::{
+    ConstVariableOrigin, ConstVariableValue, ConstVidKey, EffectVarValue, EffectVidKey,
+};
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::traits::select;
+use rustc_middle::traits::solve::{Goal, NoSolution};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::fold::{
+    BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
+use rustc_middle::ty::visit::TypeVisitableExt;
 pub use rustc_middle::ty::IntVarValue;
+use rustc_middle::ty::{
+    self, ConstVid, EffectVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
+    GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid,
+};
+use rustc_middle::{bug, span_bug};
+use rustc_span::symbol::Symbol;
+use rustc_span::Span;
+use snapshot::undo_log::InferCtxtUndoLogs;
+use type_variable::TypeVariableOrigin;
 pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
 
 use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
-use free_regions::RegionRelations;
-use lexical_region_resolve::LexicalRegionResolutions;
-use opaque_types::OpaqueTypeStorage;
-use region_constraints::{GenericKind, VarInfos, VerifyBound};
-use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
-use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::undo_log::Rollback;
-use rustc_data_structures::unify as ut;
-use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_macros::extension;
-use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
-use rustc_middle::infer::unify_key::ConstVariableValue;
-use rustc_middle::infer::unify_key::EffectVarValue;
-use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::select;
-use rustc_middle::traits::solve::{Goal, NoSolution};
-use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BoundVarReplacerDelegate;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
-use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
-use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
-use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
-use snapshot::undo_log::InferCtxtUndoLogs;
-use std::cell::{Cell, RefCell};
-use std::fmt;
-use type_variable::TypeVariableOrigin;
 
 pub mod at;
 pub mod canonical;

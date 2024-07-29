@@ -1,10 +1,3 @@
-use crate::error_reporting::infer::{note_and_explain_region, TypeErrCtxt};
-use crate::errors::{
-    note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
-    RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
-};
-use crate::fluent_generated as fluent;
-use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{Diag, Subdiagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
@@ -13,6 +6,13 @@ use rustc_middle::ty::{self, IsSuggestable, Region, Ty};
 use rustc_span::symbol::kw;
 
 use super::ObligationCauseAsDiagArg;
+use crate::error_reporting::infer::{note_and_explain_region, TypeErrCtxt};
+use crate::errors::{
+    note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
+    RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
+};
+use crate::fluent_generated as fluent;
+use crate::infer::{self, SubregionOrigin};
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diag<'_>, origin: &SubregionOrigin<'tcx>) {

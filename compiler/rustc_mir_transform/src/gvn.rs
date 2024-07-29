@@ -82,15 +82,19 @@
 //! Second, when writing constants in MIR, we do not write `Const::Slice` or `Const`
 //! that contain `AllocId`s.
 
+use std::borrow::Cow;
+
+use either::Either;
 use rustc_const_eval::const_eval::DummyMachine;
-use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemPlaceMeta, MemoryKind};
-use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable, Scalar};
+use rustc_const_eval::interpret::{
+    intern_const_alloc_for_constprop, ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy,
+    Projectable, Scalar,
+};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-use rustc_index::newtype_index;
-use rustc_index::IndexVec;
+use rustc_index::{newtype_index, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
@@ -101,10 +105,8 @@ use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
-use std::borrow::Cow;
 
 use crate::ssa::{AssignedValue, SsaLocals};
-use either::Either;
 
 pub struct GVN;
 

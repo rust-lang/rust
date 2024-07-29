@@ -1,5 +1,4 @@
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::Visibility;
+use rustc_middle::ty::{TyCtxt, Visibility};
 
 use crate::clean;
 use crate::clean::Item;

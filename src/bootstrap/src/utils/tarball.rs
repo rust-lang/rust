@@ -7,8 +7,8 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::core::builder::Builder;
-use crate::core::{build_steps::dist::distdir, builder::Kind};
+use crate::core::build_steps::dist::distdir;
+use crate::core::builder::{Builder, Kind};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{move_file, t};
 use crate::utils::{channel, helpers};

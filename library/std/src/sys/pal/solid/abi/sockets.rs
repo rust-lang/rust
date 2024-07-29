@@ -1,5 +1,6 @@
-use crate::os::raw::{c_char, c_uint, c_void};
 pub use libc::{c_int, c_long, size_t, ssize_t, timeval};
+
+use crate::os::raw::{c_char, c_uint, c_void};
 
 pub const SOLID_NET_ERR_BASE: c_int = -2000;
 pub const EINPROGRESS: c_int = SOLID_NET_ERR_BASE - libc::EINPROGRESS;

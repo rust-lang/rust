@@ -1,13 +1,5 @@
-use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
-
-use super::errors::{
-    AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
-    InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
-    InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
-    InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
-    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
-};
-use super::LoweringContext;
+use std::collections::hash_map::Entry;
+use std::fmt::Write;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
@@ -18,8 +10,16 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Span};
 use rustc_target::asm;
-use std::collections::hash_map::Entry;
-use std::fmt::Write;
+
+use super::errors::{
+    AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
+    InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
+    InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
+    InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
+    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
+};
+use super::LoweringContext;
+use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable

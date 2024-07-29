@@ -4,20 +4,21 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::{errors, fluent_generated as fluent};
-use rustc_ast::{ast, AttrKind, AttrStyle, Attribute, LitKind};
-use rustc_ast::{MetaItemKind, MetaItemLit, NestedMetaItem};
+use std::cell::Cell;
+use std::collections::hash_map::Entry;
+
+use rustc_ast::{
+    ast, AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem,
+};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, IntoDiagArg, MultiSpan};
-use rustc_errors::{DiagCtxtHandle, StashKey};
+use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir};
 use rustc_hir::{
-    self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
+    self as hir, self, FnSig, ForeignItem, HirId, Item, ItemKind, MethodKind, Safety, Target,
+    TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
-use rustc_hir::{MethodKind, Safety, Target};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
@@ -37,9 +38,9 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
-use std::cell::Cell;
-use std::collections::hash_map::Entry;
 use tracing::debug;
+
+use crate::{errors, fluent_generated as fluent};
 
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]

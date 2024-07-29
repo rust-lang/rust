@@ -1,5 +1,6 @@
-use crate::os::xous::ffi::Connection;
 use core::sync::atomic::{AtomicU32, Ordering};
+
+use crate::os::xous::ffi::Connection;
 
 /// Group a `usize` worth of bytes into a `usize` and return it, beginning from
 /// `offset` * sizeof(usize) bytes from the start. For example,

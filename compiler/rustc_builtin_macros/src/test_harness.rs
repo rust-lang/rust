@@ -1,5 +1,7 @@
 // Code that generates a test runner to run all the tests in a crate
 
+use std::{iter, mem};
+
 use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
@@ -20,8 +22,6 @@ use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::{thin_vec, ThinVec};
 use tracing::debug;
-
-use std::{iter, mem};
 
 use crate::errors;
 

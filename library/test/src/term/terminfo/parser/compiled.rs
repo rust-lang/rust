@@ -2,10 +2,11 @@
 
 //! ncurses-compatible compiled terminfo format parsing (term(5))
 
-use super::super::TermInfo;
 use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
+
+use super::super::TermInfo;
 
 #[cfg(test)]
 mod tests;

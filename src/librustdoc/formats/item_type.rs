@@ -2,10 +2,9 @@
 
 use std::fmt;
 
-use serde::{Serialize, Serializer};
-
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_span::hygiene::MacroKind;
+use serde::{Serialize, Serializer};
 
 use crate::clean;
 

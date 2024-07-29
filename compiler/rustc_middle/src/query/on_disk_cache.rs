@@ -1,3 +1,6 @@
+use std::collections::hash_map::Entry;
+use std::mem;
+
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
@@ -13,22 +16,17 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::query::QuerySideEffects;
-use rustc_serialize::{
-    opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
-    Decodable, Decoder, Encodable, Encoder,
-};
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{
-    BytePos, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span, SpanDecoder, SpanEncoder,
-    StableSourceFileId,
+    BytePos, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span,
+    SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
 };
-use rustc_span::{CachingSourceMapView, Symbol};
-use std::collections::hash_map::Entry;
-use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 

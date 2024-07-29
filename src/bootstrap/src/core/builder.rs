@@ -1,15 +1,16 @@
 use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
-use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::time::{Duration, Instant};
+use std::{env, fs};
+
+use clap::ValueEnum;
 
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{
@@ -17,17 +18,16 @@ use crate::core::build_steps::{
 };
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
-use crate::prepare_behaviour_dump_dir;
 use crate::utils::cache::Cache;
-use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
-use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, t, LldThreads};
-use crate::EXTRA_CHECK_CFGS;
-use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
-
 use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::helpers::{
+    self, add_dylib_path, add_link_lib_path, check_cfg_arg, exe, libdir, linker_args, linker_flags,
+    t, LldThreads,
+};
 pub use crate::Compiler;
-
-use clap::ValueEnum;
+use crate::{
+    prepare_behaviour_dump_dir, Build, CLang, Crate, DocTests, GitRepo, Mode, EXTRA_CHECK_CFGS,
+};
 
 #[cfg(test)]
 mod tests;

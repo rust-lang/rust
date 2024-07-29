@@ -1,8 +1,7 @@
 use crate::cell::UnsafeCell;
 use crate::hint::unreachable_unchecked;
 use crate::ptr;
-use crate::sys::thread_local::abort_on_dtor_unwind;
-use crate::sys::thread_local::destructors;
+use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 pub unsafe trait DestroyedState: Sized {
     fn register_dtor<T>(s: &Storage<T, Self>);

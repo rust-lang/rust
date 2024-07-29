@@ -1,5 +1,6 @@
-use crate::os::unix::net::UnixStream;
 use libc::{getegid, geteuid, getpid};
+
+use crate::os::unix::net::UnixStream;
 
 #[test]
 #[cfg(any(

@@ -4,11 +4,9 @@ pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::{
-    layout::{self, dfa, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited},
-    maybe_transmutable::query_context::QueryContext,
-    Answer, Condition, Map, Reason,
-};
+use crate::layout::{self, dfa, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited};
+use crate::maybe_transmutable::query_context::QueryContext;
+use crate::{Answer, Condition, Map, Reason};
 
 pub(crate) struct MaybeTransmutableQuery<L, C>
 where
@@ -32,14 +30,11 @@ where
 // FIXME: Nix this cfg, so we can write unit tests independently of rustc
 #[cfg(feature = "rustc")]
 mod rustc {
+    use rustc_middle::ty::layout::{LayoutCx, LayoutOf};
+    use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+
     use super::*;
     use crate::layout::tree::rustc::Err;
-
-    use rustc_middle::ty::layout::LayoutCx;
-    use rustc_middle::ty::layout::LayoutOf;
-    use rustc_middle::ty::ParamEnv;
-    use rustc_middle::ty::Ty;
-    use rustc_middle::ty::TyCtxt;
 
     impl<'tcx> MaybeTransmutableQuery<Ty<'tcx>, TyCtxt<'tcx>> {
         /// This method begins by converting `src` and `dst` from `Ty`s to `Tree`s,

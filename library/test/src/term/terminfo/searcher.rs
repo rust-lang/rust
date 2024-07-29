@@ -2,9 +2,8 @@
 //!
 //! Does not support hashed database, only filesystem!
 
-use std::env;
-use std::fs;
 use std::path::PathBuf;
+use std::{env, fs};
 
 #[cfg(test)]
 mod tests;

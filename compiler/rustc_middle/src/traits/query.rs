@@ -5,20 +5,22 @@
 //! The providers for the queries defined here can be found in
 //! `rustc_traits`.
 
-use crate::error::DropCheckOverflow;
-use crate::infer::canonical::{Canonical, QueryResponse};
-use crate::ty::GenericArg;
-use crate::ty::{self, Ty, TyCtxt};
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 // FIXME: Remove this import and import via `traits::solve`.
 pub use rustc_type_ir::solve::NoSolution;
 
+use crate::error::DropCheckOverflow;
+use crate::infer::canonical::{Canonical, QueryResponse};
+use crate::ty::{self, GenericArg, Ty, TyCtxt};
+
 pub mod type_op {
+    use std::fmt;
+
+    use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
+
     use crate::ty::fold::TypeFoldable;
     use crate::ty::{Predicate, Ty, TyCtxt, UserType};
-    use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
-    use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {

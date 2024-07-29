@@ -7,11 +7,8 @@
 //! a `MutVisitor` renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
-use crate::ast::*;
-use crate::ptr::P;
-use crate::token::{self, Token};
-use crate::tokenstream::*;
-use crate::visit::{AssocCtxt, BoundKind};
+use std::ops::DerefMut;
+use std::panic;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -20,9 +17,13 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use smallvec::{smallvec, Array, SmallVec};
-use std::ops::DerefMut;
-use std::panic;
 use thin_vec::ThinVec;
+
+use crate::ast::*;
+use crate::ptr::P;
+use crate::token::{self, Token};
+use crate::tokenstream::*;
+use crate::visit::{AssocCtxt, BoundKind};
 
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;

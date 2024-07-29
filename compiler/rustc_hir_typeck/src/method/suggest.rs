@@ -3,49 +3,45 @@
 
 // ignore-tidy-filelength
 
-use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
-use crate::Expectation;
-use crate::FnCtxt;
 use core::ops::ControlFlow;
+use std::borrow::Cow;
+
 use hir::Expr;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, MultiSpan, StashKey,
-};
+use rustc_errors::codes::*;
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, Diag, MultiSpan, StashKey};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::PathSegment;
-use rustc_hir::{self as hir, HirId};
-use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::bug;
-use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
+use rustc_middle::ty::fast_reject::{simplify_type, DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::print::{
     with_crate_prefix, with_forced_trimmed_paths, PrintTraitRefExt as _,
 };
-use rustc_middle::ty::IsSuggestable;
-use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span};
-use rustc_span::{Symbol, DUMMY_SP};
+use rustc_span::{
+    edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span, Symbol, DUMMY_SP,
+};
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     supertraits, FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
 };
-use std::borrow::Cow;
 
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
-use rustc_hir::intravisit::{self, Visitor};
+use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
+use crate::{Expectation, FnCtxt};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {

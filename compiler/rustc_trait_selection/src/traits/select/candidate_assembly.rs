@@ -12,19 +12,16 @@ use hir::def_id::DefId;
 use hir::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
-use rustc_infer::traits::ObligationCause;
-use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
+use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 
+use super::SelectionCandidate::*;
+use super::{BuiltinImplConditions, SelectionCandidateSet, SelectionContext, TraitObligationStack};
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
-
-use super::BuiltinImplConditions;
-use super::SelectionCandidate::*;
-use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, stack), level = "debug")]

@@ -1,5 +1,4 @@
-use crate::os::hermit::io::OwnedFd;
-use crate::os::hermit::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::os::hermit::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 use crate::{net, sys};
 

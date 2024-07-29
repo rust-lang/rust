@@ -1,4 +1,9 @@
+use std::cmp;
+use std::marker::PhantomData;
+use std::ops::Range;
+
 use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -6,12 +11,6 @@ use rustc_middle::ty::{self, Ty, TyVid};
 use rustc_span::Span;
 
 use crate::infer::InferCtxtUndoLogs;
-
-use rustc_data_structures::snapshot_vec as sv;
-use rustc_data_structures::unify as ut;
-use std::cmp;
-use std::marker::PhantomData;
-use std::ops::Range;
 
 impl<'tcx> Rollback<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for TypeVariableStorage<'tcx> {
     fn reverse(&mut self, undo: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) {

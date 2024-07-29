@@ -3,12 +3,10 @@
 #![stable(feature = "std_panic", since = "1.9.0")]
 
 use crate::any::Any;
-use crate::collections;
-use crate::fmt;
-use crate::panicking;
 use crate::sync::atomic::{AtomicU8, Ordering};
 use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
+use crate::{collections, fmt, panicking};
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[deprecated(
@@ -236,18 +234,15 @@ pub macro panic_2015 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 pub use core::panic::panic_2021;
-
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use crate::panicking::{set_hook, take_hook};
+pub use core::panic::Location;
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
 #[unstable(feature = "panic_update_hook", issue = "92649")]
 pub use crate::panicking::update_hook;
-
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use core::panic::Location;
-
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
+pub use crate::panicking::{set_hook, take_hook};
 
 /// Panics the current thread with the given message as the panic payload.
 ///

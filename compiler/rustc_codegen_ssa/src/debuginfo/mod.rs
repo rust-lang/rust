@@ -1,4 +1,5 @@
-use rustc_middle::ty::{self, layout::TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self};
 use rustc_target::abi::Size;
 
 // FIXME(eddyb) find a place for this (or a way to replace it).

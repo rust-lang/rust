@@ -1,9 +1,7 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
-use crate::array;
 use crate::ops::Range;
-use crate::ptr;
-use crate::ub_checks;
+use crate::{array, ptr, ub_checks};
 
 /// Forms a slice from a pointer and a length.
 ///

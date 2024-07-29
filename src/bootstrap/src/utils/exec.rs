@@ -1,10 +1,12 @@
-use crate::Build;
-use build_helper::ci::CiEnv;
-use build_helper::drop_bomb::DropBomb;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
+
+use build_helper::ci::CiEnv;
+use build_helper::drop_bomb::DropBomb;
+
+use crate::Build;
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]

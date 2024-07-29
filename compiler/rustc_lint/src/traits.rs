@@ -1,10 +1,9 @@
-use crate::lints::{DropGlue, DropTraitConstraintsDiag};
-use crate::LateContext;
-use crate::LateLintPass;
-use crate::LintContext;
 use rustc_hir::{self as hir, LangItem};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::sym;
+
+use crate::lints::{DropGlue, DropTraitConstraintsDiag};
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `drop_bounds` lint checks for generics with `std::ops::Drop` as

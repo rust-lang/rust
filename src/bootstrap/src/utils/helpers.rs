@@ -3,23 +3,20 @@
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
-use build_helper::git::{get_git_merge_base, output_result, GitConfig};
-use build_helper::util::fail;
-use std::env;
 use std::ffi::OsStr;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::str;
 use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::{env, fs, io, str};
+
+use build_helper::git::{get_git_merge_base, output_result, GitConfig};
+use build_helper::util::fail;
 
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
-use crate::LldMode;
-
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
+use crate::LldMode;
 
 #[cfg(test)]
 mod tests;
@@ -48,8 +45,9 @@ macro_rules! t {
         }
     };
 }
-use crate::utils::exec::{command, BootstrapCommand};
 pub use t;
+
+use crate::utils::exec::{command, BootstrapCommand};
 
 pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)

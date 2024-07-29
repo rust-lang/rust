@@ -3,7 +3,9 @@
 fn main() {
     #[cfg(all(not(miri), any(unix, windows)))]
     {
-        use std::{env, io::Read, pipe::pipe, process};
+        use std::io::Read;
+        use std::pipe::pipe;
+        use std::{env, process};
 
         if env::var("I_AM_THE_CHILD").is_ok() {
             child();

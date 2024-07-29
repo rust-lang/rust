@@ -1,5 +1,6 @@
-use super::*;
 use core::iter::*;
+
+use super::*;
 
 #[test]
 fn test_iterator_peekable() {

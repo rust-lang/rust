@@ -38,11 +38,10 @@
     issue = "27721"
 )]
 
-use crate::cmp;
 use crate::cmp::Ordering;
 use crate::convert::TryInto as _;
-use crate::fmt;
 use crate::slice::memchr;
+use crate::{cmp, fmt};
 
 // Pattern
 
@@ -1759,8 +1758,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
 
     use crate::ops::BitAnd;
     use crate::simd::cmp::SimdPartialEq;
-    use crate::simd::mask8x16 as Mask;
-    use crate::simd::u8x16 as Block;
+    use crate::simd::{mask8x16 as Mask, u8x16 as Block};
 
     let first_probe = needle[0];
     let last_byte_offset = needle.len() - 1;
