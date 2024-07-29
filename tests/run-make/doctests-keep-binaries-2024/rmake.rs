@@ -3,15 +3,14 @@
 
 use std::path::Path;
 
-use run_make_support::fs_wrapper::{create_dir, remove_dir_all};
-use run_make_support::{run, rustc, rustdoc};
+use run_make_support::{rfs, run, rustc, rustdoc};
 
 fn setup_test_env<F: FnOnce(&Path, &Path)>(callback: F) {
     let out_dir = Path::new("doctests");
-    create_dir(&out_dir);
+    rfs::create_dir(&out_dir);
     rustc().input("t.rs").crate_type("rlib").run();
     callback(&out_dir, Path::new("libt.rlib"));
-    remove_dir_all(out_dir);
+    rfs::remove_dir_all(out_dir);
 }
 
 fn check_generated_binaries() {
@@ -47,7 +46,7 @@ fn main() {
     // Behavior with --test-run-directory with relative paths.
     setup_test_env(|_, _| {
         let run_dir_path = Path::new("rundir");
-        create_dir(&run_dir_path);
+        rfs::create_dir(&run_dir_path);
 
         rustdoc()
             .input("t.rs")
@@ -61,6 +60,6 @@ fn main() {
             .edition("2024")
             .run();
 
-        remove_dir_all(run_dir_path);
+        rfs::remove_dir_all(run_dir_path);
     });
 }
