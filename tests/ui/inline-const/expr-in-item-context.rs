@@ -7,8 +7,8 @@ const _: () = {};
 // const _ are often used as compile-time assertions that don't conflict with other const items
 
 const { assert!(size_of::<u32>() <= size_of::<usize>()) };
-//~^ error: expected item
-//~| for a full list of items
+//~^ expected item, found keyword
+//~| if you meant to create an anonymous const
 
 fn main() {
     const { assert!(size_of::<u32>() <= size_of::<usize>()) };
