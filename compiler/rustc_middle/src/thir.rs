@@ -13,7 +13,6 @@ use std::fmt;
 use std::ops::Index;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
@@ -702,12 +701,6 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-impl<'tcx> IntoDiagArg for Pat<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        format!("{self}").into_diag_arg()
-    }
-}
-
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct Ascription<'tcx> {
     pub annotation: CanonicalUserTypeAnnotation<'tcx>,
@@ -1080,8 +1073,33 @@ impl<'tcx> PatRangeBoundary<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Display for Pat<'tcx> {
+impl<'tcx> Pat<'tcx> {
+    /// Prints a [`Pat`] to an owned string, for user-facing diagnostics.
+    ///
+    /// If we ever switch over to storing subpatterns as `PatId`, this will also
+    /// need to take a context that can resolve IDs to subpatterns.
+    pub fn to_string(&self) -> String {
+        format!("{}", self.display())
+    }
+
+    /// Used internally by [`fmt::Display`] for [`PatDisplay`].
+    fn display(&self) -> PatDisplay<'_, 'tcx> {
+        PatDisplay { pat: self }
+    }
+}
+
+/// Wrapper around [`&Pat<'tcx>`][`Pat`] that implements [`fmt::Display`].
+///
+/// If we ever switch over to storing subpatterns as `PatId`, this will also
+/// need to hold a context that can resolve IDs to subpatterns.
+struct PatDisplay<'pat, 'tcx> {
+    pat: &'pat Pat<'tcx>,
+}
+
+impl<'pat, 'tcx> fmt::Display for PatDisplay<'pat, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let &Self { pat } = self;
+
         // Printing lists is a chore.
         let mut first = true;
         let mut start_or_continue = |s| {
@@ -1094,20 +1112,22 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
         };
         let mut start_or_comma = || start_or_continue(", ");
 
-        match self.kind {
+        match pat.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
-            PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{subpattern}: _"),
+            PatKind::AscribeUserType { ref subpattern, .. } => {
+                write!(f, "{}: _", subpattern.display())
+            }
             PatKind::Binding { name, mode, ref subpattern, .. } => {
                 f.write_str(mode.prefix_str())?;
                 write!(f, "{name}")?;
                 if let Some(ref subpattern) = *subpattern {
-                    write!(f, " @ {subpattern}")?;
+                    write!(f, " @ {}", subpattern.display())?;
                 }
                 Ok(())
             }
             PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
-                let variant_and_name = match self.kind {
+                let variant_and_name = match pat.kind {
                     PatKind::Variant { adt_def, variant_index, .. } => ty::tls::with(|tcx| {
                         let variant = adt_def.variant(variant_index);
                         let adt_did = adt_def.did();
@@ -1120,7 +1140,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         };
                         Some((variant, name))
                     }),
-                    _ => self.ty.ty_adt_def().and_then(|adt_def| {
+                    _ => pat.ty.ty_adt_def().and_then(|adt_def| {
                         if !adt_def.is_enum() {
                             ty::tls::with(|tcx| {
                                 Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did())))
@@ -1145,11 +1165,11 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                                 continue;
                             }
                             let name = variant.fields[p.field].name;
-                            write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
+                            write!(f, "{}{}: {}", start_or_comma(), name, p.pattern.display())?;
                             printed += 1;
                         }
 
-                        let is_union = self.ty.ty_adt_def().is_some_and(|adt| adt.is_union());
+                        let is_union = pat.ty.ty_adt_def().is_some_and(|adt| adt.is_union());
                         if printed < variant.fields.len() && (!is_union || printed == 0) {
                             write!(f, "{}..", start_or_comma())?;
                         }
@@ -1168,14 +1188,14 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         // Common case: the field is where we expect it.
                         if let Some(p) = subpatterns.get(i) {
                             if p.field.index() == i {
-                                write!(f, "{}", p.pattern)?;
+                                write!(f, "{}", p.pattern.display())?;
                                 continue;
                             }
                         }
 
                         // Otherwise, we have to go looking for it.
                         if let Some(p) = subpatterns.iter().find(|p| p.field.index() == i) {
-                            write!(f, "{}", p.pattern)?;
+                            write!(f, "{}", p.pattern.display())?;
                         } else {
                             write!(f, "_")?;
                         }
@@ -1186,45 +1206,45 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 Ok(())
             }
             PatKind::Deref { ref subpattern } => {
-                match self.ty.kind() {
+                match pat.ty.kind() {
                     ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
                     ty::Ref(_, _, mutbl) => {
                         write!(f, "&{}", mutbl.prefix_str())?;
                     }
-                    _ => bug!("{} is a bad Deref pattern type", self.ty),
+                    _ => bug!("{} is a bad Deref pattern type", pat.ty),
                 }
-                write!(f, "{subpattern}")
+                write!(f, "{}", subpattern.display())
             }
             PatKind::DerefPattern { ref subpattern, .. } => {
-                write!(f, "deref!({subpattern})")
+                write!(f, "deref!({})", subpattern.display())
             }
             PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::InlineConstant { def: _, ref subpattern } => {
-                write!(f, "{} (from inline const)", subpattern)
+                write!(f, "{} (from inline const)", subpattern.display())
             }
             PatKind::Range(ref range) => write!(f, "{range}"),
             PatKind::Slice { ref prefix, ref slice, ref suffix }
             | PatKind::Array { ref prefix, ref slice, ref suffix } => {
                 write!(f, "[")?;
                 for p in prefix.iter() {
-                    write!(f, "{}{}", start_or_comma(), p)?;
+                    write!(f, "{}{}", start_or_comma(), p.display())?;
                 }
                 if let Some(ref slice) = *slice {
                     write!(f, "{}", start_or_comma())?;
                     match slice.kind {
                         PatKind::Wild => {}
-                        _ => write!(f, "{slice}")?,
+                        _ => write!(f, "{}", slice.display())?,
                     }
                     write!(f, "..")?;
                 }
                 for p in suffix.iter() {
-                    write!(f, "{}{}", start_or_comma(), p)?;
+                    write!(f, "{}{}", start_or_comma(), p.display())?;
                 }
                 write!(f, "]")
             }
             PatKind::Or { ref pats } => {
                 for pat in pats.iter() {
-                    write!(f, "{}{}", start_or_continue(" | "), pat)?;
+                    write!(f, "{}{}", start_or_continue(" | "), pat.display())?;
                 }
                 Ok(())
             }

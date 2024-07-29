@@ -200,9 +200,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn GetCurrentProcessId(&mut self) -> InterpResult<'tcx, u32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentProcessId");
-        this.check_no_isolation("`GetCurrentProcessId`")?;
 
-        Ok(std::process::id())
+        Ok(this.get_pid())
     }
 
     #[allow(non_snake_case)]

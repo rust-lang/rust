@@ -238,36 +238,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let isize_layout = self.layout_of(self.tcx.types.isize)?;
 
                 // Get offsets for both that are at least relative to the same base.
-                let (a_offset, b_offset) =
+                // With `OFFSET_IS_ADDR` this is trivial; without it we need either
+                // two integers or two pointers into the same allocation.
+                let (a_offset, b_offset, is_addr) = if M::Provenance::OFFSET_IS_ADDR {
+                    (a.addr().bytes(), b.addr().bytes(), /*is_addr*/ true)
+                } else {
                     match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                         (Err(a), Err(b)) => {
-                            // Neither pointer points to an allocation.
-                            // This is okay only if they are the same.
-                            if a != b {
-                                // We'd catch this below in the "dereferenceable" check, but
-                                // show a nicer error for this particular case.
-                                throw_ub_custom!(
-                                    fluent::const_eval_offset_from_different_integers,
-                                    name = intrinsic_name,
-                                );
-                            }
-                            // This will always return 0.
-                            (a, b)
+                            // Neither pointer points to an allocation, so they are both absolute.
+                            (a, b, /*is_addr*/ true)
                         }
-                        _ if M::Provenance::OFFSET_IS_ADDR && a.addr() == b.addr() => {
-                            // At least one of the pointers has provenance, but they also point to
-                            // the same address so it doesn't matter; this is fine. `(0, 0)` means
-                            // we pass all the checks below and return 0.
-                            (0, 0)
-                        }
-                        // From here onwards, the pointers are definitely for different addresses
-                        // (or we can't determine their absolute address).
                         (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _)))
                             if a_alloc_id == b_alloc_id =>
                         {
                             // Found allocation for both, and it's the same.
                             // Use these offsets for distance calculation.
-                            (a_offset.bytes(), b_offset.bytes())
+                            (a_offset.bytes(), b_offset.bytes(), /*is_addr*/ false)
                         }
                         _ => {
                             // Not into the same allocation -- this is UB.
@@ -276,9 +262,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 name = intrinsic_name,
                             );
                         }
-                    };
+                    }
+                };
 
-                // Compute distance.
+                // Compute distance: a - b.
                 let dist = {
                     // Addresses are unsigned, so this is a `usize` computation. We have to do the
                     // overflow check separately anyway.
@@ -295,6 +282,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 fluent::const_eval_offset_from_unsigned_overflow,
                                 a_offset = a_offset,
                                 b_offset = b_offset,
+                                is_addr = is_addr,
                             );
                         }
                         // The signed form of the intrinsic allows this. If we interpret the
@@ -323,14 +311,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     }
                 };
 
-                // Check that the range between them is dereferenceable ("in-bounds or one past the
-                // end of the same allocation"). This is like the check in ptr_offset_inbounds.
-                let min_ptr = if dist >= 0 { b } else { a };
-                self.check_ptr_access(
-                    min_ptr,
-                    Size::from_bytes(dist.unsigned_abs()),
+                // Check that the memory between them is dereferenceable at all, starting from the
+                // base pointer: `dist` is `a - b`, so it is based on `b`.
+                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)?;
+                // Then check that this is also dereferenceable from `a`. This ensures that they are
+                // derived from the same allocation.
+                self.check_ptr_access_signed(
+                    a,
+                    dist.checked_neg().unwrap(), // i64::MIN is impossible as no allocation can be that large
                     CheckInAllocMsg::OffsetFromTest,
-                )?;
+                )
+                .map_err(|_| {
+                    // Make the error more specific.
+                    err_ub_custom!(
+                        fluent::const_eval_offset_from_different_allocations,
+                        name = intrinsic_name,
+                    )
+                })?;
 
                 // Perform division by size to compute return value.
                 let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {
@@ -577,27 +574,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its
-    /// allocation. For integer pointers, we consider each of them their own tiny allocation of size
-    /// 0, so offset-by-0 (and only 0) is okay -- except that null cannot be offset by _any_ value.
+    /// allocation.
     pub fn ptr_offset_inbounds(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         offset_bytes: i64,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        // The offset being in bounds cannot rely on "wrapping around" the address space.
-        // So, first rule out overflows in the pointer arithmetic.
-        let offset_ptr = ptr.signed_offset(offset_bytes, self)?;
-        // ptr and offset_ptr must be in bounds of the same allocated object. This means all of the
-        // memory between these pointers must be accessible. Note that we do not require the
-        // pointers to be properly aligned (unlike a read/write operation).
-        let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
-        // This call handles checking for integer/null pointers.
-        self.check_ptr_access(
-            min_ptr,
-            Size::from_bytes(offset_bytes.unsigned_abs()),
-            CheckInAllocMsg::PointerArithmeticTest,
-        )?;
-        Ok(offset_ptr)
+        // We first compute the pointer with overflow checks, to get a specific error for when it
+        // overflows (though technically this is redundant with the following inbounds check).
+        let result = ptr.signed_offset(offset_bytes, self)?;
+        // The offset must be in bounds starting from `ptr`.
+        self.check_ptr_access_signed(ptr, offset_bytes, CheckInAllocMsg::PointerArithmeticTest)?;
+        // Done.
+        Ok(result)
     }
 
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.

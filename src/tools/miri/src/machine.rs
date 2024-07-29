@@ -660,7 +660,7 @@ impl<'tcx> MiriMachine<'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            fds: shims::FdTable::new(config.mute_stdout_stderr),
+            fds: shims::FdTable::init(config.mute_stdout_stderr),
             dirs: Default::default(),
             layouts,
             threads,

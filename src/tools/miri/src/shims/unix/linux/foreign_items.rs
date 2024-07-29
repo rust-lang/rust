@@ -94,6 +94,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 this.write_scalar(res, dest)?;
             }
+            "gettid" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.linux_gettid()?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Dynamically invoked syscalls
             "syscall" => {
