@@ -136,8 +136,6 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("fp8dot4", Unstable(sym::aarch64_unstable_target_feature), &["fp8fma"]),
     // FEAT_FP8FMA
     ("fp8fma", Unstable(sym::aarch64_unstable_target_feature), &["fp8"]),
-    // FEAT_FPMR
-    ("fpmr", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_FRINTTS
     ("frintts", Stable, &[]),
     // FEAT_HBC
