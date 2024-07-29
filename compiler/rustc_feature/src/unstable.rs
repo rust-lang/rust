@@ -560,8 +560,6 @@ declare_features! (
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561)),
     /// Allows using enums in offset_of!
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
-    /// Allows using multiple nested field accesses in offset_of!
-    (unstable, offset_of_nested, "1.77.0", Some(120140)),
     /// Allows using fields with slice type in offset_of!
     (unstable, offset_of_slice, "CURRENT_RUSTC_VERSION", Some(126151)),
     /// Allows using `#[optimize(X)]`.
