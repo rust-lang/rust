@@ -189,11 +189,11 @@ impl FileDescription for NullOutput {
 }
 
 #[derive(Clone, Debug)]
-pub struct FileDescriptor(Rc<RefCell<Box<dyn FileDescription>>>);
+pub struct FileDescriptionRef(Rc<RefCell<Box<dyn FileDescription>>>);
 
-impl FileDescriptor {
+impl FileDescriptionRef {
     fn new(fd: impl FileDescription) -> Self {
-        FileDescriptor(Rc::new(RefCell::new(Box::new(fd))))
+        FileDescriptionRef(Rc::new(RefCell::new(Box::new(fd))))
     }
 
     pub fn borrow(&self) -> Ref<'_, dyn FileDescription> {
@@ -217,7 +217,7 @@ impl FileDescriptor {
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    fds: BTreeMap<i32, FileDescriptor>,
+    fds: BTreeMap<i32, FileDescriptionRef>,
 }
 
 impl VisitProvenance for FdTable {
@@ -245,12 +245,12 @@ impl FdTable {
 
     /// Insert a new file description to the FdTable.
     pub fn insert_fd(&mut self, fd: impl FileDescription) -> i32 {
-        let file_handle = FileDescriptor::new(fd);
+        let file_handle = FileDescriptionRef::new(fd);
         self.insert_fd_with_min_fd(file_handle, 0)
     }
 
     /// Insert a new FD that is at least `min_fd`.
-    fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptor, min_fd: i32) -> i32 {
+    fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptionRef, min_fd: i32) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
@@ -286,12 +286,12 @@ impl FdTable {
         Some(fd.borrow_mut())
     }
 
-    pub fn dup(&self, fd: i32) -> Option<FileDescriptor> {
+    pub fn dup(&self, fd: i32) -> Option<FileDescriptionRef> {
         let fd = self.fds.get(&fd)?;
         Some(fd.clone())
     }
 
-    pub fn remove(&mut self, fd: i32) -> Option<FileDescriptor> {
+    pub fn remove(&mut self, fd: i32) -> Option<FileDescriptionRef> {
         self.fds.remove(&fd)
     }
 
