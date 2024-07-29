@@ -3338,18 +3338,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let container = self.lower_ty(container).normalized;
 
-        if let Some(ident_2) = fields.get(1)
-            && !self.tcx.features().offset_of_nested
-        {
-            rustc_session::parse::feature_err(
-                &self.tcx.sess,
-                sym::offset_of_nested,
-                ident_2.span,
-                "only a single ident or integer is stable as the field in offset_of",
-            )
-            .emit();
-        }
-
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut current_container = container;
         let mut fields = fields.into_iter();
