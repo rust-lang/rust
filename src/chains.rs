@@ -66,7 +66,7 @@ use crate::config::{IndentStyle, StyleEdition};
 use crate::expr::rewrite_call;
 use crate::lists::extract_pre_comment;
 use crate::macros::convert_try_mac;
-use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteResult};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::utils::{
@@ -267,9 +267,14 @@ impl ChainItemKind {
 }
 
 impl Rewrite for ChainItem {
-    // TODO impl rewrite_result after rebase
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        let shape = shape.sub_width(self.tries)?;
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        let shape = shape
+            .sub_width(self.tries)
+            .max_width_error(shape.width, self.span)?;
         let rewrite = match self.kind {
             ChainItemKind::Parent {
                 ref expr,
@@ -278,10 +283,9 @@ impl Rewrite for ChainItem {
             ChainItemKind::Parent {
                 ref expr,
                 parens: false,
-            } => expr.rewrite(context, shape)?,
+            } => expr.rewrite_result(context, shape)?,
             ChainItemKind::MethodCall(ref segment, ref types, ref exprs) => {
-                Self::rewrite_method_call(segment.ident, types, exprs, self.span, context, shape)
-                    .ok()?
+                Self::rewrite_method_call(segment.ident, types, exprs, self.span, context, shape)?
             }
             ChainItemKind::StructField(ident) => format!(".{}", rewrite_ident(context, ident)),
             ChainItemKind::TupleField(ident, nested) => format!(
@@ -295,10 +299,10 @@ impl Rewrite for ChainItem {
             ),
             ChainItemKind::Await => ".await".to_owned(),
             ChainItemKind::Comment(ref comment, _) => {
-                rewrite_comment(comment, false, shape, context.config).ok()?
+                rewrite_comment(comment, false, shape, context.config)?
             }
         };
-        Some(format!("{rewrite}{}", "?".repeat(self.tries)))
+        Ok(format!("{rewrite}{}", "?".repeat(self.tries)))
     }
 }
 

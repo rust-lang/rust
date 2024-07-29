@@ -97,7 +97,7 @@ pub(crate) fn format_expr(
             let callee_str = callee.rewrite(context, shape)?;
             rewrite_call(context, &callee_str, args, inner_span, shape).ok()
         }
-        ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
+        ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span).ok(),
         ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
             rewrite_all_pairs(expr, shape, context)
@@ -1484,7 +1484,7 @@ pub(crate) fn rewrite_paren(
     mut subexpr: &ast::Expr,
     shape: Shape,
     mut span: Span,
-) -> Option<String> {
+) -> RewriteResult {
     debug!("rewrite_paren, shape: {:?}", shape);
 
     // Extract comments within parens.
@@ -1497,8 +1497,8 @@ pub(crate) fn rewrite_paren(
         // 1 = "(" or ")"
         pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span().lo());
         post_span = mk_sp(subexpr.span.hi(), span.hi() - BytePos(1));
-        pre_comment = rewrite_missing_comment(pre_span, shape, context).ok()?;
-        post_comment = rewrite_missing_comment(post_span, shape, context).ok()?;
+        pre_comment = rewrite_missing_comment(pre_span, shape, context)?;
+        post_comment = rewrite_missing_comment(post_span, shape, context)?;
 
         // Remove nested parens if there are no comments.
         if let ast::ExprKind::Paren(ref subsubexpr) = subexpr.kind {
@@ -1513,11 +1513,14 @@ pub(crate) fn rewrite_paren(
     }
 
     // 1 = `(` and `)`
-    let sub_shape = shape.offset_left(1)?.sub_width(1)?;
-    let subexpr_str = subexpr.rewrite(context, sub_shape)?;
+    let sub_shape = shape
+        .offset_left(1)
+        .and_then(|s| s.sub_width(1))
+        .max_width_error(shape.width, span)?;
+    let subexpr_str = subexpr.rewrite_result(context, sub_shape)?;
     let fits_single_line = !pre_comment.contains("//") && !post_comment.contains("//");
     if fits_single_line {
-        Some(format!("({pre_comment}{subexpr_str}{post_comment})"))
+        Ok(format!("({pre_comment}{subexpr_str}{post_comment})"))
     } else {
         rewrite_paren_in_multi_line(context, subexpr, shape, pre_span, post_span)
     }
@@ -1529,12 +1532,12 @@ fn rewrite_paren_in_multi_line(
     shape: Shape,
     pre_span: Span,
     post_span: Span,
-) -> Option<String> {
+) -> RewriteResult {
     let nested_indent = shape.indent.block_indent(context.config);
     let nested_shape = Shape::indented(nested_indent, context.config);
-    let pre_comment = rewrite_missing_comment(pre_span, nested_shape, context).ok()?;
-    let post_comment = rewrite_missing_comment(post_span, nested_shape, context).ok()?;
-    let subexpr_str = subexpr.rewrite(context, nested_shape)?;
+    let pre_comment = rewrite_missing_comment(pre_span, nested_shape, context)?;
+    let post_comment = rewrite_missing_comment(post_span, nested_shape, context)?;
+    let subexpr_str = subexpr.rewrite_result(context, nested_shape)?;
 
     let mut result = String::with_capacity(subexpr_str.len() * 2);
     result.push('(');
@@ -1551,7 +1554,7 @@ fn rewrite_paren_in_multi_line(
     result.push_str(&shape.indent.to_string_with_newline(context.config));
     result.push(')');
 
-    Some(result)
+    Ok(result)
 }
 
 fn rewrite_index(
