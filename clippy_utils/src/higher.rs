@@ -25,6 +25,8 @@ pub struct ForLoop<'tcx> {
     pub loop_id: HirId,
     /// entire `for` loop span
     pub span: Span,
+    /// label
+    pub label: Option<ast::Label>,
 }
 
 impl<'tcx> ForLoop<'tcx> {
@@ -33,7 +35,7 @@ impl<'tcx> ForLoop<'tcx> {
         if let ExprKind::DropTemps(e) = expr.kind
             && let ExprKind::Match(iterexpr, [arm], MatchSource::ForLoopDesugar) = e.kind
             && let ExprKind::Call(_, [arg]) = iterexpr.kind
-            && let ExprKind::Loop(block, ..) = arm.body.kind
+            && let ExprKind::Loop(block, label, ..) = arm.body.kind
             && let [stmt] = block.stmts
             && let hir::StmtKind::Expr(e) = stmt.kind
             && let ExprKind::Match(_, [_, some_arm], _) = e.kind
@@ -45,6 +47,7 @@ impl<'tcx> ForLoop<'tcx> {
                 body: some_arm.body,
                 loop_id: arm.body.hir_id,
                 span: expr.span.ctxt().outer_expn_data().call_site,
+                label,
             });
         }
         None
