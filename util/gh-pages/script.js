@@ -1,5 +1,5 @@
 (function () {
-    var md = window.markdownit({
+    const md = window.markdownit({
         html: true,
         linkify: true,
         typographer: true,
@@ -17,7 +17,7 @@
     });
 
     function scrollToLint(lintId) {
-        var target = document.getElementById(lintId);
+        const target = document.getElementById(lintId);
         if (!target) {
             return;
         }
@@ -25,21 +25,17 @@
     }
 
     function scrollToLintByURL($scope, $location) {
-        var removeListener = $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+        const removeListener = $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
             scrollToLint($location.path().substring(1));
             removeListener();
         });
     }
 
     function selectGroup($scope, selectedGroup) {
-        var groups = $scope.groups;
-        for (var group in groups) {
+        const groups = $scope.groups;
+        for (const group in groups) {
             if (groups.hasOwnProperty(group)) {
-                if (group === selectedGroup) {
-                    groups[group] = true;
-                } else {
-                    groups[group] = false;
-                }
+                groups[group] = group === selectedGroup;
             }
         }
     }
@@ -108,7 +104,7 @@
         })
         .controller("lintList", function ($scope, $http, $location, $timeout) {
             // Level filter
-            var LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
+            const LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
             $scope.levels = { ...LEVEL_FILTERS_DEFAULT };
             $scope.byLevels = function (lint) {
                 return $scope.levels[lint.level];
@@ -367,7 +363,7 @@
             }
 
             $scope.clearVersionFilters = function () {
-                for (let filter in $scope.versionFilters) {
+                for (const filter in $scope.versionFilters) {
                     $scope.versionFilters[filter] = { enabled: false, minorVersion: null };
                 }
             }
@@ -378,7 +374,7 @@
 
             $scope.updateVersionFilters = function() {
                 for (const filter in $scope.versionFilters) {
-                    let minorVersion = $scope.versionFilters[filter].minorVersion;
+                    const minorVersion = $scope.versionFilters[filter].minorVersion;
 
                     // 1.29.0 and greater
                     if (minorVersion && minorVersion > 28) {
@@ -391,14 +387,14 @@
             }
 
             $scope.byVersion = function(lint) {
-                let filters = $scope.versionFilters;
+                const filters = $scope.versionFilters;
                 for (const filter in filters) {
                     if (filters[filter].enabled) {
-                        let minorVersion = filters[filter].minorVersion;
+                        const minorVersion = filters[filter].minorVersion;
 
                         // Strip the "pre " prefix for pre 1.29.0 lints
-                        let lintVersion = lint.version.startsWith("pre ") ? lint.version.substring(4, lint.version.length) : lint.version;
-                        let lintMinorVersion = lintVersion.substring(2, 4);
+                        const lintVersion = lint.version.startsWith("pre ") ? lint.version.substring(4, lint.version.length) : lint.version;
+                        const lintMinorVersion = lintVersion.substring(2, 4);
 
                         switch (filter) {
                             // "=" gets the highest priority, since all filters are inclusive
@@ -441,8 +437,8 @@
 
                 // Search the description
                 // The use of `for`-loops instead of `foreach` enables us to return early
-                let terms = searchStr.split(" ");
-                let docsLowerCase = lint.docs.toLowerCase();
+                const terms = searchStr.split(" ");
+                const docsLowerCase = lint.docs.toLowerCase();
                 for (index = 0; index < terms.length; index++) {
                     // This is more likely and will therefore be checked first
                     if (docsLowerCase.indexOf(terms[index]) !== -1) {
@@ -479,7 +475,7 @@
                 const clipboard = document.getElementById("clipboard-" + lint.id);
                 if (clipboard) {
                     let resetClipboardTimeout = null;
-                    let resetClipboardIcon = clipboard.innerHTML;
+                    const resetClipboardIcon = clipboard.innerHTML;
 
                     function resetClipboard() {
                         resetClipboardTimeout = null;
@@ -511,7 +507,7 @@
                     $scope.data = data;
                     $scope.loading = false;
 
-                    var selectedGroup = getQueryVariable("sel");
+                    const selectedGroup = getQueryVariable("sel");
                     if (selectedGroup) {
                         selectGroup($scope, selectedGroup.toLowerCase());
                     }
@@ -519,7 +515,7 @@
                     scrollToLintByURL($scope, $location);
 
                     setTimeout(function () {
-                        var el = document.getElementById('filter-input');
+                        const el = document.getElementById('filter-input');
                         if (el) { el.focus() }
                     }, 0);
                 })
@@ -531,10 +527,10 @@
 })();
 
 function getQueryVariable(variable) {
-    var query = window.location.search.substring(1);
-    var vars = query.split('&');
-    for (var i = 0; i < vars.length; i++) {
-        var pair = vars[i].split('=');
+    const query = window.location.search.substring(1);
+    const vars = query.split('&');
+    for (const entry of vars) {
+        const pair = entry.split('=');
         if (decodeURIComponent(pair[0]) == variable) {
             return decodeURIComponent(pair[1]);
         }
