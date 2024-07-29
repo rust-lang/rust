@@ -758,6 +758,8 @@ pub enum RatomlFileKind {
 }
 
 #[derive(Debug, Clone)]
+// FIXME @alibektas : Seems like a clippy warning of this sort should tell that combining different ConfigInputs into one enum was not a good idea.
+#[allow(clippy::large_enum_variant)]
 enum RatomlFile {
     Workspace(GlobalLocalConfigInput),
     Crate(LocalConfigInput),
@@ -2598,14 +2600,9 @@ macro_rules! _impl_for_config_data {
                 $vis fn $field(&self, source_root : Option<SourceRootId>) -> &$ty {
                     let mut source_root = source_root.as_ref();
                     while let Some(sr) = source_root {
-                        if let Some((file, _)) = self.ratoml_file.get(&sr) {
-                            match file {
-                                RatomlFile::Workspace(config) => {
-                                    if let Some(v) = config.global.$field.as_ref() {
-                                        return &v;
-                                    }
-                                },
-                                _ => ()
+                        if let Some((RatomlFile::Workspace(config), _)) = self.ratoml_file.get(&sr) {
+                            if let Some(v) = config.global.$field.as_ref() {
+                                return &v;
                             }
                         }
 
