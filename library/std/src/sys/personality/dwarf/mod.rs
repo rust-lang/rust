@@ -5,6 +5,7 @@
 // This module is used only by x86_64-pc-windows-gnu for now, but we
 // are compiling it everywhere to avoid regressions.
 #![allow(unused)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +18,6 @@ pub struct DwarfReader {
     pub ptr: *const u8,
 }
 
-#[forbid(unsafe_op_in_unsafe_fn)]
 impl DwarfReader {
     pub fn new(ptr: *const u8) -> DwarfReader {
         DwarfReader { ptr }
