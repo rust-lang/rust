@@ -541,7 +541,7 @@ Otherwise, have a great day =^.^=
                     <div class="col-12 col-md-5 search-control">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="search-input">Filter:</label>
-                            <input type="text" class="form-control filter-input" placeholder="Keywords or search string" id="search-input"
+                            <input type="text" class="form-control filter-input" placeholder="Keywords or search string (`S` or `/` to focus)" id="search-input"
                                 ng-model="search" ng-blur="updatePath()" ng-keyup="$event.keyCode == 13 && updatePath()"
                                 ng-model-options="{debounce: 50}" />
                             <span class="input-group-btn">
