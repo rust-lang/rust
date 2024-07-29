@@ -1,7 +1,6 @@
 //! Compiled declarative macro expanders (`macro_rules!`` and `macro`)
-use std::sync::OnceLock;
 
-use base_db::{CrateId, VersionReq};
+use base_db::CrateId;
 use intern::sym;
 use mbe::DocCommentDesugarMode;
 use span::{Edition, MacroCallId, Span, SyntaxContextId};
@@ -13,7 +12,7 @@ use crate::{
     attrs::RawAttrs,
     db::ExpandDatabase,
     hygiene::{apply_mark, Transparency},
-    tt, AstId, ExpandError, ExpandResult, Lookup,
+    tt, AstId, ExpandError, ExpandErrorKind, ExpandResult, Lookup,
 };
 
 /// Old-style `macro_rules` or the new macros 2.0
@@ -22,9 +21,6 @@ pub struct DeclarativeMacroExpander {
     pub mac: mbe::DeclarativeMacro,
     pub transparency: Transparency,
 }
-
-// FIXME: Remove this once we drop support for 1.76
-static REQUIREMENT: OnceLock<VersionReq> = OnceLock::new();
 
 impl DeclarativeMacroExpander {
     pub fn expand(
@@ -35,29 +31,16 @@ impl DeclarativeMacroExpander {
         span: Span,
     ) -> ExpandResult<(tt::Subtree, Option<u32>)> {
         let loc = db.lookup_intern_macro_call(call_id);
-        let toolchain = db.toolchain(loc.def.krate);
-        let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
-            REQUIREMENT.get_or_init(|| VersionReq::parse(">=1.76").unwrap()).matches(
-                &base_db::Version {
-                    pre: base_db::Prerelease::EMPTY,
-                    build: base_db::BuildMetadata::EMPTY,
-                    major: version.major,
-                    minor: version.minor,
-                    patch: version.patch,
-                },
-            )
-        });
         match self.mac.err() {
             Some(_) => ExpandResult::new(
                 (tt::Subtree::empty(tt::DelimSpan { open: span, close: span }), None),
-                ExpandError::MacroDefinition,
+                ExpandError::new(span, ExpandErrorKind::MacroDefinition),
             ),
             None => self
                 .mac
                 .expand(
                     &tt,
                     |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency),
-                    new_meta_vars,
                     span,
                     loc.def.edition,
                 )
@@ -67,32 +50,18 @@ impl DeclarativeMacroExpander {
 
     pub fn expand_unhygienic(
         &self,
-        db: &dyn ExpandDatabase,
         tt: tt::Subtree,
-        krate: CrateId,
         call_site: Span,
         def_site_edition: Edition,
     ) -> ExpandResult<tt::Subtree> {
-        let toolchain = db.toolchain(krate);
-        let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
-            REQUIREMENT.get_or_init(|| VersionReq::parse(">=1.76").unwrap()).matches(
-                &base_db::Version {
-                    pre: base_db::Prerelease::EMPTY,
-                    build: base_db::BuildMetadata::EMPTY,
-                    major: version.major,
-                    minor: version.minor,
-                    patch: version.patch,
-                },
-            )
-        });
         match self.mac.err() {
             Some(_) => ExpandResult::new(
                 tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
-                ExpandError::MacroDefinition,
+                ExpandError::new(call_site, ExpandErrorKind::MacroDefinition),
             ),
             None => self
                 .mac
-                .expand(&tt, |_| (), new_meta_vars, call_site, def_site_edition)
+                .expand(&tt, |_| (), call_site, def_site_edition)
                 .map(TupleExt::head)
                 .map_err(Into::into),
         }

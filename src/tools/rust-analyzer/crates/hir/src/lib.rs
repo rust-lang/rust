@@ -833,15 +833,23 @@ fn macro_call_diagnostics(
     let ValueResult { value: parse_errors, err } = &*e;
     if let Some(err) = err {
         let loc = db.lookup_intern_macro_call(macro_call_id);
-        let (node, precise_location, _macro_name, _kind) =
-            precise_macro_call_location(&loc.kind, db);
+        let file_id = loc.kind.file_id();
+        let node =
+            InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
         let (message, error) = err.render_to_string(db.upcast());
+        let precise_location = Some(
+            err.span().range
+                + db.ast_id_map(err.span().anchor.file_id.into())
+                    .get_erased(err.span().anchor.ast_id)
+                    .text_range()
+                    .start(),
+        );
         acc.push(MacroError { node, precise_location, message, error }.into());
     }
 
     if !parse_errors.is_empty() {
         let loc = db.lookup_intern_macro_call(macro_call_id);
-        let (node, precise_location, _, _) = precise_macro_call_location(&loc.kind, db);
+        let (node, precise_location) = precise_macro_call_location(&loc.kind, db);
         acc.push(
             MacroExpansionParseError { node, precise_location, errors: parse_errors.clone() }
                 .into(),
@@ -891,14 +899,14 @@ fn emit_def_diagnostic_(
             acc.push(UnresolvedExternCrate { decl: InFile::new(ast.file_id, item) }.into());
         }
 
-        DefDiagnosticKind::MacroError { ast, err } => {
+        DefDiagnosticKind::MacroError { ast, path, err } => {
             let item = ast.to_ptr(db.upcast());
             let (message, error) = err.render_to_string(db.upcast());
             acc.push(
                 MacroError {
                     node: InFile::new(ast.file_id, item.syntax_node_ptr()),
                     precise_location: None,
-                    message,
+                    message: format!("{}: {message}", path.display(db.upcast())),
                     error,
                 }
                 .into(),
@@ -1001,7 +1009,7 @@ fn emit_def_diagnostic_(
             })();
         }
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
-            let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
+            let (node, precise_location) = precise_macro_call_location(ast, db);
             acc.push(
                 UnresolvedMacroCall {
                     macro_call: node,
@@ -1070,7 +1078,7 @@ fn emit_def_diagnostic_(
 fn precise_macro_call_location(
     ast: &MacroCallKind,
     db: &dyn HirDatabase,
-) -> (InFile<SyntaxNodePtr>, Option<TextRange>, Option<String>, MacroKind) {
+) -> (InFile<SyntaxNodePtr>, Option<TextRange>) {
     // FIXME: maybe we actually want slightly different ranges for the different macro diagnostics
     // - e.g. the full attribute for macro errors, but only the name for name resolution
     match ast {
@@ -1082,8 +1090,6 @@ fn precise_macro_call_location(
                     .and_then(|it| it.segment())
                     .and_then(|it| it.name_ref())
                     .map(|it| it.syntax().text_range()),
-                node.path().and_then(|it| it.segment()).map(|it| it.to_string()),
-                MacroKind::ProcMacro,
             )
         }
         MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
@@ -1112,8 +1118,6 @@ fn precise_macro_call_location(
             (
                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
                 token.as_ref().map(|tok| tok.text_range()),
-                token.as_ref().map(ToString::to_string),
-                MacroKind::Derive,
             )
         }
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
@@ -1128,12 +1132,6 @@ fn precise_macro_call_location(
             (
                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
                 Some(attr.syntax().text_range()),
-                attr.path()
-                    .and_then(|path| path.segment())
-                    .and_then(|seg| seg.name_ref())
-                    .as_ref()
-                    .map(ToString::to_string),
-                MacroKind::Attr,
             )
         }
     }
@@ -1800,9 +1798,16 @@ impl DefWithBody {
                 BodyDiagnostic::MacroError { node, err } => {
                     let (message, error) = err.render_to_string(db.upcast());
 
+                    let precise_location = Some(
+                        err.span().range
+                            + db.ast_id_map(err.span().anchor.file_id.into())
+                                .get_erased(err.span().anchor.ast_id)
+                                .text_range()
+                                .start(),
+                    );
                     MacroError {
                         node: (*node).map(|it| it.into()),
-                        precise_location: None,
+                        precise_location,
                         message,
                         error,
                     }

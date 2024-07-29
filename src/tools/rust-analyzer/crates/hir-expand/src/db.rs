@@ -259,39 +259,38 @@ pub fn expand_speculative(
 
     // Do the actual expansion, we need to directly expand the proc macro due to the attribute args
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
-    let mut speculative_expansion =
-        match loc.def.kind {
-            MacroDefKind::ProcMacro(ast, expander, _) => {
-                let span = db.proc_macro_span(ast);
-                tt.delimiter = tt::Delimiter::invisible_spanned(span);
-                expander.expand(
-                    db,
-                    loc.def.krate,
-                    loc.krate,
-                    &tt,
-                    attr_arg.as_ref(),
-                    span_with_def_site_ctxt(db, span, actual_macro_call),
-                    span_with_call_site_ctxt(db, span, actual_macro_call),
-                    span_with_mixed_site_ctxt(db, span, actual_macro_call),
-                )
-            }
-            MacroDefKind::BuiltInAttr(_, it) if it.is_derive() => {
-                pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?, span)
-            }
-            MacroDefKind::Declarative(it) => db
-                .decl_macro_expander(loc.krate, it)
-                .expand_unhygienic(db, tt, loc.def.krate, span, loc.def.edition),
-            MacroDefKind::BuiltIn(_, it) => {
-                it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
-            }
-            MacroDefKind::BuiltInDerive(_, it) => {
-                it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
-            }
-            MacroDefKind::BuiltInEager(_, it) => {
-                it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
-            }
-            MacroDefKind::BuiltInAttr(_, it) => it.expand(db, actual_macro_call, &tt, span),
-        };
+    let mut speculative_expansion = match loc.def.kind {
+        MacroDefKind::ProcMacro(ast, expander, _) => {
+            let span = db.proc_macro_span(ast);
+            tt.delimiter = tt::Delimiter::invisible_spanned(span);
+            expander.expand(
+                db,
+                loc.def.krate,
+                loc.krate,
+                &tt,
+                attr_arg.as_ref(),
+                span_with_def_site_ctxt(db, span, actual_macro_call),
+                span_with_call_site_ctxt(db, span, actual_macro_call),
+                span_with_mixed_site_ctxt(db, span, actual_macro_call),
+            )
+        }
+        MacroDefKind::BuiltInAttr(_, it) if it.is_derive() => {
+            pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?, span)
+        }
+        MacroDefKind::Declarative(it) => {
+            db.decl_macro_expander(loc.krate, it).expand_unhygienic(tt, span, loc.def.edition)
+        }
+        MacroDefKind::BuiltIn(_, it) => {
+            it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
+        }
+        MacroDefKind::BuiltInDerive(_, it) => {
+            it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
+        }
+        MacroDefKind::BuiltInEager(_, it) => {
+            it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
+        }
+        MacroDefKind::BuiltInAttr(_, it) => it.expand(db, actual_macro_call, &tt, span),
+    };
 
     let expand_to = loc.expand_to();
 
@@ -735,11 +734,14 @@ fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<()>> {
     if TOKEN_LIMIT.check(count).is_err() {
         Err(ExpandResult {
             value: (),
-            err: Some(ExpandError::other(format!(
-                "macro invocation exceeds token limit: produced {} tokens, limit is {}",
-                count,
-                TOKEN_LIMIT.inner(),
-            ))),
+            err: Some(ExpandError::other(
+                tt.delimiter.open,
+                format!(
+                    "macro invocation exceeds token limit: produced {} tokens, limit is {}",
+                    count,
+                    TOKEN_LIMIT.inner(),
+                ),
+            )),
         })
     } else {
         Ok(())

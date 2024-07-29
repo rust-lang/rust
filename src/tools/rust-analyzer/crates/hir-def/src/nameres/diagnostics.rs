@@ -3,7 +3,7 @@
 use std::ops::Not;
 
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::{attrs::AttrId, ExpandError, MacroCallKind};
+use hir_expand::{attrs::AttrId, ExpandErrorKind, MacroCallKind};
 use la_arena::Idx;
 use syntax::ast;
 
@@ -25,7 +25,7 @@ pub enum DefDiagnosticKind {
     InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
     MalformedDerive { ast: AstId<ast::Adt>, id: usize },
     MacroDefError { ast: AstId<ast::Macro>, message: String },
-    MacroError { ast: AstId<ast::Item>, err: ExpandError },
+    MacroError { ast: AstId<ast::Item>, path: ModPath, err: ExpandErrorKind },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -82,8 +82,13 @@ impl DefDiagnostic {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedImport { id, index } }
     }
 
-    pub fn macro_error(container: LocalModuleId, ast: AstId<ast::Item>, err: ExpandError) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::MacroError { ast, err } }
+    pub fn macro_error(
+        container: LocalModuleId,
+        ast: AstId<ast::Item>,
+        path: ModPath,
+        err: ExpandErrorKind,
+    ) -> Self {
+        Self { in_module: container, kind: DefDiagnosticKind::MacroError { ast, path, err } }
     }
 
     pub fn unconfigured_code(

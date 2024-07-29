@@ -661,6 +661,7 @@ impl<'a> AssocItemCollector<'a> {
                                 self.diagnostics.push(DefDiagnostic::macro_error(
                                     self.module_id.local_id,
                                     ast_id,
+                                    (*attr.path).clone(),
                                     err,
                                 ));
                                 continue 'attrs;

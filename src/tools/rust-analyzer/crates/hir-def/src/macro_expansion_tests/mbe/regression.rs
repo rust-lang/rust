@@ -1084,7 +1084,7 @@ fn main() {
 macro_rules! concat_bytes {}
 
 fn main() {
-    let x = /* error: unexpected token in input */b"";
+    let x = /* error: unexpected token */b"";
 }
 
 "#]],

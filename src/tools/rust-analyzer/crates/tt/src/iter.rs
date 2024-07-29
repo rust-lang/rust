@@ -143,6 +143,10 @@ impl<'a, S: Copy> TtIter<'a, S> {
         self.inner.as_slice().get(n)
     }
 
+    pub fn next_span(&self) -> Option<S> {
+        Some(self.inner.as_slice().first()?.first_span())
+    }
+
     pub fn as_slice(&self) -> &'a [TokenTree<S>] {
         self.inner.as_slice()
     }

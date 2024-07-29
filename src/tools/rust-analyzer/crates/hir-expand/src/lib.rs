@@ -124,47 +124,77 @@ impl_intern_lookup!(
 pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum ExpandError {
-    ProcMacroAttrExpansionDisabled,
-    MissingProcMacroExpander(CrateId),
-    /// The macro expansion is disabled.
-    MacroDisabled,
-    MacroDefinition,
-    Mbe(mbe::ExpandError),
-    RecursionOverflow,
-    Other(Arc<Box<str>>),
-    ProcMacroPanic(Arc<Box<str>>),
+pub struct ExpandError {
+    inner: Arc<(ExpandErrorKind, Span)>,
 }
 
 impl ExpandError {
-    pub fn other(msg: impl Into<Box<str>>) -> Self {
-        ExpandError::Other(Arc::new(msg.into()))
+    pub fn new(span: Span, kind: ExpandErrorKind) -> Self {
+        ExpandError { inner: Arc::new((kind, span)) }
     }
+    pub fn other(span: Span, msg: impl Into<Box<str>>) -> Self {
+        ExpandError { inner: Arc::new((ExpandErrorKind::Other(msg.into()), span)) }
+    }
+    pub fn kind(&self) -> &ExpandErrorKind {
+        &self.inner.0
+    }
+    pub fn span(&self) -> Span {
+        self.inner.1
+    }
+}
 
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum ExpandErrorKind {
+    /// Attribute macro expansion is disabled.
+    ProcMacroAttrExpansionDisabled,
+    MissingProcMacroExpander(CrateId),
+    /// The macro for this call is disabled.
+    MacroDisabled,
+    /// The macro definition has errors.
+    MacroDefinition,
+    Mbe(mbe::ExpandErrorKind),
+    RecursionOverflow,
+    Other(Box<str>),
+    ProcMacroPanic(Box<str>),
+}
+
+impl ExpandError {
+    pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> (String, bool) {
+        self.inner.0.render_to_string(db)
+    }
+}
+
+impl ExpandErrorKind {
     pub fn render_to_string(&self, db: &dyn ExpandDatabase) -> (String, bool) {
         match self {
-            Self::ProcMacroAttrExpansionDisabled => {
+            ExpandErrorKind::ProcMacroAttrExpansionDisabled => {
                 ("procedural attribute macro expansion is disabled".to_owned(), false)
             }
-            Self::MacroDisabled => ("proc-macro is explicitly disabled".to_owned(), false),
-            &Self::MissingProcMacroExpander(def_crate) => {
+            ExpandErrorKind::MacroDisabled => {
+                ("proc-macro is explicitly disabled".to_owned(), false)
+            }
+            &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
                 match db.proc_macros().get_error_for_crate(def_crate) {
                     Some((e, hard_err)) => (e.to_owned(), hard_err),
                     None => ("missing expander".to_owned(), true),
                 }
             }
-            Self::MacroDefinition => ("macro definition has parse errors".to_owned(), true),
-            Self::Mbe(e) => (e.to_string(), true),
-            Self::RecursionOverflow => ("overflow expanding the original macro".to_owned(), true),
-            Self::Other(e) => ((***e).to_owned(), true),
-            Self::ProcMacroPanic(e) => ((***e).to_owned(), true),
+            ExpandErrorKind::MacroDefinition => {
+                ("macro definition has parse errors".to_owned(), true)
+            }
+            ExpandErrorKind::Mbe(e) => (e.to_string(), true),
+            ExpandErrorKind::RecursionOverflow => {
+                ("overflow expanding the original macro".to_owned(), true)
+            }
+            ExpandErrorKind::Other(e) => ((**e).to_owned(), true),
+            ExpandErrorKind::ProcMacroPanic(e) => ((**e).to_owned(), true),
         }
     }
 }
 
 impl From<mbe::ExpandError> for ExpandError {
     fn from(mbe: mbe::ExpandError) -> Self {
-        Self::Mbe(mbe)
+        ExpandError { inner: Arc::new((ExpandErrorKind::Mbe(mbe.inner.1.clone()), mbe.inner.0)) }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

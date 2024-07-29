@@ -1324,6 +1324,7 @@ impl DefCollector<'_> {
                             self.def_map.diagnostics.push(DefDiagnostic::macro_error(
                                 directive.module_id,
                                 ast_id,
+                                (**path).clone(),
                                 err,
                             ));
                             return recollect_without(self);

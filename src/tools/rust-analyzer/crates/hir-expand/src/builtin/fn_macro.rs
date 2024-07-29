@@ -460,15 +460,11 @@ fn compile_error_expand(
     let err = match &*tt.token_trees {
         [tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             symbol: text,
-            span: _,
+            span,
             kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
             suffix: _,
-        }))] =>
-        // FIXME: Use the span here!
-        {
-            ExpandError::other(Box::from(unescape_str(text).as_str()))
-        }
-        _ => ExpandError::other("`compile_error!` argument must be a string"),
+        }))] => ExpandError::other(*span, Box::from(unescape_str(text).as_str())),
+        _ => ExpandError::other(span, "`compile_error!` argument must be a string"),
     };
 
     ExpandResult { value: quote! {span =>}, err: Some(err) }
@@ -478,7 +474,7 @@ fn concat_expand(
     _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
-    _: Span,
+    call_site: Span,
 ) -> ExpandResult<tt::Subtree> {
     let mut err = None;
     let mut text = String::new();
@@ -527,7 +523,9 @@ fn concat_expand(
                     | tt::LitKind::ByteStrRaw(_)
                     | tt::LitKind::CStr
                     | tt::LitKind::CStrRaw(_)
-                    | tt::LitKind::Err(_) => err = Some(ExpandError::other("unexpected literal")),
+                    | tt::LitKind::Err(_) => {
+                        err = Some(ExpandError::other(it.span, "unexpected literal"))
+                    }
                 }
             }
             // handle boolean literals
@@ -539,7 +537,7 @@ fn concat_expand(
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
             _ => {
-                err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
+                err.get_or_insert(ExpandError::other(call_site, "unexpected token"));
             }
         }
     }
@@ -551,7 +549,7 @@ fn concat_bytes_expand(
     _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
-    _: Span,
+    call_site: Span,
 ) -> ExpandResult<tt::Subtree> {
     let mut bytes = String::new();
     let mut err = None;
@@ -585,20 +583,22 @@ fn concat_bytes_expand(
                         bytes.extend(text.as_str().escape_debug());
                     }
                     _ => {
-                        err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
+                        err.get_or_insert(ExpandError::other(*span, "unexpected token"));
                         break;
                     }
                 }
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
             tt::TokenTree::Subtree(tree) if tree.delimiter.kind == tt::DelimiterKind::Bracket => {
-                if let Err(e) = concat_bytes_expand_subtree(tree, &mut bytes, &mut record_span) {
+                if let Err(e) =
+                    concat_bytes_expand_subtree(tree, &mut bytes, &mut record_span, call_site)
+                {
                     err.get_or_insert(e);
                     break;
                 }
             }
             _ => {
-                err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
+                err.get_or_insert(ExpandError::other(call_site, "unexpected token"));
                 break;
             }
         }
@@ -623,6 +623,7 @@ fn concat_bytes_expand_subtree(
     tree: &tt::Subtree,
     bytes: &mut String,
     mut record_span: impl FnMut(Span),
+    err_span: Span,
 ) -> Result<(), ExpandError> {
     for (ti, tt) in tree.token_trees.iter().enumerate() {
         match tt {
@@ -650,7 +651,7 @@ fn concat_bytes_expand_subtree(
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if ti % 2 == 1 && punct.char == ',' => (),
             _ => {
-                return Err(mbe::ExpandError::UnexpectedToken.into());
+                return Err(ExpandError::other(err_span, "unexpected token"));
             }
         }
     }
@@ -672,7 +673,7 @@ fn concat_idents_expand(
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
             _ => {
-                err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
+                err.get_or_insert(ExpandError::other(span, "unexpected token"));
             }
         }
     }
@@ -686,16 +687,17 @@ fn relative_file(
     call_id: MacroCallId,
     path_str: &str,
     allow_recursion: bool,
+    err_span: Span,
 ) -> Result<EditionedFileId, ExpandError> {
     let lookup = call_id.lookup(db);
     let call_site = lookup.kind.file_id().original_file_respecting_includes(db).file_id();
     let path = AnchoredPath { anchor: call_site, path: path_str };
     let res = db
         .resolve_path(path)
-        .ok_or_else(|| ExpandError::other(format!("failed to load file `{path_str}`")))?;
+        .ok_or_else(|| ExpandError::other(err_span, format!("failed to load file `{path_str}`")))?;
     // Prevent include itself
     if res == call_site && !allow_recursion {
-        Err(ExpandError::other(format!("recursive inclusion of `{path_str}`")))
+        Err(ExpandError::other(err_span, format!("recursive inclusion of `{path_str}`")))
     } else {
         Ok(EditionedFileId::new(res, db.crate_graph()[lookup.krate].edition))
     }
@@ -727,7 +729,7 @@ fn parse_string(tt: &tt::Subtree) -> Result<(Symbol, Span), ExpandError> {
             }
             _ => None,
         })
-        .ok_or(mbe::ExpandError::ConversionError.into())
+        .ok_or(ExpandError::other(tt.delimiter.open, "expected string literal"))
 }
 
 fn include_expand(
@@ -751,7 +753,7 @@ fn include_expand(
         Some(it) => ExpandResult::ok(it),
         None => ExpandResult::new(
             tt::Subtree::empty(DelimSpan { open: span, close: span }),
-            ExpandError::other("failed to parse included file"),
+            ExpandError::other(span, "failed to parse included file"),
         ),
     }
 }
@@ -761,7 +763,7 @@ pub fn include_input_to_file_id(
     arg_id: MacroCallId,
     arg: &tt::Subtree,
 ) -> Result<EditionedFileId, ExpandError> {
-    relative_file(db, arg_id, parse_string(arg)?.0.as_str(), false)
+    relative_file(db, arg_id, parse_string(arg)?.0.as_str(), false, arg.delimiter.open)
 }
 
 fn include_bytes_expand(
@@ -800,7 +802,7 @@ fn include_str_expand(
     // it's unusual to `include_str!` a Rust file), but we can return an empty string.
     // Ideally, we'd be able to offer a precise expansion if the user asks for macro
     // expansion.
-    let file_id = match relative_file(db, arg_id, path.as_str(), true) {
+    let file_id = match relative_file(db, arg_id, path.as_str(), true, span) {
         Ok(file_id) => file_id,
         Err(_) => {
             return ExpandResult::ok(quote!(span =>""));
@@ -836,7 +838,10 @@ fn env_expand(
         // The only variable rust-analyzer ever sets is `OUT_DIR`, so only diagnose that to avoid
         // unnecessary diagnostics for eg. `CARGO_PKG_NAME`.
         if key.as_str() == "OUT_DIR" {
-            err = Some(ExpandError::other(r#"`OUT_DIR` not set, enable "build scripts" to fix"#));
+            err = Some(ExpandError::other(
+                span,
+                r#"`OUT_DIR` not set, enable "build scripts" to fix"#,
+            ));
         }
 
         // If the variable is unset, still return a dummy string to help type inference along.
@@ -885,7 +890,7 @@ fn quote_expand(
 ) -> ExpandResult<tt::Subtree> {
     ExpandResult::new(
         tt::Subtree::empty(tt::DelimSpan { open: span, close: span }),
-        ExpandError::other("quote! is not implemented"),
+        ExpandError::other(span, "quote! is not implemented"),
     )
 }
 

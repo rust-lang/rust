@@ -168,12 +168,12 @@ fn main() {
     // Test a handful of built-in (eager) macros:
 
     include!(invalid);
-  //^^^^^^^ error: could not convert tokens
+  //^^^^^^^ error: expected string literal
     include!("does not exist");
   //^^^^^^^ error: failed to load file `does not exist`
 
     env!(invalid);
-  //^^^ error: could not convert tokens
+  //^^^ error: expected string literal
 
     env!("OUT_DIR");
   //^^^ error: `OUT_DIR` not set, enable "build scripts" to fix

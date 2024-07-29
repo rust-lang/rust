@@ -12,8 +12,7 @@ use crate::{
     builtin::quote::{dollar_crate, quote},
     db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
-    name,
-    name::{AsName, Name},
+    name::{self, AsName, Name},
     span_map::ExpansionSpanMap,
     tt, ExpandError, ExpandResult,
 };
@@ -129,13 +128,17 @@ impl VariantShape {
         }
     }
 
-    fn from(tm: &ExpansionSpanMap, value: Option<FieldList>) -> Result<Self, ExpandError> {
+    fn from(
+        call_site: Span,
+        tm: &ExpansionSpanMap,
+        value: Option<FieldList>,
+    ) -> Result<Self, ExpandError> {
         let r = match value {
             None => VariantShape::Unit,
             Some(FieldList::RecordFieldList(it)) => VariantShape::Struct(
                 it.fields()
                     .map(|it| it.name())
-                    .map(|it| name_to_token(tm, it))
+                    .map(|it| name_to_token(call_site, tm, it))
                     .collect::<Result<_, _>>()?,
             ),
             Some(FieldList::TupleFieldList(it)) => VariantShape::Tuple(it.fields().count()),
@@ -212,16 +215,17 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
         parser::Edition::CURRENT_FIXME,
     );
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
-        .ok_or_else(|| ExpandError::other("invalid item definition"))?;
-    let item = macro_items.items().next().ok_or_else(|| ExpandError::other("no item found"))?;
+        .ok_or_else(|| ExpandError::other(call_site, "invalid item definition"))?;
+    let item =
+        macro_items.items().next().ok_or_else(|| ExpandError::other(call_site, "no item found"))?;
     let adt = &ast::Adt::cast(item.syntax().clone())
-        .ok_or_else(|| ExpandError::other("expected struct, enum or union"))?;
+        .ok_or_else(|| ExpandError::other(call_site, "expected struct, enum or union"))?;
     let (name, generic_param_list, where_clause, shape) = match adt {
         ast::Adt::Struct(it) => (
             it.name(),
             it.generic_param_list(),
             it.where_clause(),
-            AdtShape::Struct(VariantShape::from(tm, it.field_list())?),
+            AdtShape::Struct(VariantShape::from(call_site, tm, it.field_list())?),
         ),
         ast::Adt::Enum(it) => {
             let default_variant = it
@@ -241,8 +245,8 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                         .flat_map(|it| it.variants())
                         .map(|it| {
                             Ok((
-                                name_to_token(tm, it.name())?,
-                                VariantShape::from(tm, it.field_list())?,
+                                name_to_token(call_site, tm, it.name())?,
+                                VariantShape::from(call_site, tm, it.field_list())?,
                             ))
                         })
                         .collect::<Result<_, ExpandError>>()?,
@@ -357,17 +361,18 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
             )
         })
         .collect();
-    let name_token = name_to_token(tm, name)?;
+    let name_token = name_to_token(call_site, tm, name)?;
     Ok(BasicAdtInfo { name: name_token, shape, param_types, where_clause, associated_types })
 }
 
 fn name_to_token(
+    call_site: Span,
     token_map: &ExpansionSpanMap,
     name: Option<ast::Name>,
 ) -> Result<tt::Ident, ExpandError> {
     let name = name.ok_or_else(|| {
         debug!("parsed item has no name");
-        ExpandError::other("missing name")
+        ExpandError::other(call_site, "missing name")
     })?;
     let span = token_map.span_at(name.syntax().text_range().start());
 

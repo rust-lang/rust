@@ -176,14 +176,19 @@ fn eager_macro_recur(
             Some(path) => match macro_resolver(&path) {
                 Some(def) => def,
                 None => {
-                    error =
-                        Some(ExpandError::other(format!("unresolved macro {}", path.display(db))));
+                    error = Some(ExpandError::other(
+                        span_map.span_at(call.syntax().text_range().start()),
+                        format!("unresolved macro {}", path.display(db)),
+                    ));
                     offset += call.syntax().text_range().len();
                     continue;
                 }
             },
             None => {
-                error = Some(ExpandError::other("malformed macro invocation"));
+                error = Some(ExpandError::other(
+                    span_map.span_at(call.syntax().text_range().start()),
+                    "malformed macro invocation",
+                ));
                 offset += call.syntax().text_range().len();
                 continue;
             }
