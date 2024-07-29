@@ -934,13 +934,13 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             // which makes this somewhat difficult and prevents us from just
             // using `self.path_inferred_arg_iter` here.
             hir::ExprKind::Struct(&hir::QPath::Resolved(_self_ty, path), _, _)
-            // FIXME(TaKO8Ki): Ideally we should support this. For that
-            // we have to map back from the self type to the
-            // type alias though. That's difficult.
+            // FIXME(TaKO8Ki): Ideally we should support other kinds,
+            // such as `TyAlias` or `AssocTy`. For that we have to map
+            // back from the self type to the type alias though. That's difficult.
             //
             // See the `need_type_info/issue-103053.rs` test for
             // a example.
-            if !matches!(path.res, Res::Def(DefKind::TyAlias, _)) => {
+            if matches!(path.res, Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) => {
                 if let Some(ty) = self.opt_node_type(expr.hir_id)
                     && let ty::Adt(_, args) = ty.kind()
                 {
