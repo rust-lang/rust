@@ -45,7 +45,7 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MoveOutIndex, MovePathIndex,
 };
-use rustc_mir_dataflow::{Analysis, MoveDataParamEnv};
+use rustc_mir_dataflow::Analysis;
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
@@ -194,9 +194,7 @@ fn do_mir_borrowck<'tcx>(
         .iter_enumerated()
         .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, param_env, |_| true)));
 
-    let mdpe = MoveDataParamEnv { move_data, param_env };
-
-    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint()
@@ -204,7 +202,7 @@ fn do_mir_borrowck<'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
     let borrow_set =
-        Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
+        Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data));
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
@@ -222,7 +220,7 @@ fn do_mir_borrowck<'tcx>(
         &location_table,
         param_env,
         &mut flow_inits,
-        &mdpe.move_data,
+        &move_data,
         &borrow_set,
         tcx.closure_captures(def),
         consumer_options,
@@ -254,11 +252,11 @@ fn do_mir_borrowck<'tcx>(
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
-    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
+    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
-    let flow_ever_inits = EverInitializedPlaces::new(body, &mdpe)
+    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data)
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
@@ -324,7 +322,7 @@ fn do_mir_borrowck<'tcx>(
         infcx: &infcx,
         param_env,
         body,
-        move_data: &mdpe.move_data,
+        move_data: &move_data,
         location_table: &location_table,
         movable_coroutine,
         locals_are_invalidated_at_exit,
