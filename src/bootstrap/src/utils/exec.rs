@@ -223,31 +223,17 @@ pub fn command<S: AsRef<OsStr>>(program: S) -> BootstrapCommand {
 }
 
 /// Represents the output of an executed process.
+#[allow(unused)]
 pub struct CommandOutput {
     status: CommandStatus,
-    stdout: Option<Vec<u8>>,
-    stderr: Option<Vec<u8>>,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
 }
 
 impl CommandOutput {
     #[must_use]
     pub fn did_not_start() -> Self {
-        Self { status: CommandStatus::DidNotStart, stdout: None, stderr: None }
-    }
-
-    #[must_use]
-    pub fn from_output(output: Output, stdout: OutputMode, stderr: OutputMode) -> Self {
-        Self {
-            status: CommandStatus::Finished(output.status),
-            stdout: match stdout {
-                OutputMode::Print => None,
-                OutputMode::Capture => Some(output.stdout),
-            },
-            stderr: match stderr {
-                OutputMode::Print => None,
-                OutputMode::Capture => Some(output.stderr),
-            },
-        }
+        Self { status: CommandStatus::DidNotStart, stdout: vec![], stderr: vec![] }
     }
 
     #[must_use]
@@ -273,10 +259,7 @@ impl CommandOutput {
 
     #[must_use]
     pub fn stdout(&self) -> String {
-        String::from_utf8(
-            self.stdout.clone().expect("Accessing stdout of a command that did not capture stdout"),
-        )
-        .expect("Cannot parse process stdout as UTF-8")
+        String::from_utf8(self.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
     }
 
     #[must_use]
@@ -286,10 +269,7 @@ impl CommandOutput {
 
     #[must_use]
     pub fn stderr(&self) -> String {
-        String::from_utf8(
-            self.stderr.clone().expect("Accessing stderr of a command that did not capture stderr"),
-        )
-        .expect("Cannot parse process stderr as UTF-8")
+        String::from_utf8(self.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
     }
 }
 
@@ -297,8 +277,18 @@ impl Default for CommandOutput {
     fn default() -> Self {
         Self {
             status: CommandStatus::Finished(ExitStatus::default()),
-            stdout: Some(vec![]),
-            stderr: Some(vec![]),
+            stdout: vec![],
+            stderr: vec![],
+        }
+    }
+}
+
+impl From<Output> for CommandOutput {
+    fn from(output: Output) -> Self {
+        Self {
+            status: CommandStatus::Finished(output.status),
+            stdout: output.stdout,
+            stderr: output.stderr,
         }
     }
 }
