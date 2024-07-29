@@ -2207,6 +2207,53 @@ impl Function {
         db.function_data(self.id).is_async()
     }
 
+    /// Whether this function is a `fn` that returns `impl Future`.
+    pub fn is_desugar_async(self, db: &dyn HirDatabase) -> bool {
+        if self.is_async(db) || self.is_const(db) {
+            return false;
+        }
+
+        let Some(impl_traits) = self.ret_type(db).as_impl_traits(db) else { return false };
+
+        let Some(future_trait_id) =
+            db.lang_item(self.ty(db).env.krate, LangItem::Future).and_then(|t| t.as_trait())
+        else {
+            return false;
+        };
+
+        let Some(size_trait_id) =
+            db.lang_item(self.ty(db).env.krate, LangItem::Sized).and_then(|t| t.as_trait())
+        else {
+            return false;
+        };
+
+        let Some(sync_trait_id) =
+            db.lang_item(self.ty(db).env.krate, LangItem::Sync).and_then(|t| t.as_trait())
+        else {
+            return false;
+        };
+
+        // TODO: There's no `LangItem::Send`. How do we get the id of `Send` trait?
+        // let Some(send_trait_id) = db.lang_item(self.ty(db).env.krate, LangItem::Send).and_then(|t| t.as_trait()) else {
+        //     eprint!("no future_trait_id\n");
+        //     return false
+        // };
+
+        let allowed_to_leaked_types = vec![size_trait_id, sync_trait_id];
+
+        let mut has_impl_future = false;
+        let mut has_types_not_allow_to_leaked = false;
+        for impl_trait in impl_traits {
+            if impl_trait.id == future_trait_id {
+                has_impl_future = true;
+            } else if !allowed_to_leaked_types.contains(&impl_trait.id) {
+                has_types_not_allow_to_leaked = true;
+            }
+        }
+
+        has_impl_future && !has_types_not_allow_to_leaked
+    }
+
     /// Does this function have `#[test]` attribute?
     pub fn is_test(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).attrs.is_test()

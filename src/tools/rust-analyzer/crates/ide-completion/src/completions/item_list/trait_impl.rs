@@ -210,7 +210,7 @@ fn add_function_impl(
                 ast::AssocItem::Fn(func) => func,
                 _ => unreachable!(),
             };
-
+            // TODO: need `function_decl` that unwraps future in the return type
             let function_decl = function_declaration(&transformed_fn, source.file_id.is_macro());
             match ctx.config.snippet_cap {
                 Some(cap) => {
@@ -223,6 +223,42 @@ fn add_function_impl(
                 }
             };
             item.add_to(acc, ctx.db);
+        }
+    }
+
+    eprint!("is_desugar_async: {}", func.is_desugar_async(ctx.db));
+    if func.is_desugar_async(ctx.db) {
+        let label = format_smolstr!(
+            "async fn {}({})",
+            fn_name.display(ctx.db),
+            if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
+        );
+        let mut item = CompletionItem::new(completion_kind, replacement_range, label);
+        item.lookup_by(format!("async fn {}", fn_name.display(ctx.db)))
+            .set_documentation(func.docs(ctx.db))
+            .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+        if let Some(source) = ctx.sema.source(func) {
+            let assoc_item = ast::AssocItem::Fn(source.value);
+            if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+                let transformed_fn = match transformed_item {
+                    ast::AssocItem::Fn(func) => func,
+                    _ => unreachable!(),
+                };
+
+                let function_decl =
+                    function_declaration(&transformed_fn, source.file_id.is_macro());
+                match ctx.config.snippet_cap {
+                    Some(cap) => {
+                        let snippet = format!("{function_decl} {{\n    $0\n}}");
+                        item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
+                    }
+                    None => {
+                        let header = format!("{function_decl} {{");
+                        item.text_edit(TextEdit::replace(replacement_range, header));
+                    }
+                };
+                item.add_to(acc, ctx.db);
+            }
         }
     }
 }
