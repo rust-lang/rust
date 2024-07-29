@@ -54,12 +54,11 @@ use crate::lints::{
     BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
     BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
-    BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
-    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
-    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
-    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-    BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinNoMangleGeneric,
+    BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
+    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
+    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
+    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
 };
 use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
@@ -1077,72 +1076,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
 }
 
 declare_lint! {
-    /// The `mutable_transmutes` lint catches transmuting from `&T` to `&mut
-    /// T` because it is [undefined behavior].
-    ///
-    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// unsafe {
-    ///     let y = std::mem::transmute::<&i32, &mut i32>(&5);
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Certain assumptions are made about aliasing of data, and this transmute
-    /// violates those assumptions. Consider using [`UnsafeCell`] instead.
-    ///
-    /// [`UnsafeCell`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html
-    MUTABLE_TRANSMUTES,
-    Deny,
-    "transmuting &T to &mut T is undefined behavior, even if the reference is unused"
-}
-
-declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
-
-impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if let Some((&ty::Ref(_, _, from_mutbl), &ty::Ref(_, _, to_mutbl))) =
-            get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
-        {
-            if from_mutbl < to_mutbl {
-                cx.emit_span_lint(MUTABLE_TRANSMUTES, expr.span, BuiltinMutablesTransmutes);
-            }
-        }
-
-        fn get_transmute_from_to<'tcx>(
-            cx: &LateContext<'tcx>,
-            expr: &hir::Expr<'_>,
-        ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-            let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.qpath_res(qpath, expr.hir_id)
-            } else {
-                return None;
-            };
-            if let Res::Def(DefKind::Fn, did) = def {
-                if !def_id_is_transmute(cx, did) {
-                    return None;
-                }
-                let sig = cx.typeck_results().node_type(expr.hir_id).fn_sig(cx.tcx);
-                let from = sig.inputs().skip_binder()[0];
-                let to = sig.output().skip_binder();
-                return Some((from, to));
-            }
-            None
-        }
-
-        fn def_id_is_transmute(cx: &LateContext<'_>, def_id: DefId) -> bool {
-            cx.tcx.is_intrinsic(def_id, sym::transmute)
-        }
-    }
-}
-
-declare_lint! {
     /// The `unstable_features` lint detects uses of `#![feature]`.
     ///
     /// ### Example
@@ -1595,7 +1528,6 @@ declare_lint_pass!(
         UNUSED_DOC_COMMENTS,
         NO_MANGLE_CONST_ITEMS,
         NO_MANGLE_GENERIC_ITEMS,
-        MUTABLE_TRANSMUTES,
         UNSTABLE_FEATURES,
         UNREACHABLE_PUB,
         TYPE_ALIAS_BOUNDS,
