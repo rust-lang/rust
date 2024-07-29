@@ -299,6 +299,7 @@ trait Test {
     const CONST1: ();
     fn function0();
     fn function1();
+    async fn function2();
 }
 
 impl Test for () {
@@ -310,8 +311,9 @@ impl Test for () {
 "#,
         expect![[r#"
             ct const CONST1: () =
+            fn async fn function2()
             fn fn function1()
-            ma makro!(…)          macro_rules! makro
+            ma makro!(…)            macro_rules! makro
             md module
             ta type Type1 =
             kw crate::
