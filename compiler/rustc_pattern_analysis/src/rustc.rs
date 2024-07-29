@@ -743,7 +743,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Note: it is possible to get `isize/usize::MAX+1` here, as explained in the doc for
     /// [`IntRange::split`]. This cannot be represented as a `Const`, so we represent it with
     /// `PosInfinity`.
-    pub(crate) fn hoist_pat_range_bdy(
+    fn hoist_pat_range_bdy(
         &self,
         miint: MaybeInfiniteInt,
         ty: RevealedTy<'tcx>,
@@ -774,7 +774,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     }
 
     /// Convert back to a `thir::Pat` for diagnostic purposes.
-    pub(crate) fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> Pat<'tcx> {
+    fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> Pat<'tcx> {
         use MaybeInfiniteInt::*;
         let cx = self;
         let kind = if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
@@ -810,9 +810,17 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
 
         Pat { ty: ty.inner(), span: DUMMY_SP, kind }
     }
+
+    /// Prints a [`WitnessPat`] to an owned string, for diagnostic purposes.
+    pub fn print_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> String {
+        // This works by converting the witness pattern back to a `thir::Pat`
+        // and then printing that, but callers don't need to know that.
+        self.hoist_witness_pat(pat).to_string()
+    }
+
     /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
     /// appear in diagnostics, like float ranges.
-    pub fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> Pat<'tcx> {
+    fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> Pat<'tcx> {
         let cx = self;
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
         let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
@@ -965,7 +973,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         let overlaps: Vec<_> = overlaps_with
             .iter()
             .map(|pat| pat.data().span)
-            .map(|span| errors::Overlap { range: overlap_as_pat.clone(), span })
+            .map(|span| errors::Overlap { range: overlap_as_pat.to_string(), span })
             .collect();
         let pat_span = pat.data().span;
         self.tcx.emit_node_span_lint(
@@ -1013,7 +1021,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // Point at this range.
                     first_range: thir_pat.span,
                     // That's the gap that isn't covered.
-                    max: gap_as_pat.clone(),
+                    max: gap_as_pat.to_string(),
                     // Suggest `lo..=max` instead.
                     suggestion: suggested_range.to_string(),
                 },
@@ -1027,7 +1035,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // Point at this range.
                     first_range: thir_pat.span,
                     // That's the gap that isn't covered.
-                    gap: gap_as_pat.clone(),
+                    gap: gap_as_pat.to_string(),
                     // Suggest `lo..=gap` instead.
                     suggestion: suggested_range.to_string(),
                     // All these ranges skipped over `gap` which we think is probably a
@@ -1036,8 +1044,8 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                         .iter()
                         .map(|pat| errors::GappedRange {
                             span: pat.data().span,
-                            gap: gap_as_pat.clone(),
-                            first_range: thir_pat.clone(),
+                            gap: gap_as_pat.to_string(),
+                            first_range: thir_pat.to_string(),
                         })
                         .collect(),
                 },
