@@ -2092,7 +2092,7 @@ impl Config {
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
-        if flags.stage.is_none() && crate::CiEnv::current() != crate::CiEnv::None {
+        if flags.stage.is_none() && build_helper::ci::CiEnv::is_ci() {
             match config.cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
