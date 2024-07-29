@@ -15,7 +15,8 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 
 use super::{DocTestVisitor, ScrapedDocTest};
-use crate::clean::{types::AttributesExt, Attributes};
+use crate::clean::types::AttributesExt;
+use crate::clean::Attributes;
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {

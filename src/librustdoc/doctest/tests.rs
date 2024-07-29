@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use super::{DocTestBuilder, GlobalTestOptions};
 use rustc_span::edition::DEFAULT_EDITION;
+
+use super::{DocTestBuilder, GlobalTestOptions};
 
 fn make_test(
     test_code: &str,
