@@ -7,7 +7,7 @@
 //@ only-windows-msvc
 // Reason: pdb files are unique to this architecture
 
-use run_make_support::{assert_contains, env_var, rfs, rustc};
+use run_make_support::{assert_contains, bstr, env_var, rfs, rustc};
 
 fn main() {
     rustc()
@@ -17,19 +17,23 @@ fn main() {
         .crate_type("bin")
         .metadata("dc9ef878b0a48666")
         .run();
-    assert_contains(rfs::read_to_string("my_crate_name.pdb"), env_var("RUSTC_ORIGINAL"));
-    let strings = [
+    let tests = [
+        &env_var("RUSTC"),
         r#""main.rs""#,
         r#""-g""#,
         r#""--crate-name""#,
         r#""my_crate_name""#,
         r#""--crate-type""#,
         r#""bin""#,
-        r#""-C""#,
-        r#""metadata=dc9ef878b0a48666""#,
-        r#""--out-dir""#,
+        r#""-Cmetadata=dc9ef878b0a48666""#,
     ];
-    for string in strings {
-        assert_contains(rfs::read_to_string("my_crate_name.pdb"), string);
+    for test in tests {
+        assert_pdb_contains(test);
     }
+}
+
+fn assert_pdb_contains(needle: &str) {
+    let needle = needle.as_bytes();
+    use bstr::ByteSlice;
+    assert!(&rfs::read("my_crate_name.pdb").find(needle).is_some());
 }
