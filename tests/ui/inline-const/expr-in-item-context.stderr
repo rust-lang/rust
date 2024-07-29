@@ -2,7 +2,7 @@ error: expected item, found keyword `const`
   --> $DIR/expr-in-item-context.rs:9:1
    |
 LL | const { assert!(size_of::<u32>() <= size_of::<usize>()) };
-   | ^^^^^ if you meant to create an anonymous const, use `const (): _ = {};` instead
+   | ^^^^^ if you meant to create an anonymous const, use `const _: () = {};` instead
 
 error: aborting due to 1 previous error
 

@@ -88,7 +88,7 @@ impl<'a> Parser<'a> {
                 } else if self.parse_const_block(span, false).is_ok() {
                     err.span_label(
                         span,
-                        "if you meant to create an anonymous const, use `const (): _ = {};` instead"
+                        "if you meant to create an anonymous const, use `const _: () = {};` instead"
                     );
                 } else {
                     err.span_label(span, "expected item")

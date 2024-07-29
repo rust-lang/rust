@@ -8,7 +8,7 @@ const _: () = {};
 
 const { assert!(size_of::<u32>() <= size_of::<usize>()) };
 //~^ expected item, found keyword
-//~| if you meant to create an anonymous const
+//~| if you meant to create an anonymous const, use `const _: () =
 
 fn main() {
     const { assert!(size_of::<u32>() <= size_of::<usize>()) };
