@@ -219,21 +219,12 @@ rustc_index::newtype_index! {
 /// index and a def index.
 ///
 /// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
-#[derive(Clone, PartialEq, Eq, Copy)]
-// On below-64 bit systems we can simply use the derived `Hash` impl
-#[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
+#[derive(Clone, PartialEq, Eq, Copy, Hash)]
 #[repr(C)]
 #[rustc_pass_by_value]
-// We guarantee field order. Note that the order is essential here, see below why.
 pub struct DefId {
-    // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in
-    // the lower bits no matter the endianness. This allows the compiler to turn that `Hash` impl
-    // into a direct call to `u64::hash(_)`.
-    #[cfg(not(all(target_pointer_width = "64", target_endian = "big")))]
     pub index: DefIndex,
     pub krate: CrateNum,
-    #[cfg(all(target_pointer_width = "64", target_endian = "big"))]
-    pub index: DefIndex,
 }
 
 // To ensure correctness of incremental compilation,
@@ -241,24 +232,6 @@ pub struct DefId {
 // See https://github.com/rust-lang/rust/issues/90317.
 impl !Ord for DefId {}
 impl !PartialOrd for DefId {}
-
-// On 64-bit systems, we can hash the whole `DefId` as one `u64` instead of two `u32`s. This
-// improves performance without impairing `FxHash` quality. So the below code gets compiled to a
-// noop on little endian systems because the memory layout of `DefId` is as follows:
-//
-// ```
-//     +-1--------------31-+-32-------------63-+
-//     ! index             ! krate             !
-//     +-------------------+-------------------+
-// ```
-//
-// On 64-bit big-endian systems, this compiles to a 64-bit rotation by 32 bits, or a 64-bit load.
-#[cfg(target_pointer_width = "64")]
-impl Hash for DefId {
-    fn hash<H: Hasher>(&self, h: &mut H) {
-        (((self.krate.as_u32() as u64) << 32) | (self.index.as_u32() as u64)).hash(h)
-    }
-}
 
 impl DefId {
     /// Makes a local `DefId` from the given `DefIndex`.
