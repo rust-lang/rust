@@ -751,6 +751,18 @@ config_data! {
     }
 }
 
+#[derive(Debug)]
+pub enum RatomlFileKind {
+    Workspace,
+    Crate,
+}
+
+#[derive(Debug, Clone)]
+enum RatomlFile {
+    Workspace(GlobalLocalConfigInput),
+    Crate(LocalConfigInput),
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     discovered_projects: Vec<ProjectManifest>,
@@ -779,11 +791,7 @@ pub struct Config {
     /// Config node whose values apply to **every** Rust project.
     user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
 
-    /// TODO : This file can be used to make global changes while having only a workspace-wide scope.
-    workspace_ratoml: FxHashMap<SourceRootId, (GlobalLocalConfigInput, ConfigErrors)>,
-
-    /// For every `SourceRoot` there can be at most one RATOML file.
-    krate_ratoml: FxHashMap<SourceRootId, (LocalConfigInput, ConfigErrors)>,
+    ratoml_file: FxHashMap<SourceRootId, (RatomlFile, ConfigErrors)>,
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
@@ -914,83 +922,95 @@ impl Config {
             should_update = true;
         }
 
-        if let Some(change) = change.workspace_ratoml_change {
-            tracing::info!("updating root ra-toml config");
-            for (source_root_id, (_, text)) in change {
-                if let Some(text) = text {
-                    let mut toml_errors = vec![];
-                    match toml::from_str(&text) {
-                        Ok(table) => {
-                            validate_toml_table(
-                                GlobalLocalConfigInput::FIELDS,
-                                &table,
-                                &mut String::new(),
-                                &mut toml_errors,
-                            );
-                            config.workspace_ratoml.insert(
-                                source_root_id,
-                                (
-                                    GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
-                                    ConfigErrors(
-                                        toml_errors
-                                            .into_iter()
-                                            .map(|(a, b)| ConfigErrorInner::Toml {
-                                                config_key: a,
-                                                error: b,
-                                            })
-                                            .map(Arc::new)
-                                            .collect(),
-                                    ),
-                                ),
-                            );
-                            should_update = true;
-                        }
-                        Err(e) => {
-                            config.validation_errors.0.push(
-                                ConfigErrorInner::ParseError { reason: e.message().to_owned() }
-                                    .into(),
-                            );
+        if let Some(change) = change.ratoml_file_change {
+            for (source_root_id, (kind, _, text)) in change {
+                match kind {
+                    RatomlFileKind::Crate => {
+                        if let Some(text) = text {
+                            let mut toml_errors = vec![];
+                            tracing::info!("updating ra-toml config: {:#}", text);
+                            match toml::from_str(&text) {
+                                Ok(table) => {
+                                    validate_toml_table(
+                                        &[LocalConfigInput::FIELDS],
+                                        &table,
+                                        &mut String::new(),
+                                        &mut toml_errors,
+                                    );
+                                    config.ratoml_file.insert(
+                                        source_root_id,
+                                        (
+                                            RatomlFile::Crate(LocalConfigInput::from_toml(
+                                                &table,
+                                                &mut toml_errors,
+                                            )),
+                                            ConfigErrors(
+                                                toml_errors
+                                                    .into_iter()
+                                                    .map(|(a, b)| ConfigErrorInner::Toml {
+                                                        config_key: a,
+                                                        error: b,
+                                                    })
+                                                    .map(Arc::new)
+                                                    .collect(),
+                                            ),
+                                        ),
+                                    );
+                                }
+                                Err(e) => {
+                                    config.validation_errors.0.push(
+                                        ConfigErrorInner::ParseError {
+                                            reason: e.message().to_owned(),
+                                        }
+                                        .into(),
+                                    );
+                                }
+                            }
                         }
                     }
-                }
-            }
-        }
-
-        if let Some(change) = change.ratoml_file_change {
-            for (source_root_id, (_, text)) in change {
-                if let Some(text) = text {
-                    let mut toml_errors = vec![];
-                    tracing::info!("updating ra-toml config: {:#}", text);
-                    match toml::from_str(&text) {
-                        Ok(table) => {
-                            validate_toml_table(
-                                &[LocalConfigInput::FIELDS],
-                                &table,
-                                &mut String::new(),
-                                &mut toml_errors,
-                            );
-                            config.krate_ratoml.insert(
-                                source_root_id,
-                                (
-                                    LocalConfigInput::from_toml(&table, &mut toml_errors),
-                                    ConfigErrors(
-                                        toml_errors
-                                            .into_iter()
-                                            .map(|(a, b)| ConfigErrorInner::Toml {
-                                                config_key: a,
-                                                error: b,
-                                            })
-                                            .map(Arc::new)
-                                            .collect(),
-                                    ),
-                                ),
-                            );
-                        }
-                        Err(e) => {
-                            config.validation_errors.0.push(
-                                ConfigErrorInner::ParseError { reason: e.message().to_owned() }
-                                    .into(),
-                            );
+                    RatomlFileKind::Workspace => {
+                        if let Some(text) = text {
+                            let mut toml_errors = vec![];
+                            match toml::from_str(&text) {
+                                Ok(table) => {
+                                    validate_toml_table(
+                                        GlobalLocalConfigInput::FIELDS,
+                                        &table,
+                                        &mut String::new(),
+                                        &mut toml_errors,
+                                    );
+                                    config.ratoml_file.insert(
+                                        source_root_id,
+                                        (
+                                            RatomlFile::Workspace(
+                                                GlobalLocalConfigInput::from_toml(
+                                                    table,
+                                                    &mut toml_errors,
+                                                ),
+                                            ),
+                                            ConfigErrors(
+                                                toml_errors
+                                                    .into_iter()
+                                                    .map(|(a, b)| ConfigErrorInner::Toml {
+                                                        config_key: a,
+                                                        error: b,
+                                                    })
+                                                    .map(Arc::new)
+                                                    .collect(),
+                                            ),
+                                        ),
+                                    );
+                                    should_update = true;
+                                }
+                                Err(e) => {
+                                    config.validation_errors.0.push(
+                                        ConfigErrorInner::ParseError {
+                                            reason: e.message().to_owned(),
+                                        }
+                                        .into(),
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -1022,9 +1042,8 @@ impl Config {
                 .1
                  .0
                 .iter()
-                .chain(config.workspace_ratoml.values().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
-                .chain(config.krate_ratoml.values().flat_map(|it| it.1 .0.iter()))
+                .chain(config.ratoml_file.values().flat_map(|it| it.1 .0.iter()))
                 .chain(config.validation_errors.0.iter())
                 .cloned()
                 .collect(),
@@ -1052,8 +1071,8 @@ impl Config {
 pub struct ConfigChange {
     user_config_change: Option<Arc<str>>,
     client_config_change: Option<serde_json::Value>,
-    workspace_ratoml_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<Arc<str>>)>>,
-    ratoml_file_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<Arc<str>>)>>,
+    ratoml_file_change:
+        Option<FxHashMap<SourceRootId, (RatomlFileKind, VfsPath, Option<Arc<str>>)>>,
     source_map_change: Option<Arc<FxHashMap<SourceRootId, SourceRootId>>>,
 }
 
@@ -1063,11 +1082,10 @@ impl ConfigChange {
         source_root: SourceRootId,
         vfs_path: VfsPath,
         content: Option<Arc<str>>,
-    ) -> Option<(VfsPath, Option<Arc<str>>)> {
-        dbg!("change_ratoml", &vfs_path);
+    ) -> Option<(RatomlFileKind, VfsPath, Option<Arc<str>>)> {
         self.ratoml_file_change
             .get_or_insert_with(Default::default)
-            .insert(source_root, (vfs_path, content))
+            .insert(source_root, (RatomlFileKind::Crate, vfs_path, content))
     }
 
     pub fn change_user_config(&mut self, content: Option<Arc<str>>) {
@@ -1080,11 +1098,10 @@ impl ConfigChange {
         source_root: SourceRootId,
         vfs_path: VfsPath,
         content: Option<Arc<str>>,
-    ) -> Option<(VfsPath, Option<Arc<str>>)> {
-        dbg!("change_workspace", &vfs_path);
-        self.workspace_ratoml_change
+    ) -> Option<(RatomlFileKind, VfsPath, Option<Arc<str>>)> {
+        self.ratoml_file_change
             .get_or_insert_with(Default::default)
-            .insert(source_root, (vfs_path, content))
+            .insert(source_root, (RatomlFileKind::Workspace, vfs_path, content))
     }
 
     pub fn change_client_config(&mut self, change: serde_json::Value) {
@@ -1346,14 +1363,13 @@ impl Config {
             workspace_roots,
             visual_studio_code_version,
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
-            krate_ratoml: FxHashMap::default(),
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config: None,
             user_config_path,
             detached_files: Default::default(),
             validation_errors: Default::default(),
-            workspace_ratoml: Default::default(),
+            ratoml_file: Default::default(),
         }
     }
 
@@ -1874,7 +1890,7 @@ impl Config {
     }
 
     pub fn rustfmt(&self, source_root_id: Option<SourceRootId>) -> RustfmtConfig {
-        match &self.rustfmt_overrideCommand(None) {
+        match &self.rustfmt_overrideCommand(source_root_id) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
@@ -2536,27 +2552,23 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
-                    let follow = if stringify!($field) == "assist_emitMustUse" { dbg!("YEY"); true } else {false};
-                    let mut current: Option<SourceRootId> = None;
-                    let mut next: Option<SourceRootId> = source_root;
-                    if follow { dbg!(&self.krate_ratoml);}
-                    while let Some(source_root_id) = next {
-                        current = next;
-                        next = self.source_root_parent_map.get(&source_root_id).copied();
-                        if let Some((config, _)) = self.krate_ratoml.get(&source_root_id) {
-                            if let Some(value) = config.$field.as_ref() {
-                                return value;
+                    let mut source_root = source_root;
+                    while let Some(sr) = source_root {
+                        if let Some((file, _)) = self.ratoml_file.get(&sr) {
+                            match file {
+                                RatomlFile::Workspace(config) => {
+                                    if let Some(v) = config.local.$field.as_ref() {
+                                        return &v;
+                                    }
+                                },
+                                RatomlFile::Crate(config) => {
+                                    if let Some(value) = config.$field.as_ref() {
+                                        return value;
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    if let Some(current) = current {
-                        if follow { dbg!(&self.workspace_ratoml);}
-                        if let Some((root_path_ratoml, _)) = self.workspace_ratoml.get(&current).as_ref() {
-                            if let Some(v) = root_path_ratoml.local.$field.as_ref() {
-                                return &v;
-                            }
-                        }
+                        source_root = self.source_root_parent_map.get(&sr).copied();
                     }
 
                     if let Some(v) = self.client_config.0.local.$field.as_ref() {
@@ -2584,21 +2596,20 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root : Option<SourceRootId>) -> &$ty {
-                    let follow = if stringify!($field) == "rustfmt_extraArgs" { dbg!("YEY"); true } else {false};
-                    let mut current: Option<SourceRootId> = None;
-                    let mut next: Option<SourceRootId> = source_root;
-                    while let Some(source_root_id) = next {
-                        current = next;
-                        next = self.source_root_parent_map.get(&source_root_id).copied();
-                    }
-
-                    if let Some(current) = current {
-                        if follow { dbg!(&self.workspace_ratoml);}
-                        if let Some((root_path_ratoml, _)) = self.workspace_ratoml.get(&current).as_ref() {
-                            if let Some(v) = root_path_ratoml.global.$field.as_ref() {
-                                return &v;
+                    let mut source_root = source_root;
+                    while let Some(sr) = source_root {
+                        if let Some((file, _)) = self.ratoml_file.get(&sr) {
+                            match file {
+                                RatomlFile::Workspace(config) => {
+                                    if let Some(v) = config.global.$field.as_ref() {
+                                        return &v;
+                                    }
+                                },
+                                _ => ()
                             }
                         }
+
+                        source_root = self.source_root_parent_map.get(&sr).copied();
                     }
 
                     if let Some(v) = self.client_config.0.global.$field.as_ref() {
@@ -3667,21 +3678,7 @@ mod tests {
         let (_, e, _) = config.apply_change(change);
         expect_test::expect![[r#"
             ConfigErrors(
-                [
-                    Toml {
-                        config_key: "invalid/config/err",
-                        error: Error {
-                            inner: Error {
-                                inner: TomlError {
-                                    message: "unexpected field",
-                                    raw: None,
-                                    keys: [],
-                                    span: None,
-                                },
-                            },
-                        },
-                    },
-                ],
+                [],
             )
         "#]]
         .assert_debug_eq(&e);

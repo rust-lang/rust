@@ -26,13 +26,10 @@ use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 
 use crate::{
-    config::{Config, ConfigChange, ConfigErrors},
+    config::{Config, ConfigChange, ConfigErrors, RatomlFileKind},
     diagnostics::{CheckFixes, DiagnosticCollection},
     line_index::{LineEndings, LineIndex},
-    lsp::{
-        from_proto::{self},
-        to_proto::url_from_abs_path,
-    },
+    lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
     main_loop::Task,
     mem_docs::MemDocs,
@@ -411,27 +408,34 @@ impl GlobalState {
                     let sr_id = db.file_source_root(file_id);
                     let sr = db.source_root(sr_id);
 
-                    if workspace_ratoml_paths.contains(&vfs_path) {
-                        change.change_workspace_ratoml(
-                            sr_id,
-                            vfs_path,
-                            Some(db.file_text(file_id)),
-                        );
-                        continue;
-                    }
-
                     if !sr.is_library {
-                        if let Some((old_path, old_text)) = change.change_ratoml(
-                            sr_id,
-                            vfs_path.clone(),
-                            Some(db.file_text(file_id)),
-                        ) {
+                        let entry = if workspace_ratoml_paths.contains(&vfs_path) {
+                            change.change_workspace_ratoml(
+                                sr_id,
+                                vfs_path.clone(),
+                                Some(db.file_text(file_id)),
+                            )
+                        } else {
+                            change.change_ratoml(
+                                sr_id,
+                                vfs_path.clone(),
+                                Some(db.file_text(file_id)),
+                            )
+                        };
+
+                        if let Some((kind, old_path, old_text)) = entry {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
-                                dbg!("HARBIDEN");
                                 span!(Level::ERROR, "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
                                 // Put the old one back in.
-                                change.change_ratoml(sr_id, old_path, old_text);
+                                match kind {
+                                    RatomlFileKind::Crate => {
+                                        change.change_ratoml(sr_id, old_path, old_text);
+                                    }
+                                    RatomlFileKind::Workspace => {
+                                        change.change_workspace_ratoml(sr_id, old_path, old_text);
+                                    }
+                                }
                             }
                         }
                     } else {
