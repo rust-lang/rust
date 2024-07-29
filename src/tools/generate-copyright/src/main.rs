@@ -1,9 +1,37 @@
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::Error;
 
 mod cargo_metadata;
+
+static TOP_BOILERPLATE: &str = r##"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Copyright notices for The Rust Toolchain</title>
+</head>
+<body>
+
+<h1>Copyright notices for The Rust Toolchain</h1>
+
+<p>This file describes the copyright and licensing information for the source
+code within The Rust Project git tree, and the third-party dependencies used
+when building the Rust toolchain (including the Rust Standard Library).</p>
+
+<h2>Table of Contents</h2>
+<ul>
+    <li><a href="#in-tree-files">In-tree files</a></li>
+    <li><a href="#out-of-tree-dependencies">Out-of-tree dependencies</a></li>
+</ul>
+"##;
+
+static BOTTOM_BOILERPLATE: &str = r#"
+</body>
+</html>
+"#;
 
 /// The entry point to the binary.
 ///
@@ -26,43 +54,28 @@ fn main() -> Result<(), Error> {
         Path::new("./library/std/Cargo.toml"),
     ];
     let collected_cargo_metadata =
-        cargo_metadata::get(&cargo, &out_dir, &root_path, &workspace_paths)?;
+        cargo_metadata::get_metadata_and_notices(&cargo, &out_dir, &root_path, &workspace_paths)?;
+
+    let stdlib_set =
+        cargo_metadata::get_metadata(&cargo, &root_path, &[Path::new("./library/std/Cargo.toml")])?;
 
     let mut buffer = Vec::new();
 
-    writeln!(buffer, "# COPYRIGHT for Rust")?;
-    writeln!(buffer)?;
+    writeln!(buffer, "{}", TOP_BOILERPLATE)?;
+
     writeln!(
         buffer,
-        "This file describes the copyright and licensing information for the source code within The Rust Project git tree, and the third-party dependencies used when building the Rust toolchain (including the Rust Standard Library)"
+        r#"<h2 id="in-tree-files">In-tree files</h2><p>The following licenses cover the in-tree source files that were used in this release:</p>"#
     )?;
-    writeln!(buffer)?;
-    writeln!(buffer, "## Table of Contents")?;
-    writeln!(buffer)?;
-    writeln!(buffer, "* [In-tree files](#in-tree-files)")?;
-    writeln!(buffer, "* [Out-of-tree files](#out-of-tree-files)")?;
-    // writeln!(buffer, "* [License Texts](#license-texts)")?;
-    writeln!(buffer)?;
+    render_tree_recursive(&collected_tree_metadata.files, &mut buffer)?;
 
-    writeln!(buffer, "## In-tree files")?;
-    writeln!(buffer)?;
     writeln!(
         buffer,
-        "The following licenses cover the in-tree source files that were used in this release:"
+        r#"<h2 id="out-of-tree-dependencies">Out-of-tree dependencies</h2><p>The following licenses cover the out-of-tree crates that were used in this release:</p>"#
     )?;
-    writeln!(buffer)?;
-    render_tree_recursive(&collected_tree_metadata.files, &mut buffer, 0)?;
+    render_deps(&collected_cargo_metadata, &stdlib_set, &mut buffer)?;
 
-    writeln!(buffer)?;
-
-    writeln!(buffer, "## Out-of-tree files")?;
-    writeln!(buffer)?;
-    writeln!(
-        buffer,
-        "The following licenses cover the out-of-tree crates that were used in this release:"
-    )?;
-    writeln!(buffer)?;
-    render_deps(collected_cargo_metadata.iter(), &mut buffer)?;
+    writeln!(buffer, "{}", BOTTOM_BOILERPLATE)?;
 
     std::fs::write(&dest_file, &buffer)?;
 
@@ -71,56 +84,51 @@ fn main() -> Result<(), Error> {
 
 /// Recursively draw the tree of files/folders we found on disk and their licenses, as
 /// markdown, into the given Vec.
-fn render_tree_recursive(node: &Node, buffer: &mut Vec<u8>, depth: usize) -> Result<(), Error> {
-    let prefix = std::iter::repeat("> ").take(depth + 1).collect::<String>();
-
+fn render_tree_recursive(node: &Node, buffer: &mut Vec<u8>) -> Result<(), Error> {
+    writeln!(buffer, r#"<div style="border:1px solid black; padding: 5px;">"#)?;
     match node {
         Node::Root { children } => {
             for child in children {
-                render_tree_recursive(child, buffer, depth)?;
+                render_tree_recursive(child, buffer)?;
             }
         }
         Node::Directory { name, children, license } => {
-            render_tree_license(&prefix, std::iter::once(name), license.as_ref(), buffer)?;
+            render_tree_license(std::iter::once(name), license.as_ref(), buffer)?;
             if !children.is_empty() {
-                writeln!(buffer, "{prefix}")?;
-                writeln!(buffer, "{prefix}*Exceptions:*")?;
+                writeln!(buffer, "<p><b>Exceptions:</b></p>")?;
                 for child in children {
-                    writeln!(buffer, "{prefix}")?;
-                    render_tree_recursive(child, buffer, depth + 1)?;
+                    render_tree_recursive(child, buffer)?;
                 }
             }
         }
         Node::Group { files, directories, license } => {
-            render_tree_license(
-                &prefix,
-                directories.iter().chain(files.iter()),
-                Some(license),
-                buffer,
-            )?;
+            render_tree_license(directories.iter().chain(files.iter()), Some(license), buffer)?;
         }
         Node::File { name, license } => {
-            render_tree_license(&prefix, std::iter::once(name), Some(license), buffer)?;
+            render_tree_license(std::iter::once(name), Some(license), buffer)?;
         }
     }
+    writeln!(buffer, "</div>")?;
 
     Ok(())
 }
 
 /// Draw a series of sibling files/folders, as markdown, into the given Vec.
 fn render_tree_license<'a>(
-    prefix: &str,
     names: impl Iterator<Item = &'a String>,
     license: Option<&License>,
     buffer: &mut Vec<u8>,
 ) -> Result<(), Error> {
+    writeln!(buffer, "<p><b>File/Directory:</b> ")?;
     for name in names {
-        writeln!(buffer, "{prefix}**`{name}`**  ")?;
+        writeln!(buffer, "<code>{name}</code>")?;
     }
+    writeln!(buffer, "</p>")?;
+
     if let Some(license) = license {
-        writeln!(buffer, "{prefix}License: `{}`", license.spdx)?;
+        writeln!(buffer, "<p><b>License:</b> {}</p>", license.spdx)?;
         for copyright in license.copyright.iter() {
-            writeln!(buffer, "{prefix}Copyright: {copyright}")?;
+            writeln!(buffer, "<p><b>Copyright:</b> {copyright}</p>")?;
         }
     }
 
@@ -128,36 +136,48 @@ fn render_tree_license<'a>(
 }
 
 /// Render a list of out-of-tree dependencies as markdown into the given Vec.
-fn render_deps<'a, 'b>(
-    deps: impl Iterator<Item = &'a cargo_metadata::Dependency>,
-    buffer: &'b mut Vec<u8>,
+fn render_deps(
+    all_deps: &BTreeMap<cargo_metadata::Package, cargo_metadata::PackageMetadata>,
+    stdlib_set: &BTreeMap<cargo_metadata::Package, cargo_metadata::PackageMetadata>,
+    buffer: &mut Vec<u8>,
 ) -> Result<(), Error> {
-    for dep in deps {
-        let authors_list = dep.authors.join(", ").replace("<", "\\<").replace(">", "\\>");
-        let url = format!("https://crates.io/crates/{}/{}", dep.name, dep.version);
+    for (package, metadata) in all_deps {
+        let authors_list = if metadata.authors.is_empty() {
+            "None Specified".to_owned()
+        } else {
+            metadata.authors.join(", ")
+        };
+        let url = format!("https://crates.io/crates/{}/{}", package.name, package.version);
         writeln!(buffer)?;
         writeln!(
             buffer,
-            "### [{name} {version}]({url})",
-            name = dep.name,
-            version = dep.version,
-            url = url,
+            r#"<h3>📦 {name}-{version}</h3>"#,
+            name = package.name,
+            version = package.version,
         )?;
-        writeln!(buffer)?;
-        writeln!(buffer, "* Authors: {}", authors_list)?;
-        writeln!(buffer, "* License: {}", dep.license)?;
-        for (name, contents) in &dep.notices {
-            writeln!(buffer)?;
-            writeln!(buffer, "#### {}", name.to_string_lossy())?;
-            writeln!(buffer)?;
-            writeln!(buffer, "<details><summary>Click to expand</summary>")?;
-            writeln!(buffer)?;
-            writeln!(buffer, "```")?;
-            writeln!(buffer, "{}", contents)?;
-            writeln!(buffer, "```")?;
-            writeln!(buffer)?;
-            writeln!(buffer, "</details>")?;
+        writeln!(buffer, r#"<p><b>URL:</b> <a href="{url}">{url}</a></p>"#,)?;
+        writeln!(
+            buffer,
+            "<p><b>In libstd:</b> {}</p>",
+            if stdlib_set.contains_key(package) { "Yes" } else { "No" }
+        )?;
+        writeln!(buffer, "<p><b>Authors:</b> {}</p>", escape_html(&authors_list))?;
+        writeln!(buffer, "<p><b>License:</b> {}</p>", escape_html(&metadata.license))?;
+        writeln!(buffer, "<p><b>Notices:</b> ")?;
+        if metadata.notices.is_empty() {
+            writeln!(buffer, "None")?;
+        } else {
+            for (name, contents) in &metadata.notices {
+                writeln!(
+                    buffer,
+                    "<details><summary><code>{}</code></summary>",
+                    name.to_string_lossy()
+                )?;
+                writeln!(buffer, "<pre>\n{}\n</pre>", contents)?;
+                writeln!(buffer, "</details>")?;
+            }
         }
+        writeln!(buffer, "</p>")?;
     }
     Ok(())
 }
@@ -191,4 +211,14 @@ fn env_path(var: &str) -> Result<PathBuf, Error> {
     } else {
         anyhow::bail!("missing environment variable {var}")
     }
+}
+
+/// Escapes any invalid HTML characters
+fn escape_html(input: &str) -> String {
+    static MAPPING: [(char, &str); 3] = [('&', "&amp;"), ('<', "&lt;"), ('>', "&gt;")];
+    let mut output = input.to_owned();
+    for (ch, s) in &MAPPING {
+        output = output.replace(*ch, s);
+    }
+    output
 }

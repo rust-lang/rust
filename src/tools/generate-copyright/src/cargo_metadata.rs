@@ -1,6 +1,6 @@
 //! Gets metadata about a workspace from Cargo
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
@@ -23,13 +23,18 @@ pub enum Error {
     RunningVendor,
 }
 
-/// Describes one of our dependencies
+/// Uniquely describes a package on crates.io
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Dependency {
+pub struct Package {
     /// The name of the package
     pub name: String,
     /// The version number
     pub version: String,
+}
+
+/// Extra data about a package
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PackageMetadata {
     /// The license it is under
     pub license: String,
     /// The list of authors from the package metadata
@@ -40,20 +45,44 @@ pub struct Dependency {
     pub notices: BTreeMap<OsString, String>,
 }
 
-/// Use `cargo` to get a list of dependencies and their license data.
+/// Use `cargo metadata` and `cargo vendor` to get a list of dependencies and their license data.
 ///
 /// This will involve running `cargo vendor` into `${BUILD}/vendor` so we can
 /// grab the license files.
 ///
 /// Any dependency with a path beginning with `root_path` is ignored, as we
 /// assume `reuse` has covered it already.
-pub fn get(
+pub fn get_metadata_and_notices(
     cargo: &Path,
     dest: &Path,
     root_path: &Path,
     manifest_paths: &[&Path],
-) -> Result<BTreeSet<Dependency>, Error> {
-    let mut temp_set = BTreeSet::new();
+) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
+    let mut output = get_metadata(cargo, root_path, manifest_paths)?;
+
+    // Now do a cargo-vendor and grab everything
+    let vendor_path = dest.join("vendor");
+    println!("Vendoring deps into {}...", vendor_path.display());
+    run_cargo_vendor(cargo, &vendor_path, manifest_paths)?;
+
+    // Now for each dependency we found, go and grab any important looking files
+    for (package, metadata) in output.iter_mut() {
+        load_important_files(package, metadata, &vendor_path)?;
+    }
+
+    Ok(output)
+}
+
+/// Use `cargo metadata` to get a list of dependencies and their license data.
+///
+/// Any dependency with a path beginning with `root_path` is ignored, as we
+/// assume `reuse` has covered it already.
+pub fn get_metadata(
+    cargo: &Path,
+    root_path: &Path,
+    manifest_paths: &[&Path],
+) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
+    let mut output = BTreeMap::new();
     // Look at the metadata for each manifest
     for manifest_path in manifest_paths {
         if manifest_path.file_name() != Some(OsStr::new("Cargo.toml")) {
@@ -71,7 +100,7 @@ pub fn get(
                 .and_then(|v| v.as_str())
                 .map(Path::new)
                 .ok_or_else(|| Error::MissingJsonElement("package.manifest_path"))?;
-            if manifest_path.starts_with(&root_path) {
+            if manifest_path.starts_with(root_path) {
                 // it's an in-tree dependency and reuse covers it
                 continue;
             }
@@ -93,26 +122,12 @@ pub fn get(
                 .ok_or_else(|| Error::MissingJsonElement("package.authors"))?;
             let authors: Vec<String> =
                 authors_list.iter().filter_map(|v| v.as_str()).map(|s| s.to_owned()).collect();
-            temp_set.insert(Dependency {
-                name: name.to_owned(),
-                version: version.to_owned(),
-                license: license.to_owned(),
-                authors,
-                notices: BTreeMap::new(),
-            });
+            let package = Package { name: name.to_owned(), version: version.to_owned() };
+            output.insert(
+                package.clone(),
+                PackageMetadata { license: license.to_owned(), authors, notices: BTreeMap::new() },
+            );
         }
-    }
-
-    // Now do a cargo-vendor and grab everything
-    let vendor_path = dest.join("vendor");
-    println!("Vendoring deps into {}...", vendor_path.display());
-    run_cargo_vendor(cargo, &vendor_path, manifest_paths)?;
-
-    // Now for each dependency we found, go and grab any important looking files
-    let mut output = BTreeSet::new();
-    for mut dep in temp_set {
-        load_important_files(&mut dep, &vendor_path)?;
-        output.insert(dep);
     }
 
     Ok(output)
@@ -128,7 +143,7 @@ fn get_metadata_json(cargo: &Path, manifest_path: &Path) -> Result<serde_json::V
         .arg(manifest_path)
         .env("RUSTC_BOOTSTRAP", "1")
         .output()
-        .map_err(|e| Error::LaunchingMetadata(e))?;
+        .map_err(Error::LaunchingMetadata)?;
     if !metadata_output.status.success() {
         return Err(Error::GettingMetadata(
             String::from_utf8(metadata_output.stderr).expect("UTF-8 output from cargo"),
@@ -151,7 +166,7 @@ fn run_cargo_vendor(cargo: &Path, dest: &Path, manifest_paths: &[&Path]) -> Resu
     }
     vendor_command.arg(dest);
 
-    let vendor_status = vendor_command.status().map_err(|e| Error::LaunchingVendor(e))?;
+    let vendor_status = vendor_command.status().map_err(Error::LaunchingVendor)?;
 
     if !vendor_status.success() {
         return Err(Error::RunningVendor);
@@ -164,8 +179,12 @@ fn run_cargo_vendor(cargo: &Path, dest: &Path, manifest_paths: &[&Path]) -> Resu
 ///
 /// Maybe one-day Cargo.toml will contain enough information that we don't need
 /// to do this manual scraping.
-fn load_important_files(dep: &mut Dependency, vendor_root: &Path) -> Result<(), Error> {
-    let name_version = format!("{}-{}", dep.name, dep.version);
+fn load_important_files(
+    package: &Package,
+    dep: &mut PackageMetadata,
+    vendor_root: &Path,
+) -> Result<(), Error> {
+    let name_version = format!("{}-{}", package.name, package.version);
     println!("Scraping notices for {}...", name_version);
     let dep_vendor_path = vendor_root.join(name_version);
     for entry in std::fs::read_dir(dep_vendor_path)? {
