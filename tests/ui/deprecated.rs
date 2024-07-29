@@ -9,16 +9,11 @@
 #![warn(clippy::unstable_as_mut_slice)]
 #![warn(clippy::misaligned_transmute)]
 #![warn(clippy::assign_ops)]
-#![warn(clippy::if_let_redundant_pattern_matching)]
 #![warn(clippy::unsafe_vector_initialization)]
 #![warn(clippy::unused_collect)]
 #![warn(clippy::replace_consts)]
 #![warn(clippy::regex_macro)]
-#![warn(clippy::find_map)]
-#![warn(clippy::filter_map)]
 #![warn(clippy::pub_enum_variant_names)]
 #![warn(clippy::wrong_pub_self_convention)]
-#![warn(clippy::maybe_misused_cfg)]
-#![warn(clippy::mismatched_target_os)]
 
 fn main() {}

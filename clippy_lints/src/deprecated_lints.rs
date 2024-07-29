@@ -113,19 +113,6 @@ declare_deprecated_lint! {
     /// Nothing. This lint has been deprecated.
     ///
     /// ### Deprecation reason
-    /// The original rule will only lint for `if let`. After
-    /// making it support to lint `match`, naming as `if let` is not suitable for it.
-    /// So, this lint is deprecated.
-    #[clippy::version = "pre 1.29.0"]
-    pub IF_LET_REDUNDANT_PATTERN_MATCHING,
-    "this lint has been changed to redundant_pattern_matching"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
     /// This lint used to suggest replacing `let mut vec =
     /// Vec::with_capacity(n); vec.set_len(n);` with `let vec = vec![0; n];`. The
     /// replacement has very different performance characteristics so the lint is
@@ -173,30 +160,6 @@ declare_deprecated_lint! {
     /// Nothing. This lint has been deprecated.
     ///
     /// ### Deprecation reason
-    /// This lint has been replaced by `manual_find_map`, a
-    /// more specific lint.
-    #[clippy::version = "1.51.0"]
-    pub FIND_MAP,
-    "this lint has been replaced by `manual_find_map`, a more specific lint"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been replaced by `manual_filter_map`, a
-    /// more specific lint.
-    #[clippy::version = "1.53.0"]
-    pub FILTER_MAP,
-    "this lint has been replaced by `manual_filter_map`, a more specific lint"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
     /// The `avoid_breaking_exported_api` config option was added, which
     /// enables the `enum_variant_names` lint for public items.
     #[clippy::version = "1.54.0"]
@@ -214,30 +177,4 @@ declare_deprecated_lint! {
     #[clippy::version = "1.54.0"]
     pub WRONG_PUB_SELF_CONVENTION,
     "set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been superseded by rustc's own [`unexpected_cfgs`] lint that is able to detect the `#[cfg(features)]` and `#[cfg(tests)]` typos.
-    ///
-    /// [`unexpected_cfgs`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unexpected-cfgs
-    #[clippy::version = "1.80.0"]
-    pub MAYBE_MISUSED_CFG,
-    "this lint has been replaced by `unexpected_cfgs`"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been superseded by rustc's own [`unexpected_cfgs`] lint that is able to detect invalid `#[cfg(linux)]` attributes.
-    ///
-    /// [`unexpected_cfgs`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unexpected-cfgs
-    #[clippy::version = "1.80.0"]
-    pub MISMATCHED_TARGET_OS,
-    "this lint has been replaced by `unexpected_cfgs`"
 }

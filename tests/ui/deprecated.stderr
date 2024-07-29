@@ -43,71 +43,41 @@ error: lint `clippy::assign_ops` has been removed: using compound assignment ope
 LL | #![warn(clippy::assign_ops)]
    |         ^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::if_let_redundant_pattern_matching` has been removed: this lint has been changed to redundant_pattern_matching
-  --> tests/ui/deprecated.rs:12:9
-   |
-LL | #![warn(clippy::if_let_redundant_pattern_matching)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: lint `clippy::unsafe_vector_initialization` has been removed: the replacement suggested by this lint had substantially different behavior
-  --> tests/ui/deprecated.rs:13:9
+  --> tests/ui/deprecated.rs:12:9
    |
 LL | #![warn(clippy::unsafe_vector_initialization)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::unused_collect` has been removed: `collect` has been marked as #[must_use] in rustc and that covers all cases of this lint
-  --> tests/ui/deprecated.rs:14:9
+  --> tests/ui/deprecated.rs:13:9
    |
 LL | #![warn(clippy::unused_collect)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::replace_consts` has been removed: associated-constants `MIN`/`MAX` of integers are preferred to `{min,max}_value()` and module constants
-  --> tests/ui/deprecated.rs:15:9
+  --> tests/ui/deprecated.rs:14:9
    |
 LL | #![warn(clippy::replace_consts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::regex_macro` has been removed: the regex! macro has been removed from the regex crate in 2018
-  --> tests/ui/deprecated.rs:16:9
+  --> tests/ui/deprecated.rs:15:9
    |
 LL | #![warn(clippy::regex_macro)]
    |         ^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::find_map` has been removed: this lint has been replaced by `manual_find_map`, a more specific lint
-  --> tests/ui/deprecated.rs:17:9
-   |
-LL | #![warn(clippy::find_map)]
-   |         ^^^^^^^^^^^^^^^^
-
-error: lint `clippy::filter_map` has been removed: this lint has been replaced by `manual_filter_map`, a more specific lint
-  --> tests/ui/deprecated.rs:18:9
-   |
-LL | #![warn(clippy::filter_map)]
-   |         ^^^^^^^^^^^^^^^^^^
-
 error: lint `clippy::pub_enum_variant_names` has been removed: set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items
-  --> tests/ui/deprecated.rs:19:9
+  --> tests/ui/deprecated.rs:16:9
    |
 LL | #![warn(clippy::pub_enum_variant_names)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items
-  --> tests/ui/deprecated.rs:20:9
+  --> tests/ui/deprecated.rs:17:9
    |
 LL | #![warn(clippy::wrong_pub_self_convention)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::maybe_misused_cfg` has been removed: this lint has been replaced by `unexpected_cfgs`
-  --> tests/ui/deprecated.rs:21:9
-   |
-LL | #![warn(clippy::maybe_misused_cfg)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::mismatched_target_os` has been removed: this lint has been replaced by `unexpected_cfgs`
-  --> tests/ui/deprecated.rs:22:9
-   |
-LL | #![warn(clippy::mismatched_target_os)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 18 previous errors
+error: aborting due to 13 previous errors
 

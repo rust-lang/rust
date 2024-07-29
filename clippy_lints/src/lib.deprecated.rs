@@ -32,10 +32,6 @@
         "using compound assignment operators (e.g., `+=`) is harmless",
     );
     store.register_removed(
-        "clippy::if_let_redundant_pattern_matching",
-        "this lint has been changed to redundant_pattern_matching",
-    );
-    store.register_removed(
         "clippy::unsafe_vector_initialization",
         "the replacement suggested by this lint had substantially different behavior",
     );
@@ -52,27 +48,11 @@
         "the regex! macro has been removed from the regex crate in 2018",
     );
     store.register_removed(
-        "clippy::find_map",
-        "this lint has been replaced by `manual_find_map`, a more specific lint",
-    );
-    store.register_removed(
-        "clippy::filter_map",
-        "this lint has been replaced by `manual_filter_map`, a more specific lint",
-    );
-    store.register_removed(
         "clippy::pub_enum_variant_names",
         "set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items",
     );
     store.register_removed(
         "clippy::wrong_pub_self_convention",
         "set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items",
-    );
-    store.register_removed(
-        "clippy::maybe_misused_cfg",
-        "this lint has been replaced by `unexpected_cfgs`",
-    );
-    store.register_removed(
-        "clippy::mismatched_target_os",
-        "this lint has been replaced by `unexpected_cfgs`",
     );
 }
