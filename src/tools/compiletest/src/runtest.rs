@@ -1,16 +1,5 @@
 // ignore-tidy-filelength
 
-use crate::compute_diff::{write_diff, write_filtered_diff};
-use crate::errors::{self, Error, ErrorKind};
-use crate::header::TestProps;
-use crate::json;
-use crate::read2::{read2_abbreviated, Truncated};
-use crate::util::{add_dylib_path, copy_dir_all, dylib_env_var, logv, static_regex, PathBufExt};
-use crate::ColorConfig;
-use colored::Colorize;
-use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
-use regex::{Captures, Regex};
-use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
