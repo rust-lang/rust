@@ -359,7 +359,7 @@ impl Error for VarError {
 #[cfg_attr(
     not(bootstrap),
     rustc_deprecated_safe_2024(
-        todo = "Audit that the environment access only happens in single-threaded code."
+        audit_that = "the environment access only happens in single-threaded code"
     )
 )]
 #[stable(feature = "env", since = "1.0.0")]
@@ -429,7 +429,7 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 #[cfg_attr(
     not(bootstrap),
     rustc_deprecated_safe_2024(
-        todo = "Audit that the environment access only happens in single-threaded code."
+        audit_that = "the environment access only happens in single-threaded code"
     )
 )]
 #[stable(feature = "env", since = "1.0.0")]
