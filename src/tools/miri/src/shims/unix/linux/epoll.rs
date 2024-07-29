@@ -5,8 +5,6 @@ use rustc_data_structures::fx::FxHashMap;
 use crate::shims::unix::*;
 use crate::*;
 
-use self::shims::unix::fd::FileDescriptor;
-
 /// An `Epoll` file descriptor connects file handles and epoll events
 #[derive(Clone, Debug, Default)]
 struct Epoll {
@@ -66,7 +64,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        let fd = this.machine.fds.insert_fd(FileDescriptor::new(Epoll::default()));
+        let fd = this.machine.fds.insert_fd(Epoll::default());
         Ok(Scalar::from_i32(fd))
     }
 

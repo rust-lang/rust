@@ -92,7 +92,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
                 let count = this.read_target_usize(count)?;
-                let result = this.read(fd, buf, count)?;
+                let result = this.read(fd, buf, count, None)?;
                 this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
             }
             "write" => {
@@ -101,7 +101,47 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf = this.read_pointer(buf)?;
                 let count = this.read_target_usize(n)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
-                let result = this.write(fd, buf, count)?;
+                let result = this.write(fd, buf, count, None)?;
+                // Now, `result` is the value we return back to the program.
+                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+            }
+            "pread" => {
+                let [fd, buf, count, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let buf = this.read_pointer(buf)?;
+                let count = this.read_target_usize(count)?;
+                let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
+                let result = this.read(fd, buf, count, Some(offset))?;
+                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+            }
+            "pwrite" => {
+                let [fd, buf, n, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let buf = this.read_pointer(buf)?;
+                let count = this.read_target_usize(n)?;
+                let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
+                trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
+                let result = this.write(fd, buf, count, Some(offset))?;
+                // Now, `result` is the value we return back to the program.
+                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+            }
+            "pread64" => {
+                let [fd, buf, count, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let buf = this.read_pointer(buf)?;
+                let count = this.read_target_usize(count)?;
+                let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off64_t").size)?;
+                let result = this.read(fd, buf, count, Some(offset))?;
+                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+            }
+            "pwrite64" => {
+                let [fd, buf, n, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let buf = this.read_pointer(buf)?;
+                let count = this.read_target_usize(n)?;
+                let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off64_t").size)?;
+                trace!("Called pwrite64({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
+                let result = this.write(fd, buf, count, Some(offset))?;
                 // Now, `result` is the value we return back to the program.
                 this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
             }

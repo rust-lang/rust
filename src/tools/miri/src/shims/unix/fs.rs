@@ -16,8 +16,6 @@ use crate::shims::unix::*;
 use crate::*;
 use shims::time::system_time_to_duration;
 
-use self::fd::FileDescriptor;
-
 #[derive(Debug)]
 struct FileHandle {
     file: File,
@@ -47,6 +45,54 @@ impl FileDescription for FileHandle {
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.write(bytes))
+    }
+
+    fn pread<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &mut [u8],
+        offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        // Emulates pread using seek + read + seek to restore cursor position.
+        // Correctness of this emulation relies on sequential nature of Miri execution.
+        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
+        let mut f = || {
+            let cursor_pos = self.file.stream_position()?;
+            self.file.seek(SeekFrom::Start(offset))?;
+            let res = self.file.read(bytes);
+            // Attempt to restore cursor position even if the read has failed
+            self.file
+                .seek(SeekFrom::Start(cursor_pos))
+                .expect("failed to restore file position, this shouldn't be possible");
+            res
+        };
+        Ok(f())
+    }
+
+    fn pwrite<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &[u8],
+        offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        // Emulates pwrite using seek + write + seek to restore cursor position.
+        // Correctness of this emulation relies on sequential nature of Miri execution.
+        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
+        let mut f = || {
+            let cursor_pos = self.file.stream_position()?;
+            self.file.seek(SeekFrom::Start(offset))?;
+            let res = self.file.write(bytes);
+            // Attempt to restore cursor position even if the write has failed
+            self.file
+                .seek(SeekFrom::Start(cursor_pos))
+                .expect("failed to restore file position, this shouldn't be possible");
+            res
+        };
+        Ok(f())
     }
 
     fn seek<'tcx>(
@@ -266,7 +312,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let this = self.eval_context_mut();
 
-        let path = this.read_pointer(&args[0])?;
+        let path_raw = this.read_pointer(&args[0])?;
+        let path = this.read_path_from_c_str(path_raw)?;
         let flag = this.read_scalar(&args[1])?.to_i32()?;
 
         let mut options = OpenOptions::new();
@@ -366,13 +413,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(-1);
             }
         }
+
+        let o_nofollow = this.eval_libc_i32("O_NOFOLLOW");
+        if flag & o_nofollow == o_nofollow {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                options.custom_flags(libc::O_NOFOLLOW);
+            }
+            // Strictly speaking, this emulation is not equivalent to the O_NOFOLLOW flag behavior:
+            // the path could change between us checking it here and the later call to `open`.
+            // But it's good enough for Miri purposes.
+            #[cfg(not(unix))]
+            {
+                // O_NOFOLLOW only fails when the trailing component is a symlink;
+                // the entire rest of the path can still contain symlinks.
+                if path.is_symlink() {
+                    let eloop = this.eval_libc("ELOOP");
+                    this.set_last_error(eloop)?;
+                    return Ok(-1);
+                }
+            }
+            mirror |= o_nofollow;
+        }
+
         // If `flag` is not equal to `mirror`, there is an unsupported option enabled in `flag`,
         // then we throw an error.
         if flag != mirror {
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
-
-        let path = this.read_path_from_c_str(path)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -381,10 +450,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(-1);
         }
 
-        let fd = options.open(path).map(|file| {
-            let fh = &mut this.machine.fds;
-            fh.insert_fd(FileDescriptor::new(FileHandle { file, writable }))
-        });
+        let fd = options
+            .open(path)
+            .map(|file| this.machine.fds.insert_fd(FileHandle { file, writable }));
 
         this.try_unwrap_io_result(fd)
     }
@@ -1476,9 +1544,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             match file {
                 Ok(f) => {
-                    let fh = &mut this.machine.fds;
-                    let fd =
-                        fh.insert_fd(FileDescriptor::new(FileHandle { file: f, writable: true }));
+                    let fd = this.machine.fds.insert_fd(FileHandle { file: f, writable: true });
                     return Ok(fd);
                 }
                 Err(e) =>

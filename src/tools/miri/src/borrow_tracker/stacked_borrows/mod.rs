@@ -5,6 +5,7 @@ pub mod diagnostics;
 mod item;
 mod stack;
 
+use std::cell::RefCell;
 use std::cmp;
 use std::fmt::Write;
 use std::mem;
@@ -820,7 +821,19 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
         let size = match size {
             Some(size) => size,
-            None => return Ok(place.clone()),
+            None => {
+                // The first time this happens, show a warning.
+                thread_local! { static WARNING_SHOWN: RefCell<bool> = const { RefCell::new(false) }; }
+                WARNING_SHOWN.with_borrow_mut(|shown| {
+                    if *shown {
+                        return;
+                    }
+                    // Not yet shown. Show it!
+                    *shown = true;
+                    this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
+                });
+                return Ok(place.clone());
+            }
         };
 
         // Compute new borrow.

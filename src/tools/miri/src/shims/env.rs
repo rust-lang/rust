@@ -108,4 +108,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             EnvVars::Windows(vars) => vars.get(name),
         }
     }
+
+    fn get_pid(&self) -> u32 {
+        let this = self.eval_context_ref();
+        if this.machine.communicate() { std::process::id() } else { 1000 }
+    }
 }
