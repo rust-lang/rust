@@ -5,7 +5,6 @@
 
 #[macro_use]
 extern crate proc_macros;
-use proc_macros::external;
 
 use std::cmp::Eq;
 use std::collections::{HashMap, HashSet};
@@ -70,7 +69,7 @@ impl<S: BuildHasher + Default> Foo<i64> for HashSet<String, S> {
 
 pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
 
-#[proc_macros::inline_macros]
+#[inline_macros]
 pub mod gen {
     use super::*;
     inline! {
