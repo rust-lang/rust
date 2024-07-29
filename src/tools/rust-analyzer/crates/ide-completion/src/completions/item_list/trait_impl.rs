@@ -180,8 +180,10 @@ fn add_function_impl(
 ) {
     let fn_name = func.name(ctx.db);
 
+    let is_async = func.is_async(ctx.db);
     let label = format_smolstr!(
-        "fn {}({})",
+        "{}fn {}({})",
+        if is_async { "async " } else { "" },
         fn_name.display(ctx.db),
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
@@ -193,7 +195,7 @@ fn add_function_impl(
     });
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(format!("fn {}", fn_name.display(ctx.db)))
+    item.lookup_by(format!("{}fn {}", if is_async { "async "} else { "" },fn_name.display(ctx.db)))
         .set_documentation(func.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
