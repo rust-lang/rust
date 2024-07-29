@@ -16,7 +16,8 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, UserArgs, UserType,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, UserArgs,
+    UserType,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, DUMMY_SP};
@@ -269,6 +270,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             probe::ObjectPick => {
                 let trait_def_id = pick.item.container_id(self.tcx);
+
+                // This shouldn't happen for non-region error kinds, but may occur
+                // when we have error regions. Specifically, since we canonicalize
+                // during method steps, we may successfully deref when we assemble
+                // the pick, but fail to deref when we try to extract the object
+                // type from the pick during confirmation. This is fine, we're basically
+                // already doomed by this point.
+                if self_ty.references_error() {
+                    return ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[]);
+                }
+
                 self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
