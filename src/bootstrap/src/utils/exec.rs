@@ -231,18 +231,8 @@ pub struct CommandOutput {
 
 impl CommandOutput {
     #[must_use]
-    pub fn did_not_start(stdout: OutputMode, stderr: OutputMode) -> Self {
-        Self {
-            status: CommandStatus::DidNotStart,
-            stdout: match stdout {
-                OutputMode::Print => None,
-                OutputMode::Capture => Some(vec![]),
-            },
-            stderr: match stderr {
-                OutputMode::Print => None,
-                OutputMode::Capture => Some(vec![]),
-            },
-        }
+    pub fn did_not_start() -> Self {
+        Self { status: CommandStatus::DidNotStart, stdout: None, stderr: None }
     }
 
     #[must_use]
