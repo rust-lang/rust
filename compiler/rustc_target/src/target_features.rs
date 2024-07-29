@@ -414,8 +414,22 @@ const X86_IMPLIED_FEATURES: &[(&str, &[&str])] = &[
     ("aes", &["sse2"]),
     ("avx", &["sse4.2"]),
     ("avx2", &["avx"]),
+    ("avx512bf16", &["avx512bw"]),
+    ("avx512bitalg", &["avx512bw"]),
+    ("avx512bw", &["avx512f"]),
+    ("avx512cd", &["avx512f"]),
+    ("avx512dq", &["avx512f"]),
+    ("avx512f", &["avx2"]),
+    ("avx512fp16", &["avx512bw", "avx512vl", "avx512dq"]),
+    ("avx512vbmi", &["avx512bw"]),
+    ("avx512vbmi2", &["avx512bw"]),
+    ("avx512vl", &["avx512f"]),
+    ("avx512vnni", &["avx512f"]),
+    ("avx512vp2intersect", &["avx512f"]),
+    ("avx512vpopcntdq", &["avx512f"]),
     ("f16c", &["avx"]),
     ("fma", &["avx"]),
+    ("gfni", &["sse2"]),
     ("pclmulqdq", &["sse2"]),
     ("sha", &["sse2"]),
     ("sse2", &["sse"]),
@@ -423,6 +437,11 @@ const X86_IMPLIED_FEATURES: &[(&str, &[&str])] = &[
     ("sse4.1", &["ssse3"]),
     ("sse4.2", &["sse4.1"]),
     ("ssse3", &["sse3"]),
+    ("vaes", &["avx", "aes"]),
+    ("vpclmulqdq", &["avx", "pclmulqdq"]),
+    ("xsavec", &["xsave"]),
+    ("xsaveopt", &["xsave"]),
+    ("xsaves", &["xsave"]),
     // tidy-alphabetical-end
 ];
 
@@ -454,6 +473,12 @@ const RISCV_IMPLIED_FEATURES: &[(&str, &[&str])] = &[
     ("zk", &["zkn", "zkr", "zks", "zkt", "zbkb", "zbkc", "zkbx"]),
     ("zkn", &["zknd", "zkne", "zknh", "zbkb", "zbkc", "zkbx"]),
     ("zks", &["zksed", "zksh", "zbkb", "zbkc", "zkbx"]),
+    // tidy-alphabetical-end
+];
+
+const WASM_IMPLIED_FEATURES: &[(&str, &[&str])] = &[
+    // tidy-alphabetical-start
+    ("relaxed-simd", &["simd128"]),
     // tidy-alphabetical-end
 ];
 
@@ -509,6 +534,7 @@ impl super::spec::Target {
             "aarch4" => AARCH64_IMPLIED_FEATURES,
             "riscv32" | "riscv64" => RISCV_IMPLIED_FEATURES,
             "x86" | "x86_64" => X86_IMPLIED_FEATURES,
+            "wasm32" | "wasm64" => WASM_IMPLIED_FEATURES,
             _ => &[],
         }
     }
