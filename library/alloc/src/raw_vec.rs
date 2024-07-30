@@ -40,6 +40,13 @@ struct Cap(usize);
 
 impl Cap {
     const ZERO: Cap = unsafe { Cap(0) };
+
+    /// `Cap(cap)`, except if `T` is a ZST then `Cap::ZERO`.
+    ///
+    /// # Safety: cap must be <= `isize::MAX`.
+    unsafe fn new<T>(cap: usize) -> Self {
+        if T::IS_ZST { Cap::ZERO } else { unsafe { Self(cap) } }
+    }
 }
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
@@ -258,6 +265,8 @@ impl<T, A: Allocator> RawVec<T, A> {
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
+            let ptr = ptr.cast();
+            let capacity = Cap::new::<T>(capacity);
             Self {
                 inner: RawVecInner::from_raw_parts_in(ptr, capacity, alloc),
                 _marker: PhantomData,
@@ -274,6 +283,8 @@ impl<T, A: Allocator> RawVec<T, A> {
     pub unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
+            let ptr = ptr.cast();
+            let capacity = Cap::new::<T>(capacity);
             Self { inner: RawVecInner::from_nonnull_in(ptr, capacity, alloc), _marker: PhantomData }
         }
     }
@@ -474,15 +485,13 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    unsafe fn from_raw_parts_in<T>(ptr: *mut T, capacity: usize, alloc: A) -> Self {
-        let cap = if T::IS_ZST { Cap::ZERO } else { unsafe { Cap(capacity) } };
-        Self { ptr: unsafe { Unique::new_unchecked(ptr.cast()) }, cap, alloc }
+    unsafe fn from_raw_parts_in(ptr: *mut u8, cap: Cap, alloc: A) -> Self {
+        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap, alloc }
     }
 
     #[inline]
-    unsafe fn from_nonnull_in<T>(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
-        let cap = if T::IS_ZST { Cap::ZERO } else { unsafe { Cap(capacity) } };
-        Self { ptr: Unique::from(ptr.cast()), cap, alloc }
+    unsafe fn from_nonnull_in(ptr: NonNull<u8>, cap: Cap, alloc: A) -> Self {
+        Self { ptr: Unique::from(ptr), cap, alloc }
     }
 
     #[inline]
