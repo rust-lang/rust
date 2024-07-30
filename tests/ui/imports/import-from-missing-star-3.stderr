@@ -4,7 +4,10 @@ error[E0432]: unresolved import `spam`
 LL |     use spam::*;
    |         ^^^^ you might be missing crate `spam`
    |
-   = help: consider adding `extern crate spam` to use the `spam` crate
+help: consider importing the `spam` crate
+   |
+LL + extern crate spam;
+   |
 
 error[E0432]: unresolved import `spam`
   --> $DIR/import-from-missing-star-3.rs:27:13
@@ -12,7 +15,10 @@ error[E0432]: unresolved import `spam`
 LL |         use spam::*;
    |             ^^^^ you might be missing crate `spam`
    |
-   = help: consider adding `extern crate spam` to use the `spam` crate
+help: consider importing the `spam` crate
+   |
+LL + extern crate spam;
+   |
 
 error: aborting due to 2 previous errors
 
