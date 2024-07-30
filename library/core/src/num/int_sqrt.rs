@@ -1,187 +1,252 @@
-/// These functions compute the integer square root of their type, assuming
-/// that someone has already checked that the value is nonnegative.
+//! These functions use the [Karatsuba square root algorithm][1] to compute the
+//! [integer square root][2] for the primitive integer types.
+//!
+//! The signed integer functions can only handle **nonnegative** inputs, so
+//! that must be checked before calling those.
+//!
+//! [1]: <https://web.archive.org/web/20230511212802/https://inria.hal.science/inria-00072854v1/file/RR-3805.pdf>
+//! "Paul Zimmermann. Karatsuba Square Root. \[Research Report\] RR-3805,
+//! INRIA. 1999, pp.8. (inria-00072854)"
+//! [2]: <https://en.wikipedia.org/wiki/Integer_square_root>
+//! "Wikipedia contributors. Integer square root. Wikipedia, The Free
+//! Encyclopedia."
 
-const ISQRT_AND_REMAINDER_8_BIT: [(u8, u8); 256] = {
+/// This array stores the [integer square roots][1] and remainders of each
+/// [`u8`](prim@u8) value. For example, `U8_ISQRT_WITH_REMAINDER[17]` will be
+/// `(4, 1)` because the integer square root of 17 is 4 and because 17 is 1
+/// higher than 4 squared.
+///
+/// [1]: <https://en.wikipedia.org/wiki/Integer_square_root>
+/// "Wikipedia contributors. Integer square root. Wikipedia, The Free
+/// Encyclopedia."
+const U8_ISQRT_WITH_REMAINDER: [(u8, u8); 256] = {
     let mut result = [(0, 0); 256];
 
-    let mut sqrt = 0;
-    let mut i = 0;
-    'outer: loop {
-        let mut remaining = 2 * sqrt + 1;
-        while remaining > 0 {
-            result[i as usize] = (sqrt, 2 * sqrt + 1 - remaining);
-            i += 1;
-            if i >= result.len() {
-                break 'outer;
-            }
-            remaining -= 1;
+    let mut n: usize = 0;
+    let mut isqrt_n: usize = 0;
+    while n < result.len() {
+        result[n] = (isqrt_n as u8, (n - isqrt_n.pow(2)) as u8);
+
+        n += 1;
+        if n == (isqrt_n + 1).pow(2) {
+            isqrt_n += 1;
         }
-        sqrt += 1;
     }
 
     result
 };
 
-// `#[inline(always)]` because the programmer-accessible functions will use
-// this internally and the contents of this should be inlined there.
+/// Returns the [integer square root][1] of any [`u8`](prim@u8) input.
+///
+/// [1]: <https://en.wikipedia.org/wiki/Integer_square_root>
+/// "Wikipedia contributors. Integer square root. Wikipedia, The Free
+/// Encyclopedia."
+#[must_use = "this returns the result of the operation, \
+              without modifying the original"]
 #[inline(always)]
 pub const fn u8(n: u8) -> u8 {
-    ISQRT_AND_REMAINDER_8_BIT[n as usize].0
+    U8_ISQRT_WITH_REMAINDER[n as usize].0
 }
 
+/// Returns the [integer square root][1] of any [`usize`](prim@usize) input.
+///
+/// [1]: <https://en.wikipedia.org/wiki/Integer_square_root>
+/// "Wikipedia contributors. Integer square root. Wikipedia, The Free
+/// Encyclopedia."
+#[must_use = "this returns the result of the operation, \
+              without modifying the original"]
 #[inline(always)]
-const fn intermediate_u8(n: u8) -> (u8, u8) {
-    ISQRT_AND_REMAINDER_8_BIT[n as usize]
+pub const fn usize(n: usize) -> usize {
+    #[cfg(target_pointer_width = "16")]
+    {
+        u16(n as u16) as usize
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    {
+        u32(n as u32) as usize
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    {
+        u64(n as u64) as usize
+    }
 }
 
-macro_rules! karatsuba_isqrt {
-    ($FullBitsT:ty, $fn:ident, $intermediate_fn:ident, $HalfBitsT:ty, $half_fn:ident, $intermediate_half_fn:ident) => {
-        // `#[inline(always)]` because the programmer-accessible functions will
-        // use this internally and the contents of this should be inlined
-        // there.
+/// Generates an `i*` function that returns the [integer square root][1] of any
+/// **nonnegative** input of a specific signed integer type.
+///
+/// [1]: <https://en.wikipedia.org/wiki/Integer_square_root>
+/// "Wikipedia contributors. Integer square root. Wikipedia, The Free
+/// Encyclopedia."
+macro_rules! signed_fn {
+    ($SignedT:ident, $UnsignedT:ident) => {
+        /// Returns the [integer square root][1] of any **nonnegative**
+        #[doc = concat!("[`", stringify!($SignedT), "`](prim@", stringify!($SignedT), ")")]
+        /// input.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when the input is negative.
+        ///
+        /// [1]: <https://en.wikipedia.org/wiki/Integer_square_root>
+        /// "Wikipedia contributors. Integer square root. Wikipedia, The Free
+        /// Encyclopedia."
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
         #[inline(always)]
-        pub const fn $fn(mut n: $FullBitsT) -> $FullBitsT {
-            // Performs a Karatsuba square root.
-            // https://web.archive.org/web/20230511212802/https://inria.hal.science/inria-00072854v1/file/RR-3805.pdf
-
-            const HALF_BITS: u32 = <$FullBitsT>::BITS >> 1;
-            const QUARTER_BITS: u32 = <$FullBitsT>::BITS >> 2;
-
-            let leading_zeros = n.leading_zeros();
-            let result = if leading_zeros >= HALF_BITS {
-                $half_fn(n as $HalfBitsT) as $FullBitsT
-            } else {
-                // Either the most-significant bit or its neighbor must be a one, so we shift left to make that happen.
-                let precondition_shift = leading_zeros & (HALF_BITS - 2);
-                n <<= precondition_shift;
-
-                let hi = (n >> HALF_BITS) as $HalfBitsT;
-                let lo = n & (<$HalfBitsT>::MAX as $FullBitsT);
-
-                let (s_prime, r_prime) = $intermediate_half_fn(hi);
-
-                let numerator = ((r_prime as $FullBitsT) << QUARTER_BITS) | (lo >> QUARTER_BITS);
-                let denominator = (s_prime as $FullBitsT) << 1;
-
-                let q = numerator / denominator;
-                let u = numerator % denominator;
-
-                let mut s = (s_prime << QUARTER_BITS) as $FullBitsT + q;
-                if ((u << QUARTER_BITS) | (lo & ((1 << QUARTER_BITS) - 1))) < q * q {
-                    s -= 1;
-                }
-                s >> (precondition_shift >> 1)
-            };
-
-            result
-        }
-
-        const fn $intermediate_fn(mut n: $FullBitsT) -> ($FullBitsT, $FullBitsT) {
-            // Performs a Karatsuba square root.
-            // https://web.archive.org/web/20230511212802/https://inria.hal.science/inria-00072854v1/file/RR-3805.pdf
-
-            const HALF_BITS: u32 = <$FullBitsT>::BITS >> 1;
-            const QUARTER_BITS: u32 = <$FullBitsT>::BITS >> 2;
-
-            let leading_zeros = n.leading_zeros();
-            let result = if leading_zeros >= HALF_BITS {
-                let (s, r) = $intermediate_half_fn(n as $HalfBitsT);
-                (s as $FullBitsT, r as $FullBitsT)
-            } else {
-                // Either the most-significant bit or its neighbor must be a one, so we shift left to make that happen.
-                let precondition_shift = leading_zeros & (HALF_BITS - 2);
-                n <<= precondition_shift;
-
-                let hi = (n >> HALF_BITS) as $HalfBitsT;
-                let lo = n & (<$HalfBitsT>::MAX as $FullBitsT);
-
-                let (s_prime, r_prime) = $intermediate_half_fn(hi);
-
-                let numerator = ((r_prime as $FullBitsT) << QUARTER_BITS) | (lo >> QUARTER_BITS);
-                let denominator = (s_prime as $FullBitsT) << 1;
-
-                let q = numerator / denominator;
-                let u = numerator % denominator;
-
-                let mut s = (s_prime << QUARTER_BITS) as $FullBitsT + q;
-                let (mut r, overflow) =
-                    ((u << QUARTER_BITS) | (lo & ((1 << QUARTER_BITS) - 1))).overflowing_sub(q * q);
-                if overflow {
-                    r = r.wrapping_add((s << 1) - 1);
-                    s -= 1;
-                }
-                (s >> (precondition_shift >> 1), r >> (precondition_shift >> 1))
-            };
-
-            result
+        pub const unsafe fn $SignedT(n: $SignedT) -> $SignedT {
+            $UnsignedT(n as $UnsignedT) as $SignedT
         }
     };
 }
 
-karatsuba_isqrt!(u16, u16, intermediate_u16, u8, u8, intermediate_u8);
-karatsuba_isqrt!(u32, u32, intermediate_u32, u16, u16, intermediate_u16);
-karatsuba_isqrt!(u64, u64, intermediate_u64, u32, u32, intermediate_u32);
-karatsuba_isqrt!(u128, u128, _intermediate_u128, u64, u64, intermediate_u64);
+signed_fn!(i8, u8);
+signed_fn!(i16, u16);
+signed_fn!(i32, u32);
+signed_fn!(i64, u64);
+signed_fn!(i128, u128);
 
-#[cfg(target_pointer_width = "16")]
-#[inline(always)]
-pub const fn usize(n: usize) -> usize {
-    u16(n as u16) as usize
+/// Generates a `u*` function that returns the [integer square root][1] of any
+/// input of a specific unsigned integer type.
+///
+/// [1]: <https://en.wikipedia.org/wiki/Integer_square_root>
+/// "Wikipedia contributors. Integer square root. Wikipedia, The Free
+/// Encyclopedia."
+macro_rules! unsigned_fn {
+    ($UnsignedT:ident, $HalfBitsT:ident, $stages:ident) => {
+        /// Returns the [integer square root][1] of any
+        #[doc = concat!("[`", stringify!($UnsignedT), "`](prim@", stringify!($UnsignedT), ")")]
+        /// input.
+        ///
+        /// [1]: <https://en.wikipedia.org/wiki/Integer_square_root>
+        /// "Wikipedia contributors. Integer square root. Wikipedia, The Free
+        /// Encyclopedia."
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        pub const fn $UnsignedT(mut n: $UnsignedT) -> $UnsignedT {
+            let leading_zeros = n.leading_zeros();
+            if leading_zeros >= <$HalfBitsT>::BITS {
+                $HalfBitsT(n as $HalfBitsT) as $UnsignedT
+            } else {
+                const EVEN_BITMASK: u32 = u32::MAX & !1;
+                let normalization_shift = leading_zeros & EVEN_BITMASK;
+                n <<= normalization_shift;
+
+                let s = $stages!(n);
+
+                let denormalization_shift = normalization_shift >> 1;
+                s >> denormalization_shift
+            }
+        }
+    };
 }
 
-#[cfg(target_pointer_width = "32")]
-#[inline(always)]
-pub const fn usize(n: usize) -> usize {
-    u32(n as u32) as usize
+/// Generates the first stage of the computation after normalization.
+macro_rules! first_stage {
+    ($original_bits:literal, $n:ident) => {{
+        const N_SHIFT: u32 = $original_bits - 8;
+        let n = $n >> N_SHIFT;
+
+        U8_ISQRT_WITH_REMAINDER[n as usize]
+    }};
 }
 
-#[cfg(target_pointer_width = "64")]
-#[inline(always)]
-pub const fn usize(n: usize) -> usize {
-    u64(n as u64) as usize
+/// Generates a middle stage of the computation.
+macro_rules! middle_stage {
+    ($original_bits:literal, $ty:ty, $n:ident, $s:ident, $r:ident) => {{
+        const N_SHIFT: u32 = $original_bits - <$ty>::BITS;
+        let n = ($n >> N_SHIFT) as $ty;
+
+        const HALF_BITS: u32 = <$ty>::BITS >> 1;
+        const QUARTER_BITS: u32 = <$ty>::BITS >> 2;
+        const LOWER_HALF_1_BITS: $ty = (1 << HALF_BITS) - 1;
+        const LOWEST_QUARTER_1_BITS: $ty = (1 << QUARTER_BITS) - 1;
+
+        let lo = n & LOWER_HALF_1_BITS;
+        let numerator = (($r as $ty) << QUARTER_BITS) | (lo >> QUARTER_BITS);
+        let denominator = ($s as $ty) << 1;
+        let q = numerator / denominator;
+        let u = numerator % denominator;
+        let mut s = ($s << QUARTER_BITS) as $ty + q;
+        let (mut r, overflow) =
+            ((u << QUARTER_BITS) | (lo & LOWEST_QUARTER_1_BITS)).overflowing_sub(q * q);
+        if overflow {
+            r = r.wrapping_add(2 * s - 1);
+            s -= 1;
+        }
+        (s, r)
+    }};
 }
 
-// 0 <= val <= i8::MAX
-#[inline(always)]
-pub const fn i8(n: i8) -> i8 {
-    u8(n as u8) as i8
+/// Generates the last stage of the computation before denormalization.
+macro_rules! last_stage {
+    ($ty:ty, $n:ident, $s:ident, $r:ident) => {{
+        const HALF_BITS: u32 = <$ty>::BITS >> 1;
+        const QUARTER_BITS: u32 = <$ty>::BITS >> 2;
+        const LOWER_HALF_1_BITS: $ty = (1 << HALF_BITS) - 1;
+
+        let lo = $n & LOWER_HALF_1_BITS;
+        let numerator = (($r as $ty) << QUARTER_BITS) | (lo >> QUARTER_BITS);
+        let denominator = ($s as $ty) << 1;
+        let q = numerator / denominator;
+        let mut s = ($s << QUARTER_BITS) as $ty + q;
+        let (s_squared, overflow) = s.overflowing_mul(s);
+        if overflow || s_squared > $n {
+            s -= 1;
+        }
+        s
+    }};
 }
 
-// 0 <= val <= i16::MAX
-#[inline(always)]
-pub const fn i16(n: i16) -> i16 {
-    u16(n as u16) as i16
+/// Generates the stages of the computation between normalization and
+/// denormalization for [`u16`](prim@u16).
+macro_rules! u16_stages {
+    ($n:ident) => {{
+        let (s, r) = first_stage!(16, $n);
+        last_stage!(u16, $n, s, r)
+    }};
 }
 
-// 0 <= val <= i32::MAX
-#[inline(always)]
-pub const fn i32(n: i32) -> i32 {
-    u32(n as u32) as i32
+/// Generates the stages of the computation between normalization and
+/// denormalization for [`u32`](prim@u32).
+macro_rules! u32_stages {
+    ($n:ident) => {{
+        let (s, r) = first_stage!(32, $n);
+        let (s, r) = middle_stage!(32, u16, $n, s, r);
+        last_stage!(u32, $n, s, r)
+    }};
 }
 
-// 0 <= val <= i64::MAX
-#[inline(always)]
-pub const fn i64(n: i64) -> i64 {
-    u64(n as u64) as i64
+/// Generates the stages of the computation between normalization and
+/// denormalization for [`u64`](prim@u64).
+macro_rules! u64_stages {
+    ($n:ident) => {{
+        let (s, r) = first_stage!(64, $n);
+        let (s, r) = middle_stage!(64, u16, $n, s, r);
+        let (s, r) = middle_stage!(64, u32, $n, s, r);
+        last_stage!(u64, $n, s, r)
+    }};
 }
 
-// 0 <= val <= i128::MAX
-#[inline(always)]
-pub const fn i128(n: i128) -> i128 {
-    u128(n as u128) as i128
+/// Generates the stages of the computation between normalization and
+/// denormalization for [`u128`](prim@u128).
+macro_rules! u128_stages {
+    ($n:ident) => {{
+        let (s, r) = first_stage!(128, $n);
+        let (s, r) = middle_stage!(128, u16, $n, s, r);
+        let (s, r) = middle_stage!(128, u32, $n, s, r);
+        let (s, r) = middle_stage!(128, u64, $n, s, r);
+        last_stage!(u128, $n, s, r)
+    }};
 }
 
-/*
-This function is not used.
+unsigned_fn!(u16, u8, u16_stages);
+unsigned_fn!(u32, u16, u32_stages);
+unsigned_fn!(u64, u32, u64_stages);
+unsigned_fn!(u128, u64, u128_stages);
 
-// 0 <= val <= isize::MAX
-#[inline(always)]
-pub const fn isize(n: isize) -> isize {
-    usize(n as usize) as isize
-}
-*/
-
-/// Instantiate this panic logic once, rather than for all the ilog methods
+/// Instantiate this panic logic once, rather than for all the isqrt methods
 /// on every single primitive type.
 #[cold]
 #[track_caller]

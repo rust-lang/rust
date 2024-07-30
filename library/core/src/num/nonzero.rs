@@ -1245,20 +1245,32 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
         pub const fn isqrt(self) -> Self {
             let result = super::int_sqrt::$Int(self.get());
 
-            // SAFETY: Inform the optimizer that square roots of positive
-            // integers are positive and what the maximum result is.
+            // SAFETY: Inform the optimizer what the range of outputs is.
+            //
+            // Integer square root is a monotonically nondecreasing
+            // function, which means that increasing the input will never
+            // cause the output to decrease.
+            //
+            // The minimum input is 1. The maximum input is `<$Int>::MAX`.
+            //
+            // When n is 1, sqrt(n) is 1. If n increases above 1, sqrt(n)
+            // can't decrease below 1, so sqrt(n) can't decrease below 1 no
+            // matter what n is.
+            //
+            // When n is below `<$Int>::MAX`, sqrt(n) can't decrease at all
+            // when you increase n to `<$Int>::MAX`, so sqrt(n) can't be above
+            // sqrt(`<$Int>::MAX`) no matter what n is.
             unsafe {
                 hint::assert_unchecked(result > 0);
-                const MAX_RESULT: $Int = super::int_sqrt::$Int($Int::MAX);
+                const MAX_RESULT: $Int = super::int_sqrt::$Int(<$Int>::MAX);
                 hint::assert_unchecked(result <= MAX_RESULT);
             }
 
-            // SAFETY: The square root of a positive integer is always
-            // positive.
+            // SAFETY: As explained above, the minimum integer square root is
+            // 1, so it can't be 0.
             unsafe { Self::new_unchecked(result) }
         }
     };
