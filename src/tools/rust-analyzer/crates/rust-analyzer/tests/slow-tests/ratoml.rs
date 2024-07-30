@@ -10,6 +10,7 @@ use paths::Utf8PathBuf;
 
 use rust_analyzer::lsp::ext::{InternalTestingFetchConfig, InternalTestingFetchConfigParams};
 use serde_json::json;
+use test_utils::skip_slow_tests;
 
 enum QueryType {
     Local,
@@ -182,6 +183,10 @@ impl RatomlTest {
 /// the client config.
 #[test]
 fn ratoml_client_config_basic() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = RatomlTest::new(
         vec![
             r#"
@@ -283,6 +288,10 @@ enum Value {
 #[test]
 #[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_user_config_detected() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = RatomlTest::new(
         vec![
             r#"
@@ -312,6 +321,10 @@ enum Value {
 #[test]
 #[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_create_user_config() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -343,6 +356,10 @@ enum Value {
 #[test]
 #[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_modify_user_config() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -373,6 +390,10 @@ assist.emitMustUse = true"#,
 #[test]
 #[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_delete_user_config() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -402,6 +423,10 @@ assist.emitMustUse = true"#,
 
 #[test]
 fn ratoml_inherit_config_from_ws_root() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = RatomlTest::new(
         vec![
             r#"
@@ -445,6 +470,10 @@ pub fn add(left: usize, right: usize) -> usize {
 
 #[test]
 fn ratoml_modify_ratoml_at_ws_root() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -490,6 +519,10 @@ pub fn add(left: usize, right: usize) -> usize {
 
 #[test]
 fn ratoml_delete_ratoml_at_ws_root() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -535,6 +568,10 @@ pub fn add(left: usize, right: usize) -> usize {
 
 #[test]
 fn ratoml_add_immediate_child_to_ws_root() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -581,6 +618,10 @@ pub fn add(left: usize, right: usize) -> usize {
 #[test]
 #[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_rm_ws_root_ratoml_child_has_client_as_parent_now() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -626,6 +667,10 @@ pub fn add(left: usize, right: usize) -> usize {
 
 #[test]
 fn ratoml_crates_both_roots() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = RatomlTest::new(
         vec![
             r#"
@@ -670,6 +715,10 @@ enum Value {
 
 #[test]
 fn ratoml_multiple_ratoml_in_single_source_root() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = RatomlTest::new(
         vec![
             r#"
@@ -694,37 +743,6 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
             Text(String),
         }
         "#,
-        ],
-        vec!["p1"],
-        None,
-    );
-
-    assert!(server.query(QueryType::Local, 3));
-
-    let server = RatomlTest::new(
-        vec![
-            r#"
-//- /p1/Cargo.toml
-[package]
-name = "p1"
-version = "0.1.0"
-edition = "2021"
-"#,
-            r#"
-//- /p1/src/rust-analyzer.toml
-assist.emitMustUse = false
-"#,
-            r#"
-//- /p1/rust-analyzer.toml
-assist.emitMustUse = true
-"#,
-            r#"
-//- /p1/src/lib.rs
-enum Value {
-    Number(i32),
-    Text(String),
-}
-"#,
         ],
         vec!["p1"],
         None,
@@ -808,8 +826,11 @@ enum Value {
 /// Having a ratoml file at the root of a project enables
 /// configuring global level configurations as well.
 #[test]
-#[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_in_root_is_global() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = RatomlTest::new(
         vec![
             r#"
@@ -820,7 +841,7 @@ version = "0.1.0"
 edition = "2021"
         "#,
             r#"
-//- /rust-analyzer.toml
+//- /p1/rust-analyzer.toml
 rustfmt.rangeFormatting.enable = true
         "#,
             r#"
@@ -829,7 +850,7 @@ fn main() {
     todo!()
 }"#,
         ],
-        vec![],
+        vec!["p1"],
         None,
     );
 
@@ -837,8 +858,11 @@ fn main() {
 }
 
 #[test]
-#[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_root_is_updateable() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -849,7 +873,7 @@ version = "0.1.0"
 edition = "2021"
         "#,
             r#"
-//- /rust-analyzer.toml
+//- /p1/rust-analyzer.toml
 rustfmt.rangeFormatting.enable = true
     "#,
             r#"
@@ -858,7 +882,7 @@ fn main() {
    todo!()
 }"#,
         ],
-        vec![],
+        vec!["p1"],
         None,
     );
 
@@ -868,8 +892,11 @@ fn main() {
 }
 
 #[test]
-#[ignore = "Root ratomls are not being looked for on startup. Fix this."]
 fn ratoml_root_is_deletable() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let mut server = RatomlTest::new(
         vec![
             r#"
@@ -880,7 +907,7 @@ version = "0.1.0"
 edition = "2021"
         "#,
             r#"
-//- /rust-analyzer.toml
+//- /p1/rust-analyzer.toml
 rustfmt.rangeFormatting.enable = true
        "#,
             r#"
@@ -889,7 +916,7 @@ fn main() {
     todo!()
 }"#,
         ],
-        vec![],
+        vec!["p1"],
         None,
     );
 

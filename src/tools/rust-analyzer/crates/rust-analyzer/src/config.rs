@@ -751,6 +751,20 @@ config_data! {
     }
 }
 
+#[derive(Debug)]
+pub enum RatomlFileKind {
+    Workspace,
+    Crate,
+}
+
+#[derive(Debug, Clone)]
+// FIXME @alibektas : Seems like a clippy warning of this sort should tell that combining different ConfigInputs into one enum was not a good idea.
+#[allow(clippy::large_enum_variant)]
+enum RatomlFile {
+    Workspace(GlobalLocalConfigInput),
+    Crate(LocalConfigInput),
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     discovered_projects: Vec<ProjectManifest>,
@@ -779,14 +793,7 @@ pub struct Config {
     /// Config node whose values apply to **every** Rust project.
     user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
 
-    /// A special file for this session whose path is set to `self.root_path.join("rust-analyzer.toml")`
-    root_ratoml_path: VfsPath,
-
-    /// This file can be used to make global changes while having only a workspace-wide scope.
-    root_ratoml: Option<(GlobalLocalConfigInput, ConfigErrors)>,
-
-    /// For every `SourceRoot` there can be at most one RATOML file.
-    ratoml_files: FxHashMap<SourceRootId, (LocalConfigInput, ConfigErrors)>,
+    ratoml_file: FxHashMap<SourceRootId, (RatomlFile, ConfigErrors)>,
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
@@ -917,84 +924,95 @@ impl Config {
             should_update = true;
         }
 
-        if let Some(change) = change.root_ratoml_change {
-            tracing::info!("updating root ra-toml config: {:#}", change);
-            #[allow(clippy::single_match)]
-            match toml::from_str(&change) {
-                Ok(table) => {
-                    let mut toml_errors = vec![];
-                    validate_toml_table(
-                        GlobalLocalConfigInput::FIELDS,
-                        &table,
-                        &mut String::new(),
-                        &mut toml_errors,
-                    );
-                    config.root_ratoml = Some((
-                        GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
-                        ConfigErrors(
-                            toml_errors
-                                .into_iter()
-                                .map(|(a, b)| ConfigErrorInner::Toml { config_key: a, error: b })
-                                .map(Arc::new)
-                                .collect(),
-                        ),
-                    ));
-                    should_update = true;
-                }
-                Err(e) => {
-                    config.root_ratoml = Some((
-                        GlobalLocalConfigInput::from_toml(toml::map::Map::default(), &mut vec![]),
-                        ConfigErrors(vec![ConfigErrorInner::ParseError {
-                            reason: e.message().to_owned(),
-                        }
-                        .into()]),
-                    ));
-                }
-            }
-        }
-
         if let Some(change) = change.ratoml_file_change {
-            for (source_root_id, (_, text)) in change {
-                if let Some(text) = text {
-                    let mut toml_errors = vec![];
-                    tracing::info!("updating ra-toml config: {:#}", text);
-                    #[allow(clippy::single_match)]
-                    match toml::from_str(&text) {
-                        Ok(table) => {
-                            validate_toml_table(
-                                &[LocalConfigInput::FIELDS],
-                                &table,
-                                &mut String::new(),
-                                &mut toml_errors,
-                            );
-                            config.ratoml_files.insert(
-                                source_root_id,
-                                (
-                                    LocalConfigInput::from_toml(&table, &mut toml_errors),
-                                    ConfigErrors(
-                                        toml_errors
-                                            .into_iter()
-                                            .map(|(a, b)| ConfigErrorInner::Toml {
-                                                config_key: a,
-                                                error: b,
-                                            })
-                                            .map(Arc::new)
-                                            .collect(),
-                                    ),
-                                ),
-                            );
-                        }
-                        Err(e) => {
-                            config.root_ratoml = Some((
-                                GlobalLocalConfigInput::from_toml(
-                                    toml::map::Map::default(),
-                                    &mut vec![],
-                                ),
-                                ConfigErrors(vec![ConfigErrorInner::ParseError {
-                                    reason: e.message().to_owned(),
+            for (source_root_id, (kind, _, text)) in change {
+                match kind {
+                    RatomlFileKind::Crate => {
+                        if let Some(text) = text {
+                            let mut toml_errors = vec![];
+                            tracing::info!("updating ra-toml config: {:#}", text);
+                            match toml::from_str(&text) {
+                                Ok(table) => {
+                                    validate_toml_table(
+                                        &[LocalConfigInput::FIELDS],
+                                        &table,
+                                        &mut String::new(),
+                                        &mut toml_errors,
+                                    );
+                                    config.ratoml_file.insert(
+                                        source_root_id,
+                                        (
+                                            RatomlFile::Crate(LocalConfigInput::from_toml(
+                                                &table,
+                                                &mut toml_errors,
+                                            )),
+                                            ConfigErrors(
+                                                toml_errors
+                                                    .into_iter()
+                                                    .map(|(a, b)| ConfigErrorInner::Toml {
+                                                        config_key: a,
+                                                        error: b,
+                                                    })
+                                                    .map(Arc::new)
+                                                    .collect(),
+                                            ),
+                                        ),
+                                    );
                                 }
-                                .into()]),
-                            ));
+                                Err(e) => {
+                                    config.validation_errors.0.push(
+                                        ConfigErrorInner::ParseError {
+                                            reason: e.message().to_owned(),
+                                        }
+                                        .into(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    RatomlFileKind::Workspace => {
+                        if let Some(text) = text {
+                            let mut toml_errors = vec![];
+                            match toml::from_str(&text) {
+                                Ok(table) => {
+                                    validate_toml_table(
+                                        GlobalLocalConfigInput::FIELDS,
+                                        &table,
+                                        &mut String::new(),
+                                        &mut toml_errors,
+                                    );
+                                    config.ratoml_file.insert(
+                                        source_root_id,
+                                        (
+                                            RatomlFile::Workspace(
+                                                GlobalLocalConfigInput::from_toml(
+                                                    table,
+                                                    &mut toml_errors,
+                                                ),
+                                            ),
+                                            ConfigErrors(
+                                                toml_errors
+                                                    .into_iter()
+                                                    .map(|(a, b)| ConfigErrorInner::Toml {
+                                                        config_key: a,
+                                                        error: b,
+                                                    })
+                                                    .map(Arc::new)
+                                                    .collect(),
+                                            ),
+                                        ),
+                                    );
+                                    should_update = true;
+                                }
+                                Err(e) => {
+                                    config.validation_errors.0.push(
+                                        ConfigErrorInner::ParseError {
+                                            reason: e.message().to_owned(),
+                                        }
+                                        .into(),
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -1005,7 +1023,7 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
-        if config.check_command().is_empty() {
+        if config.check_command(None).is_empty() {
             config.validation_errors.0.push(Arc::new(ConfigErrorInner::Json {
                 config_key: "/check/command".to_owned(),
                 error: serde_json::Error::custom("expected a non-empty string"),
@@ -1026,9 +1044,8 @@ impl Config {
                 .1
                  .0
                 .iter()
-                .chain(config.root_ratoml.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
-                .chain(config.ratoml_files.values().flat_map(|it| it.1 .0.iter()))
+                .chain(config.ratoml_file.values().flat_map(|it| it.1 .0.iter()))
                 .chain(config.validation_errors.0.iter())
                 .cloned()
                 .collect(),
@@ -1055,9 +1072,9 @@ impl Config {
 #[derive(Default, Debug)]
 pub struct ConfigChange {
     user_config_change: Option<Arc<str>>,
-    root_ratoml_change: Option<Arc<str>>,
     client_config_change: Option<serde_json::Value>,
-    ratoml_file_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<Arc<str>>)>>,
+    ratoml_file_change:
+        Option<FxHashMap<SourceRootId, (RatomlFileKind, VfsPath, Option<Arc<str>>)>>,
     source_map_change: Option<Arc<FxHashMap<SourceRootId, SourceRootId>>>,
 }
 
@@ -1067,10 +1084,10 @@ impl ConfigChange {
         source_root: SourceRootId,
         vfs_path: VfsPath,
         content: Option<Arc<str>>,
-    ) -> Option<(VfsPath, Option<Arc<str>>)> {
+    ) -> Option<(RatomlFileKind, VfsPath, Option<Arc<str>>)> {
         self.ratoml_file_change
             .get_or_insert_with(Default::default)
-            .insert(source_root, (vfs_path, content))
+            .insert(source_root, (RatomlFileKind::Crate, vfs_path, content))
     }
 
     pub fn change_user_config(&mut self, content: Option<Arc<str>>) {
@@ -1078,9 +1095,15 @@ impl ConfigChange {
         self.user_config_change = content;
     }
 
-    pub fn change_root_ratoml(&mut self, content: Option<Arc<str>>) {
-        assert!(self.root_ratoml_change.is_none()); // Otherwise it is a double write.
-        self.root_ratoml_change = content;
+    pub fn change_workspace_ratoml(
+        &mut self,
+        source_root: SourceRootId,
+        vfs_path: VfsPath,
+        content: Option<Arc<str>>,
+    ) -> Option<(RatomlFileKind, VfsPath, Option<Arc<str>>)> {
+        self.ratoml_file_change
+            .get_or_insert_with(Default::default)
+            .insert(source_root, (RatomlFileKind::Workspace, vfs_path, content))
     }
 
     pub fn change_client_config(&mut self, change: serde_json::Value) {
@@ -1333,11 +1356,6 @@ impl Config {
         // FIXME @alibektas : Temporary solution. I don't think this is right as at some point we may allow users to specify
         // custom USER_CONFIG_PATHs which may also be relative.
         let user_config_path = VfsPath::from(AbsPathBuf::assert(user_config_path));
-        let root_ratoml_path = {
-            let mut p = root_path.clone();
-            p.push("rust-analyzer.toml");
-            VfsPath::new_real_path(p.to_string())
-        };
 
         Config {
             caps: ClientCapabilities::new(caps),
@@ -1347,15 +1365,13 @@ impl Config {
             workspace_roots,
             visual_studio_code_version,
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
-            ratoml_files: FxHashMap::default(),
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config: None,
             user_config_path,
-            root_ratoml: None,
-            root_ratoml_path,
             detached_files: Default::default(),
             validation_errors: Default::default(),
+            ratoml_file: Default::default(),
         }
     }
 
@@ -1396,10 +1412,6 @@ impl Config {
 
     pub fn root_path(&self) -> &AbsPathBuf {
         &self.root_path
-    }
-
-    pub fn root_ratoml_path(&self) -> &VfsPath {
-        &self.root_ratoml_path
     }
 
     pub fn caps(&self) -> &ClientCapabilities {
@@ -1455,11 +1467,11 @@ impl Config {
 
     pub fn diagnostics(&self, source_root: Option<SourceRootId>) -> DiagnosticsConfig {
         DiagnosticsConfig {
-            enabled: *self.diagnostics_enable(),
+            enabled: *self.diagnostics_enable(source_root),
             proc_attr_macros_enabled: self.expand_proc_attr_macros(),
             proc_macros_enabled: *self.procMacro_enable(),
-            disable_experimental: !self.diagnostics_experimental_enable(),
-            disabled: self.diagnostics_disabled().clone(),
+            disable_experimental: !self.diagnostics_experimental_enable(source_root),
+            disabled: self.diagnostics_disabled(source_root).clone(),
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
@@ -1469,7 +1481,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
-            style_lints: self.diagnostics_styleLints_enable().to_owned(),
+            style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
@@ -1662,11 +1674,11 @@ impl Config {
     }
 
     pub fn has_linked_projects(&self) -> bool {
-        !self.linkedProjects().is_empty()
+        !self.linkedProjects(None).is_empty()
     }
 
     pub fn linked_manifests(&self) -> impl Iterator<Item = &AbsPath> + '_ {
-        self.linkedProjects().iter().filter_map(|it| match it {
+        self.linkedProjects(None).iter().filter_map(|it| match it {
             ManifestOrProjectJson::Manifest(p) => Some(&**p),
             // despite having a buildfile, using this variant as a manifest
             // will fail.
@@ -1676,20 +1688,20 @@ impl Config {
     }
 
     pub fn has_linked_project_jsons(&self) -> bool {
-        self.linkedProjects()
+        self.linkedProjects(None)
             .iter()
             .any(|it| matches!(it, ManifestOrProjectJson::ProjectJson { .. }))
     }
 
     pub fn discover_workspace_config(&self) -> Option<&DiscoverWorkspaceConfig> {
-        self.workspace_discoverConfig().as_ref()
+        self.workspace_discoverConfig(None).as_ref()
     }
 
     pub fn linked_or_discovered_projects(&self) -> Vec<LinkedProject> {
-        match self.linkedProjects().as_slice() {
+        match self.linkedProjects(None).as_slice() {
             [] => {
                 let exclude_dirs: Vec<_> =
-                    self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
+                    self.files_excludeDirs(None).iter().map(|p| self.root_path.join(p)).collect();
                 self.discovered_projects
                     .iter()
                     .filter(|project| {
@@ -1724,48 +1736,48 @@ impl Config {
     }
 
     pub fn prefill_caches(&self) -> bool {
-        self.cachePriming_enable().to_owned()
+        self.cachePriming_enable(None).to_owned()
     }
 
     pub fn publish_diagnostics(&self) -> bool {
-        self.diagnostics_enable().to_owned()
+        self.diagnostics_enable(None).to_owned()
     }
 
     pub fn diagnostics_map(&self) -> DiagnosticsMapConfig {
         DiagnosticsMapConfig {
-            remap_prefix: self.diagnostics_remapPrefix().clone(),
-            warnings_as_info: self.diagnostics_warningsAsInfo().clone(),
-            warnings_as_hint: self.diagnostics_warningsAsHint().clone(),
-            check_ignore: self.check_ignore().clone(),
+            remap_prefix: self.diagnostics_remapPrefix(None).clone(),
+            warnings_as_info: self.diagnostics_warningsAsInfo(None).clone(),
+            warnings_as_hint: self.diagnostics_warningsAsHint(None).clone(),
+            check_ignore: self.check_ignore(None).clone(),
         }
     }
 
     pub fn extra_args(&self) -> &Vec<String> {
-        self.cargo_extraArgs()
+        self.cargo_extraArgs(None)
     }
 
     pub fn extra_env(&self) -> &FxHashMap<String, String> {
-        self.cargo_extraEnv()
+        self.cargo_extraEnv(None)
     }
 
     pub fn check_extra_args(&self) -> Vec<String> {
         let mut extra_args = self.extra_args().clone();
-        extra_args.extend_from_slice(self.check_extraArgs());
+        extra_args.extend_from_slice(self.check_extraArgs(None));
         extra_args
     }
 
     pub fn check_extra_env(&self) -> FxHashMap<String, String> {
-        let mut extra_env = self.cargo_extraEnv().clone();
-        extra_env.extend(self.check_extraEnv().clone());
+        let mut extra_env = self.cargo_extraEnv(None).clone();
+        extra_env.extend(self.check_extraEnv(None).clone());
         extra_env
     }
 
     pub fn lru_parse_query_capacity(&self) -> Option<u16> {
-        self.lru_capacity().to_owned()
+        self.lru_capacity(None).to_owned()
     }
 
     pub fn lru_query_capacities_config(&self) -> Option<&FxHashMap<Box<str>, u16>> {
-        self.lru_query_capacities().is_empty().not().then(|| self.lru_query_capacities())
+        self.lru_query_capacities(None).is_empty().not().then(|| self.lru_query_capacities(None))
     }
 
     pub fn proc_macro_srv(&self) -> Option<AbsPathBuf> {
@@ -1774,7 +1786,7 @@ impl Config {
     }
 
     pub fn ignored_proc_macros(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
-        self.procMacro_ignored()
+        self.procMacro_ignored(None)
     }
 
     pub fn expand_proc_macros(&self) -> bool {
@@ -1789,7 +1801,11 @@ impl Config {
                 }
                 _ => FilesWatcher::Server,
             },
-            exclude: self.files_excludeDirs().iter().map(|it| self.root_path.join(it)).collect(),
+            exclude: self
+                .files_excludeDirs(None)
+                .iter()
+                .map(|it| self.root_path.join(it))
+                .collect(),
         }
     }
 
@@ -1800,22 +1816,22 @@ impl Config {
     }
 
     pub fn cargo_autoreload_config(&self) -> bool {
-        self.cargo_autoreload().to_owned()
+        self.cargo_autoreload(None).to_owned()
     }
 
     pub fn run_build_scripts(&self) -> bool {
-        self.cargo_buildScripts_enable().to_owned() || self.procMacro_enable().to_owned()
+        self.cargo_buildScripts_enable(None).to_owned() || self.procMacro_enable().to_owned()
     }
 
     pub fn cargo(&self) -> CargoConfig {
-        let rustc_source = self.rustc_source().as_ref().map(|rustc_src| {
+        let rustc_source = self.rustc_source(None).as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
                 RustLibSource::Discover
             } else {
                 RustLibSource::Path(self.root_path.join(rustc_src))
             }
         });
-        let sysroot = self.cargo_sysroot().as_ref().map(|sysroot| {
+        let sysroot = self.cargo_sysroot(None).as_ref().map(|sysroot| {
             if sysroot == "discover" {
                 RustLibSource::Discover
             } else {
@@ -1823,26 +1839,26 @@ impl Config {
             }
         });
         let sysroot_src =
-            self.cargo_sysrootSrc().as_ref().map(|sysroot| self.root_path.join(sysroot));
-        let sysroot_query_metadata = self.cargo_sysrootQueryMetadata();
+            self.cargo_sysrootSrc(None).as_ref().map(|sysroot| self.root_path.join(sysroot));
+        let sysroot_query_metadata = self.cargo_sysrootQueryMetadata(None);
 
         CargoConfig {
-            all_targets: *self.cargo_allTargets(),
-            features: match &self.cargo_features() {
+            all_targets: *self.cargo_allTargets(None),
+            features: match &self.cargo_features(None) {
                 CargoFeaturesDef::All => CargoFeatures::All,
                 CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
                     features: features.clone(),
-                    no_default_features: self.cargo_noDefaultFeatures().to_owned(),
+                    no_default_features: self.cargo_noDefaultFeatures(None).to_owned(),
                 },
             },
-            target: self.cargo_target().clone(),
+            target: self.cargo_target(None).clone(),
             sysroot,
             sysroot_query_metadata: *sysroot_query_metadata,
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {
                 global: CfgDiff::new(
-                    self.cargo_cfgs()
+                    self.cargo_cfgs(None)
                         .iter()
                         .map(|(key, val)| match val {
                             Some(val) => CfgAtom::KeyValue {
@@ -1857,49 +1873,49 @@ impl Config {
                 .unwrap(),
                 selective: Default::default(),
             },
-            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(),
-            invocation_strategy: match self.cargo_buildScripts_invocationStrategy() {
+            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(None),
+            invocation_strategy: match self.cargo_buildScripts_invocationStrategy(None) {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
             },
-            invocation_location: match self.cargo_buildScripts_invocationLocation() {
+            invocation_location: match self.cargo_buildScripts_invocationLocation(None) {
                 InvocationLocation::Root => {
                     project_model::InvocationLocation::Root(self.root_path.clone())
                 }
                 InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
             },
-            run_build_script_command: self.cargo_buildScripts_overrideCommand().clone(),
-            extra_args: self.cargo_extraArgs().clone(),
-            extra_env: self.cargo_extraEnv().clone(),
+            run_build_script_command: self.cargo_buildScripts_overrideCommand(None).clone(),
+            extra_args: self.cargo_extraArgs(None).clone(),
+            extra_env: self.cargo_extraEnv(None).clone(),
             target_dir: self.target_dir_from_config(),
         }
     }
 
-    pub fn rustfmt(&self) -> RustfmtConfig {
-        match &self.rustfmt_overrideCommand() {
+    pub fn rustfmt(&self, source_root_id: Option<SourceRootId>) -> RustfmtConfig {
+        match &self.rustfmt_overrideCommand(source_root_id) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
                 RustfmtConfig::CustomCommand { command, args }
             }
             Some(_) | None => RustfmtConfig::Rustfmt {
-                extra_args: self.rustfmt_extraArgs().clone(),
-                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(),
+                extra_args: self.rustfmt_extraArgs(source_root_id).clone(),
+                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(source_root_id),
             },
         }
     }
 
     pub fn flycheck_workspace(&self) -> bool {
-        *self.check_workspace()
+        *self.check_workspace(None)
     }
 
     pub fn cargo_test_options(&self) -> CargoOptions {
         CargoOptions {
-            target_triples: self.cargo_target().clone().into_iter().collect(),
+            target_triples: self.cargo_target(None).clone().into_iter().collect(),
             all_targets: false,
-            no_default_features: *self.cargo_noDefaultFeatures(),
-            all_features: matches!(self.cargo_features(), CargoFeaturesDef::All),
-            features: match self.cargo_features().clone() {
+            no_default_features: *self.cargo_noDefaultFeatures(None),
+            all_features: matches!(self.cargo_features(None), CargoFeaturesDef::All),
+            features: match self.cargo_features(None).clone() {
                 CargoFeaturesDef::All => vec![],
                 CargoFeaturesDef::Selected(it) => it,
             },
@@ -1910,7 +1926,7 @@ impl Config {
     }
 
     pub fn flycheck(&self) -> FlycheckConfig {
-        match &self.check_overrideCommand() {
+        match &self.check_overrideCommand(None) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
@@ -1918,13 +1934,13 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_extra_env(),
-                    invocation_strategy: match self.check_invocationStrategy() {
+                    invocation_strategy: match self.check_invocationStrategy(None) {
                         InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
                             flycheck::InvocationStrategy::PerWorkspace
                         }
                     },
-                    invocation_location: match self.check_invocationLocation() {
+                    invocation_location: match self.check_invocationLocation(None) {
                         InvocationLocation::Root => {
                             flycheck::InvocationLocation::Root(self.root_path.clone())
                         }
@@ -1933,28 +1949,30 @@ impl Config {
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
-                command: self.check_command().clone(),
+                command: self.check_command(None).clone(),
                 options: CargoOptions {
                     target_triples: self
-                        .check_targets()
+                        .check_targets(None)
                         .clone()
                         .and_then(|targets| match &targets.0[..] {
                             [] => None,
                             targets => Some(targets.into()),
                         })
-                        .unwrap_or_else(|| self.cargo_target().clone().into_iter().collect()),
-                    all_targets: self.check_allTargets().unwrap_or(*self.cargo_allTargets()),
+                        .unwrap_or_else(|| self.cargo_target(None).clone().into_iter().collect()),
+                    all_targets: self
+                        .check_allTargets(None)
+                        .unwrap_or(*self.cargo_allTargets(None)),
                     no_default_features: self
-                        .check_noDefaultFeatures()
-                        .unwrap_or(*self.cargo_noDefaultFeatures()),
+                        .check_noDefaultFeatures(None)
+                        .unwrap_or(*self.cargo_noDefaultFeatures(None)),
                     all_features: matches!(
-                        self.check_features().as_ref().unwrap_or(self.cargo_features()),
+                        self.check_features(None).as_ref().unwrap_or(self.cargo_features(None)),
                         CargoFeaturesDef::All
                     ),
                     features: match self
-                        .check_features()
+                        .check_features(None)
                         .clone()
-                        .unwrap_or_else(|| self.cargo_features().clone())
+                        .unwrap_or_else(|| self.cargo_features(None).clone())
                     {
                         CargoFeaturesDef::All => vec![],
                         CargoFeaturesDef::Selected(it) => it,
@@ -1969,7 +1987,7 @@ impl Config {
     }
 
     fn target_dir_from_config(&self) -> Option<Utf8PathBuf> {
-        self.cargo_targetDir().as_ref().and_then(|target_dir| match target_dir {
+        self.cargo_targetDir(None).as_ref().and_then(|target_dir| match target_dir {
             TargetDirectory::UseSubdirectory(true) => {
                 Some(Utf8PathBuf::from("target/rust-analyzer"))
             }
@@ -1980,18 +1998,18 @@ impl Config {
     }
 
     pub fn check_on_save(&self) -> bool {
-        *self.checkOnSave()
+        *self.checkOnSave(None)
     }
 
     pub fn script_rebuild_on_save(&self) -> bool {
-        *self.cargo_buildScripts_rebuildOnSave()
+        *self.cargo_buildScripts_rebuildOnSave(None)
     }
 
     pub fn runnables(&self) -> RunnablesConfig {
         RunnablesConfig {
-            override_cargo: self.runnables_command().clone(),
-            cargo_extra_args: self.runnables_extraArgs().clone(),
-            extra_test_binary_args: self.runnables_extraTestBinaryArgs().clone(),
+            override_cargo: self.runnables_command(None).clone(),
+            cargo_extra_args: self.runnables_extraArgs(None).clone(),
+            extra_test_binary_args: self.runnables_extraTestBinaryArgs(None).clone(),
         }
     }
 
@@ -2062,7 +2080,7 @@ impl Config {
     }
 
     pub fn prime_caches_num_threads(&self) -> usize {
-        match self.cachePriming_numThreads() {
+        match self.cachePriming_numThreads(None) {
             NumThreads::Concrete(0) | NumThreads::Physical => num_cpus::get_physical(),
             &NumThreads::Concrete(n) => n,
             NumThreads::Logical => num_cpus::get(),
@@ -2536,20 +2554,23 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
-                    let mut par: Option<SourceRootId> = source_root;
-                    while let Some(source_root_id) = par {
-                        par = self.source_root_parent_map.get(&source_root_id).copied();
-                        if let Some((config, _)) = self.ratoml_files.get(&source_root_id) {
-                            if let Some(value) = config.$field.as_ref() {
-                                return value;
+                    let mut source_root = source_root.as_ref();
+                    while let Some(sr) = source_root {
+                        if let Some((file, _)) = self.ratoml_file.get(&sr) {
+                            match file {
+                                RatomlFile::Workspace(config) => {
+                                    if let Some(v) = config.local.$field.as_ref() {
+                                        return &v;
+                                    }
+                                },
+                                RatomlFile::Crate(config) => {
+                                    if let Some(value) = config.$field.as_ref() {
+                                        return value;
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
-                        if let Some(v) = root_path_ratoml.local.$field.as_ref() {
-                            return &v;
-                        }
+                        source_root = self.source_root_parent_map.get(&sr);
                     }
 
                     if let Some(v) = self.client_config.0.local.$field.as_ref() {
@@ -2576,12 +2597,16 @@ macro_rules! _impl_for_config_data {
             $(
                 $($doc)*
                 #[allow(non_snake_case)]
-                $vis fn $field(&self) -> &$ty {
-
-                    if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
-                        if let Some(v) = root_path_ratoml.global.$field.as_ref() {
-                            return &v;
+                $vis fn $field(&self, source_root : Option<SourceRootId>) -> &$ty {
+                    let mut source_root = source_root.as_ref();
+                    while let Some(sr) = source_root {
+                        if let Some((RatomlFile::Workspace(config), _)) = self.ratoml_file.get(&sr) {
+                            if let Some(v) = config.global.$field.as_ref() {
+                                return &v;
+                            }
                         }
+
+                        source_root = self.source_root_parent_map.get(&sr);
                     }
 
                     if let Some(v) = self.client_config.0.global.$field.as_ref() {
@@ -3524,7 +3549,7 @@ mod tests {
         }));
 
         (config, _, _) = config.apply_change(change);
-        assert_eq!(config.cargo_targetDir(), &None);
+        assert_eq!(config.cargo_targetDir(None), &None);
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
         );
@@ -3547,7 +3572,7 @@ mod tests {
 
         (config, _, _) = config.apply_change(change);
 
-        assert_eq!(config.cargo_targetDir(), &Some(TargetDirectory::UseSubdirectory(true)));
+        assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
         );
@@ -3571,7 +3596,7 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(
-            config.cargo_targetDir(),
+            config.cargo_targetDir(None),
             &Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
         assert!(
@@ -3591,7 +3616,7 @@ mod tests {
 
         let mut change = ConfigChange::default();
 
-        change.change_root_ratoml(Some(
+        change.change_user_config(Some(
             toml::toml! {
                 [cargo.cfgs]
                 these = "these"
@@ -3650,21 +3675,7 @@ mod tests {
         let (_, e, _) = config.apply_change(change);
         expect_test::expect![[r#"
             ConfigErrors(
-                [
-                    Toml {
-                        config_key: "invalid/config/err",
-                        error: Error {
-                            inner: Error {
-                                inner: TomlError {
-                                    message: "unexpected field",
-                                    raw: None,
-                                    keys: [],
-                                    span: None,
-                                },
-                            },
-                        },
-                    },
-                ],
+                [],
             )
         "#]]
         .assert_debug_eq(&e);

@@ -109,7 +109,7 @@ impl GlobalState {
         };
         let mut message = String::new();
 
-        if !self.config.cargo_autoreload()
+        if !self.config.cargo_autoreload(None)
             && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
             && self.config.discover_workspace_config().is_none()
@@ -541,7 +541,6 @@ impl GlobalState {
 
             watchers.extend(
                 iter::once(self.config.user_config_path().as_path())
-                    .chain(iter::once(self.config.root_ratoml_path().as_path()))
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {

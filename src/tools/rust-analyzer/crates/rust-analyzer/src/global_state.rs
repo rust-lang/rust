@@ -10,6 +10,7 @@ use flycheck::{project_json, FlycheckHandle};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabaseExt};
+use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
@@ -22,16 +23,13 @@ use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, Worksp
 use rustc_hash::{FxHashMap, FxHashSet};
 use tracing::{span, trace, Level};
 use triomphe::Arc;
-use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs};
+use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 
 use crate::{
-    config::{Config, ConfigChange, ConfigErrors},
+    config::{Config, ConfigChange, ConfigErrors, RatomlFileKind},
     diagnostics::{CheckFixes, DiagnosticCollection},
     line_index::{LineEndings, LineIndex},
-    lsp::{
-        from_proto::{self},
-        to_proto::url_from_abs_path,
-    },
+    lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
     main_loop::Task,
     mem_docs::MemDocs,
@@ -382,9 +380,22 @@ impl GlobalState {
         {
             let config_change = {
                 let user_config_path = self.config.user_config_path();
-                let root_ratoml_path = self.config.root_ratoml_path();
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();
+
+                // FIXME @alibektas : This is silly. There is no reason to use VfsPaths when there is SourceRoots. But how
+                // do I resolve a "workspace_root" to its corresponding id without having to rely on a cargo.toml's ( or project json etc.) file id?
+                let workspace_ratoml_paths = self
+                    .workspaces
+                    .iter()
+                    .map(|ws| {
+                        VfsPath::from({
+                            let mut p = ws.workspace_root().to_owned();
+                            p.push("rust-analyzer.toml");
+                            p
+                        })
+                    })
+                    .collect_vec();
 
                 for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
                     if vfs_path == *user_config_path {
@@ -392,27 +403,39 @@ impl GlobalState {
                         continue;
                     }
 
-                    if vfs_path == *root_ratoml_path {
-                        change.change_root_ratoml(Some(db.file_text(file_id)));
-                        continue;
-                    }
-
                     // If change has been made to a ratoml file that
                     // belongs to a non-local source root, we will ignore it.
-                    // As it doesn't make sense a users to use external config files.
                     let sr_id = db.file_source_root(file_id);
                     let sr = db.source_root(sr_id);
+
                     if !sr.is_library {
-                        if let Some((old_path, old_text)) = change.change_ratoml(
-                            sr_id,
-                            vfs_path.clone(),
-                            Some(db.file_text(file_id)),
-                        ) {
+                        let entry = if workspace_ratoml_paths.contains(&vfs_path) {
+                            change.change_workspace_ratoml(
+                                sr_id,
+                                vfs_path.clone(),
+                                Some(db.file_text(file_id)),
+                            )
+                        } else {
+                            change.change_ratoml(
+                                sr_id,
+                                vfs_path.clone(),
+                                Some(db.file_text(file_id)),
+                            )
+                        };
+
+                        if let Some((kind, old_path, old_text)) = entry {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
                                 span!(Level::ERROR, "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
                                 // Put the old one back in.
-                                change.change_ratoml(sr_id, old_path, old_text);
+                                match kind {
+                                    RatomlFileKind::Crate => {
+                                        change.change_ratoml(sr_id, old_path, old_text);
+                                    }
+                                    RatomlFileKind::Workspace => {
+                                        change.change_workspace_ratoml(sr_id, old_path, old_text);
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -430,7 +453,7 @@ impl GlobalState {
             if should_update {
                 self.update_configuration(config);
             } else {
-                // No global or client level config was changed. So we can just naively replace config.
+                // No global or client level config was changed. So we can naively replace config.
                 self.config = Arc::new(config);
             }
         }
