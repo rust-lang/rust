@@ -1,0 +1,21 @@
+// This test ensures that code blocks buttons are displayed on hover and when you click on them.
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+
+// First we check we "hover".
+move-cursor-to: ".example-wrap"
+assert-css: (".example-wrap .copy-button", { "visibility": "visible" })
+move-cursor-to: ".search-input"
+assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
+
+// Now we check the click.
+assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
+click: ".example-wrap"
+move-cursor-to: ".search-input"
+// It should have a new class and be visible.
+wait-for-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 1)
+wait-for-css: (".example-wrap:not(:hover) .button-holder.keep-visible", { "visibility": "visible" })
+// Clicking again will remove the class.
+click: ".example-wrap"
+move-cursor-to: ".search-input"
+assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
+assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
