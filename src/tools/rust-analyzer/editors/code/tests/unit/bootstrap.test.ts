@@ -52,11 +52,15 @@ export async function getTests(ctx: Context) {
             assert.deepStrictEqual(
                 _private.orderFromPath(
                     "/Users/myuser/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rust-analyzer",
-                    function () {
-                        assert.fail("Shouldn't get here.");
+                    function (path: string) {
+                        assert.deepStrictEqual(
+                            path,
+                            "/Users/myuser/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rust-analyzer",
+                        );
+                        return "rust-analyzer 1.79.0 (129f3b99 2024-06-10)";
                     },
                 ),
-                "1",
+                "0-2024-06-10/1",
             );
         });
 
@@ -75,11 +79,14 @@ export async function getTests(ctx: Context) {
                     "/Users/myuser/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rust-analyzer",
                     "/Users/myuser/.rustup/toolchains/nightly-2022-11-22-aarch64-apple-darwin/bin/rust-analyzer",
                     function (path: string) {
-                        assert.deepStrictEqual(
-                            path,
-                            "/Users/myuser/.rustup/toolchains/nightly-2022-11-22-aarch64-apple-darwin/bin/rust-analyzer",
-                        );
-                        return "rust-analyzer 1.67.0-nightly (b7bc90fe 2022-11-21)";
+                        if (
+                            path ===
+                            "/Users/myuser/.rustup/toolchains/nightly-2022-11-22-aarch64-apple-darwin/bin/rust-analyzer"
+                        ) {
+                            return "rust-analyzer 1.67.0-nightly (b7bc90fe 2022-11-21)";
+                        } else {
+                            return "rust-analyzer 1.79.0 (129f3b99 2024-06-10)";
+                        }
                     },
                 ),
                 "/Users/myuser/.rustup/toolchains/nightly-2022-11-22-aarch64-apple-darwin/bin/rust-analyzer",
