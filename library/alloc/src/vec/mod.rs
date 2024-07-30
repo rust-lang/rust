@@ -1710,6 +1710,12 @@ impl<T, A: Allocator> Vec<T, A> {
         F: FnMut(&mut T) -> bool,
     {
         let original_len = self.len();
+
+        if original_len == 0 {
+            // Empty case: explicit return allows better optimization, vs letting compiler infer it
+            return;
+        }
+
         // Avoid double drop if the drop guard is not executed,
         // since we may make some holes during the process.
         unsafe { self.set_len(0) };
