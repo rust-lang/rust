@@ -10,11 +10,15 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: struct `T2` is never constructed
-  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:4:12
+error: field `0` is never read
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:4:15
    |
 LL | pub struct T2(i32);
-   |            ^^
+   |            -- ^^^
+   |            |
+   |            field in this struct
+   |
+   = help: consider removing this field
 
 error: trait `Trait1` is never used
   --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:7:7
