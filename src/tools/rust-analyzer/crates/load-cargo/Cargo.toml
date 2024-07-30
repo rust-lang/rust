@@ -1,7 +1,7 @@
 [package]
 name = "load-cargo"
 version = "0.0.0"
-description = "TBD"
+description = "Loads a Cargo project into a static instance of analysis."
 
 rust-version.workspace = true
 edition.workspace = true

@@ -1,7 +1,7 @@
 [package]
 name = "ide-diagnostics"
 version = "0.0.0"
-description = "TBD"
+description = "Diagnostics rendering and fixits."
 
 authors.workspace = true
 edition.workspace = true

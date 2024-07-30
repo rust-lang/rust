@@ -1,7 +1,7 @@
 [package]
 name = "stdx"
 version = "0.0.0"
-description = "TBD"
+description = "Missing batteries for standard libraries for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

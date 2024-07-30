@@ -1,7 +1,7 @@
 [package]
 name = "hir-def"
 version = "0.0.0"
-description = "TBD"
+description = "Everything between macro expansion and type inference for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

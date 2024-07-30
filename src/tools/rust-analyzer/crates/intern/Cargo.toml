@@ -1,7 +1,7 @@
 [package]
 name = "intern"
 version = "0.0.0"
-description = "TBD"
+description = "Global `Arc`-based object interning infrastructure."
 
 authors.workspace = true
 edition.workspace = true

@@ -1,7 +1,7 @@
 [package]
 name = "toolchain"
 version = "0.0.0"
-description = "TBD"
+description = "Discovery of `cargo` & `rustc` executables for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

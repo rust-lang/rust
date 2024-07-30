@@ -1,7 +1,7 @@
 [package]
 name = "span"
 version = "0.0.0"
-description = "TBD"
+description = "File and span related types for rust-analyzer."
 
 rust-version.workspace = true
 edition.workspace = true
