@@ -1,6 +1,7 @@
 [package]
 name = "paths"
 version = "0.0.0"
+repository = "https://github.com/rust-lang/rust-analyzer"
 description = "Path wrappers for absolute and relative paths."
 
 authors.workspace = true

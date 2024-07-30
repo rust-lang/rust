@@ -1,6 +1,7 @@
 [package]
 name = "mbe"
 version = "0.0.0"
+repository = "https://github.com/rust-lang/rust-analyzer"
 description = "Handling of `macro_rules` macros for rust-analyzer."
 
 authors.workspace = true

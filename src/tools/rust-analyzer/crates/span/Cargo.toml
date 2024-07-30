@@ -1,6 +1,7 @@
 [package]
 name = "span"
 version = "0.0.0"
+repository = "https://github.com/rust-lang/rust-analyzer"
 description = "File and span related types for rust-analyzer."
 
 rust-version.workspace = true

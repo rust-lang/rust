@@ -1,6 +1,7 @@
 [package]
 name = "hir-def"
 version = "0.0.0"
+repository = "https://github.com/rust-lang/rust-analyzer"
 description = "Everything between macro expansion and type inference for rust-analyzer."
 
 authors.workspace = true
