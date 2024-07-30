@@ -2041,3 +2041,35 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn issue_17734() {
+    check_types(
+        r#"
+fn test() {
+    let x = S::foo::<'static, &()>(&S);
+     // ^ Wrap<'?, ()>
+    let x = S::foo::<&()>(&S);
+     // ^ Wrap<'?, ()>
+    let x = S.foo::<&()>();
+     // ^ Wrap<'?, ()>
+}
+
+struct S;
+
+impl S {
+    pub fn foo<'a, T: Trait<'a>>(&'a self) -> T::Proj {
+        loop {}
+    }
+}
+
+struct Wrap<'a, T>(T);
+trait Trait<'a> {
+    type Proj;
+}
+impl<'a, T> Trait<'a> for &'a T {
+    type Proj = Wrap<'a, T>;
+}
+"#,
+    )
+}
