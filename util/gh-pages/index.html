@@ -26,11 +26,28 @@ Otherwise, have a great day =^.^=
     <link rel="stylesheet" href="style.css">
 </head>
 <body ng-app="clippy" ng-controller="lintList">
-    <div theme-dropdown class="theme-dropdown">
-        <div id="theme-icon" class="theme-icon">&#128396;</div>
-        <ul id="theme-menu" class="theme-choice">
-            <li id="{{id}}" ng-repeat="(id, name) in themes" ng-click="selectTheme(id)">{{name}}</li>
-        </ul>
+    <div id="settings">
+        <div theme-dropdown class="theme-dropdown">
+            <div class="menu-container">
+                <div id="theme-icon" class="theme-icon">&#128396;</div>
+                <ul id="theme-menu" class="theme-choice">
+                    <li id="{{id}}" ng-repeat="(id, name) in themes" ng-click="selectTheme(id)">{{name}}</li>
+                </ul>
+            </div>
+        </div>
+        <div settings-dropdown class="settings-dropdown">
+            <div class="menu-container">
+                <div id="settings-icon" class="settings-icon"></div>
+                <ul id="settings-menu" class="settings-choice">
+                    <li>
+                        <label>
+                            <input type="checkbox" id="disable-shortcuts" onchange="changeSetting(this)">
+                            <span>Disable keyboard shortcuts</span>
+                        </label>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <div class="container">

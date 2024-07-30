@@ -220,14 +220,20 @@ details[open] {
     --inline-code-bg: #191f26;
 }
 
-.theme-dropdown {
+#settings {
     position: absolute;
     margin: 0.7em;
     z-index: 10;
+    display: flex;
+}
+
+.menu-container {
+    position: relative;
+    width: 28px;
 }
 
 /* Applying the mdBook theme */
-.theme-icon {
+.theme-icon, .settings-icon {
     text-align: center;
     width: 2em;
     height: 2em;
@@ -237,10 +243,10 @@ details[open] {
     user-select: none;
     cursor: pointer;
 }
-.theme-icon:hover {
+.theme-icon:hover, .settings-icon:hover {
     background: var(--theme-hover);
 }
-.theme-choice {
+.theme-choice, .settings-choice {
     display: none;
     list-style: none;
     border: 1px solid var(--theme-popup-border);
@@ -249,9 +255,46 @@ details[open] {
     background: var(--theme-popup-bg);
     padding: 0 0;
     overflow: hidden;
+    position: absolute;
 }
 
-.theme-dropdown.open .theme-choice {
+.settings-dropdown {
+    margin-left: 4px;
+}
+
+.settings-icon::before {
+    /* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
+    content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+<path d="M10.25,6c0-0.1243286-0.0261841-0.241333-0.0366211-0.362915l1.6077881-1.5545654l\
+-1.25-2.1650391  c0,0-1.2674561,0.3625488-2.1323853,0.6099854c-0.2034912-0.1431885-0.421875\
+-0.2639771-0.6494751-0.3701782L7.25,0h-2.5 c0,0-0.3214111,1.2857666-0.5393066,2.1572876\
+C3.9830933,2.2634888,3.7647095,2.3842773,3.5612183,2.5274658L1.428833,1.9174805 \
+l-1.25,2.1650391c0,0,0.9641113,0.9321899,1.6077881,1.5545654C1.7761841,5.758667,\
+1.75,5.8756714,1.75,6  s0.0261841,0.241333,0.0366211,0.362915L0.178833,7.9174805l1.25,\
+2.1650391l2.1323853-0.6099854  c0.2034912,0.1432495,0.421875,0.2639771,0.6494751,0.3701782\
+L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.6494751\
+-0.3701782l2.1323853,0.6099854l1.25-2.1650391L10.2133789,6.362915  C10.2238159,6.241333,\
+10.25,6.1243286,10.25,6z M6,7.5C5.1715698,7.5,4.5,6.8284302,4.5,6S5.1715698,4.5,6,4.5S7.5\
+,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
+  width: 18px;
+  height: 18px;
+  display: block;
+  filter: invert(0.7);
+  padding-left: 4px;
+  padding-top: 3px;
+}
+
+.settings-choice {
+    padding: 4px;
+    width: 212px;
+}
+
+.settings-choice label {
+    cursor: pointer;
+}
+
+.theme-dropdown.open .theme-choice, .settings-dropdown.open .settings-choice {
     display: block;
 }
 
