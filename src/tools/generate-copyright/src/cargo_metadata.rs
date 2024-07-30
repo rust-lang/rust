@@ -1,7 +1,7 @@
 //! Gets metadata about a workspace from Cargo
 
 use std::collections::BTreeMap;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::path::Path;
 
 /// Describes how this module can fail
@@ -36,7 +36,9 @@ pub struct PackageMetadata {
     /// A list of important files from the package, with their contents.
     ///
     /// This includes *COPYRIGHT*, *NOTICE*, *AUTHOR*, *LICENSE*, and *LICENCE* files, case-insensitive.
-    pub notices: BTreeMap<OsString, String>,
+    pub notices: BTreeMap<String, String>,
+    /// If this is true, this dep is in the Rust Standard Library
+    pub is_in_libstd: Option<bool>,
 }
 
 /// Use `cargo metadata` and `cargo vendor` to get a list of dependencies and their license data.
@@ -101,6 +103,7 @@ pub fn get_metadata(
                     license: package.license.unwrap_or_else(|| String::from("Unspecified")),
                     authors: package.authors,
                     notices: BTreeMap::new(),
+                    is_in_libstd: None,
                 },
             );
         }
@@ -161,8 +164,9 @@ fn load_important_files(
                 if metadata.is_dir() {
                     // scoop up whole directory
                 } else if metadata.is_file() {
-                    println!("Scraping {}", filename.to_string_lossy());
-                    dep.notices.insert(filename.to_owned(), std::fs::read_to_string(path)?);
+                    let filename = filename.to_string_lossy();
+                    println!("Scraping {}", filename);
+                    dep.notices.insert(filename.to_string(), std::fs::read_to_string(path)?);
                 }
             }
         }
