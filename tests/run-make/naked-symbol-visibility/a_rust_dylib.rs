@@ -72,3 +72,16 @@ extern "C" fn naked_weak_linkage() -> u32 {
 extern "C" fn naked_external_linkage() -> u32 {
     unsafe { asm!("mov rax, 42", "ret", options(noreturn)) }
 }
+
+// functions that are declared in an `extern "C"` block are currently not exported
+// this maybe should change in the future, this is just tracking the current behavior
+// reported in https://github.com/rust-lang/rust/issues/128071
+std::arch::global_asm! {
+    ".globl function_defined_in_global_asm",
+    "function_defined_in_global_asm:",
+    "ret",
+}
+
+extern "C" {
+    pub fn function_defined_in_global_asm();
+}
