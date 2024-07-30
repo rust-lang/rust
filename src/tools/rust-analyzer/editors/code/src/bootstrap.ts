@@ -153,18 +153,12 @@ function orderFromPath(
     path: string,
     raVersionResolver: (path: string) => string | undefined,
 ): string {
-    const capture = path.match(/^.*\/toolchains\/(.*)\/bin\/rust-analyzer$/);
-    if (capture?.length === 2) {
-        const toolchain = capture[1]!;
-        // It is a semver, so we must resolve Rust Analyzer's version.
-        const raVersion = raVersionResolver(path);
-        const raDate = raVersion?.match(/^rust-analyzer .*\(.* (\d{4}-\d{2}-\d{2})\)$/);
-        if (raDate?.length === 2) {
-            const precedence = toolchain.startsWith("nightly-") ? "/0" : "/1";
-            return "0-" + raDate[1] + precedence;
-        } else {
-            return "2";
-        }
+    // It is a semver, so we must resolve Rust Analyzer's version.
+    const raVersion = raVersionResolver(path);
+    const raDate = raVersion?.match(/^rust-analyzer .*\(.* (\d{4}-\d{2}-\d{2})\)$/);
+    if (raDate?.length === 2) {
+        const precedence = path.includes("nightly-") ? "0" : "1";
+        return precedence + "-" + raDate[1];
     } else {
         return "2";
     }

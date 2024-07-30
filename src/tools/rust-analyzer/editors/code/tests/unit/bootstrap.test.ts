@@ -16,7 +16,7 @@ export async function getTests(ctx: Context) {
                         return "rust-analyzer 1.67.0-nightly (b7bc90fe 2022-11-21)";
                     },
                 ),
-                "0-2022-11-21/0",
+                "0-2022-11-21",
             );
         });
 
@@ -32,7 +32,7 @@ export async function getTests(ctx: Context) {
                         return "rust-analyzer 1.72.1 (d5c2e9c3 2023-09-13)";
                     },
                 ),
-                "0-2023-09-13/1",
+                "1-2023-09-13",
             );
         });
 
@@ -60,14 +60,14 @@ export async function getTests(ctx: Context) {
                         return "rust-analyzer 1.79.0 (129f3b99 2024-06-10)";
                     },
                 ),
-                "0-2024-06-10/1",
+                "1-2024-06-10",
             );
         });
 
         suite.addTest("Order with invalid path to RA", async () => {
             assert.deepStrictEqual(
                 _private.orderFromPath("some-weird-path", function () {
-                    assert.fail("Shouldn't get here.");
+                    return undefined;
                 }),
                 "2",
             );
