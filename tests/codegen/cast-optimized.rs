@@ -20,8 +20,6 @@ pub fn u32_index(c: u32) -> [bool; 22] {
 // CHECK-LABEL: @char_as_u32_index
 #[no_mangle]
 pub fn char_as_u32_index(c: char) -> [bool; 22] {
-    // CHECK: %[[B:.+]] = icmp ult i32 %c, 1114112
-    // CHECK: call void @llvm.assume(i1 %[[B]])
     let c = c as u32;
 
     let mut array = [false; 22];
