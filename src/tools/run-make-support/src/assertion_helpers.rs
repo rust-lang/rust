@@ -77,6 +77,20 @@ pub fn assert_not_contains_regex<H: AsRef<str>, N: AsRef<str>>(haystack: H, need
     }
 }
 
+/// Assert that `haystack` contains `needle` a `count` number of times.
+#[track_caller]
+pub fn assert_count_is<H: AsRef<str>, N: AsRef<str>>(count: usize, haystack: H, needle: N) {
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
+    if count != haystack.matches(needle).count() {
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", needle);
+        panic!("needle did not appear {count} times in haystack");
+    }
+}
+
 /// Assert that all files in `dir1` exist and have the same content in `dir2`
 pub fn assert_dirs_are_equal(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     let dir2 = dir2.as_ref();
