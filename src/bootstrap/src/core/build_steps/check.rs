@@ -67,6 +67,7 @@ impl Step for Std {
             target,
             self.override_build_kind.unwrap_or(builder.kind),
         );
+        cargo.arg("--features=std/panic-unwind");
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
         if matches!(builder.config.cmd, Subcommand::Fix { .. }) {
