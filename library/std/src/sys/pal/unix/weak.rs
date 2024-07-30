@@ -23,9 +23,8 @@
 
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
-use crate::mem;
-use crate::ptr;
 use crate::sync::atomic::{self, AtomicPtr, Ordering};
+use crate::{mem, ptr};
 
 // We can use true weak linkage on ELF targets.
 #[cfg(all(unix, not(target_vendor = "apple")))]

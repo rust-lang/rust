@@ -1,9 +1,9 @@
-use crate::iter::adapters::{
-    zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
-};
+use core::num::NonZero;
+
+use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::adapters::{SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen, UncheckedIterator};
 use crate::ops::Try;
-use core::num::NonZero;
 
 /// An iterator that clones the elements of an underlying iterator.
 ///

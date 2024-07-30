@@ -3,12 +3,10 @@
 #![stable(feature = "std_panic", since = "1.9.0")]
 
 use crate::any::Any;
-use crate::collections;
-use crate::fmt;
-use crate::panicking;
 use crate::sync::atomic::{AtomicU8, Ordering};
 use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
+use crate::{collections, fmt, panicking};
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[deprecated(
@@ -236,20 +234,17 @@ pub macro panic_2015 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 pub use core::panic::panic_2021;
-
-#[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use crate::panicking::{set_hook, take_hook};
-
-#[unstable(feature = "panic_update_hook", issue = "92649")]
-pub use crate::panicking::update_hook;
-
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use core::panic::Location;
-
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
-/// Panic the current thread with the given message as the panic payload.
+#[unstable(feature = "panic_update_hook", issue = "92649")]
+pub use crate::panicking::update_hook;
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+pub use crate::panicking::{set_hook, take_hook};
+
+/// Panics the current thread with the given message as the panic payload.
 ///
 /// The message can be of any (`Any + Send`) type, not just strings.
 ///
@@ -380,7 +375,7 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rust_panic_without_hook(payload)
 }
 
-/// Make all future panics abort directly without running the panic hook or unwinding.
+/// Makes all future panics abort directly without running the panic hook or unwinding.
 ///
 /// There is no way to undo this; the effect lasts until the process exits or
 /// execs (or the equivalent).
@@ -461,7 +456,7 @@ impl BacktraceStyle {
 // Internally stores equivalent of an Option<BacktraceStyle>.
 static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 
-/// Configure whether the default panic hook will capture and display a
+/// Configures whether the default panic hook will capture and display a
 /// backtrace.
 ///
 /// The default value for this setting may be set by the `RUST_BACKTRACE`

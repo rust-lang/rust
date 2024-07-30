@@ -1,9 +1,6 @@
-use crate::{
-    io,
-    pipe::{PipeReader, PipeWriter},
-    process::Stdio,
-};
-
+use crate::io;
+use crate::pipe::{PipeReader, PipeWriter};
+use crate::process::Stdio;
 pub(crate) use crate::sys::pipe::AnonPipe;
 
 #[inline]

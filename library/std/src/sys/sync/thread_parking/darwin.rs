@@ -13,10 +13,8 @@
 #![allow(non_camel_case_types)]
 
 use crate::pin::Pin;
-use crate::sync::atomic::{
-    AtomicI8,
-    Ordering::{Acquire, Release},
-};
+use crate::sync::atomic::AtomicI8;
+use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::time::Duration;
 
 type dispatch_semaphore_t = *mut crate::ffi::c_void;

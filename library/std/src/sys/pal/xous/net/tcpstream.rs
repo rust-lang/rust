@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
+
 use super::*;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
@@ -5,7 +7,6 @@ use crate::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAdd
 use crate::os::xous::services;
 use crate::sync::Arc;
 use crate::time::Duration;
-use core::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 
 macro_rules! unimpl {
     () => {

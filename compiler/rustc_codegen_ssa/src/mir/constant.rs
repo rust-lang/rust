@@ -1,14 +1,13 @@
-use crate::errors;
-use crate::mir::operand::OperandRef;
-use crate::traits::*;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::Abi;
 
 use super::FunctionCx;
+use crate::errors;
+use crate::mir::operand::OperandRef;
+use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant_to_operand(

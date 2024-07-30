@@ -1,10 +1,9 @@
-use crate::elaborate_drops::DropFlagState;
 use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
 use rustc_target::abi::VariantIdx;
 use tracing::debug;
 
 use super::move_paths::{InitKind, LookupResult, MoveData, MovePathIndex};
-use super::MoveDataParamEnv;
+use crate::elaborate_drops::DropFlagState;
 
 pub fn move_path_children_matching<'tcx, F>(
     move_data: &MoveData<'tcx>,
@@ -70,12 +69,11 @@ pub fn on_all_children_bits<'tcx, F>(
 
 pub fn drop_flag_effects_for_function_entry<'tcx, F>(
     body: &Body<'tcx>,
-    ctxt: &MoveDataParamEnv<'tcx>,
+    move_data: &MoveData<'tcx>,
     mut callback: F,
 ) where
     F: FnMut(MovePathIndex, DropFlagState),
 {
-    let move_data = &ctxt.move_data;
     for arg in body.args_iter() {
         let place = mir::Place::from(arg);
         let lookup_result = move_data.rev_lookup.find(place.as_ref());
@@ -87,13 +85,12 @@ pub fn drop_flag_effects_for_function_entry<'tcx, F>(
 
 pub fn drop_flag_effects_for_location<'tcx, F>(
     body: &Body<'tcx>,
-    ctxt: &MoveDataParamEnv<'tcx>,
+    move_data: &MoveData<'tcx>,
     loc: Location,
     mut callback: F,
 ) where
     F: FnMut(MovePathIndex, DropFlagState),
 {
-    let move_data = &ctxt.move_data;
     debug!("drop_flag_effects_for_location({:?})", loc);
 
     // first, move out of the RHS

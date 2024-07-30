@@ -1,8 +1,8 @@
 //! Validity checking for weak lang items
 
-use crate::LangItem;
-
 use rustc_span::symbol::{sym, Symbol};
+
+use crate::LangItem;
 
 macro_rules! weak_lang_items {
     ($($item:ident, $sym:ident;)*) => {

@@ -1,13 +1,7 @@
-use crate::base::*;
-use crate::config::StripUnconfigured;
-use crate::errors::{
-    EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
-    RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
-    WrongFragmentKind,
-};
-use crate::mbe::diagnostics::annotate_err_with_kind;
-use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
-use crate::placeholders::{placeholder, PlaceholderExpander};
+use std::ops::Deref;
+use std::path::PathBuf;
+use std::rc::Rc;
+use std::{iter, mem};
 
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
@@ -15,10 +9,11 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, try_visit, walk_list, AssocCtxt, Visitor, VisitorResult};
-use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind};
-use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
-use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
-use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
+use rustc_ast::{
+    AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind, ForeignItemKind,
+    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem,
+    NodeId, PatKind, StmtKind, TyKind,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
@@ -35,12 +30,18 @@ use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
-
 use smallvec::SmallVec;
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::rc::Rc;
-use std::{iter, mem};
+
+use crate::base::*;
+use crate::config::StripUnconfigured;
+use crate::errors::{
+    EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
+    RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
+    WrongFragmentKind,
+};
+use crate::mbe::diagnostics::annotate_err_with_kind;
+use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
+use crate::placeholders::{placeholder, PlaceholderExpander};
 
 macro_rules! ast_fragments {
     (

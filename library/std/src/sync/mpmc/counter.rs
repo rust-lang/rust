@@ -1,6 +1,5 @@
-use crate::ops;
-use crate::process;
 use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::{ops, process};
 
 /// Reference counter internals.
 struct Counter<C> {

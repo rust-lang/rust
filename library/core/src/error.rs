@@ -30,7 +30,7 @@ use crate::fmt::{Debug, Display, Formatter, Result};
 #[rustc_has_incoherent_inherent_impls]
 #[allow(multiple_supertrait_upcastable)]
 pub trait Error: Debug + Display {
-    /// The lower-level source of this error, if any.
+    /// Returns the lower-level source of this error, if any.
     ///
     /// # Examples
     ///
@@ -121,7 +121,7 @@ pub trait Error: Debug + Display {
         self.source()
     }
 
-    /// Provides type based access to context intended for error reports.
+    /// Provides type-based access to context intended for error reports.
     ///
     /// Used in conjunction with [`Request::provide_value`] and [`Request::provide_ref`] to extract
     /// references to member variables from `dyn Error` trait objects.
@@ -353,7 +353,7 @@ impl dyn Error {
     }
 }
 
-/// Request a value of type `T` from the given `impl Error`.
+/// Requests a value of type `T` from the given `impl Error`.
 ///
 /// # Examples
 ///
@@ -376,7 +376,7 @@ where
     request_by_type_tag::<'a, tags::Value<T>>(err)
 }
 
-/// Request a reference of type `T` from the given `impl Error`.
+/// Requests a reference of type `T` from the given `impl Error`.
 ///
 /// # Examples
 ///
@@ -510,7 +510,7 @@ where
 pub struct Request<'a>(Tagged<dyn Erased<'a> + 'a>);
 
 impl<'a> Request<'a> {
-    /// Provide a value or other type with only static lifetimes.
+    /// Provides a value or other type with only static lifetimes.
     ///
     /// # Examples
     ///
@@ -544,7 +544,7 @@ impl<'a> Request<'a> {
         self.provide::<tags::Value<T>>(value)
     }
 
-    /// Provide a value or other type with only static lifetimes computed using a closure.
+    /// Provides a value or other type with only static lifetimes computed using a closure.
     ///
     /// # Examples
     ///
@@ -578,7 +578,7 @@ impl<'a> Request<'a> {
         self.provide_with::<tags::Value<T>>(fulfil)
     }
 
-    /// Provide a reference. The referee type must be bounded by `'static`,
+    /// Provides a reference. The referee type must be bounded by `'static`,
     /// but may be unsized.
     ///
     /// # Examples
@@ -610,7 +610,7 @@ impl<'a> Request<'a> {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
     }
 
-    /// Provide a reference computed using a closure. The referee type
+    /// Provides a reference computed using a closure. The referee type
     /// must be bounded by `'static`, but may be unsized.
     ///
     /// # Examples
@@ -652,7 +652,7 @@ impl<'a> Request<'a> {
         self.provide_with::<tags::Ref<tags::MaybeSizedValue<T>>>(fulfil)
     }
 
-    /// Provide a value with the given `Type` tag.
+    /// Provides a value with the given `Type` tag.
     fn provide<I>(&mut self, value: I::Reified) -> &mut Self
     where
         I: tags::Type<'a>,
@@ -663,7 +663,7 @@ impl<'a> Request<'a> {
         self
     }
 
-    /// Provide a value with the given `Type` tag, using a closure to prevent unnecessary work.
+    /// Provides a value with the given `Type` tag, using a closure to prevent unnecessary work.
     fn provide_with<I>(&mut self, fulfil: impl FnOnce() -> I::Reified) -> &mut Self
     where
         I: tags::Type<'a>,
@@ -674,13 +674,13 @@ impl<'a> Request<'a> {
         self
     }
 
-    /// Check if the `Request` would be satisfied if provided with a
+    /// Checks if the `Request` would be satisfied if provided with a
     /// value of the specified type. If the type does not match or has
     /// already been provided, returns false.
     ///
     /// # Examples
     ///
-    /// Check if an `u8` still needs to be provided and then provides
+    /// Checks if a `u8` still needs to be provided and then provides
     /// it.
     ///
     /// ```rust
@@ -761,13 +761,14 @@ impl<'a> Request<'a> {
         self.would_be_satisfied_by::<tags::Value<T>>()
     }
 
-    /// Check if the `Request` would be satisfied if provided with a
-    /// reference to a value of the specified type. If the type does
-    /// not match or has already been provided, returns false.
+    /// Checks if the `Request` would be satisfied if provided with a
+    /// reference to a value of the specified type.
+    ///
+    /// If the type does not match or has already been provided, returns false.
     ///
     /// # Examples
     ///
-    /// Check if a `&str` still needs to be provided and then provides
+    /// Checks if a `&str` still needs to be provided and then provides
     /// it.
     ///
     /// ```rust

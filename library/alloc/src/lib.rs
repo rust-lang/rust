@@ -86,13 +86,13 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![allow(rustdoc::redundant_explicit_links)]
+#![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
 //
 // Library features:
 // tidy-alphabetical-start
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
-#![cfg_attr(test, feature(is_sorted))]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -117,7 +117,6 @@
 #![feature(const_pin)]
 #![feature(const_refs_to_cell)]
 #![feature(const_size_of_val)]
-#![feature(const_waker)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]

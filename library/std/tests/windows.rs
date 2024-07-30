@@ -1,7 +1,9 @@
 #![cfg(windows)]
 //! An external tests
 
-use std::{ffi::OsString, os::windows::ffi::OsStringExt, path::PathBuf};
+use std::ffi::OsString;
+use std::os::windows::ffi::OsStringExt;
+use std::path::PathBuf;
 
 #[test]
 #[should_panic]

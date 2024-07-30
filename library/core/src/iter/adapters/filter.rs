@@ -1,10 +1,12 @@
-use crate::fmt;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedFused};
-use crate::num::NonZero;
-use crate::ops::Try;
 use core::array;
 use core::mem::MaybeUninit;
 use core::ops::ControlFlow;
+
+use crate::fmt;
+use crate::iter::adapters::SourceIter;
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused};
+use crate::num::NonZero;
+use crate::ops::Try;
 
 /// An iterator that filters the elements of `iter` with `predicate`.
 ///

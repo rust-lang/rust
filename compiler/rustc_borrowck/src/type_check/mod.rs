@@ -4,7 +4,6 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 
 use either::Either;
-
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
@@ -28,44 +27,38 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    Dynamic, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType,
-    UserTypeAnnotationIndex,
+    Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserArgs,
+    UserType, UserTypeAnnotationIndex,
 };
-use rustc_middle::ty::{GenericArgsRef, UserArgs};
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
-use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
-use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
+use rustc_trait_selection::traits::query::type_op::custom::{
+    scrape_region_constraints, CustomTypeOp,
+};
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-
 use rustc_trait_selection::traits::PredicateObligation;
 
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::ResultsCursor;
-
+use crate::borrow_set::BorrowSet;
+use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
+use crate::diagnostics::UniverseInfo;
+use crate::facts::AllFacts;
+use crate::location::LocationTable;
+use crate::member_constraints::MemberConstraintSet;
+use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
+use crate::region_infer::TypeTest;
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
-use crate::{
-    borrow_set::BorrowSet,
-    constraints::{OutlivesConstraint, OutlivesConstraintSet},
-    diagnostics::UniverseInfo,
-    facts::AllFacts,
-    location::LocationTable,
-    member_constraints::MemberConstraintSet,
-    path_utils,
-    region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices},
-    region_infer::TypeTest,
-    type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
-    universal_regions::{DefiningTy, UniversalRegions},
-    BorrowckInferCtxt,
-};
+use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
+use crate::universal_regions::{DefiningTy, UniversalRegions};
+use crate::{path_utils, BorrowckInferCtxt};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({

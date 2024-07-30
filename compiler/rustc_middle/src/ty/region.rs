@@ -1,13 +1,13 @@
+use std::ops::Deref;
+
 use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::symbol::sym;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use rustc_type_ir::RegionKind as IrRegionKind;
 pub use rustc_type_ir::RegionVid;
-use std::ops::Deref;
 use tracing::debug;
 
 use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};

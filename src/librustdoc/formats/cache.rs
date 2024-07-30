@@ -5,7 +5,8 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
-use crate::clean::{self, types::ExternalLocation, ExternalCrate, ItemId, PrimitiveType};
+use crate::clean::types::ExternalLocation;
+use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;

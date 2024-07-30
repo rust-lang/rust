@@ -1,30 +1,22 @@
 // ignore-tidy-filelength
 
-use super::diagnostics::SnapshotParser;
-use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
-use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{
-    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
-    SemiColonMode, SeqSep, TokenType, Trailing,
-};
+use core::mem;
+use core::ops::ControlFlow;
 
-use crate::errors;
-use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::IdentIsRaw;
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
-use core::mem;
-use core::ops::ControlFlow;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::{walk_expr, Visitor};
-use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, UnOp, DUMMY_NODE_ID};
-use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
-use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
-use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
+use rustc_ast::{
+    self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
+    ClosureBinder, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall, MetaItemLit,
+    Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, DUMMY_NODE_ID,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -38,6 +30,15 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, ErrorGuaranteed, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
 use tracing::instrument;
+
+use super::diagnostics::SnapshotParser;
+use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
+use super::{
+    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
+    SemiColonMode, SeqSep, TokenType, Trailing,
+};
+use crate::{errors, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(Debug)]
 pub(super) enum LhsExpr {

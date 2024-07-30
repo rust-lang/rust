@@ -1,13 +1,9 @@
-use crate::fmt;
-use crate::io;
-use crate::mem;
-use crate::num::NonZero;
-use crate::ptr;
+use libc::{c_int, size_t};
 
+use crate::num::NonZero;
 use crate::sys::process::process_common::*;
 use crate::sys::process::zircon::{zx_handle_t, Handle};
-
-use libc::{c_int, size_t};
+use crate::{fmt, io, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

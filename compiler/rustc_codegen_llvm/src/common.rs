@@ -1,11 +1,8 @@
 //! Code that is useful in various codegen modules.
 
-use crate::consts::const_alloc_to_llvm;
-pub use crate::context::CodegenCx;
-use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
-use crate::type_::Type;
-use crate::value::Value;
+use std::fmt::Write;
 
+use libc::{c_char, c_uint};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
@@ -16,10 +13,13 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
 use rustc_target::spec::Target;
-
-use libc::{c_char, c_uint};
-use std::fmt::Write;
 use tracing::debug;
+
+use crate::consts::const_alloc_to_llvm;
+pub use crate::context::CodegenCx;
+use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
+use crate::type_::Type;
+use crate::value::Value;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".

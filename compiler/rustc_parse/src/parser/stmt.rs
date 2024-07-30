@@ -1,3 +1,20 @@
+use std::borrow::Cow;
+use std::mem;
+
+use ast::Label;
+use rustc_ast as ast;
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::util::classify::{self, TrailingBrace};
+use rustc_ast::{
+    AttrStyle, AttrVec, Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, LocalKind, MacCall,
+    MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind, DUMMY_NODE_ID,
+};
+use rustc_errors::{Applicability, Diag, PResult};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{BytePos, ErrorGuaranteed, Span};
+use thin_vec::{thin_vec, ThinVec};
+
 use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
@@ -6,25 +23,8 @@ use super::path::PathStyle;
 use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
 };
-use crate::errors;
-use crate::maybe_whole;
-
 use crate::errors::MalformedLoopLabel;
-use ast::Label;
-use rustc_ast as ast;
-use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
-use rustc_ast::util::classify::{self, TrailingBrace};
-use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
-use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Recovered, Stmt};
-use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, ErrorGuaranteed, Span};
-
-use std::borrow::Cow;
-use std::mem;
-use thin_vec::{thin_vec, ThinVec};
+use crate::{errors, maybe_whole};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.

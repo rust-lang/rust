@@ -3,8 +3,7 @@
 #![cfg(reliable_f16)]
 
 use crate::f16::consts;
-use crate::num::FpCategory as Fp;
-use crate::num::*;
+use crate::num::{FpCategory as Fp, *};
 
 // We run out of precision pretty quickly with f16
 // const F16_APPROX_L1: f16 = 0.001;

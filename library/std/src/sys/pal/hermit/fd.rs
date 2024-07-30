@@ -3,12 +3,9 @@
 use super::hermit_abi;
 use crate::cmp;
 use crate::io::{self, IoSlice, IoSliceMut, Read};
-use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd};
-use crate::sys::cvt;
-use crate::sys::unsupported;
+use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd, *};
+use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-
-use crate::os::hermit::io::*;
 
 const fn max_iov() -> usize {
     hermit_abi::IOV_MAX

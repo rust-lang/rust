@@ -7,8 +7,9 @@
 //! When removing a lint, make sure to also add a call to `register_removed` in
 //! compiler/rustc_lint/src/lib.rs.
 
-use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
+
+use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
 
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
@@ -91,6 +92,7 @@ declare_lint_pass! {
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         RUST_2021_PRELUDE_COLLISIONS,
         RUST_2024_INCOMPATIBLE_PAT,
+        RUST_2024_PRELUDE_COLLISIONS,
         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SINGLE_USE_LIFETIMES,
@@ -1984,14 +1986,18 @@ declare_lint! {
     ///
     /// ```rust
     /// trait MyIterator : Iterator {
-    ///     // is_sorted is an unstable method that already exists on the Iterator trait
-    ///     fn is_sorted(self) -> bool where Self: Sized {true}
+    ///     // is_partitioned is an unstable method that already exists on the Iterator trait
+    ///     fn is_partitioned<P>(self, predicate: P) -> bool
+    ///     where
+    ///         Self: Sized,
+    ///         P: FnMut(Self::Item) -> bool,
+    ///     {true}
     /// }
     ///
     /// impl<T: ?Sized> MyIterator for T where T: Iterator { }
     ///
     /// let x = vec![1, 2, 3];
-    /// let _ = x.iter().is_sorted();
+    /// let _ = x.iter().is_partitioned(|_| true);
     /// ```
     ///
     /// {{produces}}
@@ -2007,7 +2013,7 @@ declare_lint! {
     /// is an early-warning to let you know that there may be a collision in
     /// the future. This can be avoided by adding type annotations to
     /// disambiguate which trait method you intend to call, such as
-    /// `MyIterator::is_sorted(my_iter)` or renaming or removing the method.
+    /// `MyIterator::is_partitioned(my_iter, my_predicate)` or renaming or removing the method.
     ///
     /// [nightly channel]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
     /// [`feature` attribute]: https://doc.rust-lang.org/nightly/unstable-book/
@@ -3747,6 +3753,46 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>",
+    };
+}
+
+declare_lint! {
+    /// The `rust_2024_prelude_collisions` lint detects the usage of trait methods which are ambiguous
+    /// with traits added to the prelude in future editions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(rust_2024_prelude_collisions)]
+    /// trait Meow {
+    ///     fn poll(&self) {}
+    /// }
+    /// impl<T> Meow for T {}
+    ///
+    /// fn main() {
+    ///     core::pin::pin!(async {}).poll();
+    ///     //                        ^^^^^^
+    ///     // This call to try_into matches both Future::poll and Meow::poll as
+    ///     // `Future` has been added to the Rust prelude in 2024 edition.
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust 2024, introduces two new additions to the standard library's prelude:
+    /// `Future` and `IntoFuture`. This results in an ambiguity as to which method/function
+    /// to call when an existing `poll`/`into_future` method is called via dot-call syntax or
+    /// a `poll`/`into_future` associated function is called directly on a type.
+    ///
+    pub RUST_2024_PRELUDE_COLLISIONS,
+    Allow,
+    "detects the usage of trait methods which are ambiguous with traits added to the \
+        prelude in future editions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/prelude.html>",
     };
 }
 

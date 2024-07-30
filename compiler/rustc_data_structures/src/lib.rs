@@ -39,13 +39,11 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
-pub use atomic_ref::AtomicRef;
-pub use ena::snapshot_vec;
-pub use ena::undo_log;
-pub use ena::unify;
-pub use rustc_index::static_assert_size;
-
 use std::fmt;
+
+pub use atomic_ref::AtomicRef;
+pub use ena::{snapshot_vec, undo_log, unify};
+pub use rustc_index::static_assert_size;
 
 pub mod aligned;
 pub mod base_n;

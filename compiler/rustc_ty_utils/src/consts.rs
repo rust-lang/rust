@@ -1,19 +1,18 @@
+use std::iter;
+
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
 use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
-use rustc_middle::{mir, thir};
+use rustc_middle::{bug, mir, thir};
 use rustc_span::Span;
 use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 use tracing::{debug, instrument};
-
-use std::iter;
 
 use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
 

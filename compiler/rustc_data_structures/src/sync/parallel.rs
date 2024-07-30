@@ -3,9 +3,6 @@
 
 #![allow(dead_code)]
 
-use crate::sync::IntoDynSyncSend;
-use crate::FatalErrorMarker;
-use parking_lot::Mutex;
 use std::any::Any;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
@@ -13,6 +10,10 @@ use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 pub use disabled::*;
 #[cfg(parallel_compiler)]
 pub use enabled::*;
+use parking_lot::Mutex;
+
+use crate::sync::IntoDynSyncSend;
+use crate::FatalErrorMarker;
 
 /// A guard used to hold panics that occur during a parallel section to later by unwound.
 /// This is used for the parallel compiler to prevent fatal errors from non-deterministically

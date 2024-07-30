@@ -1771,9 +1771,37 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
 }());
 
 // This section handles the copy button that appears next to the path breadcrumbs
+// and the copy buttons on the code examples.
 (function() {
-    let reset_button_timeout = null;
+    // Common functions to copy buttons.
+    function copyContentToClipboard(content) {
+        const el = document.createElement("textarea");
+        el.value = content;
+        el.setAttribute("readonly", "");
+        // To not make it appear on the screen.
+        el.style.position = "absolute";
+        el.style.left = "-9999px";
 
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+    }
+
+    function copyButtonAnimation(button) {
+        button.classList.add("clicked");
+
+        if (button.reset_button_timeout !== undefined) {
+            window.clearTimeout(button.reset_button_timeout);
+        }
+
+        button.reset_button_timeout = window.setTimeout(() => {
+            button.reset_button_timeout = undefined;
+            button.classList.remove("clicked");
+        }, 1000);
+    }
+
+    // Copy button that appears next to the path breadcrumbs.
     const but = document.getElementById("copy-path");
     if (!but) {
         return;
@@ -1788,29 +1816,49 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             }
         });
 
-        const el = document.createElement("textarea");
-        el.value = path.join("::");
-        el.setAttribute("readonly", "");
-        // To not make it appear on the screen.
-        el.style.position = "absolute";
-        el.style.left = "-9999px";
-
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand("copy");
-        document.body.removeChild(el);
-
-        but.classList.add("clicked");
-
-        if (reset_button_timeout !== null) {
-            window.clearTimeout(reset_button_timeout);
-        }
-
-        function reset_button() {
-            reset_button_timeout = null;
-            but.classList.remove("clicked");
-        }
-
-        reset_button_timeout = window.setTimeout(reset_button, 1000);
+        copyContentToClipboard(path.join("::"));
+        copyButtonAnimation(but);
     };
+
+    // Copy buttons on code examples.
+    function copyCode(codeElem) {
+        if (!codeElem) {
+            // Should never happen, but the world is a dark and dangerous place.
+            return;
+        }
+        copyContentToClipboard(codeElem.textContent);
+    }
+
+    function addCopyButton(event) {
+        let elem = event.target;
+        while (!hasClass(elem, "example-wrap")) {
+            elem = elem.parentElement;
+            if (elem.tagName === "body" || hasClass(elem, "docblock")) {
+                return;
+            }
+        }
+        // Since the button will be added, no need to keep this listener around.
+        elem.removeEventListener("mouseover", addCopyButton);
+
+        const parent = document.createElement("div");
+        parent.className = "button-holder";
+        const runButton = elem.querySelector(".test-arrow");
+        if (runButton !== null) {
+            // If there is a run button, we move it into the same div.
+            parent.appendChild(runButton);
+        }
+        elem.appendChild(parent);
+        const copyButton = document.createElement("button");
+        copyButton.className = "copy-button";
+        copyButton.title = "Copy code to clipboard";
+        copyButton.addEventListener("click", () => {
+            copyCode(elem.querySelector("pre > code"));
+            copyButtonAnimation(copyButton);
+        });
+        parent.appendChild(copyButton);
+    }
+
+    onEachLazy(document.querySelectorAll(".docblock .example-wrap"), elem => {
+        elem.addEventListener("mouseover", addCopyButton);
+    });
 }());

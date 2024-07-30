@@ -1,10 +1,11 @@
-use crate::def::{CtorOf, DefKind, Res};
-use crate::def_id::{DefId, DefIdSet};
-use crate::hir::{self, BindingMode, ByRef, HirId, PatKind};
+use std::iter::Enumerate;
+
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use std::iter::Enumerate;
+use crate::def::{CtorOf, DefKind, Res};
+use crate::def_id::{DefId, DefIdSet};
+use crate::hir::{self, BindingMode, ByRef, HirId, PatKind};
 
 pub struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,

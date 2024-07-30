@@ -852,7 +852,7 @@ cc = ["@Urgau"]
 cc = ["@Urgau"]
 
 [mentions."src/doc/rustc/src/platform-support"]
-cc = ["@Nilstrieb"]
+cc = ["@Noratrieb"]
 
 [mentions."tests/codegen/sanitizer"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
@@ -938,7 +938,7 @@ libs = [
     "@cuviper",
     "@Mark-Simulacrum",
     "@Amanieu",
-    "@Nilstrieb",
+    "@Noratrieb",
     "@workingjubilee",
     "@joboet",
     "@jhpratt",

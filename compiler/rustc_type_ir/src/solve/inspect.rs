@@ -17,14 +17,16 @@
 //!
 //! [canonicalized]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 
+use std::fmt::Debug;
+use std::hash::Hash;
+
+use derive_where::derive_where;
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+
 use crate::solve::{
     CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
 };
 use crate::{Canonical, CanonicalVarValues, Interner};
-use derive_where::derive_where;
-use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
-use std::fmt::Debug;
-use std::hash::Hash;
 
 /// Some `data` together with information about how they relate to the input
 /// of the canonical query.

@@ -223,12 +223,9 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use self::Ordering::*;
-
 use crate::cell::UnsafeCell;
-use crate::fmt;
-use crate::intrinsics;
-
 use crate::hint::spin_loop;
+use crate::{fmt, intrinsics};
 
 // Some architectures don't have byte-sized atomics, which results in LLVM
 // emulating them using a LL/SC loop. However for AtomicBool we can take
@@ -481,7 +478,7 @@ impl AtomicBool {
         unsafe { &mut *(self.v.get() as *mut bool) }
     }
 
-    /// Get atomic access to a `&mut bool`.
+    /// Gets atomic access to a `&mut bool`.
     ///
     /// # Examples
     ///
@@ -503,7 +500,7 @@ impl AtomicBool {
         unsafe { &mut *(v as *mut bool as *mut Self) }
     }
 
-    /// Get non-atomic access to a `&mut [AtomicBool]` slice.
+    /// Gets non-atomic access to a `&mut [AtomicBool]` slice.
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
@@ -537,7 +534,7 @@ impl AtomicBool {
         unsafe { &mut *(this as *mut [Self] as *mut [bool]) }
     }
 
-    /// Get atomic access to a `&mut [bool]` slice.
+    /// Gets atomic access to a `&mut [bool]` slice.
     ///
     /// # Examples
     ///
@@ -1276,7 +1273,7 @@ impl<T> AtomicPtr<T> {
         self.p.get_mut()
     }
 
-    /// Get atomic access to a pointer.
+    /// Gets atomic access to a pointer.
     ///
     /// # Examples
     ///
@@ -1303,7 +1300,7 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *(v as *mut *mut T as *mut Self) }
     }
 
-    /// Get non-atomic access to a `&mut [AtomicPtr]` slice.
+    /// Gets non-atomic access to a `&mut [AtomicPtr]` slice.
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
@@ -1343,7 +1340,7 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *(this as *mut [Self] as *mut [*mut T]) }
     }
 
-    /// Get atomic access to a slice of pointers.
+    /// Gets atomic access to a slice of pointers.
     ///
     /// # Examples
     ///

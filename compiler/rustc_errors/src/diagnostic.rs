@@ -1,16 +1,3 @@
-use crate::snippet::Style;
-use crate::{
-    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
-    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
-};
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
-use rustc_error_messages::FluentValue;
-use rustc_lint_defs::{Applicability, LintExpectationId};
-use rustc_macros::{Decodable, Encodable};
-use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
@@ -18,7 +5,21 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::thread::panicking;
+
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_error_messages::{fluent_value_from_str_list_sep_by_and, FluentValue};
+use rustc_lint_defs::{Applicability, LintExpectationId};
+use rustc_macros::{Decodable, Encodable};
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Symbol;
+use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
+
+use crate::snippet::Style;
+use crate::{
+    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
+    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
+};
 
 /// Error type for `DiagInner`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `DiagInner`.

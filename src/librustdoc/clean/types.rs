@@ -3,19 +3,14 @@ use std::cell::RefCell;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::Arc;
-use std::sync::OnceLock as OnceCell;
+use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
-use thin_vec::ThinVec;
-
-use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -35,7 +30,15 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{FileName, Loc, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use thin_vec::ThinVec;
+use {rustc_ast as ast, rustc_hir as hir};
 
+pub(crate) use self::ItemKind::*;
+pub(crate) use self::SelfTy::*;
+pub(crate) use self::Type::{
+    Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
+    RawPointer, Slice, Tuple,
+};
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
 use crate::clean::inline::{self, print_inlined_const};
@@ -45,13 +48,6 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
-
-pub(crate) use self::ItemKind::*;
-pub(crate) use self::SelfTy::*;
-pub(crate) use self::Type::{
-    Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, Slice, Tuple,
-};
 
 #[cfg(test)]
 mod tests;
@@ -852,9 +848,9 @@ pub(crate) enum ItemKind {
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
     TyAssocConstItem(Generics, Box<Type>),
-    ConstantItem(Generics, Box<Type>, Constant),
+    ConstantItem(Box<Constant>),
     /// An associated constant in a trait impl or a provided one in a trait declaration.
-    AssocConstItem(Generics, Box<Type>, ConstantKind),
+    AssocConstItem(Box<Constant>),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -888,7 +884,7 @@ impl ItemKind {
             | TypeAliasItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
-            | ConstantItem(_, _, _)
+            | ConstantItem(_)
             | TraitAliasItem(_)
             | TyMethodItem(_)
             | MethodItem(_, _)
@@ -922,7 +918,7 @@ impl ItemKind {
                 | TypeAliasItem(_)
                 | OpaqueTyItem(_)
                 | StaticItem(_)
-                | ConstantItem(_, _, _)
+                | ConstantItem(_)
                 | TraitAliasItem(_)
                 | ForeignFunctionItem(_, _)
                 | ForeignStaticItem(_, _)
@@ -2050,7 +2046,7 @@ impl From<hir::PrimTy> for PrimitiveType {
 pub(crate) struct Struct {
     pub(crate) ctor_kind: Option<CtorKind>,
     pub(crate) generics: Generics,
-    pub(crate) fields: Vec<Item>,
+    pub(crate) fields: ThinVec<Item>,
 }
 
 impl Struct {
@@ -2076,7 +2072,7 @@ impl Union {
 /// only as a variant in an enum.
 #[derive(Clone, Debug)]
 pub(crate) struct VariantStruct {
-    pub(crate) fields: Vec<Item>,
+    pub(crate) fields: ThinVec<Item>,
 }
 
 impl VariantStruct {
@@ -2110,7 +2106,7 @@ pub(crate) struct Variant {
 #[derive(Clone, Debug)]
 pub(crate) enum VariantKind {
     CLike,
-    Tuple(Vec<Item>),
+    Tuple(ThinVec<Item>),
     Struct(VariantStruct),
 }
 
@@ -2246,7 +2242,7 @@ impl Path {
 pub(crate) enum GenericArg {
     Lifetime(Lifetime),
     Type(Type),
-    Const(Box<Constant>),
+    Const(Box<ConstantKind>),
     Infer,
 }
 
@@ -2359,20 +2355,22 @@ pub(crate) struct BareFunctionDecl {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Static {
-    pub(crate) type_: Type,
+    pub(crate) type_: Box<Type>,
     pub(crate) mutability: Mutability,
     pub(crate) expr: Option<BodyId>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Constant {
+    pub(crate) generics: Generics,
     pub(crate) kind: ConstantKind,
+    pub(crate) type_: Type,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum Term {
     Type(Type),
-    Constant(Constant),
+    Constant(ConstantKind),
 }
 
 impl Term {
@@ -2584,8 +2582,9 @@ pub(crate) enum AssocItemConstraintKind {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Crate, 64); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
@@ -2594,7 +2593,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 56);
+    static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 32);
     // tidy-alphabetical-end

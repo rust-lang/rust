@@ -1,13 +1,10 @@
-use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
-
 use core::ops::ControlFlow;
+
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::NodeId;
-use rustc_ast::{mut_visit, visit};
-use rustc_ast::{Attribute, HasAttrs, HasTokens};
+use rustc_ast::{mut_visit, visit, Attribute, HasAttrs, HasTokens, NodeId};
 use rustc_errors::PResult;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_expand::config::StripUnconfigured;
@@ -19,6 +16,8 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::SmallVec;
 use tracing::instrument;
+
+use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 pub(crate) fn expand(
     ecx: &mut ExtCtxt<'_>,

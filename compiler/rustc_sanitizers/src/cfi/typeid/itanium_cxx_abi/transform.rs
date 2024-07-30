@@ -4,6 +4,8 @@
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
 
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
@@ -12,9 +14,9 @@ use rustc_middle::ty::{
     self, ExistentialPredicateStableCmpExt as _, Instance, InstanceKind, IntTy, List, TraitRef, Ty,
     TyCtxt, TypeFoldable, TypeVisitableExt, UintTy,
 };
-use rustc_span::{def_id::DefId, sym};
+use rustc_span::def_id::DefId;
+use rustc_span::sym;
 use rustc_trait_selection::traits;
-use std::iter;
 use tracing::{debug, instrument};
 
 use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
@@ -230,6 +232,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()
                 .filter(|item| item.kind == ty::AssocKind::Type)
+                .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                 .map(move |assoc_ty| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
                         let alias_ty =

@@ -16,10 +16,9 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
+use super::{Locations, TypeChecker};
 use crate::renumber::RegionCtxt;
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-
-use super::{Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Check explicit closure signature annotation,

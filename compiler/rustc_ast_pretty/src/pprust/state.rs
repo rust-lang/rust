@@ -6,9 +6,8 @@ mod expr;
 mod fixup;
 mod item;
 
-use crate::pp::Breaks::{Consistent, Inconsistent};
-use crate::pp::{self, Breaks};
-use crate::pprust::state::fixup::FixupContext;
+use std::borrow::Cow;
+
 use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
@@ -16,17 +15,20 @@ use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, To
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
-use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind, Safety};
-use rustc_ast::{attr, BindingMode, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
-use rustc_ast::{GenericArg, GenericBound, SelfKind};
-use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{
+    self as ast, attr, AttrArgs, AttrArgsEq, BindingMode, BlockCheckMode, ByRef, DelimArgs,
+    GenericArg, GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
+    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, Safety, SelfKind, Term,
+};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, CharPos, FileName, Pos, Span, DUMMY_SP};
-use std::borrow::Cow;
 use thin_vec::ThinVec;
+
+use crate::pp::Breaks::{Consistent, Inconsistent};
+use crate::pp::{self, Breaks};
+use crate::pprust::state::fixup::FixupContext;
 
 pub enum MacHeader<'a> {
     Path(&'a ast::Path),
@@ -290,8 +292,7 @@ pub fn print_crate<'a>(
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use token::*;
     use Delimiter::*;
-    use TokenTree::Delimited as Del;
-    use TokenTree::Token as Tok;
+    use TokenTree::{Delimited as Del, Token as Tok};
 
     fn is_punct(tt: &TokenTree) -> bool {
         matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())

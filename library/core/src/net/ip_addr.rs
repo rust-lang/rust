@@ -1,10 +1,9 @@
+use super::display_buffer::DisplayBuffer;
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write};
 use crate::iter;
 use crate::mem::transmute;
 use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
-
-use super::display_buffer::DisplayBuffer;
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -406,8 +405,8 @@ impl IpAddr {
         matches!(self, IpAddr::V6(_))
     }
 
-    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 address, otherwise it
-    /// returns `self` as-is.
+    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6
+    /// address, otherwise returns `self` as-is.
     ///
     /// # Examples
     ///
@@ -549,7 +548,7 @@ impl Ipv4Addr {
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
-    /// An IPv4 address representing the broadcast address: `255.255.255.255`
+    /// An IPv4 address representing the broadcast address: `255.255.255.255`.
     ///
     /// # Examples
     ///
@@ -686,10 +685,10 @@ impl Ipv4Addr {
 
     /// Returns [`true`] if the address appears to be globally reachable
     /// as specified by the [IANA IPv4 Special-Purpose Address Registry].
-    /// Whether or not an address is practically reachable will depend on your network configuration.
     ///
-    /// Most IPv4 addresses are globally reachable;
-    /// unless they are specifically defined as *not* globally reachable.
+    /// Whether or not an address is practically reachable will depend on your
+    /// network configuration. Most IPv4 addresses are globally reachable, unless
+    /// they are specifically defined as *not* globally reachable.
     ///
     /// Non-exhaustive list of notable addresses that are not globally reachable:
     ///
@@ -802,8 +801,10 @@ impl Ipv4Addr {
     }
 
     /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
-    /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
-    /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
+    /// network devices benchmarking.
+    ///
+    /// This range is defined in [IETF RFC 2544] as `192.18.0.0` through
+    /// `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
     ///
     /// [IETF RFC 2544]: https://tools.ietf.org/html/rfc2544
     /// [errata 423]: https://www.rfc-editor.org/errata/eid423
@@ -827,10 +828,12 @@ impl Ipv4Addr {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
     }
 
-    /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
-    /// defines the block of reserved addresses as `240.0.0.0/4`. This range normally includes the
-    /// broadcast address `255.255.255.255`, but this implementation explicitly excludes it, since
-    /// it is obviously not reserved for future use.
+    /// Returns [`true`] if this address is reserved by IANA for future use.
+    ///
+    /// [IETF RFC 1112] defines the block of reserved addresses as `240.0.0.0/4`.
+    /// This range normally includes the broadcast address `255.255.255.255`, but
+    /// this implementation explicitly excludes it, since it is obviously not
+    /// reserved for future use.
     ///
     /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
     ///
@@ -1328,7 +1331,7 @@ impl Ipv6Addr {
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
 
-    /// An IPv6 address representing the unspecified address: `::`
+    /// An IPv6 address representing the unspecified address: `::`.
     ///
     /// This corresponds to constant `IN6ADDR_ANY_INIT` or `in6addr_any` in other languages.
     ///
@@ -1424,10 +1427,10 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if the address appears to be globally reachable
     /// as specified by the [IANA IPv6 Special-Purpose Address Registry].
-    /// Whether or not an address is practically reachable will depend on your network configuration.
     ///
-    /// Most IPv6 addresses are globally reachable;
-    /// unless they are specifically defined as *not* globally reachable.
+    /// Whether or not an address is practically reachable will depend on your
+    /// network configuration. Most IPv6 addresses are globally reachable, unless
+    /// they are specifically defined as *not* globally reachable.
     ///
     /// Non-exhaustive list of notable addresses that are not globally reachable:
     /// - The [unspecified address] ([`is_unspecified`](Ipv6Addr::is_unspecified))
@@ -1879,8 +1882,8 @@ impl Ipv6Addr {
         }
     }
 
-    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped address, otherwise it
-    /// returns self wrapped in an `IpAddr::V6`.
+    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped address,
+    /// otherwise returns self wrapped in an `IpAddr::V6`.
     ///
     /// # Examples
     ///
@@ -1919,7 +1922,7 @@ impl Ipv6Addr {
     }
 }
 
-/// Write an Ipv6Addr, conforming to the canonical style described by
+/// Writes an Ipv6Addr, conforming to the canonical style described by
 /// [RFC 5952](https://tools.ietf.org/html/rfc5952).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
@@ -1962,7 +1965,7 @@ impl fmt::Display for Ipv6Addr {
                     longest
                 };
 
-                /// Write a colon-separated part of the address
+                /// Writes a colon-separated part of the address.
                 #[inline]
                 fn fmt_subslice(f: &mut fmt::Formatter<'_>, chunk: &[u16]) -> fmt::Result {
                     if let Some((first, tail)) = chunk.split_first() {

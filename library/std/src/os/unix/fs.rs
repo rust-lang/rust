@@ -4,18 +4,18 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use super::platform::fs::MetadataExt as _;
-use crate::fs::{self, OpenOptions, Permissions};
-use crate::io;
-use crate::os::unix::io::{AsFd, AsRawFd};
-use crate::path::Path;
-use crate::sys;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner};
-// Used for `File::read` on intra-doc links
-use crate::ffi::OsStr;
-use crate::sealed::Sealed;
 #[allow(unused_imports)]
 use io::{Read, Write};
+
+use super::platform::fs::MetadataExt as _;
+// Used for `File::read` on intra-doc links
+use crate::ffi::OsStr;
+use crate::fs::{self, OpenOptions, Permissions};
+use crate::os::unix::io::{AsFd, AsRawFd};
+use crate::path::Path;
+use crate::sealed::Sealed;
+use crate::sys_common::{AsInner, AsInnerMut, FromInner};
+use crate::{io, sys};
 
 // Tests for this module
 #[cfg(test)]

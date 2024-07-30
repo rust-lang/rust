@@ -1,14 +1,15 @@
-use crate::errors::UnconditionalRecursion;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArg, GenericArgs};
+use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
-use std::ops::ControlFlow;
+
+use crate::errors::UnconditionalRecursion;
 
 pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     check_call_recursion(tcx, body);

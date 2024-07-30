@@ -1,6 +1,7 @@
-use anyhow::Error;
 use std::io::Write;
 use std::path::PathBuf;
+
+use anyhow::Error;
 
 fn main() -> Result<(), Error> {
     let dest = env_path("DEST")?;

@@ -2,17 +2,18 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use core::ops::ControlFlow;
+
 use hir::{ExprKind, Param};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_middle::bug;
-use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_middle::{
-    hir::place::PlaceBase,
-    mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
+use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::mir::{
+    self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location, Mutability, Place,
+    PlaceRef, ProjectionElem,
 };
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, DesugaringKind, Span};
 use rustc_target::abi::FieldIdx;
@@ -847,10 +848,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
     fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diag<'_>, span: Span) {
-        use hir::{
-            BorrowKind, Expr,
-            ExprKind::{AddrOf, Block, Call, MethodCall},
-        };
+        use hir::ExprKind::{AddrOf, Block, Call, MethodCall};
+        use hir::{BorrowKind, Expr};
 
         let hir_map = self.infcx.tcx.hir();
         struct Finder {

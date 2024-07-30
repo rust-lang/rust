@@ -3,10 +3,9 @@ use r_efi::protocols::loaded_image;
 use super::helpers;
 use crate::env::current_exe;
 use crate::ffi::OsString;
-use crate::fmt;
 use crate::iter::Iterator;
 use crate::mem::size_of;
-use crate::vec;
+use crate::{fmt, vec};
 
 pub struct Args {
     parsed_args_list: vec::IntoIter<OsString>,
@@ -76,7 +75,7 @@ impl DoubleEndedIterator for Args {
 /// This implementation is based on what is defined in Section 3.4 of
 /// [UEFI Shell Specification](https://uefi.org/sites/default/files/resources/UEFI_Shell_Spec_2_0.pdf)
 ///
-/// Return None in the following cases:
+/// Returns None in the following cases:
 /// - Invalid UTF-16 (unpaired surrogate)
 /// - Empty/improper arguments
 fn parse_lp_cmd_line(code_units: &[u16]) -> Option<Vec<OsString>> {

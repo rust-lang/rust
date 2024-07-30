@@ -1,13 +1,14 @@
 use std::marker::PhantomData;
 
-use crate::build::expr::as_place::PlaceBase;
-use crate::build::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
-use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use tracing::debug;
+
+use crate::build::expr::as_place::PlaceBase;
+use crate::build::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
+use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a false edge to `imaginary_target` and a real edge to

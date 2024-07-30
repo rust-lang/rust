@@ -1,3 +1,15 @@
+use std::borrow::Cow;
+use std::fmt;
+
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::Lrc;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::edition::Edition;
+use rustc_span::symbol::{kw, sym};
+#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
+#[allow(hidden_glob_reexports)]
+use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 pub use BinOpToken::*;
 pub use LitKind::*;
 pub use Nonterminal::*;
@@ -8,17 +20,6 @@ pub use TokenKind::*;
 use crate::ast;
 use crate::ptr::P;
 use crate::util::case::Case;
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::symbol::{kw, sym};
-#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
-#[allow(hidden_glob_reexports)]
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{edition::Edition, ErrorGuaranteed, Span, DUMMY_SP};
-use std::borrow::Cow;
-use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CommentKind {
@@ -1062,8 +1063,9 @@ where
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);

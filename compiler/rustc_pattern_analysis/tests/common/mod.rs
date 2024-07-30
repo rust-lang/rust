@@ -1,10 +1,8 @@
-use rustc_pattern_analysis::{
-    constructor::{
-        Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
-    },
-    usefulness::{PlaceValidity, UsefulnessReport},
-    Captures, MatchArm, PatCx, PrivateUninhabitedField,
+use rustc_pattern_analysis::constructor::{
+    Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
+use rustc_pattern_analysis::usefulness::{PlaceValidity, UsefulnessReport};
+use rustc_pattern_analysis::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
 
 /// Sets up `tracing` for easier debugging. Tries to look like the `rustc` setup.
 pub fn init_tracing() {

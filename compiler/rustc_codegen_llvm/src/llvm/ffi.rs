@@ -1,18 +1,16 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+use std::marker::PhantomData;
+
+use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
     DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
     DebugEmissionKind, DebugNameTableKind,
 };
-
-use libc::{c_char, c_int, c_uint, size_t};
-use libc::{c_ulonglong, c_void};
-
-use std::marker::PhantomData;
-
 use super::RustString;
 
 pub type Bool = c_uint;
@@ -697,8 +695,9 @@ pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void
 pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 pub mod debuginfo {
-    use super::{InvariantOpaque, Metadata};
     use bitflags::bitflags;
+
+    use super::{InvariantOpaque, Metadata};
 
     #[repr(C)]
     pub struct DIBuilder<'a>(InvariantOpaque<'a>);

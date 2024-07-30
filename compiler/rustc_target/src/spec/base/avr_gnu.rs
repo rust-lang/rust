@@ -1,5 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 use object::elf;
+
+use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 
 /// A base target for AVR devices using the GNU toolchain.
 ///

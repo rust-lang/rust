@@ -1,6 +1,5 @@
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::{env, fs};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
@@ -10,9 +9,7 @@ use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{add_dylib_path, exe, get_closest_merge_base_commit, git, t};
-use crate::Compiler;
-use crate::Mode;
-use crate::{gha, Kind};
+use crate::{gha, Compiler, Kind, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -93,7 +90,7 @@ impl Step for ToolBuild {
             compiler,
             self.mode,
             target,
-            "build",
+            Kind::Build,
             path,
             self.source_type,
             &self.extra_features,
@@ -139,12 +136,12 @@ pub fn prepare_tool_cargo(
     compiler: Compiler,
     mode: Mode,
     target: TargetSelection,
-    command: &'static str,
+    cmd_kind: Kind,
     path: &str,
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
-    let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, command);
+    let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
@@ -241,6 +238,7 @@ macro_rules! bootstrap_tool {
         $(,is_external_tool = $external:expr)*
         $(,is_unstable_tool = $unstable:expr)*
         $(,allow_features = $allow_features:expr)?
+        $(,submodules = $submodules:expr)?
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
@@ -287,6 +285,11 @@ macro_rules! bootstrap_tool {
             }
 
             fn run(self, builder: &Builder<'_>) -> PathBuf {
+                $(
+                    for submodule in $submodules {
+                        builder.require_submodule(submodule, None);
+                    }
+                )*
                 builder.ensure(ToolBuild {
                     compiler: self.compiler,
                     target: self.target,
@@ -314,7 +317,7 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook";
+    Rustbook, "src/tools/rustbook", "rustbook", submodules = SUBMODULES_FOR_RUSTBOOK;
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
@@ -340,6 +343,10 @@ bootstrap_tool!(
     WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
 );
 
+/// These are the submodules that are required for rustbook to work due to
+/// depending on mdbook plugins.
+pub static SUBMODULES_FOR_RUSTBOOK: &[&str] = &["src/doc/book", "src/doc/reference"];
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct OptimizedDist {
     pub compiler: Compiler,
@@ -363,7 +370,7 @@ impl Step for OptimizedDist {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
         // the tool requires it to be in place to run.
-        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+        builder.require_submodule("src/tools/rustc-perf", None);
 
         builder.ensure(ToolBuild {
             compiler: self.compiler,
@@ -404,7 +411,7 @@ impl Step for RustcPerf {
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         // We need to ensure the rustc-perf submodule is initialized.
-        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+        builder.require_submodule("src/tools/rustc-perf", None);
 
         let tool = ToolBuild {
             compiler: self.compiler,
@@ -589,8 +596,7 @@ impl Step for Rustdoc {
                 .arg("--")
                 .arg(librustdoc_src)
                 .arg(rustdoc_src)
-                .run(builder)
-                .is_success();
+                .run(builder);
 
             if !has_changes {
                 let precompiled_rustdoc = builder
@@ -640,7 +646,7 @@ impl Step for Rustdoc {
             build_compiler,
             Mode::ToolRustc,
             target,
-            "build",
+            Kind::Build,
             "src/tools/rustdoc",
             SourceType::InTree,
             features.as_slice(),
@@ -705,7 +711,7 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.build.update_submodule(Path::new("src/tools/cargo"));
+        builder.build.require_submodule("src/tools/cargo", None);
 
         builder.ensure(ToolBuild {
             compiler: self.compiler,
@@ -899,7 +905,7 @@ impl Step for LlvmBitcodeLinker {
             self.compiler,
             Mode::ToolRustc,
             self.target,
-            "build",
+            Kind::Build,
             "src/tools/llvm-bitcode-linker",
             SourceType::InTree,
             &self.extra_features,
@@ -982,7 +988,7 @@ impl Step for LibcxxVersionTool {
             }
         }
 
-        let version_output = command(executable).capture_stdout().run(builder).stdout();
+        let version_output = command(executable).run_capture_stdout(builder).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();
@@ -1087,8 +1093,6 @@ macro_rules! tool_extended {
 
 // NOTE: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
 // to make `./x.py build <tool>` work.
-// NOTE: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
-// invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
     CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;

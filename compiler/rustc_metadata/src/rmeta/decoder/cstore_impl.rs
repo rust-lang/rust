@@ -1,8 +1,5 @@
-use crate::creader::{CStore, LoadedMacro};
-use crate::foreign_modules;
-use crate::native_libs;
-use crate::rmeta::table::IsDefault;
-use crate::rmeta::AttrFlags;
+use std::any::Any;
+use std::mem;
 
 use rustc_ast as ast;
 use rustc_attr::Deprecation;
@@ -15,8 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
-use rustc_middle::query::ExternProviders;
-use rustc_middle::query::LocalCrate;
+use rustc_middle::query::{ExternProviders, LocalCrate};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
@@ -26,10 +22,11 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use std::any::Any;
-use std::mem;
-
 use super::{Decodable, DecodeContext, DecodeIterator};
+use crate::creader::{CStore, LoadedMacro};
+use crate::rmeta::table::IsDefault;
+use crate::rmeta::AttrFlags;
+use crate::{foreign_modules, native_libs};
 
 trait ProcessQueryValue<'tcx, T> {
     fn process_decoded(self, _tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> T;

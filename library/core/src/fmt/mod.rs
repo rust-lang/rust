@@ -4,13 +4,10 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
-use crate::iter;
 use crate::marker::PhantomData;
-use crate::mem;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
-use crate::result;
-use crate::str;
+use crate::{iter, mem, result, str};
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]
@@ -36,11 +33,10 @@ pub enum Alignment {
     Center,
 }
 
-#[stable(feature = "debug_builders", since = "1.2.0")]
-pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
 pub use self::builders::FormatterFn;
+#[stable(feature = "debug_builders", since = "1.2.0")]
+pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
 /// The type returned by formatter methods.
 ///
@@ -354,7 +350,7 @@ impl<'a> Arguments<'a> {
         Arguments { pieces, fmt: None, args }
     }
 
-    /// This function is used to specify nonstandard formatting parameters.
+    /// Specifies nonstandard formatting parameters.
     ///
     /// An `rt::UnsafeArg` is required because the following invariants must be held
     /// in order for this function to be safe:
@@ -396,7 +392,7 @@ impl<'a> Arguments<'a> {
 }
 
 impl<'a> Arguments<'a> {
-    /// Get the formatted string, if it has no arguments to be formatted at runtime.
+    /// Gets the formatted string, if it has no arguments to be formatted at runtime.
     ///
     /// This can be used to avoid allocations in some cases.
     ///
@@ -1129,8 +1125,8 @@ pub trait UpperExp {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
 
-/// The `write` function takes an output stream, and an `Arguments` struct
-/// that can be precompiled with the `format_args!` macro.
+/// Takes an output stream and an `Arguments` struct that can be precompiled with
+/// the `format_args!` macro.
 ///
 /// The arguments will be formatted according to the specified format string
 /// into the output stream provided.
@@ -1257,7 +1253,7 @@ impl PostPadding {
         PostPadding { fill, padding }
     }
 
-    /// Write this post padding.
+    /// Writes this post padding.
     pub(crate) fn write(self, f: &mut Formatter<'_>) -> Result {
         for _ in 0..self.padding {
             f.buf.write_char(self.fill)?;
@@ -1398,9 +1394,10 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// This function takes a string slice and emits it to the internal buffer
-    /// after applying the relevant formatting flags specified. The flags
-    /// recognized for generic strings are:
+    /// Takes a string slice and emits it to the internal buffer after applying
+    /// the relevant formatting flags specified.
+    ///
+    /// The flags recognized for generic strings are:
     ///
     /// * width - the minimum width of what to emit
     /// * fill/align - what to emit and where to emit it if the string
@@ -1474,9 +1471,10 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Write the pre-padding and return the unwritten post-padding. Callers are
-    /// responsible for ensuring post-padding is written after the thing that is
-    /// being padded.
+    /// Writes the pre-padding and returns the unwritten post-padding.
+    ///
+    /// Callers are responsible for ensuring post-padding is written after the
+    /// thing that is being padded.
     pub(crate) fn padding(
         &mut self,
         padding: usize,
@@ -1503,6 +1501,7 @@ impl<'a> Formatter<'a> {
     }
 
     /// Takes the formatted parts and applies the padding.
+    ///
     /// Assumes that the caller already has rendered the parts with required precision,
     /// so that `self.precision` can be ignored.
     ///
@@ -1655,7 +1654,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Flags for formatting
+    /// Returns flags for formatting.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(
@@ -1667,7 +1666,7 @@ impl<'a> Formatter<'a> {
         self.flags
     }
 
-    /// Character used as 'fill' whenever there is alignment.
+    /// Returns the character used as 'fill' whenever there is alignment.
     ///
     /// # Examples
     ///
@@ -1700,7 +1699,7 @@ impl<'a> Formatter<'a> {
         self.fill
     }
 
-    /// Flag indicating what form of alignment was requested.
+    /// Returns a flag indicating what form of alignment was requested.
     ///
     /// # Examples
     ///
@@ -1740,7 +1739,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Optionally specified integer width that the output should be.
+    /// Returns the optionally specified integer width that the output should be.
     ///
     /// # Examples
     ///
@@ -1770,8 +1769,8 @@ impl<'a> Formatter<'a> {
         self.width
     }
 
-    /// Optionally specified precision for numeric types. Alternatively, the
-    /// maximum width for string types.
+    /// Returns the optionally specified precision for numeric types.
+    /// Alternatively, the maximum width for string types.
     ///
     /// # Examples
     ///
@@ -1967,8 +1966,9 @@ impl<'a> Formatter<'a> {
         builders::debug_struct_new(self, name)
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 1 field.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 1 field.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field1_finish<'b>(
@@ -1982,8 +1982,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 2 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 2 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field2_finish<'b>(
@@ -2000,8 +2001,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 3 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 3 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field3_finish<'b>(
@@ -2021,8 +2023,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 4 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 4 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field4_finish<'b>(
@@ -2045,8 +2048,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 5 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 5 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field5_finish<'b>(
@@ -2072,7 +2076,7 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
     /// For the cases not covered by `debug_struct_field[12345]_finish`.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
@@ -2121,8 +2125,9 @@ impl<'a> Formatter<'a> {
         builders::debug_tuple_new(self, name)
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 1 field.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 1 field.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field1_finish<'b>(&'b mut self, name: &str, value1: &dyn Debug) -> Result {
@@ -2131,8 +2136,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 2 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 2 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field2_finish<'b>(
@@ -2147,8 +2153,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 3 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 3 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field3_finish<'b>(
@@ -2165,8 +2172,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 4 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 4 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field4_finish<'b>(
@@ -2185,8 +2193,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 5 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 5 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field5_finish<'b>(
@@ -2207,8 +2216,8 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// For the cases not covered by `debug_tuple_field[12345]_finish`.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. For the cases not covered by `debug_tuple_field[12345]_finish`.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_fields_finish<'b>(
@@ -2496,8 +2505,9 @@ impl<T: ?Sized> Pointer for *const T {
     }
 }
 
-/// Since the formatting will be identical for all pointer types, use a non-monomorphized
-/// implementation for the actual formatting to reduce the amount of codegen work needed.
+/// Since the formatting will be identical for all pointer types, uses a
+/// non-monomorphized implementation for the actual formatting to reduce the
+/// amount of codegen work needed.
 ///
 /// This uses `ptr_addr: usize` and not `ptr: *const ()` to be able to use this for
 /// `fn(...) -> ...` without using [problematic] "Oxford Casts".

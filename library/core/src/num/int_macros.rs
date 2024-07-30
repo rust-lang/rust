@@ -1223,6 +1223,7 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));")]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(", stringify!($BITS_MINUS_ONE), "), Some(0));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -2196,10 +2197,11 @@ macro_rules! int_impl {
             acc.wrapping_mul(base)
         }
 
-        /// Calculates `self` + `rhs`
+        /// Calculates `self` + `rhs`.
         ///
-        /// Returns a tuple of the addition along with a boolean indicating whether an arithmetic overflow would
-        /// occur. If an overflow would have occurred then the wrapped value is returned.
+        /// Returns a tuple of the addition along with a boolean indicating
+        /// whether an arithmetic overflow would occur. If an overflow would have
+        /// occurred then the wrapped value is returned.
         ///
         /// # Examples
         ///
@@ -2277,7 +2279,7 @@ macro_rules! int_impl {
             (c, b != d)
         }
 
-        /// Calculates `self` + `rhs` with an unsigned `rhs`
+        /// Calculates `self` + `rhs` with an unsigned `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2600,6 +2602,7 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT),".overflowing_shl(4), (0x10, false));")]
         /// assert_eq!(0x1i32.overflowing_shl(36), (0x10, true));
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(", stringify!($BITS_MINUS_ONE), "), (0, false));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
@@ -3389,7 +3392,7 @@ macro_rules! int_impl {
         #[inline(always)]
         pub const fn is_negative(self) -> bool { self < 0 }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// big-endian (network) byte order.
         ///
         #[doc = $to_xe_bytes_doc]
@@ -3409,7 +3412,7 @@ macro_rules! int_impl {
             self.to_be().to_ne_bytes()
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// little-endian byte order.
         ///
         #[doc = $to_xe_bytes_doc]
@@ -3429,7 +3432,7 @@ macro_rules! int_impl {
             self.to_le().to_ne_bytes()
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// native byte order.
         ///
         /// As the target platform's native endianness is used, portable code
@@ -3467,7 +3470,7 @@ macro_rules! int_impl {
             unsafe { mem::transmute(self) }
         }
 
-        /// Create an integer value from its representation as a byte array in
+        /// Creates an integer value from its representation as a byte array in
         /// big endian.
         ///
         #[doc = $from_xe_bytes_doc]
@@ -3496,7 +3499,7 @@ macro_rules! int_impl {
             Self::from_be(Self::from_ne_bytes(bytes))
         }
 
-        /// Create an integer value from its representation as a byte array in
+        /// Creates an integer value from its representation as a byte array in
         /// little endian.
         ///
         #[doc = $from_xe_bytes_doc]
@@ -3525,7 +3528,7 @@ macro_rules! int_impl {
             Self::from_le(Self::from_ne_bytes(bytes))
         }
 
-        /// Create an integer value from its memory representation as a byte
+        /// Creates an integer value from its memory representation as a byte
         /// array in native endianness.
         ///
         /// As the target platform's native endianness is used, portable code

@@ -709,18 +709,19 @@
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
+use std::fmt;
+
+#[cfg(feature = "rustc")]
+use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_index::bit_set::BitSet;
+use smallvec::{smallvec, SmallVec};
+use tracing::{debug, instrument};
+
 use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_index::bit_set::BitSet;
-use smallvec::{smallvec, SmallVec};
-use std::fmt;
-use tracing::{debug, instrument};
-
-#[cfg(feature = "rustc")]
-use rustc_data_structures::stack::ensure_sufficient_stack;
 #[cfg(not(feature = "rustc"))]
 pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()

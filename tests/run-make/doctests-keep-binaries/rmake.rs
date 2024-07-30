@@ -1,9 +1,10 @@
 // Check that valid binaries are persisted by running them, regardless of whether the
 // --run or --no-run option is used.
 
+use std::path::Path;
+
 use run_make_support::rfs::{create_dir, remove_dir_all};
 use run_make_support::{run, rustc, rustdoc};
-use std::path::Path;
 
 fn setup_test_env<F: FnOnce(&Path, &Path)>(callback: F) {
     let out_dir = Path::new("doctests");

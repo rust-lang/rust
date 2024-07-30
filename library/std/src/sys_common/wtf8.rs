@@ -23,16 +23,12 @@ use core::str::next_code_point;
 
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::iter::FusedIterator;
-use crate::mem;
-use crate::ops;
 use crate::rc::Rc;
-use crate::slice;
-use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::AsInner;
+use crate::{fmt, mem, ops, slice, str};
 
 const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 

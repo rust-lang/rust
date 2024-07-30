@@ -18,7 +18,6 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::def_id::LOCAL_CRATE;
-
 use rustdoc_json_types as types;
 
 use crate::clean::types::{ExternalCrate, ExternalLocation};

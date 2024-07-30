@@ -9,8 +9,7 @@
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;
-use crate::hash::Hash;
-use crate::hash::Hasher;
+use crate::hash::{Hash, Hasher};
 
 /// Implements a given marker trait for multiple types at the same time.
 ///
@@ -871,7 +870,7 @@ marker_impls! {
 ///
 /// *However*, you cannot use [`mem::replace`] on `!Unpin` data which is *pinned* by being wrapped
 /// inside a [`Pin<Ptr>`] pointing at it. This is because you cannot (safely) use a
-/// [`Pin<Ptr>`] to get an `&mut T` to its pointee value, which you would need to call
+/// [`Pin<Ptr>`] to get a `&mut T` to its pointee value, which you would need to call
 /// [`mem::replace`], and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:

@@ -1,7 +1,8 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use tracing::trace;
 
 use super::check::Qualifs;

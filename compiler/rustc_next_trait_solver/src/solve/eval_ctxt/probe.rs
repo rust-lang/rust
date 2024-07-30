@@ -5,8 +5,9 @@ use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::Candidate;
-use crate::solve::inspect;
-use crate::solve::{BuiltinImplSource, CandidateSource, EvalCtxt, NoSolution, QueryResult};
+use crate::solve::{
+    inspect, BuiltinImplSource, CandidateSource, EvalCtxt, NoSolution, QueryResult,
+};
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, D, I, F, T>
 where

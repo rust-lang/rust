@@ -1,7 +1,9 @@
-use crate::io::{self, BufWriter, IoSlice, Write};
 use core::slice::memchr;
 
+use crate::io::{self, BufWriter, IoSlice, Write};
+
 /// Private helper struct for implementing the line-buffered writing logic.
+///
 /// This shim temporarily wraps a BufWriter, and uses its internals to
 /// implement a line-buffered writer (specifically by using the internal
 /// methods like write_to_buf and flush_buf). In this way, a more
@@ -20,27 +22,27 @@ impl<'a, W: ?Sized + Write> LineWriterShim<'a, W> {
         Self { buffer }
     }
 
-    /// Get a reference to the inner writer (that is, the writer
+    /// Gets a reference to the inner writer (that is, the writer
     /// wrapped by the BufWriter).
     fn inner(&self) -> &W {
         self.buffer.get_ref()
     }
 
-    /// Get a mutable reference to the inner writer (that is, the writer
+    /// Gets a mutable reference to the inner writer (that is, the writer
     /// wrapped by the BufWriter). Be careful with this writer, as writes to
     /// it will bypass the buffer.
     fn inner_mut(&mut self) -> &mut W {
         self.buffer.get_mut()
     }
 
-    /// Get the content currently buffered in self.buffer
+    /// Gets the content currently buffered in self.buffer
     fn buffered(&self) -> &[u8] {
         self.buffer.buffer()
     }
 
-    /// Flush the buffer iff the last byte is a newline (indicating that an
+    /// Flushes the buffer iff the last byte is a newline (indicating that an
     /// earlier write only succeeded partially, and we want to retry flushing
-    /// the buffered line before continuing with a subsequent write)
+    /// the buffered line before continuing with a subsequent write).
     fn flush_if_completed_line(&mut self) -> io::Result<()> {
         match self.buffered().last().copied() {
             Some(b'\n') => self.buffer.flush_buf(),
@@ -50,10 +52,11 @@ impl<'a, W: ?Sized + Write> LineWriterShim<'a, W> {
 }
 
 impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
-    /// Write some data into this BufReader with line buffering. This means
-    /// that, if any newlines are present in the data, the data up to the last
-    /// newline is sent directly to the underlying writer, and data after it
-    /// is buffered. Returns the number of bytes written.
+    /// Writes some data into this BufReader with line buffering.
+    ///
+    /// This means that, if any newlines are present in the data, the data up to
+    /// the last newline is sent directly to the underlying writer, and data
+    /// after it is buffered. Returns the number of bytes written.
     ///
     /// This function operates on a "best effort basis"; in keeping with the
     /// convention of `Write::write`, it makes at most one attempt to write
@@ -136,11 +139,12 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
         self.buffer.flush()
     }
 
-    /// Write some vectored data into this BufReader with line buffering. This
-    /// means that, if any newlines are present in the data, the data up to
-    /// and including the buffer containing the last newline is sent directly
-    /// to the inner writer, and the data after it is buffered. Returns the
-    /// number of bytes written.
+    /// Writes some vectored data into this BufReader with line buffering.
+    ///
+    /// This means that, if any newlines are present in the data, the data up to
+    /// and including the buffer containing the last newline is sent directly to
+    /// the inner writer, and the data after it is buffered. Returns the number
+    /// of bytes written.
     ///
     /// This function operates on a "best effort basis"; in keeping with the
     /// convention of `Write::write`, it makes at most one attempt to write
@@ -245,10 +249,11 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
         self.inner().is_write_vectored()
     }
 
-    /// Write some data into this BufReader with line buffering. This means
-    /// that, if any newlines are present in the data, the data up to the last
-    /// newline is sent directly to the underlying writer, and data after it
-    /// is buffered.
+    /// Writes some data into this BufReader with line buffering.
+    ///
+    /// This means that, if any newlines are present in the data, the data up to
+    /// the last newline is sent directly to the underlying writer, and data
+    /// after it is buffered.
     ///
     /// Because this function attempts to send completed lines to the underlying
     /// writer, it will also flush the existing buffer if it contains any

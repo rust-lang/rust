@@ -2,26 +2,26 @@
 //! which folds deeply, invoking the underlying
 //! `normalize_canonicalized_projection_ty` query when it encounters projections.
 
-use crate::error_reporting::traits::OverflowCause;
-use crate::error_reporting::InferCtxtErrorExt;
-use crate::infer::at::At;
-use crate::infer::canonical::OriginalQueryValues;
-use crate::infer::{InferCtxt, InferOk};
-use crate::traits::normalize::needs_normalization;
-use crate::traits::Normalized;
-use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
-use crate::traits::{ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_macros::extension;
+pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::DUMMY_SP;
 
 use super::NoSolution;
-
-pub use rustc_middle::traits::query::NormalizationResult;
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::InferCtxtErrorExt;
+use crate::infer::at::At;
+use crate::infer::canonical::OriginalQueryValues;
+use crate::infer::{InferCtxt, InferOk};
+use crate::traits::normalize::needs_normalization;
+use crate::traits::{
+    BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer, PredicateObligation,
+    Reveal, ScrubbedTraitError,
+};
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
 impl<'cx, 'tcx> At<'cx, 'tcx> {

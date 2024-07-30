@@ -4,11 +4,12 @@
 // files are exactly what is expected, no more, no less.
 // See https://github.com/rust-lang/rust/pull/12020
 
+use std::path::PathBuf;
+
 use run_make_support::{
     bin_name, dynamic_lib_name, filename_not_in_denylist, rfs, rust_lib_name, rustc,
     shallow_find_files, static_lib_name,
 };
-use std::path::PathBuf;
 
 // Each test takes 4 arguments:
 // `must_exist`: output files which must be found - if any are absent, the test fails

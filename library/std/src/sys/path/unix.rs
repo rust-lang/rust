@@ -1,7 +1,6 @@
-use crate::env;
 use crate::ffi::OsStr;
-use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
+use crate::{env, io};
 
 #[inline]
 pub fn is_sep_byte(b: u8) -> bool {

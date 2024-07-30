@@ -36,14 +36,13 @@
 
 // FIXME(joboet): implement support for native TLS instead.
 
-use crate::mem::ManuallyDrop;
-use crate::ptr;
-use crate::sync::atomic::AtomicPtr;
-use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::arch::asm;
 
+use crate::mem::ManuallyDrop;
 use crate::os::xous::ffi::{map_memory, unmap_memory, MemoryFlags};
+use crate::ptr;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{AtomicPtr, AtomicUsize};
 
 pub type Key = usize;
 pub type Dtor = unsafe extern "C" fn(*mut u8);
@@ -79,7 +78,7 @@ fn tls_ptr_addr() -> *mut *mut u8 {
     core::ptr::with_exposed_provenance_mut::<*mut u8>(tp)
 }
 
-/// Create an area of memory that's unique per thread. This area will
+/// Creates an area of memory that's unique per thread. This area will
 /// contain all thread local pointers.
 fn tls_table() -> &'static mut [*mut u8] {
     let tp = tls_ptr_addr();

@@ -5,13 +5,6 @@
 //! allows setting up things that cannot be simply captured inside the config.toml, in addition to
 //! leading people away from manually editing most of the config.toml values.
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::t;
-use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
-use crate::utils::exec::command;
-use crate::utils::helpers::{self, hex_encode};
-use crate::Config;
-use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
@@ -19,6 +12,14 @@ use std::io::Write;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 use std::str::FromStr;
 use std::{fmt, fs, io};
+
+use sha2::Digest;
+
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
+use crate::utils::exec::command;
+use crate::utils::helpers::{self, hex_encode};
+use crate::{t, Config};
 
 #[cfg(test)]
 mod tests;
@@ -275,7 +276,7 @@ impl Step for Link {
 }
 
 fn rustup_installed(builder: &Builder<'_>) -> bool {
-    command("rustup").capture_stdout().arg("--version").run(builder).is_success()
+    command("rustup").arg("--version").run_capture_stdout(builder).is_success()
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
@@ -313,10 +314,9 @@ fn attempt_toolchain_link(builder: &Builder<'_>, stage_path: &str) {
 
 fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
     match command("rustup")
-        .capture_stdout()
         .allow_failure()
         .args(["toolchain", "list"])
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
     {
         Some(toolchain_list) => {
@@ -341,9 +341,8 @@ fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
 
 fn try_link_toolchain(builder: &Builder<'_>, stage_path: &str) -> bool {
     command("rustup")
-        .capture_stdout()
         .args(["toolchain", "link", "stage1", stage_path])
-        .run(builder)
+        .run_capture_stdout(builder)
         .is_success()
 }
 
@@ -481,9 +480,8 @@ impl Step for Hook {
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<()> {
     let git = helpers::git(Some(&config.src))
-        .capture()
         .args(["rev-parse", "--git-common-dir"])
-        .run(builder)
+        .run_capture(builder)
         .stdout();
     let git = PathBuf::from(git.trim());
     let hooks_dir = git.join("hooks");

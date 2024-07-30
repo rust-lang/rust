@@ -2,9 +2,10 @@
 
 #![cfg_attr(feature = "build-metrics", allow(unused))]
 
-use clap::Parser;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use clap::Parser;
 
 use crate::core::build_steps::tool::Tool;
 use crate::core::builder::Builder;
@@ -14,10 +15,9 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
     let git_config = builder.config.git_config();
     let suggestions = builder
         .tool_cmd(Tool::SuggestTests)
-        .capture_stdout()
         .env("SUGGEST_TESTS_GIT_REPOSITORY", git_config.git_repository)
         .env("SUGGEST_TESTS_NIGHTLY_BRANCH", git_config.nightly_branch)
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout();
 
     let suggestions = suggestions

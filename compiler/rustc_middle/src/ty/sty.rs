@@ -2,14 +2,11 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use crate::infer::canonical::Canonical;
-use crate::ty::InferTy::*;
-use crate::ty::{
-    self, AdtDef, BoundRegionKind, Discr, Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
-};
-use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
-use crate::ty::{List, ParamEnv};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::iter;
+use std::ops::{ControlFlow, Range};
+
 use hir::def::{CtorKind, DefKind};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
@@ -22,16 +19,17 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi;
 use rustc_type_ir::visit::TypeVisitableExt;
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::{ControlFlow, Range};
-use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
-
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
 use super::GenericParamDefKind;
+use crate::infer::canonical::Canonical;
+use crate::ty::InferTy::*;
+use crate::ty::{
+    self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
 #[rustc_diagnostic_item = "TyKind"]
@@ -1966,8 +1964,9 @@ impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ty::RegionKind<'_>, 24);
     static_assert_size!(ty::TyKind<'_>, 32);

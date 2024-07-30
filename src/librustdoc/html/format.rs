@@ -12,11 +12,10 @@ use std::cell::Cell;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
-use rustc_ast as ast;
+use itertools::Itertools;
 use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_metadata::creader::{CStore, LoadedMacro};
@@ -25,20 +24,17 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
+use {rustc_ast as ast, rustc_hir as hir};
 
-use itertools::Itertools;
-
-use crate::clean::{
-    self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, PrimitiveType,
-};
+use super::url_parts_builder::{estimate_item_path_byte_length, UrlPartsBuilder};
+use crate::clean::types::ExternalLocation;
+use crate::clean::utils::find_nearest_parent_module;
+use crate::clean::{self, ExternalCrate, PrimitiveType};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
-
-use super::url_parts_builder::estimate_item_path_byte_length;
-use super::url_parts_builder::UrlPartsBuilder;
 
 pub(crate) trait Print {
     fn print(self, buffer: &mut Buffer);
@@ -375,7 +371,7 @@ impl clean::Lifetime {
     }
 }
 
-impl clean::Constant {
+impl clean::ConstantKind {
     pub(crate) fn print(&self, tcx: TyCtxt<'_>) -> impl Display + '_ {
         let expr = self.expr(tcx);
         display_fn(
@@ -992,6 +988,7 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
                 f,
                 r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
                 path = join_with_double_colon(&fqp),
+                text = EscapeBodyText(text.as_str()),
             )
         } else {
             f.write_str(text.as_str())

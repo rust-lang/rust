@@ -16,6 +16,9 @@
 //! constructions produced by proc macros. This pass is only intended for simple checks that do not
 //! require name resolution or type checking, or other kinds of complex analysis.
 
+use std::mem;
+use std::ops::{Deref, DerefMut};
+
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
@@ -34,8 +37,6 @@ use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use std::mem;
-use std::ops::{Deref, DerefMut};
 use thin_vec::thin_vec;
 
 use crate::errors::{self, TildeConstReason};

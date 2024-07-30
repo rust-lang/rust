@@ -1,13 +1,9 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::errors::CannotDetermineMacroResolution;
-use crate::errors::{self, AddAsNonDerive, CannotFindIdentInThisScope};
-use crate::errors::{MacroExpectedFound, RemoveSurroundingDerive};
-use crate::Namespace::*;
-use crate::{BindingKey, BuiltinMacroState, Determinacy, MacroData, NameBindingKind, Used};
-use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
-use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
+use std::cell::Cell;
+use std::mem;
+
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, attr, Crate, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
@@ -15,8 +11,10 @@ use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
-use rustc_expand::base::{Annotatable, DeriveResolution, Indeterminate, ResolverExpand};
-use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{
+    Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
+    SyntaxExtensionKind,
+};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
@@ -24,8 +22,7 @@ use rustc_expand::expand::{
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::RegisteredTools;
-use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, SOFT_UNSTABLE,
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACROS, UNUSED_MACRO_RULES,
@@ -34,12 +31,20 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
-use rustc_span::hygiene::{AstPass, MacroKind};
+use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use std::cell::Cell;
-use std::mem;
+
+use crate::errors::{
+    self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
+    MacroExpectedFound, RemoveSurroundingDerive,
+};
+use crate::Namespace::*;
+use crate::{
+    BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, MacroData, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
+    Resolver, ScopeSet, Segment, ToNameBinding, Used,
+};
 
 type Res = def::Res<NodeId>;
 

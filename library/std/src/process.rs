@@ -151,21 +151,18 @@
 #[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx", target_os = "xous"))))]
 mod tests;
 
-use crate::io::prelude::*;
-
 use crate::convert::Infallible;
 use crate::ffi::OsStr;
-use crate::fmt;
-use crate::fs;
+use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::num::NonZero;
 use crate::path::Path;
-use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
 use crate::sys::process as imp;
 #[stable(feature = "command_access", since = "1.57.0")]
 pub use crate::sys_common::process::CommandEnvs;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{fmt, fs, str};
 
 /// Representation of a running or exited child process.
 ///
@@ -2056,7 +2053,7 @@ impl ExitCode {
     // representation of an ExitCode
     //
     // More info: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
-    /// Convert an `ExitCode` into an i32
+    /// Converts an `ExitCode` into an i32
     #[unstable(
         feature = "process_exitcode_internals",
         reason = "exposed only for libstd",
@@ -2079,7 +2076,7 @@ impl Default for ExitCode {
 
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 impl From<u8> for ExitCode {
-    /// Construct an `ExitCode` from an arbitrary u8 value.
+    /// Constructs an `ExitCode` from an arbitrary u8 value.
     fn from(code: u8) -> Self {
         ExitCode(imp::ExitCode::from(code))
     }

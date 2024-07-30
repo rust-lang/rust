@@ -4,8 +4,7 @@
 //@ ignore-cross-compile
 //@ only-unix
 
-use run_make_support::llvm;
-use run_make_support::{diff, dynamic_lib_name, is_darwin, run, run_fail, rustc};
+use run_make_support::{diff, dynamic_lib_name, is_darwin, llvm, run, run_fail, rustc};
 
 fn llvm_readobj() -> llvm::LlvmReadobj {
     let mut cmd = llvm::llvm_readobj();

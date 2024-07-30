@@ -1,12 +1,11 @@
-use super::*;
-
-use crate::DiagCtxt;
-use rustc_span::source_map::FilePathMapping;
-use rustc_span::BytePos;
-
 use std::str;
 
+use rustc_span::source_map::FilePathMapping;
+use rustc_span::BytePos;
 use serde::Deserialize;
+
+use super::*;
+use crate::DiagCtxt;
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]
 struct TestData {

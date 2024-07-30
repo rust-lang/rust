@@ -1,6 +1,7 @@
-use super::BackendTypes;
 use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
 use rustc_target::abi;
+
+use super::BackendTypes;
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors

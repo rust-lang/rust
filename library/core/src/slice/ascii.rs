@@ -1,11 +1,9 @@
 //! Operations on ASCII `[u8]`.
 
-use crate::ascii;
-use crate::fmt::{self, Write};
-use crate::iter;
-use crate::mem;
-use crate::ops;
 use core::ascii::EscapeDefault;
+
+use crate::fmt::{self, Write};
+use crate::{ascii, iter, mem, ops};
 
 #[cfg(not(test))]
 impl [u8] {

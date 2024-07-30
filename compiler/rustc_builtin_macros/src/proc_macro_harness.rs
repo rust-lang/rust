@@ -1,4 +1,5 @@
-use crate::errors;
+use std::mem;
+
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, attr, NodeId};
@@ -13,8 +14,9 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
-use std::mem;
 use thin_vec::{thin_vec, ThinVec};
+
+use crate::errors;
 
 struct ProcMacroDerive {
     id: NodeId,

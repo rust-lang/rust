@@ -5,9 +5,10 @@
 //@ ignore-msvc
 //@ ignore-s390x lld does not yet support s390x as target
 
+use std::process::Output;
+
 use run_make_support::regex::Regex;
 use run_make_support::rustc;
-use std::process::Output;
 
 fn main() {
     // Opt-in to lld and the self-contained linker, to link with rust-lld. We'll check that by

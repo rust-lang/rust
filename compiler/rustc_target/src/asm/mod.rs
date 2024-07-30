@@ -1,10 +1,12 @@
-use crate::spec::Target;
-use crate::{abi::Size, spec::RelocModel};
+use std::fmt;
+use std::str::FromStr;
+
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
-use std::fmt;
-use std::str::FromStr;
+
+use crate::abi::Size;
+use crate::spec::{RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,

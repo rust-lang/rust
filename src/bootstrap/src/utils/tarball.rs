@@ -7,8 +7,8 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::core::builder::Builder;
-use crate::core::{build_steps::dist::distdir, builder::Kind};
+use crate::core::build_steps::dist::distdir;
+use crate::core::builder::{Builder, Kind};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{move_file, t};
 use crate::utils::{channel, helpers};
@@ -370,11 +370,10 @@ impl<'a> Tarball<'a> {
         if self.builder.rust_info().is_managed_git_subrepository() {
             // %ct means committer date
             let timestamp = helpers::git(Some(&self.builder.src))
-                .capture_stdout()
                 .arg("log")
                 .arg("-1")
                 .arg("--format=%ct")
-                .run(self.builder)
+                .run_capture_stdout(self.builder)
                 .stdout();
             cmd.args(["--override-file-mtime", timestamp.trim()]);
         }

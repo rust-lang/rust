@@ -1,7 +1,6 @@
 use super::Once;
-use crate::panic;
 use crate::sync::mpsc::channel;
-use crate::thread;
+use crate::{panic, thread};
 
 #[test]
 fn smoke_once() {

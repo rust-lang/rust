@@ -1,13 +1,12 @@
-use std::io::{self, prelude::Write};
+use std::io::prelude::Write;
+use std::io::{self};
 use std::time::Duration;
 
 use super::OutputFormatter;
-use crate::{
-    console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation},
-    test_result::TestResult,
-    time,
-    types::{TestDesc, TestType},
-};
+use crate::console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation};
+use crate::test_result::TestResult;
+use crate::time;
+use crate::types::{TestDesc, TestType};
 
 pub struct JunitFormatter<T> {
     out: OutputLocation<T>,

@@ -6,9 +6,10 @@
 //@ ignore-stable
 //@ only-x86_64-unknown-linux-gnu
 
+use std::process::Output;
+
 use run_make_support::regex::Regex;
 use run_make_support::rustc;
-use std::process::Output;
 
 fn main() {
     // A regular compilation should use rust-lld by default. We'll check that by asking the linker

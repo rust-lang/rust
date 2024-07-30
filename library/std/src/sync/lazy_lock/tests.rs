@@ -1,13 +1,8 @@
-use crate::{
-    cell::LazyCell,
-    panic,
-    sync::{
-        atomic::{AtomicUsize, Ordering::SeqCst},
-        Mutex,
-    },
-    sync::{LazyLock, OnceLock},
-    thread,
-};
+use crate::cell::LazyCell;
+use crate::sync::atomic::AtomicUsize;
+use crate::sync::atomic::Ordering::SeqCst;
+use crate::sync::{LazyLock, Mutex, OnceLock};
+use crate::{panic, thread};
 
 fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
     thread::spawn(f).join().unwrap()

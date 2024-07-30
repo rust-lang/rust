@@ -1,7 +1,6 @@
 //@ ignore-cross-compile
 
-use run_make_support::rfs;
-use run_make_support::{assert_contains, run, rustc};
+use run_make_support::{assert_contains, rfs, run, rustc};
 
 fn main() {
     // The tests must pass...

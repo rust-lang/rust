@@ -10,7 +10,6 @@ use object::{
     elf, pe, xcoff, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
     ObjectSymbol, SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope,
 };
-
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::creader::MetadataLoader;
@@ -656,7 +655,13 @@ pub fn create_metadata_file_for_wasm(sess: &Session, data: &[u8], section_name: 
         imports.import(
             "env",
             "__linear_memory",
-            wasm_encoder::MemoryType { minimum: 0, maximum: None, memory64: true, shared: false },
+            wasm_encoder::MemoryType {
+                minimum: 0,
+                maximum: None,
+                memory64: true,
+                shared: false,
+                page_size_log2: None,
+            },
         );
     }
 

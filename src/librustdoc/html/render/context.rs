@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
+use rinja::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
@@ -14,15 +15,12 @@ use rustc_span::{sym, FileName, Symbol};
 
 use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
+use super::sidebar::{print_sidebar, sidebar_module_like, Sidebar};
 use super::write_shared::write_shared;
-use super::{
-    collect_spans_and_sources, scrape_examples_help,
-    sidebar::print_sidebar,
-    sidebar::{sidebar_module_like, Sidebar},
-    AllTypes, LinkFromSrc, StylePath,
-};
+use super::{collect_spans_and_sources, scrape_examples_help, AllTypes, LinkFromSrc, StylePath};
+use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
-use crate::clean::{self, types::ExternalLocation, ExternalCrate};
+use crate::clean::{self, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -36,7 +34,6 @@ use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
-use rinja::Template;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls

@@ -56,10 +56,12 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
         StorageDead(_2);
         StorageLive(_5);
         _5 = ((*_1).1: usize);
+        StorageLive(_6);
         _6 = *const [u8] from (_4, _5);
+        _0 = &(*_6);
+        StorageDead(_6);
         StorageDead(_5);
         StorageDead(_4);
-        _0 = &(*_6);
         return;
     }
 }

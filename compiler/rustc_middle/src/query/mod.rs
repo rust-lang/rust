@@ -6,58 +6,14 @@
 
 #![allow(unused_parens)]
 
-use crate::dep_graph;
-use crate::infer::canonical::{self, Canonical};
-use crate::lint::LintExpectation;
-use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
-use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
-use crate::middle::lib_features::LibFeatures;
-use crate::middle::privacy::EffectiveVisibilities;
-use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
-use crate::middle::stability::{self, DeprecationEntry};
-use crate::mir;
-use crate::mir::interpret::GlobalId;
-use crate::mir::interpret::{
-    EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
-    EvalToValTreeResult,
-};
-use crate::mir::interpret::{LitToConstError, LitToConstInput};
-use crate::mir::mono::CodegenUnit;
-use crate::query::erase::{erase, restore, Erase};
-use crate::query::plumbing::{
-    query_ensure, query_ensure_error_guaranteed, query_get_at, CyclePlaceholder, DynamicQuery,
-};
-use crate::thir;
-use crate::traits::query::{
-    CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
-};
-use crate::traits::query::{
-    DropckConstraint, DropckOutlivesResult, MethodAutoderefStepsResult, NormalizationResult,
-    OutlivesBound,
-};
-use crate::traits::specialization_graph;
-use crate::traits::{
-    CodegenObligationError, EvaluationResult, ImplSource, ObjectSafetyViolation, ObligationCause,
-    OverflowError, WellFormedLoc,
-};
-use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::layout::ValidityRequirement;
-use crate::ty::print::PrintTraitRefExt;
-use crate::ty::util::AlwaysRequiresDrop;
-use crate::ty::TyCtxtFeed;
-use crate::ty::{
-    self, print::describe_as_module, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt,
-    UnusedGenericParams,
-};
-use crate::ty::{GenericArg, GenericArgsRef};
+use std::mem;
+use std::ops::Deref;
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use rustc_arena::TypedArena;
-use rustc_ast as ast;
-use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
-use rustc_attr as attr;
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::StrippedCfgItem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
@@ -65,7 +21,6 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
@@ -77,8 +32,9 @@ use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{try_get_cached, QueryCache, QueryMode, QueryState};
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
-use rustc_session::cstore::{CrateDepKind, CrateSource};
-use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
+use rustc_session::cstore::{
+    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+};
 use rustc_session::lint::LintExpectationId;
 use rustc_session::Limits;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -86,10 +42,47 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
-use std::mem;
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::Arc;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+
+use crate::infer::canonical::{self, Canonical};
+use crate::lint::LintExpectation;
+use crate::metadata::ModChild;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use crate::middle::lib_features::LibFeatures;
+use crate::middle::privacy::EffectiveVisibilities;
+use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
+use crate::middle::stability::{self, DeprecationEntry};
+use crate::mir::interpret::{
+    EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
+    EvalToValTreeResult, GlobalId, LitToConstError, LitToConstInput,
+};
+use crate::mir::mono::CodegenUnit;
+use crate::query::erase::{erase, restore, Erase};
+use crate::query::plumbing::{
+    query_ensure, query_ensure_error_guaranteed, query_get_at, CyclePlaceholder, DynamicQuery,
+};
+use crate::traits::query::{
+    CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, DropckConstraint,
+    DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
+    OutlivesBound,
+};
+use crate::traits::{
+    specialization_graph, CodegenObligationError, EvaluationResult, ImplSource,
+    ObjectSafetyViolation, ObligationCause, OverflowError, WellFormedLoc,
+};
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::layout::ValidityRequirement;
+use crate::ty::print::{describe_as_module, PrintTraitRefExt};
+use crate::ty::util::AlwaysRequiresDrop;
+use crate::ty::{
+    self, CrateInherentImpls, GenericArg, GenericArgsRef, ParamEnvAnd, Ty, TyCtxt, TyCtxtFeed,
+    UnusedGenericParams,
+};
+use crate::{dep_graph, mir, thir};
 
 pub mod erase;
 mod keys;

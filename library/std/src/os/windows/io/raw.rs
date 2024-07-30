@@ -2,16 +2,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fs;
-use crate::io;
-use crate::net;
 #[cfg(doc)]
 use crate::os::windows::io::{AsHandle, AsSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
-use crate::ptr;
-use crate::sys;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::{fs, io, net, ptr, sys};
 
 /// Raw HANDLEs.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -44,7 +40,7 @@ pub trait AsRawHandle {
     fn as_raw_handle(&self) -> RawHandle;
 }
 
-/// Construct I/O objects from raw handles.
+/// Constructs I/O objects from raw handles.
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawHandle {
     /// Constructs a new I/O object from the specified raw handle.

@@ -8,24 +8,23 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::{env, io};
+
+use build_helper::ci::CiEnv;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::channel;
+use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date,
 };
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
-
-use crate::utils::exec::command;
-use build_helper::ci::CiEnv;
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -89,7 +88,7 @@ impl LdFlags {
 /// if not).
 pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
     // If we have llvm submodule initialized already, sync it.
-    builder.update_existing_submodule(&Path::new("src").join("llvm-project"));
+    builder.update_existing_submodule("src/llvm-project");
 
     builder.config.maybe_download_ci_llvm();
 
@@ -110,7 +109,8 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
     }
 
     // Initialize the llvm submodule if not initialized already.
-    builder.update_submodule(&Path::new("src").join("llvm-project"));
+    // If submodules are disabled, this does nothing.
+    builder.update_submodule("src/llvm-project");
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
@@ -471,7 +471,7 @@ impl Step for Llvm {
                 builder.ensure(Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
                 let llvm_bindir =
-                    command(&llvm_config).capture_stdout().arg("--bindir").run(builder).stdout();
+                    command(&llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
                 let host_bin = Path::new(llvm_bindir.trim());
                 cfg.define(
                     "LLVM_TABLEGEN",
@@ -522,7 +522,7 @@ impl Step for Llvm {
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
             let version =
-                command(&res.llvm_config).capture_stdout().arg("--version").run(builder).stdout();
+                command(&res.llvm_config).arg("--version").run_capture_stdout(builder).stdout();
             let major = version.split('.').next().unwrap();
 
             match &llvm_version_suffix {
@@ -578,7 +578,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
         return;
     }
 
-    let version = command(llvm_config).capture_stdout().arg("--version").run(builder).stdout();
+    let version = command(llvm_config).arg("--version").run_capture_stdout(builder).stdout();
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
         if major >= 17 {
@@ -1197,7 +1197,10 @@ impl Step for CrtBeginEnd {
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(Path::new("src/llvm-project"));
+        builder.require_submodule(
+            "src/llvm-project",
+            Some("The LLVM sources are required for the CRT from `compiler-rt`."),
+        );
 
         let out_dir = builder.native_dir(self.target).join("crt");
 
@@ -1270,7 +1273,10 @@ impl Step for Libunwind {
 
     /// Build libunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(Path::new("src/llvm-project"));
+        builder.require_submodule(
+            "src/llvm-project",
+            Some("The LLVM sources are required for libunwind."),
+        );
 
         if builder.config.dry_run() {
             return PathBuf::new();

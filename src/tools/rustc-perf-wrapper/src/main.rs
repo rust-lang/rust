@@ -1,7 +1,9 @@
-use crate::config::{Profile, Scenario};
-use clap::Parser;
 use std::path::PathBuf;
 use std::process::Command;
+
+use clap::Parser;
+
+use crate::config::{Profile, Scenario};
 
 mod config;
 

@@ -2,7 +2,6 @@
 
 use core::any::Any;
 use core::ops::Deref;
-
 use std::boxed::Box;
 
 #[test]

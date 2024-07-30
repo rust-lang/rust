@@ -2,10 +2,8 @@
 //! read the arguments that are built up.
 
 use std::ffi::{OsStr, OsString};
-use std::fmt;
-use std::io;
-use std::mem;
 use std::process::{self, Output};
+use std::{fmt, io, mem};
 
 use rustc_target::spec::LldFlavor;
 

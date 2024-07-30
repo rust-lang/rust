@@ -42,16 +42,17 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 
-use super::{DepContext, FingerprintStyle};
-use crate::ich::StableHashingContext;
+use std::fmt;
+use std::hash::Hash;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
 use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable};
-use std::fmt;
-use std::hash::Hash;
+
+use super::{DepContext, FingerprintStyle};
+use crate::ich::StableHashingContext;
 
 /// This serves as an index into arrays built by `make_dep_kind_array`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -312,8 +313,9 @@ impl StableOrd for WorkProductId {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(DepKind, 2);
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

@@ -46,12 +46,10 @@
 
 #![unstable(feature = "solid_ext", issue = "none")]
 
-use crate::fmt;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
-use crate::net;
-use crate::sys;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::{fmt, net, sys};
 
 /// Raw file descriptors.
 pub type RawFd = i32;
@@ -98,7 +96,7 @@ pub struct OwnedFd {
 }
 
 impl BorrowedFd<'_> {
-    /// Return a `BorrowedFd` holding the given raw file descriptor.
+    /// Returns a `BorrowedFd` holding the given raw file descriptor.
     ///
     /// # Safety
     ///

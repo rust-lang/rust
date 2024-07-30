@@ -8,11 +8,9 @@
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters.
 
-use super::elaborate;
+use std::iter;
+use std::ops::ControlFlow;
 
-use crate::infer::TyCtxtInferExt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{util, Obligation, ObligationCause};
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -27,9 +25,10 @@ use rustc_span::Span;
 use rustc_target::abi::Abi;
 use smallvec::SmallVec;
 
-use std::iter;
-use std::ops::ControlFlow;
-
+use super::elaborate;
+use crate::infer::TyCtxtInferExt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{util, Obligation, ObligationCause};
 pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
 
 /// Returns the object safety violations that affect HIR ty lowering.

@@ -9,10 +9,11 @@
 //! Thomas Lengauer and Robert Endre Tarjan.
 //! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
-use super::ControlFlowGraph;
+use std::cmp::Ordering;
+
 use rustc_index::{Idx, IndexSlice, IndexVec};
 
-use std::cmp::Ordering;
+use super::ControlFlowGraph;
 
 #[cfg(test)]
 mod tests;

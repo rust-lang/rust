@@ -18,17 +18,15 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fmt::Display;
 use std::fs::{self, File};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str;
 use std::sync::OnceLock;
 use std::time::SystemTime;
+use std::{env, io, str};
 
-use build_helper::ci::{gha, CiEnv};
+use build_helper::ci::gha;
 use build_helper::exit;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
@@ -37,10 +35,8 @@ use utils::helpers::hex_encode;
 
 use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{flags, LldMode};
-use crate::core::config::{DryRun, Target};
-use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput};
+use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
+use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
@@ -49,6 +45,7 @@ mod utils;
 pub use core::builder::PathSet;
 pub use core::config::flags::Subcommand;
 pub use core::config::Config;
+
 pub use utils::change_tracker::{
     find_recent_config_change_ids, human_readable_changes, CONFIG_CHANGE_HISTORY,
 };
@@ -171,7 +168,6 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
-    ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
 
@@ -403,7 +399,6 @@ impl Build {
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
-            ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
 
@@ -441,7 +436,13 @@ impl Build {
             // Cargo.toml files.
             let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
-                build.update_submodule(Path::new(s));
+                build.require_submodule(
+                    s,
+                    Some(
+                        "The submodule is required for the standard library \
+                         and the main Cargo workspace.",
+                    ),
+                );
             }
             // Now, update all existing submodules.
             build.update_existing_submodules();
@@ -470,12 +471,17 @@ impl Build {
         build
     }
 
-    // modified from `check_submodule` and `update_submodule` in bootstrap.py
     /// Given a path to the directory of a submodule, update it.
     ///
     /// `relative_path` should be relative to the root of the git repository, not an absolute path.
-    pub(crate) fn update_submodule(&self, relative_path: &Path) {
-        if !self.config.submodules(self.rust_info()) {
+    ///
+    /// This *does not* update the submodule if `config.toml` explicitly says
+    /// not to, or if we're not in a git repository (like a plain source
+    /// tarball). Typically [`Build::require_submodule`] should be
+    /// used instead to provide a nice error to the user if the submodule is
+    /// missing.
+    fn update_submodule(&self, relative_path: &str) {
+        if !self.config.submodules() {
             return;
         }
 
@@ -496,21 +502,21 @@ impl Build {
         // Therefore, all commands below are marked with `run_always()`, so that they also run in
         // dry run mode.
         let submodule_git = || {
-            let mut cmd = helpers::git(Some(&absolute_path)).capture_stdout();
+            let mut cmd = helpers::git(Some(&absolute_path));
             cmd.run_always();
             cmd
         };
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = submodule_git().args(["rev-parse", "HEAD"]).run(self).stdout();
+        let checked_out_hash =
+            submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(self).stdout();
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
         let recorded = helpers::git(Some(&self.src))
-            .capture_stdout()
             .run_always()
             .args(["ls-tree", "HEAD"])
             .arg(relative_path)
-            .run(self)
+            .run_capture_stdout(self)
             .stdout();
         let actual_hash = recorded
             .split_whitespace()
@@ -522,7 +528,7 @@ impl Build {
             return;
         }
 
-        println!("Updating submodule {}", relative_path.display());
+        println!("Updating submodule {relative_path}");
         helpers::git(Some(&self.src))
             .run_always()
             .args(["submodule", "-q", "sync"])
@@ -534,11 +540,10 @@ impl Build {
             // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
             // even though that has no relation to the upstream for the submodule.
             let current_branch = helpers::git(Some(&self.src))
-                .capture_stdout()
                 .allow_failure()
                 .run_always()
                 .args(["symbolic-ref", "--short", "HEAD"])
-                .run(self)
+                .run_capture_stdout(self)
                 .stdout_if_ok()
                 .map(|s| s.trim().to_owned());
 
@@ -557,17 +562,14 @@ impl Build {
             git.arg(relative_path);
             git
         };
-        if !update(true).run(self).is_success() {
+        if !update(true).run(self) {
             update(false).run(self);
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
-        let has_local_modifications = submodule_git()
-            .allow_failure()
-            .args(["diff-index", "--quiet", "HEAD"])
-            .run(self)
-            .is_failure();
+        let has_local_modifications =
+            !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(self);
         if has_local_modifications {
             submodule_git().args(["stash", "push"]).run(self);
         }
@@ -580,39 +582,81 @@ impl Build {
         }
     }
 
+    /// Updates a submodule, and exits with a failure if submodule management
+    /// is disabled and the submodule does not exist.
+    ///
+    /// The given submodule name should be its path relative to the root of
+    /// the main repository.
+    ///
+    /// The given `err_hint` will be shown to the user if the submodule is not
+    /// checked out and submodule management is disabled.
+    pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        // When testing bootstrap itself, it is much faster to ignore
+        // submodules. Almost all Steps work fine without their submodules.
+        if cfg!(test) && !self.config.submodules() {
+            return;
+        }
+        self.update_submodule(submodule);
+        let absolute_path = self.config.src.join(submodule);
+        if dir_is_empty(&absolute_path) {
+            let maybe_enable = if !self.config.submodules()
+                && self.config.rust_info.is_managed_git_subrepository()
+            {
+                "\nConsider setting `build.submodules = true` or manually initializing the submodules."
+            } else {
+                ""
+            };
+            let err_hint = err_hint.map_or_else(String::new, |e| format!("\n{e}"));
+            eprintln!(
+                "submodule {submodule} does not appear to be checked out, \
+                 but it is required for this step{maybe_enable}{err_hint}"
+            );
+            exit!(1);
+        }
+    }
+
+    /// Updates all submodules, and exits with an error if submodule
+    /// management is disabled and the submodule does not exist.
+    pub fn require_and_update_all_submodules(&self) {
+        for submodule in build_helper::util::parse_gitmodules(&self.src) {
+            self.require_submodule(submodule, None);
+        }
+    }
+
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
-    pub fn update_existing_submodules(&self) {
-        // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(self.rust_info()) {
+    fn update_existing_submodules(&self) {
+        // Avoid running git when there isn't a git checkout, or the user has
+        // explicitly disabled submodules in `config.toml`.
+        if !self.config.submodules() {
             return;
         }
         let output = helpers::git(Some(&self.src))
-            .capture()
             .args(["config", "--file"])
             .arg(self.config.src.join(".gitmodules"))
             .args(["--get-regexp", "path"])
-            .run(self)
+            .run_capture(self)
             .stdout();
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = Path::new(line.split_once(' ').unwrap().1);
+            let submodule = line.split_once(' ').unwrap().1;
+            let path = Path::new(submodule);
             // Don't update the submodule unless it's already been cloned.
-            if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+            if GitInfo::new(false, path).is_managed_git_subrepository() {
                 self.update_submodule(submodule);
             }
         }
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(&self, submodule: &Path) {
+    pub fn update_existing_submodule(&self, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(self.rust_info()) {
+        if !self.config.submodules() {
             return;
         }
 
-        if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+        if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
             self.update_submodule(submodule);
         }
     }
@@ -870,14 +914,14 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
             s.to_path_buf()
         } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).capture_stdout().arg("--bindir").run(self).stdout();
+            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
             let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
             if filecheck.exists() {
                 filecheck
             } else {
                 // On Fedora the system LLVM installs FileCheck in the
                 // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).capture_stdout().arg("--libdir").run(self).stdout();
+                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
                 let lib_filecheck =
                     Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
                 if lib_filecheck.exists() {
@@ -944,7 +988,12 @@ impl Build {
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
     #[track_caller]
-    fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
+    fn run(
+        &self,
+        command: &mut BootstrapCommand,
+        stdout: OutputMode,
+        stderr: OutputMode,
+    ) -> CommandOutput {
         command.mark_as_executed();
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
@@ -957,19 +1006,20 @@ impl Build {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
         });
 
-        let stdout = command.stdout.stdio();
-        command.as_command_mut().stdout(stdout);
-        let stderr = command.stderr.stdio();
-        command.as_command_mut().stderr(stderr);
+        let cmd = command.as_command_mut();
+        cmd.stdout(stdout.stdio());
+        cmd.stderr(stderr.stdio());
 
-        let output = command.as_command_mut().output();
+        let output = cmd.output();
 
         use std::fmt::Write;
 
         let mut message = String::new();
         let output: CommandOutput = match output {
             // Command has succeeded
-            Ok(output) if output.status.success() => output.into(),
+            Ok(output) if output.status.success() => {
+                CommandOutput::from_output(output, stdout, stderr)
+            }
             // Command has started, but then it failed
             Ok(output) => {
                 writeln!(
@@ -983,15 +1033,15 @@ Executed at: {executed_at}"#,
                 )
                 .unwrap();
 
-                let output: CommandOutput = output.into();
+                let output: CommandOutput = CommandOutput::from_output(output, stdout, stderr);
 
                 // If the output mode is OutputMode::Capture, we can now print the output.
                 // If it is OutputMode::Print, then the output has already been printed to
                 // stdout/stderr, and we thus don't have anything captured to print anyway.
-                if command.stdout.captures() {
+                if stdout.captures() {
                     writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
                 }
-                if command.stderr.captures() {
+                if stderr.captures() {
                     writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
                 }
                 output
@@ -1004,7 +1054,7 @@ Executed at: {executed_at}"#,
             \nIt was not possible to execute the command: {e:?}"
                 )
                 .unwrap();
-                CommandOutput::did_not_start()
+                CommandOutput::did_not_start(stdout, stderr)
             }
         };
         if !output.is_success() {
@@ -1529,7 +1579,6 @@ Executed at: {executed_at}"#,
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
             helpers::git(Some(&self.src))
-                .capture()
                 .arg("rev-list")
                 .arg("--count")
                 .arg("--merges")
@@ -1537,7 +1586,7 @@ Executed at: {executed_at}"#,
                     "refs/remotes/origin/{}..HEAD",
                     self.config.stage0_metadata.config.nightly_branch
                 ))
-                .run(self)
+                .run_capture(self)
                 .stdout()
         });
         let n = count.trim().parse().unwrap();
@@ -1972,21 +2021,19 @@ pub fn generate_smart_stamp_hash(
     additional_input: &str,
 ) -> String {
     let diff = helpers::git(Some(dir))
-        .capture_stdout()
         .allow_failure()
         .arg("diff")
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 
     let status = helpers::git(Some(dir))
-        .capture_stdout()
         .allow_failure()
         .arg("status")
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 

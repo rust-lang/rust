@@ -1,7 +1,6 @@
 //! This module contains a branchless heapsort as fallback for unstable quicksort.
 
-use crate::intrinsics;
-use crate::ptr;
+use crate::{intrinsics, ptr};
 
 /// Sorts `v` using heapsort, which guarantees *O*(*n* \* log(*n*)) worst-case.
 ///

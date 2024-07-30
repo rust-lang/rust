@@ -1,8 +1,9 @@
+use core::convert::{TryFrom, TryInto};
+
 use crate::io;
 use crate::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use crate::os::xous::ffi::lend_mut;
 use crate::os::xous::services::{dns_server, DnsLendMut};
-use core::convert::{TryFrom, TryInto};
 
 pub struct DnsError {
     pub code: u8,

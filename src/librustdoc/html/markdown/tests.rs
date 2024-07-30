@@ -1,9 +1,9 @@
-use super::{find_testable_code, plain_text_summary, short_markdown_summary};
-use super::{
-    ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, LangStringToken, Markdown,
-    MarkdownItemInfo, TagIterator,
-};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
+
+use super::{
+    find_testable_code, plain_text_summary, short_markdown_summary, ErrorCodes, HeadingOffset,
+    IdMap, Ignore, LangString, LangStringToken, Markdown, MarkdownItemInfo, TagIterator,
+};
 
 #[test]
 fn test_unique_id() {

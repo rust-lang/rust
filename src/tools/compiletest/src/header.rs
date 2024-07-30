@@ -11,8 +11,7 @@ use regex::Regex;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
-use crate::header::cfg::parse_cfg_name_directive;
-use crate::header::cfg::MatchOutcome;
+use crate::header::cfg::{parse_cfg_name_directive, MatchOutcome};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
 use crate::{extract_cdb_version, extract_gdb_version};

@@ -45,8 +45,9 @@
 //! - u.fold_with(folder)
 //! ```
 
-use rustc_index::{Idx, IndexVec};
 use std::mem;
+
+use rustc_index::{Idx, IndexVec};
 use tracing::debug;
 
 use crate::data_structures::Lrc;

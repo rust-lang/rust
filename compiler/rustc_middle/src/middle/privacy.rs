@@ -2,14 +2,16 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
-use crate::ty::{TyCtxt, Visibility};
+use std::hash::Hash;
+
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
-use std::hash::Hash;
+
+use crate::ty::{TyCtxt, Visibility};
 
 /// Represents the levels of effective visibility an item can have.
 ///

@@ -11,10 +11,12 @@
 //! connect the fact that they can only be produced by a `StableHasher` to their
 //! `Encode`/`Decode` impls.
 
-use crate::stable_hasher::{FromStableHash, StableHasherHash};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::ops::BitXorAssign;
+
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+
+use crate::stable_hasher::{FromStableHash, StableHasherHash};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Hash64 {

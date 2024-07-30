@@ -1,4 +1,4 @@
-#![feature(offset_of_enum, offset_of_nested)]
+#![feature(offset_of_enum)]
 
 use std::mem::offset_of;
 

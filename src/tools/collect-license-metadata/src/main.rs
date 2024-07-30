@@ -2,9 +2,11 @@ mod licenses;
 mod path_tree;
 mod reuse;
 
-use crate::licenses::LicensesInterner;
-use anyhow::Error;
 use std::path::PathBuf;
+
+use anyhow::Error;
+
+use crate::licenses::LicensesInterner;
 
 fn main() -> Result<(), Error> {
     let reuse_exe: PathBuf = std::env::var_os("REUSE_EXE").expect("Missing REUSE_EXE").into();

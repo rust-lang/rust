@@ -1,16 +1,13 @@
-use crate::cmp;
 use crate::ffi::CStr;
-use crate::io;
 use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
-use crate::ptr;
-use crate::sys::{os, stack_overflow};
-use crate::time::Duration;
-
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
 use crate::sys::weak::weak;
+use crate::sys::{os, stack_overflow};
+use crate::time::Duration;
+use crate::{cmp, io, ptr};
 #[cfg(not(any(target_os = "l4re", target_os = "vxworks", target_os = "espidf")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 #[cfg(target_os = "l4re")]
@@ -475,11 +472,9 @@ mod cgroups {
     use crate::borrow::Cow;
     use crate::ffi::OsString;
     use crate::fs::{exists, File};
-    use crate::io::Read;
-    use crate::io::{BufRead, BufReader};
+    use crate::io::{BufRead, BufReader, Read};
     use crate::os::unix::ffi::OsStringExt;
-    use crate::path::Path;
-    use crate::path::PathBuf;
+    use crate::path::{Path, PathBuf};
     use crate::str::from_utf8;
 
     #[derive(PartialEq)]
