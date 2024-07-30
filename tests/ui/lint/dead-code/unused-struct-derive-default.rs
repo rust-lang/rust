@@ -22,5 +22,4 @@ pub struct T2 {
 
 fn main() {
     let _x: Used = Default::default();
-    let _e: E = Default::default();
 }
