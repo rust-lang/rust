@@ -21,6 +21,12 @@ move-cursor-to: ".search-input"
 assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
 assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
 
+// Clicking on the "copy code" button shouldn't make the buttons stick.
+click: ".example-wrap .copy-button"
+move-cursor-to: ".search-input"
+assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
+assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
+
 define-function: (
     "check-buttons",
     [theme, background, filter, filter_hover],
