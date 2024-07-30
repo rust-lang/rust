@@ -7,16 +7,10 @@ use std::path::Path;
 /// Describes how this module can fail
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Failed to run cargo metadata: {0:?}")]
-    LaunchingMetadata(#[from] std::io::Error),
-    #[error("Failed get output from cargo metadata: {0:?}")]
-    GettingMetadata(String),
-    #[error("Failed parse JSON output from cargo metadata: {0:?}")]
-    ParsingJson(#[from] serde_json::Error),
-    #[error("Failed find expected JSON element {0} in output from cargo metadata")]
-    MissingJsonElement(&'static str),
-    #[error("Failed find expected JSON element {0} in output from cargo metadata for package {1}")]
-    MissingJsonElementForPackage(String, String),
+    #[error("I/O Error: {0:?}")]
+    Io(#[from] std::io::Error),
+    #[error("Failed get output from cargo-metadata: {0:?}")]
+    GettingMetadata(#[from] cargo_metadata::Error),
     #[error("Failed to run cargo vendor: {0:?}")]
     LaunchingVendor(std::io::Error),
     #[error("Failed to complete cargo vendor")]
@@ -88,69 +82,31 @@ pub fn get_metadata(
         if manifest_path.file_name() != Some(OsStr::new("Cargo.toml")) {
             panic!("cargo_manifest::get requires a path to a Cargo.toml file");
         }
-        let metadata_json = get_metadata_json(cargo, manifest_path)?;
-        let packages = metadata_json["packages"]
-            .as_array()
-            .ok_or_else(|| Error::MissingJsonElement("packages array"))?;
-        for package in packages {
-            let package =
-                package.as_object().ok_or_else(|| Error::MissingJsonElement("package object"))?;
-            let manifest_path = package
-                .get("manifest_path")
-                .and_then(|v| v.as_str())
-                .map(Path::new)
-                .ok_or_else(|| Error::MissingJsonElement("package.manifest_path"))?;
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .cargo_path(cargo)
+            .env("RUSTC_BOOTSTRAP", "1")
+            .manifest_path(manifest_path)
+            .exec()?;
+        for package in metadata.packages {
+            let manifest_path = package.manifest_path.as_path();
             if manifest_path.starts_with(root_path) {
                 // it's an in-tree dependency and reuse covers it
                 continue;
             }
             // otherwise it's an out-of-tree dependency
-            let get_string = |field_name: &str, package_name: &str| {
-                package.get(field_name).and_then(|v| v.as_str()).ok_or_else(|| {
-                    Error::MissingJsonElementForPackage(
-                        format!("package.{field_name}"),
-                        package_name.to_owned(),
-                    )
-                })
-            };
-            let name = get_string("name", "unknown")?;
-            let license = get_string("license", name)?;
-            let version = get_string("version", name)?;
-            let authors_list = package
-                .get("authors")
-                .and_then(|v| v.as_array())
-                .ok_or_else(|| Error::MissingJsonElement("package.authors"))?;
-            let authors: Vec<String> =
-                authors_list.iter().filter_map(|v| v.as_str()).map(|s| s.to_owned()).collect();
-            let package = Package { name: name.to_owned(), version: version.to_owned() };
+            let package_id = Package { name: package.name, version: package.version.to_string() };
             output.insert(
-                package.clone(),
-                PackageMetadata { license: license.to_owned(), authors, notices: BTreeMap::new() },
+                package_id,
+                PackageMetadata {
+                    license: package.license.unwrap_or_else(|| String::from("Unspecified")),
+                    authors: package.authors,
+                    notices: BTreeMap::new(),
+                },
             );
         }
     }
 
     Ok(output)
-}
-
-/// Get cargo-metdata for a package, as JSON
-fn get_metadata_json(cargo: &Path, manifest_path: &Path) -> Result<serde_json::Value, Error> {
-    let metadata_output = std::process::Command::new(cargo)
-        .arg("metadata")
-        .arg("--format-version=1")
-        .arg("--all-features")
-        .arg("--manifest-path")
-        .arg(manifest_path)
-        .env("RUSTC_BOOTSTRAP", "1")
-        .output()
-        .map_err(Error::LaunchingMetadata)?;
-    if !metadata_output.status.success() {
-        return Err(Error::GettingMetadata(
-            String::from_utf8(metadata_output.stderr).expect("UTF-8 output from cargo"),
-        ));
-    }
-    let json = serde_json::from_slice(&metadata_output.stdout)?;
-    Ok(json)
 }
 
 /// Run cargo-vendor, fetching into the given dir

@@ -1406,6 +1406,7 @@ name = "generate-copyright"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cargo_metadata 0.18.1",
  "serde",
  "serde_json",
  "tempfile",
