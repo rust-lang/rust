@@ -319,7 +319,7 @@ fn check_error_codes_tests(
         if !found_code {
             verbose_print!(
                 verbose,
-                "warning: Error code {code}`` has a UI test file, but doesn't contain its own error code!"
+                "warning: Error code `{code}` has a UI test file, but doesn't contain its own error code!"
             );
         }
     }
