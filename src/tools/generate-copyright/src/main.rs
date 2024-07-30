@@ -37,7 +37,7 @@ static BOTTOM_BOILERPLATE: &str = r#"
 ///
 /// You should probably let `bootstrap` execute this program instead of running it directly.
 ///
-/// Run `x.py run generate-metadata`
+/// Run `x.py run generate-copyright`
 fn main() -> Result<(), Error> {
     let dest_file = env_path("DEST")?;
     let out_dir = env_path("OUT_DIR")?;
