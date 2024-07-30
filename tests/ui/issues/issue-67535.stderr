@@ -6,7 +6,7 @@ LL | impl std::ops::AddAssign for () {
    | |    |                       |
    | |    |                       this is not defined in the current crate because tuples are always foreign
    | |    this is not defined in the current crate because this is a foreign trait
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
@@ -18,7 +18,7 @@ LL | impl std::ops::AddAssign for [(); 1] {
    | |    |                       |
    | |    |                       this is not defined in the current crate because arrays are always foreign
    | |    this is not defined in the current crate because this is a foreign trait
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
@@ -30,7 +30,7 @@ LL | impl std::ops::AddAssign for &[u8] {
    | |    |                       |
    | |    |                       this is not defined in the current crate because slices are always foreign
    | |    this is not defined in the current crate because this is a foreign trait
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
