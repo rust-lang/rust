@@ -24,7 +24,7 @@ fn parse_pat_ty<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P
     let mut parser = cx.new_parser_from_tts(stream);
 
     let ty = parser.parse_ty()?;
-    parser.eat_keyword(sym::is);
+    parser.expect_keyword(sym::is)?;
     let pat = parser.parse_pat_no_top_alt(None, None)?;
 
     Ok((ty, pat))

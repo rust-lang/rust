@@ -1192,13 +1192,14 @@ impl<'a> Parser<'a> {
         mut safety: Safety,
     ) -> PResult<'a, ItemInfo> {
         let abi = self.parse_abi(); // ABI?
+        // FIXME: This recovery should be tested better.
         if safety == Safety::Default
             && self.token.is_keyword(kw::Unsafe)
             && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Brace))
         {
             self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err().emit();
             safety = Safety::Unsafe(self.token.span);
-            self.eat_keyword(kw::Unsafe);
+            let _ = self.eat_keyword(kw::Unsafe);
         }
         let module = ast::ForeignMod {
             safety,
@@ -1759,7 +1760,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            self.eat(&token::CloseDelim(Delimiter::Brace));
+            self.expect(&token::CloseDelim(Delimiter::Brace))?;
         } else {
             let token_str = super::token_descr(&self.token);
             let where_str = if parsed_where { "" } else { "`where`, or " };
@@ -1902,7 +1903,7 @@ impl<'a> Parser<'a> {
                         if let Some(_guar) = guar {
                             // Handle a case like `Vec<u8>>,` where we can continue parsing fields
                             // after the comma
-                            self.eat(&token::Comma);
+                            let _ = self.eat(&token::Comma);
 
                             // `check_trailing_angle_brackets` already emitted a nicer error, as
                             // proven by the presence of `_guar`. We can continue parsing.
