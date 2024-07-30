@@ -16,7 +16,6 @@ impl BlockCipher for BarCipher {
     const BLOCK_SIZE: usize = 32;
 }
 
-#[allow(dead_code)]
 pub struct Block<C>(C);
 
 pub fn test<C: BlockCipher, const M: usize>()

@@ -1,4 +1,4 @@
-#![deny(dead_code)]
+#![deny(unused)]
 
 pub struct NotLint1(());
 pub struct NotLint2(std::marker::PhantomData<i32>);

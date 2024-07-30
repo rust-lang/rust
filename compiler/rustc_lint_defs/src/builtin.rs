@@ -106,6 +106,7 @@ declare_lint_pass! {
         TYVAR_BEHIND_RAW_POINTER,
         UNCONDITIONAL_PANIC,
         UNCONDITIONAL_RECURSION,
+        UNCONSTRUCTIBLE_PUB_STRUCT,
         UNCOVERED_PARAM_IN_PROJECTION,
         UNDEFINED_NAKED_FUNCTION_ABI,
         UNEXPECTED_CFGS,
@@ -723,6 +724,38 @@ declare_lint! {
     pub DEAD_CODE,
     Warn,
     "detect unused, unexported items"
+}
+
+declare_lint! {
+    /// The `unconstructible_pub_struct` lint detects public structs that
+    /// are unused locally and cannot be constructed externally.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unconstructible_pub_struct)]
+    ///
+    /// pub struct Foo(i32);
+    /// # fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unconstructible pub structs may signal a mistake or unfinished code.
+    /// To silence the warning for individual items, prefix the name with an
+    /// underscore such as `_Foo`.
+    ///
+    /// To preserve this lint, add a field with units or never types which
+    /// indicates that the behaivor is intentional, or use `PhantomData` as
+    /// fields' type if the struct is only used at the type level to check
+    /// things like well-formedness.
+    ///
+    /// Otherwise, consider removing it if the struct is no longer in use.
+    pub UNCONSTRUCTIBLE_PUB_STRUCT,
+    Allow,
+    "detects pub structs that are unused locally and cannot be constructed externally"
 }
 
 declare_lint! {

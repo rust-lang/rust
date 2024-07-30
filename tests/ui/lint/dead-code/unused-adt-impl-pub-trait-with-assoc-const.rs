@@ -1,4 +1,4 @@
-#![deny(dead_code)]
+#![deny(unused)]
 
 struct T1; //~ ERROR struct `T1` is never constructed
 struct T2; //~ ERROR struct `T2` is never constructed

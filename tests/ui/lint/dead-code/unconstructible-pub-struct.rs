@@ -1,5 +1,5 @@
 #![feature(never_type)]
-#![deny(dead_code)]
+#![deny(unconstructible_pub_struct)]
 
 pub struct T1(!);
 pub struct T2(());
@@ -30,6 +30,12 @@ pub struct T8<X> {
 pub struct T9<X> { //~ ERROR struct `T9` is never constructed
     _x: std::marker::PhantomData<X>,
     _y: i32,
+}
+
+pub struct _T10(i32);
+
+mod pri {
+    pub struct Unreachable(i32);
 }
 
 fn main() {}

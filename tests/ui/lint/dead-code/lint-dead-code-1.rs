@@ -3,6 +3,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 #![deny(dead_code)]
+#![deny(unconstructible_pub_struct)]
 
 #![crate_type="lib"]
 

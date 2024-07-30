@@ -7,8 +7,8 @@ LL | pub struct T9<X> {
 note: the lint level is defined here
   --> $DIR/unconstructible-pub-struct.rs:2:9
    |
-LL | #![deny(dead_code)]
-   |         ^^^^^^^^^
+LL | #![deny(unconstructible_pub_struct)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

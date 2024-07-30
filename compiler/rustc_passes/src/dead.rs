@@ -20,7 +20,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocItemContainer, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_session::lint::builtin::DEAD_CODE;
+use rustc_session::lint::builtin::{DEAD_CODE, UNCONSTRUCTIBLE_PUB_STRUCT};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::FieldIdx;
 
@@ -739,6 +739,12 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     }
 }
 
+fn has_allow_unconstructible_pub_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let lint_level = tcx.lint_level_at_node(lint::builtin::UNCONSTRUCTIBLE_PUB_STRUCT, hir_id).0;
+    matches!(lint_level, lint::Allow | lint::Expect(_))
+}
+
 fn has_allow_dead_code_or_lang_attr(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
@@ -930,7 +936,7 @@ fn create_and_seed_worklist(
                     match tcx.def_kind(id) {
                         DefKind::Impl { .. } => false,
                         DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => !matches!(tcx.associated_item(id).container, AssocItemContainer::ImplContainer),
-                        DefKind::Struct => struct_all_fields_are_public(tcx, id) || has_allow_dead_code_or_lang_attr(tcx, id).is_some(),
+                        DefKind::Struct => has_allow_unconstructible_pub_struct(tcx, id) || struct_all_fields_are_public(tcx, id),
                         _ => true
                     })
                 .map(|id| (id, ComesFromAllowExpect::No))
@@ -1177,8 +1183,16 @@ impl<'tcx> DeadVisitor<'tcx> {
             },
         };
 
+        let lint = if tcx.effective_visibilities(()).is_reachable(first_item.def_id)
+            && matches!(tcx.def_kind(first_item.def_id), DefKind::Struct)
+        {
+            UNCONSTRUCTIBLE_PUB_STRUCT
+        } else {
+            DEAD_CODE
+        };
+
         let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
-        self.tcx.emit_node_span_lint(DEAD_CODE, hir_id, MultiSpan::from_spans(spans), diag);
+        self.tcx.emit_node_span_lint(lint, hir_id, MultiSpan::from_spans(spans), diag);
     }
 
     fn warn_multiple(
