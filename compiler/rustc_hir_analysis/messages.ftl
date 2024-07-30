@@ -351,7 +351,7 @@ hir_analysis_only_current_traits_arbitrary = only traits defined in the current 
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
 
-hir_analysis_only_current_traits_label = impl doesn't use only types from inside the current crate
+hir_analysis_only_current_traits_label = impl doesn't use any uncovered types from inside the current crate
 
 hir_analysis_only_current_traits_name = this is not defined in the current crate because {$name} are always foreign
 
