@@ -1,29 +1,27 @@
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::bug;
-use rustc_middle::ty;
+use rustc_middle::{bug, ty};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use tracing::{debug, instrument};
+use Determinacy::*;
+use Namespace::*;
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
 use crate::macros::{sub_namespace_match, MacroRulesScope};
-use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
-use crate::{BindingKey, Used};
-use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
-use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, Weak};
-
-use Determinacy::*;
-use Namespace::*;
+use crate::{
+    errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, Determinacy, Finalize,
+    ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, NameBinding,
+    NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope,
+    ScopeSet, Segment, ToNameBinding, Used, Weak,
+};
 
 type Visibility = ty::Visibility<LocalDefId>;
 

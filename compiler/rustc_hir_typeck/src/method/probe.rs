@@ -1,58 +1,46 @@
-use super::suggest;
-use super::CandidateSource;
-use super::MethodError;
-use super::NoMatchData;
+use std::cell::{Cell, RefCell};
+use std::cmp::max;
+use std::iter;
+use std::ops::Deref;
 
-use crate::FnCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
-use rustc_infer::infer::canonical::OriginalQueryValues;
-use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
+use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
-use rustc_middle::ty::AssocItem;
-use rustc_middle::ty::AssocItemContainer;
-use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::Upcast;
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{
+    self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
+    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Upcast,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::def_id::DefId;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
-use rustc_span::symbol::sym;
-use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{sym, Ident};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
-    CandidateStep, MethodAutoderefStepsResult,
+    CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::{self, ObligationCause};
-use std::cell::Cell;
-use std::cell::RefCell;
-use std::cmp::max;
-use std::iter;
-use std::ops::Deref;
-
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use self::CandidateKind::*;
 pub use self::PickKind::*;
+use super::{suggest, CandidateSource, MethodError, NoMatchData};
+use crate::FnCtxt;
 
 /// Boolean flag used to indicate if this search is for a suggestion
 /// or not. If true, we can allow ambiguity and so forth.

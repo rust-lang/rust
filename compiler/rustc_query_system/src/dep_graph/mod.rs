@@ -5,18 +5,19 @@ mod graph;
 mod query;
 mod serialized;
 
+use std::panic;
+
 pub use dep_node::{DepKind, DepKindStruct, DepNode, DepNodeParams, WorkProductId};
 pub(crate) use graph::DepGraphData;
 pub use graph::{hash_result, DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap};
 pub use query::DepGraphQuery;
+use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_session::Session;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
+use tracing::instrument;
 
 use self::graph::{print_markframe_trace, MarkFrame};
 use crate::ich::StableHashingContext;
-use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_session::Session;
-use std::panic;
-use tracing::instrument;
 
 pub trait DepContext: Copy {
     type Deps: Deps;

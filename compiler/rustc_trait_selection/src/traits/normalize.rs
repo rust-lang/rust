@@ -1,20 +1,24 @@
 //! Deeply normalize types using the old trait solver.
 
-use super::SelectionContext;
-use super::{project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer};
-use crate::error_reporting::traits::OverflowCause;
-use crate::error_reporting::InferCtxtErrorExt;
-use crate::solve::NextSolverError;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferOk;
-use rustc_infer::traits::FromSolverError;
-use rustc_infer::traits::PredicateObligation;
-use rustc_infer::traits::{Normalized, Obligation, TraitEngine};
+use rustc_infer::traits::{
+    FromSolverError, Normalized, Obligation, PredicateObligation, TraitEngine,
+};
 use rustc_macros::extension;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFolder};
-use rustc_middle::ty::{TypeFoldable, TypeSuperFoldable, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
+};
+
+use super::{
+    project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer,
+    SelectionContext,
+};
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::InferCtxtErrorExt;
+use crate::solve::NextSolverError;
 
 #[extension(pub trait NormalizeExt<'tcx>)]
 impl<'tcx> At<'_, 'tcx> {

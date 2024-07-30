@@ -10,18 +10,20 @@ mod path;
 mod stmt;
 mod ty;
 
-use crate::lexer::UnmatchedDelim;
+use std::ops::Range;
+use std::{fmt, mem, slice};
+
 use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
-
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrsTarget, DelimSpacing, DelimSpan, Spacing};
-use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
+use rustc_ast::tokenstream::{
+    AttrsTarget, DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree, TokenTreeCursor,
+};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
@@ -35,14 +37,13 @@ use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use std::ops::Range;
-use std::{fmt, mem, slice};
 use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::errors::{
     self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
 };
+use crate::lexer::UnmatchedDelim;
 
 #[cfg(test)]
 mod tests;
@@ -599,7 +600,7 @@ impl<'a> Parser<'a> {
 
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
-    // Public for rustfmt usage.
+    // Public for rustc_builtin_macros and rustfmt usage.
     #[inline]
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
@@ -631,8 +632,11 @@ impl<'a> Parser<'a> {
         false
     }
 
+    /// If the next token is the given keyword, eats it and returns `true`.
+    /// Otherwise, returns `false`. No expectation is added.
+    // Public for rustc_builtin_macros usage.
     #[inline]
-    fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
+    pub fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
         if self.token.is_keyword(kw) {
             self.bump();
             true

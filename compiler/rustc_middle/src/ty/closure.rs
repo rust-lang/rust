@@ -1,11 +1,5 @@
-use crate::hir::place::{
-    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
-};
-use crate::{mir, ty};
-
 use std::fmt::Write;
 
-use crate::query::Providers;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
@@ -16,9 +10,13 @@ use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
-use super::TyCtxt;
-
 use self::BorrowKind::*;
+use super::TyCtxt;
+use crate::hir::place::{
+    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
+};
+use crate::query::Providers;
+use crate::{mir, ty};
 
 /// Captures are represented using fields inside a structure.
 /// This represents accessing self in the closure structure

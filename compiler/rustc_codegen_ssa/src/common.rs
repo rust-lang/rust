@@ -1,10 +1,9 @@
 #![allow(non_camel_case_types)]
 
 use rustc_hir::LangItem;
-use rustc_middle::mir;
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, layout::TyAndLayout, TyCtxt};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::Span;
 
 use crate::traits::*;
@@ -106,8 +105,9 @@ pub enum TypeKind {
 //            for now we content ourselves with providing a no-op HashStable
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
-    use crate::ModuleCodegen;
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+
+    use crate::ModuleCodegen;
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
         fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {

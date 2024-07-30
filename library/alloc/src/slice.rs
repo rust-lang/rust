@@ -78,7 +78,6 @@ pub use core::slice::{SplitInclusive, SplitInclusiveMut};
 // N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
 pub use hack::into_vec;
-
 // HACK(japaric) needed for the implementation of `Vec::clone` during testing
 // N.B., see the `hack` module in this file for more details.
 #[cfg(test)]

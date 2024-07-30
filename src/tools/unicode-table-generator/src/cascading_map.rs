@@ -1,8 +1,9 @@
-use crate::fmt_list;
-use crate::raw_emitter::RawEmitter;
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::ops::Range;
+
+use crate::fmt_list;
+use crate::raw_emitter::RawEmitter;
 
 impl RawEmitter {
     pub fn emit_cascading_map(&mut self, ranges: &[Range<u32>]) -> bool {

@@ -1,4 +1,3 @@
-use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::error::Error;
@@ -10,20 +9,21 @@ use core::mem::{self, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
 use core::ptr;
 
-use crate::alloc::{Allocator, Global};
-
 use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
-use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
-use super::search::{SearchBound, SearchResult::*};
+use super::node::ForceResult::*;
+use super::node::{self, marker, Handle, NodeRef, Root};
+use super::search::SearchBound;
+use super::search::SearchResult::*;
 use super::set_val::SetValZST;
+use crate::alloc::{Allocator, Global};
+use crate::vec::Vec;
 
 mod entry;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
-
 use Entry::*;
 
 /// Minimum number of elements in a node that is not a root.
@@ -2921,7 +2921,7 @@ impl<'a, K, V> Cursor<'a, K, V> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&self) -> Option<(&'a K, &'a V)> {
         self.clone().next()
@@ -2963,7 +2963,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&mut self) -> Option<(&K, &mut V)> {
         let (k, v) = self.inner.peek_next()?;
@@ -3061,7 +3061,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&mut self) -> Option<(&mut K, &mut V)> {
         let current = self.current.as_mut()?;

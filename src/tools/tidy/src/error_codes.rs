@@ -16,7 +16,9 @@
 //! 4. We check that the error code is actually emitted by the compiler.
 //!   - This is done by searching `compiler/` with a regex.
 
-use std::{ffi::OsStr, fs, path::Path};
+use std::ffi::OsStr;
+use std::fs;
+use std::path::Path;
 
 use regex::Regex;
 

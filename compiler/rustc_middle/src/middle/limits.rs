@@ -8,14 +8,14 @@
 //! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 //! just peeks and looks for that attribute.
 
-use crate::error::LimitInvalid;
-use crate::query::Providers;
+use std::num::IntErrorKind;
+
 use rustc_ast::Attribute;
-use rustc_session::Session;
-use rustc_session::{Limit, Limits};
+use rustc_session::{Limit, Limits, Session};
 use rustc_span::symbol::{sym, Symbol};
 
-use std::num::IntErrorKind;
+use crate::error::LimitInvalid;
+use crate::query::Providers;
 
 pub fn provide(providers: &mut Providers) {
     providers.limits = |tcx, ()| Limits {

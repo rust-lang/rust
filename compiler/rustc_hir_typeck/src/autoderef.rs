@@ -1,7 +1,6 @@
 //! Some helper functions for `AutoDeref`.
 
-use super::method::MethodCallee;
-use super::{FnCtxt, PlaceOp};
+use std::iter;
 
 use itertools::Itertools;
 use rustc_hir_analysis::autoderef::{Autoderef, AutoderefKind};
@@ -10,7 +9,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
-use std::iter;
+use super::method::MethodCallee;
+use super::{FnCtxt, PlaceOp};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'tcx> {

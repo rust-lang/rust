@@ -64,7 +64,6 @@ This API is completely unstable and subject to change.
 #![doc(rust_logo)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
-#![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -101,7 +100,8 @@ use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 

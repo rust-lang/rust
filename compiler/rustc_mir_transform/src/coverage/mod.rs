@@ -147,7 +147,8 @@ fn create_mappings<'tcx>(
 
     let source_file = source_map.lookup_source_file(body_span.lo());
 
-    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+    use rustc_session::config::RemapPathScopeComponents;
+    use rustc_session::RemapFileNameExt;
     let file_name = Symbol::intern(
         &source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
     );

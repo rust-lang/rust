@@ -3,9 +3,10 @@
  * building is complete.
  */
 
-use crate::mir::*;
 use rustc_hir as hir;
 use tracing::{debug, instrument};
+
+use crate::mir::*;
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {

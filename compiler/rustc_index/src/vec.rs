@@ -1,13 +1,11 @@
-#[cfg(feature = "nightly")]
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-
 use std::borrow::{Borrow, BorrowMut};
-use std::fmt;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, RangeBounds};
-use std::slice;
-use std::vec;
+use std::{fmt, slice, vec};
+
+#[cfg(feature = "nightly")]
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::{Idx, IndexSlice};
 

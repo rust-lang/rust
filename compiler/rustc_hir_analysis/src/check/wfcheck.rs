@@ -1,14 +1,10 @@
-use crate::autoderef::Autoderef;
-use crate::collect::CollectItemTypesVisitor;
-use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
-use crate::errors;
-use crate::fluent_generated as fluent;
+use std::cell::LazyCell;
+use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
-use rustc_hir as hir;
+use rustc_errors::codes::*;
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
@@ -20,10 +16,9 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, Upcast,
+    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, Upcast,
 };
-use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident};
@@ -41,9 +36,12 @@ use rustc_trait_selection::traits::{
 };
 use rustc_type_ir::solve::NoSolution;
 use rustc_type_ir::TypeFlags;
+use {rustc_ast as ast, rustc_hir as hir};
 
-use std::cell::LazyCell;
-use std::ops::{ControlFlow, Deref};
+use crate::autoderef::Autoderef;
+use crate::collect::CollectItemTypesVisitor;
+use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use crate::{errors, fluent_generated as fluent};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,

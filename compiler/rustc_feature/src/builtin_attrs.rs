@@ -1,15 +1,14 @@
 //! Built-in attributes and `cfg` flag gating.
 
+use std::sync::LazyLock;
+
+use rustc_data_structures::fx::FxHashMap;
+use rustc_span::symbol::{sym, Symbol};
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 
 use crate::{Features, Stability};
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{sym, Symbol};
-
-use std::sync::LazyLock;
 
 type GateFn = fn(&Features) -> bool;
 

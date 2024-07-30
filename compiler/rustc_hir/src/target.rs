@@ -4,11 +4,10 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir;
-use crate::{Item, ItemKind, TraitItem, TraitItemKind};
+use std::fmt::{self, Display};
 
 use crate::def::DefKind;
-use std::fmt::{self, Display};
+use crate::{hir, Item, ItemKind, TraitItem, TraitItemKind};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum GenericParamKind {

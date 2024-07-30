@@ -25,15 +25,13 @@ mod iter;
 pub mod legacy;
 
 #[doc(inline)]
-pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive};
-
+pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
 use Bound::{Excluded, Included, Unbounded};
 
 #[doc(inline)]
 pub use crate::iter::Step;
-
 #[doc(inline)]
-pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
+pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive};
 
 /// A (half-open) range bounded inclusively below and exclusively above
 /// (`start..end` in a future edition).
@@ -72,7 +70,7 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
 }
 
 impl<Idx: Step> Range<Idx> {
-    /// Create an iterator over the elements within this range.
+    /// Creates an iterator over the elements within this range.
     ///
     /// Shorthand for `.clone().into_iter()`
     ///
@@ -292,7 +290,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 }
 
 impl<Idx: Step> RangeInclusive<Idx> {
-    /// Create an iterator over the elements within this range.
+    /// Creates an iterator over the elements within this range.
     ///
     /// Shorthand for `.clone().into_iter()`
     ///
@@ -408,7 +406,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
 }
 
 impl<Idx: Step> RangeFrom<Idx> {
-    /// Create an iterator over the elements within this range.
+    /// Creates an iterator over the elements within this range.
     ///
     /// Shorthand for `.clone().into_iter()`
     ///

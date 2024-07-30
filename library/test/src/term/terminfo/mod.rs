@@ -1,19 +1,17 @@
 //! Terminfo database interface.
 
 use std::collections::HashMap;
-use std::env;
-use std::error;
-use std::fmt;
 use std::fs::File;
-use std::io::{self, prelude::*, BufReader};
+use std::io::prelude::*;
+use std::io::{self, BufReader};
 use std::path::Path;
-
-use super::color;
-use super::Terminal;
+use std::{env, error, fmt};
 
 use parm::{expand, Param, Variables};
 use parser::compiled::{msys_terminfo, parse};
 use searcher::get_dbpath_for_term;
+
+use super::{color, Terminal};
 
 /// A parsed terminfo database entry.
 #[allow(unused)]

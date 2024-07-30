@@ -1,5 +1,3 @@
-use crate::ty;
-use crate::ty::{EarlyBinder, GenericArgsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -9,6 +7,8 @@ use rustc_span::Span;
 use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use crate::ty;
+use crate::ty::{EarlyBinder, GenericArgsRef};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {

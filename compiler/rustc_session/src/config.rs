@@ -3,13 +3,17 @@
 
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 
-pub use crate::options::*;
+use std::collections::btree_map::{
+    Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
+};
+use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsStr;
+use std::hash::Hash;
+use std::path::{Path, PathBuf};
+use std::str::{self, FromStr};
+use std::sync::LazyLock;
+use std::{fmt, fs, iter};
 
-use crate::errors::FileWriteFail;
-use crate::search_paths::SearchPath;
-use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use crate::{filesearch, lint, HashStableContext};
-use crate::{EarlyDiagCtxt, Session};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -19,21 +23,16 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
-use rustc_target::spec::{FramePointer, LinkSelfContainedComponents, LinkerFeatures};
-use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
-use std::collections::btree_map::{
-    Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
+use rustc_target::spec::{
+    FramePointer, LinkSelfContainedComponents, LinkerFeatures, SplitDebuginfo, Target, TargetTriple,
 };
-use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
-use std::hash::Hash;
-use std::iter;
-use std::path::{Path, PathBuf};
-use std::str::{self, FromStr};
-use std::sync::LazyLock;
 use tracing::debug;
+
+use crate::errors::FileWriteFail;
+pub use crate::options::*;
+use crate::search_paths::SearchPath;
+use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
+use crate::{filesearch, lint, EarlyDiagCtxt, HashStableContext, Session};
 
 mod cfg;
 pub mod sigpipe;
@@ -2765,9 +2764,10 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 }
 
 pub mod nightly_options {
+    use rustc_feature::UnstableFeatures;
+
     use super::{OptionStability, RustcOptGroup};
     use crate::EarlyDiagCtxt;
-    use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
         match_is_nightly_build(matches)
@@ -2960,6 +2960,22 @@ pub enum WasiExecModel {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
+    use std::collections::BTreeMap;
+    use std::hash::{DefaultHasher, Hash};
+    use std::num::NonZero;
+    use std::path::PathBuf;
+
+    use rustc_data_structures::fx::FxIndexMap;
+    use rustc_data_structures::stable_hasher::Hash64;
+    use rustc_errors::LanguageIdentifier;
+    use rustc_feature::UnstableFeatures;
+    use rustc_span::edition::Edition;
+    use rustc_span::RealFileName;
+    use rustc_target::spec::{
+        CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
+    };
+
     use super::{
         BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FunctionReturn,
@@ -2971,20 +2987,6 @@ pub(crate) mod dep_tracking {
     };
     use crate::lint;
     use crate::utils::NativeLib;
-    use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hasher::Hash64;
-    use rustc_errors::LanguageIdentifier;
-    use rustc_feature::UnstableFeatures;
-    use rustc_span::edition::Edition;
-    use rustc_span::RealFileName;
-    use rustc_target::spec::{
-        CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
-    };
-    use std::collections::BTreeMap;
-    use std::hash::{DefaultHasher, Hash};
-    use std::num::NonZero;
-    use std::path::PathBuf;
 
     pub(crate) trait DepTrackingHash {
         fn hash(

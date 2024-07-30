@@ -1,10 +1,10 @@
 //! Definitions of `Wrapping<T>`.
 
 use crate::fmt;
-use crate::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign};
-use crate::ops::{BitXor, BitXorAssign, Div, DivAssign};
-use crate::ops::{Mul, MulAssign, Neg, Not, Rem, RemAssign};
-use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
+use crate::ops::{
+    Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign,
+    Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+};
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///

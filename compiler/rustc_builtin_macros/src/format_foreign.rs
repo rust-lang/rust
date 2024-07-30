@@ -1,6 +1,7 @@
 pub(crate) mod printf {
-    use super::strcursor::StrCursor as Cur;
     use rustc_span::InnerSpan;
+
+    use super::strcursor::StrCursor as Cur;
 
     /// Represents a single `printf`-style substitution.
     #[derive(Clone, PartialEq, Debug)]
@@ -615,8 +616,9 @@ pub(crate) mod printf {
 }
 
 pub mod shell {
-    use super::strcursor::StrCursor as Cur;
     use rustc_span::InnerSpan;
+
+    use super::strcursor::StrCursor as Cur;
 
     #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {

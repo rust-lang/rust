@@ -1,21 +1,17 @@
 #![unstable(issue = "none", feature = "windows_net")]
 
-use crate::cmp;
+use core::ffi::{c_int, c_long, c_ulong, c_ushort};
+
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut, Read};
-use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
-use crate::ptr;
 use crate::sync::OnceLock;
-use crate::sys;
 use crate::sys::c;
-use crate::sys_common::net;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{net, AsInner, FromInner, IntoInner};
 use crate::time::Duration;
-
-use core::ffi::{c_int, c_long, c_ulong, c_ushort};
+use crate::{cmp, mem, ptr, sys};
 
 #[allow(non_camel_case_types)]
 pub type wrlen_t = i32;
@@ -25,9 +21,9 @@ pub mod netc {
     //!
     //! Some Windows API types are not quite what's expected by our cross-platform
     //! net code. E.g. naming differences or different pointer types.
-    use crate::sys::c::{self, ADDRESS_FAMILY, ADDRINFOA, SOCKADDR, SOCKET};
     use core::ffi::{c_char, c_int, c_uint, c_ulong, c_ushort, c_void};
 
+    use crate::sys::c::{self, ADDRESS_FAMILY, ADDRINFOA, SOCKADDR, SOCKET};
     // re-exports from Windows API bindings.
     pub use crate::sys::c::{
         bind, connect, freeaddrinfo, getpeername, getsockname, getsockopt, listen, setsockopt,

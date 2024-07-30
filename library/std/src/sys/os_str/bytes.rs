@@ -3,13 +3,11 @@
 
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
-use crate::fmt;
 use crate::fmt::Write;
-use crate::mem;
 use crate::rc::Rc;
-use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::{AsInner, IntoInner};
+use crate::{fmt, mem, str};
 
 #[cfg(test)]
 mod tests;

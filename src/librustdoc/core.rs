@@ -1,9 +1,16 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, LazyLock};
+use std::{io, mem};
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
+use rustc_errors::codes::*;
 use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{codes::*, DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -14,25 +21,17 @@ use rustc_lint::{late_lint_mod, MissingDoc};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
-use rustc_session::lint;
-use rustc_session::Session;
+pub(crate) use rustc_session::config::{Options, UnstableOptions};
+use rustc_session::{lint, Session};
 use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
-
-use std::cell::RefCell;
-use std::io;
-use std::mem;
-use std::rc::Rc;
-use std::sync::LazyLock;
-use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
-use crate::passes::{self, Condition::*};
-
-pub(crate) use rustc_session::config::{Options, UnstableOptions};
+use crate::passes::Condition::*;
+use crate::passes::{self};
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,

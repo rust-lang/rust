@@ -21,18 +21,18 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use std::collections::hash_map::Entry;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 pub use rustc_type_ir as ir;
 pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};
 use smallvec::SmallVec;
-use std::collections::hash_map::Entry;
 
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
-use crate::ty::GenericArg;
-use crate::ty::{self, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
+use crate::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
 pub type Canonical<'tcx, V> = ir::Canonical<TyCtxt<'tcx>, V>;
 pub type CanonicalVarInfo<'tcx> = ir::CanonicalVarInfo<TyCtxt<'tcx>>;

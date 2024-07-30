@@ -1,8 +1,5 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::regions::InferCtxtRegionExt;
-use crate::traits::{self, FulfillmentError, ObligationCause};
-
 use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
@@ -12,6 +9,8 @@ use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
 
 use super::outlives_bounds::InferCtxtExt;
+use crate::regions::InferCtxtRegionExt;
+use crate::traits::{self, FulfillmentError, ObligationCause};
 
 pub enum CopyImplementationError<'tcx> {
     InfringingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),

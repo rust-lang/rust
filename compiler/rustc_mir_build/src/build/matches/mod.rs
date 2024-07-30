@@ -5,12 +5,8 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::scope::DropKind;
-use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use rustc_data_structures::{fx::FxIndexMap, stack::ensure_sufficient_stack};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
@@ -22,6 +18,13 @@ use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 use util::visit_bindings;
+
+use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::scope::DropKind;
+use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
+use crate::build::{
+    BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
+};
 
 // helper functions, broken out by category:
 mod match_pair;

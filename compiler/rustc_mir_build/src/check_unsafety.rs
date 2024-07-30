@@ -1,5 +1,6 @@
-use crate::build::ExprCategory;
-use crate::errors::*;
+use std::borrow::Cow;
+use std::mem;
+use std::ops::Bound;
 
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
@@ -16,9 +17,8 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 
-use std::borrow::Cow;
-use std::mem;
-use std::ops::Bound;
+use crate::build::ExprCategory;
+use crate::errors::*;
 
 struct UnsafetyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

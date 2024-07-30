@@ -1,18 +1,17 @@
-use crate::{
-    lints::{
-        ForLoopsOverFalliblesDiag, ForLoopsOverFalliblesLoopSub, ForLoopsOverFalliblesQuestionMark,
-        ForLoopsOverFalliblesSuggestion,
-    },
-    LateContext, LateLintPass, LintContext,
-};
-
 use hir::{Expr, Pat};
 use rustc_hir as hir;
-use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
+
+use crate::lints::{
+    ForLoopsOverFalliblesDiag, ForLoopsOverFalliblesLoopSub, ForLoopsOverFalliblesQuestionMark,
+    ForLoopsOverFalliblesSuggestion,
+};
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `for_loops_over_fallibles` lint checks for `for` loops over `Option` or `Result` values.

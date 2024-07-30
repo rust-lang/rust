@@ -40,7 +40,7 @@ use crate::future::Future;
 /// }
 ///
 /// impl Multiply {
-///     /// Construct a new instance of `Multiply`.
+///     /// Constructs a new instance of `Multiply`.
 ///     pub fn new(num: u16, factor: u16) -> Self {
 ///         Self { num, factor }
 ///     }
@@ -89,7 +89,7 @@ use crate::future::Future;
 /// ```rust
 /// use std::future::IntoFuture;
 ///
-/// /// Convert the output of a future to a string.
+/// /// Converts the output of a future to a string.
 /// async fn fut_to_string<Fut>(fut: Fut) -> String
 /// where
 ///     Fut: IntoFuture,

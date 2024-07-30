@@ -933,7 +933,7 @@ impl f16 {
         intrinsics::const_eval_select((v,), ct_u16_to_f16, rt_u16_to_f16)
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -958,7 +958,7 @@ impl f16 {
         self.to_bits().to_be_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -983,7 +983,7 @@ impl f16 {
         self.to_bits().to_le_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// native byte order.
     ///
     /// As the target platform's native endianness is used, portable code
@@ -1021,7 +1021,7 @@ impl f16 {
         self.to_bits().to_ne_bytes()
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Creates a floating point value from its representation as a byte array in big endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1044,7 +1044,7 @@ impl f16 {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in little endian.
+    /// Creates a floating point value from its representation as a byte array in little endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1067,7 +1067,7 @@ impl f16 {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in native endian.
+    /// Creates a floating point value from its representation as a byte array in native endian.
     ///
     /// As the target platform's native endianness is used, portable code
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
@@ -1101,7 +1101,7 @@ impl f16 {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }
 
-    /// Return the ordering between `self` and `other`.
+    /// Returns the ordering between `self` and `other`.
     ///
     /// Unlike the standard partial comparison between floating point numbers,
     /// this comparison always produces an ordering in accordance to

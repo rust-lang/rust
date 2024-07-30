@@ -207,6 +207,9 @@
 
 mod move_check;
 
+use std::path::PathBuf;
+
+use move_check::MoveCheckState;
 use rustc_data_structures::sync::{par_for_each_in, LRef, MTLock};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -216,17 +219,15 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, MentionedItem};
+use rustc_middle::mir::{self, traversal, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
-use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
-    self, AssocKind, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, VtblEntry,
+    self, AssocKind, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -236,11 +237,9 @@ use rustc_span::source_map::{dummy_spanned, respan, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Size;
-use std::path::PathBuf;
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
-use move_check::MoveCheckState;
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionStrategy {

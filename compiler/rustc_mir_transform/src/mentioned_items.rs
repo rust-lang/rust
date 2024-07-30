@@ -1,6 +1,7 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, Location, MentionedItem, MirPass};
-use rustc_middle::ty::{self, adjustment::PointerCoercion, TyCtxt};
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 

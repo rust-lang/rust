@@ -1,8 +1,7 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use crate::io::ErrorKind;
-
 pub use self::rand::hashmap_random_keys;
+use crate::io::ErrorKind;
 
 #[cfg(not(target_os = "espidf"))]
 #[macro_use]
@@ -86,11 +85,12 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_vendor = "apple",
         )))]
         'poll: {
-            use crate::sys::os::errno;
             #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
             use libc::open as open64;
             #[cfg(all(target_os = "linux", target_env = "gnu"))]
             use libc::open64;
+
+            use crate::sys::os::errno;
             let pfds: &mut [_] = &mut [
                 libc::pollfd { fd: 0, events: 0, revents: 0 },
                 libc::pollfd { fd: 1, events: 0, revents: 0 },
@@ -140,11 +140,12 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "vita",
         )))]
         {
-            use crate::sys::os::errno;
             #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
             use libc::open as open64;
             #[cfg(all(target_os = "linux", target_env = "gnu"))]
             use libc::open64;
+
+            use crate::sys::os::errno;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
                     if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
@@ -232,11 +233,12 @@ pub unsafe fn cleanup() {
     stack_overflow::cleanup();
 }
 
-#[cfg(target_os = "android")]
-pub use crate::sys::android::signal;
 #[allow(unused_imports)]
 #[cfg(not(target_os = "android"))]
 pub use libc::signal;
+
+#[cfg(target_os = "android")]
+pub use crate::sys::android::signal;
 
 #[inline]
 pub(crate) fn is_interrupted(errno: i32) -> bool {
@@ -308,7 +310,7 @@ macro_rules! impl_is_minus_one {
 
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
-/// Convert native return values to Result using the *-1 means error is in `errno`*  convention.
+/// Converts native return values to Result using the *-1 means error is in `errno`*  convention.
 /// Non-error values are `Ok`-wrapped.
 pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
     if t.is_minus_one() { Err(crate::io::Error::last_os_error()) } else { Ok(t) }

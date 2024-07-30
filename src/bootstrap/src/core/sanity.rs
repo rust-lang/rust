@@ -9,19 +9,17 @@
 //! practice that's likely not true!
 
 use std::collections::HashMap;
-use std::env;
+#[cfg(not(feature = "bootstrap-self-test"))]
+use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
-use std::fs;
 use std::path::PathBuf;
+use std::{env, fs};
 
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::builder::Builder;
+use crate::builder::Kind;
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::core::build_steps::tool;
-#[cfg(not(feature = "bootstrap-self-test"))]
-use std::collections::HashSet;
-
-use crate::builder::Kind;
 use crate::core::config::Target;
 use crate::utils::exec::command;
 use crate::Build;
@@ -352,7 +350,7 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = command("cmake").capture_stdout().arg("--help").run(build).stdout();
+            let out = command("cmake").arg("--help").run_capture_stdout(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "

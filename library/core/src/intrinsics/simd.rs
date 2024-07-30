@@ -3,7 +3,7 @@
 //! In this module, a "vector" is any `repr(simd)` type.
 
 extern "rust-intrinsic" {
-    /// Insert an element into a vector, returning the updated vector.
+    /// Inserts an element into a vector, returning the updated vector.
     ///
     /// `T` must be a vector with element type `U`.
     ///
@@ -13,7 +13,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;
 
-    /// Extract an element from a vector.
+    /// Extracts an element from a vector.
     ///
     /// `T` must be a vector with element type `U`.
     ///
@@ -23,25 +23,25 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_extract<T, U>(x: T, idx: u32) -> U;
 
-    /// Add two simd vectors elementwise.
+    /// Adds two simd vectors elementwise.
     ///
     /// `T` must be a vector of integer or floating point primitive types.
     #[rustc_nounwind]
     pub fn simd_add<T>(x: T, y: T) -> T;
 
-    /// Subtract `rhs` from `lhs` elementwise.
+    /// Subtracts `rhs` from `lhs` elementwise.
     ///
     /// `T` must be a vector of integer or floating point primitive types.
     #[rustc_nounwind]
     pub fn simd_sub<T>(lhs: T, rhs: T) -> T;
 
-    /// Multiply two simd vectors elementwise.
+    /// Multiplies two simd vectors elementwise.
     ///
     /// `T` must be a vector of integer or floating point primitive types.
     #[rustc_nounwind]
     pub fn simd_mul<T>(x: T, y: T) -> T;
 
-    /// Divide `lhs` by `rhs` elementwise.
+    /// Divides `lhs` by `rhs` elementwise.
     ///
     /// `T` must be a vector of integer or floating point primitive types.
     ///
@@ -51,7 +51,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_div<T>(lhs: T, rhs: T) -> T;
 
-    /// Remainder of two vectors elementwise
+    /// Returns remainder of two vectors elementwise.
     ///
     /// `T` must be a vector of integer or floating point primitive types.
     ///
@@ -61,9 +61,9 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_rem<T>(lhs: T, rhs: T) -> T;
 
-    /// Elementwise vector left shift, with UB on overflow.
+    /// Shifts vector left elementwise, with UB on overflow.
     ///
-    /// Shift `lhs` left by `rhs`, shifting in sign bits for signed types.
+    /// Shifts `lhs` left by `rhs`, shifting in sign bits for signed types.
     ///
     /// `T` must be a vector of integer primitive types.
     ///
@@ -73,11 +73,11 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_shl<T>(lhs: T, rhs: T) -> T;
 
-    /// Elementwise vector right shift, with UB on overflow.
+    /// Shifts vector right elementwise, with UB on overflow.
     ///
     /// `T` must be a vector of integer primitive types.
     ///
-    /// Shift `lhs` right by `rhs`, shifting in sign bits for signed types.
+    /// Shifts `lhs` right by `rhs`, shifting in sign bits for signed types.
     ///
     /// # Safety
     ///
@@ -85,25 +85,25 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_shr<T>(lhs: T, rhs: T) -> T;
 
-    /// Elementwise vector "and".
+    /// "Ands" vectors elementwise.
     ///
     /// `T` must be a vector of integer primitive types.
     #[rustc_nounwind]
     pub fn simd_and<T>(x: T, y: T) -> T;
 
-    /// Elementwise vector "or".
+    /// "Ors" vectors elementwise.
     ///
     /// `T` must be a vector of integer primitive types.
     #[rustc_nounwind]
     pub fn simd_or<T>(x: T, y: T) -> T;
 
-    /// Elementwise vector "exclusive or".
+    /// "Exclusive ors" vectors elementwise.
     ///
     /// `T` must be a vector of integer primitive types.
     #[rustc_nounwind]
     pub fn simd_xor<T>(x: T, y: T) -> T;
 
-    /// Numerically cast a vector, elementwise.
+    /// Numerically casts a vector, elementwise.
     ///
     /// `T` and `U` must be vectors of integer or floating point primitive types, and must have the
     /// same length.
@@ -124,7 +124,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_cast<T, U>(x: T) -> U;
 
-    /// Numerically cast a vector, elementwise.
+    /// Numerically casts a vector, elementwise.
     ///
     /// `T` and `U` be a vectors of integer or floating point primitive types, and must have the
     /// same length.
@@ -138,7 +138,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_as<T, U>(x: T) -> U;
 
-    /// Elementwise negation of a vector.
+    /// Negates a vector elementwise.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -146,13 +146,13 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_neg<T>(x: T) -> T;
 
-    /// Elementwise absolute value of a vector.
+    /// Returns absolute value of a vector, elementwise.
     ///
     /// `T` must be a vector of floating-point primitive types.
     #[rustc_nounwind]
     pub fn simd_fabs<T>(x: T) -> T;
 
-    /// Elementwise minimum of two vectors.
+    /// Returns the minimum of two vectors, elementwise.
     ///
     /// `T` must be a vector of floating-point primitive types.
     ///
@@ -160,7 +160,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_fmin<T>(x: T, y: T) -> T;
 
-    /// Elementwise maximum of two vectors.
+    /// Returns the maximum of two vectors, elementwise.
     ///
     /// `T` must be a vector of floating-point primitive types.
     ///
@@ -228,7 +228,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_ge<T, U>(x: T, y: T) -> U;
 
-    /// Shuffle two vectors by const indices.
+    /// Shuffles two vectors by const indices.
     ///
     /// `T` must be a vector.
     ///
@@ -243,7 +243,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 
-    /// Read a vector of pointers.
+    /// Reads a vector of pointers.
     ///
     /// `T` must be a vector.
     ///
@@ -263,7 +263,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
 
-    /// Write to a vector of pointers.
+    /// Writes to a vector of pointers.
     ///
     /// `T` must be a vector.
     ///
@@ -286,7 +286,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 
-    /// Read a vector of pointers.
+    /// Reads a vector of pointers.
     ///
     /// `T` must be a vector.
     ///
@@ -308,7 +308,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
 
-    /// Write to a vector of pointers.
+    /// Writes to a vector of pointers.
     ///
     /// `T` must be a vector.
     ///
@@ -329,13 +329,13 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_masked_store<V, U, T>(mask: V, ptr: U, val: T);
 
-    /// Add two simd vectors elementwise, with saturation.
+    /// Adds two simd vectors elementwise, with saturation.
     ///
     /// `T` must be a vector of integer primitive types.
     #[rustc_nounwind]
     pub fn simd_saturating_add<T>(x: T, y: T) -> T;
 
-    /// Subtract two simd vectors elementwise, with saturation.
+    /// Subtracts two simd vectors elementwise, with saturation.
     ///
     /// `T` must be a vector of integer primitive types.
     ///
@@ -343,7 +343,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_saturating_sub<T>(lhs: T, rhs: T) -> T;
 
-    /// Add elements within a vector from left to right.
+    /// Adds elements within a vector from left to right.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -353,7 +353,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 
-    /// Add elements within a vector in arbitrary order. May also be re-associated with
+    /// Adds elements within a vector in arbitrary order. May also be re-associated with
     /// unordered additions on the inputs/outputs.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
@@ -362,7 +362,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_add_unordered<T, U>(x: T) -> U;
 
-    /// Multiply elements within a vector from left to right.
+    /// Multiplies elements within a vector from left to right.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -372,7 +372,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
 
-    /// Multiply elements within a vector in arbitrary order. May also be re-associated with
+    /// Multiplies elements within a vector in arbitrary order. May also be re-associated with
     /// unordered additions on the inputs/outputs.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
@@ -381,7 +381,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
 
-    /// Check if all mask values are true.
+    /// Checks if all mask values are true.
     ///
     /// `T` must be a vector of integer primitive types.
     ///
@@ -390,7 +390,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_all<T>(x: T) -> bool;
 
-    /// Check if any mask value is true.
+    /// Checks if any mask value is true.
     ///
     /// `T` must be a vector of integer primitive types.
     ///
@@ -399,7 +399,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_any<T>(x: T) -> bool;
 
-    /// Return the maximum element of a vector.
+    /// Returns the maximum element of a vector.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -409,7 +409,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_max<T, U>(x: T) -> U;
 
-    /// Return the minimum element of a vector.
+    /// Returns the minimum element of a vector.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -419,7 +419,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_min<T, U>(x: T) -> U;
 
-    /// Logical "and" all elements together.
+    /// Logical "ands" all elements together.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -427,7 +427,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_and<T, U>(x: T) -> U;
 
-    /// Logical "or" all elements together.
+    /// Logical "ors" all elements together.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -435,7 +435,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_or<T, U>(x: T) -> U;
 
-    /// Logical "exclusive or" all elements together.
+    /// Logical "exclusive ors" all elements together.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
@@ -443,7 +443,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_xor<T, U>(x: T) -> U;
 
-    /// Truncate an integer vector to a bitmask.
+    /// Truncates an integer vector to a bitmask.
     ///
     /// `T` must be an integer vector.
     ///
@@ -479,7 +479,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_bitmask<T, U>(x: T) -> U;
 
-    /// Select elements from a mask.
+    /// Selects elements from a mask.
     ///
     /// `M` must be an integer vector.
     ///
@@ -494,7 +494,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_select<M, T>(mask: M, if_true: T, if_false: T) -> T;
 
-    /// Select elements from a bitmask.
+    /// Selects elements from a bitmask.
     ///
     /// `M` must be an unsigned integer or array of `u8`, matching `simd_bitmask`.
     ///
@@ -511,7 +511,8 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;
 
-    /// Elementwise calculates the offset from a pointer vector, potentially wrapping.
+    /// Calculates the offset from a pointer vector elementwise, potentially
+    /// wrapping.
     ///
     /// `T` must be a vector of pointers.
     ///
@@ -521,13 +522,13 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_arith_offset<T, U>(ptr: T, offset: U) -> T;
 
-    /// Cast a vector of pointers.
+    /// Casts a vector of pointers.
     ///
     /// `T` and `U` must be vectors of pointers with the same number of elements.
     #[rustc_nounwind]
     pub fn simd_cast_ptr<T, U>(ptr: T) -> U;
 
-    /// Expose a vector of pointers as a vector of addresses.
+    /// Exposes a vector of pointers as a vector of addresses.
     ///
     /// `T` must be a vector of pointers.
     ///
@@ -535,7 +536,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_expose_provenance<T, U>(ptr: T) -> U;
 
-    /// Create a vector of pointers from a vector of addresses.
+    /// Creates a vector of pointers from a vector of addresses.
     ///
     /// `T` must be a vector of `usize`.
     ///
@@ -543,56 +544,56 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_with_exposed_provenance<T, U>(addr: T) -> U;
 
-    /// Swap bytes of each element.
+    /// Swaps bytes of each element.
     ///
     /// `T` must be a vector of integers.
     #[rustc_nounwind]
     pub fn simd_bswap<T>(x: T) -> T;
 
-    /// Reverse bits of each element.
+    /// Reverses bits of each element.
     ///
     /// `T` must be a vector of integers.
     #[rustc_nounwind]
     pub fn simd_bitreverse<T>(x: T) -> T;
 
-    /// Count the leading zeros of each element.
+    /// Counts the leading zeros of each element.
     ///
     /// `T` must be a vector of integers.
     #[rustc_nounwind]
     pub fn simd_ctlz<T>(x: T) -> T;
 
-    /// Count the number of ones in each element.
+    /// Counts the number of ones in each element.
     ///
     /// `T` must be a vector of integers.
     #[rustc_nounwind]
     pub fn simd_ctpop<T>(x: T) -> T;
 
-    /// Count the trailing zeros of each element.
+    /// Counts the trailing zeros of each element.
     ///
     /// `T` must be a vector of integers.
     #[rustc_nounwind]
     pub fn simd_cttz<T>(x: T) -> T;
 
-    /// Round up each element to the next highest integer-valued float.
+    /// Rounds up each element to the next highest integer-valued float.
     ///
     /// `T` must be a vector of floats.
     #[rustc_nounwind]
     pub fn simd_ceil<T>(x: T) -> T;
 
-    /// Round down each element to the next lowest integer-valued float.
+    /// Rounds down each element to the next lowest integer-valued float.
     ///
     /// `T` must be a vector of floats.
     #[rustc_nounwind]
     pub fn simd_floor<T>(x: T) -> T;
 
-    /// Round each element to the closest integer-valued float.
+    /// Rounds each element to the closest integer-valued float.
     /// Ties are resolved by rounding away from 0.
     ///
     /// `T` must be a vector of floats.
     #[rustc_nounwind]
     pub fn simd_round<T>(x: T) -> T;
 
-    /// Return the integer part of each element as an integer-valued float.
+    /// Returns the integer part of each element as an integer-valued float.
     /// In other words, non-integer values are truncated towards zero.
     ///
     /// `T` must be a vector of floats.

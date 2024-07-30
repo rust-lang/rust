@@ -2,15 +2,13 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-#[cfg(not(test))]
-use core::hint;
-
-#[cfg(not(test))]
-use core::ptr::{self, NonNull};
-
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
+#[cfg(not(test))]
+use core::hint;
+#[cfg(not(test))]
+use core::ptr::{self, NonNull};
 
 #[cfg(test)]
 mod tests;
@@ -57,7 +55,7 @@ pub struct Global;
 #[cfg(test)]
 pub use std::alloc::Global;
 
-/// Allocate memory with the global allocator.
+/// Allocates memory with the global allocator.
 ///
 /// This function forwards calls to the [`GlobalAlloc::alloc`] method
 /// of the allocator registered with the `#[global_allocator]` attribute
@@ -101,7 +99,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     }
 }
 
-/// Deallocate memory with the global allocator.
+/// Deallocates memory with the global allocator.
 ///
 /// This function forwards calls to the [`GlobalAlloc::dealloc`] method
 /// of the allocator registered with the `#[global_allocator]` attribute
@@ -119,7 +117,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
 }
 
-/// Reallocate memory with the global allocator.
+/// Reallocates memory with the global allocator.
 ///
 /// This function forwards calls to the [`GlobalAlloc::realloc`] method
 /// of the allocator registered with the `#[global_allocator]` attribute
@@ -138,7 +136,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
     unsafe { __rust_realloc(ptr, layout.size(), layout.align(), new_size) }
 }
 
-/// Allocate zero-initialized memory with the global allocator.
+/// Allocates zero-initialized memory with the global allocator.
 ///
 /// This function forwards calls to the [`GlobalAlloc::alloc_zeroed`] method
 /// of the allocator registered with the `#[global_allocator]` attribute
@@ -345,7 +343,7 @@ extern "Rust" {
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
-/// Signal a memory allocation error.
+/// Signals a memory allocation error.
 ///
 /// Callers of memory allocation APIs wishing to cease execution
 /// in response to an allocation error are encouraged to call this function,

@@ -4,15 +4,8 @@
 //! [trait-resolution]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
-use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::InferOk;
-use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use crate::solve::{deeply_normalize_for_diagnostics, inspect};
-use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::NormalizeExt;
-use crate::traits::SkipLeakCheck;
-use crate::traits::{util, FulfillmentErrorCode};
-use crate::traits::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use std::fmt::Debug;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
@@ -28,10 +21,18 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use std::fmt::Debug;
 
 use super::ObligationCtxt;
 use crate::error_reporting::traits::suggest_new_overflow_limit;
+use crate::infer::outlives::env::OutlivesEnvironment;
+use crate::infer::InferOk;
+use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::{deeply_normalize_for_diagnostics, inspect};
+use crate::traits::select::IntercrateAmbiguityCause;
+use crate::traits::{
+    util, FulfillmentErrorCode, NormalizeExt, Obligation, ObligationCause, PredicateObligation,
+    SelectionContext, SkipLeakCheck,
+};
 
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,

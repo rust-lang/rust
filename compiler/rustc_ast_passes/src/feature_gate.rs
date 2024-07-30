@@ -1,7 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{attr, NodeId};
-use rustc_ast::{token, PatKind};
+use rustc_ast::{attr, token, NodeId, PatKind};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;

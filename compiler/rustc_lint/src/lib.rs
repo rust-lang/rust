@@ -83,12 +83,6 @@ mod types;
 mod unit_bindings;
 mod unused;
 
-pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
-
-use rustc_hir::def_id::LocalModDefId;
-use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
-
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
@@ -116,7 +110,11 @@ use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
+use rustc_hir::def_id::LocalModDefId;
+use rustc_middle::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
+pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use traits::*;
 use types::*;
 use unit_bindings::*;
@@ -124,14 +122,16 @@ use unused::*;
 
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
-pub use context::{CheckLintNameResult, FindLintError, LintStore};
-pub use context::{EarlyContext, LateContext, LintContext};
+pub use context::{
+    CheckLintNameResult, EarlyContext, FindLintError, LateContext, LintContext, LintStore,
+};
 pub use early::{check_ast_node, EarlyCheckNode};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
-pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
-pub use rustc_session::lint::{LintPass, LintVec};
+pub use rustc_session::lint::{
+    BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec,
+};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

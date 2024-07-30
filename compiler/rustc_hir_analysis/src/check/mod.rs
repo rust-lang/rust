@@ -72,13 +72,11 @@ pub mod intrinsicck;
 mod region;
 pub mod wfcheck;
 
-pub use check::check_abi;
-
 use std::num::NonZero;
 
+pub use check::check_abi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::ErrorGuaranteed;
-use rustc_errors::{pluralize, struct_span_code_err, Diag};
+use rustc_errors::{pluralize, struct_span_code_err, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
@@ -87,12 +85,12 @@ use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
+use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
@@ -100,11 +98,9 @@ use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::errors;
-use crate::require_c_abi_if_c_variadic;
-
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
+use crate::{errors, require_c_abi_if_c_variadic};
 
 pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);

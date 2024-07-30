@@ -1,12 +1,11 @@
-#![allow(clippy::derived_hash_with_manual_eq)]
+use std::fmt;
+use std::hash::Hash;
+use std::ops::Index;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
-use std::fmt;
-use std::hash::Hash;
-use std::ops::Index;
 
 use crate::inherent::*;
 use crate::{self as ty, Interner, UniverseIndex};
@@ -141,7 +140,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
 /// Describes the "kind" of the canonical variable. This is a "kind"
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
-#[derive_where(Clone, Copy, Hash, Eq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum CanonicalVarKind<I: Interner> {
@@ -167,21 +166,6 @@ pub enum CanonicalVarKind<I: Interner> {
 
     /// A "placeholder" that represents "any const".
     PlaceholderConst(I::PlaceholderConst),
-}
-
-// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
-impl<I: Interner> PartialEq for CanonicalVarKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Ty(l0), Self::Ty(r0)) => l0 == r0,
-            (Self::PlaceholderTy(l0), Self::PlaceholderTy(r0)) => l0 == r0,
-            (Self::Region(l0), Self::Region(r0)) => l0 == r0,
-            (Self::PlaceholderRegion(l0), Self::PlaceholderRegion(r0)) => l0 == r0,
-            (Self::Const(l0), Self::Const(r0)) => l0 == r0,
-            (Self::PlaceholderConst(l0), Self::PlaceholderConst(r0)) => l0 == r0,
-            _ => std::mem::discriminant(self) == std::mem::discriminant(other),
-        }
-    }
 }
 
 impl<I: Interner> CanonicalVarKind<I> {

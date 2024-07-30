@@ -10,9 +10,8 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use rustc_trait_selection::traits::ObligationCause;
 
-use crate::diagnostics::ToUniverseInfo;
-
 use super::{Locations, NormalizeLocation, TypeChecker};
+use crate::diagnostics::ToUniverseInfo;
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Given some operation `op` that manipulates types, proves

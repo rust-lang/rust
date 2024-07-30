@@ -1,5 +1,6 @@
-use crate::pp::Printer;
 use std::borrow::Cow;
+
+use crate::pp::Printer;
 
 impl Printer {
     pub fn word_space<W: Into<Cow<'static, str>>>(&mut self, w: W) {

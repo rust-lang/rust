@@ -6,7 +6,6 @@
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
@@ -35,11 +34,11 @@ use rustc_middle::mir::{
     LocalDecl, MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
     SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
-use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, span_bug};
-use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
+use rustc_middle::{bug, query, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
 #[macro_use]
@@ -572,6 +571,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
             // Also simple, so can just do first
             &lower_slice_len::LowerSliceLenCalls,
+            // Perform instsimplify before inline to eliminate some trivial calls (like clone shims).
+            &instsimplify::InstSimplify::BeforeInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
             // Code from other crates may have storage markers, so this needs to happen after inlining.
@@ -591,7 +592,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instsimplify::InstSimplify,
+            // After simplifycfg, it allows us to discover new opportunities for peephole optimizations.
+            &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,

@@ -5,14 +5,12 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
-use tracing::{instrument, trace};
-
 use rustc_ast::Mutability;
-use rustc_middle::mir;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
+use tracing::{instrument, trace};
 
 use super::{
     alloc_range, mir_assign_valid_types, throw_ub, AllocRef, AllocRefMut, CheckAlignMsg,
@@ -1034,8 +1032,9 @@ where
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(MemPlace, 48);
     static_assert_size!(MemPlaceMeta, 24);

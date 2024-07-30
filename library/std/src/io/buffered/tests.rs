@@ -3,9 +3,8 @@ use crate::io::{
     self, BorrowedBuf, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom,
 };
 use crate::mem::MaybeUninit;
-use crate::panic;
 use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::thread;
+use crate::{panic, thread};
 
 /// A dummy reader intended at testing short-reads propagation.
 pub struct ShortReader {

@@ -2,7 +2,8 @@
 
 use hir::def_id::LocalDefId;
 use hir::{ConstContext, LangItem};
-use rustc_errors::{codes::*, Diag};
+use rustc_errors::codes::*;
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;

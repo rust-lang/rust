@@ -63,9 +63,10 @@
 //! [1]: https://www.codeproject.com/Articles/8113/Thread-Local-Storage-The-C-Way
 //! [2]: https://github.com/ChromiumWebApps/chromium/blob/master/base/threading/thread_local_storage_win.cc#L42
 
+use core::ffi::c_void;
+
 use crate::ptr;
 use crate::sys::c;
-use core::ffi::c_void;
 
 pub fn enable() {
     // When destructors are used, we don't want LLVM eliminating CALLBACK for any

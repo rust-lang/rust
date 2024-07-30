@@ -89,13 +89,13 @@ mod tests;
 // a backtrace or actually symbolizing it.
 
 use crate::backtrace_rs::{self, BytesOrWideString};
-use crate::env;
 use crate::ffi::c_void;
-use crate::fmt;
 use crate::panic::UnwindSafe;
-use crate::sync::atomic::{AtomicU8, Ordering::Relaxed};
+use crate::sync::atomic::AtomicU8;
+use crate::sync::atomic::Ordering::Relaxed;
 use crate::sync::LazyLock;
 use crate::sys::backtrace::{lock, output_filename, set_image_base};
+use crate::{env, fmt};
 
 /// A captured OS thread stack backtrace.
 ///
@@ -271,7 +271,7 @@ impl Backtrace {
         enabled
     }
 
-    /// Capture a stack backtrace of the current thread.
+    /// Captures a stack backtrace of the current thread.
     ///
     /// This function will capture a stack backtrace of the current OS thread of
     /// execution, returning a `Backtrace` type which can be later used to print

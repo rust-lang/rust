@@ -2,6 +2,8 @@
 version = "Two"
 use_small_heuristics = "Max"
 merge_derives = false
+group_imports = "StdExternalCrate"
+imports_granularity = "Module"
 
 # Files to ignore. Each entry uses gitignore syntax, but `!` prefixes aren't allowed.
 ignore = [

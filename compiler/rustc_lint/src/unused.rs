@@ -1,11 +1,6 @@
-use crate::lints::{
-    PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
-    UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion,
-    UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
-    UnusedResult,
-};
-use crate::Lint;
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use std::iter;
+use std::ops::ControlFlow;
+
 use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{ExprKind, StmtKind};
@@ -14,15 +9,19 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::util::elaborate;
-use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, adjustment, Ty};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::symbol::Symbol;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
-use std::iter;
-use std::ops::ControlFlow;
 use tracing::instrument;
+
+use crate::lints::{
+    PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
+    UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion,
+    UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
+    UnusedResult,
+};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Lint, LintContext};
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -1205,7 +1204,8 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
-        use ast::{Mutability, PatKind::*};
+        use ast::Mutability;
+        use ast::PatKind::*;
         let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.

@@ -1,14 +1,16 @@
-use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor};
+use std::{iter, mem};
+
 use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing};
-use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, ToAttrTokenStream};
-use rustc_ast::{self as ast};
-use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
+use rustc_ast::tokenstream::{
+    AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing, DelimSpan, LazyAttrTokenStream,
+    Spacing, ToAttrTokenStream,
+};
+use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, DUMMY_SP};
 
-use std::{iter, mem};
+use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor};
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.
 /// When we parse outer attributes, we need to ensure that we capture tokens
@@ -469,8 +471,9 @@ fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
     static_assert_size!(LazyAttrTokenStreamImpl, 96);

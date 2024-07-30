@@ -5,8 +5,10 @@ use rustc_hir::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitableExt, TypeVisitor};
-use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, Upcast};
+use rustc_middle::ty::{
+    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, Upcast,
+};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;

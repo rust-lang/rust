@@ -1,22 +1,22 @@
-use crate::errors;
-use crate::mbe::macro_parser::count_metavar_decls;
-use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
-
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, NtExprKind::*, Token};
+use rustc_ast::token::NtExprKind::*;
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, sym, Ident};
-
 use rustc_span::edition::Edition;
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+
+use crate::errors;
+use crate::mbe::macro_parser::count_metavar_decls;
+use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
                                         `literal`, `path`, `meta`, `tt`, `item` and `vis`";
-const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
+pub const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
                                              `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, \
                                              `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
                                              `item` and `vis`";

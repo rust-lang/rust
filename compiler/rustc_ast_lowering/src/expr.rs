@@ -1,15 +1,5 @@
 use std::assert_matches::assert_matches;
 
-use super::errors::{
-    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
-    ClosureCannotBeStatic, CoroutineTooManyParameters,
-    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
-};
-use super::ResolverAstLoweringExt;
-use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
-use crate::errors::YieldInClosure;
-use crate::{FnDeclKind, ImplTraitPosition};
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -20,9 +10,20 @@ use rustc_middle::span_bug;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::DUMMY_SP;
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
+
+use super::errors::{
+    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
+    ClosureCannotBeStatic, CoroutineTooManyParameters,
+    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
+    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
+};
+use super::{
+    ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs, ResolverAstLoweringExt,
+};
+use crate::errors::YieldInClosure;
+use crate::{FnDeclKind, ImplTraitPosition};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {

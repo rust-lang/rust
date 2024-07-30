@@ -1,4 +1,5 @@
-use std::{ptr, sync::Arc};
+use std::ptr;
+use std::sync::Arc;
 
 use crate::tagged_ptr::{Pointer, Tag, Tag2, TaggedPtr};
 

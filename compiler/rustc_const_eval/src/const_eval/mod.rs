@@ -1,10 +1,9 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use rustc_middle::bug;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::InterpErrorInfo;
 use rustc_middle::query::{Key, TyCtxtAt};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, mir};
 use rustc_target::abi::VariantIdx;
 use tracing::instrument;
 

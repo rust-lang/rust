@@ -1,3 +1,10 @@
+use std::cell::{RefCell, RefMut};
+use std::cmp::Ordering;
+use std::fmt;
+use std::rc::Rc;
+
+use itertools::Itertools;
+use rinja::Template;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -8,10 +15,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::VariantIdx;
-use std::cell::{RefCell, RefMut};
-use std::cmp::Ordering;
-use std::fmt;
-use std::rc::Rc;
 
 use super::type_layout::document_type_layout;
 use super::{
@@ -26,7 +29,7 @@ use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
@@ -35,9 +38,6 @@ use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-
-use itertools::Itertools;
-use rinja::Template;
 
 /// Generates a Rinja template struct for rendering items with common methods.
 ///
@@ -267,7 +267,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
         clean::StaticItem(ref i) => item_static(buf, cx, item, i, None),
         clean::ForeignStaticItem(ref i, safety) => item_static(buf, cx, item, i, Some(*safety)),
-        clean::ConstantItem(generics, ty, c) => item_constant(buf, cx, item, generics, ty, c),
+        clean::ConstantItem(ci) => item_constant(buf, cx, item, &ci.generics, &ci.type_, &ci.kind),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
         clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e),
@@ -423,7 +423,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         "<div class=\"item-name\"><code>{}extern crate {} as {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
-                        myitem.name.unwrap(),
+                        EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     ),
                     None => write!(
                         w,
@@ -520,7 +520,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         {stab_tags}\
                      </div>\
                      {docs_before}{docs}{docs_after}",
-                    name = myitem.name.unwrap(),
+                    name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     visibility_and_hidden = visibility_and_hidden,
                     stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
@@ -558,7 +558,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             display_fn(move |f| {
                 write!(
                     f,
-                    r#"<span class="stab {class}" title="{title}">{contents}</span>"#,
+                    r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
                     title = Escape(title),
                 )
             })
@@ -1841,7 +1841,7 @@ fn item_constant(
     it: &clean::Item,
     generics: &clean::Generics,
     ty: &clean::Type,
-    c: &clean::Constant,
+    c: &clean::ConstantKind,
 ) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
@@ -1911,7 +1911,7 @@ fn item_fields(
     w: &mut Buffer,
     cx: &mut Context<'_>,
     it: &clean::Item,
-    fields: &Vec<clean::Item>,
+    fields: &[clean::Item],
     ctor_kind: Option<CtorKind>,
 ) {
     let mut fields = fields

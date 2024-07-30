@@ -1,6 +1,6 @@
 {% if !title.is_empty() %}
     <h2 class="location"> {# #}
-        <a href="#">{{title_prefix}}{{title}}</a> {# #}
+        <a href="#">{{title_prefix}}{{title|wrapped|safe}}</a> {# #}
     </h2>
 {% endif %}
 <div class="sidebar-elems">
@@ -15,7 +15,9 @@
             {% for block in blocks %}
                 {% if block.should_render() %}
                     {% if !block.heading.name.is_empty() %}
-                        <h3><a href="#{{block.heading.href|safe}}">{{block.heading.name}}</a></h3>
+                        <h3><a href="#{{block.heading.href|safe}}"> {# #}
+                            {{block.heading.name|wrapped|safe}} {# #}
+                        </a></h3> {# #}
                     {% endif %}
                     {% if !block.links.is_empty() %}
                         <ul class="block{% if !block.class.is_empty() +%} {{+block.class}}{% endif %}">
@@ -29,6 +31,6 @@
         </section>
     {% endif %}
     {% if !path.is_empty() %}
-        <h2><a href="{% if is_mod %}../{% endif %}index.html">In {{+ path}}</a></h2>
+        <h2><a href="{% if is_mod %}../{% endif %}index.html">In {{+ path|wrapped|safe}}</a></h2>
     {% endif %}
 </div>

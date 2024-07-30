@@ -1,11 +1,11 @@
-use crate::traits::query::normalize::QueryNormalizeExt;
-use crate::traits::query::NoSolution;
-use crate::traits::{Normalized, ObligationCause, ObligationCtxt};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
+
+use crate::traits::query::normalize::QueryNormalizeExt;
+use crate::traits::query::NoSolution;
+use crate::traits::{Normalized, ObligationCause, ObligationCtxt};
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to

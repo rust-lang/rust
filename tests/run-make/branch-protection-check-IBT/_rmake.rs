@@ -8,9 +8,7 @@
 //@ ignore-test
 // FIXME(jieyouxu): see the FIXME in the Makefile
 
-use run_make_support::llvm_readobj;
-use run_make_support::rustc;
-use run_make_support::{cwd, env_var};
+use run_make_support::{cwd, env_var, llvm_readobj, rustc};
 
 fn main() {
     let llvm_components = env_var("LLVM_COMPONENTS");

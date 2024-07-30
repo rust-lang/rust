@@ -1,7 +1,8 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{
-    self, Delimiter, Nonterminal::*, NonterminalKind, NtExprKind::*, NtPatKind::*, Token,
-};
+use rustc_ast::token::Nonterminal::*;
+use rustc_ast::token::NtExprKind::*;
+use rustc_ast::token::NtPatKind::*;
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;

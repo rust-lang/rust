@@ -1,17 +1,15 @@
+use core::slice::memchr;
+
 use super::hermit_abi;
 use crate::collections::HashMap;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::os::hermit::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
-use crate::str;
 use crate::sync::Mutex;
 use crate::sys::unsupported;
-use crate::vec;
-use core::slice::memchr;
+use crate::{fmt, io, str, vec};
 
 pub fn errno() -> i32 {
     unsafe { hermit_abi::get_errno() }

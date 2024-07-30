@@ -1,10 +1,10 @@
 //! Client-side types.
 
-use super::*;
-
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::sync::atomic::AtomicU32;
+
+use super::*;
 
 macro_rules! define_client_handles {
     (
@@ -190,9 +190,10 @@ impl<'a> !Sync for Bridge<'a> {}
 
 #[allow(unsafe_code)]
 mod state {
-    use super::Bridge;
     use std::cell::{Cell, RefCell};
     use std::ptr;
+
+    use super::Bridge;
 
     thread_local! {
         static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };

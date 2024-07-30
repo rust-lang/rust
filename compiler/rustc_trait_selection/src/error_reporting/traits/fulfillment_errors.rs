@@ -1,31 +1,16 @@
-use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
-use super::suggestions::get_explanation_based_on_obligation;
-use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::report_object_safety_error;
-use crate::error_reporting::TypeErrCtxt;
-use crate::errors::{
-    AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
-};
-use crate::infer::InferCtxtExt as _;
-use crate::infer::{self, InferCtxt};
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::NormalizeExt;
-use crate::traits::{
-    elaborate, MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
-    ObligationCtxt, Overflow, PredicateObligation, SelectionError, SignatureMismatch,
-    TraitNotObjectSafe,
-};
 use core::ops::ControlFlow;
+use std::borrow::Cow;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, StringPart};
-use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
+use rustc_errors::{
+    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey, StringPart,
+};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::Node;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, Node};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::SignatureMismatchData;
@@ -42,10 +27,24 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
-use std::borrow::Cow;
 
+use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
+use super::suggestions::get_explanation_based_on_obligation;
 use super::{
     ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate, UnsatisfiedConst,
+};
+use crate::error_reporting::infer::TyCategory;
+use crate::error_reporting::traits::report_object_safety_error;
+use crate::error_reporting::TypeErrCtxt;
+use crate::errors::{
+    AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
+};
+use crate::infer::{self, InferCtxt, InferCtxtExt as _};
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::{
+    elaborate, MismatchedProjectionTypes, NormalizeExt, Obligation, ObligationCause,
+    ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation, SelectionError,
+    SignatureMismatch, TraitNotObjectSafe,
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {

@@ -1,5 +1,6 @@
-use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
+
+use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // We cannot use `-nodefaultlibs` because compiler-rt has to be passed

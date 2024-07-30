@@ -3,8 +3,7 @@
 #[macro_use] // import iterator! and forward_iterator!
 mod macros;
 
-use crate::cmp;
-use crate::fmt;
+use super::{from_raw_parts, from_raw_parts_mut};
 use crate::hint::assert_unchecked;
 use crate::iter::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
@@ -13,8 +12,7 @@ use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ptr::{self, without_provenance, without_provenance_mut, NonNull};
-
-use super::{from_raw_parts, from_raw_parts_mut};
+use crate::{cmp, fmt};
 
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<T> !Iterator for [T] {}

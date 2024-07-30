@@ -1,16 +1,18 @@
 //! Runs rustfmt on the repository.
 
-use crate::core::builder::Builder;
-use crate::utils::exec::command;
-use crate::utils::helpers::{self, program_out_of_date, t};
-use build_helper::ci::CiEnv;
-use build_helper::git::get_git_modified_files;
-use ignore::WalkBuilder;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::SyncSender;
 use std::sync::Mutex;
+
+use build_helper::ci::CiEnv;
+use build_helper::git::get_git_modified_files;
+use ignore::WalkBuilder;
+
+use crate::core::builder::Builder;
+use crate::utils::exec::command;
+use crate::utils::helpers::{self, program_out_of_date, t};
 
 fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl FnMut(bool) -> bool {
     let mut cmd = Command::new(rustfmt);
@@ -60,7 +62,7 @@ fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
     });
     cmd.arg("--version");
 
-    let output = cmd.capture().allow_failure().run(build);
+    let output = cmd.allow_failure().run_capture(build);
     if output.is_failure() {
         return None;
     }
@@ -160,25 +162,23 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         }
     }
     let git_available =
-        helpers::git(None).capture().allow_failure().arg("--version").run(build).is_success();
+        helpers::git(None).allow_failure().arg("--version").run_capture(build).is_success();
 
     let mut adjective = None;
     if git_available {
         let in_working_tree = helpers::git(Some(&build.src))
-            .capture()
             .allow_failure()
             .arg("rev-parse")
             .arg("--is-inside-work-tree")
-            .run(build)
+            .run_capture(build)
             .is_success();
         if in_working_tree {
             let untracked_paths_output = helpers::git(Some(&build.src))
-                .capture_stdout()
                 .arg("status")
                 .arg("--porcelain")
                 .arg("-z")
                 .arg("--untracked-files=normal")
-                .run(build)
+                .run_capture_stdout(build)
                 .stdout();
             let untracked_paths: Vec<_> = untracked_paths_output
                 .split_terminator('\0')

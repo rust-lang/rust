@@ -1,4 +1,5 @@
 use core::ops::ControlFlow;
+
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};

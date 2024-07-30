@@ -1,8 +1,7 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::matches::DeclareLetBindings;
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
+use std::iter;
+
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -12,8 +11,11 @@ use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_span::source_map::Spanned;
-use std::iter;
 use tracing::{debug, instrument};
+
+use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::matches::DeclareLetBindings;
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which

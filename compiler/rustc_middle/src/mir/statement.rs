@@ -1,6 +1,7 @@
 //! Functionality for statements, operands, places, and things that appear in them.
 
-use super::{interpret::GlobalAlloc, *};
+use super::interpret::GlobalAlloc;
+use super::*;
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements

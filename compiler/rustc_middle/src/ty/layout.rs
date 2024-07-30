@@ -1,8 +1,8 @@
-use crate::error::UnsupportedFnAbi;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::query::TyCtxtAt;
-use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
+use std::borrow::Cow;
+use std::num::NonZero;
+use std::ops::Bound;
+use std::{cmp, fmt};
+
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
@@ -17,16 +17,15 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
-use rustc_target::spec::{
-    abi::Abi as SpecAbi, HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi,
-};
+use rustc_target::spec::abi::Abi as SpecAbi;
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi};
 use tracing::debug;
 
-use std::borrow::Cow;
-use std::cmp;
-use std::fmt;
-use std::num::NonZero;
-use std::ops::Bound;
+use crate::error::UnsupportedFnAbi;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::query::TyCtxtAt;
+use crate::ty::normalize_erasing_regions::NormalizationError;
+use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
 
 #[extension(pub trait IntegerExt)]
 impl Integer {
@@ -231,8 +230,9 @@ pub enum LayoutError<'tcx> {
 
 impl<'tcx> LayoutError<'tcx> {
     pub fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         use LayoutError::*;
+
+        use crate::fluent_generated::*;
         match self {
             Unknown(_) => middle_unknown_layout,
             SizeOverflow(_) => middle_values_too_big,
@@ -243,8 +243,9 @@ impl<'tcx> LayoutError<'tcx> {
     }
 
     pub fn into_diagnostic(self) -> crate::error::LayoutError<'tcx> {
-        use crate::error::LayoutError as E;
         use LayoutError::*;
+
+        use crate::error::LayoutError as E;
         match self {
             Unknown(ty) => E::Unknown { ty },
             SizeOverflow(ty) => E::Overflow { ty },

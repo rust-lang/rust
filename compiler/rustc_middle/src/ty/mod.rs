@@ -11,37 +11,28 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-pub use self::AssocItemContainer::*;
-pub use self::BorrowKind::*;
-pub use self::IntVarValue::*;
-use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
-use crate::metadata::ModChild;
-use crate::middle::privacy::EffectiveVisibilities;
-use crate::mir::{Body, CoroutineLayout};
-use crate::query::Providers;
-use crate::traits::{self, Reveal};
-use crate::ty;
-use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::util::Discr;
+use std::assert_matches::assert_matches;
+use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::num::NonZero;
+use std::ptr::NonNull;
+use std::{fmt, mem, str};
+
 pub use adt::*;
 pub use assoc::*;
 pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
-use rustc_ast as ast;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{try_visit, Movability, Mutability};
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
@@ -59,24 +50,14 @@ use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-use tracing::{debug, instrument};
-pub use vtable::*;
-
-use std::assert_matches::assert_matches;
-use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
-use std::mem;
-use std::num::NonZero;
-use std::ptr::NonNull;
-use std::{fmt, str};
-
-pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::ConstKind::{
     Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
     Placeholder as PlaceholderCt, Unevaluated, Value,
 };
 pub use rustc_type_ir::*;
+use tracing::{debug, instrument};
+pub use vtable::*;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
 pub use self::closure::{
     analyze_coroutine_closure_captures, is_ancestor_or_same_capture, place_to_string_for_capture,
@@ -91,6 +72,7 @@ pub use self::context::{
     tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
     TyCtxt, TyCtxtFeed,
 };
+pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
@@ -105,9 +87,9 @@ pub use self::predicate::{
     PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
     TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
+pub use self::region::BoundRegionKind::*;
 pub use self::region::{
-    BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,
-    RegionKind, RegionVid,
+    BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, Region, RegionKind, RegionVid,
 };
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
@@ -120,6 +102,20 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     TypeckResults, UserType, UserTypeAnnotationIndex,
 };
+pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+pub use self::AssocItemContainer::*;
+pub use self::BorrowKind::*;
+pub use self::IntVarValue::*;
+use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
+use crate::metadata::ModChild;
+use crate::middle::privacy::EffectiveVisibilities;
+use crate::mir::{Body, CoroutineLayout};
+use crate::query::Providers;
+use crate::traits::{self, Reveal};
+use crate::ty;
+pub use crate::ty::diagnostics::*;
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::util::Discr;
 
 pub mod abstract_const;
 pub mod adjustment;
@@ -2148,8 +2144,9 @@ pub struct DestructuredConst<'tcx> {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(PredicateKind<'_>, 32);
     static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 56);

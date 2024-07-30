@@ -43,8 +43,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::error::Error;
-use core::fmt;
-use core::hash;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
 use core::iter::FusedIterator;
@@ -55,9 +53,8 @@ use core::ops::AddAssign;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Range, RangeBounds};
-use core::ptr;
-use core::slice;
 use core::str::pattern::Pattern;
+use core::{fmt, hash, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Allocator;

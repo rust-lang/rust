@@ -7,11 +7,13 @@
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 
+use std::iter;
+use std::ops::ControlFlow;
+
 use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::HigherRankedType;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
@@ -21,6 +23,8 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 
+use super::SelectionCandidate::{self, *};
+use super::{BuiltinImplConditions, SelectionContext};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::{
@@ -28,13 +32,6 @@ use crate::traits::{
     ObligationCause, PolyTraitObligation, PredicateObligation, Selection, SelectionError,
     SignatureMismatch, TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
-
-use super::BuiltinImplConditions;
-use super::SelectionCandidate::{self, *};
-use super::SelectionContext;
-
-use std::iter;
-use std::ops::ControlFlow;
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self))]

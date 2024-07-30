@@ -1,11 +1,9 @@
-use crate::errors::*;
-use crate::fluent_generated as fluent;
-
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
@@ -26,6 +24,9 @@ use rustc_session::lint::builtin::{
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{sym, Span};
 use tracing::instrument;
+
+use crate::errors::*;
+use crate::fluent_generated as fluent;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let typeck_results = tcx.typeck(def_id);
@@ -1077,7 +1078,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let suggested_arm = if suggest_the_witnesses {
         let pattern = witnesses
             .iter()
-            .map(|witness| cx.hoist_witness_pat(witness).to_string())
+            .map(|witness| cx.print_witness_pat(witness))
             .collect::<Vec<String>>()
             .join(" | ");
         if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns {
@@ -1195,13 +1196,13 @@ fn joined_uncovered_patterns<'p, 'tcx>(
     witnesses: &[WitnessPat<'p, 'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &WitnessPat<'p, 'tcx>| cx.hoist_witness_pat(pat).to_string();
+    let pat_to_str = |pat: &WitnessPat<'p, 'tcx>| cx.print_witness_pat(pat);
     match witnesses {
         [] => bug!(),
-        [witness] => format!("`{}`", cx.hoist_witness_pat(witness)),
+        [witness] => format!("`{}`", cx.print_witness_pat(witness)),
         [head @ .., tail] if head.len() < LIMIT => {
             let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), cx.hoist_witness_pat(tail))
+            format!("`{}` and `{}`", head.join("`, `"), cx.print_witness_pat(tail))
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);

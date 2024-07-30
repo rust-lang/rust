@@ -41,9 +41,10 @@
 //!
 //! [^2]: `MTRef`, `MTLockRef` are type aliases.
 
-pub use crate::marker::*;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
+
+pub use crate::marker::*;
 
 mod lock;
 #[doc(no_inline)]
@@ -56,7 +57,6 @@ mod parallel;
 #[cfg(parallel_compiler)]
 pub use parallel::scope;
 pub use parallel::{join, par_for_each_in, par_map, parallel_guard, try_par_for_each_in};
-
 pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;

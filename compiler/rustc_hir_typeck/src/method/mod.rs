@@ -7,9 +7,6 @@ mod prelude_edition_lints;
 pub mod probe;
 mod suggest;
 
-pub use self::MethodError::*;
-
-use crate::FnCtxt;
 use rustc_errors::{Applicability, Diag, SubdiagMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -17,8 +14,9 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitableExt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -26,6 +24,8 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 
 use self::probe::{IsSuggestion, ProbeScope};
+pub use self::MethodError::*;
+use crate::FnCtxt;
 
 pub fn provide(providers: &mut Providers) {
     probe::provide(providers);

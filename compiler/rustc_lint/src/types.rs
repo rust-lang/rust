@@ -1,39 +1,33 @@
-use crate::{
-    fluent_generated as fluent,
-    lints::{
-        AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
-        AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
-        AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
-        InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex,
-        OverflowingBinHexSign, OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt,
-        OverflowingIntHelp, OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange,
-        UnusedComparisons, UseInclusiveRange, VariantSizeDifferencesDiag,
-    },
-};
-use crate::{LateContext, LateLintPass, LintContext};
-use rustc_ast as ast;
-use rustc_attr as attr;
+use std::iter;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
-use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
-use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
-    self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
-use rustc_target::abi::{Abi, Size, WrappingRange};
-use rustc_target::abi::{Integer, TagEncoding, Variants};
+use rustc_span::{source_map, Span, Symbol};
+use rustc_target::abi::{Abi, Integer, Size, TagEncoding, Variants, WrappingRange};
 use rustc_target::spec::abi::Abi as SpecAbi;
-use std::iter;
-use std::ops::ControlFlow;
 use tracing::debug;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+
+use crate::lints::{
+    AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
+    AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
+    AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
+    InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
+    OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp,
+    OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons,
+    UseInclusiveRange, VariantSizeDifferencesDiag,
+};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by

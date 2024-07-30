@@ -6,8 +6,7 @@
 #![allow(clippy::style)]
 
 use core::ffi::{c_uint, c_ulong, c_ushort, c_void, CStr};
-use core::mem;
-use core::ptr;
+use core::{mem, ptr};
 
 pub(super) mod windows_targets;
 

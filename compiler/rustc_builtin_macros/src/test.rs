@@ -1,8 +1,9 @@
 //! The expansion from a test function to the appropriate test struct for libtest
 //! Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
-use crate::errors;
-use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
+use std::assert_matches::assert_matches;
+use std::iter;
+
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, attr, GenericParamKind};
 use rustc_ast_pretty::pprust;
@@ -10,10 +11,11 @@ use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
-use std::assert_matches::assert_matches;
-use std::iter;
 use thin_vec::{thin_vec, ThinVec};
 use tracing::debug;
+
+use crate::errors;
+use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 /// #[test_case] is used by custom test authors to mark tests
 /// When building for test, it needs to make the item public and gensym the name
@@ -132,6 +134,14 @@ pub(crate) fn expand_test_or_bench(
             vec![Annotatable::Item(item)]
         };
     };
+
+    if let Some(attr) = attr::find_by_name(&item.attrs, sym::naked) {
+        cx.dcx().emit_err(errors::NakedFunctionTestingAttribute {
+            testing_span: attr_sp,
+            naked_span: attr.span,
+        });
+        return vec![Annotatable::Item(item)];
+    }
 
     // check_*_signature will report any errors in the type so compilation
     // will fail. We shouldn't try to expand in this case because the errors

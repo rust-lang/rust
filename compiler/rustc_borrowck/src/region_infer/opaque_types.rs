@@ -3,22 +3,20 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
-use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
-use rustc_middle::ty::{GenericArgKind, GenericArgs};
+use rustc_middle::ty::{
+    self, GenericArgKind, GenericArgs, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
-use crate::session_diagnostics::NonGenericOpaqueTypeParam;
-use crate::universal_regions::RegionClassification;
-
 use super::RegionInferenceContext;
+use crate::session_diagnostics::{LifetimeMismatchOpaqueParam, NonGenericOpaqueTypeParam};
+use crate::universal_regions::RegionClassification;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Resolve any opaque types that were encountered while borrow checking

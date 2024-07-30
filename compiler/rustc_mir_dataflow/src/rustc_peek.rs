@@ -1,3 +1,12 @@
+use rustc_ast::MetaItem;
+use rustc_hir::def_id::DefId;
+use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::{self, Body, Local, Location, MirPass};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
+use tracing::{debug, info};
+
 use crate::errors::{
     PeekArgumentNotALocal, PeekArgumentUntracked, PeekBitNotSet, PeekMustBeNotTemporary,
     PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
@@ -6,19 +15,8 @@ use crate::framework::BitSetExt;
 use crate::impls::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
 };
-use crate::move_paths::{HasMoveData, MoveData};
-use crate::move_paths::{LookupResult, MovePathIndex};
-use crate::MoveDataParamEnv;
+use crate::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
-use rustc_ast::MetaItem;
-use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::MirPass;
-use rustc_middle::mir::{self, Body, Local, Location};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
-use tracing::{debug, info};
 
 pub struct SanityCheck;
 
@@ -48,10 +46,9 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 
         let param_env = tcx.param_env(def_id);
         let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
-        let mdpe = MoveDataParamEnv { move_data, param_env };
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
-            let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+            let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
@@ -59,7 +56,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
-            let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
+            let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
@@ -67,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
-            let flow_def_inits = DefinitelyInitializedPlaces::new(body, &mdpe)
+            let flow_def_inits = DefinitelyInitializedPlaces::new(body, &move_data)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 

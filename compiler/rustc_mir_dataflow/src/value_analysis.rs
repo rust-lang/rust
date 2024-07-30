@@ -48,10 +48,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use tracing::debug;
 
+use crate::fmt::DebugWithContext;
 use crate::lattice::{HasBottom, HasTop};
-use crate::{
-    fmt::DebugWithContext, Analysis, AnalysisDomain, JoinSemiLattice, SwitchIntEdgeEffects,
-};
+use crate::{Analysis, AnalysisDomain, JoinSemiLattice, SwitchIntEdgeEffects};
 
 pub trait ValueAnalysis<'tcx> {
     /// For each place of interest, the analysis tracks a value of the given type.

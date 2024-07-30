@@ -75,15 +75,14 @@
     issue = "none"
 )]
 
-use crate::error::Error;
-use crate::fmt;
-use crate::str::FromStr;
-
 use self::common::BiasedFp;
 use self::float::RawFloat;
 use self::lemire::compute_float;
 use self::parse::{parse_inf_nan, parse_number};
 use self::slow::parse_long_mantissa;
+use crate::error::Error;
+use crate::fmt;
+use crate::str::FromStr;
 
 mod common;
 mod decimal;

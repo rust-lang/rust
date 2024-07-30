@@ -1,14 +1,11 @@
-use crate::{
-    utils::helpers::{
-        check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, symlink_dir,
-    },
-    Config,
+use std::fs::{self, remove_file, File};
+use std::io::Write;
+use std::path::PathBuf;
+
+use crate::utils::helpers::{
+    check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, symlink_dir,
 };
-use std::{
-    fs::{self, remove_file, File},
-    io::Write,
-    path::PathBuf,
-};
+use crate::Config;
 
 #[test]
 fn test_make() {

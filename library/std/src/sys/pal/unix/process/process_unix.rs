@@ -1,20 +1,7 @@
-use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
-use crate::mem;
-use crate::num::NonZero;
-use crate::sys;
-use crate::sys::cvt;
-use crate::sys::process::process_common::*;
-
-#[cfg(target_os = "linux")]
-use crate::sys::pal::unix::linux::pidfd::PidFd;
-
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
-
 #[cfg(not(target_os = "vxworks"))]
 use libc::{c_int, pid_t};
-
 #[cfg(not(any(
     target_os = "vxworks",
     target_os = "l4re",
@@ -22,6 +9,14 @@ use libc::{c_int, pid_t};
     target_os = "watchos",
 )))]
 use libc::{gid_t, uid_t};
+
+use crate::io::{self, Error, ErrorKind};
+use crate::num::NonZero;
+use crate::sys::cvt;
+#[cfg(target_os = "linux")]
+use crate::sys::pal::unix::linux::pidfd::PidFd;
+use crate::sys::process::process_common::*;
+use crate::{fmt, mem, sys};
 
 cfg_if::cfg_if! {
     if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
@@ -446,11 +441,12 @@ impl Command {
         stdio: &ChildPipes,
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
+        #[cfg(target_os = "linux")]
+        use core::sync::atomic::{AtomicU8, Ordering};
+
         use crate::mem::MaybeUninit;
         use crate::sys::weak::weak;
         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
-        #[cfg(target_os = "linux")]
-        use core::sync::atomic::{AtomicU8, Ordering};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
@@ -762,10 +758,11 @@ impl Command {
 
     #[cfg(target_os = "linux")]
     fn send_pidfd(&self, sock: &crate::sys::net::Socket) {
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
         use crate::io::IoSlice;
         use crate::os::fd::RawFd;
         use crate::sys::cvt_r;
-        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
 
         unsafe {
             let child_pid = libc::getpid();
@@ -819,10 +816,10 @@ impl Command {
 
     #[cfg(target_os = "linux")]
     fn recv_pidfd(&self, sock: &crate::sys::net::Socket) -> pid_t {
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
         use crate::io::IoSliceMut;
         use crate::sys::cvt_r;
-
-        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
 
         unsafe {
             const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
@@ -1047,7 +1044,7 @@ impl From<c_int> for ExitStatus {
     }
 }
 
-/// Convert a signal number to a readable, searchable name.
+/// Converts a signal number to a readable, searchable name.
 ///
 /// This string should be displayed right after the signal number.
 /// If a signal is unrecognized, it returns the empty string, so that
@@ -1189,12 +1186,11 @@ impl ExitStatusError {
 #[cfg(target_os = "linux")]
 mod linux_child_ext {
 
-    use crate::io;
-    use crate::mem;
     use crate::os::linux::process as os;
     use crate::sys::pal::unix::linux::pidfd as imp;
     use crate::sys::pal::unix::ErrorKind;
     use crate::sys_common::FromInner;
+    use crate::{io, mem};
 
     #[unstable(feature = "linux_pidfd", issue = "82971")]
     impl crate::os::linux::process::ChildExt for crate::process::Child {

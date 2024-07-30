@@ -5,14 +5,14 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
-use crate::build::Builder;
+use std::cmp::Ordering;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_middle::mir::*;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
@@ -20,7 +20,8 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
 
-use std::cmp::Ordering;
+use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.

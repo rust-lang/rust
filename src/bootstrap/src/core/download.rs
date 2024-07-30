@@ -1,19 +1,16 @@
-use std::{
-    env,
-    ffi::OsString,
-    fs::{self, File},
-    io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-    sync::OnceLock,
-};
+use std::env;
+use std::ffi::OsString;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
 use crate::utils::exec::{command, BootstrapCommand};
-use crate::utils::helpers::hex_encode;
-use crate::utils::helpers::{check_run, exe, move_file, program_out_of_date};
+use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
 use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();

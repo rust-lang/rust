@@ -36,7 +36,8 @@ fn test_clone_to_uninit_slice_success() {
 #[test]
 #[cfg(panic = "unwind")]
 fn test_clone_to_uninit_slice_drops_on_panic() {
-    use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::Ordering::Relaxed;
 
     /// A static counter is OK to use as long as _this one test_ isn't run several times in
     /// multiple threads.

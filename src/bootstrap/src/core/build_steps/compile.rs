@@ -8,31 +8,27 @@
 
 use std::borrow::Cow;
 use std::collections::HashSet;
-use std::env;
 use std::ffi::OsStr;
-use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::str;
+use std::{env, fs, str};
 
 use serde_derive::Deserialize;
 
-use crate::core::build_steps::dist;
-use crate::core::build_steps::llvm;
 use crate::core::build_steps::tool::SourceType;
+use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
-use crate::core::builder::crate_description;
-use crate::core::builder::Cargo;
-use crate::core::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
+use crate::core::builder::{
+    crate_description, Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath,
+};
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::LLVM_TOOLS;
-use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
+use crate::{CLang, Compiler, DependencyType, GitRepo, Mode, LLVM_TOOLS};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
@@ -127,11 +123,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // If the paths include "library", build the entire standard library.
-        let has_alias =
-            run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_alias { Default::default() } else { run.cargo_crates_in_set() };
-
+        let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -182,11 +174,16 @@ impl Step for Std {
             return;
         }
 
-        builder.update_submodule(&Path::new("library").join("stdarch"));
+        builder.require_submodule("library/stdarch", None);
 
         // Profiler information requires LLVM's compiler-rt
         if builder.config.profiler {
-            builder.update_submodule(Path::new("src/llvm-project"));
+            builder.require_submodule(
+                "src/llvm-project",
+                Some(
+                    "The `build.profiler` config option requires `compiler-rt` sources from LLVM.",
+                ),
+            );
         }
 
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
@@ -246,7 +243,7 @@ impl Step for Std {
                 Mode::Std,
                 SourceType::InTree,
                 target,
-                "check",
+                Kind::Check,
             );
             cargo.rustflag("-Zalways-encode-mir");
             cargo.arg("--manifest-path").arg(builder.src.join("library/sysroot/Cargo.toml"));
@@ -258,7 +255,7 @@ impl Step for Std {
                 Mode::Std,
                 SourceType::InTree,
                 target,
-                "build",
+                Kind::Build,
             );
             std_cargo(builder, target, compiler.stage, &mut cargo);
             for krate in &*self.crates {
@@ -424,6 +421,28 @@ fn copy_self_contained_objects(
     target_deps
 }
 
+/// Resolves standard library crates for `Std::run_make` for any build kind (like check, build, clippy, etc.).
+pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
+    // FIXME: Extend builder tests to cover the `crates` field of `Std` instances.
+    if cfg!(feature = "bootstrap-self-test") {
+        return vec![];
+    }
+
+    let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
+    let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
+
+    // For no_std targets, do not add any additional crates to the compilation other than what `compile::std_cargo` already adds for no_std targets.
+    if target_is_no_std {
+        vec![]
+    }
+    // If the paths include "library", build the entire standard library.
+    else if has_alias {
+        run.make_run_crates(builder::Alias::Library)
+    } else {
+        run.cargo_crates_in_set()
+    }
+}
+
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
 pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, cargo: &mut Cargo) {
@@ -456,13 +475,15 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         // That's probably ok? At least, the difference wasn't enforced before. There's a comment in
         // the compiler_builtins build script that makes me nervous, though:
         // https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
+        builder.require_submodule(
+            "src/llvm-project",
+            Some(
+                "The `build.optimized-compiler-builtins` config option \
+                 requires `compiler-rt` sources from LLVM.",
+            ),
+        );
         let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-        if !compiler_builtins_root.exists() {
-            panic!(
-                "need LLVM sources available to build `compiler-rt`, but they weren't present; consider enabling `build.submodules = true` or disabling `optimized-compiler-builtins`"
-            );
-        }
+        assert!(compiler_builtins_root.exists());
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -916,7 +937,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            "build",
+            Kind::Build,
         );
 
         rustc_cargo(builder, &mut cargo, target, &compiler);
@@ -1356,7 +1377,7 @@ impl Step for CodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            "build",
+            Kind::Build,
         );
         cargo
             .arg("--manifest-path")
@@ -1481,7 +1502,7 @@ pub fn compiler_file(
     let mut cmd = command(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={file}"));
-    let out = cmd.capture_stdout().run(builder).stdout();
+    let out = cmd.run_capture_stdout(builder).stdout();
     PathBuf::from(out.trim())
 }
 
@@ -1845,7 +1866,7 @@ impl Step for Assemble {
                 builder.ensure(llvm::Llvm { target: target_compiler.host });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 let llvm_bin_dir =
-                    command(llvm_config).capture_stdout().arg("--bindir").run(builder).stdout();
+                    command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
@@ -2171,7 +2192,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = t!(t!(path.metadata()).modified());
-    command("strip").capture().arg("--strip-debug").arg(path).run(builder);
+    command("strip").arg("--strip-debug").arg(path).run_capture(builder);
 
     let file = t!(fs::File::open(path));
 

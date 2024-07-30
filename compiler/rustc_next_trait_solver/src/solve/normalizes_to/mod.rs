@@ -6,8 +6,7 @@ mod weak_types;
 use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::Upcast as _;
-use rustc_type_ir::{self as ty, Interner, NormalizesTo};
+use rustc_type_ir::{self as ty, Interner, NormalizesTo, Upcast as _};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;

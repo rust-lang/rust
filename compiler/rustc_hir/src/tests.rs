@@ -1,8 +1,9 @@
-use crate::definitions::{DefKey, DefPathData, DisambiguatedDefPathData};
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::edition::Edition;
 use rustc_span::{create_session_globals_then, Symbol};
+
+use crate::definitions::{DefKey, DefPathData, DisambiguatedDefPathData};
 
 #[test]
 fn def_path_hash_depends_on_crate_id() {

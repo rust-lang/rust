@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-permissive-provenance
+//@normalize-stderr-test: "to \d+ bytes of memory" -> "to $$BYTES bytes of memory"
 
 fn main() {
     let ptr = Box::into_raw(Box::new(0u32));

@@ -1,11 +1,9 @@
 use either::Either;
-
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::sym;
 use tracing::trace;
 

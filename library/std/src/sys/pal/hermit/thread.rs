@@ -2,11 +2,10 @@
 
 use super::hermit_abi;
 use crate::ffi::CStr;
-use crate::io;
 use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
-use crate::ptr;
 use crate::time::Duration;
+use crate::{io, ptr};
 
 pub type Tid = hermit_abi::Tid;
 

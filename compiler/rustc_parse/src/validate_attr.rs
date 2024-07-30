@@ -1,7 +1,5 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use crate::{errors, parse_in};
-
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
@@ -17,6 +15,8 @@ use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSI
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, BytePos, Span, Symbol};
+
+use crate::{errors, parse_in};
 
 pub fn check_attr(features: &Features, psess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {

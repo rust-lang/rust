@@ -19,17 +19,16 @@
 //!    so that the compiler can know the cfg is expected
 //!  - Add the feature gating in `compiler/rustc_feature/src/builtin_attrs.rs`
 
+use std::hash::Hash;
+use std::iter;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Align;
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet};
-use rustc_target::spec::{Target, TargetTriple, TARGETS};
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target, TargetTriple, TARGETS};
 
 use crate::config::CrateType;
 use crate::Session;
-
-use std::hash::Hash;
-use std::iter;
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.

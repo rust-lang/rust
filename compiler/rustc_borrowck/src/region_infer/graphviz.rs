@@ -5,10 +5,11 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use super::*;
 use itertools::Itertools;
 use rustc_graphviz as dot;
 use rustc_middle::ty::UniverseIndex;
+
+use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
     match constraint.locations {

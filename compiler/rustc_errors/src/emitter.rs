@@ -7,25 +7,6 @@
 //!
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
-use rustc_span::source_map::SourceMap;
-use rustc_span::{char_width, FileLines, FileName, SourceFile, Span};
-
-use crate::snippet::{
-    Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
-};
-use crate::styled_buffer::StyledBuffer;
-use crate::translation::{to_fluent_args, Translate};
-use crate::{
-    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode,
-    FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
-    SuggestionStyle, TerminalUrl,
-};
-use derive_setters::Setters;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
-use rustc_error_messages::{FluentArgs, SpanLabel};
-use rustc_lint_defs::pluralize;
-use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::error::Report;
@@ -33,9 +14,28 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
-use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
-use termcolor::{Color, WriteColor};
+
+use derive_setters::Setters;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
+use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lint_defs::pluralize;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{char_width, FileLines, FileName, SourceFile, Span};
+use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
+
+use crate::diagnostic::DiagLocation;
+use crate::snippet::{
+    Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
+};
+use crate::styled_buffer::StyledBuffer;
+use crate::translation::{to_fluent_args, Translate};
+use crate::{
+    CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle,
+    Level, MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+};
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
 const DEFAULT_COLUMN_WIDTH: usize = 140;

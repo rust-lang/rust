@@ -1,15 +1,14 @@
+use rustc_codegen_ssa::common::IntPredicate;
+use rustc_codegen_ssa::mir::operand::OperandRef;
+use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods, ConstMethods};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::Ty;
+use rustc_target::abi::{Align, Endian, HasDataLayout, Size};
+
 use crate::builder::Builder;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use rustc_codegen_ssa::mir::operand::OperandRef;
-use rustc_codegen_ssa::{
-    common::IntPredicate,
-    traits::{BaseTypeMethods, BuilderMethods, ConstMethods},
-};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_middle::ty::Ty;
-use rustc_target::abi::{Align, Endian, HasDataLayout, Size};
 
 fn round_pointer_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,

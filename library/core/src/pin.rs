@@ -421,7 +421,7 @@
 //! }
 //!
 //! impl Unmovable {
-//!     /// Create a new `Unmovable`.
+//!     /// Creates a new `Unmovable`.
 //!     ///
 //!     /// To ensure the data doesn't move we place it on the heap behind a pinning Box.
 //!     /// Note that the data is pinned, but the `Pin<Box<Self>>` which is pinning it can
@@ -920,11 +920,8 @@
 
 #![stable(feature = "pin", since = "1.33.0")]
 
-use crate::cmp;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
-
 #[allow(unused_imports)]
 use crate::{
     cell::{RefCell, UnsafeCell},
@@ -932,6 +929,7 @@ use crate::{
     marker::PhantomPinned,
     mem, ptr,
 };
+use crate::{cmp, fmt};
 
 /// A pointer which pins its pointee in place.
 ///
@@ -1168,7 +1166,7 @@ impl<Ptr: Deref<Target: Hash>> Hash for Pin<Ptr> {
 }
 
 impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
-    /// Construct a new `Pin<Ptr>` around a pointer to some data of a type that
+    /// Constructs a new `Pin<Ptr>` around a pointer to some data of a type that
     /// implements [`Unpin`].
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
@@ -1223,7 +1221,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
 }
 
 impl<Ptr: Deref> Pin<Ptr> {
-    /// Construct a new `Pin<Ptr>` around a reference to some data of a type that
+    /// Constructs a new `Pin<Ptr>` around a reference to some data of a type that
     /// may or may not implement [`Unpin`].
     ///
     /// If `pointer` dereferences to an [`Unpin`] type, [`Pin::new`] should be used
@@ -1569,7 +1567,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
         self.__pointer
     }
 
-    /// Construct a new pin by mapping the interior value.
+    /// Constructs a new pin by mapping the interior value.
     ///
     /// For example, if you wanted to get a `Pin` of a field of something,
     /// you could use this to get access to that field in one line of code.
@@ -1602,7 +1600,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
 }
 
 impl<T: ?Sized> Pin<&'static T> {
-    /// Get a pinning reference from a `&'static` reference.
+    /// Gets a pinning reference from a `&'static` reference.
     ///
     /// This is safe because `T` is borrowed immutably for the `'static` lifetime, which
     /// never ends.
@@ -1639,8 +1637,8 @@ impl<'a, Ptr: DerefMut> Pin<&'a mut Pin<Ptr>> {
         //
         // We need to ensure that two things hold for that to be the case:
         //
-        // 1) Once we give out a `Pin<&mut Ptr::Target>`, an `&mut Ptr::Target` will not be given out.
-        // 2) By giving out a `Pin<&mut Ptr::Target>`, we do not risk of violating
+        // 1) Once we give out a `Pin<&mut Ptr::Target>`, a `&mut Ptr::Target` will not be given out.
+        // 2) By giving out a `Pin<&mut Ptr::Target>`, we do not risk violating
         // `Pin<&mut Pin<Ptr>>`
         //
         // The existence of `Pin<Ptr>` is sufficient to guarantee #1: since we already have a
@@ -1656,7 +1654,7 @@ impl<'a, Ptr: DerefMut> Pin<&'a mut Pin<Ptr>> {
 }
 
 impl<T: ?Sized> Pin<&'static mut T> {
-    /// Get a pinning mutable reference from a static mutable reference.
+    /// Gets a pinning mutable reference from a static mutable reference.
     ///
     /// This is safe because `T` is borrowed for the `'static` lifetime, which
     /// never ends.

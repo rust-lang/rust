@@ -1,3 +1,11 @@
+use std::assert_matches::assert_matches;
+use std::collections::hash_map::Entry;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::marker::PhantomData;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
@@ -8,14 +16,9 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use std::assert_matches::assert_matches;
-use std::collections::hash_map::Entry;
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::marker::PhantomData;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
 use tracing::{debug, instrument};
+#[cfg(debug_assertions)]
+use {super::debug::EdgeFilter, std::env};
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
@@ -23,9 +26,6 @@ use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffects};
-
-#[cfg(debug_assertions)]
-use {super::debug::EdgeFilter, std::env};
 
 #[derive(Clone)]
 pub struct DepGraph<D: Deps> {

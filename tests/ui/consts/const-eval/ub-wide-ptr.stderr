@@ -262,7 +262,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-wide-ptr.rs:144:62
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: null pointer is a dangling pointer (it has no provenance)
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: expected a pointer to some allocation, but got a null pointer
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/ub-wide-ptr.rs:147:65
@@ -274,7 +274,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/ub-wide-ptr.rs:156:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: null pointer is a dangling pointer (it has no provenance)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: expected a pointer to some allocation, but got a null pointer
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/ub-wide-ptr.rs:161:5

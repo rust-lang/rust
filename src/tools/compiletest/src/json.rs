@@ -1,11 +1,13 @@
 //! These structs are a subset of the ones found in `rustc_errors::json`.
 //! They are only used for deserialization of JSON output provided by libtest.
 
-use crate::errors::{Error, ErrorKind};
-use crate::runtest::ProcRes;
-use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+use serde::Deserialize;
+
+use crate::errors::{Error, ErrorKind};
+use crate::runtest::ProcRes;
 
 #[derive(Deserialize)]
 struct Diagnostic {

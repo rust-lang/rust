@@ -20,17 +20,13 @@ pub mod generics;
 mod lint;
 mod object_safety;
 
-use crate::bounds::Bounds;
-use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
-use crate::hir_ty_lowering::errors::{prohibit_assoc_item_constraint, GenericsArgsErrExtend};
-use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
-use crate::middle::resolve_bound_vars as rbv;
-use crate::require_c_abi_if_c_variadic;
+use std::slice;
+
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed,
-    FatalError,
+    struct_span_code_err, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -55,7 +51,12 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
-use std::slice;
+use crate::bounds::Bounds;
+use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
+use crate::hir_ty_lowering::errors::{prohibit_assoc_item_constraint, GenericsArgsErrExtend};
+use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
+use crate::middle::resolve_bound_vars as rbv;
+use crate::require_c_abi_if_c_variadic;
 
 /// A path segment that is semantically allowed to have generic arguments.
 #[derive(Debug)]

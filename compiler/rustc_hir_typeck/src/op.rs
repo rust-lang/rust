@@ -1,12 +1,8 @@
 //! Code related to processing overloaded binary and unary operators.
 
-use super::method::MethodCallee;
-use super::FnCtxt;
-use crate::Expectation;
-use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag};
-use rustc_hir as hir;
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, Diag};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -21,6 +17,11 @@ use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, ObligationCtxt};
 use rustc_type_ir::TyKind::*;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use super::method::MethodCallee;
+use super::FnCtxt;
+use crate::Expectation;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`

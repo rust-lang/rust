@@ -1,10 +1,11 @@
 //! Checks the licenses of third-party dependencies.
 
-use build_helper::ci::CiEnv;
-use cargo_metadata::{Metadata, Package, PackageId};
 use std::collections::HashSet;
 use std::fs::read_dir;
 use std::path::Path;
+
+use build_helper::ci::CiEnv;
+use cargo_metadata::{Metadata, Package, PackageId};
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.
@@ -72,7 +73,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
     ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
-    ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book"]),
+    ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
     ("src/tools/x", &[], None, &[]),
     // tidy-alphabetical-end

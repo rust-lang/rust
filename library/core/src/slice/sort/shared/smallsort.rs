@@ -1,11 +1,8 @@
 //! This module contains a variety of sort implementations that are optimized for small lengths.
 
-use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
-use crate::ptr;
-use crate::slice;
-
 use crate::slice::sort::shared::FreezeMarker;
+use crate::{intrinsics, ptr, slice};
 
 // It's important to differentiate between SMALL_SORT_THRESHOLD performance for
 // small slices and small-sort performance sorting small sub-slices as part of

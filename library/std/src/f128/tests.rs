@@ -3,8 +3,7 @@
 #![cfg(reliable_f128)]
 
 use crate::f128::consts;
-use crate::num::FpCategory as Fp;
-use crate::num::*;
+use crate::num::{FpCategory as Fp, *};
 
 /// Smallest number
 const TINY_BITS: u128 = 0x1;

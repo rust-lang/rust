@@ -2,9 +2,16 @@ mod make;
 mod markdown;
 mod rust;
 
+use std::fs::File;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::process::{self, Command, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+use std::{panic, str};
+
 pub(crate) use make::make_test;
 pub(crate) use markdown::test as test_markdown;
-
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
@@ -17,23 +24,12 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::spec::{Target, TargetTriple};
-
-use std::fs::File;
-use std::io::{self, Write};
-use std::panic;
-use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
-use std::str;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
-
 use tempfile::{Builder as TempFileBuilder, TempDir};
 
+use self::rust::HirCollector;
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
-
-use self::rust::HirCollector;
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone)]

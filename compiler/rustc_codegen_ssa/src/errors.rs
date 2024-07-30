@@ -1,20 +1,23 @@
 //! Errors emitted by codegen_ssa
 
-use crate::assert_module_sources::CguReuse;
-use crate::back::command::Command;
-use crate::fluent_generated as fluent;
+use std::borrow::Cow;
+use std::io::Error;
+use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
+
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use rustc_type_ir::FloatTy;
-use std::borrow::Cow;
-use std::io::Error;
-use std::path::{Path, PathBuf};
-use std::process::ExitStatus;
+
+use crate::assert_module_sources::CguReuse;
+use crate::back::command::Command;
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_incorrect_cgu_reuse_type)]

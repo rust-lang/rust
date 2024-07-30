@@ -1,9 +1,10 @@
+use std::iter;
+
 use rustc_index::IndexSlice;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 use rustc_target::abi::Size;
-use std::iter;
 
 use super::simplify::simplify_cfg;
 

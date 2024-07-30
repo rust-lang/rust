@@ -6,8 +6,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::rfs;
-use run_make_support::rustc;
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();

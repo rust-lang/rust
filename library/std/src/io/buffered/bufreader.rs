@@ -1,11 +1,12 @@
 mod buffer;
 
+use buffer::Buffer;
+
 use crate::fmt;
 use crate::io::{
     self, uninlined_slow_read_byte, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom,
     SizeHint, SpecReadByte, DEFAULT_BUF_SIZE,
 };
-use buffer::Buffer;
 
 /// The `BufReader<R>` struct adds buffering to any reader.
 ///

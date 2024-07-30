@@ -1,10 +1,11 @@
+use std::borrow::Cow;
+
 use rustc_ast::ast;
 use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol};
-use std::borrow::Cow;
 
 #[derive(Diagnostic)]
 #[diag(expand_expr_repeat_no_syntax_vars)]
@@ -414,6 +415,23 @@ pub struct DuplicateMatcherBinding {
     pub span: Span,
     #[label(expand_label2)]
     pub prev: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_missing_fragment_specifier)]
+#[note]
+#[help(expand_valid)]
+pub struct MissingFragmentSpecifier {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        expand_suggestion_add_fragspec,
+        style = "verbose",
+        code = ":spec",
+        applicability = "maybe-incorrect"
+    )]
+    pub add_span: Span,
+    pub valid: &'static str,
 }
 
 #[derive(Diagnostic)]

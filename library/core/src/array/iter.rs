@@ -1,14 +1,11 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
+use crate::intrinsics::transmute_unchecked;
+use crate::iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
+use crate::mem::MaybeUninit;
 use crate::num::NonZero;
-use crate::{
-    fmt,
-    intrinsics::transmute_unchecked,
-    iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce},
-    mem::MaybeUninit,
-    ops::{IndexRange, Range},
-    ptr,
-};
+use crate::ops::{IndexRange, Range};
+use crate::{fmt, ptr};
 
 /// A by-value [array] iterator.
 #[stable(feature = "array_value_iter", since = "1.51.0")]
@@ -47,8 +44,10 @@ impl<T, const N: usize> IntoIterator for [T; N] {
     type IntoIter = IntoIter<T, N>;
 
     /// Creates a consuming iterator, that is, one that moves each value out of
-    /// the array (from start to end). The array cannot be used after calling
-    /// this unless `T` implements `Copy`, so the whole array is copied.
+    /// the array (from start to end).
+    ///
+    /// The array cannot be used after calling this unless `T` implements
+    /// `Copy`, so the whole array is copied.
     ///
     /// Arrays have special behavior when calling `.into_iter()` prior to the
     /// 2021 edition -- see the [array] Editions section for more information.

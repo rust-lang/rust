@@ -1,17 +1,15 @@
-use super::{flags::Flags, ChangeIdWrapper, Config};
-use crate::core::build_steps::clippy::get_clippy_rules_in_order;
-use crate::core::config::Target;
-use crate::core::config::TargetSelection;
-use crate::core::config::{LldMode, TomlConfig};
+use std::env;
+use std::fs::{remove_file, File};
+use std::io::Write;
+use std::path::Path;
 
 use clap::CommandFactory;
 use serde::Deserialize;
-use std::{
-    env,
-    fs::{remove_file, File},
-    io::Write,
-    path::Path,
-};
+
+use super::flags::Flags;
+use super::{ChangeIdWrapper, Config};
+use crate::core::build_steps::clippy::get_clippy_rules_in_order;
+use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
 fn parse(config: &str) -> Config {
     Config::parse_inner(&["check".to_string(), "--config=/does/not/exist".to_string()], |&_| {
