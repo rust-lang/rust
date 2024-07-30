@@ -1,8 +1,8 @@
 error: missing `struct` for struct definition
-  --> $DIR/pub-ident-struct-4.rs:3:4
+  --> $DIR/pub-ident-struct-4.rs:3:1
    |
 LL | pub T(#[allow(dead_code)] String);
-   |    ^
+   | ^^^^^
    |
 help: add `struct` here to parse `T` as a struct
    |
