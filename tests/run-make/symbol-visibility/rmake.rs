@@ -1,10 +1,13 @@
-// Dynamic libraries on Rust used to export a very high amount of symbols,
-// going as far as filling the output with mangled names and generic function
-// names. After the rework of #38117, this test checks that no mangled Rust symbols
-// are exported, and that generics are only shown if explicitely requested.
-// See https://github.com/rust-lang/rust/issues/37530
+//! Dynamic libraries on Rust used to export a very high amount of symbols, going as far as filling
+//! the output with mangled names and generic function names. After the rework in #38117, this test
+//! checks that no mangled Rust symbols are exported, and that generics are only shown if explicitly
+//! requested.
+//!
+//! See <https://github.com/rust-lang/rust/issues/37530>.
 
 //@ ignore-windows-msvc
+// FIXME(jieyouxu): unknown reason why this test fails on msvc, likely because certain assertions
+// fail.
 
 use run_make_support::{bin_name, dynamic_lib_name, is_windows, llvm_readobj, regex, rustc};
 
@@ -143,13 +146,19 @@ fn main() {
 #[track_caller]
 fn symbols_check(path: &str, symbol_check_type: SymbolCheckType, exists_once: bool) {
     let out = llvm_readobj().arg("--dyn-symbols").input(path).run().invalid_stdout_utf8();
-    assert_eq!(
-        out.lines()
-            .filter(|&line| !line.contains("__imp_") && has_symbol(line, symbol_check_type))
-            .count()
-            == 1,
-        exists_once
-    );
+
+    let matched_lines = out
+        .lines()
+        .filter(|&line| !line.contains("__imp_") && has_symbol(line, symbol_check_type))
+        .collect::<Vec<_>>();
+
+    if exists_once && matched_lines.len() != 1 {
+        eprintln!("symbol_check_type: {:?}", symbol_check_type);
+        eprintln!("exists_once: {}", exists_once);
+        eprintln!("matched_lines:\n{:#?}", matched_lines);
+    }
+
+    assert_eq!(matched_lines.len() == 1, exists_once);
 }
 
 fn has_symbol(line: &str, symbol_check_type: SymbolCheckType) -> bool {
@@ -161,7 +170,7 @@ fn has_symbol(line: &str, symbol_check_type: SymbolCheckType) -> bool {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum SymbolCheckType {
     StrSymbol(&'static str),
     AnyRustSymbol,
