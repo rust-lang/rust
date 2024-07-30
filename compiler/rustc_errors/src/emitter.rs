@@ -2561,41 +2561,42 @@ fn num_decimal_digits(num: usize) -> usize {
 // Keep the following list in sync with `rustc_span::char_width`.
 // ATTENTION: keep lexicografically sorted so that the binary search will work
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
+    // tidy-alphabetical-start
     // In terminals without Unicode support the following will be garbled, but in *all* terminals
     // the underlying codepoint will be as well. We could gate this replacement behind a "unicode
     // support" gate.
     ('\0', "␀"),
-    ('\u{1}', "␁"),
-    ('\u{2}', "␂"),
-    ('\u{3}', "␃"),
-    ('\u{4}', "␄"),
-    ('\u{5}', "␅"),
-    ('\u{6}', "␆"),
-    ('\u{7}', "␇"),
-    ('\u{8}', "␈"),
-    ('\t', "    "), // We do our own tab replacement
-    ('\u{b}', "␋"),
-    ('\u{c}', "␌"),
-    ('\r', "␍"),
-    ('\u{e}', "␎"),
-    ('\u{f}', "␏"),
-    ('\u{10}', "␐"),
-    ('\u{11}', "␑"),
-    ('\u{12}', "␒"),
-    ('\u{13}', "␓"),
-    ('\u{14}', "␔"),
-    ('\u{15}', "␕"),
-    ('\u{16}', "␖"),
-    ('\u{17}', "␗"),
-    ('\u{18}', "␘"),
-    ('\u{19}', "␙"),
-    ('\u{1a}', "␚"),
-    ('\u{1b}', "␛"),
-    ('\u{1c}', "␜"),
-    ('\u{1d}', "␝"),
-    ('\u{1e}', "␞"),
-    ('\u{1f}', "␟"),
-    ('\u{7f}', "␡"),
+    ('\u{0001}', "␁"),
+    ('\u{0002}', "␂"),
+    ('\u{0003}', "␃"),
+    ('\u{0004}', "␄"),
+    ('\u{0005}', "␅"),
+    ('\u{0006}', "␆"),
+    ('\u{0007}', "␇"),
+    ('\u{0008}', "␈"),
+    ('\u{0009}', "    "), // We do our own tab replacement
+    ('\u{000b}', "␋"),
+    ('\u{000c}', "␌"),
+    ('\u{000d}', "␍"),
+    ('\u{000e}', "␎"),
+    ('\u{000f}', "␏"),
+    ('\u{0010}', "␐"),
+    ('\u{0011}', "␑"),
+    ('\u{0012}', "␒"),
+    ('\u{0013}', "␓"),
+    ('\u{0014}', "␔"),
+    ('\u{0015}', "␕"),
+    ('\u{0016}', "␖"),
+    ('\u{0017}', "␗"),
+    ('\u{0018}', "␘"),
+    ('\u{0019}', "␙"),
+    ('\u{001a}', "␚"),
+    ('\u{001b}', "␛"),
+    ('\u{001c}', "␜"),
+    ('\u{001d}', "␝"),
+    ('\u{001e}', "␞"),
+    ('\u{001f}', "␟"),
+    ('\u{007f}', "␡"),
     ('\u{200d}', ""), // Replace ZWJ for consistent terminal output of grapheme clusters.
     ('\u{202a}', "�"), // The following unicode text flow control characters are inconsistently
     ('\u{202b}', "�"), // supported across CLIs and can cause confusion due to the bytes on disk
@@ -2606,6 +2607,7 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{2067}', "�"),
     ('\u{2068}', "�"),
     ('\u{2069}', "�"),
+    // tidy-alphabetical-end
 ];
 
 fn normalize_whitespace(s: &str) -> String {
