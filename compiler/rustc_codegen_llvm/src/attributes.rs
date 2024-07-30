@@ -5,7 +5,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{FunctionReturn, OptLevel};
+use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_span::symbol::sym;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
@@ -405,8 +405,33 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // And it is a module-level attribute, so the alternative is pulling naked functions into new LLVM modules.
         // Otherwise LLVM's "naked" functions come with endbr prefixes per https://github.com/rust-lang/rust/issues/98768
         to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
-        // Need this for AArch64.
-        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
+        if llvm_util::get_version() < (19, 0, 0) {
+            // Prior to LLVM 19, branch-target-enforcement was disabled by setting the attribute to
+            // the string "false". Now it is disabled by absence of the attribute.
+            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
+        }
+    } else if llvm_util::get_version() >= (19, 0, 0) {
+        // For non-naked functions, set branch protection attributes on aarch64.
+        if let Some(BranchProtection { bti, pac_ret }) =
+            cx.sess().opts.unstable_opts.branch_protection
+        {
+            assert!(cx.sess().target.arch == "aarch64");
+            if bti {
+                to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+            }
+            if let Some(PacRet { leaf, key }) = pac_ret {
+                to_add.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "sign-return-address",
+                    if leaf { "all" } else { "non-leaf" },
+                ));
+                to_add.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "sign-return-address-key",
+                    if key == PAuthKey::A { "a_key" } else { "b_key" },
+                ));
+            }
+        }
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR)
         || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR_ZEROED)
