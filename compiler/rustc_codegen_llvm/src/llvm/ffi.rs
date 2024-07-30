@@ -1575,6 +1575,12 @@ extern "C" {
     pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
     pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
     pub fn LLVMRustCreateMemoryEffectsAttr(C: &Context, effects: MemoryEffects) -> &Attribute;
+    pub fn LLVMRustCreateRangeAttribute(
+        C: &Context,
+        num_bits: c_uint,
+        lower_words: *const u64,
+        upper_words: *const u64,
+    ) -> &Attribute;
 
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction<'a>(
