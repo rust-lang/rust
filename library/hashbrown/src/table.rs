@@ -1835,6 +1835,15 @@ pub struct Iter<'a, T> {
     marker: PhantomData<&'a T>,
 }
 
+impl<'a, T> Default for Iter<'a, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Iter {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
@@ -1881,6 +1890,15 @@ pub struct IterMut<'a, T> {
     marker: PhantomData<&'a mut T>,
 }
 
+impl<'a, T> Default for IterMut<'a, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        IterMut {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
@@ -1931,6 +1949,14 @@ where
     inner: RawIntoIter<T, A>,
 }
 
+impl<T, A: Allocator> Default for IntoIter<T, A> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        IntoIter {
+            inner: Default::default(),
+        }
+    }
+}
 impl<T, A> Iterator for IntoIter<T, A>
 where
     A: Allocator,

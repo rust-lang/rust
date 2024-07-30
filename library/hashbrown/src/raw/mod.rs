@@ -4112,6 +4112,13 @@ impl<T> Clone for RawIter<T> {
         }
     }
 }
+impl<T> Default for RawIter<T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        // SAFETY: Because the table is static, it always outlives the iter.
+        unsafe { RawTableInner::NEW.iter() }
+    }
+}
 
 impl<T> Iterator for RawIter<T> {
     type Item = Bucket<T>;
@@ -4330,6 +4337,15 @@ impl<T, A: Allocator> Drop for RawIntoIter<T, A> {
     }
 }
 
+impl<T, A: Allocator> Default for RawIntoIter<T, A> {
+    fn default() -> Self {
+        Self {
+            iter: Default::default(),
+            allocation: None,
+            marker: PhantomData,
+        }
+    }
+}
 impl<T, A: Allocator> Iterator for RawIntoIter<T, A> {
     type Item = T;
 
