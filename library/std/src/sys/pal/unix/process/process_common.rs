@@ -124,6 +124,7 @@ pub struct StdioPipes {
 
 // passed to do_exec() with configuration of what the child stdio should look
 // like
+#[cfg_attr(target_os = "vita", allow(dead_code))]
 pub struct ChildPipes {
     pub stdin: ChildStdio,
     pub stdout: ChildStdio,

@@ -1829,13 +1829,21 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         copyContentToClipboard(codeElem.textContent);
     }
 
-    function addCopyButton(event) {
+    function getExampleWrap(event) {
         let elem = event.target;
         while (!hasClass(elem, "example-wrap")) {
             elem = elem.parentElement;
             if (elem.tagName === "body" || hasClass(elem, "docblock")) {
-                return;
+                return null;
             }
+        }
+        return elem;
+    }
+
+    function addCopyButton(event) {
+        const elem = getExampleWrap(event);
+        if (elem === null) {
+            return;
         }
         // Since the button will be added, no need to keep this listener around.
         elem.removeEventListener("mouseover", addCopyButton);
@@ -1858,7 +1866,20 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         parent.appendChild(copyButton);
     }
 
+    function showHideCodeExampleButtons(event) {
+        const elem = getExampleWrap(event);
+        if (elem === null) {
+            return;
+        }
+        const buttons = elem.querySelector(".button-holder");
+        if (buttons === null) {
+            return;
+        }
+        buttons.classList.toggle("keep-visible");
+    }
+
     onEachLazy(document.querySelectorAll(".docblock .example-wrap"), elem => {
         elem.addEventListener("mouseover", addCopyButton);
+        elem.addEventListener("click", showHideCodeExampleButtons);
     });
 }());
