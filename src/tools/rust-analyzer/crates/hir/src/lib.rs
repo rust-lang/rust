@@ -1,4 +1,4 @@
-//! HIR (previously known as descriptors) provides a high-level object oriented
+//! HIR (previously known as descriptors) provides a high-level object-oriented
 //! access to Rust code.
 //!
 //! The principal difference between HIR and syntax trees is that HIR is bound
