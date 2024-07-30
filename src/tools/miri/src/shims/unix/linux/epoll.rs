@@ -64,7 +64,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        let fd = this.machine.fds.insert_fd(Epoll::default());
+        let fd = this.machine.fds.insert_new(Epoll::default());
         Ok(Scalar::from_i32(fd))
     }
 
