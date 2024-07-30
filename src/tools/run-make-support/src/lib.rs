@@ -87,7 +87,7 @@ pub use path_helpers::{
 pub use scoped_run::{run_in_tmpdir, test_while_readonly};
 
 pub use assertion_helpers::{
-    assert_contains, assert_contains_regex, assert_dirs_are_equal, assert_equals,
+    assert_contains, assert_contains_regex, assert_count_is, assert_dirs_are_equal, assert_equals,
     assert_not_contains, assert_not_contains_regex,
 };
 
