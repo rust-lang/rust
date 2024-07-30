@@ -461,6 +461,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
                 for other_attr in attrs {
+                    // this covers "sugared doc comments" of the form `/// ...`
+                    // it does not cover `#[doc = "..."]`, which is handled below
+                    if other_attr.is_doc_comment() {
+                        continue;
+                    }
+
                     if !ALLOW_LIST.iter().any(|name| other_attr.has_name(*name)) {
                         self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
                             span: other_attr.span,
