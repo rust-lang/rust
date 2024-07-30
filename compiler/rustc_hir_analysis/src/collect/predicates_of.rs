@@ -116,7 +116,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     }
 
     // For a delegation item inherit predicates from callee.
-    if let Some(sig_id) = tcx.hir().opt_delegation_sig_id(def_id)
+    if let Some(sig_id) = tcx.opt_delegation_sig_id(def_id)
         && let Some(predicates) = inherit_predicates_for_delegation_item(tcx, def_id, sig_id)
     {
         return predicates;

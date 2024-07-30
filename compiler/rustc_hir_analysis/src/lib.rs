@@ -147,10 +147,7 @@ pub fn provide(providers: &mut Providers) {
     variance::provide(providers);
     outlives::provide(providers);
     hir_wf_check::provide(providers);
-    *providers = Providers {
-        inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
-        ..*providers
-    };
+    delegation::provide(providers);
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) {

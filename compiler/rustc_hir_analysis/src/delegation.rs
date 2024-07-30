@@ -1,6 +1,8 @@
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::ErrorGuaranteed;
@@ -217,7 +219,7 @@ fn check_constraints<'tcx>(
     }
 
     if let Some(local_sig_id) = sig_id.as_local()
-        && tcx.hir().opt_delegation_sig_id(local_sig_id).is_some()
+        && tcx.opt_delegation_sig_id(local_sig_id).is_some()
     {
         emit("recursive delegation is not supported yet");
     }
@@ -242,7 +244,7 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> &'tcx [Ty<'tcx>] {
-    let sig_id = tcx.hir().delegation_sig_id(def_id);
+    let sig_id = tcx.opt_delegation_sig_id(def_id).unwrap();
     let caller_sig = tcx.fn_sig(sig_id);
     if let Err(err) = check_constraints(tcx, def_id, sig_id) {
         let sig_len = caller_sig.instantiate_identity().skip_binder().inputs().len() + 1;
@@ -256,4 +258,18 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let sig = caller_sig.instantiate(tcx, args).skip_binder();
     let sig_iter = sig.inputs().iter().cloned().chain(std::iter::once(sig.output()));
     tcx.arena.alloc_from_iter(sig_iter)
+}
+
+pub(crate) fn opt_delegation_sig_id<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Option<DefId> {
+    if let Some(ret) = tcx.hir().get_fn_output(def_id)
+        && let hir::FnRetTy::Return(ty) = ret
+        && let hir::TyKind::InferDelegation(sig_id, _) = ty.kind
+    {
+        return Some(sig_id);
+    }
+    None
+}
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { inherit_sig_for_delegation_item, opt_delegation_sig_id, ..*providers };
 }
