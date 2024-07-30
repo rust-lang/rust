@@ -439,7 +439,7 @@ macro_rules! include_bytes {
     ($file:expr,) => {{ /* compiler built-in */ }};
 }
 
-fn main() { include_bytes("foo"); }
+fn main() { include_bytes("foo");include_bytes(r"foo"); }
 "#,
         expect![[r##"
 #[rustc_builtin_macro]
@@ -448,7 +448,7 @@ macro_rules! include_bytes {
     ($file:expr,) => {{ /* compiler built-in */ }};
 }
 
-fn main() { include_bytes("foo"); }
+fn main() { include_bytes("foo");include_bytes(r"foo"); }
 "##]],
     );
 }

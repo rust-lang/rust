@@ -714,6 +714,12 @@ fn parse_string(tt: &tt::Subtree) -> Result<(Symbol, Span), ExpandError> {
                 kind: tt::LitKind::Str,
                 suffix: _,
             })) => Ok((unescape_str(text), *span)),
+            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                symbol: text,
+                span,
+                kind: tt::LitKind::StrRaw(_),
+                suffix: _,
+            })) => Ok((text.clone(), *span)),
             // FIXME: We wrap expression fragments in parentheses which can break this expectation
             // here
             // Remove this once we handle none delims correctly
@@ -725,6 +731,12 @@ fn parse_string(tt: &tt::Subtree) -> Result<(Symbol, Span), ExpandError> {
                         kind: tt::LitKind::Str,
                         suffix: _,
                     })) => Some((unescape_str(text), *span)),
+                    tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                        symbol: text,
+                        span,
+                        kind: tt::LitKind::StrRaw(_),
+                        suffix: _,
+                    })) => Some((text.clone(), *span)),
                     _ => None,
                 })
             }
