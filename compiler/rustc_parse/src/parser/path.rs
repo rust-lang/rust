@@ -313,7 +313,8 @@ impl<'a> Parser<'a> {
                 }
 
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-                self.eat(&token::PathSep);
+                // First, eat `::` if it exists.
+                let _ = self.eat(&token::PathSep);
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
                     // `<'a, T, A = U>`
