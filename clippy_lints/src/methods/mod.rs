@@ -749,7 +749,6 @@ declare_clippy_lint! {
     ///
      /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// (0_i32..10)
     ///     .filter(|n| n.checked_add(1).is_some())
     ///     .map(|n| n.checked_add(1).unwrap());
@@ -757,7 +756,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// # #[allow(unused)]
     /// (0_i32..10).filter_map(|n| n.checked_add(1));
     /// ```
     #[clippy::version = "1.51.0"]
@@ -850,7 +848,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// let vec = vec![1];
     /// vec.iter().find(|x| **x == 0).is_some();
     ///
@@ -862,7 +859,6 @@ declare_clippy_lint! {
     /// let vec = vec![1];
     /// vec.iter().any(|x| *x == 0);
     ///
-    /// # #[allow(unused)]
     /// !"hello world".contains("world");
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -1505,7 +1501,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #[allow(unused)]
     /// (0..3).fold(false, |acc, x| acc || x > 2);
     /// ```
     ///
@@ -2008,13 +2003,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #[allow(unused)]
     /// "Hello".bytes().nth(3);
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # #[allow(unused)]
     /// "Hello".as_bytes().get(3);
     /// ```
     #[clippy::version = "1.52.0"]
@@ -2059,7 +2052,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// let some_vec = vec![0, 1, 2, 3];
     ///
     /// some_vec.iter().count();
@@ -3656,7 +3648,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
     /// owned_string.as_str().as_bytes()
     /// # ;
@@ -3664,7 +3655,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
     /// owned_string.as_bytes()
     /// # ;

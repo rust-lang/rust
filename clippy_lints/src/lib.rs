@@ -966,10 +966,3 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
         ls.register_renamed(old_name, new_name);
     }
 }
-
-// only exists to let the dogfood integration test works.
-// Don't run clippy as an executable directly
-#[allow(dead_code)]
-fn main() {
-    panic!("Please use the cargo-clippy executable");
-}

@@ -589,9 +589,8 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         "u128" => SimplifiedType::Uint(UintTy::U128),
         "f32" => SimplifiedType::Float(FloatTy::F32),
         "f64" => SimplifiedType::Float(FloatTy::F64),
-        #[allow(trivial_casts)]
         _ => {
-            return Result::<_, rustc_errors::ErrorGuaranteed>::Ok(&[] as &[_])
+            return Result::<&[_], rustc_errors::ErrorGuaranteed>::Ok(&[])
                 .into_iter()
                 .flatten()
                 .copied();
