@@ -547,6 +547,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
+    #[must_use]
     fn check_noexpect(&self, tok: &TokenKind) -> bool {
         self.token == *tok
     }
@@ -556,6 +557,7 @@ impl<'a> Parser<'a> {
     /// the main purpose of this function is to reduce the cluttering of the suggestions list
     /// which using the normal eat method could introduce in some cases.
     #[inline]
+    #[must_use]
     fn eat_noexpect(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check_noexpect(tok);
         if is_present {
@@ -566,6 +568,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
     #[inline]
+    #[must_use]
     pub fn eat(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check(tok);
         if is_present {
@@ -577,12 +580,14 @@ impl<'a> Parser<'a> {
     /// If the next token is the given keyword, returns `true` without eating it.
     /// An expectation is also added for diagnostics purposes.
     #[inline]
+    #[must_use]
     fn check_keyword(&mut self, kw: Symbol) -> bool {
         self.expected_tokens.push(TokenType::Keyword(kw));
         self.token.is_keyword(kw)
     }
 
     #[inline]
+    #[must_use]
     fn check_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.check_keyword(kw) {
             return true;
@@ -602,6 +607,7 @@ impl<'a> Parser<'a> {
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     // Public for rustc_builtin_macros and rustfmt usage.
     #[inline]
+    #[must_use]
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
@@ -615,6 +621,7 @@ impl<'a> Parser<'a> {
     /// If the case differs (and is ignored) an error is issued.
     /// This is useful for recovery.
     #[inline]
+    #[must_use]
     fn eat_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.eat_keyword(kw) {
             return true;
@@ -636,6 +643,7 @@ impl<'a> Parser<'a> {
     /// Otherwise, returns `false`. No expectation is added.
     // Public for rustc_builtin_macros usage.
     #[inline]
+    #[must_use]
     pub fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
         if self.token.is_keyword(kw) {
             self.bump();
@@ -648,7 +656,7 @@ impl<'a> Parser<'a> {
     /// If the given word is not a keyword, signals an error.
     /// If the next token is not the given word, signals an error.
     /// Otherwise, eats it.
-    fn expect_keyword(&mut self, kw: Symbol) -> PResult<'a, ()> {
+    pub fn expect_keyword(&mut self, kw: Symbol) -> PResult<'a, ()> {
         if !self.eat_keyword(kw) { self.unexpected() } else { Ok(()) }
     }
 
@@ -1025,8 +1033,11 @@ impl<'a> Parser<'a> {
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
-        if matches!(recovered, Recovered::No) {
-            self.eat(ket);
+        if matches!(recovered, Recovered::No) && !self.eat(ket) {
+            self.dcx().span_delayed_bug(
+                self.token.span,
+                "recovered but `parse_seq_to_before_end` did not give us the ket token",
+            );
         }
         Ok((val, trailing))
     }
@@ -1250,7 +1261,7 @@ impl<'a> Parser<'a> {
         if pat {
             self.psess.gated_spans.gate(sym::inline_const_pat, span);
         }
-        self.eat_keyword(kw::Const);
+        self.expect_keyword(kw::Const)?;
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,

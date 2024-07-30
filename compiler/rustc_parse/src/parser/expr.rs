@@ -3153,7 +3153,8 @@ impl<'a> Parser<'a> {
 
                 if !require_comma {
                     arm_body = Some(expr);
-                    this.eat(&token::Comma);
+                    // Eat a comma if it exists, though.
+                    let _ = this.eat(&token::Comma);
                     Ok(Recovered::No)
                 } else if let Some((span, guar)) =
                     this.parse_arm_body_missing_braces(&expr, arrow_span)
@@ -3654,7 +3655,7 @@ impl<'a> Parser<'a> {
                         fields.push(f);
                     }
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
-                    self.eat(&token::Comma);
+                    let _ = self.eat(&token::Comma);
                 }
             }
         }
