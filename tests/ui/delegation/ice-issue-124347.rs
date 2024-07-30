@@ -6,7 +6,8 @@ trait Trait {
     //~^ ERROR recursive delegation is not supported yet
 }
 
+// FIXME(fn_delegation): `recursive delegation` error should be emitted here
 reuse foo;
-//~^ ERROR recursive delegation is not supported yet
+//~^ ERROR cycle detected when computing generics of `foo`
 
 fn main() {}
