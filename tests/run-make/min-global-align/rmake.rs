@@ -1,10 +1,10 @@
-// This tests ensure that global variables respect the target minimum alignment.
+// This test checks that global variables respect the target minimum alignment.
 // The three bools `STATIC_BOOL`, `STATIC_MUT_BOOL`, and `CONST_BOOL` all have
 // type-alignment of 1, but some targets require greater global alignment.
 // See https://github.com/rust-lang/rust/pull/44440
 
 //@ only-linux
-// Reason: this test is target-independent, considering compilation is targeted
+// Reason: this test is specific to linux, considering compilation is targeted
 // towards linux architectures only.
 
 use run_make_support::{assert_count_is, llvm_components_contain, rfs, rustc};
