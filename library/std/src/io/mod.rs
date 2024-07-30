@@ -1262,7 +1262,7 @@ impl<'a> IoSliceMut<'a> {
     /// buf.advance(3);
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance(&mut self, n: usize) {
         self.0.advance(n)
@@ -1301,7 +1301,7 @@ impl<'a> IoSliceMut<'a> {
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     /// ```
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance_slices(bufs: &mut &mut [IoSliceMut<'a>], n: usize) {
         // Number of buffers to remove.
@@ -1402,7 +1402,7 @@ impl<'a> IoSlice<'a> {
     /// buf.advance(3);
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance(&mut self, n: usize) {
         self.0.advance(n)
@@ -1440,7 +1440,7 @@ impl<'a> IoSlice<'a> {
     /// IoSlice::advance_slices(&mut bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance_slices(bufs: &mut &mut [IoSlice<'a>], n: usize) {
         // Number of buffers to remove.

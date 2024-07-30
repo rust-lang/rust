@@ -555,12 +555,7 @@ pub(crate) enum MissingInInForLoopSub {
         code = "in"
     )]
     InNotOf(#[primary_span] Span),
-    #[suggestion(
-        parse_add_in,
-        style = "verbose",
-        applicability = "maybe-incorrect",
-        code = " in "
-    )]
+    #[suggestion(parse_add_in, style = "verbose", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
 }
 

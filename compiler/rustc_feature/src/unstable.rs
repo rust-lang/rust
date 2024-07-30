@@ -518,7 +518,7 @@ declare_features! (
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
-    (unstable, macro_metavar_expr_concat, "CURRENT_RUSTC_VERSION", Some(124225)),
+    (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types in cases that are
@@ -561,11 +561,11 @@ declare_features! (
     /// Allows using enums in offset_of!
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
     /// Allows using fields with slice type in offset_of!
-    (unstable, offset_of_slice, "CURRENT_RUSTC_VERSION", Some(126151)),
+    (unstable, offset_of_slice, "1.81.0", Some(126151)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
-    (unstable, patchable_function_entry, "CURRENT_RUSTC_VERSION", Some(123115)),
+    (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
@@ -577,7 +577,7 @@ declare_features! (
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
-    (incomplete, ref_pat_eat_one_layer_2024_structural, "CURRENT_RUSTC_VERSION", Some(123076)),
+    (incomplete, ref_pat_eat_one_layer_2024_structural, "1.81.0", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.
@@ -643,9 +643,9 @@ declare_features! (
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
     /// Allows use of x86 `AMX` target-feature attributes and intrinsics
-    (unstable, x86_amx_intrinsics, "CURRENT_RUSTC_VERSION", Some(126622)),
+    (unstable, x86_amx_intrinsics, "1.81.0", Some(126622)),
     /// Allows use of the `xop` target-feature
-    (unstable, xop_target_feature, "CURRENT_RUSTC_VERSION", Some(127208)),
+    (unstable, xop_target_feature, "1.81.0", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

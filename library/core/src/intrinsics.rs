@@ -1043,45 +1043,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn breakpoint();
 
-    #[cfg(bootstrap)]
-    #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn size_of<T>() -> usize;
-
-    #[cfg(bootstrap)]
-    #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn min_align_of<T>() -> usize;
-
-    #[cfg(bootstrap)]
-    #[rustc_const_unstable(feature = "const_pref_align_of", issue = "91971")]
-    #[rustc_nounwind]
-    pub fn pref_align_of<T>() -> usize;
-
-    #[cfg(bootstrap)]
-    #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
-    #[rustc_nounwind]
-    pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-
-    #[cfg(bootstrap)]
-    #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
-    #[rustc_nounwind]
-    pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
-
-    #[cfg(bootstrap)]
-    #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn type_name<T: ?Sized>() -> &'static str;
-
-    #[cfg(bootstrap)]
-    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn type_id<T: ?Sized + 'static>() -> u128;
-
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
     /// This will statically either panic, or do nothing.
     ///
@@ -2411,12 +2372,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
-    #[cfg(bootstrap)]
-    #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn variant_count<T>() -> usize;
-
     /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
     /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
     ///
@@ -2794,7 +2749,6 @@ pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
 #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const fn size_of<T>() -> usize {
     unreachable!()
 }
@@ -2812,7 +2766,6 @@ pub const fn size_of<T>() -> usize {
 #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const fn min_align_of<T>() -> usize {
     unreachable!()
 }
@@ -2826,7 +2779,6 @@ pub const fn min_align_of<T>() -> usize {
 #[rustc_const_unstable(feature = "const_pref_align_of", issue = "91971")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const unsafe fn pref_align_of<T>() -> usize {
     unreachable!()
 }
@@ -2845,7 +2797,6 @@ pub const unsafe fn pref_align_of<T>() -> usize {
 #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const fn variant_count<T>() -> usize {
     unreachable!()
 }
@@ -2862,7 +2813,6 @@ pub const fn variant_count<T>() -> usize {
 #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
     unreachable!()
 }
@@ -2879,7 +2829,6 @@ pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
 #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const unsafe fn min_align_of_val<T: ?Sized>(_ptr: *const T) -> usize {
     unreachable!()
 }
@@ -2897,7 +2846,6 @@ pub const unsafe fn min_align_of_val<T: ?Sized>(_ptr: *const T) -> usize {
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const fn type_name<T: ?Sized>() -> &'static str {
     unreachable!()
 }
@@ -2917,7 +2865,6 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-#[cfg(not(bootstrap))]
 pub const fn type_id<T: ?Sized + 'static>() -> u128 {
     unreachable!()
 }

@@ -329,11 +329,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         trace!(
             "Running binary op {:?}: {:?} ({}), {:?} ({})",
-            bin_op,
-            *left,
-            left.layout.ty,
-            *right,
-            right.layout.ty
+            bin_op, *left, left.layout.ty, *right, right.layout.ty
         );
 
         match left.layout.ty.kind() {
