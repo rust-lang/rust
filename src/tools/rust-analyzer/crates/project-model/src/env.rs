@@ -81,7 +81,7 @@ pub(crate) fn cargo_config_env(
             tracing::debug!("Discovered cargo config env: {:?}", env);
         })
         .inspect_err(|err| {
-            tracing::error!("Failed to discover cargo config env: {:?}", err);
+            tracing::debug!("Failed to discover cargo config env: {:?}", err);
         })
         .unwrap_or_default()
 }
