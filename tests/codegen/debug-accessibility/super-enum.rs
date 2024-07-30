@@ -14,8 +14,8 @@ mod module {
         C { x: u32 },
     }
 
-    // NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "SuperFooEnum"{{.*}}flags: DIFlagProtected{{.*}})
-    // MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<super_enum::module::SuperFooEnum>"{{.*}}flags: DIFlagProtected{{.*}})
+    // CHECK-NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "SuperFooEnum"{{.*}}flags: DIFlagProtected{{.*}})
+    // CHECK-MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<super_enum::module::SuperFooEnum>"{{.*}}flags: DIFlagProtected{{.*}})
 
     pub fn use_everything() {
         black_box(SuperFooEnum::A);

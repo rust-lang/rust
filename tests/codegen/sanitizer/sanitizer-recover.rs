@@ -3,44 +3,44 @@
 //
 //@ needs-sanitizer-address
 //@ needs-sanitizer-memory
-//@ revisions:ASAN ASAN-RECOVER MSAN MSAN-RECOVER MSAN-RECOVER-LTO
+//@ revisions: asan asan-recover msan msan-recover msan-recover-lto
 //@ no-prefer-dynamic
 //
 //@                   compile-flags: -Ctarget-feature=-crt-static
-//@[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
-//@[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
-//@[MSAN]             compile-flags: -Zsanitizer=memory
-//@[MSAN-RECOVER]     compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory
-//@[MSAN-RECOVER-LTO] compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory -C lto=fat
+//@[asan]             compile-flags: -Zsanitizer=address -Copt-level=0
+//@[asan-recover]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
+//@[msan]             compile-flags: -Zsanitizer=memory
+//@[msan-recover]     compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory
+//@[msan-recover-lto] compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory -C lto=fat
 //
-// MSAN-NOT:         @__msan_keep_going
-// MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}}constant i32 1
-// MSAN-RECOVER-LTO: @__msan_keep_going = weak_odr {{.*}}constant i32 1
+// CHECK-MSAN-NOT:         @__msan_keep_going
+// CHECK-MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}}constant i32 1
+// CHECK-MSAN-RECOVER-LTO: @__msan_keep_going = weak_odr {{.*}}constant i32 1
 
-// ASAN-LABEL: define dso_local i32 @penguin(
-// ASAN:         call void @__asan_report_load4(i64 %0)
-// ASAN:         unreachable
-// ASAN:       }
+// CHECK-ASAN-LABEL: define dso_local i32 @penguin(
+// CHECK-ASAN:         call void @__asan_report_load4(i64 %0)
+// CHECK-ASAN:         unreachable
+// CHECK-ASAN:       }
 //
-// ASAN-RECOVER-LABEL: define dso_local i32 @penguin(
-// ASAN-RECOVER:         call void @__asan_report_load4_noabort(
-// ASAN-RECOVER-NOT:     unreachable
-// ASAN:               }
+// CHECK-ASAN-RECOVER-LABEL: define dso_local i32 @penguin(
+// CHECK-ASAN-RECOVER:         call void @__asan_report_load4_noabort(
+// CHECK-ASAN-RECOVER-NOT:     unreachable
+// CHECK-ASAN:               }
 //
-// MSAN-LABEL: define dso_local noundef i32 @penguin(
-// MSAN:         call void @__msan_warning{{(_with_origin_noreturn\(i32 0\)|_noreturn\(\))}}
-// MSAN:         unreachable
-// MSAN:       }
+// CHECK-MSAN-LABEL: define dso_local noundef i32 @penguin(
+// CHECK-MSAN:         call void @__msan_warning{{(_with_origin_noreturn\(i32 0\)|_noreturn\(\))}}
+// CHECK-MSAN:         unreachable
+// CHECK-MSAN:       }
 //
-// MSAN-RECOVER-LABEL: define dso_local noundef i32 @penguin(
-// MSAN-RECOVER:         call void @__msan_warning{{(_with_origin\(i32 0\)|\(\))}}
-// MSAN-RECOVER-NOT:     unreachable
-// MSAN-RECOVER:       }
+// CHECK-MSAN-RECOVER-LABEL: define dso_local noundef i32 @penguin(
+// CHECK-MSAN-RECOVER:         call void @__msan_warning{{(_with_origin\(i32 0\)|\(\))}}
+// CHECK-MSAN-RECOVER-NOT:     unreachable
+// CHECK-MSAN-RECOVER:       }
 //
-// MSAN-RECOVER-LTO-LABEL: define dso_local noundef i32 @penguin(
-// MSAN-RECOVER-LTO:          call void @__msan_warning{{(_with_origin\(i32 0\)|\(\))}}
-// MSAN-RECOVER-LTO-NOT:      unreachable
-// MSAN-RECOVER-LTO:       }
+// CHECK-MSAN-RECOVER-LTO-LABEL: define dso_local noundef i32 @penguin(
+// CHECK-MSAN-RECOVER-LTO:          call void @__msan_warning{{(_with_origin\(i32 0\)|\(\))}}
+// CHECK-MSAN-RECOVER-LTO-NOT:      unreachable
+// CHECK-MSAN-RECOVER-LTO:       }
 //
 #[no_mangle]
 pub fn penguin(p: &mut i32) -> i32 {

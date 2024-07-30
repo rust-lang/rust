@@ -45,12 +45,12 @@ pub enum Type {
 // presence of the `signext` for those targets where we expect it.
 
 // CHECK: define{{( dso_local)?}} noundef
-// x86_64-SAME:                 signext
-// aarch64-apple-SAME:          signext
-// aarch64-windows-NOT: signext
-// aarch64-linux-NOT:   signext
-// arm-SAME:                    signext
-// riscv-SAME:                  signext
+// CHECK-X86_64-SAME:                 signext
+// CHECK-AARCH64-APPLE-SAME:          signext
+// CHECK-AARCH64-WINDOWS-NOT: signext
+// CHECK-AARCH64-LINUX-NOT:   signext
+// CHECK-ARM-SAME:                    signext
+// CHECK-RISCV-SAME:                  signext
 // CHECK-SAME: i8 @test()
 
 #[no_mangle]

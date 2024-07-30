@@ -315,99 +315,99 @@ macro_rules! check_reg {
 
 // CHECK-LABEL: reg_i16:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_i16 i16 reg "mov");
 
 // CHECK-LABEL: reg_f16:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_f16 f16 reg "mov");
 
 // CHECK-LABEL: reg_i32:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_i32 i32 reg "mov");
 
 // CHECK-LABEL: reg_f32:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_f32 f32 reg "mov");
 
-// x86_64-LABEL: reg_i64:
-// x86_64: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: reg_i64:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check!(reg_i64 i64 reg "mov");
 
-// x86_64-LABEL: reg_f64:
-// x86_64: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: reg_f64:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check!(reg_f64 f64 reg "mov");
 
 // CHECK-LABEL: reg_ptr:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr ptr reg "mov");
 
 // CHECK-LABEL: reg_abcd_i16:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_abcd_i16 i16 reg_abcd "mov");
 
 // CHECK-LABEL: reg_abcd_f16:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_abcd_f16 f16 reg_abcd "mov");
 
 // CHECK-LABEL: reg_abcd_i32:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_abcd_i32 i32 reg_abcd "mov");
 
 // CHECK-LABEL: reg_abcd_f32:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_abcd_f32 f32 reg_abcd "mov");
 
-// x86_64-LABEL: reg_abcd_i64:
-// x86_64: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: reg_abcd_i64:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check!(reg_abcd_i64 i64 reg_abcd "mov");
 
-// x86_64-LABEL: reg_abcd_f64:
-// x86_64: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: reg_abcd_f64:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check!(reg_abcd_f64 f64 reg_abcd "mov");
 
 // CHECK-LABEL: reg_abcd_ptr:
 // CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK-X86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// CHECK-I686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_abcd_ptr ptr reg_abcd "mov");
 
@@ -849,17 +849,17 @@ check_reg!(eax_i32 i32 "eax" "mov");
 // CHECK: #NO_APP
 check_reg!(eax_f32 f32 "eax" "mov");
 
-// x86_64-LABEL: eax_i64:
-// x86_64: #APP
-// x86_64: mov eax, eax
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: eax_i64:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov eax, eax
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check_reg!(eax_i64 i64 "eax" "mov");
 
-// x86_64-LABEL: eax_f64:
-// x86_64: #APP
-// x86_64: mov eax, eax
-// x86_64: #NO_APP
+// CHECK-X86_64-LABEL: eax_f64:
+// CHECK-X86_64: #APP
+// CHECK-X86_64: mov eax, eax
+// CHECK-X86_64: #NO_APP
 #[cfg(x86_64)]
 check_reg!(eax_f64 f64 "eax" "mov");
 
@@ -869,10 +869,10 @@ check_reg!(eax_f64 f64 "eax" "mov");
 // CHECK: #NO_APP
 check_reg!(eax_ptr ptr "eax" "mov");
 
-// i686-LABEL: ah_byte:
-// i686: #APP
-// i686: mov ah, ah
-// i686: #NO_APP
+// CHECK-I686-LABEL: ah_byte:
+// CHECK-I686: #APP
+// CHECK-I686: mov ah, ah
+// CHECK-I686: #NO_APP
 #[cfg(i686)]
 check_reg!(ah_byte i8 "ah" "mov");
 

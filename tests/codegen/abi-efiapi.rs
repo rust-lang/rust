@@ -24,10 +24,10 @@ trait Freeze {}
 #[lang = "copy"]
 trait Copy {}
 
-//x86_64: define win64cc void @has_efiapi
-//i686: define void @has_efiapi
-//aarch64: define dso_local void @has_efiapi
-//arm: define dso_local arm_aapcscc void @has_efiapi
-//riscv: define dso_local void @has_efiapi
+// CHECK-X86_64: define win64cc void @has_efiapi
+// CHECK-I686: define void @has_efiapi
+// CHECK-AARCH64: define dso_local void @has_efiapi
+// CHECK-ARM: define dso_local arm_aapcscc void @has_efiapi
+// CHECK-RISCV: define dso_local void @has_efiapi
 #[no_mangle]
 pub extern "efiapi" fn has_efiapi() {}

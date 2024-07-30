@@ -1,8 +1,8 @@
-//@ revisions: COMPAT INCOMPAT
+//@ revisions: compat incompat
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu -Copt-level=3
-//@ [COMPAT] compile-flags: -Ctarget-feature=+avx2,+avx
-//@ [INCOMPAT] compile-flags: -Ctarget-feature=-avx2,-avx
+//@ [compat] compile-flags: -Ctarget-feature=+avx2,+avx
+//@ [incompat] compile-flags: -Ctarget-feature=-avx2,-avx
 
 // See also tests/assembly/target-feature-multiple.rs
 #![feature(no_core, lang_items)]
@@ -33,14 +33,14 @@ pub unsafe fn apple() -> u32 {
 pub unsafe fn banana() -> u32 {
     // CHECK-LABEL: @banana()
     // CHECK-SAME: [[BANANAATTRS:#[0-9]+]] {
-    // COMPAT: {{.*}}call{{.*}}@peach
-    // INCOMPAT: {{.*}}call{{.*}}@apple
+    // CHECK-COMPAT: {{.*}}call{{.*}}@peach
+    // CHECK-INCOMPAT: {{.*}}call{{.*}}@apple
     apple() // Compatible for inline in COMPAT revision and can't be inlined in INCOMPAT
 }
 
 // CHECK: attributes [[APPLEATTRS]]
-// COMPAT-SAME: "target-features"="+avx2,+avx,+avx"
-// INCOMPAT-SAME: "target-features"="-avx2,-avx,+avx"
+// CHECK-COMPAT-SAME: "target-features"="+avx2,+avx,+avx"
+// CHECK-INCOMPAT-SAME: "target-features"="-avx2,-avx,+avx"
 // CHECK: attributes [[BANANAATTRS]]
-// COMPAT-SAME: "target-features"="+avx2,+avx"
-// INCOMPAT-SAME: "target-features"="-avx2,-avx"
+// CHECK-COMPAT-SAME: "target-features"="+avx2,+avx"
+// CHECK-INCOMPAT-SAME: "target-features"="-avx2,-avx"

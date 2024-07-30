@@ -64,11 +64,11 @@ pub fn niche_eq(l: Option<EnumWithNiche>, r: Option<EnumWithNiche>) -> bool {
 }
 
 // FIXME: This should work too
-// // FIXME-CHECK-LABEL: @bool_eq
+// // COM: CHECK-LABEL: @bool_eq
 // #[no_mangle]
 // pub fn bool_eq(l: Option<bool>, r: Option<bool>) -> bool {
-//     // FIXME-CHECK: start:
-//     // FIXME-CHECK-NEXT: icmp eq i8
-//     // FIXME-CHECK-NEXT: ret i1
+//     // COM: CHECK: start:
+//     // COM: CHECK-NEXT: icmp eq i8
+//     // COM: CHECK-NEXT: ret i1
 //     l == r
 // }

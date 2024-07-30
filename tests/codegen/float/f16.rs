@@ -145,16 +145,16 @@ pub fn f16_as_self(a: f16) -> f16 {
     a as f16
 }
 
-// other-LABEL: float @f16_as_f32(
-// x86-LABEL: i32 @f16_as_f32(
+// CHECK-OTHER-LABEL: float @f16_as_f32(
+// CHECK-X86-LABEL: i32 @f16_as_f32(
 #[no_mangle]
 pub fn f16_as_f32(a: f16) -> f32 {
     // CHECK: fpext half %{{.+}} to float
     a as f32
 }
 
-// other-LABEL: double @f16_as_f64(
-// x86-LABEL: void @f16_as_f64(
+// CHECK-OTHER-LABEL: double @f16_as_f64(
+// CHECK-X86-LABEL: void @f16_as_f64(
 #[no_mangle]
 pub fn f16_as_f64(a: f16) -> f64 {
     // CHECK: fpext half %{{.+}} to double

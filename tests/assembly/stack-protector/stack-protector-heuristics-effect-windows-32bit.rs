@@ -16,11 +16,11 @@
 // CHECK-LABEL: emptyfn:
 #[no_mangle]
 pub fn emptyfn() {
-    // all: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: array_char
@@ -34,11 +34,11 @@ pub fn array_char(f: fn(*const char)) {
     f(&b as *const _);
     f(&c as *const _);
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: array_u8_1
@@ -50,11 +50,11 @@ pub fn array_u8_1(f: fn(*const u8)) {
     // The 'strong' heuristic adds stack protection to functions with local
     // array variables regardless of their size.
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: array_u8_small:
@@ -67,11 +67,11 @@ pub fn array_u8_small(f: fn(*const u8)) {
 
     // Small arrays do not lead to stack protection by the 'basic' heuristic.
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: array_u8_large:
@@ -83,11 +83,11 @@ pub fn array_u8_large(f: fn(*const u8)) {
     // Since `a` is a byte array with size greater than 8, the basic heuristic
     // will also protect this function.
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 #[derive(Copy, Clone)]
@@ -102,11 +102,11 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     // Since `a` is a byte array in the LLVM output, the basic heuristic will
     // also protect this function.
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: local_var_addr_used_indirectly
@@ -129,11 +129,11 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // EOF
     // ```
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: local_string_addr_taken
@@ -160,11 +160,11 @@ pub fn local_string_addr_taken(f: fn(&String)) {
     // ```
     //
 
-    // all: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 pub trait SelfByRef {
@@ -189,11 +189,11 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
     // is easily inlined. There is therefore no stack smash protection even with
     // the `strong` heuristic.
 
-    // all: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 pub struct Gigastruct {
@@ -226,11 +226,11 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // EOF
     // ```
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: local_large_var_cloned
@@ -255,11 +255,11 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // EOF
     // ```
 
-    // all: __security_check_cookie
-    // strong: __security_check_cookie
-    // basic: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG: __security_check_cookie
+    // CHECK-BASIC: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 extern "C" {
@@ -295,11 +295,11 @@ extern "C" {
 pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     f(unsafe { alloca(8) });
 
-    // all: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: alloca_large_compile_time_constant_arg
@@ -307,11 +307,11 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
 pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     f(unsafe { alloca(9) });
 
-    // all: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: alloca_dynamic_arg
@@ -319,11 +319,11 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
 pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     f(unsafe { alloca(n) });
 
-    // all: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-ALL: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // The question then is: in what ways can Rust code generate array-`alloca`
@@ -350,12 +350,12 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // LLVM does not support generating stack protectors in functions with funclet
     // based EH personalities.
     // https://github.com/llvm/llvm-project/blob/37fd3c96b917096d8a550038f6e61cdf0fc4174f/llvm/lib/CodeGen/StackProtector.cpp#L103C1-L109C4
-    // all-NOT: __security_check_cookie
-    // strong-NOT: __security_check_cookie
+    // CHECK-ALL-NOT: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
 
-    // basic-NOT: __security_check_cookie
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: unsized_local
@@ -374,10 +374,10 @@ pub fn unsized_local(s: &[u8], l: bool, f: fn(&mut [u8])) {
     // LLVM does not support generating stack protectors in functions with funclet
     // based EH personalities.
     // https://github.com/llvm/llvm-project/blob/37fd3c96b917096d8a550038f6e61cdf0fc4174f/llvm/lib/CodeGen/StackProtector.cpp#L103C1-L109C4
-    // all-NOT: __security_check_cookie
-    // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
+    // CHECK-ALL-NOT: __security_check_cookie
+    // CHECK-STRONG-NOT: __security_check_cookie
+    // CHECK-BASIC-NOT: __security_check_cookie
 
-    // none-NOT: __security_check_cookie
-    // missing-NOT: __security_check_cookie
+    // CHECK-NONE-NOT: __security_check_cookie
+    // CHECK-MISSING-NOT: __security_check_cookie
 }

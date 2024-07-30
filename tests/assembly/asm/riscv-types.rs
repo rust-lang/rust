@@ -10,7 +10,7 @@
 //@[riscv64-zfhmin] compile-flags: --target riscv64imac-unknown-none-elf --cfg riscv64
 //@[riscv64-zfhmin] needs-llvm-components: riscv
 //@[riscv64-zfhmin] compile-flags: -C target-feature=+zfhmin
-//@[riscv64-zfhmin] filecheck-flags: --check-prefix riscv64
+//@[riscv64-zfhmin] filecheck-flags: --check-prefix CHECK-RISCV64
 
 //@[riscv32-zfhmin] compile-flags: --target riscv32imac-unknown-none-elf
 //@[riscv32-zfhmin] needs-llvm-components: riscv
@@ -19,12 +19,12 @@
 //@[riscv64-zfh] compile-flags: --target riscv64imac-unknown-none-elf --cfg riscv64
 //@[riscv64-zfh] needs-llvm-components: riscv
 //@[riscv64-zfh] compile-flags: -C target-feature=+zfh
-//@[riscv64-zfh] filecheck-flags: --check-prefix riscv64 --check-prefix zfhmin
+//@[riscv64-zfh] filecheck-flags: --check-prefix CHECK-RISCV64 --check-prefix CHECK-ZFHMIN
 
 //@[riscv32-zfh] compile-flags: --target riscv32imac-unknown-none-elf
 //@[riscv32-zfh] needs-llvm-components: riscv
 //@[riscv32-zfh] compile-flags: -C target-feature=+zfh
-//@[riscv32-zfh] filecheck-flags: --check-prefix zfhmin
+//@[riscv32-zfh] filecheck-flags: --check-prefix CHECK-ZFHMIN
 
 //@ compile-flags: -C target-feature=+d
 
@@ -150,17 +150,17 @@ check!(reg_i32 i32 reg "mv");
 // CHECK: #NO_APP
 check!(reg_f32 f32 reg "mv");
 
-// riscv64-LABEL: reg_i64:
-// riscv64: #APP
-// riscv64: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
-// riscv64: #NO_APP
+// CHECK-RISCV64-LABEL: reg_i64:
+// CHECK-RISCV64: #APP
+// CHECK-RISCV64: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
+// CHECK-RISCV64: #NO_APP
 #[cfg(riscv64)]
 check!(reg_i64 i64 reg "mv");
 
-// riscv64-LABEL: reg_f64:
-// riscv64: #APP
-// riscv64: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
-// riscv64: #NO_APP
+// CHECK-RISCV64-LABEL: reg_f64:
+// CHECK-RISCV64: #APP
+// CHECK-RISCV64: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
+// CHECK-RISCV64: #NO_APP
 #[cfg(riscv64)]
 check!(reg_f64 f64 reg "mv");
 
@@ -171,11 +171,11 @@ check!(reg_f64 f64 reg "mv");
 check!(reg_ptr ptr reg "mv");
 
 // CHECK-LABEL: freg_f16:
-// zfhmin-NOT: or
+// CHECK-ZFHMIN-NOT: or
 // CHECK: #APP
 // CHECK: fmv.s f{{[a-z0-9]+}}, f{{[a-z0-9]+}}
 // CHECK: #NO_APP
-// zfhmin-NOT: or
+// CHECK-ZFHMIN-NOT: or
 check!(freg_f16 f16 freg "fmv.s");
 
 // CHECK-LABEL: freg_f32:
@@ -220,17 +220,17 @@ check_reg!(a0_i32 i32 "a0" "mv");
 // CHECK: #NO_APP
 check_reg!(a0_f32 f32 "a0" "mv");
 
-// riscv64-LABEL: a0_i64:
-// riscv64: #APP
-// riscv64: mv a0, a0
-// riscv64: #NO_APP
+// CHECK-RISCV64-LABEL: a0_i64:
+// CHECK-RISCV64: #APP
+// CHECK-RISCV64: mv a0, a0
+// CHECK-RISCV64: #NO_APP
 #[cfg(riscv64)]
 check_reg!(a0_i64 i64 "a0" "mv");
 
-// riscv64-LABEL: a0_f64:
-// riscv64: #APP
-// riscv64: mv a0, a0
-// riscv64: #NO_APP
+// CHECK-RISCV64-LABEL: a0_f64:
+// CHECK-RISCV64: #APP
+// CHECK-RISCV64: mv a0, a0
+// CHECK-RISCV64: #NO_APP
 #[cfg(riscv64)]
 check_reg!(a0_f64 f64 "a0" "mv");
 
@@ -241,11 +241,11 @@ check_reg!(a0_f64 f64 "a0" "mv");
 check_reg!(a0_ptr ptr "a0" "mv");
 
 // CHECK-LABEL: fa0_f16:
-// zfhmin-NOT: or
+// CHECK-ZFHMIN-NOT: or
 // CHECK: #APP
 // CHECK: fmv.s fa0, fa0
 // CHECK: #NO_APP
-// zfhmin-NOT: or
+// CHECK-ZFHMIN-NOT: or
 check_reg!(fa0_f16 f16 "fa0" "fmv.s");
 
 // CHECK-LABEL: fa0_f32:

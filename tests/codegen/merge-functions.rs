@@ -1,6 +1,6 @@
-//@ revisions: O Os
-//@[Os] compile-flags: -Copt-level=s
-//@[O] compile-flags: -O
+//@ revisions: opt-level-2 opt-level-s
+//@[opt-level-s] compile-flags: -Copt-level=s
+//@[opt-level-2] compile-flags: -O
 #![crate_type = "lib"]
 
 // CHECK: @func{{2|1}} = {{.*}}alias{{.*}}@func{{1|2}}

@@ -1,7 +1,7 @@
 //@ run-pass
-//@ revisions: YES NO
-//@ [YES] compile-flags: -Cdebug-assertions=yes
-//@ [NO] compile-flags: -Cdebug-assertions=no
+//@ revisions: yes no
+//@ [yes] compile-flags: -Cdebug-assertions=yes
+//@ [no] compile-flags: -Cdebug-assertions=no
 
 #![feature(cfg_ub_checks)]
 

@@ -18,10 +18,10 @@
 //@ needs-sanitizer-address
 //@ only-linux
 //
-//@ revisions:ASAN ASAN-FAT-LTO
+//@ revisions: asan asan-fat-lto
 //@                compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
-//@[ASAN]          compile-flags:
-//@[ASAN-FAT-LTO]  compile-flags: -Cprefer-dynamic=false -Clto=fat
+//@[asan]          compile-flags:
+//@[asan-fat-lto]  compile-flags: -Cprefer-dynamic=false -Clto=fat
 
 #![crate_type = "staticlib"]
 

@@ -190,10 +190,10 @@ pub unsafe fn call_f64_f64(x: &mut (f64, f64)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64_f64
-    // unix: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // unix-NEXT: movsd [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // windows: movsd (%esp), %[[VAL1:.*]]
-    // windows-NEXT: movsd 8(%esp), %[[VAL2:.*]]
+    // CHECK-UNIX: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-UNIX-NEXT: movsd [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
+    // CHECK-WINDOWS: movsd (%esp), %[[VAL1:.*]]
+    // CHECK-WINDOWS-NEXT: movsd 8(%esp), %[[VAL2:.*]]
     // CHECK-NEXT: movsd %[[VAL1]], (%[[PTR]])
     // CHECK-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
     *x = get_f64_f64();
@@ -207,13 +207,13 @@ pub unsafe fn call_f32_f64(x: &mut (f32, f64)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f32_f64
-    // unix: movss [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // unix-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
-    // windows: movss (%esp), %[[VAL1:.*]]
-    // windows-NEXT: movsd 8(%esp), %[[VAL2:.*]]
+    // CHECK-UNIX: movss [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-UNIX-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
+    // CHECK-WINDOWS: movss (%esp), %[[VAL1:.*]]
+    // CHECK-WINDOWS-NEXT: movsd 8(%esp), %[[VAL2:.*]]
     // CHECK-NEXT: movss %[[VAL1]], (%[[PTR]])
-    // unix-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
-    // windows-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
+    // CHECK-UNIX-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
+    // CHECK-WINDOWS-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
     *x = get_f32_f64();
 }
 
@@ -225,10 +225,10 @@ pub unsafe fn call_f64_f32(x: &mut (f64, f32)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64_f32
-    // unix: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // unix-NEXT: movss [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // windows: movsd (%esp), %[[VAL1:.*]]
-    // windows-NEXT: movss 8(%esp), %[[VAL2:.*]]
+    // CHECK-UNIX: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-UNIX-NEXT: movss [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
+    // CHECK-WINDOWS: movsd (%esp), %[[VAL1:.*]]
+    // CHECK-WINDOWS-NEXT: movss 8(%esp), %[[VAL2:.*]]
     // CHECK-NEXT: movsd %[[VAL1]], (%[[PTR]])
     // CHECK-NEXT: movss %[[VAL2]], 8(%[[PTR]])
     *x = get_f64_f32();
@@ -257,10 +257,10 @@ pub unsafe fn call_f64_other(x: &mut (f64, usize)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64_other
-    // unix: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // unix-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // windows: movsd (%esp), %[[VAL1:.*]]
-    // windows-NEXT: movl 8(%esp), %[[VAL2:.*]]
+    // CHECK-UNIX: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-UNIX-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
+    // CHECK-WINDOWS: movsd (%esp), %[[VAL1:.*]]
+    // CHECK-WINDOWS-NEXT: movl 8(%esp), %[[VAL2:.*]]
     // CHECK-NEXT: movsd %[[VAL1]], (%[[PTR]])
     // CHECK-NEXT: movl %[[VAL2]], 8(%[[PTR]])
     *x = get_f64_other();
@@ -289,13 +289,13 @@ pub unsafe fn call_other_f64(x: &mut (usize, f64)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_other_f64
-    // unix: movl [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // unix-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
-    // windows: movl (%esp), %[[VAL1:.*]]
-    // windows-NEXT: movsd 8(%esp), %[[VAL2:.*]]
+    // CHECK-UNIX: movl [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-UNIX-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
+    // CHECK-WINDOWS: movl (%esp), %[[VAL1:.*]]
+    // CHECK-WINDOWS-NEXT: movsd 8(%esp), %[[VAL2:.*]]
     // CHECK-NEXT: movl %[[VAL1]], (%[[PTR]])
-    // unix-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
-    // windows-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
+    // CHECK-UNIX-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
+    // CHECK-WINDOWS-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
     *x = get_other_f64();
 }
 

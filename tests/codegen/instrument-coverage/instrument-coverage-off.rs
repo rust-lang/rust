@@ -16,6 +16,7 @@
 #[inline(never)]
 fn some_function() {}
 
+// CHECK: some_other_function
 pub fn some_other_function() {
     some_function();
 }

@@ -1,6 +1,6 @@
-//@ revisions: WIN LIN
-//@ [WIN] only-windows
-//@ [LIN] only-linux
+//@ revisions: win lin
+//@ [win] only-windows
+//@ [lin] only-linux
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -O -C llvm-args=-x86-asm-syntax=intel
 //@ only-x86_64

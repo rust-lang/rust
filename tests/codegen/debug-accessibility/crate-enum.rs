@@ -14,8 +14,8 @@ mod module {
         C { x: u32 },
     }
 
-    // NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "CrateFooEnum"{{.*}}flags: DIFlagProtected{{.*}})
-    // MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<crate_enum::module::CrateFooEnum>"{{.*}}flags: DIFlagProtected{{.*}})
+    // CHECK-NONMSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "CrateFooEnum"{{.*}}flags: DIFlagProtected{{.*}})
+    // CHECK-MSVC: {{!.*}} = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<crate_enum::module::CrateFooEnum>"{{.*}}flags: DIFlagProtected{{.*}})
     pub fn use_everything() {
         black_box(CrateFooEnum::A);
     }

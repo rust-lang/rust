@@ -3,9 +3,9 @@
 // also https://github.com/rust-lang/rust/issues/73295 and
 // https://github.com/rust-lang/rust/issues/37530.
 
-//@ revisions:DEFAULT YES NO
-//@[YES] compile-flags: -Zdefault-hidden-visibility=yes
-//@[NO]  compile-flags: -Zdefault-hidden-visibility=no
+//@ revisions: default yes no
+//@[yes] compile-flags: -Zdefault-hidden-visibility=yes
+//@[no]  compile-flags: -Zdefault-hidden-visibility=no
 
 // The test scenario is specifically about visibility of symbols exported out of dynamically linked
 // libraries.
@@ -26,6 +26,6 @@ pub static tested_symbol: [u8; 6] = *b"foobar";
 //
 //@     only-x86_64-unknown-linux-gnu
 
-// DEFAULT: @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = constant
-// YES:     @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = hidden constant
-// NO:      @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = constant
+// CHECK-DEFAULT: @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = constant
+// CHECK-YES:     @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = hidden constant
+// CHECK-NO:      @{{.*}}default_hidden_visibility{{.*}}tested_symbol{{.*}} = constant

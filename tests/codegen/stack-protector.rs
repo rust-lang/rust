@@ -10,25 +10,25 @@
 pub fn foo() {
     // CHECK: @foo() unnamed_addr #0
 
-    // all-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
-    // all-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
-    // all: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // all-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
-    // all-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
+    // CHECK-ALL-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
+    // CHECK-ALL-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
+    // CHECK-ALL: attributes #0 = { {{.*}}sspreq {{.*}} }
+    // CHECK-ALL-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
+    // CHECK-ALL-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
 
-    // strong-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // strong-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
-    // strong: attributes #0 = { {{.*}}sspstrong {{.*}} }
-    // strong-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // strong-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
+    // CHECK-STRONG-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
+    // CHECK-STRONG-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
+    // CHECK-STRONG: attributes #0 = { {{.*}}sspstrong {{.*}} }
+    // CHECK-STRONG-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
+    // CHECK-STRONG-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
 
-    // basic-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // basic-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
-    // basic: attributes #0 = { {{.*}}ssp {{.*}} }
-    // basic-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // basic-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
+    // CHECK-BASIC-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
+    // CHECK-BASIC-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
+    // CHECK-BASIC: attributes #0 = { {{.*}}ssp {{.*}} }
+    // CHECK-BASIC-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
+    // CHECK-BASIC-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
 
-    // none-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // none-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
-    // none-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
+    // CHECK-NONE-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
+    // CHECK-NONE-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
+    // CHECK-NONE-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
 }

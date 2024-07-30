@@ -109,21 +109,21 @@ pub struct ForceAlign16 {
 pub unsafe fn call_na1(x: NaturalAlign1) {
     // CHECK: start:
 
-    // m68k: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 1
-    // m68k: call void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}} [[ALLOCA]])
+    // CHECK-M68K: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 1
+    // CHECK-M68K: call void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}} [[ALLOCA]])
 
-    // wasm: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 1
-    // wasm: call void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}} [[ALLOCA]])
+    // CHECK-WASM: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 1
+    // CHECK-WASM: call void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}} [[ALLOCA]])
 
-    // x86_64-linux: call void @natural_align_1(i16
+    // CHECK-X86_64-LINUX: call void @natural_align_1(i16
 
-    // x86_64-windows: call void @natural_align_1(i16
+    // CHECK-X86_64-WINDOWS: call void @natural_align_1(i16
 
-    // i686-linux: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 4
-    // i686-linux: call void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}} [[ALLOCA]])
+    // CHECK-I686-LINUX: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 4
+    // CHECK-I686-LINUX: call void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}} [[ALLOCA]])
 
-    // i686-windows: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 4
-    // i686-windows: call void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}} [[ALLOCA]])
+    // CHECK-I686-WINDOWS: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 4
+    // CHECK-I686-WINDOWS: call void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}} [[ALLOCA]])
     natural_align_1(x);
 }
 
@@ -132,16 +132,16 @@ pub unsafe fn call_na1(x: NaturalAlign1) {
 pub unsafe fn call_na2(x: NaturalAlign2) {
     // CHECK: start:
 
-    // m68k-NEXT: call void @natural_align_2
-    // wasm-NEXT: call void @natural_align_2
-    // x86_64-linux-NEXT: call void @natural_align_2
-    // x86_64-windows-NEXT: call void @natural_align_2
+    // CHECK-M68K-NEXT: call void @natural_align_2
+    // CHECK-WASM-NEXT: call void @natural_align_2
+    // CHECK-X86_64-LINUX-NEXT: call void @natural_align_2
+    // CHECK-X86_64-WINDOWS-NEXT: call void @natural_align_2
 
-    // i686-linux: [[ALLOCA:%[0-9]+]] = alloca [34 x i8], align 4
-    // i686-linux: call void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}} [[ALLOCA]])
+    // CHECK-I686-LINUX: [[ALLOCA:%[0-9]+]] = alloca [34 x i8], align 4
+    // CHECK-I686-LINUX: call void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}} [[ALLOCA]])
 
-    // i686-windows: [[ALLOCA:%[0-9]+]] = alloca [34 x i8], align 4
-    // i686-windows: call void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}} [[ALLOCA]])
+    // CHECK-I686-WINDOWS: [[ALLOCA:%[0-9]+]] = alloca [34 x i8], align 4
+    // CHECK-I686-WINDOWS: call void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}} [[ALLOCA]])
     natural_align_2(x);
 }
 
@@ -202,144 +202,144 @@ pub unsafe fn call_fa16(x: ForceAlign16) {
 }
 
 extern "C" {
-    // m68k: declare void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}})
+    // CHECK-M68K: declare void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}})
 
-    // wasm: declare void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}})
+    // CHECK-WASM: declare void @natural_align_1({{.*}}byval([2 x i8]) align 1{{.*}})
 
-    // x86_64-linux: declare void @natural_align_1(i16)
+    // CHECK-X86_64-LINUX: declare void @natural_align_1(i16)
 
-    // x86_64-windows: declare void @natural_align_1(i16)
+    // CHECK-X86_64-WINDOWS: declare void @natural_align_1(i16)
 
-    // i686-linux: declare void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}})
+    // CHECK-I686-WINDOWS: declare void @natural_align_1({{.*}}byval([2 x i8]) align 4{{.*}})
     fn natural_align_1(x: NaturalAlign1);
 
-    // m68k: declare void @natural_align_2({{.*}}byval([34 x i8]) align 2{{.*}})
+    // CHECK-M68K: declare void @natural_align_2({{.*}}byval([34 x i8]) align 2{{.*}})
 
-    // wasm: declare void @natural_align_2({{.*}}byval([34 x i8]) align 2{{.*}})
+    // CHECK-WASM: declare void @natural_align_2({{.*}}byval([34 x i8]) align 2{{.*}})
 
-    // x86_64-linux: declare void @natural_align_2({{.*}}byval([34 x i8]) align 2{{.*}})
+    // CHECK-X86_64-LINUX: declare void @natural_align_2({{.*}}byval([34 x i8]) align 2{{.*}})
 
-    // x86_64-windows: declare void @natural_align_2(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 2{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @natural_align_2(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 2{{.*}})
 
-    // i686-linux: declare void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}})
+    // CHECK-I686-WINDOWS: declare void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}})
     fn natural_align_2(x: NaturalAlign2);
 
-    // m68k: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
+    // CHECK-M68K: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
 
-    // wasm: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
+    // CHECK-WASM: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
 
-    // x86_64-linux: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
+    // CHECK-X86_64-LINUX: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
 
-    // x86_64-windows: declare void @force_align_4(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 4{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @force_align_4(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 4{{.*}})
 
-    // i686-linux: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
+    // CHECK-I686-WINDOWS: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
     fn force_align_4(x: ForceAlign4);
 
-    // m68k: declare void @natural_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-M68K: declare void @natural_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
 
-    // wasm: declare void @natural_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-WASM: declare void @natural_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-linux: declare void @natural_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-X86_64-LINUX: declare void @natural_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-windows: declare void @natural_align_8(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @natural_align_8(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 8{{.*}})
 
-    // i686-linux: declare void @natural_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @natural_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @natural_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-I686-WINDOWS: declare void @natural_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
     fn natural_align_8(x: NaturalAlign8);
 
-    // m68k: declare void @force_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-M68K: declare void @force_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // wasm: declare void @force_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-WASM: declare void @force_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-linux: declare void @force_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-X86_64-LINUX: declare void @force_align_8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-windows: declare void @force_align_8(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @force_align_8(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 8{{.*}})
 
-    // i686-linux: declare void @force_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @force_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @force_align_8(
-    // i686-windows-NOT: byval
-    // i686-windows-SAME: align 8{{.*}})
+    // CHECK-I686-WINDOWS: declare void @force_align_8(
+    // CHECK-I686-WINDOWS-NOT: byval
+    // CHECK-I686-WINDOWS-SAME: align 8{{.*}})
     fn force_align_8(x: ForceAlign8);
 
-    // m68k: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-M68K: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
 
-    // wasm: declare void @lower_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-WASM: declare void @lower_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-linux: declare void @lower_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-X86_64-LINUX: declare void @lower_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-windows: declare void @lower_fa8(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @lower_fa8(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 8{{.*}})
 
-    // i686-linux: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-I686-WINDOWS: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
     fn lower_fa8(x: LowerFA8);
 
-    // m68k: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-M68K: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // wasm: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-WASM: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-linux: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-X86_64-LINUX: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-windows: declare void @wrapped_fa8(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @wrapped_fa8(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 8{{.*}})
 
-    // i686-linux: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @wrapped_fa8(
-    // i686-windows-NOT: byval
-    // i686-windows-SAME: align 8{{.*}})
+    // CHECK-I686-WINDOWS: declare void @wrapped_fa8(
+    // CHECK-I686-WINDOWS-NOT: byval
+    // CHECK-I686-WINDOWS-SAME: align 8{{.*}})
     fn wrapped_fa8(x: WrappedFA8);
 
-    // m68k: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-M68K: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // wasm: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-WASM: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-linux: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
+    // CHECK-X86_64-LINUX: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
 
-    // x86_64-windows: declare void @transparent_fa8(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @transparent_fa8(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 8{{.*}})
 
-    // i686-linux: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @transparent_fa8(
-    // i686-windows-NOT: byval
-    // i686-windows-SAME: align 8{{.*}})
+    // CHECK-I686-WINDOWS: declare void @transparent_fa8(
+    // CHECK-I686-WINDOWS-NOT: byval
+    // CHECK-I686-WINDOWS-SAME: align 8{{.*}})
     fn transparent_fa8(x: TransparentFA8);
 
-    // m68k: declare void @force_align_16({{.*}}byval([80 x i8]) align 16{{.*}})
+    // CHECK-M68K: declare void @force_align_16({{.*}}byval([80 x i8]) align 16{{.*}})
 
-    // wasm: declare void @force_align_16({{.*}}byval([80 x i8]) align 16{{.*}})
+    // CHECK-WASM: declare void @force_align_16({{.*}}byval([80 x i8]) align 16{{.*}})
 
-    // x86_64-linux: declare void @force_align_16({{.*}}byval([80 x i8]) align 16{{.*}})
+    // CHECK-X86_64-LINUX: declare void @force_align_16({{.*}}byval([80 x i8]) align 16{{.*}})
 
-    // x86_64-windows: declare void @force_align_16(
-    // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 16{{.*}})
+    // CHECK-X86_64-WINDOWS: declare void @force_align_16(
+    // CHECK-X86_64-WINDOWS-NOT: byval
+    // CHECK-X86_64-WINDOWS-SAME: align 16{{.*}})
 
-    // i686-linux: declare void @force_align_16({{.*}}byval([80 x i8]) align 4{{.*}})
+    // CHECK-I686-LINUX: declare void @force_align_16({{.*}}byval([80 x i8]) align 4{{.*}})
 
-    // i686-windows: declare void @force_align_16(
-    // i686-windows-NOT: byval
-    // i686-windows-SAME: align 16{{.*}})
+    // CHECK-I686-WINDOWS: declare void @force_align_16(
+    // CHECK-I686-WINDOWS-NOT: byval
+    // CHECK-I686-WINDOWS-SAME: align 16{{.*}})
     fn force_align_16(x: ForceAlign16);
 }

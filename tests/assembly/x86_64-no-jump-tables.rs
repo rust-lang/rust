@@ -22,8 +22,8 @@ extern "C" {
 // CHECK-LABEL: foo:
 #[no_mangle]
 pub unsafe fn foo(x: i32) {
-    // unset: LJTI0_0
-    // set-NOT: LJTI0_0
+    // CHECK-UNSET: LJTI0_0
+    // CHECK-SET-NOT: LJTI0_0
     match x {
         1 => bar1(),
         2 => bar2(),

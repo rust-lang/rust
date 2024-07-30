@@ -1,8 +1,8 @@
 // The current revision name is registered as a filecheck prefix.
 
-//@ revisions: GOOD BAD
-//@ [BAD] should-fail
+//@ revisions: good bad
+//@ [bad] should-fail
 
-// GOOD: main
-// BAD: text that should not match
+// CHECK-GOOD: main
+// CHECK-BAD: text that should not match
 fn main() {}

@@ -3,21 +3,21 @@
 //
 //@ needs-sanitizer-address
 //@ needs-sanitizer-leak
-//@ revisions: ASAN LSAN
+//@ revisions: asan lsan
 //@       compile-flags: -Copt-level=3 -Zmir-opt-level=4 -Ctarget-feature=-crt-static
-//@[ASAN] compile-flags: -Zsanitizer=address
-//@[LSAN] compile-flags: -Zsanitizer=leak
+//@[asan] compile-flags: -Zsanitizer=address
+//@[lsan] compile-flags: -Zsanitizer=leak
 
 #![crate_type = "lib"]
 #![feature(no_sanitize)]
 
-// ASAN-LABEL: define void @test
-// ASAN:         call {{.*}} @random_inline
-// ASAN:       }
+// CHECK-ASAN-LABEL: define void @test
+// CHECK-ASAN:         call {{.*}} @random_inline
+// CHECK-ASAN:       }
 //
-// LSAN-LABEL: define void @test
-// LSAN-NOT:     call
-// LSAN:       }
+// CHECK-LSAN-LABEL: define void @test
+// CHECK-LSAN-NOT:     call
+// CHECK-LSAN:       }
 #[no_mangle]
 pub fn test(n: &mut u32) {
     random_inline(n);

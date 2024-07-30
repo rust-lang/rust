@@ -35,10 +35,10 @@ pub fn check_foo2() -> u64 {
 //     count
 // }
 //
-// // COMMENTEDCHECK-LABEL: @check_triangle_inc
+// // COM: CHECK-LABEL: @check_triangle_inc
 // #[no_mangle]
 // pub fn check_triangle_inc() -> u64 {
-//     // COMMENTEDCHECK: ret i64 5000050000
+//     // COM: CHECK: ret i64 5000050000
 //     triangle_inc(100000)
 // }
 

@@ -2,6 +2,6 @@
 
 // (one of these should always be present)
 
-// MSVC: main
-// NONMSVC: main
+// CHECK-MSVC: main
+// CHECK-NONMSVC: main
 fn main() {}
