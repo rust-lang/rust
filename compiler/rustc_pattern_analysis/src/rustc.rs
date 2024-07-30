@@ -1003,12 +1003,11 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         }
         // `pat` is an exclusive range like `lo..gap`. `gapped_with` contains ranges that start with
         // `gap+1`.
-        let suggested_range: thir::Pat<'_> = {
+        let suggested_range: String = {
             // Suggest `lo..=gap` instead.
-            let mut suggested_range = thir_pat.clone();
-            let thir::PatKind::Range(range) = &mut suggested_range.kind else { unreachable!() };
-            range.end = rustc_hir::RangeEnd::Included;
-            suggested_range
+            let mut suggested_range = PatRange::clone(range);
+            suggested_range.end = rustc_hir::RangeEnd::Included;
+            suggested_range.to_string()
         };
         let gap_as_pat = self.hoist_pat_range(&gap, *pat.ty());
         if gapped_with.is_empty() {
@@ -1023,7 +1022,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // That's the gap that isn't covered.
                     max: gap_as_pat.to_string(),
                     // Suggest `lo..=max` instead.
-                    suggestion: suggested_range.to_string(),
+                    suggestion: suggested_range,
                 },
             );
         } else {
@@ -1037,7 +1036,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // That's the gap that isn't covered.
                     gap: gap_as_pat.to_string(),
                     // Suggest `lo..=gap` instead.
-                    suggestion: suggested_range.to_string(),
+                    suggestion: suggested_range,
                     // All these ranges skipped over `gap` which we think is probably a
                     // mistake.
                     gap_with: gapped_with
@@ -1045,7 +1044,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                         .map(|pat| errors::GappedRange {
                             span: pat.data().span,
                             gap: gap_as_pat.to_string(),
-                            first_range: thir_pat.to_string(),
+                            first_range: range.to_string(),
                         })
                         .collect(),
                 },
