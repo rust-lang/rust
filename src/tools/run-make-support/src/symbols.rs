@@ -1,5 +1,6 @@
-use object::{self, Object, ObjectSymbol, SymbolIterator};
 use std::path::Path;
+
+use object::{self, Object, ObjectSymbol, SymbolIterator};
 
 /// Iterate through the symbols in an object file.
 ///

@@ -20,7 +20,9 @@
 //@ ignore-windows
 //@ ignore-cross-compile
 
-use run_make_support::{env::no_debug_assertions, rustc, symbols::any_symbol_contains};
+use run_make_support::env::no_debug_assertions;
+use run_make_support::rustc;
+use run_make_support::symbols::any_symbol_contains;
 
 fn main() {
     rustc().input("main.rs").opt().run();
