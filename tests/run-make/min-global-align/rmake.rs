@@ -1,4 +1,4 @@
-// This tests ensure that global variables respect the target minimum alignment.
+// This test checks that global variables respect the target minimum alignment.
 // The three bools `STATIC_BOOL`, `STATIC_MUT_BOOL`, and `CONST_BOOL` all have
 // type-alignment of 1, but some targets require greater global alignment.
 // See https://github.com/rust-lang/rust/pull/44440
