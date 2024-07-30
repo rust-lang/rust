@@ -698,6 +698,18 @@ where
                 if ecx.trait_ref_is_knowable(goal.param_env, trait_ref)? {
                     Err(NoSolution)
                 } else {
+                    // While the trait bound itself may be unknowable, we may be able to
+                    // prove that a super trait is not implemented. For this, we recursively
+                    // prove the super trait bounds of the current goal.
+                    //
+                    // We skip the goal itself as that one would cycle.
+                    let predicate: I::Predicate = trait_ref.upcast(cx);
+                    ecx.add_goals(
+                        GoalSource::Misc,
+                        elaborate::elaborate(cx, [predicate])
+                            .skip(1)
+                            .map(|predicate| goal.with(cx, predicate)),
+                    );
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             },
