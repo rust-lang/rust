@@ -48,8 +48,8 @@ pub use cc::{cc, cxx, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
 pub use llvm::{
-    llvm_ar, llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmFilecheck,
-    LlvmObjdump, LlvmProfdata, LlvmReadobj,
+    llvm_ar, llvm_filecheck, llvm_nm, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr,
+    LlvmFilecheck, LlvmNm, LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
 pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};

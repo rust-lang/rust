@@ -6,13 +6,16 @@
 
 //@ ignore-windows-msvc
 
-use run_make_support::{bin_name, dynamic_lib_name, is_windows, llvm_readobj, regex, rustc};
+//FIXME(Oneirical): This currently uses llvm-nm for symbol detection. However,
+// the custom Rust-based solution of #128314 may prove to be an interesting alternative.
+
+use run_make_support::{bin_name, dynamic_lib_name, is_darwin, is_windows, llvm_nm, regex, rustc};
 
 fn main() {
-    let mut cdylib_name = dynamic_lib_name("a_cdylib");
-    let mut rdylib_name = dynamic_lib_name("a_rust_dylib");
+    let cdylib_name = dynamic_lib_name("a_cdylib");
+    let rdylib_name = dynamic_lib_name("a_rust_dylib");
     let exe_name = bin_name("an_executable");
-    let mut combined_cdylib_name = dynamic_lib_name("combined_rlib_dylib");
+    let combined_cdylib_name = dynamic_lib_name("combined_rlib_dylib");
     rustc().arg("-Zshare-generics=no").input("an_rlib.rs").run();
     rustc().arg("-Zshare-generics=no").input("a_cdylib.rs").run();
     rustc().arg("-Zshare-generics=no").input("a_rust_dylib.rs").run();
@@ -74,13 +77,13 @@ fn main() {
 
     // Check the combined case, where we generate a cdylib and an rlib in the same
     // compilation session:
-    // Check that a cdylib exports its public //[no_mangle] functions
+    // Check that a cdylib exports its public #[no_mangle] functions
     symbols_check(
         &combined_cdylib_name,
         SymbolCheckType::StrSymbol("public_c_function_from_cdylib"),
         true,
     );
-    // Check that a cdylib exports the public //[no_mangle] functions of dependencies
+    // Check that a cdylib exports the public #[no_mangle] functions of dependencies
     symbols_check(
         &combined_cdylib_name,
         SymbolCheckType::StrSymbol("public_c_function_from_rlib"),
@@ -94,9 +97,9 @@ fn main() {
     rustc().arg("-Zshare-generics=yes").input("a_rust_dylib.rs").run();
     rustc().arg("-Zshare-generics=yes").input("an_executable.rs").run();
 
-    // Check that a cdylib exports its public //[no_mangle] functions
+    // Check that a cdylib exports its public #[no_mangle] functions
     symbols_check(&cdylib_name, SymbolCheckType::StrSymbol("public_c_function_from_cdylib"), true);
-    // Check that a cdylib exports the public //[no_mangle] functions of dependencies
+    // Check that a cdylib exports the public #[no_mangle] functions of dependencies
     symbols_check(&cdylib_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib"), true);
     // Check that a cdylib DOES NOT export any public Rust functions
     symbols_check(&cdylib_name, SymbolCheckType::AnyRustSymbol, false);
@@ -142,7 +145,15 @@ fn main() {
 
 #[track_caller]
 fn symbols_check(path: &str, symbol_check_type: SymbolCheckType, exists_once: bool) {
-    let out = llvm_readobj().arg("--dyn-symbols").input(path).run().invalid_stdout_utf8();
+    let mut nm = llvm_nm();
+    if is_windows() {
+        nm.arg("--extern-only");
+    } else if is_darwin() {
+        nm.arg("--extern-only").arg("--defined-only");
+    } else {
+        nm.arg("--dynamic");
+    }
+    let out = nm.input(path).run().stdout_utf8();
     assert_eq!(
         out.lines()
             .filter(|&line| !line.contains("__imp_") && has_symbol(line, symbol_check_type))
