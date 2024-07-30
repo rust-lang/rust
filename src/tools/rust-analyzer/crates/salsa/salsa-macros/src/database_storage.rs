@@ -241,3 +241,11 @@ impl Parse for QueryGroup {
         Ok(QueryGroup { group_path })
     }
 }
+
+struct Nothing;
+
+impl Parse for Nothing {
+    fn parse(_input: ParseStream<'_>) -> syn::Result<Self> {
+        Ok(Nothing)
+    }
+}
