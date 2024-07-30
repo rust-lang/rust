@@ -9,12 +9,12 @@ default-run = "miri"
 edition = "2021"
 
 [lib]
-test = true # we have unit tests
+test = true     # we have unit tests
 doctest = false # but no doc tests
 
 [[bin]]
 name = "miri"
-test = false # we have no unit tests
+test = false    # we have no unit tests
 doctest = false # and no doc tests
 
 [dependencies]
@@ -41,6 +41,13 @@ libc = "0.2"
 [target.'cfg(target_os = "linux")'.dependencies]
 libffi = "3.2.0"
 libloading = "0.8"
+
+[target.'cfg(target_family = "windows")'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_IO",
+    "Win32_Storage_FileSystem",
+] }
 
 [dev-dependencies]
 colored = "2"
