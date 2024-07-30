@@ -73,26 +73,22 @@ fn adt_of<'tcx>(ty: &hir::Ty<'tcx>) -> Option<(LocalDefId, DefKind)> {
 }
 
 fn struct_all_fields_are_public(tcx: TyCtxt<'_>, id: LocalDefId) -> bool {
-    let adt_def = tcx.adt_def(id);
-
-    // skip types contain fields of unit and never type,
-    // it's usually intentional to make the type not constructible
-    let not_require_constructor = adt_def.all_fields().any(|field| {
+    for field in tcx.adt_def(id).all_fields() {
         let field_type = tcx.type_of(field.did).instantiate_identity();
-        field_type.is_unit() || field_type.is_never()
-    });
 
-    not_require_constructor
-        || adt_def.all_fields().all(|field| {
-            let field_type = tcx.type_of(field.did).instantiate_identity();
-            // skip fields of PhantomData,
-            // cause it's a common way to check things like well-formedness
-            if field_type.is_phantom_data() {
-                return true;
-            }
+        // skip types contain fields of unit and never type,
+        // it's usually intentional to make the type not constructible
+        if field_type.is_unit() || field_type.is_never() {
+            return true;
+        }
 
-            field.vis.is_public()
-        })
+        // skip fields of PhantomData,
+        // cause it's a common way to check things like well-formedness
+        if !field_type.is_phantom_data() && !field.vis.is_public() {
+            return false;
+        }
+    }
+    true
 }
 
 /// check struct and its fields are public or not,
