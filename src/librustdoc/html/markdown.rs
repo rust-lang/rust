@@ -304,7 +304,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(format!(
                 "<a class=\"test-arrow\" \
                     target=\"_blank\" \
-                    href=\"{url}?code={test_escaped}{channel}&amp;edition={edition}\">Run</a>",
+                    title=\"Run code\" \
+                    href=\"{url}?code={test_escaped}{channel}&amp;edition={edition}\"></a>",
             ))
         });
 
