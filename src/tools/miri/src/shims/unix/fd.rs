@@ -197,9 +197,13 @@ impl FileDescription for NullOutput {
 }
 
 #[derive(Clone, Debug)]
-pub struct FileDescriptor(Rc<RefCell<Box<dyn FileDescription>>>);
+pub struct FileDescriptionRef(Rc<RefCell<Box<dyn FileDescription>>>);
 
-impl FileDescriptor {
+impl FileDescriptionRef {
+    fn new(fd: impl FileDescription) -> Self {
+        FileDescriptionRef(Rc::new(RefCell::new(Box::new(fd))))
+    }
+
     pub fn borrow(&self) -> Ref<'_, dyn FileDescription> {
         Ref::map(self.0.borrow(), |fd| fd.as_ref())
     }
@@ -221,7 +225,7 @@ impl FileDescriptor {
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    pub fds: BTreeMap<i32, FileDescriptor>,
+    fds: BTreeMap<i32, FileDescriptionRef>,
 }
 
 impl VisitProvenance for FdTable {
@@ -247,14 +251,14 @@ impl FdTable {
         fds
     }
 
-    /// Insert a file descriptor to the FdTable.
-    pub fn insert_fd<T: FileDescription>(&mut self, fd: T) -> i32 {
-        let file_handle = FileDescriptor(Rc::new(RefCell::new(Box::new(fd))));
+    /// Insert a new file description to the FdTable.
+    pub fn insert_fd(&mut self, fd: impl FileDescription) -> i32 {
+        let file_handle = FileDescriptionRef::new(fd);
         self.insert_fd_with_min_fd(file_handle, 0)
     }
 
     /// Insert a new FD that is at least `min_fd`.
-    pub fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptor, min_fd: i32) -> i32 {
+    fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptionRef, min_fd: i32) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
@@ -290,12 +294,12 @@ impl FdTable {
         Some(fd.borrow_mut())
     }
 
-    pub fn dup(&self, fd: i32) -> Option<FileDescriptor> {
+    pub fn dup(&self, fd: i32) -> Option<FileDescriptionRef> {
         let fd = self.fds.get(&fd)?;
         Some(fd.clone())
     }
 
-    pub fn remove(&mut self, fd: i32) -> Option<FileDescriptor> {
+    pub fn remove(&mut self, fd: i32) -> Option<FileDescriptionRef> {
         self.fds.remove(&fd)
     }
 
@@ -324,9 +328,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if new_fd != old_fd {
             // Close new_fd if it is previously opened.
             // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
-            if let Some(file_descriptor) = this.machine.fds.fds.insert(new_fd, dup_fd) {
+            if let Some(file_description) = this.machine.fds.fds.insert(new_fd, dup_fd) {
                 // Ignore close error (not interpreter's) according to dup2() doc.
-                file_descriptor.close(this.machine.communicate())?.ok();
+                file_description.close(this.machine.communicate())?.ok();
             }
         }
         Ok(new_fd)
@@ -427,10 +431,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        let Some(file_descriptor) = this.machine.fds.remove(fd) else {
+        let Some(file_description) = this.machine.fds.remove(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let result = file_descriptor.close(this.machine.communicate())?;
+        let result = file_description.close(this.machine.communicate())?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
