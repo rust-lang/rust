@@ -1,5 +1,4 @@
 //@ test-mir-pass: MatchBranchSimplification
-//@ compile-flags: -Zunsound-mir-opts
 
 #![feature(repr128)]
 #![feature(core_intrinsics)]
