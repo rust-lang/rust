@@ -178,7 +178,8 @@ impl<'a> Parser<'a> {
                             span: this.prev_token.span,
                         });
 
-                        this.eat(&token::Comma);
+                        // Eat a trailing comma, if it exists.
+                        let _ = this.eat(&token::Comma);
                     }
 
                     let param = if this.check_lifetime() {
