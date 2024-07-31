@@ -31,9 +31,7 @@ run-make/long-linker-command-lines/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/min-global-align/Makefile
 run-make/native-link-modifier-bundle/Makefile
-run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
-run-make/no-builtins-attribute/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
@@ -45,7 +43,6 @@ run-make/redundant-libs/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
-run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/simd-ffi/Makefile
 run-make/split-debuginfo/Makefile

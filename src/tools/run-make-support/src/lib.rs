@@ -48,8 +48,8 @@ pub use cc::{cc, cxx, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
 pub use llvm::{
-    llvm_ar, llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmFilecheck,
-    LlvmObjdump, LlvmProfdata, LlvmReadobj,
+    llvm_ar, llvm_filecheck, llvm_nm, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr,
+    LlvmFilecheck, LlvmNm, LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
 pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
@@ -84,7 +84,8 @@ pub use path_helpers::{
 pub use scoped_run::{run_in_tmpdir, test_while_readonly};
 
 pub use assertion_helpers::{
-    assert_contains, assert_dirs_are_equal, assert_equals, assert_not_contains,
+    assert_contains, assert_contains_regex, assert_dirs_are_equal, assert_equals,
+    assert_not_contains, assert_not_contains_regex,
 };
 
 pub use string::{
