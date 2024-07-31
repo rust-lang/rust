@@ -1,7 +1,7 @@
 use crate::io;
 use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::Stdio;
-pub(crate) use crate::sys::pipe::AnonPipe;
+pub use crate::sys::pipe::AnonPipe;
 
 #[inline]
 pub fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
