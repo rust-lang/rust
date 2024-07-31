@@ -51,7 +51,8 @@ use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    nightly_options, ErrorOutputType, Input, OutFileName, OutputType, CG_OPTIONS, Z_OPTIONS,
+    nightly_options, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, CG_OPTIONS,
+    Z_OPTIONS,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
@@ -301,6 +302,8 @@ fn run_compiler(
     let Some(matches) = handle_options(&default_early_dcx, &args) else { return Ok(()) };
 
     let sopts = config::build_session_options(&mut default_early_dcx, &matches);
+    // fully initialize ice path static once unstable options are available as context
+    let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 
     if let Some(ref code) = matches.opt_str("explain") {
         handle_explain(&default_early_dcx, diagnostics_registry(), code, sopts.color);
@@ -315,7 +318,7 @@ fn run_compiler(
         input: Input::File(PathBuf::new()),
         output_file: ofile,
         output_dir: odir,
-        ice_file: ice_path().clone(),
+        ice_file,
         file_loader,
         locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
@@ -1306,14 +1309,26 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
 
 static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
+// This function should only be called from the ICE hook.
+//
+// The intended behavior is that `run_compiler` will invoke `ice_path_with_config` early in the
+// initialization process to properly initialize the ICE_PATH static based on parsed CLI flags.
+//
+// Subsequent calls to either function will then return the proper ICE path as configured by
+// the environment and cli flags
 fn ice_path() -> &'static Option<PathBuf> {
+    ice_path_with_config(None)
+}
+
+fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<PathBuf> {
+    if ICE_PATH.get().is_some() && config.is_some() && cfg!(debug_assertions) {
+        tracing::warn!(
+            "ICE_PATH has already been initialized -- files may be emitted at unintended paths"
+        )
+    }
+
     ICE_PATH.get_or_init(|| {
         if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
-            return None;
-        }
-        if let Some(s) = std::env::var_os("RUST_BACKTRACE")
-            && s == "0"
-        {
             return None;
         }
         let mut path = match std::env::var_os("RUSTC_ICE") {
@@ -1322,9 +1337,15 @@ fn ice_path() -> &'static Option<PathBuf> {
                     // Explicitly opting out of writing ICEs to disk.
                     return None;
                 }
+                if let Some(unstable_opts) = config && unstable_opts.metrics_dir.is_some() {
+                    tracing::warn!("ignoring -Zerror-metrics in favor of RUSTC_ICE for destination of ICE report files");
+                }
                 PathBuf::from(s)
             }
-            None => std::env::current_dir().unwrap_or_default(),
+            None => config
+                .and_then(|unstable_opts| unstable_opts.metrics_dir.to_owned())
+                .or_else(|| std::env::current_dir().ok())
+                .unwrap_or_default(),
         };
         let now: OffsetDateTime = SystemTime::now().into();
         let file_now = now
