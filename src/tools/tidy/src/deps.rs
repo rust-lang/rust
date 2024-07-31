@@ -345,6 +345,10 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "parking_lot_core",
     "pathdiff",
     "perf-event-open-sys",
+    "phf",
+    "phf_generator",
+    "phf_macros",
+    "phf_shared",
     "pin-project-lite",
     "polonius-engine",
     "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std
@@ -386,6 +390,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sha2",
     "sharded-slab",
     "shlex",
+    "siphasher",
     "smallvec",
     "snap",
     "stable_deref_trait",
