@@ -475,9 +475,6 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
-        to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
-    }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
     }

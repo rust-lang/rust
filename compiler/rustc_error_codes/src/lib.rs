@@ -678,3 +678,4 @@ E0798: 0798,
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
 //  E0744, // merged into E0728
+//  E0776, // Removed; cmse_nonsecure_entry is now `C-cmse-nonsecure-entry`
