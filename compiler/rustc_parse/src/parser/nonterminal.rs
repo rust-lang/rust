@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
             }
             // Current edition expressions
             NonterminalKind::Expr(Expr) => {
-                // In Edition 2024, `_` will be considered an expression, so we
+                // In Edition 2024, `_` is considered an expression, so we
                 // need to allow it here because `token.can_begin_expr()` does
                 // not consider `_` to be an expression.
                 //
