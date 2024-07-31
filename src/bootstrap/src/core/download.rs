@@ -210,6 +210,8 @@ impl Config {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = command("curl");
+        // build the arguments for curl and wget simultaneously
+        let mut wget = command("wget");
         curl.args([
             "-y",
             "30",
@@ -223,14 +225,27 @@ impl Config {
             "3",
             "-SRf",
         ]);
+        // options should be kept in sync with
+        // src/bootstrap/bootstrap.py
+        // for consistancy
+        wget.args([
+            "--connect-timeout=30",
+            "--read-timeout=30",
+            "--tries=3",
+            "-O",
+            tempfile.to_str().unwrap(),
+        ]);
         // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
         if CiEnv::is_ci() {
             curl.arg("-s");
         } else {
             curl.arg("--progress-bar");
+            wget.arg("--show-progress");
         }
         curl.arg(url);
-        if !self.check_run(&mut curl) {
+        wget.arg(url);
+        curl.mark_as_executed();
+        if !(self.check_run(&mut wget) || self.check_run(&mut curl)) {
             if self.build.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
@@ -346,7 +361,9 @@ impl Config {
             println!(
                 "invalid checksum: \n\
                 found:    {checksum}\n\
-                expected: {expected}",
+                expected: {expected}\n\
+                path: {}",
+                path.display(),
             );
         }
 
