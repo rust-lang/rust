@@ -37,7 +37,7 @@ pub(crate) use self::ItemKind::*;
 pub(crate) use self::ReceiverTy::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, Slice, Tuple,
+    RawPointer, SelfTy, Slice, Tuple,
 };
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
@@ -1477,6 +1477,8 @@ pub(crate) enum Type {
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// A type parameter.
     Generic(Symbol),
+    /// The `Self` type.
+    SelfTy,
     /// A primitive (aka, builtin) type.
     Primitive(PrimitiveType),
     /// A function pointer: `extern "ABI" fn(...) -> ...`
@@ -1571,6 +1573,8 @@ impl Type {
             // If both sides are generic, this returns true.
             (_, Type::Generic(_)) => true,
             (Type::Generic(_), _) => false,
+            // `Self` only matches itself.
+            (Type::SelfTy, Type::SelfTy) => true,
             // Paths account for both the path itself and its generics.
             (Type::Path { path: a }, Type::Path { path: b }) => {
                 a.def_id() == b.def_id()
@@ -1642,7 +1646,7 @@ impl Type {
 
     pub(crate) fn is_self_type(&self) -> bool {
         match *self {
-            Generic(name) => name == kw::SelfUpper,
+            SelfTy => true,
             _ => false,
         }
     }
@@ -1700,7 +1704,7 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { ref self_type, .. }) => return self_type.def_id(cache),
-            Generic(_) | Infer | ImplTrait(_) => return None,
+            Generic(_) | SelfTy | Infer | ImplTrait(_) => return None,
         };
         Primitive(t).def_id(cache)
     }

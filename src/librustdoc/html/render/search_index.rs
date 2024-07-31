@@ -797,7 +797,11 @@ fn get_index_type_id(
             }
         }
         // Not supported yet
-        clean::Type::Pat(..) | clean::Generic(_) | clean::ImplTrait(_) | clean::Infer => None,
+        clean::Type::Pat(..)
+        | clean::Generic(_)
+        | clean::SelfTy
+        | clean::ImplTrait(_)
+        | clean::Infer => None,
     }
 }
 
@@ -848,13 +852,18 @@ fn simplify_fn_type<'tcx, 'a>(
         (false, arg)
     };
 
+    let as_arg_s = |t: &Type| match *t {
+        Type::Generic(arg_s) => Some(arg_s),
+        Type::SelfTy => Some(kw::SelfUpper),
+        _ => None,
+    };
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
-    if let Type::Generic(arg_s) = *arg {
+    if let Some(arg_s) = as_arg_s(arg) {
         // First we check if the bounds are in a `where` predicate...
         let mut type_bounds = Vec::new();
         for where_pred in generics.where_predicates.iter().filter(|g| match g {
-            WherePredicate::BoundPredicate { ty: Type::Generic(ty_s), .. } => *ty_s == arg_s,
+            WherePredicate::BoundPredicate { ty, .. } => *ty == *arg,
             _ => false,
         }) {
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
