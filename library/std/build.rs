@@ -94,7 +94,7 @@ fn main() {
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        ("x86", "windows") => false,
+        ("x86_64", "windows") => false,
         // x86 has ABI bugs that show up with optimizations. This should be partially fixed with
         // the compiler-builtins update. <https://github.com/rust-lang/rust/issues/123885>
         ("x86" | "x86_64", _) => false,
@@ -122,6 +122,8 @@ fn main() {
         ("nvptx64", _) => false,
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
         ("sparc", _) => false,
+        // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
+        ("x86_64", "windows") => false,
         // 64-bit Linux is about the only platform to have f128 symbols by default
         (_, "linux") if target_pointer_width == 64 => true,
         // Same as for f16, except MacOS is also missing f128 symbols.
