@@ -9,16 +9,6 @@ unsafe impl GlobalAlloc for System {
         hermit_abi::malloc(layout.size(), layout.align())
     }
 
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        let addr = hermit_abi::malloc(layout.size(), layout.align());
-
-        if !addr.is_null() {
-            ptr::write_bytes(addr, 0x00, layout.size());
-        }
-
-        addr
-    }
-
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         hermit_abi::free(ptr, layout.size(), layout.align())
