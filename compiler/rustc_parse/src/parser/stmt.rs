@@ -66,7 +66,12 @@ impl<'a> Parser<'a> {
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
-            self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
+            self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+                this.expect_keyword(kw::Let)?;
+                let local = this.parse_local(attrs)?;
+                let trailing = capture_semi && this.token.kind == token::Semi;
+                Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
+            })?
         } else if self.is_kw_followed_by_ident(kw::Mut) && self.may_recover() {
             self.recover_stmt_local_after_let(
                 lo,
@@ -245,21 +250,6 @@ impl<'a> Parser<'a> {
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
-    }
-
-    fn parse_local_mk(
-        &mut self,
-        lo: Span,
-        attrs: AttrWrapper,
-        capture_semi: bool,
-        force_collect: ForceCollect,
-    ) -> PResult<'a, Stmt> {
-        self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
-            this.expect_keyword(kw::Let)?;
-            let local = this.parse_local(attrs)?;
-            let trailing = capture_semi && this.token.kind == token::Semi;
-            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
-        })
     }
 
     /// Parses a local variable declaration.
