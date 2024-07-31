@@ -48,30 +48,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
-        // FIXME: Combine these two 'if' expressions into one once
-        // let chains are implemented
-        if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
-            // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
-            // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
-            // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
-            if !span.is_desugaring(DesugaringKind::CondTemporary)
-                && !span.is_desugaring(DesugaringKind::Async)
-                && !orig_span.is_desugaring(DesugaringKind::Await)
-            {
-                self.diverges.set(Diverges::WarnedAlways);
-
-                debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
-
-                let msg = format!("unreachable {kind}");
-                self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
-                    lint.primary_message(msg.clone());
-                    lint.span_label(span, msg).span_label(
-                        orig_span,
-                        custom_note.unwrap_or("any code following this expression is unreachable"),
-                    );
-                })
-            }
+        // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
+        // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
+        // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
+        if span.is_desugaring(DesugaringKind::CondTemporary) {
+            return;
         }
+
+        // Don't lint if the result of an async block or async function is `!`.
+        // This does not affect the unreachable lints *within* the body.
+        if span.is_desugaring(DesugaringKind::Async) {
+            return;
+        }
+
+        // Don't lint *within* the `.await` operator, since that's all just desugaring junk.
+        // We only want to lint if there is a subsequent expression after the `.await`.
+        if span.is_desugaring(DesugaringKind::Await) {
+            return;
+        }
+
+        let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
+            return;
+        };
+
+        // Don't warn twice.
+        self.diverges.set(Diverges::WarnedAlways);
+
+        debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+
+        let msg = format!("unreachable {kind}");
+        self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
+            lint.primary_message(msg.clone());
+            lint.span_label(span, msg).span_label(
+                orig_span,
+                custom_note.unwrap_or("any code following this expression is unreachable"),
+            );
+        })
     }
 
     /// Resolves type and const variables in `ty` if possible. Unlike the infcx
