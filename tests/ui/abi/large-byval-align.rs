@@ -1,11 +1,13 @@
-//@ known-bug: #121444
 //@ compile-flags: -Copt-level=0
-//@ edition:2021
 //@ only-x86_64
 //@ ignore-windows
+//@ min-llvm-version: 19
+//@ build-pass
+
 #[repr(align(536870912))]
 pub struct A(i64);
 
+#[allow(improper_ctypes_definitions)]
 pub extern "C" fn foo(x: A) {}
 
 fn main() {
