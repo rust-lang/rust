@@ -500,6 +500,7 @@ pub struct UnableToWriteDebuggerVisualizer {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_rlib_archive_build_failure)]
 pub struct RlibArchiveBuildFailure {
+    pub path: PathBuf,
     pub error: Error,
 }
 
@@ -557,6 +558,7 @@ pub struct UnsupportedLinkSelfContained;
 #[diag(codegen_ssa_archive_build_failure)]
 // Public for rustc_codegen_llvm::back::archive
 pub struct ArchiveBuildFailure {
+    pub path: PathBuf,
     pub error: std::io::Error,
 }
 

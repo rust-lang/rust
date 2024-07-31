@@ -97,7 +97,9 @@ impl<'a> ArchiveBuilder for LlvmArchiveBuilder<'a> {
     fn build(mut self: Box<Self>, output: &Path) -> bool {
         match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
-            Err(e) => self.sess.dcx().emit_fatal(ArchiveBuildFailure { error: e }),
+            Err(error) => {
+                self.sess.dcx().emit_fatal(ArchiveBuildFailure { path: output.to_owned(), error })
+            }
         }
     }
 }
