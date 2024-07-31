@@ -1064,13 +1064,13 @@ impl f64 {
             // Overflow is impossible
             (a + b) / 2.
         } else if abs_a < LO {
-            // Not safe to halve a
+            // Not safe to halve `a` (would underflow)
             a + (b / 2.)
         } else if abs_b < LO {
-            // Not safe to halve b
+            // Not safe to halve `b` (would underflow)
             (a / 2.) + b
         } else {
-            // Not safe to halve a and b
+            // Safe to halve `a` and `b`
             (a / 2.) + (b / 2.)
         }
     }
