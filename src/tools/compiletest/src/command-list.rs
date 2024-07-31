@@ -168,6 +168,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-32bit",
     "only-64bit",
     "only-aarch64",
+    "only-aarch64-unknown-linux-gnu",
     "only-apple",
     "only-arm",
     "only-avr",

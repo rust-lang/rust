@@ -3,10 +3,10 @@
 // This test does not require MTE: whilst the test will use MTE if available, if it is not,
 // arbitrary tag bits are set using TBI.
 
-//@ only-aarch64
-//@ only-linux
-//@ only-gnu
-//@ run-pass
+// This test is only valid for AArch64.
+// The linker must be explicitly specified when cross-compiling, so it is limited to
+// `aarch64-unknown-linux-gnu`.
+//@ only-aarch64-unknown-linux-gnu
 
 use run_make_support::{cc, dynamic_lib_name, extra_c_flags, run, rustc, target};
 
@@ -23,7 +23,7 @@ fn run_test(variant: &str) {
         flags.push("-march=armv8.5-a+memtag");
         flags
     };
-    print!("{variant} test...");
+    println!("{variant} test...");
     rustc()
         .input(format!("foo_{variant}.rs"))
         .target(target())
@@ -35,5 +35,4 @@ fn run_test(variant: &str) {
         .args(&flags)
         .run();
     run("test");
-    println!("\tpassed");
 }
