@@ -167,6 +167,34 @@ impl<T> OnceLock<T> {
         }
     }
 
+    /// Blocks the current thread until the cell is initialized.
+    ///
+    /// # Example
+    ///
+    /// Waiting for a computation on another thread to finish:
+    /// ```rust
+    /// #![feature(once_wait)]
+    ///
+    /// use std::thread;
+    /// use std::sync::OnceLock;
+    ///
+    /// let value = OnceLock::new();
+    ///
+    /// thread::scope(|s| {
+    ///     s.spawn(|| value.set(1 + 1));
+    ///
+    ///     let result = value.wait();
+    ///     assert_eq!(result, &2);
+    /// })
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_wait", issue = "127527")]
+    pub fn wait(&self) -> &T {
+        self.once.wait_force();
+
+        unsafe { self.get_unchecked() }
+    }
+
     /// Sets the contents of this cell to `value`.
     ///
     /// May block if another thread is currently attempting to initialize the cell. The cell is
