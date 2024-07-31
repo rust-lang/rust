@@ -877,7 +877,7 @@ impl<'a> Parser<'a> {
         mut e: P<Expr>,
         lo: Span,
     ) -> PResult<'a, P<Expr>> {
-        let res = ensure_sufficient_stack(|| {
+        let mut res = ensure_sufficient_stack(|| {
             loop {
                 let has_question =
                     if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
@@ -924,17 +924,13 @@ impl<'a> Parser<'a> {
 
         // Stitch the list of outer attributes onto the return value. A little
         // bit ugly, but the best way given the current code structure.
-        if attrs.is_empty() {
-            res
-        } else {
-            res.map(|expr| {
-                expr.map(|mut expr| {
-                    attrs.extend(expr.attrs);
-                    expr.attrs = attrs;
-                    expr
-                })
-            })
+        if !attrs.is_empty()
+            && let Ok(expr) = &mut res
+        {
+            mem::swap(&mut expr.attrs, &mut attrs);
+            expr.attrs.extend(attrs)
         }
+        res
     }
 
     pub(super) fn parse_dot_suffix_expr(

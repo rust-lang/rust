@@ -53,10 +53,9 @@ impl AttrWrapper {
 
     /// Prepend `self.attrs` to `attrs`.
     // FIXME: require passing an NT to prevent misuse of this method
-    pub(crate) fn prepend_to_nt_inner(self, attrs: &mut AttrVec) {
-        let mut self_attrs = self.attrs;
-        mem::swap(attrs, &mut self_attrs);
-        attrs.extend(self_attrs);
+    pub(crate) fn prepend_to_nt_inner(mut self, attrs: &mut AttrVec) {
+        mem::swap(attrs, &mut self.attrs);
+        attrs.extend(self.attrs);
     }
 
     pub fn is_empty(&self) -> bool {
