@@ -294,7 +294,7 @@ impl FdTable {
         Some(fd.borrow_mut())
     }
 
-    pub fn dup(&self, fd: i32) -> Option<FileDescriptionRef> {
+    pub fn get_ref(&self, fd: i32) -> Option<FileDescriptionRef> {
         let fd = self.fds.get(&fd)?;
         Some(fd.clone())
     }
@@ -313,7 +313,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn dup(&mut self, old_fd: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.dup(old_fd) else {
+        let Some(dup_fd) = this.machine.fds.get_ref(old_fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, 0)))
@@ -322,7 +322,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn dup2(&mut self, old_fd: i32, new_fd: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.dup(old_fd) else {
+        let Some(dup_fd) = this.machine.fds.get_ref(old_fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         if new_fd != old_fd {
@@ -408,7 +408,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let start = this.read_scalar(&args[2])?.to_i32()?;
 
-            match this.machine.fds.dup(fd) {
+            match this.machine.fds.get_ref(fd) {
                 Some(dup_fd) =>
                     Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, start))),
                 None => Ok(Scalar::from_i32(this.fd_not_found()?)),
@@ -481,7 +481,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let communicate = this.machine.communicate();
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.dup(fd) else {
+        let Some(fd) = this.machine.fds.get_ref(fd) else {
             trace!("read: FD not found");
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
@@ -546,7 +546,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.dup(fd) else {
+        let Some(fd) = this.machine.fds.get_ref(fd) else {
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
 
