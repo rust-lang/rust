@@ -2624,9 +2624,9 @@ fn normalize_whitespace(s: &str) -> String {
             i += 1;
         }
     }
-    // Scan the input string for a character in the ordered table above. If it's present, replace
-    // it with it's alternative string (it can be more than 1 char!). Otherwise, retain the input
-    // char. At the end, allocate all chars into a string in one operation.
+    // Scan the input string for a character in the ordered table above.
+    // If it's present, replace it with its alternative string (it can be more than 1 char!).
+    // Otherwise, retain the input char.
     s.chars().fold(String::with_capacity(s.len()), |mut s, c| {
         match OUTPUT_REPLACEMENTS.binary_search_by_key(&c, |(k, _)| *k) {
             Ok(i) => s.push_str(OUTPUT_REPLACEMENTS[i].1),
