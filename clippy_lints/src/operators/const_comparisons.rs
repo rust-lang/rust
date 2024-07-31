@@ -20,7 +20,7 @@ use super::{IMPOSSIBLE_COMPARISONS, REDUNDANT_COMPARISONS};
 // Flip yoda conditionals, turnings expressions like `42 < x` into `x > 42`
 fn comparison_to_const<'tcx>(
     cx: &LateContext<'tcx>,
-    typeck: &TypeckResults<'tcx>,
+    typeck: &'tcx TypeckResults<'tcx>,
     expr: &'tcx Expr<'tcx>,
 ) -> Option<(CmpOp, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Constant<'tcx>, Ty<'tcx>)> {
     if let ExprKind::Binary(operator, left, right) = expr.kind

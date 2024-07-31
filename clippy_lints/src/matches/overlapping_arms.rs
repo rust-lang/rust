@@ -37,13 +37,13 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                         constant(cx, cx.typeck_results(), lhs)?
                     } else {
                         let min_val_const = ty.numeric_min_val(cx.tcx)?;
-                        mir_to_const(cx, mir::Const::from_ty_const(min_val_const, ty, cx.tcx))?
+                        mir_to_const(cx.tcx, mir::Const::from_ty_const(min_val_const, ty, cx.tcx))?
                     };
                     let rhs_const = if let Some(rhs) = rhs {
                         constant(cx, cx.typeck_results(), rhs)?
                     } else {
                         let max_val_const = ty.numeric_max_val(cx.tcx)?;
-                        mir_to_const(cx, mir::Const::from_ty_const(max_val_const, ty, cx.tcx))?
+                        mir_to_const(cx.tcx, mir::Const::from_ty_const(max_val_const, ty, cx.tcx))?
                     };
                     let lhs_val = lhs_const.int_value(cx, ty)?;
                     let rhs_val = rhs_const.int_value(cx, ty)?;

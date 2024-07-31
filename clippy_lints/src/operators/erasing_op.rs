@@ -34,7 +34,7 @@ fn different_types(tck: &TypeckResults<'_>, input: &Expr<'_>, output: &Expr<'_>)
 
 fn check_op<'tcx>(
     cx: &LateContext<'tcx>,
-    tck: &TypeckResults<'tcx>,
+    tck: &'tcx TypeckResults<'tcx>,
     op: &Expr<'tcx>,
     other: &Expr<'tcx>,
     parent: &Expr<'tcx>,
