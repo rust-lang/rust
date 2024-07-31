@@ -1834,8 +1834,7 @@ declare_lint! {
     /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
-    "hidden lifetime parameters in types are deprecated",
-    crate_level_only
+    "hidden lifetime parameters in types are deprecated"
 }
 
 declare_lint! {

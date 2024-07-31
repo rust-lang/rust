@@ -1,7 +1,5 @@
 #![deny(unused_variables)]
 
-use std::collections::HashMap;
-
 use anyhow::{Context, Error};
 use build_helper::stage0_parser::{parse_stage0_file, Stage0Config, VersionMetadata};
 use curl::easy::Easy;
@@ -217,13 +215,13 @@ enum Channel {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Manifest {
     date: String,
-    pkg: HashMap<String, ManifestPackage>,
+    pkg: IndexMap<String, ManifestPackage>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct ManifestPackage {
     version: String,
-    target: HashMap<String, ManifestTargetPackage>,
+    target: IndexMap<String, ManifestTargetPackage>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

@@ -1180,6 +1180,10 @@ pub struct Resolver<'a, 'tcx> {
     /// Simplified analogue of module `resolutions` but in trait impls, excluding glob delegations.
     /// Needed because glob delegations exclude explicitly defined names.
     impl_binding_keys: FxHashMap<LocalDefId, FxHashSet<BindingKey>>,
+
+    /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
+    /// could be a crate that wasn't imported. For diagnostics use only.
+    current_crate_outer_attr_insert_span: Span,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1342,6 +1346,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         attrs: &[ast::Attribute],
         crate_span: Span,
+        current_crate_outer_attr_insert_span: Span,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
@@ -1525,6 +1530,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             glob_delegation_invoc_ids: Default::default(),
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
+            current_crate_outer_attr_insert_span,
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
