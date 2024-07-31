@@ -104,7 +104,7 @@ impl InferenceContext<'_> {
             Expr::RecordLit { path: _, fields, spread, ellipsis: _, is_assignee_expr: _ } => {
                 self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
             }
-            &Expr::Index { base, index, is_assignee_expr: _ } => {
+            &Expr::Index { base, index, is_assignee_expr } => {
                 if mutability == Mutability::Mut {
                     if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
                         if let Some(index_trait) = self
@@ -129,12 +129,16 @@ impl InferenceContext<'_> {
                                     target,
                                 }) = base_adjustments
                                 {
-                                    *mutability = Mutability::Mut;
-                                    if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
-                                        base_ty = Some(ty.clone());
+                                    // For assignee exprs `IndexMut` obiligations are already applied
+                                    if !is_assignee_expr {
+                                        if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
+                                            base_ty = Some(ty.clone());
+                                        }
                                     }
+                                    *mutability = Mutability::Mut;
                                 }
 
+                                // Apply `IndexMut` obligation for non-assignee expr
                                 if let Some(base_ty) = base_ty {
                                     let index_ty =
                                         if let Some(ty) = self.result.type_of_expr.get(index) {
