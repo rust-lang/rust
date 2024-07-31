@@ -281,9 +281,7 @@ impl<T> OnceLock<T> {
     /// Gets the mutable reference of the contents of the cell, initializing
     /// it with `f` if the cell was empty.
     ///
-    /// Many threads may call `get_mut_or_init` concurrently with different
-    /// initializing functions, but it is guaranteed that only one function
-    /// will be executed.
+    /// This method never blocks.
     ///
     /// # Panics
     ///
@@ -372,6 +370,8 @@ impl<T> OnceLock<T> {
     /// Gets the mutable reference of the contents of the cell, initializing
     /// it with `f` if the cell was empty. If the cell was empty and `f` failed,
     /// an error is returned.
+    ///
+    /// This method never blocks.
     ///
     /// # Panics
     ///
