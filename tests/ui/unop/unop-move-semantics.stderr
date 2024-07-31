@@ -40,7 +40,7 @@ help: if `T` implemented `Clone`, you could clone the value
 LL | fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
    |                  ^ consider constraining this type parameter with `Clone`
 LL |     let m = &x;
-   |             -- you could clone this value
+   |              - you could clone this value
 
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/unop-move-semantics.rs:17:6
@@ -63,7 +63,7 @@ LL | fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
    |                  ^ consider constraining this type parameter with `Clone`
 LL |     let m = &x;
 LL |     let n = &mut y;
-   |             ------ you could clone this value
+   |                  - you could clone this value
 
 error[E0507]: cannot move out of `*m` which is behind a mutable reference
   --> $DIR/unop-move-semantics.rs:24:6

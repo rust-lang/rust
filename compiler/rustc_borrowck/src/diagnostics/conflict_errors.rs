@@ -563,11 +563,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 } = move_spans
                     && can_suggest_clone
                 {
-                    self.suggest_cloning(err, ty, expr, None, Some(move_spans));
+                    self.suggest_cloning(err, ty, expr, Some(move_spans));
                 } else if self.suggest_hoisting_call_outside_loop(err, expr) && can_suggest_clone {
                     // The place where the type moves would be misleading to suggest clone.
                     // #121466
-                    self.suggest_cloning(err, ty, expr, None, Some(move_spans));
+                    self.suggest_cloning(err, ty, expr, Some(move_spans));
                 }
             }
 
@@ -1229,8 +1229,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         ty: Ty<'tcx>,
-        mut expr: &'tcx hir::Expr<'tcx>,
-        mut other_expr: Option<&'tcx hir::Expr<'tcx>>,
+        expr: &'tcx hir::Expr<'tcx>,
         use_spans: Option<UseSpans<'tcx>>,
     ) {
         if let hir::ExprKind::Struct(_, _, Some(_)) = expr.kind {
@@ -1242,66 +1241,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             return;
         }
 
-        if let Some(some_other_expr) = other_expr
-            && let Some(parent_binop) =
-                self.infcx.tcx.hir().parent_iter(expr.hir_id).find_map(|n| {
-                    if let (hir_id, hir::Node::Expr(e)) = n
-                        && let hir::ExprKind::AssignOp(_binop, target, _arg) = e.kind
-                        && target.hir_id == expr.hir_id
-                    {
-                        Some(hir_id)
-                    } else {
-                        None
-                    }
-                })
-            && let Some(other_parent_binop) =
-                self.infcx.tcx.hir().parent_iter(some_other_expr.hir_id).find_map(|n| {
-                    if let (hir_id, hir::Node::Expr(expr)) = n
-                        && let hir::ExprKind::AssignOp(..) = expr.kind
-                    {
-                        Some(hir_id)
-                    } else {
-                        None
-                    }
-                })
-            && parent_binop == other_parent_binop
-        {
-            // Explicitly look for `expr += other_expr;` and avoid suggesting
-            // `expr.clone() += other_expr;`, instead suggesting `expr += other_expr.clone();`.
-            other_expr = Some(expr);
-            expr = some_other_expr;
-        }
-        'outer: {
-            if let ty::Ref(..) = ty.kind() {
-                // We check for either `let binding = foo(expr, other_expr);` or
-                // `foo(expr, other_expr);` and if so we don't suggest an incorrect
-                // `foo(expr, other_expr).clone()`
-                if let Some(other_expr) = other_expr
-                    && let Some(parent_let) =
-                        self.infcx.tcx.hir().parent_iter(expr.hir_id).find_map(|n| {
-                            if let (hir_id, hir::Node::LetStmt(_) | hir::Node::Stmt(_)) = n {
-                                Some(hir_id)
-                            } else {
-                                None
-                            }
-                        })
-                    && let Some(other_parent_let) =
-                        self.infcx.tcx.hir().parent_iter(other_expr.hir_id).find_map(|n| {
-                            if let (hir_id, hir::Node::LetStmt(_) | hir::Node::Stmt(_)) = n {
-                                Some(hir_id)
-                            } else {
-                                None
-                            }
-                        })
-                    && parent_let == other_parent_let
-                {
-                    // Explicitly check that we don't have `foo(&*expr, other_expr)`, as cloning the
-                    // result of `foo(...)` won't help.
-                    break 'outer;
-                }
-            }
-        }
-        let ty = ty.peel_refs();
         if self.implements_clone(ty) {
             self.suggest_cloning_inner(err, ty, expr);
         } else if let ty::Adt(def, args) = ty.kind()
@@ -1573,10 +1512,27 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             );
         self.suggest_copy_for_type_in_cloned_ref(&mut err, place);
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
-        if let Some(expr) = self.find_expr(borrow_span)
-            && let Some(ty) = typeck_results.node_type_opt(expr.hir_id)
-        {
-            self.suggest_cloning(&mut err, ty, expr, self.find_expr(span), Some(move_spans));
+        if let Some(expr) = self.find_expr(borrow_span) {
+            // This is a borrow span, so we want to suggest cloning the referent.
+            if let hir::ExprKind::AddrOf(_, _, borrowed_expr) = expr.kind
+                && let Some(ty) = typeck_results.expr_ty_opt(borrowed_expr)
+            {
+                self.suggest_cloning(&mut err, ty, borrowed_expr, Some(move_spans));
+            } else if typeck_results.expr_adjustments(expr).first().is_some_and(|adj| {
+                matches!(
+                    adj.kind,
+                    ty::adjustment::Adjust::Borrow(ty::adjustment::AutoBorrow::Ref(
+                        _,
+                        ty::adjustment::AutoBorrowMutability::Not
+                            | ty::adjustment::AutoBorrowMutability::Mut {
+                                allow_two_phase_borrow: ty::adjustment::AllowTwoPhase::No
+                            }
+                    ))
+                )
+            }) && let Some(ty) = typeck_results.expr_ty_opt(expr)
+            {
+                self.suggest_cloning(&mut err, ty, expr, Some(move_spans));
+            }
         }
         self.buffer_error(err);
     }

@@ -18,7 +18,7 @@ LL | struct Value {}
    | ^^^^^^^^^^^^ consider implementing `Clone` for this type
 ...
 LL |         let _ref_to_val: &Value = &x;
-   |                                   -- you could clone this value
+   |                                    - you could clone this value
 
 error: aborting due to 1 previous error
 
