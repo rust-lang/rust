@@ -44,7 +44,6 @@ def eprint(*args, **kwargs):
     kwargs["file"] = sys.stderr
     print(*args, **kwargs)
 
-
 def get(base, url, path, checksums, verbose=False):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
@@ -89,6 +88,8 @@ def download(path, url, probably_big, verbose):
             eprint("\nspurious failure, trying again")
     _download(path, url, probably_big, verbose, False)
 
+def has_wget():
+    require(["wget", "--version"], exit=False) != None
 
 def _download(path, url, probably_big, verbose, exception):
     # Try to use curl (potentially available on win32
@@ -100,22 +101,29 @@ def _download(path, url, probably_big, verbose, exception):
         eprint("downloading {}".format(url))
 
     try:
-        if (probably_big or verbose) and "GITHUB_ACTIONS" not in os.environ:
-            option = "-#"
+        if has_wget():
+            eprint("using wget!!");
+            run(["wget", "--show-progress", "-O", path, "url"],
+                verbose=verbose,
+                exception=True,
+            )
         else:
-            option = "-s"
-        # If curl is not present on Win32, we should not sys.exit
-        #   but raise `CalledProcessError` or `OSError` instead
-        require(["curl", "--version"], exception=platform_is_win32())
-        run(["curl", option,
-            "-L", # Follow redirect.
-            "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-            "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
-            "-o", path,
-            "--retry", "3", "-SRf", url],
-            verbose=verbose,
-            exception=True, # Will raise RuntimeError on failure
-        )
+            if (probably_big or verbose) and "GITHUB_ACTIONS" not in os.environ:
+                option = "-#"
+            else:
+                option = "-s"
+                # If curl is not present on Win32, we should not sys.exit
+                #   but raise `CalledProcessError` or `OSError` instead
+                require(["curl", "--version"], exception=platform_is_win32())
+                run(["curl", option,
+                     "-L", # Follow redirect.
+                     "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
+                     "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
+                     "-o", path,
+                     "--retry", "3", "-SRf", url],
+                    verbose=verbose,
+                    exception=True, # Will raise RuntimeError on failure
+                    )
     except (subprocess.CalledProcessError, OSError, RuntimeError):
         # see http://serverfault.com/questions/301128/how-to-download
         if platform_is_win32():
@@ -129,6 +137,7 @@ def _download(path, url, probably_big, verbose, exception):
             raise
 
 
+        
 def verify(path, expected, verbose):
     """Check if the sha256 sum of the given path is valid"""
     if verbose:
