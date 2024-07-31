@@ -1677,7 +1677,7 @@ impl Config {
         !self.linkedProjects(None).is_empty()
     }
 
-    pub fn linked_manifests(&self) -> impl Iterator<Item = &AbsPath> + '_ {
+    pub fn linked_manifests(&self) -> impl Iterator<Item = &Utf8Path> + '_ {
         self.linkedProjects(None).iter().filter_map(|it| match it {
             ManifestOrProjectJson::Manifest(p) => Some(&**p),
             // despite having a buildfile, using this variant as a manifest
@@ -2273,11 +2273,7 @@ mod single_or_array {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 enum ManifestOrProjectJson {
-    Manifest(
-        #[serde(serialize_with = "serialize_abs_pathbuf")]
-        #[serde(deserialize_with = "deserialize_abs_pathbuf")]
-        AbsPathBuf,
-    ),
+    Manifest(Utf8PathBuf),
     ProjectJson(ProjectJsonData),
     DiscoveredProjectJson {
         data: ProjectJsonData,
@@ -2306,10 +2302,12 @@ where
 }
 
 impl ManifestOrProjectJson {
-    fn manifest(&self) -> Option<&AbsPath> {
+    fn manifest(&self) -> Option<&Utf8Path> {
         match self {
             ManifestOrProjectJson::Manifest(manifest) => Some(manifest),
-            ManifestOrProjectJson::DiscoveredProjectJson { buildfile, .. } => Some(buildfile),
+            ManifestOrProjectJson::DiscoveredProjectJson { buildfile, .. } => {
+                Some(buildfile.as_ref())
+            }
             ManifestOrProjectJson::ProjectJson(_) => None,
         }
     }
