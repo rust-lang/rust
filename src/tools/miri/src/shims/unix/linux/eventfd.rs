@@ -178,7 +178,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("eventfd: encountered unknown unsupported flags {:#x}", flags);
         }
 
-        let fd = this.machine.fds.insert_fd(Event {
+        let fd = this.machine.fds.insert_new(Event {
             counter: val.into(),
             is_nonblock,
             clock: VClock::default(),

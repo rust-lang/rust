@@ -240,25 +240,25 @@ impl FdTable {
     }
     pub(crate) fn init(mute_stdout_stderr: bool) -> FdTable {
         let mut fds = FdTable::new();
-        fds.insert_fd(io::stdin());
+        fds.insert_new(io::stdin());
         if mute_stdout_stderr {
-            assert_eq!(fds.insert_fd(NullOutput), 1);
-            assert_eq!(fds.insert_fd(NullOutput), 2);
+            assert_eq!(fds.insert_new(NullOutput), 1);
+            assert_eq!(fds.insert_new(NullOutput), 2);
         } else {
-            assert_eq!(fds.insert_fd(io::stdout()), 1);
-            assert_eq!(fds.insert_fd(io::stderr()), 2);
+            assert_eq!(fds.insert_new(io::stdout()), 1);
+            assert_eq!(fds.insert_new(io::stderr()), 2);
         }
         fds
     }
 
     /// Insert a new file description to the FdTable.
-    pub fn insert_fd(&mut self, fd: impl FileDescription) -> i32 {
+    pub fn insert_new(&mut self, fd: impl FileDescription) -> i32 {
         let file_handle = FileDescriptionRef::new(fd);
-        self.insert_fd_with_min_fd(file_handle, 0)
+        self.insert_ref_with_min_fd(file_handle, 0)
     }
 
-    /// Insert a new FD that is at least `min_fd`.
-    fn insert_fd_with_min_fd(&mut self, file_handle: FileDescriptionRef, min_fd: i32) -> i32 {
+    /// Insert a file description, giving it a file descriptor that is at least `min_fd`.
+    fn insert_ref_with_min_fd(&mut self, file_handle: FileDescriptionRef, min_fd: i32) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
@@ -294,7 +294,7 @@ impl FdTable {
         Some(fd.borrow_mut())
     }
 
-    pub fn dup(&self, fd: i32) -> Option<FileDescriptionRef> {
+    pub fn get_ref(&self, fd: i32) -> Option<FileDescriptionRef> {
         let fd = self.fds.get(&fd)?;
         Some(fd.clone())
     }
@@ -313,16 +313,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn dup(&mut self, old_fd: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.dup(old_fd) else {
+        let Some(dup_fd) = this.machine.fds.get_ref(old_fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        Ok(Scalar::from_i32(this.machine.fds.insert_fd_with_min_fd(dup_fd, 0)))
+        Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, 0)))
     }
 
     fn dup2(&mut self, old_fd: i32, new_fd: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.dup(old_fd) else {
+        let Some(dup_fd) = this.machine.fds.get_ref(old_fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         if new_fd != old_fd {
@@ -408,9 +408,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let start = this.read_scalar(&args[2])?.to_i32()?;
 
-            match this.machine.fds.dup(fd) {
+            match this.machine.fds.get_ref(fd) {
                 Some(dup_fd) =>
-                    Ok(Scalar::from_i32(this.machine.fds.insert_fd_with_min_fd(dup_fd, start))),
+                    Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, start))),
                 None => Ok(Scalar::from_i32(this.fd_not_found()?)),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC") {
@@ -481,7 +481,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let communicate = this.machine.communicate();
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.dup(fd) else {
+        let Some(fd) = this.machine.fds.get_ref(fd) else {
             trace!("read: FD not found");
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
@@ -546,7 +546,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.dup(fd) else {
+        let Some(fd) = this.machine.fds.get_ref(fd) else {
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
 

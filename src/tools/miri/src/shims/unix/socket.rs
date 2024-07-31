@@ -219,8 +219,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let fds = &mut this.machine.fds;
-        let sv0 = fds.insert_fd(socketpair_0);
-        let sv1 = fds.insert_fd(socketpair_1);
+        let sv0 = fds.insert_new(socketpair_0);
+        let sv1 = fds.insert_new(socketpair_1);
         let sv0 = Scalar::from_int(sv0, sv.layout.size);
         let sv1 = Scalar::from_int(sv1, sv.layout.size);
 
