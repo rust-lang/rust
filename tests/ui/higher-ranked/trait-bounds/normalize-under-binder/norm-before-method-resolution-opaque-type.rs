@@ -11,7 +11,6 @@ impl<'a, T> Trait<'a> for T {
 }
 
 type Foo = impl Sized;
-//[old]~^ ERROR: unconstrained opaque type
 
 fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
 //[old]~^ ERROR: item does not constrain

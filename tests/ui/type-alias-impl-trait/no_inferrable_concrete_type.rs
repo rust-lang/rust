@@ -5,7 +5,6 @@
 
 mod foo {
     pub type Foo = impl Copy;
-    //~^ ERROR unconstrained opaque type
 
     // make compiler happy about using 'Foo'
     pub fn bar(x: Foo) -> Foo {

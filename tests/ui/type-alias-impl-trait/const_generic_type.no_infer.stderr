@@ -1,5 +1,5 @@
 error: `Bar` is forbidden as the type of a const generic parameter
-  --> $DIR/const_generic_type.rs:8:24
+  --> $DIR/const_generic_type.rs:7:24
    |
 LL | async fn test<const N: crate::Bar>() {
    |                        ^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | async fn test<const N: crate::Bar>() {
    = note: the only supported types are integers, `bool`, and `char`
 
 error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
-  --> $DIR/const_generic_type.rs:8:10
+  --> $DIR/const_generic_type.rs:7:10
    |
 LL | async fn test<const N: crate::Bar>() {
    |          ^^^^
@@ -20,7 +20,7 @@ LL | type Bar = impl std::fmt::Display;
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
-  --> $DIR/const_generic_type.rs:8:38
+  --> $DIR/const_generic_type.rs:7:38
    |
 LL |   async fn test<const N: crate::Bar>() {
    |  ______________________________________^
@@ -39,13 +39,5 @@ note: this opaque type is in the signature
 LL | type Bar = impl std::fmt::Display;
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
-error: unconstrained opaque type
-  --> $DIR/const_generic_type.rs:5:12
-   |
-LL | type Bar = impl std::fmt::Display;
-   |            ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `Bar` must be used in combination with a concrete type within the same module
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
