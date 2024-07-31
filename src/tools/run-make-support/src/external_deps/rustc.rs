@@ -272,9 +272,15 @@ impl Rustc {
     }
 
     /// Specify the print request.
+    ///
+    /// Also checks that the [`CompletedProcess`](crate::command::CompletedProcess)
+    /// `stdout` ends with a newline.
     pub fn print(&mut self, request: &str) -> &mut Self {
         self.cmd.arg("--print");
         self.cmd.arg(request);
+        self.cmd.add_completed_process_check("`--print` ends with newline", |completed_process| {
+            completed_process.assert_stdout_ends_with_newline();
+        });
         self
     }
 
