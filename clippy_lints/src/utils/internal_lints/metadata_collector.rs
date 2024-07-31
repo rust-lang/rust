@@ -684,6 +684,11 @@ fn cleanup_docs(docs_collection: &Vec<String>) -> String {
                     .find(|&s| !matches!(s, "" | "ignore" | "no_run" | "should_panic"))
                     // if no language is present, fill in "rust"
                     .unwrap_or("rust");
+                let len_diff = line.len() - line.trim_start().len();
+                if len_diff != 0 {
+                    // We put back the indentation.
+                    docs.push_str(&line[..len_diff]);
+                }
                 docs.push_str("```");
                 docs.push_str(lang);
 
