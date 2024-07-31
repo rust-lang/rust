@@ -70,7 +70,7 @@ pub(crate) enum ExclusiveState {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
     since = "1.38.0",
-    note = "the `new` function is now preferred",
+    note = "the `Once::new()` function is now preferred",
     suggestion = "Once::new()"
 )]
 pub const ONCE_INIT: Once = Once::new();
