@@ -192,24 +192,54 @@ struct ClosureSpans {
     body: Span,
 }
 
-/// Indicates a range of tokens that should be replaced by
-/// the tokens in the provided `AttrsTarget`. This is used in two
-/// places during token collection:
+/// A token range within a `Parser`'s full token stream.
+#[derive(Clone, Debug)]
+struct ParserRange(Range<u32>);
+
+/// A token range within an individual AST node's (lazy) token stream, i.e.
+/// relative to that node's first token. Distinct from `ParserRange` so the two
+/// kinds of range can't be mixed up.
+#[derive(Clone, Debug)]
+struct NodeRange(Range<u32>);
+
+/// Indicates a range of tokens that should be replaced by an `AttrsTarget`
+/// (replacement) or be replaced by nothing (deletion). This is used in two
+/// places during token collection.
 ///
-/// 1. During the parsing of an AST node that may have a `#[derive]`
-/// attribute, we parse a nested AST node that has `#[cfg]` or `#[cfg_attr]`
-/// In this case, we use a `ReplaceRange` to replace the entire inner AST node
-/// with `FlatToken::AttrsTarget`, allowing us to perform eager cfg-expansion
-/// on an `AttrTokenStream`.
+/// 1. Replacement. During the parsing of an AST node that may have a
+///    `#[derive]` attribute, when we parse a nested AST node that has `#[cfg]`
+///    or `#[cfg_attr]`, we replace the entire inner AST node with
+///    `FlatToken::AttrsTarget`. This lets us perform eager cfg-expansion on an
+///    `AttrTokenStream`.
 ///
-/// 2. When we parse an inner attribute while collecting tokens. We
-/// remove inner attributes from the token stream entirely, and
-/// instead track them through the `attrs` field on the AST node.
-/// This allows us to easily manipulate them (for example, removing
-/// the first macro inner attribute to invoke a proc-macro).
-/// When create a `TokenStream`, the inner attributes get inserted
-/// into the proper place in the token stream.
-type ReplaceRange = (Range<u32>, Option<AttrsTarget>);
+/// 2. Deletion. We delete inner attributes from all collected token streams,
+///    and instead track them through the `attrs` field on the AST node. This
+///    lets us manipulate them similarly to outer attributes. When we create a
+///    `TokenStream`, the inner attributes are inserted into the proper place
+///    in the token stream.
+///
+/// Each replacement starts off in `ParserReplacement` form but is converted to
+/// `NodeReplacement` form when it is attached to a single AST node, via
+/// `LazyAttrTokenStreamImpl`.
+type ParserReplacement = (ParserRange, Option<AttrsTarget>);
+
+/// See the comment on `ParserReplacement`.
+type NodeReplacement = (NodeRange, Option<AttrsTarget>);
+
+impl NodeRange {
+    // Converts a range within a parser's tokens to a range within a
+    // node's tokens beginning at `start_pos`.
+    //
+    // For example, imagine a parser with 50 tokens in its token stream, a
+    // function that spans `ParserRange(20..40)` and an inner attribute within
+    // that function that spans `ParserRange(30..35)`. We would find the inner
+    // attribute's range within the function's tokens by subtracting 20, which
+    // is the position of the function's start token. This gives
+    // `NodeRange(10..15)`.
+    fn new(ParserRange(parser_range): ParserRange, start_pos: u32) -> NodeRange {
+        NodeRange((parser_range.start - start_pos)..(parser_range.end - start_pos))
+    }
+}
 
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
@@ -226,8 +256,8 @@ enum Capturing {
 #[derive(Clone, Debug)]
 struct CaptureState {
     capturing: Capturing,
-    replace_ranges: Vec<ReplaceRange>,
-    inner_attr_ranges: FxHashMap<AttrId, Range<u32>>,
+    parser_replacements: Vec<ParserReplacement>,
+    inner_attr_parser_ranges: FxHashMap<AttrId, ParserRange>,
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
@@ -417,8 +447,8 @@ impl<'a> Parser<'a> {
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
-                replace_ranges: Vec::new(),
-                inner_attr_ranges: Default::default(),
+                parser_replacements: Vec::new(),
+                inner_attr_parser_ranges: Default::default(),
             },
             current_closure: None,
             recovery: Recovery::Allowed,
