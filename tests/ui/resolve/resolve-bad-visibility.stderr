@@ -22,7 +22,10 @@ error[E0433]: failed to resolve: you might be missing crate `nonexistent`
 LL | pub(in nonexistent) struct G;
    |        ^^^^^^^^^^^ you might be missing crate `nonexistent`
    |
-   = help: consider adding `extern crate nonexistent` to use the `nonexistent` crate
+help: consider importing the `nonexistent` crate
+   |
+LL + extern crate nonexistent;
+   |
 
 error[E0433]: failed to resolve: you might be missing crate `too_soon`
   --> $DIR/resolve-bad-visibility.rs:8:8
@@ -30,7 +33,10 @@ error[E0433]: failed to resolve: you might be missing crate `too_soon`
 LL | pub(in too_soon) struct H;
    |        ^^^^^^^^ you might be missing crate `too_soon`
    |
-   = help: consider adding `extern crate too_soon` to use the `too_soon` crate
+help: consider importing the `too_soon` crate
+   |
+LL + extern crate too_soon;
+   |
 
 error: aborting due to 5 previous errors
 
