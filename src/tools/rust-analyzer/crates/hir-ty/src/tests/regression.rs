@@ -2051,6 +2051,8 @@ fn test() {
      // ^ Wrap<'?, ()>
     let x = S::foo::<&()>(&S);
      // ^ Wrap<'?, ()>
+    let x = S.foo::<'static, &()>();
+     // ^ Wrap<'?, ()>
     let x = S.foo::<&()>();
      // ^ Wrap<'?, ()>
 }
