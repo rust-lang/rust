@@ -7,6 +7,7 @@
 
 type Identity<T> = impl Sized;
 
+#[defines(Identity)]
 fn define_identity<T>(x: T) -> Identity<T> {
     x
 }
@@ -16,6 +17,7 @@ impl<T> foreign::Trait0<Local, T, ()> for Identity<T> {}
 
 type Opaque<T> = impl Sized;
 
+#[defines(Opaque)]
 fn define_local<T>() -> Opaque<T> {
     Local
 }

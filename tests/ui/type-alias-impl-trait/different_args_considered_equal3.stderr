@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/different_args_considered_equal3.rs:18:5
+  --> $DIR/different_args_considered_equal3.rs:16:5
    |
 LL | fn get_iter<'a>() -> impl IntoIterator<Item = Opaque<'a>> {
    |             -- lifetime `'a` defined here

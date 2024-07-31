@@ -16,6 +16,7 @@ trait Trait<U> {}
 
 impl<W> Trait<W> for () {}
 
+#[defines(Foo)]
 fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T> {
     ()
 }

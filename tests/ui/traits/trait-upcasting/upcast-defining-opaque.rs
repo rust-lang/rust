@@ -17,6 +17,7 @@ impl<T: ?Sized> Super for T {
 
 type Foo = impl Sized;
 
+#[defines(Foo)]
 fn upcast(x: &dyn Sub<Assoc = Foo>) -> &dyn Super<Assoc = i32> {
     x
 }

@@ -13,6 +13,7 @@ pub trait Trait {}
 
 pub type TAIT<T> = impl Trait;
 
+#[defines(TAIT)]
 async fn foo<T>() -> TAIT<T> {
     Foo
 }

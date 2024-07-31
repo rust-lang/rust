@@ -2354,6 +2354,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     match self.tcx().type_of_opaque(def_id) {
                         Ok(ty) => t.rebind(vec![ty.instantiate(self.tcx(), args)]),
                         Err(_) => {
+                            // TODO: check if this is still reachable
                             return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
                         }
                     }

@@ -15,6 +15,7 @@ fn foo() -> impl T {
     panic!()
 }
 
+#[defines(Foo)]
 fn a() -> Foo {
     foo()
 }

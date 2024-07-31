@@ -1,5 +1,5 @@
 error[E0307]: invalid `self` parameter type: `Bar<Foo>`
-  --> $DIR/method_resolution4.rs:27:18
+  --> $DIR/method_resolution4.rs:25:18
    |
 LL |     fn foo(self: Bar<Foo>) {
    |                  ^^^^^^^^
@@ -8,7 +8,7 @@ LL |     fn foo(self: Bar<Foo>) {
    = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
 
 error[E0307]: invalid `self` parameter type: `&Bar<Foo>`
-  --> $DIR/method_resolution4.rs:31:20
+  --> $DIR/method_resolution4.rs:29:20
    |
 LL |     fn foomp(self: &Bar<Foo>) {
    |                    ^^^^^^^^^

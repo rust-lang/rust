@@ -1,5 +1,13 @@
+error: unconstrained opaque type
+  --> $DIR/higher_kinded_params2.rs:18:13
+   |
+LL | type Tait = impl std::fmt::Debug;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Tait` must be used in combination with a concrete type within the same crate
+
 error[E0308]: mismatched types
-  --> $DIR/higher_kinded_params2.rs:26:13
+  --> $DIR/higher_kinded_params2.rs:28:13
    |
 LL | type Tait = impl std::fmt::Debug;
    |             -------------------- the expected opaque type
@@ -9,12 +17,12 @@ LL |         f = g;
    |
    = note: expected fn pointer `for<'x> fn(&'x ()) -> Tait`
                  found fn item `for<'a> fn(&'a ()) -> String {g}`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/higher_kinded_params2.rs:25:8
+note: this item must have a `#[defines(Tait)]` attribute to be able to define hidden types
+  --> $DIR/higher_kinded_params2.rs:27:8
    |
 LL |     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
    |        ^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

@@ -10,11 +10,13 @@ use std::fmt::Debug;
 
 type Foo = impl Debug;
 
+#[defines(Foo)]
 fn foo1() -> (u32, Foo) {
     let x: Foo = 22_u32;
     (x, todo!())
 }
 
+#[defines(Foo)]
 fn foo2() -> (u32, Foo) {
     let x: Foo = 22_u32;
     let y: Foo = x;

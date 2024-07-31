@@ -3,6 +3,7 @@
 
 type A = impl Fn();
 
+#[defines(A)]
 pub(crate) fn ret_closure() -> A {
     || {}
 }

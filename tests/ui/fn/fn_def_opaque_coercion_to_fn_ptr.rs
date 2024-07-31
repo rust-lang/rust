@@ -13,6 +13,7 @@ fn bar<T>(t: T) -> T {
 
 type F = impl Sized;
 
+#[defines(F)]
 fn f(a: F) {
     let mut x = bar::<F>;
     x = foo::<()>; //~ ERROR: mismatched types
@@ -22,6 +23,7 @@ fn f(a: F) {
 
 type I = impl Sized;
 
+#[defines(I)]
 fn i(a: I) {
     let mut x = bar::<()>;
     x = foo::<I>; //~ ERROR: mismatched types
@@ -31,6 +33,7 @@ fn i(a: I) {
 
 type J = impl Sized;
 
+#[defines(J)]
 fn j(a: J) {
     let x = match true {
         true => bar::<J>,

@@ -16,6 +16,7 @@ fn reify_as() -> Thunk<impl FnOnce(Continuation) -> Continuation> {
 
 type Tait = impl FnOnce(Continuation) -> Continuation;
 
+#[defines(Tait)]
 fn reify_as_tait() -> Thunk<Tait> {
     Thunk::new(|mut cont| {
         //~^ ERROR type annotations needed

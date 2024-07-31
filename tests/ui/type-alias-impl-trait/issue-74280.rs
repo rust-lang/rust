@@ -4,6 +4,7 @@
 
 type Test = impl Copy;
 
+#[defines(Test)]
 fn test() -> Test {
     let y = || -> Test { () };
     7 //~ ERROR mismatched types

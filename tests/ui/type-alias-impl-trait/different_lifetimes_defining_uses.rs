@@ -3,10 +3,12 @@
 
 type OneLifetime<'a, 'b> = impl std::fmt::Debug;
 
+#[defines(OneLifetime)]
 fn foo<'a, 'b>(a: &'a u32, b: &'b u32) -> OneLifetime<'a, 'b> {
     a
 }
 
+#[defines(OneLifetime)]
 fn bar<'a, 'b>(a: &'a u32, b: &'b u32) -> OneLifetime<'a, 'b> {
     b
     //~^ ERROR: concrete type differs from previous defining opaque type use

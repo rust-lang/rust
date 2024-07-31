@@ -10,7 +10,7 @@ LL |     panic!()
    = help: the trait `T` is implemented for `i32`
 
 error[E0277]: the trait bound `(): T` is not satisfied
-  --> $DIR/impl_trait_fallback2.rs:15:11
+  --> $DIR/impl_trait_fallback2.rs:16:11
    |
 LL | fn a() -> Foo {
    |           ^^^ the trait `T` is not implemented for `()`

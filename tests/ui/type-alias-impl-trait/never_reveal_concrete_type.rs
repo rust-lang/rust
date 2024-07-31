@@ -4,10 +4,12 @@ fn main() {}
 
 type NoReveal = impl std::fmt::Debug;
 
+#[defines(NoReveal)]
 fn define_no_reveal() -> NoReveal {
     ""
 }
 
+#[defines(NoReveal)]
 fn no_reveal(x: NoReveal) {
     let _: &'static str = x;
     let _ = x as &'static str;

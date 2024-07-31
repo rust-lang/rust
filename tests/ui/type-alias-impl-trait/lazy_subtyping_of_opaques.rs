@@ -6,6 +6,7 @@
 
 type Tait = impl FnOnce() -> ();
 
+#[defines(Tait)]
 fn reify_as_tait() -> Thunk<Tait> {
     //~^ ERROR: expected a `FnOnce()` closure, found `()`
     Thunk::new(|cont| cont)

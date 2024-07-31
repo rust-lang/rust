@@ -11,6 +11,7 @@ unsafe impl Send for MyTy<'_, 'static> {}
 pub mod step1 {
     use super::*;
     pub type Step1<'a, 'b: 'a> = impl Sized + Captures<'b> + 'a;
+    #[defines(Step1)]
     pub fn step1<'a, 'b: 'a>() -> Step1<'a, 'b> {
         MyTy::<'a, 'b>(None)
     }
@@ -22,8 +23,10 @@ pub mod step2 {
     // Although `Step2` is WF at the definition site, it's not WF in its
     // declaration site (above). We check this in `check_opaque_meets_bounds`,
     // which must remain sound.
+    #[defines(Step2)]
     pub fn step2<'a, 'b: 'a>() -> Step2<'a>
-        where crate::step1::Step1<'a, 'b>: Send
+    where
+        crate::step1::Step1<'a, 'b>: Send,
     {
         crate::step1::step1::<'a, 'b>()
         //~^ ERROR hidden type for `Step2<'a>` captures lifetime that does not appear in bounds
@@ -32,7 +35,7 @@ pub mod step2 {
 
 fn step3<'a, 'b>() {
     fn is_send<T: Send>() {}
-    is_send::<crate::step2::Step2::<'a>>();
+    is_send::<crate::step2::Step2<'a>>();
 }
 
 fn main() {}

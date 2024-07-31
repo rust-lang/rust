@@ -1,11 +1,11 @@
 error[E0119]: conflicting implementations of trait `Trait<_>`
-  --> $DIR/opaques.rs:28:1
+  --> $DIR/opaques.rs:27:1
    |
 LL | impl<T> Trait<T> for T {
    | ---------------------- first implementation here
 ...
-LL | impl<T> Trait<T> for defining_scope::Alias<T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+LL | impl<T> Trait<T> for Alias<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
 error: aborting due to 1 previous error
 

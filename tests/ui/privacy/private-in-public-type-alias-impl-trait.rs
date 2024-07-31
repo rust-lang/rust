@@ -8,6 +8,7 @@ pub type Pub = impl Default;
 #[derive(Default)]
 struct Priv;
 
+#[defines(Pub)]
 fn check() -> Pub {
     Priv
 }

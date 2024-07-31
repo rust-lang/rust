@@ -395,10 +395,16 @@ impl<T> Trait<T> for X {
                             let sp = tcx
                                 .def_ident_span(body_owner_def_id)
                                 .unwrap_or_else(|| tcx.def_span(body_owner_def_id));
+                            let mut alias_def_id = opaque_ty.def_id;
+                            while let DefKind::OpaqueTy = tcx.def_kind(alias_def_id) {
+                                alias_def_id = tcx.parent(alias_def_id);
+                            }
+                            let opaque_path = tcx.def_path_str(alias_def_id);
+                            // TODO: make this a structured suggestion
                             diag.span_note(
                                 sp,
-                                "this item must have the opaque type in its signature in order to \
-                                 be able to register hidden types",
+                                format!("this item must have a `#[defines({opaque_path})]` attribute to be able \
+                                to define hidden types"),
                             );
                         }
                         // If two if arms can be coerced to a trait object, provide a structured

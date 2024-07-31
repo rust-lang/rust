@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence.rs:16:1
+  --> $DIR/coherence.rs:17:1
    |
 LL | impl foreign_crate::ForeignTrait for AliasOfForeignType<()> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------

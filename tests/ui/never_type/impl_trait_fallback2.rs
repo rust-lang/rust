@@ -12,11 +12,13 @@ fn should_ret_unit() -> impl T {
 
 type Foo = impl T;
 
+#[defines(Foo)]
 fn a() -> Foo {
     //~^ ERROR `(): T` is not satisfied
     panic!()
 }
 
+#[defines(Foo)]
 fn b() -> Foo {
     42
 }

@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `Step2<'a>` captures lifetime that does not appear in bounds
-  --> $DIR/tait-hidden-erased-unsoundness-2.rs:28:9
+  --> $DIR/tait-hidden-erased-unsoundness-2.rs:31:9
    |
 LL |     pub type Step2<'a> = impl Send + 'a;
    |                          -------------- opaque type defined here

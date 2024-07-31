@@ -15,9 +15,11 @@ type Helper = impl Bar;
 
 impl Foo for i32 {
     type Assoc = Helper;
+    #[defines(Helper)]
     fn foo() -> Helper {
         Dummy
     }
+    #[defines(Helper)]
     fn bar() -> Helper {
         Dummy
     }

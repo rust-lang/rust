@@ -44,6 +44,7 @@ fn r#struct() {
 mod only_pattern {
     type T = impl Copy;
 
+    #[defines(T)]
     fn foo(foo: T) {
         let (mut x, mut y) = foo;
         x = 42;
@@ -52,6 +53,7 @@ mod only_pattern {
 
     type U = impl Copy;
 
+    #[defines(U)]
     fn bar(bar: Option<U>) {
         match bar {
             Some((mut x, mut y)) => {
@@ -64,6 +66,7 @@ mod only_pattern {
 
     type V = impl Copy;
 
+    #[defines(V)]
     fn baz(baz: Option<V>) {
         match baz {
             _ => {}

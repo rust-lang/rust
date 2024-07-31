@@ -8,6 +8,7 @@ pub trait Anything {}
 impl<T> Anything for T {}
 pub type Input = impl Anything;
 
+#[defines(Input)]
 fn bop(_: Input) {
     run(
         |x: u32| {
@@ -17,7 +18,6 @@ fn bop(_: Input) {
     );
 }
 
-#[defines()]
 fn run<F: FnOnce(Input) -> ()>(f: F, i: Input) {
     f(i);
 }

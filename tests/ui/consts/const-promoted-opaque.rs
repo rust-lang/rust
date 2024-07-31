@@ -10,23 +10,23 @@
 
 //@[unit] check-pass
 
-mod helper {
-    pub type Foo = impl Sized;
+pub type Foo = impl Sized;
 
-    #[cfg(string)]
-    pub const FOO: Foo = String::new();
+#[cfg(string)]
+#[defines(Foo)]
+pub const FOO: Foo = String::new();
 
-    #[cfg(atomic)]
-    pub const FOO: Foo = std::sync::atomic::AtomicU8::new(42);
+#[cfg(atomic)]
+#[defines(Foo)]
+pub const FOO: Foo = std::sync::atomic::AtomicU8::new(42);
 
-    #[cfg(unit)]
-    pub const FOO: Foo = ();
-}
-use helper::*;
+#[cfg(unit)]
+#[defines(Foo)]
+pub const FOO: Foo = ();
 
 const BAR: () = {
     let _: &'static _ = &FOO;
-    //[string,atomic]~^ ERROR: destructor of `helper::Foo` cannot be evaluated at compile-time
+    //[string,atomic]~^ ERROR: destructor of `Foo` cannot be evaluated at compile-time
 };
 
 const BAZ: &Foo = &FOO;

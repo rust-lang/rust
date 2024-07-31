@@ -27,6 +27,7 @@ impl Bar<u32> {
     fn foo(self) {}
 }
 
+#[defines(Foo)]
 fn foo() -> Foo {
     42_u32
 }

@@ -13,6 +13,7 @@ trait OtherTrait {}
 
 type Alias = impl SomeTrait;
 
+#[defines(Alias)]
 fn constrain() -> Alias {
     ()
 }

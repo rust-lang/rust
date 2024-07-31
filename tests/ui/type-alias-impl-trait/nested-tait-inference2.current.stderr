@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
-  --> $DIR/nested-tait-inference2.rs:17:13
+  --> $DIR/nested-tait-inference2.rs:18:13
    |
 LL | fn foo() -> impl Foo<FooX> {
    |             ^^^^^^^^^^^^^^ the trait `Foo<FooX>` is not implemented for `()`

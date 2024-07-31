@@ -2,6 +2,7 @@
 
 type Tait<T> = impl Sized;
 
+#[defines(Tait)]
 fn foo<T, U>() -> Tait<T> {
     if false {
         if { return } {

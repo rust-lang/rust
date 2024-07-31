@@ -9,6 +9,7 @@ type B = impl Foo;
 
 trait Foo {}
 
+#[defines(A, B)]
 fn muh(x: A) -> B {
     if false {
         return x;  // B's hidden type is A (opaquely)

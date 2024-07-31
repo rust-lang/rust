@@ -6,6 +6,7 @@ use std::fmt::Debug;
 
 pub type Foo = impl Debug;
 
+#[defines(Foo)]
 const _FOO: Foo = 5;
 
 fn main() {}

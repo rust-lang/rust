@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed: cannot satisfy `Foo: Trait<Bar>`
-  --> $DIR/constrain_in_projection2.rs:27:14
+  --> $DIR/constrain_in_projection2.rs:28:14
    |
 LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
    |              ^^^ help: use the fully qualified path to an implementation: `<Type as Trait>::Assoc`

@@ -20,6 +20,7 @@ impl Trait for (TAIT, TAIT) {}
 impl Trait for (u32, i32) {}
 //~^ ERROR conflicting implementations of trait `Trait` for type `(TAIT, TAIT)`
 
+#[defines(TAIT)]
 fn define() -> TAIT {}
 
 fn main() {}

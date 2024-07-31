@@ -1,5 +1,5 @@
-error: opaque type `foo::Foo` cannot be used in patterns
-  --> $DIR/structural-match.rs:18:9
+error: opaque type `Foo` cannot be used in patterns
+  --> $DIR/structural-match.rs:17:9
    |
 LL | const VALUE: Foo = value();
    | ---------------- constant defined here

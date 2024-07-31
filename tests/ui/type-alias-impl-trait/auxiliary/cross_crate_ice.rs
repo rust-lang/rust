@@ -5,6 +5,7 @@
 
 pub type Foo = impl std::fmt::Debug;
 
+#[defines(Foo)]
 pub fn foo() -> Foo {
     5
 }

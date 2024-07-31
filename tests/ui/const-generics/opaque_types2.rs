@@ -4,12 +4,11 @@ type Foo = impl Sized;
 
 fn foo<const C: u32>() {}
 
+#[defines(Foo)]
 const C: Foo = 42;
 
-fn bar()
-where
-    Foo:,
-{
+#[defines(Foo)]
+fn bar() {
     foo::<C>();
     //~^ ERROR: mismatched types
 }

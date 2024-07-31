@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/different_defining_uses_never_type-3.rs:8:30
+  --> $DIR/different_defining_uses_never_type-3.rs:9:30
    |
 LL |             let y: Tait<U> = 1i32;
    |                              ^^^^ expected `()`, got `i32`
    |
 note: previous use here
-  --> $DIR/different_defining_uses_never_type-3.rs:12:22
+  --> $DIR/different_defining_uses_never_type-3.rs:13:22
    |
 LL |     let x: Tait<T> = ();
    |                      ^^

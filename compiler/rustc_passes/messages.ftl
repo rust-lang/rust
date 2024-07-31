@@ -139,6 +139,10 @@ passes_debug_visualizer_placement =
 passes_debug_visualizer_unreadable =
     couldn't read {$file}: {$error}
 
+passes_defines_not_fn_or_const =
+    attribute should be applied to a function definition, a closure, a static, or a const
+    .label = cannot define hidden types
+
 passes_deprecated =
     attribute is ignored here
 

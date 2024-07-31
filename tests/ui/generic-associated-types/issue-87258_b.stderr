@@ -4,7 +4,7 @@ error: unconstrained opaque type
 LL | type Helper<'xenon, 'yttrium, KABOOM: Trait2> = impl Trait1;
    |                                                 ^^^^^^^^^^^
    |
-   = note: `Helper` must be used in combination with a concrete type within the same module
+   = note: `Helper` must be used in combination with a concrete type within the same crate
 
 error: aborting due to 1 previous error
 

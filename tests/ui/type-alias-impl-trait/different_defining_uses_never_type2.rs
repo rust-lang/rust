@@ -7,10 +7,12 @@ fn main() {}
 // two definitions with different types
 type Foo = impl std::fmt::Debug;
 
+#[defines(Foo)]
 fn foo() -> Foo {
     ""
 }
 
+#[defines(Foo)]
 fn bar(arg: bool) -> Foo {
     if arg {
         panic!()
@@ -19,6 +21,7 @@ fn bar(arg: bool) -> Foo {
     }
 }
 
+#[defines(Foo)]
 fn boo(arg: bool) -> Foo {
     if arg {
         loop {}
@@ -27,6 +30,7 @@ fn boo(arg: bool) -> Foo {
     }
 }
 
+#[defines(Foo)]
 fn bar2(arg: bool) -> Foo {
     if arg {
         "bar2"
@@ -35,6 +39,7 @@ fn bar2(arg: bool) -> Foo {
     }
 }
 
+#[defines(Foo)]
 fn boo2(arg: bool) -> Foo {
     if arg {
         "boo2"

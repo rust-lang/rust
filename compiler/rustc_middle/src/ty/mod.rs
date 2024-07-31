@@ -214,6 +214,9 @@ pub struct ResolverAstLowering {
 
     /// Information about functions signatures for delegation items expansion
     pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+
+    /// List of resolved `#[defines]` attribute arguments.
+    pub defines: FxHashMap<ast::AttrId, Vec<DefId>>,
 }
 
 #[derive(Debug)]

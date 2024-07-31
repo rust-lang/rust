@@ -8,6 +8,7 @@ type F = impl core::future::Future<Output = u8>;
 
 struct Bug {
     V1: [(); {
+        #[defines(F)]
         fn concrete_use() -> F {
             //~^ ERROR future that resolves to `u8`, but it resolves to `()`
             async {}

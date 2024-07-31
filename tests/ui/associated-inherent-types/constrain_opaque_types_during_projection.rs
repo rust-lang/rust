@@ -11,7 +11,8 @@ impl Foo<i32> {
 
 type Tait = impl Sized;
 
-fn bar(_: Tait) {
+#[defines(Tait)]
+fn bar() {
     let x: Foo<Tait>::Assoc = 42;
 }
 

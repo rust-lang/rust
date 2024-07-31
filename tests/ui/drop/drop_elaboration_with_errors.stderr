@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/drop_elaboration_with_errors.rs:19:5
+  --> $DIR/drop_elaboration_with_errors.rs:20:5
    |
 LL | fn main() {
    |          - expected `()` because of default return type

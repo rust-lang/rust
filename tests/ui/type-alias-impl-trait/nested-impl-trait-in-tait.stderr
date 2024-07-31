@@ -31,7 +31,7 @@ error: unconstrained opaque type
 LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Tait` must be used in combination with a concrete type within the same module
+   = note: `Tait` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/nested-impl-trait-in-tait.rs:3:54
@@ -39,7 +39,7 @@ error: unconstrained opaque type
 LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
    |                                                      ^^^^^^^^^^^^^
    |
-   = note: `Tait` must be used in combination with a concrete type within the same module
+   = note: `Tait` must be used in combination with a concrete type within the same crate
 
 error: aborting due to 4 previous errors
 

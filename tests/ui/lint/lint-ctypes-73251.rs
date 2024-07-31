@@ -13,6 +13,7 @@ impl Foo for () {
 
 type Bar = impl Foo<Assoc = u32>;
 
+#[defines(Bar)]
 fn assign() -> Bar {}
 
 extern "C" {

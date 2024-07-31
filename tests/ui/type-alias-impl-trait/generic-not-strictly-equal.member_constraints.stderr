@@ -1,9 +1,9 @@
 error[E0700]: hidden type for `Opaque<'x>` captures lifetime that does not appear in bounds
-  --> $DIR/generic-not-strictly-equal.rs:33:5
+  --> $DIR/generic-not-strictly-equal.rs:34:5
    |
 LL | type Opaque<'a> = impl Copy + Captures<'a>;
    |                   ------------------------ opaque type defined here
-LL |
+...
 LL | fn test<'x>(_: Opaque<'x>) {
    |         -- hidden type `&'x u8` captures the lifetime `'x` as defined here
 ...

@@ -1,5 +1,5 @@
 error: item does not constrain `FooX::{opaque#0}`, but has it in its signature
-  --> $DIR/nested-tait-inference3.rs:12:4
+  --> $DIR/nested-tait-inference3.rs:13:4
    |
 LL | fn foo() -> impl Foo<FooX> {
    |    ^^^

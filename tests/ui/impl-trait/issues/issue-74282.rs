@@ -3,7 +3,8 @@
 type Closure = impl Fn() -> u64;
 struct Anonymous(Closure);
 
-fn bop(_: Closure) {
+#[defines(Closure)]
+fn bop() {
     let y = || -> Closure { || 3 };
     Anonymous(|| {
         //~^ ERROR mismatched types

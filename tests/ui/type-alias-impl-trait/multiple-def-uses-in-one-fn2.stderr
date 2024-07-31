@@ -1,5 +1,5 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/multiple-def-uses-in-one-fn2.rs:10:5
+  --> $DIR/multiple-def-uses-in-one-fn2.rs:11:5
    |
 LL |     (a.clone(), a)
    |     ^^^^^^^^^^^^^^

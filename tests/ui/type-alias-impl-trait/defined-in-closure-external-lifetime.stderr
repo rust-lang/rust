@@ -1,18 +1,18 @@
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/defined-in-closure-external-lifetime.rs:6:29
+  --> $DIR/defined-in-closure-external-lifetime.rs:7:29
    |
 LL |     type Opaque<'x> = impl Sized + 'x;
    |                 -- this generic parameter must be used with a generic lifetime parameter
-LL |     fn foo<'s>() -> Opaque<'s> {
+...
 LL |         let _ = || { let _: Opaque<'s> = (); };
    |                             ^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/defined-in-closure-external-lifetime.rs:14:34
+  --> $DIR/defined-in-closure-external-lifetime.rs:16:34
    |
 LL |     type Opaque<'x> = impl Sized + 'x;
    |                 -- this generic parameter must be used with a generic lifetime parameter
-LL |     fn foo<'s>() -> Opaque<'s> {
+...
 LL |         let _ = || -> Opaque<'s> {};
    |                                  ^^
 

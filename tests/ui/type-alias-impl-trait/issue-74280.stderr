@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-74280.rs:9:5
+  --> $DIR/issue-74280.rs:10:5
    |
 LL | fn test() -> Test {
    |              ---- expected `()` because of return type

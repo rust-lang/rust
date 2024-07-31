@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use5.rs:15:5
+  --> $DIR/generic_duplicate_param_use5.rs:17:5
    |
 LL |     (u, t)
    |     ^^^^^^ expected `(T, U)`, got `(U, T)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use5.rs:11:5
+  --> $DIR/generic_duplicate_param_use5.rs:12:5
    |
 LL |     (t, u)
    |     ^^^^^^

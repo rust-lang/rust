@@ -3,10 +3,12 @@
 
 pub type Diff = impl Fn(usize) -> usize;
 
+#[defines(Diff)]
 pub fn lift() -> Diff {
     |_: usize |loop {}
 }
 
+#[defines(Diff)]
 pub fn add(
     n: Diff,
     m: Diff,

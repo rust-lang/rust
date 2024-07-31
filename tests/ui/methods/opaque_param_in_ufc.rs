@@ -11,11 +11,13 @@ impl Foo<u32> {
 
 type Bar = impl Sized;
 
+#[defines(Bar)]
 fn bar() -> Bar {
     42_u32
 }
 
 impl Foo<Bar> {
+    #[defines(Bar)]
     fn foo() -> Bar {
         Self::method();
         Foo::<Bar>::method();

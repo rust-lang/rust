@@ -11,6 +11,7 @@ trait Trait {
 
     fn f(&self) -> Self::F;
 
+    #[defines(G)]
     fn g<'a>(&'a self) -> G<'a, Self>
     where
         Self: Sized,

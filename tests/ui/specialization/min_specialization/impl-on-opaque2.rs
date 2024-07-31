@@ -23,6 +23,7 @@ impl SpecTrait<(), Opaque> for () {
     fn f() {}
 }
 
+#[defines(Opaque)]
 fn foo() -> Opaque {}
 
 fn main() {}
