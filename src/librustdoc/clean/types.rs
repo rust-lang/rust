@@ -34,7 +34,7 @@ use thin_vec::ThinVec;
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::ItemKind::*;
-pub(crate) use self::SelfTy::*;
+pub(crate) use self::ReceiverTy::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
     RawPointer, Slice, Tuple,
@@ -1384,8 +1384,8 @@ pub(crate) struct FnDecl {
 }
 
 impl FnDecl {
-    pub(crate) fn self_type(&self) -> Option<SelfTy> {
-        self.inputs.values.get(0).and_then(|v| v.to_self())
+    pub(crate) fn receiver_type(&self) -> Option<ReceiverTy> {
+        self.inputs.values.get(0).and_then(|v| v.to_receiver())
     }
 }
 
@@ -1404,14 +1404,14 @@ pub(crate) struct Argument {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub(crate) enum SelfTy {
+pub(crate) enum ReceiverTy {
     SelfValue,
     SelfBorrowed(Option<Lifetime>, Mutability),
     SelfExplicit(Type),
 }
 
 impl Argument {
-    pub(crate) fn to_self(&self) -> Option<SelfTy> {
+    pub(crate) fn to_receiver(&self) -> Option<ReceiverTy> {
         if self.name != kw::SelfLower {
             return None;
         }

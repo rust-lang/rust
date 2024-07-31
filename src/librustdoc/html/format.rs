@@ -1452,7 +1452,7 @@ impl clean::FnDecl {
 
         let last_input_index = self.inputs.values.len().checked_sub(1);
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if let Some(selfty) = input.to_self() {
+            if let Some(selfty) = input.to_receiver() {
                 match selfty {
                     clean::SelfValue => {
                         write!(f, "self")?;
