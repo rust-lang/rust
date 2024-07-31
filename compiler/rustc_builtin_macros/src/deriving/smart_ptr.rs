@@ -145,7 +145,7 @@ pub fn expand_deriving_smart_ptr(
     let mut impl_generics = generics.clone();
     {
         let p = &mut impl_generics.params[pointee_param_idx];
-        let arg = GenericArg::Type(s_ty.clone());
+        let arg = GenericArg::Type(s_ty);
         let unsize = cx.path_all(span, true, path!(span, core::marker::Unsize), vec![arg]);
         p.bounds.push(cx.trait_bound(unsize, false));
         let mut attrs = thin_vec![];
@@ -167,7 +167,7 @@ pub fn expand_deriving_smart_ptr(
     impl_generics.params.push(extra_param);
 
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
-    let gen_args = vec![GenericArg::Type(alt_self_type.clone())];
+    let gen_args = vec![GenericArg::Type(alt_self_type)];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
-    add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args.clone());
+    add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args);
 }
