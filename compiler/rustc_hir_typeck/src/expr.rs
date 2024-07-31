@@ -841,6 +841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_ty = ret_coercion.borrow().expected_ty();
         let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty);
         let mut span = return_expr.span;
+        let mut hir_id = return_expr.hir_id;
         // Use the span of the trailing expression for our cause,
         // not the span of the entire function
         if !explicit_return
@@ -848,6 +849,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(last_expr) = body.expr
         {
             span = last_expr.span;
+            hir_id = last_expr.hir_id;
         }
         ret_coercion.borrow_mut().coerce(
             self,
@@ -864,6 +866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.select_obligations_where_possible(|errors| {
                 self.point_at_return_for_opaque_ty_error(
                     errors,
+                    hir_id,
                     span,
                     return_expr_ty,
                     return_expr.span,
@@ -921,6 +924,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn point_at_return_for_opaque_ty_error(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
+        hir_id: HirId,
         span: Span,
         return_expr_ty: Ty<'tcx>,
         return_span: Span,
@@ -935,7 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let new_cause = ObligationCause::new(
                     cause.span,
                     cause.body_id,
-                    ObligationCauseCode::OpaqueReturnType(Some((return_expr_ty, span))),
+                    ObligationCauseCode::OpaqueReturnType(Some((return_expr_ty, hir_id))),
                 );
                 *cause = new_cause;
             }
