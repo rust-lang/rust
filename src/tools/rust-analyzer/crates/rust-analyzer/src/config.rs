@@ -341,13 +341,12 @@ config_data! {
         /// "rust-analyzer.workspace.discoverConfig": {
         ///     "command": [
         ///         "rust-project",
-        ///         "develop-json",
-        ///         {arg}
+        ///         "develop-json"
         ///     ],
         ///     "progressLabel": "rust-analyzer",
         ///     "filesToWatch": [
-        ///         "BUCK",
-        ///     ],
+        ///         "BUCK"
+        ///     ]
         /// }
         /// ```
         ///
