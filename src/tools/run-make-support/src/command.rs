@@ -7,7 +7,10 @@ use std::{ffi, panic};
 use build_helper::drop_bomb::DropBomb;
 
 use crate::util::handle_failed_output;
-use crate::{assert_contains, assert_equals, assert_not_contains};
+use crate::{
+    assert_contains, assert_contains_regex, assert_equals, assert_not_contains,
+    assert_not_contains_regex,
+};
 
 /// This is a custom command wrapper that simplifies working with commands and makes it easier to
 /// ensure that we check the exit status of executed processes.
@@ -191,10 +194,24 @@ impl CompletedProcess {
         self
     }
 
+    /// Checks that `stdout` does not contain the regex pattern `unexpected`.
+    #[track_caller]
+    pub fn assert_stdout_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {
+        assert_not_contains_regex(&self.stdout_utf8(), unexpected);
+        self
+    }
+
     /// Checks that `stdout` contains `expected`.
     #[track_caller]
     pub fn assert_stdout_contains<S: AsRef<str>>(&self, expected: S) -> &Self {
         assert_contains(&self.stdout_utf8(), expected);
+        self
+    }
+
+    /// Checks that `stdout` contains the regex pattern `expected`.
+    #[track_caller]
+    pub fn assert_stdout_contains_regex<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_contains_regex(&self.stdout_utf8(), expected);
         self
     }
 
@@ -212,10 +229,24 @@ impl CompletedProcess {
         self
     }
 
+    /// Checks that `stderr` contains the regex pattern `expected`.
+    #[track_caller]
+    pub fn assert_stderr_contains_regex<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_contains_regex(&self.stderr_utf8(), expected);
+        self
+    }
+
     /// Checks that `stderr` does not contain `unexpected`.
     #[track_caller]
     pub fn assert_stderr_not_contains<S: AsRef<str>>(&self, unexpected: S) -> &Self {
         assert_not_contains(&self.stdout_utf8(), unexpected);
+        self
+    }
+
+    /// Checks that `stderr` does not contain the regex pattern `unexpected`.
+    #[track_caller]
+    pub fn assert_stderr_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {
+        assert_not_contains_regex(&self.stdout_utf8(), unexpected);
         self
     }
 
