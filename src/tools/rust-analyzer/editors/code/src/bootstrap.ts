@@ -157,7 +157,7 @@ function orderFromPath(
     const raDate = raVersion?.match(/^rust-analyzer .*\(.* (\d{4}-\d{2}-\d{2})\)$/);
     if (raDate?.length === 2) {
         const precedence = path.includes("nightly-") ? "0" : "1";
-        return precedence + "-" + raDate[1];
+        return "0-" + raDate[1] + "/" + precedence;
     } else {
         return "2";
     }
