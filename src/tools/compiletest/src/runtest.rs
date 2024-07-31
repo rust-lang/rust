@@ -2968,7 +2968,9 @@ impl<'test> TestCx<'test> {
         for _ in res.stdout.split('\n').filter(|s| s.starts_with("test ")).inspect(|s| {
             if let Some((left, right)) = s.split_once(" - ") {
                 let path = left.rsplit("test ").next().unwrap();
-                if let Some(ref mut v) = files.get_mut(&path.replace('\\', "/")) {
+                let path = fs::canonicalize(&path).expect("failed to canonicalize");
+                let path = path.to_str().unwrap().replace('\\', "/");
+                if let Some(ref mut v) = files.get_mut(&path) {
                     tested += 1;
                     let mut iter = right.split("(line ");
                     iter.next();
