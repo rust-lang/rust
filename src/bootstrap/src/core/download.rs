@@ -225,10 +225,7 @@ impl Config {
             "3",
             "-SRf",
         ]);
-        wget.args([
-            "-O",
-            tempfile.to_str().unwrap(),
-        ]);
+        wget.args(["-O", tempfile.to_str().unwrap()]);
         // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
         if CiEnv::is_ci() {
             curl.arg("-s");
