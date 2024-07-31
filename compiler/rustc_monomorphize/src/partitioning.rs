@@ -109,8 +109,8 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{
-    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
-    Visibility,
+    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, LinkageKind, MonoItem,
+    MonoItemData, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
 use rustc_middle::ty::visit::TypeVisitableExt;
@@ -272,7 +272,7 @@ where
             // This is a CGU-private copy.
             cgu.items_mut().entry(inlined_item).or_insert_with(|| MonoItemData {
                 inlined: true,
-                linkage: Linkage::Internal,
+                linkage: LinkageKind::ImplicitInternal,
                 visibility: Visibility::Default,
                 size_estimate: inlined_item.size_estimate(cx.tcx),
             });
@@ -585,7 +585,8 @@ fn internalize_symbols<'tcx>(
 
             // If we got here, we did not find any uses from other CGUs, so
             // it's fine to make this monomorphization internal.
-            data.linkage = Linkage::Internal;
+            debug_assert_eq!(data.linkage, LinkageKind::ImplicitExternal);
+            data.linkage = LinkageKind::ImplicitInternal;
             data.visibility = Visibility::Default;
         }
     }
@@ -603,7 +604,7 @@ fn mark_code_coverage_dead_code_cgu<'tcx>(codegen_units: &mut [CodegenUnit<'tcx>
     // function symbols to be included via `-u` or `/include` linker args.
     let dead_code_cgu = codegen_units
         .iter_mut()
-        .filter(|cgu| cgu.items().iter().any(|(_, data)| data.linkage == Linkage::External))
+        .filter(|cgu| cgu.items().iter().any(|(_, data)| data.linkage.is_external()))
         .min_by_key(|cgu| cgu.size_estimate());
 
     // If there are no CGUs that have externally linked items, then we just
@@ -736,12 +737,14 @@ fn mono_item_linkage_and_visibility<'tcx>(
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
-) -> (Linkage, Visibility) {
-    if let Some(explicit_linkage) = mono_item.explicit_linkage(tcx) {
-        return (explicit_linkage, Visibility::Default);
+) -> (LinkageKind, Visibility) {
+    match mono_item.explicit_linkage(tcx) {
+        Some(explicit_linkage) => (LinkageKind::Explicit(explicit_linkage), Visibility::Default),
+        None => {
+            let vis = mono_item_visibility(tcx, mono_item, can_be_internalized, export_generics);
+            (LinkageKind::ImplicitExternal, vis)
+        }
     }
-    let vis = mono_item_visibility(tcx, mono_item, can_be_internalized, export_generics);
-    (Linkage::External, vis)
 }
 
 type CguNameCache = UnordMap<(DefId, bool), Symbol>;
@@ -1186,11 +1189,11 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
                 cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();
-                for &(ref cgu_name, linkage) in cgus.iter() {
+                for &(ref cgu_name, linkage_kind) in cgus.iter() {
                     output.push(' ');
                     output.push_str(cgu_name.as_str());
 
-                    let linkage_abbrev = match linkage {
+                    let linkage_abbrev = match linkage_kind.into_linkage() {
                         Linkage::External => "External",
                         Linkage::AvailableExternally => "Available",
                         Linkage::LinkOnceAny => "OnceAny",

@@ -273,11 +273,36 @@ pub struct MonoItemData {
     /// `GloballyShared` maps to `false` and `LocalCopy` maps to `true`.
     pub inlined: bool,
 
-    pub linkage: Linkage,
+    pub linkage: LinkageKind,
     pub visibility: Visibility,
 
     /// A cached copy of the result of `MonoItem::size_estimate`.
     pub size_estimate: usize,
+}
+
+/// Specifies the linkage type for a `MonoItem`, and how we know that linkage to use
+#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum LinkageKind {
+    /// The linkage was specified explicitly (e.g. using #[linkage = "..."])
+    Explicit(Linkage),
+    /// Assume the symbol may be used from other CGUs, a safe default
+    ImplicitExternal,
+    /// We did not find any uses from other CGUs, so it's fine to make this internal
+    ImplicitInternal,
+}
+
+impl LinkageKind {
+    pub const fn is_external(self) -> bool {
+        matches!(self.into_linkage(), Linkage::External)
+    }
+
+    pub const fn into_linkage(self) -> Linkage {
+        match self {
+            Self::Explicit(linkage) => linkage,
+            Self::ImplicitExternal => Linkage::External,
+            Self::ImplicitInternal => Linkage::Internal,
+        }
+    }
 }
 
 /// Specifies the linkage type for a `MonoItem`.

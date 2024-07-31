@@ -14,7 +14,7 @@ pub trait MonoItemExt<'a, 'tcx> {
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         cx: &'a Bx::CodegenCx,
-        linkage: Linkage,
+        linkage_kind: LinkageKind,
         visibility: Visibility,
     );
     fn to_raw_string(&self) -> String;
@@ -116,7 +116,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         cx: &'a Bx::CodegenCx,
-        linkage: Linkage,
+        linkage_kind: LinkageKind,
         visibility: Visibility,
     ) {
         debug!(
@@ -132,10 +132,10 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
         match *self {
             MonoItem::Static(def_id) => {
-                cx.predefine_static(def_id, linkage, visibility, symbol_name);
+                cx.predefine_static(def_id, linkage_kind.into_linkage(), visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                cx.predefine_fn(instance, linkage, visibility, symbol_name);
+                cx.predefine_fn(instance, linkage_kind.into_linkage(), visibility, symbol_name);
             }
             MonoItem::GlobalAsm(..) => {}
         }
