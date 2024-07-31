@@ -54,13 +54,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         };
     }
 
-    // For a delegation item inherit generics from callee.
-    if let Some(sig_id) = tcx.hir().opt_delegation_sig_id(def_id)
-        && let Some(generics) = inherit_generics_for_delegation_item(tcx, def_id, sig_id)
-    {
-        return generics;
-    }
-
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir_node(hir_id);
@@ -233,6 +226,16 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // Opaque types are always nested within another item, and
                 // inherit the generics of the item.
                 Some(parent.to_def_id())
+            }
+            ItemKind::Fn(sig, _, _) => {
+                // For a delegation item inherit generics from callee.
+                if let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+                    && let Some(generics) =
+                        inherit_generics_for_delegation_item(tcx, def_id, sig_id)
+                {
+                    return generics;
+                }
+                None
             }
             _ => None,
         },

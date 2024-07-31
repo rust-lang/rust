@@ -2952,6 +2952,17 @@ pub struct FnDecl<'hir> {
     pub lifetime_elision_allowed: bool,
 }
 
+impl<'hir> FnDecl<'hir> {
+    pub fn opt_delegation_sig_id(&self) -> Option<DefId> {
+        if let FnRetTy::Return(ty) = self.output
+            && let TyKind::InferDelegation(sig_id, _) = ty.kind
+        {
+            return Some(sig_id);
+        }
+        None
+    }
+}
+
 /// Represents what type of implicit self a function has, if any.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum ImplicitSelfKind {
