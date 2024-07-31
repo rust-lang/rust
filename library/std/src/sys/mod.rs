@@ -7,7 +7,6 @@ mod pal;
 
 mod personality;
 
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
 pub mod anonymous_pipe;
 pub mod backtrace;
 pub mod cmath;
