@@ -1,6 +1,7 @@
 use rustc_hir as hir;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
+use rustc_middle::mir::mono::{Linkage, LinkageKind, MonoItem, Visibility};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::Instance;
 use rustc_middle::{span_bug, ty};
@@ -135,7 +136,26 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.predefine_static(def_id, linkage_kind.into_linkage(), visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                cx.predefine_fn(instance, linkage_kind.into_linkage(), visibility, symbol_name);
+                let linkage = match linkage_kind {
+                    LinkageKind::Explicit(linkage) => linkage,
+                    LinkageKind::ImplicitExternal => Linkage::External,
+                    LinkageKind::ImplicitInternal => {
+                        let attrs = cx.tcx().codegen_fn_attrs(instance.def_id());
+                        if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+                            // to connect the extern fn declaration and the global asm definition of
+                            // a naked function, the linkage must be some flavor of external.
+                            // `LinkageKind::ImplicitInternal` indicates that rust does not really care about
+                            // the linkage, and did not find any references outside of the current CGU. That
+                            // means we're free to pick a different linkage here that is just for the backend,
+                            // and should not influence the symbol visibility in a meaningful way.
+                            Linkage::External
+                        } else {
+                            Linkage::Internal
+                        }
+                    }
+                };
+
+                cx.predefine_fn(instance, linkage, visibility, symbol_name);
             }
             MonoItem::GlobalAsm(..) => {}
         }
