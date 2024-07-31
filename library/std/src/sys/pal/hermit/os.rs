@@ -190,9 +190,7 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe {
-        hermit_abi::exit(code);
-    }
+    unsafe { hermit_abi::exit(code) }
 }
 
 pub fn getpid() -> u32 {

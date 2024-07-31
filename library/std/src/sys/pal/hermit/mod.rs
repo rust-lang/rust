@@ -49,9 +49,7 @@ pub fn unsupported_err() -> crate::io::Error {
 }
 
 pub fn abort_internal() -> ! {
-    unsafe {
-        hermit_abi::abort();
-    }
+    unsafe { hermit_abi::abort() }
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {
@@ -104,7 +102,7 @@ pub unsafe extern "C" fn runtime_entry(
     let result = main(argc as isize, argv);
 
     crate::sys::thread_local::destructors::run();
-    hermit_abi::exit(result);
+    hermit_abi::exit(result)
 }
 
 #[inline]
