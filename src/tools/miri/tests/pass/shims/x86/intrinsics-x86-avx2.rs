@@ -7,7 +7,7 @@
 //@ignore-target-s390x
 //@ignore-target-thumbv7em
 //@ignore-target-wasm32
-//@compile-flags: -C target-feature=+avx2
+//@compile-flags: -C target-feature=+avx2,+sse4.2
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
