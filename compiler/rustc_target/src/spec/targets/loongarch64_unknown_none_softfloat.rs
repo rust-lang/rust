@@ -6,7 +6,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "loongarch64-unknown-none".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
+            description: Some("Freestanding/bare-metal LoongArch64 softfloat".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
