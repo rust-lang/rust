@@ -76,23 +76,5 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(not(test))]
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "android")] {
-        pub use self::android::log2f32;
-        pub use self::android::log2f64;
-    } else {
-        #[inline]
-        pub fn log2f32(n: f32) -> f32 {
-            unsafe { crate::intrinsics::log2f32(n) }
-        }
-
-        #[inline]
-        pub fn log2f64(n: f64) -> f64 {
-            unsafe { crate::intrinsics::log2f64(n) }
-        }
-    }
-}
-
 #[cfg(not(target_os = "uefi"))]
 pub type RawOsError = i32;
