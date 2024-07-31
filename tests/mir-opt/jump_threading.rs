@@ -93,19 +93,19 @@ fn dfa() {
     // CHECK:     {{_.*}} = DFA::A;
     // CHECK:     goto -> bb1;
     // CHECK: bb1: {
-    // CHECK:     switchInt({{.*}}) -> [0: bb4, 1: bb5, 2: bb6, 3: bb3, otherwise: bb2];
+    // CHECK:     switchInt({{.*}}) -> [0: bb6, 1: bb5, 2: bb4, 3: bb3, otherwise: bb2];
     // CHECK: bb2: {
     // CHECK:     unreachable;
     // CHECK: bb3: {
     // CHECK:     return;
     // CHECK: bb4: {
-    // CHECK:     {{_.*}} = DFA::B;
+    // CHECK:     {{_.*}} = DFA::D;
     // CHECK:     goto -> bb1;
     // CHECK: bb5: {
     // CHECK:     {{_.*}} = DFA::C;
     // CHECK:     goto -> bb1;
     // CHECK: bb6: {
-    // CHECK:     {{_.*}} = DFA::D;
+    // CHECK:     {{_.*}} = DFA::B;
     // CHECK:     goto -> bb1;
     let mut state = DFA::A;
     loop {

@@ -6,7 +6,7 @@
       let mut _0: i16;
   
       bb0: {
-          switchInt(_1) -> [1: bb2, 2: bb3, otherwise: bb1];
+          switchInt(_1) -> [1: bb3, 2: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -15,12 +15,12 @@
       }
   
       bb2: {
-          _0 = const 1_i16;
+          _0 = const 2_i16;
           goto -> bb4;
       }
   
       bb3: {
-          _0 = const 2_i16;
+          _0 = const 1_i16;
           goto -> bb4;
       }
   
