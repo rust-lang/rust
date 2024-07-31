@@ -432,9 +432,6 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::CfgAttrNoAttributes => {
             lints::CfgAttrNoAttributes.decorate_lint(diag);
         }
-        BuiltinLintDiag::MissingFragmentSpecifier => {
-            lints::MissingFragmentSpecifier.decorate_lint(diag);
-        }
         BuiltinLintDiag::MetaVariableStillRepeating(name) => {
             lints::MetaVariableStillRepeating { name }.decorate_lint(diag);
         }

@@ -4,14 +4,23 @@
 // lints for changes that are not tied to an edition
 #![deny(future_incompatible)]
 
-// Error since this is a `future_incompatible` lint
-macro_rules! m {
-    ($i) => {};
-    //~^ ERROR missing fragment specifier
+enum E { V }
+
+trait Tr1 {
+    type V;
+    fn foo() -> Self::V;
+}
+
+impl Tr1 for E {
+    type V = u8;
+
+    // Error since this is a `future_incompatible` lint
+    fn foo() -> Self::V { 0 }
+    //~^ ERROR ambiguous associated item
     //~| WARN this was previously accepted
 }
 
-trait Tr {
+trait Tr2 {
     // Warn only since this is not a `future_incompatible` lint
     fn f(u8) {}
     //~^ WARN anonymous parameters are deprecated
