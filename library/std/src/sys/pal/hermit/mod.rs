@@ -13,7 +13,8 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-#![allow(missing_docs, nonstandard_style, unsafe_op_in_unsafe_fn)]
+#![deny(unsafe_op_in_unsafe_fn)]
+#![allow(missing_docs, nonstandard_style)]
 
 use crate::os::raw::c_char;
 
@@ -78,7 +79,9 @@ pub extern "C" fn __rust_abort() {
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
-    args::init(argc, argv);
+    unsafe {
+        args::init(argc, argv);
+    }
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -99,10 +102,12 @@ pub unsafe extern "C" fn runtime_entry(
     // initialize environment
     os::init_environment(env as *const *const i8);
 
-    let result = main(argc as isize, argv);
+    let result = unsafe { main(argc as isize, argv) };
 
-    crate::sys::thread_local::destructors::run();
-    hermit_abi::exit(result)
+    unsafe {
+        crate::sys::thread_local::destructors::run();
+    }
+    unsafe { hermit_abi::exit(result) }
 }
 
 #[inline]
