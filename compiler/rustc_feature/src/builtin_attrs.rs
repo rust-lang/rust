@@ -703,21 +703,21 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, allocator_internals, experimental!(needs_allocator),
     ),
     gated!(
-        panic_runtime, Normal, template!(Word), WarnFollowing,
+        panic_runtime, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, experimental!(panic_runtime)
     ),
     gated!(
-        needs_panic_runtime, Normal, template!(Word), WarnFollowing,
+        needs_panic_runtime, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, experimental!(needs_panic_runtime)
     ),
     gated!(
-        compiler_builtins, Normal, template!(Word), WarnFollowing,
+        compiler_builtins, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No,
         "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
         which contains compiler-rt intrinsics and will never be stable",
     ),
     gated!(
-        profiler_runtime, Normal, template!(Word), WarnFollowing,
+        profiler_runtime, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No,
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
         which contains the profiler runtime and will never be stable",
