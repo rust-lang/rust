@@ -1306,6 +1306,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // No way to know whether it's diverging because
             // of a `break` or an outer `break` or `return`.
             self.diverges.set(Diverges::Maybe);
+        } else {
+            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
 
         // If we permit break with a value, then result type is
