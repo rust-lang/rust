@@ -835,9 +835,8 @@ unsafe fn bidirectional_merge<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
         }
 
         // We now should have consumed the full input exactly once. This can only fail if the
-        // user-provided comparison operator fails implements a strict weak ordering as required by
-        // Ord incorrectly, in which case we will panic and never access the inconsistent state in
-        // dst.
+        // user-provided comparison function fails to implement a strict weak ordering. In that case
+        // we panic and never access the inconsistent state in dst.
         if left != left_end || right != right_end {
             panic_on_ord_violation();
         }
@@ -850,11 +849,11 @@ fn panic_on_ord_violation() -> ! {
     // implementation. They are expected to implement a total order as explained in the Ord
     // documentation.
     //
-    // By raising this panic we inform the user, that they have a logic bug in their program. If a
-    // strict weak ordering is not given, the concept of comparison based sorting makes no sense.
-    // E.g.: a < b < c < a
+    // By panicking we inform the user, that they have a logic bug in their program. If a strict
+    // weak ordering is not given, the concept of comparison based sorting cannot yield a sorted
+    // result. E.g.: a < b < c < a
     //
-    // The Ord documentation requires users to implement a total order, arguably that's
+    // The Ord documentation requires users to implement a total order. Arguably that's
     // unnecessarily strict in the context of sorting. Issues only arise if the weaker requirement
     // of a strict weak ordering is violated.
     //
