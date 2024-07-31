@@ -564,6 +564,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // a declaration, with a definition provided in global assembly.
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         codegen_fn_attrs.inline = InlineAttr::Never;
+
+        // linkage must always be some flavor of external because the actual symbol is defined in
+        // assembly, and the function is just a declaration, not a definition. This conversion
+        // gives the naked function the semantics of a weakly-linked function.
+        if codegen_fn_attrs.linkage == Some(Linkage::WeakAny) {
+            codegen_fn_attrs.linkage = Some(Linkage::ExternalWeak);
+        }
     }
 
     codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
