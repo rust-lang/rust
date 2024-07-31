@@ -768,7 +768,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     );
                 }
             },
-            FootnoteReference(text) | Text(text) => {
+            Text(text) => {
                 paragraph_range.end = range.end;
                 let range_ = range.clone();
                 ticks_unbalanced |= text.contains('`')
@@ -812,7 +812,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                     text_to_check.push((text, range, code_level));
                 }
-            },
+            }
+            FootnoteReference(_) => {}
         }
     }
     headers
