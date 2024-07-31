@@ -700,10 +700,10 @@ lint_reason_must_be_string_literal = reason must be a string literal
 lint_reason_must_come_last = reason in lint attribute must come last
 
 lint_redundant_import = the item `{$ident}` is imported redundantly
-    .label_imported_here = the item `{ident}` is already imported here
-    .label_defined_here = the item `{ident}` is already defined here
-    .label_imported_prelude = the item `{ident}` is already imported by the extern prelude
-    .label_defined_prelude = the item `{ident}` is already defined by the extern prelude
+    .label_imported_here = the item `{$ident}` is already imported here
+    .label_defined_here = the item `{$ident}` is already defined here
+    .label_imported_prelude = the item `{$ident}` is already imported by the extern prelude
+    .label_defined_prelude = the item `{$ident}` is already defined by the extern prelude
 
 lint_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
     .note = the most public imported item is `{$max_vis}`
