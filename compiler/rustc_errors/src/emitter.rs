@@ -2612,9 +2612,9 @@ const OUTPUT_REPLACEMENTS: phf::Map<char, &'static str> = phf::phf_map![
 ];
 
 fn normalize_whitespace(s: &str) -> String {
-    // Scan the input string for a character in the ordered table above. If it's present, replace
-    // it with it's alternative string (it can be more than 1 char!). Otherwise, retain the input
-    // char. At the end, allocate all chars into a string in one operation.
+    // Scan the input string for a character in the replacement table above.
+    // If it's present, replace it with its alternative string (it can be more than 1 char!).
+    // Otherwise, retain the input char.
     s.chars().fold(String::with_capacity(s.len()), |mut s, c| {
         match OUTPUT_REPLACEMENTS.get(&c) {
             Some(r) => s.push_str(r),
