@@ -7,7 +7,7 @@ use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::{self, Const};
-use rustc_middle::thir::{self, FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
+use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
@@ -25,6 +25,8 @@ use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
 use crate::usefulness::{compute_match_usefulness, PlaceValidity};
 use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
+
+mod print;
 
 // Re-export rustc-specific versions of all these types.
 pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcPatCtxt<'p, 'tcx>>;
@@ -773,8 +775,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         }
     }
 
-    /// Convert back to a `thir::Pat` for diagnostic purposes.
-    fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> Pat<'tcx> {
+    /// Convert to a [`print::Pat`] for diagnostic purposes.
+    fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> print::Pat<'tcx> {
+        use print::{Pat, PatKind};
         use MaybeInfiniteInt::*;
         let cx = self;
         let kind = if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
@@ -808,19 +811,20 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::Range(Box::new(PatRange { lo, hi, end, ty: ty.inner() }))
         };
 
-        Pat { ty: ty.inner(), span: DUMMY_SP, kind }
+        Pat { ty: ty.inner(), kind }
     }
 
     /// Prints a [`WitnessPat`] to an owned string, for diagnostic purposes.
     pub fn print_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> String {
-        // This works by converting the witness pattern back to a `thir::Pat`
+        // This works by converting the witness pattern to a `print::Pat`
         // and then printing that, but callers don't need to know that.
         self.hoist_witness_pat(pat).to_string()
     }
 
-    /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
+    /// Convert to a [`print::Pat`] for diagnostic purposes. This panics for patterns that don't
     /// appear in diagnostics, like float ranges.
-    fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> Pat<'tcx> {
+    fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> print::Pat<'tcx> {
+        use print::{FieldPat, Pat, PatKind};
         let cx = self;
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
         let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
@@ -840,7 +844,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     // the pattern is a box pattern.
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
-                ty::Adt(adt_def, args) => {
+                ty::Adt(adt_def, _args) => {
                     let variant_index = RustcPatCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
                     let subpatterns = subpatterns
                         .enumerate()
@@ -848,7 +852,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         .collect();
 
                     if adt_def.is_enum() {
-                        PatKind::Variant { adt_def: *adt_def, args, variant_index, subpatterns }
+                        PatKind::Variant { adt_def: *adt_def, variant_index, subpatterns }
                     } else {
                         PatKind::Leaf { subpatterns }
                     }
@@ -885,7 +889,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             }
                         }
                         let suffix: Box<[_]> = subpatterns.collect();
-                        let wild = Pat::wildcard_from_ty(pat.ty().inner());
+                        let wild = Pat { ty: pat.ty().inner(), kind: PatKind::Wild };
                         PatKind::Slice {
                             prefix: prefix.into_boxed_slice(),
                             slice: Some(Box::new(wild)),
@@ -906,7 +910,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
         };
 
-        Pat { ty: pat.ty().inner(), span: DUMMY_SP, kind }
+        Pat { ty: pat.ty().inner(), kind }
     }
 }
 
@@ -1003,12 +1007,11 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         }
         // `pat` is an exclusive range like `lo..gap`. `gapped_with` contains ranges that start with
         // `gap+1`.
-        let suggested_range: thir::Pat<'_> = {
+        let suggested_range: String = {
             // Suggest `lo..=gap` instead.
-            let mut suggested_range = thir_pat.clone();
-            let thir::PatKind::Range(range) = &mut suggested_range.kind else { unreachable!() };
-            range.end = rustc_hir::RangeEnd::Included;
-            suggested_range
+            let mut suggested_range = PatRange::clone(range);
+            suggested_range.end = rustc_hir::RangeEnd::Included;
+            suggested_range.to_string()
         };
         let gap_as_pat = self.hoist_pat_range(&gap, *pat.ty());
         if gapped_with.is_empty() {
@@ -1023,7 +1026,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // That's the gap that isn't covered.
                     max: gap_as_pat.to_string(),
                     // Suggest `lo..=max` instead.
-                    suggestion: suggested_range.to_string(),
+                    suggestion: suggested_range,
                 },
             );
         } else {
@@ -1037,7 +1040,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                     // That's the gap that isn't covered.
                     gap: gap_as_pat.to_string(),
                     // Suggest `lo..=gap` instead.
-                    suggestion: suggested_range.to_string(),
+                    suggestion: suggested_range,
                     // All these ranges skipped over `gap` which we think is probably a
                     // mistake.
                     gap_with: gapped_with
@@ -1045,7 +1048,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
                         .map(|pat| errors::GappedRange {
                             span: pat.data().span,
                             gap: gap_as_pat.to_string(),
-                            first_range: thir_pat.to_string(),
+                            first_range: range.to_string(),
                         })
                         .collect(),
                 },
