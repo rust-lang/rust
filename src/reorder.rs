@@ -132,9 +132,7 @@ fn rewrite_reorderable_or_regroupable_items(
                     let item_vec: Vec<_> = use_group
                         .into_iter()
                         .map(|use_tree| {
-                            let item = use_tree
-                                .rewrite_top_level(context, nested_shape)
-                                .unknown_error();
+                            let item = use_tree.rewrite_top_level(context, nested_shape);
                             if let Some(list_item) = use_tree.list_item {
                                 ListItem {
                                     item: item,

@@ -19,7 +19,7 @@ use crate::config::{Edition, IndentStyle, StyleEdition};
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
 };
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -44,7 +44,8 @@ impl<'a> FmtVisitor<'a> {
             Some(item.span.lo()),
             Some(item.attrs.clone()),
         )
-        .rewrite_top_level(&self.get_context(), shape);
+        .rewrite_top_level(&self.get_context(), shape)
+        .ok();
         match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
@@ -331,12 +332,17 @@ impl UseTree {
         &self,
         context: &RewriteContext<'_>,
         shape: Shape,
-    ) -> Option<String> {
+    ) -> RewriteResult {
         let vis = self.visibility.as_ref().map_or(Cow::from(""), |vis| {
             crate::utils::format_visibility(context, vis)
         });
         let use_str = self
-            .rewrite(context, shape.offset_left(vis.len())?)
+            .rewrite_result(
+                context,
+                shape
+                    .offset_left(vis.len())
+                    .max_width_error(shape.width, self.span())?,
+            )
             .map(|s| {
                 if s.is_empty() {
                     s
@@ -346,8 +352,8 @@ impl UseTree {
             })?;
         match self.attrs {
             Some(ref attrs) if !attrs.is_empty() => {
-                let attr_str = attrs.rewrite(context, shape)?;
-                let lo = attrs.last().as_ref()?.span.hi();
+                let attr_str = attrs.rewrite_result(context, shape)?;
+                let lo = attrs.last().unknown_error()?.span.hi();
                 let hi = self.span.lo();
                 let span = mk_sp(lo, hi);
 
@@ -367,9 +373,8 @@ impl UseTree {
                     shape,
                     allow_extend,
                 )
-                .ok()
             }
-            _ => Some(use_str),
+            _ => Ok(use_str),
         }
     }
 
@@ -1007,13 +1012,14 @@ fn rewrite_nested_use_tree(
     context: &RewriteContext<'_>,
     use_tree_list: &[UseTree],
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let mut list_items = Vec::with_capacity(use_tree_list.len());
     let nested_shape = match context.config.imports_indent() {
         IndentStyle::Block => shape
             .block_indent(context.config.tab_spaces())
             .with_max_width(context.config)
-            .sub_width(1)?,
+            .sub_width(1)
+            .unknown_error()?,
         IndentStyle::Visual => shape.visual_indent(0),
     };
     for use_tree in use_tree_list {
@@ -1021,7 +1027,9 @@ fn rewrite_nested_use_tree(
             list_item.item = use_tree.rewrite_result(context, nested_shape);
             list_items.push(list_item);
         } else {
-            list_items.push(ListItem::from_str(use_tree.rewrite(context, nested_shape)?));
+            list_items.push(ListItem::from_str(
+                use_tree.rewrite_result(context, nested_shape)?,
+            ));
         }
     }
     let has_nested_list = use_tree_list.iter().any(|use_segment| {
@@ -1057,7 +1065,7 @@ fn rewrite_nested_use_tree(
         .preserve_newline(true)
         .nested(has_nested_list);
 
-    let list_str = write_list(&list_items, &fmt).ok()?;
+    let list_str = write_list(&list_items, &fmt)?;
 
     let result = if (list_str.contains('\n')
         || list_str.len() > remaining_width
@@ -1074,12 +1082,16 @@ fn rewrite_nested_use_tree(
         format!("{{{list_str}}}")
     };
 
-    Some(result)
+    Ok(result)
 }
 
 impl Rewrite for UseSegment {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        Some(match self.kind {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        Ok(match self.kind {
             UseSegmentKind::Ident(ref ident, Some(ref rename)) => {
                 format!("{ident} as {rename}")
             }
@@ -1091,31 +1103,42 @@ impl Rewrite for UseSegment {
             UseSegmentKind::Crate(Some(ref rename)) => format!("crate as {rename}"),
             UseSegmentKind::Crate(None) => "crate".to_owned(),
             UseSegmentKind::Glob => "*".to_owned(),
-            UseSegmentKind::List(ref use_tree_list) => rewrite_nested_use_tree(
-                context,
-                use_tree_list,
-                // 1 = "{" and "}"
-                shape.offset_left(1)?.sub_width(1)?,
-            )?,
+            UseSegmentKind::List(ref use_tree_list) => {
+                rewrite_nested_use_tree(
+                    context,
+                    use_tree_list,
+                    // 1 = "{" and "}"
+                    shape
+                        .offset_left(1)
+                        .and_then(|s| s.sub_width(1))
+                        .unknown_error()?,
+                )?
+            }
         })
     }
 }
 
 impl Rewrite for UseTree {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
     // This does NOT format attributes and visibility or add a trailing `;`.
-    fn rewrite(&self, context: &RewriteContext<'_>, mut shape: Shape) -> Option<String> {
+    fn rewrite_result(&self, context: &RewriteContext<'_>, mut shape: Shape) -> RewriteResult {
         let mut result = String::with_capacity(256);
         let mut iter = self.path.iter().peekable();
         while let Some(segment) = iter.next() {
-            let segment_str = segment.rewrite(context, shape)?;
+            let segment_str = segment.rewrite_result(context, shape)?;
             result.push_str(&segment_str);
             if iter.peek().is_some() {
                 result.push_str("::");
                 // 2 = "::"
-                shape = shape.offset_left(2 + segment_str.len())?;
+                shape = shape
+                    .offset_left(2 + segment_str.len())
+                    .max_width_error(shape.width, self.span())?;
             }
         }
-        Some(result)
+        Ok(result)
     }
 }
 
