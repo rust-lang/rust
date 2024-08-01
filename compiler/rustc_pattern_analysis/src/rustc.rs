@@ -828,7 +828,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         use print::{FieldPat, Pat, PatKind};
         let cx = self;
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
-        let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
+        let hoist = |p| Box::new(cx.hoist_witness_pat(p));
+        let mut subpatterns = pat.iter_fields().map(hoist);
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
