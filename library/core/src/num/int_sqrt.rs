@@ -125,12 +125,11 @@ macro_rules! unsigned_fn {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn $UnsignedT(mut n: $UnsignedT) -> $UnsignedT {
-            let leading_zeros = n.leading_zeros();
-            if leading_zeros >= <$HalfBitsT>::BITS {
+            if n <= <$HalfBitsT>::MAX as $UnsignedT {
                 $HalfBitsT(n as $HalfBitsT) as $UnsignedT
             } else {
-                const EVEN_BITMASK: u32 = u32::MAX & !1;
-                let normalization_shift = leading_zeros & EVEN_BITMASK;
+                const EVEN_MAKING_BITMASK: u32 = !1;
+                let normalization_shift = n.leading_zeros() & EVEN_MAKING_BITMASK;
                 n <<= normalization_shift;
 
                 let s = $stages!(n);
@@ -155,6 +154,28 @@ macro_rules! first_stage {
 /// Generates a middle stage of the computation.
 macro_rules! middle_stage {
     ($original_bits:literal, $ty:ty, $n:ident, $s:ident, $r:ident) => {{
+        // SAFETY: Inform the optimizer that `$s` is nonzero. This will allow
+        // it to avoid generating code to handle division-by-zero panics in the
+        // divisions below.
+        //
+        // If the original `$n` is zero, the top of the `unsigned_fn` macro
+        // recurses instead of continuing to this point, so the original `$n`
+        // wasn't a 0 if we've reached here.
+        //
+        // Then the `unsigned_fn` macro normalizes `$n` so that at least one of
+        // the two most-significant bits is a 1.
+        //
+        // Then these stages take as many of the most-significant bits of `$n`
+        // that fit in this stage's type. For example, the stage that handles
+        // `u32` deals with the 32 most-significant bits of `$n`. This means
+        // that each stage has at least one 1 bit in `n`'s two most-significant
+        // bits, making `n` nonzero.
+        //
+        // Then, the stage previous to this produces `$s` as the correct
+        // integer square root for the previous type. Since it was taking the
+        // integer square root of a nonzero number, `$s` will be nonzero.
+        unsafe { crate::hint::assert_unchecked($s != 0) };
+
         const N_SHIFT: u32 = $original_bits - <$ty>::BITS;
         let n = ($n >> N_SHIFT) as $ty;
 
@@ -168,6 +189,7 @@ macro_rules! middle_stage {
         let denominator = ($s as $ty) << 1;
         let q = numerator / denominator;
         let u = numerator % denominator;
+
         let mut s = ($s << QUARTER_BITS) as $ty + q;
         let (mut r, overflow) =
             ((u << QUARTER_BITS) | (lo & LOWEST_QUARTER_1_BITS)).overflowing_sub(q * q);
@@ -182,6 +204,13 @@ macro_rules! middle_stage {
 /// Generates the last stage of the computation before denormalization.
 macro_rules! last_stage {
     ($ty:ty, $n:ident, $s:ident, $r:ident) => {{
+        // SAFETY: Inform the optimizer that `$s` is nonzero. This will allow
+        // it to avoid generating code to handle division-by-zero panics in the
+        // divisions below.
+        //
+        // See the proof in the `middle_stage` macro above.
+        unsafe { core::hint::assert_unchecked($s != 0) };
+
         const HALF_BITS: u32 = <$ty>::BITS >> 1;
         const QUARTER_BITS: u32 = <$ty>::BITS >> 2;
         const LOWER_HALF_1_BITS: $ty = (1 << HALF_BITS) - 1;
@@ -189,6 +218,7 @@ macro_rules! last_stage {
         let lo = $n & LOWER_HALF_1_BITS;
         let numerator = (($r as $ty) << QUARTER_BITS) | (lo >> QUARTER_BITS);
         let denominator = ($s as $ty) << 1;
+
         let q = numerator / denominator;
         let mut s = ($s << QUARTER_BITS) as $ty + q;
         let (s_squared, overflow) = s.overflowing_mul(s);
