@@ -124,6 +124,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 [sym::inline] => self.check_inline(hir_id, attr, span, target),
                 [sym::coverage] => self.check_coverage(attr, span, target),
+                [sym::optimize] => self.check_optimize(hir_id, attr, target),
                 [sym::non_exhaustive] => self.check_non_exhaustive(hir_id, attr, span, target),
                 [sym::marker] => self.check_marker(hir_id, attr, span, target),
                 [sym::target_feature] => {
@@ -369,6 +370,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     attr_span: attr.span,
                     defn_span: span,
                 });
+            }
+        }
+    }
+
+    /// Checks that `#[optimize(..)]` is applied to a function/closure/method,
+    /// or to an impl block or module.
+    fn check_optimize(&self, hir_id: HirId, attr: &Attribute, target: Target) {
+        match target {
+            Target::Fn
+            | Target::Closure
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
+            | Target::Impl
+            | Target::Mod => {}
+
+            _ => {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::OptimizeNotFnOrClosure,
+                );
             }
         }
     }

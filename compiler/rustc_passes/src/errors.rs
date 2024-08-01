@@ -68,6 +68,10 @@ pub struct CoverageNotFnOrClosure {
     pub defn_span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_optimize_not_fn_or_closure)]
+pub struct OptimizeNotFnOrClosure;
+
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]
 pub struct AttrShouldBeAppliedToFn {
