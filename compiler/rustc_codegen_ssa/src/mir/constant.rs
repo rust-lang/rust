@@ -1,6 +1,6 @@
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, ValTree};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::Abi;
 
@@ -28,7 +28,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .expect("erroneous constant missed by mono item collection")
     }
 
-    /// This is a convenience helper for `simd_shuffle_indices`. It has the precondition
+    /// This is a convenience helper for `immediate_const_vector`. It has the precondition
     /// that the given `constant` is an `Const::Unevaluated` and must be convertible to
     /// a `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
     ///
@@ -59,23 +59,33 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.cx.tcx().const_eval_resolve_for_typeck(ty::ParamEnv::reveal_all(), uv, constant.span)
     }
 
-    /// process constant containing SIMD shuffle indices
-    pub fn simd_shuffle_indices(
+    /// process constant containing SIMD shuffle indices & constant vectors
+    pub fn immediate_const_vector(
         &mut self,
         bx: &Bx,
         constant: &mir::ConstOperand<'tcx>,
     ) -> (Bx::Value, Ty<'tcx>) {
         let ty = self.monomorphize(constant.ty());
+        let ty_is_simd = ty.is_simd();
+        let field_ty = if ty_is_simd {
+            ty.simd_size_and_type(bx.tcx()).1
+        } else {
+            ty.builtin_index().unwrap()
+        };
+
         let val = self
             .eval_unevaluated_mir_constant_to_valtree(constant)
             .ok()
             .map(|x| x.ok())
             .flatten()
             .map(|val| {
-                let field_ty = ty.builtin_index().unwrap();
-                let values: Vec<_> = val
-                    .unwrap_branch()
-                    .iter()
+                let field_iter = val.unwrap_branch();
+                let first = field_iter.get(0).unwrap();
+                let field_iter = match first {
+                    ValTree::Branch(_) => first.unwrap_branch().iter(),
+                    ValTree::Leaf(_) => field_iter.iter(),
+                };
+                let values: Vec<_> = field_iter
                     .map(|field| {
                         if let Some(prim) = field.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
@@ -84,11 +94,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             };
                             bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
                         } else {
-                            bug!("simd shuffle field {:?}", field)
+                            bug!("field is not a scalar {:?}", field)
                         }
                     })
                     .collect();
-                bx.const_struct(&values, false)
+                if ty_is_simd { bx.const_vector(&values) } else { bx.const_struct(&values, false) }
             })
             .unwrap_or_else(|| {
                 bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
