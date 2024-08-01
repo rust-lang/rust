@@ -702,6 +702,9 @@ struct Promoter<'a, 'tcx> {
     temps: &'a mut IndexVec<Local, TempState>,
     extra_statements: &'a mut Vec<(Location, Statement<'tcx>)>,
 
+    /// Used to assemble the required_consts list while building the promoted.
+    required_consts: Vec<ConstOperand<'tcx>>,
+
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
     keep_original: bool,
@@ -924,10 +927,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
 
-        // Now that we did promotion, we know whether we'll want to add this to `required_consts`.
+        // Now that we did promotion, we know whether we'll want to add this to `required_consts` of
+        // the surrounding MIR body.
         if self.add_to_required {
-            self.source.required_consts.push(promoted_op);
+            self.source.required_consts.as_mut().unwrap().push(promoted_op);
         }
+
+        self.promoted.set_required_consts(self.required_consts);
 
         self.promoted
     }
@@ -947,7 +953,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
     fn visit_const_operand(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
         if constant.const_.is_required_const() {
-            self.promoted.required_consts.push(*constant);
+            self.required_consts.push(*constant);
         }
 
         // Skipping `super_constant` as the visitor is otherwise only looking for locals.
@@ -1011,9 +1017,9 @@ fn promote_candidates<'tcx>(
             extra_statements: &mut extra_statements,
             keep_original: false,
             add_to_required: false,
+            required_consts: Vec::new(),
         };
 
-        // `required_consts` of the promoted itself gets filled while building the MIR body.
         let mut promoted = promoter.promote_candidate(candidate, promotions.len());
         promoted.source.promoted = Some(promotions.next_index());
         promotions.push(promoted);
