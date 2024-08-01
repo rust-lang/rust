@@ -246,6 +246,12 @@ impl LlvmObjdump {
         self.cmd.arg(path.as_ref());
         self
     }
+
+    /// Disassemble all executable sections found in the input files.
+    pub fn disassemble(&mut self) -> &mut Self {
+        self.cmd.arg("-d");
+        self
+    }
 }
 
 impl LlvmAr {

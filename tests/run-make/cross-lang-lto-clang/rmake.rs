@@ -3,8 +3,9 @@
 // See https://github.com/rust-lang/rust/pull/57514
 
 //@ needs-force-clang-based-tests
-// FIXME(#126180): This test doesn't actually run anywhere, because the only
-// CI job that sets RUSTBUILD_FORCE_CLANG_BASED_TESTS runs very few tests.
+// NOTE(#126180): This test only runs on `x86_64-gnu-debug`, because that CI job sets
+// RUSTBUILD_FORCE_CLANG_BASED_TESTS and only runs tests which contain "clang" in their
+// name.
 
 use run_make_support::{clang, env_var, llvm_ar, llvm_objdump, rustc, static_lib_name};
 
@@ -27,14 +28,14 @@ fn main() {
     // Make sure we don't find a call instruction to the function we expect to
     // always be inlined.
     llvm_objdump()
-        .arg("-d")
+        .disassemble()
         .input("cmain")
         .run()
         .assert_stdout_not_contains_regex("call.*rust_always_inlined");
     // As a sanity check, make sure we do find a call instruction to a
     // non-inlined function
     llvm_objdump()
-        .arg("-d")
+        .disassemble()
         .input("cmain")
         .run()
         .assert_stdout_contains_regex("call.*rust_never_inlined");
@@ -49,12 +50,12 @@ fn main() {
         .output("rsmain")
         .run();
     llvm_objdump()
-        .arg("-d")
+        .disassemble()
         .input("rsmain")
         .run()
         .assert_stdout_not_contains_regex("call.*c_always_inlined");
     llvm_objdump()
-        .arg("-d")
+        .disassemble()
         .input("rsmain")
         .run()
         .assert_stdout_contains_regex("call.*c_never_inlined");

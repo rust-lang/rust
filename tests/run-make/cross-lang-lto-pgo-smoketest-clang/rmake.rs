@@ -5,14 +5,23 @@
 // See https://github.com/rust-lang/rust/pull/61036
 
 //@ needs-force-clang-based-tests
-// FIXME(#126180): This test doesn't actually run anywhere, because the only
-// CI job that sets RUSTBUILD_FORCE_CLANG_BASED_TESTS runs very few tests.
+// NOTE(#126180): This test would only run on `x86_64-gnu-debug`, because that CI job sets
+// RUSTBUILD_FORCE_CLANG_BASED_TESTS and only runs tests which contain "clang" in their
+// name.
+
+//@ needs-profiler-support
+// FIXME(Oneirical): Except that due to the reliance on llvm-profdata, this test
+// never runs, because `x86_64-gnu-debug` does not have the `profiler_builtins` crate.
 
 //FIXME(Oneirical): There was a strange workaround for MSVC on this test
 // which added -C panic=abort to every RUSTC call. It was justified as follows:
-// LLVM doesn't support instrumenting binaries that use SEH:
+
+// "LLVM doesn't support instrumenting binaries that use SEH:
 // https://bugs.llvm.org/show_bug.cgi?id=41279
-// Things work fine with -Cpanic=abort though.
+// Things work fine with -Cpanic=abort though."
+
+// This isn't very pertinent, however, as the test does not get run on any
+// MSVC platforms.
 
 use run_make_support::{
     clang, env_var, has_extension, has_prefix, llvm_ar, llvm_profdata, rfs, run, rustc,
