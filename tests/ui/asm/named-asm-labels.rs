@@ -10,7 +10,7 @@
 // which causes less readable LLVM errors and in the worst cases causes ICEs
 // or segfaults based on system dependent behavior and codegen flags.
 
-#![feature(naked_functions, asm_const)]
+#![feature(naked_functions)]
 
 use std::arch::{asm, global_asm};
 
@@ -128,6 +128,7 @@ fn main() {
 
         // Tests usage of colons in non-label positions
         asm!(":lo12:FOO"); // this is apparently valid aarch64
+
         // is there an example that is valid x86 for this test?
         asm!(":bbb nop");
 
@@ -176,7 +177,8 @@ fn main() {
 // label or LTO can cause labels to break
 #[naked]
 pub extern "C" fn foo() -> i32 {
-    unsafe { asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1, options(noreturn)) } //~ ERROR avoid using named labels
+    unsafe { asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1, options(noreturn)) }
+    //~^ ERROR avoid using named labels
 }
 
 // Make sure that non-naked attributes *do* still let the lint happen

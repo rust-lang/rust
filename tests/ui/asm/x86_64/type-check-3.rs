@@ -1,8 +1,6 @@
 //@ only-x86_64
 //@ compile-flags: -C target-feature=+avx512f
 
-#![feature(asm_const)]
-
 use std::arch::{asm, global_asm};
 
 use std::arch::x86_64::{_mm256_setzero_ps, _mm_setzero_ps};

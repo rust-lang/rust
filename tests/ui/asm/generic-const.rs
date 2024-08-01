@@ -1,8 +1,6 @@
 //@ needs-asm-support
 //@ build-pass
 
-#![feature(asm_const)]
-
 use std::arch::asm;
 
 fn foofoo<const N: usize>() {}
