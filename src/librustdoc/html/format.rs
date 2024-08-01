@@ -1455,27 +1455,20 @@ impl clean::FnDecl {
         for (i, input) in self.inputs.values.iter().enumerate() {
             if let Some(selfty) = input.to_receiver() {
                 match selfty {
-                    clean::SelfValue => {
+                    clean::SelfTy => {
                         write!(f, "self")?;
                     }
-                    clean::SelfBorrowed(Some(ref lt), mutability) => {
-                        write!(
-                            f,
-                            "{amp}{lifetime} {mutability}self",
-                            lifetime = lt.print(),
-                            mutability = mutability.print_with_space(),
-                        )?;
+                    clean::BorrowedRef { lifetime, mutability, type_: box clean::SelfTy } => {
+                        write!(f, "{amp}")?;
+                        match lifetime {
+                            Some(lt) => write!(f, "{lt} ", lt = lt.print())?,
+                            None => {}
+                        }
+                        write!(f, "{mutability}self", mutability = mutability.print_with_space())?;
                     }
-                    clean::SelfBorrowed(None, mutability) => {
-                        write!(
-                            f,
-                            "{amp}{mutability}self",
-                            mutability = mutability.print_with_space(),
-                        )?;
-                    }
-                    clean::SelfExplicit(ref typ) => {
+                    _ => {
                         write!(f, "self: ")?;
-                        typ.print(cx).fmt(f)?;
+                        selfty.print(cx).fmt(f)?;
                     }
                 }
             } else {

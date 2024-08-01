@@ -34,7 +34,6 @@ use thin_vec::ThinVec;
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::ItemKind::*;
-pub(crate) use self::ReceiverTy::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
     RawPointer, SelfTy, Slice, Tuple,
@@ -1384,7 +1383,7 @@ pub(crate) struct FnDecl {
 }
 
 impl FnDecl {
-    pub(crate) fn receiver_type(&self) -> Option<ReceiverTy> {
+    pub(crate) fn receiver_type(&self) -> Option<&Type> {
         self.inputs.values.get(0).and_then(|v| v.to_receiver())
     }
 }
@@ -1403,27 +1402,9 @@ pub(crate) struct Argument {
     pub(crate) is_const: bool,
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub(crate) enum ReceiverTy {
-    SelfValue,
-    SelfBorrowed(Option<Lifetime>, Mutability),
-    SelfExplicit(Type),
-}
-
 impl Argument {
-    pub(crate) fn to_receiver(&self) -> Option<ReceiverTy> {
-        if self.name != kw::SelfLower {
-            return None;
-        }
-        if self.type_.is_self_type() {
-            return Some(SelfValue);
-        }
-        match self.type_ {
-            BorrowedRef { ref lifetime, mutability, ref type_ } if type_.is_self_type() => {
-                Some(SelfBorrowed(lifetime.clone(), mutability))
-            }
-            _ => Some(SelfExplicit(self.type_.clone())),
-        }
+    pub(crate) fn to_receiver(&self) -> Option<&Type> {
+        if self.name == kw::SelfLower { Some(&self.type_) } else { None }
     }
 }
 

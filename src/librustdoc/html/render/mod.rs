@@ -58,7 +58,7 @@ use serde::{Serialize, Serializer};
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
-use crate::clean::{self, ItemId, ReceiverTy, RenderedLink};
+use crate::clean::{self, ItemId, RenderedLink};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -1378,15 +1378,14 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     };
 
     if let Some(self_ty) = self_type_opt {
-        let (by_mut_ref, by_box, by_value) = match self_ty {
-            ReceiverTy::SelfBorrowed(_, mutability)
-            | ReceiverTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
+        let (by_mut_ref, by_box, by_value) = match *self_ty {
+            clean::Type::BorrowedRef { mutability, .. } => {
                 (mutability == Mutability::Mut, false, false)
             }
-            ReceiverTy::SelfExplicit(clean::Type::Path { path }) => {
+            clean::Type::Path { ref path } => {
                 (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
             }
-            ReceiverTy::SelfValue => (false, false, true),
+            clean::Type::SelfTy => (false, false, true),
             _ => (false, false, false),
         };
 
