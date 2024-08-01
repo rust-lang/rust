@@ -355,7 +355,10 @@ impl Command {
         let head = cmd!(sh, "git rev-parse HEAD").read()?;
         let fetch_head = cmd!(sh, "git rev-parse FETCH_HEAD").read()?;
         if head != fetch_head {
-            bail!("Josh created a non-roundtrip push! Do NOT merge this into rustc!");
+            bail!(
+                "Josh created a non-roundtrip push! Do NOT merge this into rustc!\n\
+                Expected {head}, got {fetch_head}."
+            );
         }
         println!(
             "Confirmed that the push round-trips back to Miri properly. Please create a rustc PR:"
