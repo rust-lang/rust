@@ -1,4 +1,3 @@
-// Flock tests are separate since they don't in general work on a Windows host.
 //@ignore-target-windows: File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 

@@ -198,8 +198,8 @@ impl FileDescription for FileHandle {
                     let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
                     if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
                         if lock_nb {
-                            // Replace error with a custom WouldBlock error, which later will be
-                            // mapped in the `helpers` module
+                            // The io error mapping does not know about these error codes,
+                            // so we translate it to `WouldBlock` manually.
                             let desc = format!("LockFileEx wouldblock error: {err}");
                             err = io::Error::new(io::ErrorKind::WouldBlock, desc);
                         } else {
