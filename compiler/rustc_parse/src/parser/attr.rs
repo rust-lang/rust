@@ -67,6 +67,7 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Line => OuterAttributeType::DocComment,
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
+                        true,
                     ) {
                         err.note(fluent::parse_note);
                         err.span_suggestion_verbose(
@@ -130,7 +131,11 @@ impl<'a> Parser<'a> {
 
             // Emit error if inner attribute is encountered and forbidden.
             if style == ast::AttrStyle::Inner {
-                this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
+                this.error_on_forbidden_inner_attr(
+                    attr_sp,
+                    inner_parse_policy,
+                    item.is_valid_for_outer_style(),
+                );
             }
 
             Ok(attr::mk_attr_from_item(&self.psess.attr_id_generator, item, None, style, attr_sp))
@@ -142,6 +147,7 @@ impl<'a> Parser<'a> {
         err: &mut Diag<'_>,
         span: Span,
         attr_type: OuterAttributeType,
+        suggest_to_outer: bool,
     ) -> Option<Span> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         let lo = span.lo()
@@ -176,16 +182,18 @@ impl<'a> Parser<'a> {
                 // FIXME(#100717)
                 err.arg("item", item.kind.descr());
                 err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
-                err.span_suggestion_verbose(
-                    replacement_span,
-                    fluent::parse_sugg_change_inner_to_outer,
-                    match attr_type {
-                        OuterAttributeType::Attribute => "",
-                        OuterAttributeType::DocBlockComment => "*",
-                        OuterAttributeType::DocComment => "/",
-                    },
-                    rustc_errors::Applicability::MachineApplicable,
-                );
+                if suggest_to_outer {
+                    err.span_suggestion_verbose(
+                        replacement_span,
+                        fluent::parse_sugg_change_inner_to_outer,
+                        match attr_type {
+                            OuterAttributeType::Attribute => "",
+                            OuterAttributeType::DocBlockComment => "*",
+                            OuterAttributeType::DocComment => "/",
+                        },
+                        rustc_errors::Applicability::MachineApplicable,
+                    );
+                }
                 return None;
             }
             Err(item_err) => {
@@ -196,7 +204,12 @@ impl<'a> Parser<'a> {
         Some(replacement_span)
     }
 
-    pub(super) fn error_on_forbidden_inner_attr(&self, attr_sp: Span, policy: InnerAttrPolicy) {
+    pub(super) fn error_on_forbidden_inner_attr(
+        &self,
+        attr_sp: Span,
+        policy: InnerAttrPolicy,
+        suggest_to_outer: bool,
+    ) {
         if let InnerAttrPolicy::Forbidden(reason) = policy {
             let mut diag = match reason.as_ref().copied() {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
@@ -230,6 +243,7 @@ impl<'a> Parser<'a> {
                     &mut diag,
                     attr_sp,
                     OuterAttributeType::Attribute,
+                    suggest_to_outer,
                 )
                 .is_some()
             {
