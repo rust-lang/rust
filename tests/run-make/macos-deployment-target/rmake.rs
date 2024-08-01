@@ -4,6 +4,7 @@
 // See https://github.com/rust-lang/rust/pull/105123
 
 //@ only-macos
+// Reason: this test exercises an OSX-specific issue
 
 use run_make_support::{cmd, rustc};
 
@@ -18,7 +19,7 @@ fn main() {
     } else {
         "version 10.13"
     };
-    // XXX: The check is for either the x86_64 minimum OR the aarch64 minimum
+    // NOTE: The check is for either the x86_64 minimum OR the aarch64 minimum
     // (M1 starts at macOS 11). They also use different load commands, so we let that change with
     // each too. The aarch64 check isn't as robust as the x86 one, but testing both seems unneeded.
     cmd("vtool")
