@@ -14,8 +14,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::invalid_paths::INVALID_PATHS_INFO,
     #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_DEPRECATION_REASON_INFO,
-    #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_LINT_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE_INFO,

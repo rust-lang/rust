@@ -303,7 +303,6 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
     println!("note: `cargo uitest` still needs to be run to update the test results");
 }
 
-const DEFAULT_DEPRECATION_REASON: &str = "default deprecation note";
 /// Runs the `deprecate` command
 ///
 /// This does the following:
@@ -313,8 +312,7 @@ const DEFAULT_DEPRECATION_REASON: &str = "default deprecation note";
 /// # Panics
 ///
 /// If a file path could not read from or written to
-pub fn deprecate(name: &str, reason: Option<&str>) {
-    let reason = reason.unwrap_or(DEFAULT_DEPRECATION_REASON);
+pub fn deprecate(name: &str, reason: &str) {
     let prefixed_name = if name.starts_with("clippy::") {
         name.to_owned()
     } else {
@@ -357,10 +355,6 @@ pub fn deprecate(name: &str, reason: Option<&str>) {
 
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
         println!("info: `{name}` has successfully been deprecated");
-
-        if reason == DEFAULT_DEPRECATION_REASON {
-            println!("note: the deprecation reason must be updated in `clippy_lints/src/deprecated_lints.rs`");
-        }
         println!("note: you must run `cargo uitest` to update the test results");
     } else {
         eprintln!("error: lint not found");

@@ -86,59 +86,17 @@ declare_clippy_lint! {
     "found clippy lint without `clippy::version` attribute"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for cases of an auto-generated deprecated lint without an updated reason,
-    /// i.e. `"default deprecation note"`.
-    ///
-    /// ### Why is this bad?
-    /// Indicates that the documentation is incomplete.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// declare_deprecated_lint! {
-    ///     /// ### What it does
-    ///     /// Nothing. This lint has been deprecated.
-    ///     ///
-    ///     /// ### Deprecation reason
-    ///     /// TODO
-    ///     #[clippy::version = "1.63.0"]
-    ///     pub COOL_LINT,
-    ///     "default deprecation note"
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// declare_deprecated_lint! {
-    ///     /// ### What it does
-    ///     /// Nothing. This lint has been deprecated.
-    ///     ///
-    ///     /// ### Deprecation reason
-    ///     /// This lint has been replaced by `cooler_lint`
-    ///     #[clippy::version = "1.63.0"]
-    ///     pub COOL_LINT,
-    ///     "this lint has been replaced by `cooler_lint`"
-    /// }
-    /// ```
-    pub DEFAULT_DEPRECATION_REASON,
-    internal,
-    "found 'default deprecation note' in a deprecated lint declaration"
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct LintWithoutLintPass {
     declared_lints: FxHashMap<Symbol, Span>,
     registered_lints: FxHashSet<Symbol>,
 }
 
-impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS, INVALID_CLIPPY_VERSION_ATTRIBUTE, MISSING_CLIPPY_VERSION_ATTRIBUTE, DEFAULT_DEPRECATION_REASON]);
+impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS, INVALID_CLIPPY_VERSION_ATTRIBUTE, MISSING_CLIPPY_VERSION_ATTRIBUTE]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if is_lint_allowed(cx, DEFAULT_LINT, item.hir_id())
-            || is_lint_allowed(cx, DEFAULT_DEPRECATION_REASON, item.hir_id())
-        {
+        if is_lint_allowed(cx, DEFAULT_LINT, item.hir_id()) {
             return;
         }
 

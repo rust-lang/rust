@@ -74,7 +74,7 @@ fn main() {
             new_name,
             uplift,
         } => update_lints::rename(&old_name, new_name.as_ref().unwrap_or(&old_name), uplift),
-        DevCommand::Deprecate { name, reason } => update_lints::deprecate(&name, reason.as_deref()),
+        DevCommand::Deprecate { name, reason } => update_lints::deprecate(&name, &reason),
     }
 }
 
@@ -223,7 +223,7 @@ enum DevCommand {
         name: String,
         #[arg(long, short)]
         /// The reason for deprecation
-        reason: Option<String>,
+        reason: String,
     },
 }
 
