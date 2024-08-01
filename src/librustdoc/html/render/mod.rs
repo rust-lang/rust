@@ -332,7 +332,6 @@ struct AllTypes {
     macros: FxHashSet<ItemEntry>,
     functions: FxHashSet<ItemEntry>,
     type_aliases: FxHashSet<ItemEntry>,
-    opaque_tys: FxHashSet<ItemEntry>,
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
     attribute_macros: FxHashSet<ItemEntry>,
@@ -352,7 +351,6 @@ impl AllTypes {
             macros: new_set(100),
             functions: new_set(100),
             type_aliases: new_set(100),
-            opaque_tys: new_set(100),
             statics: new_set(100),
             constants: new_set(100),
             attribute_macros: new_set(100),
@@ -415,9 +413,6 @@ impl AllTypes {
         if !self.type_aliases.is_empty() {
             sections.insert(ItemSection::TypeAliases);
         }
-        if !self.opaque_tys.is_empty() {
-            sections.insert(ItemSection::OpaqueTypes);
-        }
         if !self.statics.is_empty() {
             sections.insert(ItemSection::Statics);
         }
@@ -471,7 +466,6 @@ impl AllTypes {
         print_entries(f, &self.functions, ItemSection::Functions);
         print_entries(f, &self.type_aliases, ItemSection::TypeAliases);
         print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
-        print_entries(f, &self.opaque_tys, ItemSection::OpaqueTypes);
         print_entries(f, &self.statics, ItemSection::Statics);
         print_entries(f, &self.constants, ItemSection::Constants);
     }
@@ -2174,7 +2168,6 @@ pub(crate) enum ItemSection {
     AssociatedConstants,
     ForeignTypes,
     Keywords,
-    OpaqueTypes,
     AttributeMacros,
     DeriveMacros,
     TraitAliases,
@@ -2207,7 +2200,6 @@ impl ItemSection {
             AssociatedConstants,
             ForeignTypes,
             Keywords,
-            OpaqueTypes,
             AttributeMacros,
             DeriveMacros,
             TraitAliases,
@@ -2237,7 +2229,6 @@ impl ItemSection {
             Self::AssociatedConstants => "associated-consts",
             Self::ForeignTypes => "foreign-types",
             Self::Keywords => "keywords",
-            Self::OpaqueTypes => "opaque-types",
             Self::AttributeMacros => "attributes",
             Self::DeriveMacros => "derives",
             Self::TraitAliases => "trait-aliases",
@@ -2267,7 +2258,6 @@ impl ItemSection {
             Self::AssociatedConstants => "Associated Constants",
             Self::ForeignTypes => "Foreign Types",
             Self::Keywords => "Keywords",
-            Self::OpaqueTypes => "Opaque Types",
             Self::AttributeMacros => "Attribute Macros",
             Self::DeriveMacros => "Derive Macros",
             Self::TraitAliases => "Trait Aliases",
