@@ -2,7 +2,7 @@
 
 use std::cmp::Ordering;
 
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -26,7 +26,8 @@ fn comparison_to_const<'tcx>(
     if let ExprKind::Binary(operator, left, right) = expr.kind
         && let Ok(cmp_op) = CmpOp::try_from(operator.node)
     {
-        match (constant(cx, typeck, left), constant(cx, typeck, right)) {
+        let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck);
+        match (ecx.eval(left), ecx.eval(right)) {
             (Some(_), Some(_)) => None,
             (_, Some(con)) => Some((cmp_op, left, right, con, typeck.expr_ty(right))),
             (Some(con), _) => Some((cmp_op.reverse(), right, left, con, typeck.expr_ty(left))),

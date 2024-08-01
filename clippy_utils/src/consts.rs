@@ -14,14 +14,13 @@ use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{alloc_range, Scalar};
 use rustc_middle::mir::ConstValue;
-use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, GenericArgsRef, IntTy, List, ParamEnv, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy,
-};
+use rustc_middle::ty::{self, FloatTy, IntTy, ParamEnv, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, SyntaxContext};
 use rustc_target::abi::Size;
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::iter;
@@ -265,10 +264,10 @@ impl<'tcx> Constant<'tcx> {
     }
 
     /// Returns the integer value or `None` if `self` or `val_type` is not integer type.
-    pub fn int_value(&self, cx: &LateContext<'_>, val_type: Ty<'_>) -> Option<FullInt> {
+    pub fn int_value(&self, tcx: TyCtxt<'_>, val_type: Ty<'_>) -> Option<FullInt> {
         if let Constant::Int(const_int) = *self {
             match *val_type.kind() {
-                ty::Int(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),
+                ty::Int(ity) => Some(FullInt::S(sext(tcx, const_int, ity))),
                 ty::Uint(_) => Some(FullInt::U(const_int)),
                 _ => None,
             }
@@ -324,6 +323,7 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
 }
 
 /// The source of a constant value.
+#[derive(Clone, Copy)]
 pub enum ConstantSource {
     /// The value is determined solely from the expression.
     Local,
@@ -333,52 +333,9 @@ pub enum ConstantSource {
     CoreConstant,
 }
 impl ConstantSource {
-    pub fn is_local(&self) -> bool {
+    pub fn is_local(self) -> bool {
         matches!(self, Self::Local)
     }
-}
-
-/// Attempts to check whether the expression is a constant representing an empty slice, str, array,
-/// etc…
-pub fn constant_is_empty(lcx: &LateContext<'_>, e: &Expr<'_>) -> Option<bool> {
-    ConstEvalLateContext::new(lcx.tcx, lcx.param_env, lcx.typeck_results()).expr_is_empty(e)
-}
-
-/// Attempts to evaluate the expression as a constant.
-pub fn constant<'tcx>(
-    lcx: &LateContext<'tcx>,
-    typeck_results: &'tcx TypeckResults<'tcx>,
-    e: &Expr<'_>,
-) -> Option<Constant<'tcx>> {
-    ConstEvalLateContext::new(lcx.tcx, lcx.param_env, typeck_results).expr(e)
-}
-
-/// Attempts to evaluate the expression as a constant.
-pub fn constant_with_source<'tcx>(
-    lcx: &LateContext<'tcx>,
-    typeck_results: &'tcx TypeckResults<'tcx>,
-    e: &Expr<'_>,
-) -> Option<(Constant<'tcx>, ConstantSource)> {
-    let mut ctxt = ConstEvalLateContext::new(lcx.tcx, lcx.param_env, typeck_results);
-    let res = ctxt.expr(e);
-    res.map(|x| (x, ctxt.source))
-}
-
-/// Attempts to evaluate an expression only if its value is not dependent on other items.
-pub fn constant_simple<'tcx>(
-    lcx: &LateContext<'tcx>,
-    typeck_results: &'tcx TypeckResults<'tcx>,
-    e: &Expr<'_>,
-) -> Option<Constant<'tcx>> {
-    constant_with_source(lcx, typeck_results, e).and_then(|(c, s)| s.is_local().then_some(c))
-}
-
-pub fn constant_full_int<'tcx>(
-    lcx: &LateContext<'tcx>,
-    typeck_results: &'tcx TypeckResults<'tcx>,
-    e: &Expr<'_>,
-) -> Option<FullInt> {
-    constant_simple(lcx, typeck_results, e)?.int_value(lcx, typeck_results.expr_ty(e))
 }
 
 #[derive(Copy, Clone, Debug, Eq)]
@@ -419,45 +376,87 @@ impl Ord for FullInt {
     }
 }
 
-pub struct ConstEvalLateContext<'tcx> {
+/// The context required to evaluate a constant expression.
+///
+/// This is currently limited to constant folding and reading the value of named constants.
+pub struct ConstEvalCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
-    typeck_results: &'tcx TypeckResults<'tcx>,
     param_env: ParamEnv<'tcx>,
-    source: ConstantSource,
-    args: GenericArgsRef<'tcx>,
+    typeck: &'tcx TypeckResults<'tcx>,
+    source: Cell<ConstantSource>,
 }
 
-impl<'tcx> ConstEvalLateContext<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, typeck_results: &'tcx TypeckResults<'tcx>) -> Self {
+impl<'tcx> ConstEvalCtxt<'tcx> {
+    /// Creates the evaluation context from the lint context. This requires the lint context to be
+    /// in a body (i.e. `cx.enclosing_body.is_some()`).
+    pub fn new(cx: &LateContext<'tcx>) -> Self {
+        Self {
+            tcx: cx.tcx,
+            param_env: cx.param_env,
+            typeck: cx.typeck_results(),
+            source: Cell::new(ConstantSource::Local),
+        }
+    }
+
+    /// Creates an evaluation context.
+    pub fn with_env(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, typeck: &'tcx TypeckResults<'tcx>) -> Self {
         Self {
             tcx,
-            typeck_results,
             param_env,
-            source: ConstantSource::Local,
-            args: List::empty(),
+            typeck,
+            source: Cell::new(ConstantSource::Local),
+        }
+    }
+
+    /// Attempts to evaluate the expression and returns both the value and whether it's dependant on
+    /// other items.
+    pub fn eval_with_source(&self, e: &Expr<'_>) -> Option<(Constant<'tcx>, ConstantSource)> {
+        self.source.set(ConstantSource::Local);
+        self.expr(e).map(|c| (c, self.source.get()))
+    }
+
+    /// Attempts to evaluate the expression.
+    pub fn eval(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
+        self.expr(e)
+    }
+
+    /// Attempts to evaluate the expression without accessing other items.
+    pub fn eval_simple(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
+        match self.eval_with_source(e) {
+            Some((x, ConstantSource::Local)) => Some(x),
+            _ => None,
+        }
+    }
+
+    /// Attempts to evaluate the expression as an integer without accessing other items.
+    pub fn eval_full_int(&self, e: &Expr<'_>) -> Option<FullInt> {
+        match self.eval_with_source(e) {
+            Some((x, ConstantSource::Local)) => x.int_value(self.tcx, self.typeck.expr_ty(e)),
+            _ => None,
         }
     }
 
     /// Simple constant folding: Insert an expression, get a constant or none.
-    pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
+    fn expr(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
             ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir().body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => {
-                let is_core_crate = if let Some(def_id) = self.typeck_results.qpath_res(qpath, e.hir_id()).opt_def_id()
-                {
+                let is_core_crate = if let Some(def_id) = self.typeck.qpath_res(qpath, e.hir_id()).opt_def_id() {
                     self.tcx.crate_name(def_id.krate) == sym::core
                 } else {
                     false
                 };
-                self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |self_, result| {
+                self.fetch_path_and_apply(qpath, e.hir_id, self.typeck.expr_ty(e), |self_, result| {
                     let result = mir_to_const(self_.tcx, result)?;
                     // If source is already Constant we wouldn't want to override it with CoreConstant
-                    self_.source = if is_core_crate && !matches!(self_.source, ConstantSource::Constant) {
-                        ConstantSource::CoreConstant
-                    } else {
-                        ConstantSource::Constant
-                    };
+                    self_.source.set(
+                        if is_core_crate && !matches!(self_.source.get(), ConstantSource::Constant) {
+                            ConstantSource::CoreConstant
+                        } else {
+                            ConstantSource::Constant
+                        },
+                    );
                     Some(result)
                 })
             },
@@ -466,21 +465,21 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
                 if is_direct_expn_of(e.span, "cfg").is_some() {
                     None
                 } else {
-                    Some(lit_to_mir_constant(&lit.node, self.typeck_results.expr_ty_opt(e)))
+                    Some(lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)))
                 }
             },
             ExprKind::Array(vec) => self.multi(vec).map(Constant::Vec),
             ExprKind::Tup(tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(value, _) => {
-                let n = match self.typeck_results.expr_ty(e).kind() {
+                let n = match self.typeck.expr_ty(e).kind() {
                     ty::Array(_, n) => n.try_eval_target_usize(self.tcx, self.param_env)?,
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
             ExprKind::Unary(op, operand) => self.expr(operand).and_then(|o| match op {
-                UnOp::Not => self.constant_not(&o, self.typeck_results.expr_ty(e)),
-                UnOp::Neg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
+                UnOp::Not => self.constant_not(&o, self.typeck.expr_ty(e)),
+                UnOp::Neg => self.constant_negate(&o, self.typeck.expr_ty(e)),
                 UnOp::Deref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
             ExprKind::If(cond, then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
@@ -489,7 +488,7 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
                 // We only handle a few const functions for now.
                 if args.is_empty()
                     && let ExprKind::Path(qpath) = &callee.kind
-                    && let Some(did) = self.typeck_results.qpath_res(qpath, callee.hir_id).opt_def_id()
+                    && let Some(did) = self.typeck.qpath_res(qpath, callee.hir_id).opt_def_id()
                 {
                     match self.tcx.get_diagnostic_name(did) {
                         Some(sym::i8_legacy_fn_max_value) => Some(Constant::Int(i8::MAX as u128)),
@@ -524,20 +523,20 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
     /// Simple constant folding to determine if an expression is an empty slice, str, array, …
     /// `None` will be returned if the constness cannot be determined, or if the resolution
     /// leaves the local crate.
-    pub fn expr_is_empty(&mut self, e: &Expr<'_>) -> Option<bool> {
+    pub fn eval_is_empty(&self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr_is_empty(self.tcx.hir().body(body).value),
-            ExprKind::DropTemps(e) => self.expr_is_empty(e),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir().body(body).value),
+            ExprKind::DropTemps(e) => self.eval_is_empty(e),
             ExprKind::Path(ref qpath) => {
                 if !self
-                    .typeck_results
+                    .typeck
                     .qpath_res(qpath, e.hir_id)
                     .opt_def_id()
                     .is_some_and(DefId::is_local)
                 {
                     return None;
                 }
-                self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |self_, result| {
+                self.fetch_path_and_apply(qpath, e.hir_id, self.typeck.expr_ty(e), |self_, result| {
                     mir_is_empty(self_.tcx, result)
                 })
             },
@@ -554,7 +553,7 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
             },
             ExprKind::Array(vec) => self.multi(vec).map(|v| v.is_empty()),
             ExprKind::Repeat(..) => {
-                if let ty::Array(_, n) = self.typeck_results.expr_ty(e).kind() {
+                if let ty::Array(_, n) = self.typeck.expr_ty(e).kind() {
                     Some(n.try_eval_target_usize(self.tcx, self.param_env)? == 0)
                 } else {
                     span_bug!(e.span, "typeck error");
@@ -607,16 +606,16 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
 
     /// Create `Some(Vec![..])` of all constants, unless there is any
     /// non-constant part.
-    fn multi(&mut self, vec: &[Expr<'_>]) -> Option<Vec<Constant<'tcx>>> {
+    fn multi(&self, vec: &[Expr<'_>]) -> Option<Vec<Constant<'tcx>>> {
         vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
     }
 
     /// Lookup a possibly constant expression from an `ExprKind::Path` and apply a function on it.
-    fn fetch_path_and_apply<T, F>(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>, f: F) -> Option<T>
+    fn fetch_path_and_apply<T, F>(&self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>, f: F) -> Option<T>
     where
-        F: FnOnce(&mut Self, mir::Const<'tcx>) -> Option<T>,
+        F: FnOnce(&Self, mir::Const<'tcx>) -> Option<T>,
     {
-        let res = self.typeck_results.qpath_res(qpath, id);
+        let res = self.typeck.qpath_res(qpath, id);
         match res {
             Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {
                 // Check if this constant is based on `cfg!(..)`,
@@ -636,12 +635,7 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
                     return None;
                 }
 
-                let args = self.typeck_results.node_args(id);
-                let args = if self.args.is_empty() {
-                    args
-                } else {
-                    EarlyBinder::bind(args).instantiate(self.tcx, self.args)
-                };
+                let args = self.typeck.node_args(id);
                 let result = self
                     .tcx
                     .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), qpath.span())
@@ -653,7 +647,7 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
         }
     }
 
-    fn index(&mut self, lhs: &'_ Expr<'_>, index: &'_ Expr<'_>) -> Option<Constant<'tcx>> {
+    fn index(&self, lhs: &'_ Expr<'_>, index: &'_ Expr<'_>) -> Option<Constant<'tcx>> {
         let lhs = self.expr(lhs);
         let index = self.expr(index);
 
@@ -683,7 +677,7 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
     }
 
     /// A block can only yield a constant if it has exactly one constant expression.
-    fn block(&mut self, block: &Block<'_>) -> Option<Constant<'tcx>> {
+    fn block(&self, block: &Block<'_>) -> Option<Constant<'tcx>> {
         if block.stmts.is_empty()
             && let Some(expr) = block.expr
         {
@@ -702,11 +696,11 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
                         .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))
                         .eq([OpenBrace])
                     {
-                        self.source = ConstantSource::Constant;
+                        self.source.set(ConstantSource::Constant);
                     }
                 } else {
                     // Unable to access the source. Assume a non-local dependency.
-                    self.source = ConstantSource::Constant;
+                    self.source.set(ConstantSource::Constant);
                 }
             }
 
@@ -716,7 +710,7 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
         }
     }
 
-    fn ifthenelse(&mut self, cond: &Expr<'_>, then: &Expr<'_>, otherwise: Option<&Expr<'_>>) -> Option<Constant<'tcx>> {
+    fn ifthenelse(&self, cond: &Expr<'_>, then: &Expr<'_>, otherwise: Option<&Expr<'_>>) -> Option<Constant<'tcx>> {
         if let Some(Constant::Bool(b)) = self.expr(cond) {
             if b {
                 self.expr(then)
@@ -728,11 +722,11 @@ impl<'tcx> ConstEvalLateContext<'tcx> {
         }
     }
 
-    fn binop(&mut self, op: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant<'tcx>> {
+    fn binop(&self, op: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant<'tcx>> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck_results.expr_ty_opt(left)?.kind() {
+            (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck.expr_ty_opt(left)?.kind() {
                 ty::Int(ity) => {
                     let (ty_min_value, _) = ity.min_max()?;
                     let bits = ity.bits();
