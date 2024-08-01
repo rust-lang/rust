@@ -89,7 +89,7 @@ def download(path, url, probably_big, verbose):
     _download(path, url, probably_big, verbose, False)
 
 def has_wget():
-    require(["wget", "--version"], exit=False) != None
+    require(["wget", "--version"], exit=False) is not None
 
 def _download(path, url, probably_big, verbose, exception):
     # Try to use curl (potentially available on win32
