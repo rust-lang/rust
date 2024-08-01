@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
+use rustc_ast::ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -48,23 +49,42 @@ declare_lint_pass!(NonZeroSuggestions => [NON_ZERO_SUGGESTIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for NonZeroSuggestions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::Call(func, [arg]) = expr.kind
-            && let ExprKind::Path(qpath) = &func.kind
-            && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
-            && let ExprKind::MethodCall(rcv_path, receiver, _, _) = &arg.kind
+        if let ExprKind::Binary(op, _, rhs) = expr.kind
+            && matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
         {
-            let fn_name = cx.tcx.item_name(def_id);
-            let target_ty = cx.typeck_results().expr_ty(expr);
-            let receiver_ty = cx.typeck_results().expr_ty(receiver);
+            check_non_zero_conversion(cx, rhs, Applicability::MachineApplicable);
+        } else {
+            // Check if the parent expression is a binary operation
+            let parent_is_binary = cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, node)| {
+                matches!(node, rustc_hir::Node::Expr(parent_expr) if matches!(parent_expr.kind, ExprKind::Binary(..)))
+            });
 
-            if let ty::Adt(adt_def, _) = receiver_ty.kind()
-                && adt_def.is_struct()
-                && cx.tcx.get_diagnostic_name(adt_def.did()) == Some(sym::NonZero)
-            {
-                if let Some(target_non_zero_type) = get_target_non_zero_type(target_ty) {
-                    let arg_snippet = get_arg_snippet(cx, arg, rcv_path);
-                    suggest_non_zero_conversion(cx, expr, fn_name, target_non_zero_type, &arg_snippet);
-                }
+            if !parent_is_binary {
+                check_non_zero_conversion(cx, expr, Applicability::MaybeIncorrect);
+            }
+        }
+    }
+}
+
+fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicability: Applicability) {
+    // Check if the expression is a function call with one argument
+    if let ExprKind::Call(func, [arg]) = expr.kind
+        && let ExprKind::Path(qpath) = &func.kind
+        && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
+        && let ExprKind::MethodCall(rcv_path, receiver, _, _) = &arg.kind
+    {
+        let fn_name = cx.tcx.item_name(def_id);
+        let target_ty = cx.typeck_results().expr_ty(expr);
+        let receiver_ty = cx.typeck_results().expr_ty(receiver);
+
+        // Check if the receiver type is a NonZero type
+        if let ty::Adt(adt_def, _) = receiver_ty.kind()
+            && adt_def.is_struct()
+            && cx.tcx.get_diagnostic_name(adt_def.did()) == Some(sym::NonZero)
+        {
+            if let Some(target_non_zero_type) = get_target_non_zero_type(target_ty) {
+                let arg_snippet = get_arg_snippet(cx, arg, rcv_path);
+                suggest_non_zero_conversion(cx, expr, fn_name, target_non_zero_type, &arg_snippet, applicability);
             }
         }
     }
@@ -85,6 +105,7 @@ fn suggest_non_zero_conversion(
     fn_name: rustc_span::Symbol,
     target_non_zero_type: &str,
     arg_snippet: &str,
+    applicability: Applicability,
 ) {
     let suggestion = format!("{target_non_zero_type}::{fn_name}({arg_snippet})");
     span_lint_and_sugg(
@@ -94,7 +115,7 @@ fn suggest_non_zero_conversion(
         format!("consider using `{target_non_zero_type}::{fn_name}()` for more efficient and type-safe conversion"),
         "replace with",
         suggestion,
-        Applicability::MachineApplicable,
+        applicability,
     );
 }
 
