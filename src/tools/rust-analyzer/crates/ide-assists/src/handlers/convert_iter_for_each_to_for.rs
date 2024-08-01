@@ -1,4 +1,4 @@
-use hir::known;
+use hir::{sym, Name};
 use ide_db::famous_defs::FamousDefs;
 use stdx::format_to;
 use syntax::{
@@ -149,7 +149,11 @@ fn is_ref_and_impls_iter_method(
         ast::Expr::RefExpr(r) => r,
         _ => return None,
     };
-    let wanted_method = if ref_expr.mut_token().is_some() { known::iter_mut } else { known::iter };
+    let wanted_method = Name::new_symbol_root(if ref_expr.mut_token().is_some() {
+        sym::iter_mut.clone()
+    } else {
+        sym::iter.clone()
+    });
     let expr_behind_ref = ref_expr.expr()?;
     let ty = sema.type_of_expr(&expr_behind_ref)?.adjusted();
     let scope = sema.scope(iterable.syntax())?;

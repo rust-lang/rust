@@ -3,7 +3,7 @@ use syntax::{
     ast::{self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasName},
     ted, NodeOrToken,
     SyntaxKind::{BLOCK_EXPR, BREAK_EXPR, COMMENT, LOOP_EXPR, MATCH_GUARD, PATH_EXPR, RETURN_EXPR},
-    SyntaxNode,
+    SyntaxNode, T,
 };
 
 use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
@@ -26,8 +26,8 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let node = if ctx.has_empty_selection() {
-        if let Some(expr_stmt) = ctx.find_node_at_offset::<ast::ExprStmt>() {
-            expr_stmt.syntax().clone()
+        if let Some(t) = ctx.token_at_offset().find(|it| it.kind() == T![;]) {
+            t.parent().and_then(ast::ExprStmt::cast)?.syntax().clone()
         } else if let Some(expr) = ctx.find_node_at_offset::<ast::Expr>() {
             expr.syntax().ancestors().find_map(valid_target_expr)?.syntax().clone()
         } else {
@@ -197,6 +197,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     block.indent(indent_to);
                 }
             }
+            edit.rename();
         },
     )
 }

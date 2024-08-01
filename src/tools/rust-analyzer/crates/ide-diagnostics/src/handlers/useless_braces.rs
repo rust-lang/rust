@@ -1,8 +1,5 @@
 use hir::InFile;
-use ide_db::{
-    base_db::{FileId, FileRange},
-    source_change::SourceChange,
-};
+use ide_db::{source_change::SourceChange, EditionedFileId, FileRange};
 use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
 use text_edit::TextEdit;
@@ -14,7 +11,7 @@ use crate::{fix, Diagnostic, DiagnosticCode};
 // Diagnostic for unnecessary braces in `use` items.
 pub(crate) fn useless_braces(
     acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
+    file_id: EditionedFileId,
     node: &SyntaxNode,
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
@@ -41,7 +38,7 @@ pub(crate) fn useless_braces(
             Diagnostic::new(
                 DiagnosticCode::RustcLint("unused_braces"),
                 "Unnecessary braces in use statement".to_owned(),
-                FileRange { file_id, range: use_range },
+                FileRange { file_id: file_id.into(), range: use_range },
             )
             .with_main_node(InFile::new(file_id.into(), SyntaxNodePtr::new(node)))
             .with_fixes(Some(vec![fix(

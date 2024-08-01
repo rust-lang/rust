@@ -2,16 +2,15 @@ use std::collections::BTreeSet;
 
 use ast::make;
 use either::Either;
-use hir::{db::HirDatabase, PathResolution, Semantics, TypeInfo};
+use hir::{db::HirDatabase, sym, FileRange, PathResolution, Semantics, TypeInfo};
 use ide_db::{
-    base_db::{FileId, FileRange},
     defs::Definition,
     imports::insert_use::remove_path_if_in_use_stmt,
     path_transform::PathTransform,
     search::{FileReference, FileReferenceNode, SearchScope},
     source_change::SourceChangeBuilder,
     syntax_helpers::{insert_whitespace_into_node::insert_ws_into, node_ext::expr_as_name_ref},
-    RootDatabase,
+    EditionedFileId, RootDatabase,
 };
 use itertools::{izip, Itertools};
 use syntax::{
@@ -304,7 +303,7 @@ fn get_fn_params(
 
 fn inline(
     sema: &Semantics<'_, RootDatabase>,
-    function_def_file_id: FileId,
+    function_def_file_id: EditionedFileId,
     function: hir::Function,
     fn_body: &ast::BlockExpr,
     params: &[(ast::Pat, Option<ast::Type>, hir::Param)],
@@ -430,10 +429,7 @@ fn inline(
 
             let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
 
-            let is_self = param
-                .name(sema.db)
-                .and_then(|name| name.as_text())
-                .is_some_and(|name| name == "self");
+            let is_self = param.name(sema.db).is_some_and(|name| name == sym::self_.clone());
 
             if is_self {
                 let mut this_pat = make::ident_pat(false, false, make::name("this"));

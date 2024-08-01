@@ -1,5 +1,5 @@
-use hir::{db::ExpandDatabase, diagnostics::RemoveTrailingReturn};
-use ide_db::{assists::Assist, base_db::FileRange, source_change::SourceChange};
+use hir::{db::ExpandDatabase, diagnostics::RemoveTrailingReturn, FileRange};
+use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{ast, AstNode};
 use text_edit::TextEdit;
 

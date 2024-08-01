@@ -517,7 +517,7 @@ impl Printer<'_> {
                     if i != 0 {
                         w!(self, ", ");
                     }
-                    if *ellipsis == Some(i) {
+                    if *ellipsis == Some(i as u32) {
                         w!(self, ".., ");
                     }
                     self.print_pat(*pat);
@@ -595,7 +595,7 @@ impl Printer<'_> {
                     if i != 0 {
                         w!(self, ", ");
                     }
-                    if *ellipsis == Some(i) {
+                    if *ellipsis == Some(i as u32) {
                         w!(self, ", ..");
                     }
                     self.print_pat(*arg);

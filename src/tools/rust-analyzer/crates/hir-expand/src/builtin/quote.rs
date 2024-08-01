@@ -1,13 +1,14 @@
 //! A simplified version of quote-crate like quasi quote macro
 #![allow(clippy::crate_in_macro_def)]
 
+use intern::{sym, Symbol};
 use span::Span;
-use syntax::format_smolstr;
+use tt::IdentIsRaw;
 
 use crate::name::Name;
 
-pub(crate) const fn dollar_crate(span: Span) -> tt::Ident<Span> {
-    tt::Ident { text: syntax::SmolStr::new_static("$crate"), span }
+pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
+    tt::Ident { sym: sym::dollar_crate.clone(), span, is_raw: tt::IdentIsRaw::No }
 }
 
 // A helper macro quote macro
@@ -16,22 +17,21 @@ pub(crate) const fn dollar_crate(span: Span) -> tt::Ident<Span> {
 // 2. #()* pattern repetition not supported now
 //    * But we can do it manually, see `test_quote_derive_copy_hack`
 #[doc(hidden)]
-#[macro_export]
-macro_rules! __quote {
+macro_rules! quote_impl__ {
     ($span:ident) => {
         Vec::<$crate::tt::TokenTree>::new()
     };
 
     ( @SUBTREE($span:ident) $delim:ident $($tt:tt)* ) => {
         {
-            let children = $crate::__quote!($span $($tt)*);
+            let children = $crate::builtin::quote::__quote!($span $($tt)*);
             $crate::tt::Subtree {
                 delimiter: crate::tt::Delimiter {
                     kind: crate::tt::DelimiterKind::$delim,
                     open: $span,
                     close: $span,
                 },
-                token_trees: $crate::quote::IntoTt::to_tokens(children).into_boxed_slice(),
+                token_trees: $crate::builtin::quote::IntoTt::to_tokens(children).into_boxed_slice(),
             }
         }
     };
@@ -68,9 +68,9 @@ macro_rules! __quote {
     // hash variable
     ($span:ident # $first:ident $($tail:tt)* ) => {
         {
-            let token = $crate::quote::ToTokenTree::to_token($first, $span);
+            let token = $crate::builtin::quote::ToTokenTree::to_token($first, $span);
             let mut tokens = vec![token.into()];
-            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $($tail)*));
+            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
             tokens.append(&mut tail_tokens);
             tokens
         }
@@ -78,64 +78,66 @@ macro_rules! __quote {
 
     ($span:ident ## $first:ident $($tail:tt)* ) => {
         {
-            let mut tokens = $first.into_iter().map(|it| $crate::quote::ToTokenTree::to_token(it, $span)).collect::<Vec<crate::tt::TokenTree>>();
-            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $($tail)*));
+            let mut tokens = $first.into_iter().map(|it| $crate::builtin::quote::ToTokenTree::to_token(it, $span)).collect::<Vec<crate::tt::TokenTree>>();
+            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
             tokens.append(&mut tail_tokens);
             tokens
         }
     };
 
     // Brace
-    ($span:ident  { $($tt:tt)* } ) => { $crate::__quote!(@SUBTREE($span) Brace $($tt)*) };
+    ($span:ident  { $($tt:tt)* } ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Brace $($tt)*) };
     // Bracket
-    ($span:ident  [ $($tt:tt)* ] ) => { $crate::__quote!(@SUBTREE($span) Bracket $($tt)*) };
+    ($span:ident  [ $($tt:tt)* ] ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Bracket $($tt)*) };
     // Parenthesis
-    ($span:ident  ( $($tt:tt)* ) ) => { $crate::__quote!(@SUBTREE($span) Parenthesis $($tt)*) };
+    ($span:ident  ( $($tt:tt)* ) ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Parenthesis $($tt)*) };
 
     // Literal
-    ($span:ident $tt:literal ) => { vec![$crate::quote::ToTokenTree::to_token($tt, $span).into()] };
+    ($span:ident $tt:literal ) => { vec![$crate::builtin::quote::ToTokenTree::to_token($tt, $span).into()] };
     // Ident
     ($span:ident $tt:ident ) => {
         vec![ {
             crate::tt::Leaf::Ident(crate::tt::Ident {
-                text: stringify!($tt).into(),
+                sym: intern::Symbol::intern(stringify!($tt)),
                 span: $span,
+                is_raw: tt::IdentIsRaw::No,
             }).into()
         }]
     };
 
     // Puncts
     // FIXME: Not all puncts are handled
-    ($span:ident -> ) => {$crate::__quote!(@PUNCT($span) '-', '>')};
-    ($span:ident & ) => {$crate::__quote!(@PUNCT($span) '&')};
-    ($span:ident , ) => {$crate::__quote!(@PUNCT($span) ',')};
-    ($span:ident : ) => {$crate::__quote!(@PUNCT($span) ':')};
-    ($span:ident ; ) => {$crate::__quote!(@PUNCT($span) ';')};
-    ($span:ident :: ) => {$crate::__quote!(@PUNCT($span) ':', ':')};
-    ($span:ident . ) => {$crate::__quote!(@PUNCT($span) '.')};
-    ($span:ident < ) => {$crate::__quote!(@PUNCT($span) '<')};
-    ($span:ident > ) => {$crate::__quote!(@PUNCT($span) '>')};
-    ($span:ident ! ) => {$crate::__quote!(@PUNCT($span) '!')};
+    ($span:ident -> ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '-', '>')};
+    ($span:ident & ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '&')};
+    ($span:ident , ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ',')};
+    ($span:ident : ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ':')};
+    ($span:ident ; ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ';')};
+    ($span:ident :: ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ':', ':')};
+    ($span:ident . ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '.')};
+    ($span:ident < ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '<')};
+    ($span:ident > ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '>')};
+    ($span:ident ! ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '!')};
 
     ($span:ident $first:tt $($tail:tt)+ ) => {
         {
-            let mut tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $first ));
-            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($span $($tail)*));
+            let mut tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $first ));
+            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
 
             tokens.append(&mut tail_tokens);
             tokens
         }
     };
 }
+pub(super) use quote_impl__ as __quote;
 
 /// FIXME:
 /// It probably should implement in proc-macro
-#[macro_export]
-macro_rules! quote {
+macro_rules! quote_impl {
     ($span:ident=> $($tt:tt)* ) => {
-        $crate::quote::IntoTt::to_subtree($crate::__quote!($span $($tt)*), $span)
+        $crate::builtin::quote::IntoTt::to_subtree($crate::builtin::quote::__quote!($span $($tt)*), $span)
     }
 }
+pub(super) use quote_impl as quote;
 
 pub(crate) trait IntoTt {
     fn to_subtree(self, span: Span) -> crate::tt::Subtree;
@@ -175,12 +177,6 @@ impl ToTokenTree for crate::tt::TokenTree {
     }
 }
 
-impl ToTokenTree for &crate::tt::TokenTree {
-    fn to_token(self, _: Span) -> crate::tt::TokenTree {
-        self.clone()
-    }
-}
-
 impl ToTokenTree for crate::tt::Subtree {
     fn to_token(self, _: Span) -> crate::tt::TokenTree {
         self.into()
@@ -196,42 +192,57 @@ macro_rules! impl_to_to_tokentrees {
                     leaf.into()
                 }
             }
-
-            impl ToTokenTree for &$ty {
-                fn to_token($this, $span: Span) -> crate::tt::TokenTree {
-                    let leaf: crate::tt::Leaf = $im.clone().into();
-                    leaf.into()
-                }
-            }
         )*
     }
 }
 
+impl<T: ToTokenTree + Clone> ToTokenTree for &T {
+    fn to_token(self, span: Span) -> crate::tt::TokenTree {
+        self.clone().to_token(span)
+    }
+}
+
 impl_to_to_tokentrees! {
-    span: u32 => self { crate::tt::Literal{text: self.to_string().into(), span} };
-    span: usize => self { crate::tt::Literal{text: self.to_string().into(), span} };
-    span: i32 => self { crate::tt::Literal{text: self.to_string().into(), span} };
-    span: bool => self { crate::tt::Ident{text: self.to_string().into(), span} };
+    span: u32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
+    span: usize => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
+    span: i32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
+    span: bool => self { crate::tt::Ident{sym: if self { sym::true_.clone() } else { sym::false_.clone() }, span, is_raw: tt::IdentIsRaw::No } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
     _span: crate::tt::Punct => self { self };
-    span: &str => self { crate::tt::Literal{text: format_smolstr!("\"{}\"", self.escape_default()), span}};
-    span: String => self { crate::tt::Literal{text: format_smolstr!("\"{}\"", self.escape_default()), span}};
-    span: Name => self { crate::tt::Ident{text: self.to_smol_str(), span}};
+    span: &str => self { crate::tt::Literal{symbol: Symbol::intern(self), span, kind: tt::LitKind::Str, suffix: None }};
+    span: String => self { crate::tt::Literal{symbol: Symbol::intern(&self), span, kind: tt::LitKind::Str, suffix: None }};
+    span: Name => self {
+        let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
+        crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }
+    };
+    span: Symbol => self {
+        let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
+        crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }
+    };
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tt;
-    use base_db::FileId;
+    use ::tt::IdentIsRaw;
     use expect_test::expect;
+    use intern::Symbol;
     use span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
     use syntax::{TextRange, TextSize};
 
+    use super::quote;
+
     const DUMMY: tt::Span = tt::Span {
         range: TextRange::empty(TextSize::new(0)),
-        anchor: SpanAnchor { file_id: FileId::from_raw(0xe4e4e), ast_id: ROOT_ERASED_FILE_AST_ID },
+        anchor: SpanAnchor {
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        },
         ctx: SyntaxContextId::ROOT,
     };
 
@@ -257,7 +268,8 @@ mod tests {
     }
 
     fn mk_ident(name: &str) -> crate::tt::Ident {
-        crate::tt::Ident { text: name.into(), span: DUMMY }
+        let (is_raw, s) = IdentIsRaw::split_from_symbol(name);
+        crate::tt::Ident { sym: Symbol::intern(s), span: DUMMY, is_raw }
     }
 
     #[test]

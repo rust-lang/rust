@@ -80,13 +80,11 @@ macro_rules! register_ast_id_node {
 }
 register_ast_id_node! {
     impl AstIdNode for
-    Item,
+    Item, AnyHasGenericParams,
         Adt,
             Enum,
                 Variant,
             Struct,
-                RecordField,
-                TupleField,
             Union,
         AssocItem,
             Const,
@@ -104,7 +102,7 @@ register_ast_id_node! {
         Trait,
         TraitAlias,
         Use,
-    BlockExpr, ConstArg, Param, SelfParam
+    BlockExpr, ConstArg
 }
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.

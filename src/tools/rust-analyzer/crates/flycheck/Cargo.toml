@@ -24,6 +24,7 @@ process-wrap.workspace = true
 paths.workspace = true
 stdx.workspace = true
 toolchain.workspace = true
+project-model.workspace = true
 
 [lints]
 workspace = true

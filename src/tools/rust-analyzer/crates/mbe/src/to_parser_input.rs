@@ -3,11 +3,15 @@
 
 use std::fmt;
 
+use span::Edition;
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
 use tt::buffer::TokenBuffer;
 
-pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(buffer: &TokenBuffer<'_, S>) -> parser::Input {
+pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(
+    edition: Edition,
+    buffer: &TokenBuffer<'_, S>,
+) -> parser::Input {
     let mut res = parser::Input::default();
 
     let mut current = buffer.begin();
@@ -35,35 +39,39 @@ pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(buffer: &TokenBuffer<'_, S>)
             Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
                 match leaf {
                     tt::Leaf::Literal(lit) => {
-                        let is_negated = lit.text.starts_with('-');
-                        let inner_text = &lit.text[if is_negated { 1 } else { 0 }..];
-
-                        let kind = parser::LexedStr::single_token(inner_text)
-                            .map(|(kind, _error)| kind)
-                            .filter(|kind| {
-                                kind.is_literal()
-                                    && (!is_negated || matches!(kind, FLOAT_NUMBER | INT_NUMBER))
-                            })
-                            .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &lit));
-
+                        let kind = match lit.kind {
+                            tt::LitKind::Byte => SyntaxKind::BYTE,
+                            tt::LitKind::Char => SyntaxKind::CHAR,
+                            tt::LitKind::Integer => SyntaxKind::INT_NUMBER,
+                            tt::LitKind::Float => SyntaxKind::FLOAT_NUMBER,
+                            tt::LitKind::Str | tt::LitKind::StrRaw(_) => SyntaxKind::STRING,
+                            tt::LitKind::ByteStr | tt::LitKind::ByteStrRaw(_) => {
+                                SyntaxKind::BYTE_STRING
+                            }
+                            tt::LitKind::CStr | tt::LitKind::CStrRaw(_) => SyntaxKind::C_STRING,
+                            tt::LitKind::Err(_) => SyntaxKind::ERROR,
+                        };
                         res.push(kind);
 
-                        if kind == FLOAT_NUMBER && !inner_text.ends_with('.') {
+                        if kind == FLOAT_NUMBER && !lit.symbol.as_str().ends_with('.') {
                             // Tag the token as joint if it is float with a fractional part
                             // we use this jointness to inform the parser about what token split
                             // event to emit when we encounter a float literal in a field access
                             res.was_joint();
                         }
                     }
-                    tt::Leaf::Ident(ident) => match ident.text.as_ref() {
+                    tt::Leaf::Ident(ident) => match ident.sym.as_str() {
                         "_" => res.push(T![_]),
                         i if i.starts_with('\'') => res.push(LIFETIME_IDENT),
-                        _ => match SyntaxKind::from_keyword(&ident.text) {
+                        _ if ident.is_raw.yes() => res.push(IDENT),
+                        "gen" if !edition.at_least_2024() => res.push(IDENT),
+                        "dyn" if !edition.at_least_2018() => res.push_ident(DYN_KW),
+                        "async" | "await" | "try" if !edition.at_least_2018() => res.push(IDENT),
+                        text => match SyntaxKind::from_keyword(text) {
                             Some(kind) => res.push(kind),
                             None => {
-                                let contextual_keyword =
-                                    SyntaxKind::from_contextual_keyword(&ident.text)
-                                        .unwrap_or(SyntaxKind::IDENT);
+                                let contextual_keyword = SyntaxKind::from_contextual_keyword(text)
+                                    .unwrap_or(SyntaxKind::IDENT);
                                 res.push_ident(contextual_keyword);
                             }
                         },

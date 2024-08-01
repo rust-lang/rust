@@ -9,7 +9,8 @@ use chalk_ir::{
 use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
-use hir_expand::name;
+use hir_expand::name::Name;
+use intern::sym;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use triomphe::Arc;
@@ -781,7 +782,8 @@ impl<'a> InferenceTable<'a> {
         let krate = self.trait_env.krate;
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
         let trait_data = self.db.trait_data(fn_once_trait);
-        let output_assoc_type = trait_data.associated_type_by_name(&name![Output])?;
+        let output_assoc_type =
+            trait_data.associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
 
         let mut arg_tys = Vec::with_capacity(num_args);
         let arg_ty = TyBuilder::tuple(num_args)

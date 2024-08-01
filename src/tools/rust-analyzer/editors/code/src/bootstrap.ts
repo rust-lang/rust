@@ -42,6 +42,7 @@ async function getServer(
         enableProposedApi: boolean | undefined;
     } = context.extension.packageJSON;
 
+    // check if the server path is configured explicitly
     const explicitPath = process.env["__RA_LSP_SERVER_DEBUG"] ?? config.serverPath;
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
@@ -51,12 +52,29 @@ async function getServer(
     }
     if (packageJson.releaseTag === null) return "rust-analyzer";
 
+    if (vscode.workspace.workspaceFolders?.length === 1) {
+        // otherwise check if there is a toolchain override for the current vscode workspace
+        // and if the toolchain of this override has a rust-analyzer component
+        // if so, use the rust-analyzer component
+        const toolchainTomlExists = await fileExists(
+            vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0]!.uri, "rust-toolchain.toml"),
+        );
+        if (toolchainTomlExists) {
+            const res = spawnSync("rustup", ["which", "rust-analyzer"], {
+                encoding: "utf8",
+                env: { ...process.env },
+                cwd: vscode.workspace.workspaceFolders[0]!.uri.fsPath,
+            });
+            if (!res.error && res.status === 0) {
+                return res.stdout.trim();
+            }
+        }
+    }
+
+    // finally, use the bundled one
     const ext = process.platform === "win32" ? ".exe" : "";
     const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
-    const bundledExists = await vscode.workspace.fs.stat(bundled).then(
-        () => true,
-        () => false,
-    );
+    const bundledExists = await fileExists(bundled);
     if (bundledExists) {
         let server = bundled;
         if (await isNixOs()) {
@@ -84,6 +102,13 @@ async function getServer(
     return undefined;
 }
 
+async function fileExists(uri: vscode.Uri) {
+    return await vscode.workspace.fs.stat(uri).then(
+        () => true,
+        () => false,
+    );
+}
+
 export function isValidExecutable(path: string, extraEnv: Env): boolean {
     log.debug("Checking availability of a binary at", path);
 
@@ -92,9 +117,11 @@ export function isValidExecutable(path: string, extraEnv: Env): boolean {
         env: { ...process.env, ...extraEnv },
     });
 
-    const printOutput = res.error ? log.warn : log.info;
-    printOutput(path, "--version:", res);
-
+    if (res.error) {
+        log.warn(path, "--version:", res);
+    } else {
+        log.info(path, "--version:", res);
+    }
     return res.status === 0;
 }
 

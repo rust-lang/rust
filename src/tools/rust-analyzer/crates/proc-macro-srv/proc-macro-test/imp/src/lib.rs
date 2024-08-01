@@ -1,6 +1,5 @@
 //! Exports a few trivial procedural macros for testing.
 
-
 #![feature(proc_macro_span, proc_macro_def_site)]
 #![allow(clippy::all)]
 

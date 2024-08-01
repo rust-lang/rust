@@ -6,6 +6,7 @@ use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
     FxHashMap, RootDatabase, SymbolKind,
 };
+use stdx::hash_once;
 use syntax::{
     ast, match_ast, AstNode, AstToken, NodeOrToken,
     SyntaxKind::{self, *},
@@ -358,17 +359,7 @@ fn highlight_name(
 }
 
 fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
-    fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
-        use ide_db::FxHasher;
-
-        use std::hash::Hasher;
-
-        let mut hasher = FxHasher::default();
-        x.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    hash((name, shadow_count))
+    hash_once::<ide_db::FxHasher>((name.as_str(), shadow_count))
 }
 
 pub(super) fn highlight_def(

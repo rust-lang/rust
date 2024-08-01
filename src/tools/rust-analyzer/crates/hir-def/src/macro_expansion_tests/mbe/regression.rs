@@ -1058,7 +1058,7 @@ macro_rules! concat {}
 macro_rules! line {}
 
 fn main() {
-    "event 0u32";
+    "event 0";
 }
 
 "##]],
@@ -1084,7 +1084,7 @@ fn main() {
 macro_rules! concat_bytes {}
 
 fn main() {
-    let x = /* error: unexpected token in input */[];
+    let x = /* error: unexpected token */b"";
 }
 
 "#]],

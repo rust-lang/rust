@@ -3,6 +3,7 @@
 
 pub(crate) type Cause = String;
 
+#[derive(Debug)]
 pub(crate) struct OpQueue<Args = (), Output = ()> {
     op_requested: Option<(Cause, Args)>,
     op_in_progress: bool,

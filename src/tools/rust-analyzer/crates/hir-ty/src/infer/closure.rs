@@ -15,7 +15,8 @@ use hir_def::{
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
 };
-use hir_expand::name;
+use hir_expand::name::Name;
+use intern::sym;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::never;
@@ -268,9 +269,7 @@ impl CapturedItem {
                     }
                     let variant_data = f.parent.variant_data(db.upcast());
                     let field = match &*variant_data {
-                        VariantData::Record(fields) => {
-                            fields[f.local_id].name.as_str().unwrap_or("[missing field]").to_owned()
-                        }
+                        VariantData::Record(fields) => fields[f.local_id].name.as_str().to_owned(),
                         VariantData::Tuple(fields) => fields
                             .iter()
                             .position(|it| it.0 == f.local_id)
@@ -621,8 +620,10 @@ impl InferenceContext<'_> {
                         if let Some(deref_trait) =
                             self.resolve_lang_item(LangItem::DerefMut).and_then(|it| it.as_trait())
                         {
-                            if let Some(deref_fn) =
-                                self.db.trait_data(deref_trait).method_by_name(&name![deref_mut])
+                            if let Some(deref_fn) = self
+                                .db
+                                .trait_data(deref_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
                             {
                                 break 'b deref_fn == f;
                             }
@@ -888,7 +889,7 @@ impl InferenceContext<'_> {
         match &self.body[pat] {
             Pat::Missing | Pat::Wild => (),
             Pat::Tuple { args, ellipsis } => {
-                let (al, ar) = args.split_at(ellipsis.unwrap_or(args.len()));
+                let (al, ar) = args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                 let field_count = match self.result[pat].kind(Interner) {
                     TyKind::Tuple(_, s) => s.len(Interner),
                     _ => return,
@@ -963,7 +964,7 @@ impl InferenceContext<'_> {
                     }
                     VariantId::StructId(s) => {
                         let vd = &*self.db.struct_data(s).variant_data;
-                        let (al, ar) = args.split_at(ellipsis.unwrap_or(args.len()));
+                        let (al, ar) = args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                         let fields = vd.fields().iter();
                         let it =
                             al.iter().zip(fields.clone()).chain(ar.iter().rev().zip(fields.rev()));

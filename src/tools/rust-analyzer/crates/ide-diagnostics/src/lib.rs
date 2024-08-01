@@ -62,7 +62,6 @@ mod handlers {
     pub(crate) mod unresolved_macro_call;
     pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_module;
-    pub(crate) mod unresolved_proc_macro;
     pub(crate) mod unused_variables;
 
     // The handlers below are unusual, the implement the diagnostics as well.
@@ -78,13 +77,13 @@ mod tests;
 use hir::{diagnostics::AnyDiagnostic, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
-    base_db::{FileId, FileRange, SourceDatabase},
+    base_db::SourceDatabase,
     generated::lints::{LintGroup, CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS},
     imports::insert_use::InsertUseConfig,
     label::Label,
     source_change::SourceChange,
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-    FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
 use once_cell::sync::Lazy;
 use stdx::never;
@@ -144,12 +143,16 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    fn new(code: DiagnosticCode, message: impl Into<String>, range: FileRange) -> Diagnostic {
+    fn new(
+        code: DiagnosticCode,
+        message: impl Into<String>,
+        range: impl Into<FileRange>,
+    ) -> Diagnostic {
         let message = message.into();
         Diagnostic {
             code,
             message,
-            range,
+            range: range.into(),
             severity: match code {
                 DiagnosticCode::RustcHardError(_) => Severity::Error,
                 // FIXME: Rustc lints are not always warning, but the ones that are currently implemented are all warnings.
@@ -290,6 +293,7 @@ impl DiagnosticsContext<'_> {
             }
         })()
         .unwrap_or_else(|| sema.diagnostics_display_range(*node))
+        .into()
     }
 }
 
@@ -303,6 +307,9 @@ pub fn diagnostics(
 ) -> Vec<Diagnostic> {
     let _p = tracing::info_span!("diagnostics").entered();
     let sema = Semantics::new(db);
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
     let mut res = Vec::new();
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
@@ -310,7 +317,7 @@ pub fn diagnostics(
         Diagnostic::new(
             DiagnosticCode::RustcHardError("syntax-error"),
             format!("Syntax Error: {err}"),
-            FileRange { file_id, range: err.range() },
+            FileRange { file_id: file_id.into(), range: err.range() },
         )
     }));
     let parse_errors = res.len();
@@ -336,7 +343,7 @@ pub fn diagnostics(
         // file, so we skip semantic diagnostics so we can show these faster.
         Some(m) if parse_errors < 16 => m.diagnostics(db, &mut diags, config.style_lints),
         Some(_) => (),
-        None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id),
+        None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id.file_id()),
     }
 
     for diag in diags {
@@ -397,7 +404,6 @@ pub fn diagnostics(
             AnyDiagnostic::UnresolvedMacroCall(d) => handlers::unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::UnresolvedMethodCall(d) => handlers::unresolved_method::unresolved_method(&ctx, &d),
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
-            AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d, config.proc_macros_enabled, config.proc_attr_macros_enabled),
             AnyDiagnostic::UnusedMut(d) => match handlers::mutability_errors::unused_mut(&ctx, &d) {
                 Some(it) => it,
                 None => continue,
@@ -613,7 +619,7 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
         group: None,
         target,
         source_change: None,
-        trigger_signature_help: false,
+        command: None,
     }
 }
 
@@ -627,4 +633,5 @@ fn adjusted_display_range<N: AstNode>(
     diag_ptr
         .with_value(adj(node).unwrap_or_else(|| diag_ptr.value.text_range()))
         .original_node_file_range_rooted(ctx.sema.db)
+        .into()
 }

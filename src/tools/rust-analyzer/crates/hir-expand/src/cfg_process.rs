@@ -3,13 +3,13 @@ use std::iter::Peekable;
 
 use base_db::CrateId;
 use cfg::{CfgAtom, CfgExpr};
+use intern::{sym, Symbol};
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, Attr, HasAttrs, Meta, VariantList},
     AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T,
 };
 use tracing::{debug, warn};
-use tt::SmolStr;
 
 use crate::{db::ExpandDatabase, proc_macro::ProcMacroKind, MacroCallLoc, MacroDefKind};
 
@@ -263,13 +263,13 @@ where
     let name = match iter.next() {
         None => return None,
         Some(NodeOrToken::Token(element)) => match element.kind() {
-            syntax::T![ident] => SmolStr::new(element.text()),
+            syntax::T![ident] => Symbol::intern(element.text()),
             _ => return Some(CfgExpr::Invalid),
         },
         Some(_) => return Some(CfgExpr::Invalid),
     };
-    let result = match name.as_str() {
-        "all" | "any" | "not" => {
+    let result = match &name {
+        s if [&sym::all, &sym::any, &sym::not].contains(&s) => {
             let mut preds = Vec::new();
             let Some(NodeOrToken::Node(tree)) = iter.next() else {
                 return Some(CfgExpr::Invalid);
@@ -286,10 +286,12 @@ where
                     preds.push(pred);
                 }
             }
-            let group = match name.as_str() {
-                "all" => CfgExpr::All(preds),
-                "any" => CfgExpr::Any(preds),
-                "not" => CfgExpr::Not(Box::new(preds.pop().unwrap_or(CfgExpr::Invalid))),
+            let group = match &name {
+                s if *s == sym::all => CfgExpr::All(preds.into_boxed_slice()),
+                s if *s == sym::any => CfgExpr::Any(preds.into_boxed_slice()),
+                s if *s == sym::not => {
+                    CfgExpr::Not(Box::new(preds.pop().unwrap_or(CfgExpr::Invalid)))
+                }
                 _ => unreachable!(),
             };
             Some(group)
@@ -302,8 +304,10 @@ where
                         if (value_token.kind() == syntax::SyntaxKind::STRING) =>
                     {
                         let value = value_token.text();
-                        let value = SmolStr::new(value.trim_matches('"'));
-                        Some(CfgExpr::Atom(CfgAtom::KeyValue { key: name, value }))
+                        Some(CfgExpr::Atom(CfgAtom::KeyValue {
+                            key: name,
+                            value: Symbol::intern(value.trim_matches('"')),
+                        }))
                     }
                     _ => None,
                 }
@@ -339,7 +343,7 @@ mod tests {
         assert_eq!(node.syntax().text_range().start(), 0.into());
 
         let cfg = parse_from_attr_meta(node.meta().unwrap()).unwrap();
-        let actual = format!("#![cfg({})]", DnfExpr::new(cfg));
+        let actual = format!("#![cfg({})]", DnfExpr::new(&cfg));
         expect.assert_eq(&actual);
     }
     #[test]

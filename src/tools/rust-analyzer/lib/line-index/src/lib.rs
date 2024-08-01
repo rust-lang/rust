@@ -275,21 +275,21 @@ unsafe fn analyze_source_file_sse2(
         let ptr = src_bytes.as_ptr() as *const __m128i;
         // We don't know if the pointer is aligned to 16 bytes, so we
         // use `loadu`, which supports unaligned loading.
-        let chunk = _mm_loadu_si128(ptr.add(chunk_index));
+        let chunk = unsafe { _mm_loadu_si128(ptr.add(chunk_index)) };
 
         // For character in the chunk, see if its byte value is < 0, which
         // indicates that it's part of a UTF-8 char.
-        let multibyte_test = _mm_cmplt_epi8(chunk, _mm_set1_epi8(0));
+        let multibyte_test = unsafe { _mm_cmplt_epi8(chunk, _mm_set1_epi8(0)) };
         // Create a bit mask from the comparison results.
-        let multibyte_mask = _mm_movemask_epi8(multibyte_test);
+        let multibyte_mask = unsafe { _mm_movemask_epi8(multibyte_test) };
 
         // If the bit mask is all zero, we only have ASCII chars here:
         if multibyte_mask == 0 {
             assert!(intra_chunk_offset == 0);
 
             // Check for newlines in the chunk
-            let newlines_test = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8));
-            let newlines_mask = _mm_movemask_epi8(newlines_test);
+            let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
+            let newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
 
             if newlines_mask != 0 {
                 // All control characters are newlines, record them
@@ -349,8 +349,8 @@ unsafe fn analyze_source_file_sse2(
 unsafe fn move_mask(v: std::arch::aarch64::uint8x16_t) -> u64 {
     use std::arch::aarch64::*;
 
-    let nibble_mask = vshrn_n_u16(vreinterpretq_u16_u8(v), 4);
-    vget_lane_u64(vreinterpret_u64_u8(nibble_mask), 0)
+    let nibble_mask = unsafe { vshrn_n_u16(vreinterpretq_u16_u8(v), 4) };
+    unsafe { vget_lane_u64(vreinterpret_u64_u8(nibble_mask), 0) }
 }
 
 #[target_feature(enable = "neon")]
@@ -368,7 +368,7 @@ unsafe fn analyze_source_file_neon(
 
     let chunk_count = src.len() / CHUNK_SIZE;
 
-    let newline = vdupq_n_s8(b'\n' as i8);
+    let newline = unsafe { vdupq_n_s8(b'\n' as i8) };
 
     // This variable keeps track of where we should start decoding a
     // chunk. If a multi-byte character spans across chunk boundaries,
@@ -378,21 +378,21 @@ unsafe fn analyze_source_file_neon(
 
     for chunk_index in 0..chunk_count {
         let ptr = src_bytes.as_ptr() as *const i8;
-        let chunk = vld1q_s8(ptr.add(chunk_index * CHUNK_SIZE));
+        let chunk = unsafe { vld1q_s8(ptr.add(chunk_index * CHUNK_SIZE)) };
 
         // For character in the chunk, see if its byte value is < 0, which
         // indicates that it's part of a UTF-8 char.
-        let multibyte_test = vcltzq_s8(chunk);
+        let multibyte_test = unsafe { vcltzq_s8(chunk) };
         // Create a bit mask from the comparison results.
-        let multibyte_mask = move_mask(multibyte_test);
+        let multibyte_mask = unsafe { move_mask(multibyte_test) };
 
         // If the bit mask is all zero, we only have ASCII chars here:
         if multibyte_mask == 0 {
             assert!(intra_chunk_offset == 0);
 
             // Check for newlines in the chunk
-            let newlines_test = vceqq_s8(chunk, newline);
-            let mut newlines_mask = move_mask(newlines_test);
+            let newlines_test = unsafe { vceqq_s8(chunk, newline) };
+            let mut newlines_mask = unsafe { move_mask(newlines_test) };
 
             // If the bit mask is not all zero, there are newlines in this chunk.
             if newlines_mask != 0 {

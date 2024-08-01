@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use hir::{ImportPathConfig, ModPath, ModuleDef};
+use hir::{ModPath, ModuleDef};
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use syntax::{
     ast::{self, HasName},
@@ -58,15 +58,8 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_path(
-        ctx.db(),
-        ModuleDef::Trait(trait_),
-        ImportPathConfig {
-            prefer_no_std: ctx.config.prefer_no_std,
-            prefer_prelude: ctx.config.prefer_prelude,
-            prefer_absolute: ctx.config.prefer_absolute,
-        },
-    )?;
+    let trait_path =
+        module.find_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.import_path_config())?;
 
     let field_type = field.ty()?;
     let field_name = field.name()?;
@@ -106,15 +99,8 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_path(
-        ctx.db(),
-        ModuleDef::Trait(trait_),
-        ImportPathConfig {
-            prefer_no_std: ctx.config.prefer_no_std,
-            prefer_prelude: ctx.config.prefer_prelude,
-            prefer_absolute: ctx.config.prefer_absolute,
-        },
-    )?;
+    let trait_path =
+        module.find_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.import_path_config())?;
 
     let field_type = field.ty()?;
     let target = field.syntax().text_range();

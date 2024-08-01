@@ -85,7 +85,6 @@
 //! active crate for a given position, and then provide an API to resolve all
 //! syntax nodes against this specific crate.
 
-use base_db::FileId;
 use either::Either;
 use hir_def::{
     child_by_source::ChildBySource,
@@ -103,7 +102,7 @@ use hir_expand::{
 };
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::MacroFileId;
+use span::{FileId, MacroFileId};
 use stdx::impl_from;
 use syntax::{
     ast::{self, HasName},
@@ -162,7 +161,7 @@ impl SourceToDefCtx<'_, '_> {
             }
             None => {
                 let file_id = src.file_id.original_file(self.db.upcast());
-                self.file_to_def(file_id).first().copied()
+                self.file_to_def(file_id.file_id()).first().copied()
             }
         }?;
 
@@ -175,7 +174,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn source_file_to_def(&mut self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {
         let _p = tracing::info_span!("source_file_to_def").entered();
         let file_id = src.file_id.original_file(self.db.upcast());
-        self.file_to_def(file_id).first().copied()
+        self.file_to_def(file_id.file_id()).first().copied()
     }
 
     pub(super) fn trait_to_def(&mut self, src: InFile<&ast::Trait>) -> Option<TraitId> {
@@ -412,7 +411,10 @@ impl SourceToDefCtx<'_, '_> {
             return Some(def);
         }
 
-        let def = self.file_to_def(src.file_id.original_file(self.db.upcast())).first().copied()?;
+        let def = self
+            .file_to_def(src.file_id.original_file(self.db.upcast()).file_id())
+            .first()
+            .copied()?;
         Some(def.into())
     }
 

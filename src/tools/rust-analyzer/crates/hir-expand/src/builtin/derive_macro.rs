@@ -1,5 +1,6 @@
 //! Builtin derives.
 
+use intern::sym;
 use itertools::izip;
 use mbe::DocCommentDesugarMode;
 use rustc_hash::FxHashSet;
@@ -8,17 +9,16 @@ use stdx::never;
 use tracing::debug;
 
 use crate::{
+    builtin::quote::{dollar_crate, quote},
+    db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
-    name::{AsName, Name},
-    quote::dollar_crate,
+    name::{self, AsName, Name},
     span_map::ExpansionSpanMap,
-    tt,
+    tt, ExpandError, ExpandResult,
 };
 use syntax::ast::{
     self, AstNode, FieldList, HasAttrs, HasGenericParams, HasModuleItem, HasName, HasTypeBounds,
 };
-
-use crate::{db::ExpandDatabase, name, quote, ExpandError, ExpandResult};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -36,7 +36,7 @@ macro_rules! register_builtin {
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
                 match name {
-                    $( id if id == &name::name![$trait] => Some(BuiltinDeriveExpander::$trait), )*
+                    $( id if id == &sym::$trait => Some(BuiltinDeriveExpander::$trait), )*
                      _ => None,
                 }
             }
@@ -81,7 +81,7 @@ enum VariantShape {
 }
 
 fn tuple_field_iterator(span: Span, n: usize) -> impl Iterator<Item = tt::Ident> {
-    (0..n).map(move |it| tt::Ident::new(format!("f{it}"), span))
+    (0..n).map(move |it| tt::Ident::new(&format!("f{it}"), span))
 }
 
 impl VariantShape {
@@ -128,13 +128,17 @@ impl VariantShape {
         }
     }
 
-    fn from(tm: &ExpansionSpanMap, value: Option<FieldList>) -> Result<Self, ExpandError> {
+    fn from(
+        call_site: Span,
+        tm: &ExpansionSpanMap,
+        value: Option<FieldList>,
+    ) -> Result<Self, ExpandError> {
         let r = match value {
             None => VariantShape::Unit,
             Some(FieldList::RecordFieldList(it)) => VariantShape::Struct(
                 it.fields()
                     .map(|it| it.name())
-                    .map(|it| name_to_token(tm, it))
+                    .map(|it| name_to_token(call_site, tm, it))
                     .collect::<Result<_, _>>()?,
             ),
             Some(FieldList::TupleFieldList(it)) => VariantShape::Tuple(it.fields().count()),
@@ -208,19 +212,20 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
     let (parsed, tm) = &mbe::token_tree_to_syntax_node(
         tt,
         mbe::TopEntryPoint::MacroItems,
-        parser::Edition::CURRENT,
+        parser::Edition::CURRENT_FIXME,
     );
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
-        .ok_or_else(|| ExpandError::other("invalid item definition"))?;
-    let item = macro_items.items().next().ok_or_else(|| ExpandError::other("no item found"))?;
+        .ok_or_else(|| ExpandError::other(call_site, "invalid item definition"))?;
+    let item =
+        macro_items.items().next().ok_or_else(|| ExpandError::other(call_site, "no item found"))?;
     let adt = &ast::Adt::cast(item.syntax().clone())
-        .ok_or_else(|| ExpandError::other("expected struct, enum or union"))?;
+        .ok_or_else(|| ExpandError::other(call_site, "expected struct, enum or union"))?;
     let (name, generic_param_list, where_clause, shape) = match adt {
         ast::Adt::Struct(it) => (
             it.name(),
             it.generic_param_list(),
             it.where_clause(),
-            AdtShape::Struct(VariantShape::from(tm, it.field_list())?),
+            AdtShape::Struct(VariantShape::from(call_site, tm, it.field_list())?),
         ),
         ast::Adt::Enum(it) => {
             let default_variant = it
@@ -240,8 +245,8 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                         .flat_map(|it| it.variants())
                         .map(|it| {
                             Ok((
-                                name_to_token(tm, it.name())?,
-                                VariantShape::from(tm, it.field_list())?,
+                                name_to_token(call_site, tm, it.name())?,
+                                VariantShape::from(call_site, tm, it.field_list())?,
                             ))
                         })
                         .collect::<Result<_, ExpandError>>()?,
@@ -356,20 +361,22 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
             )
         })
         .collect();
-    let name_token = name_to_token(tm, name)?;
+    let name_token = name_to_token(call_site, tm, name)?;
     Ok(BasicAdtInfo { name: name_token, shape, param_types, where_clause, associated_types })
 }
 
 fn name_to_token(
+    call_site: Span,
     token_map: &ExpansionSpanMap,
     name: Option<ast::Name>,
 ) -> Result<tt::Ident, ExpandError> {
     let name = name.ok_or_else(|| {
         debug!("parsed item has no name");
-        ExpandError::other("missing name")
+        ExpandError::other(call_site, "missing name")
     })?;
     let span = token_map.span_at(name.syntax().text_range().start());
-    let name_token = tt::Ident { span, text: name.text().into() };
+
+    let name_token = tt::Ident::new(name.text().as_ref(), span);
     Ok(name_token)
 }
 
@@ -691,14 +698,14 @@ fn partial_eq_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> 
                     }
                     [first, rest @ ..] => {
                         let rest = rest.iter().map(|it| {
-                            let t1 = tt::Ident::new(format!("{}_self", it.text), it.span);
-                            let t2 = tt::Ident::new(format!("{}_other", it.text), it.span);
+                            let t1 = tt::Ident::new(&format!("{}_self", it.sym), it.span);
+                            let t2 = tt::Ident::new(&format!("{}_other", it.sym), it.span);
                             let and_and = and_and(span);
                             quote!(span =>#and_and #t1 .eq( #t2 ))
                         });
                         let first = {
-                            let t1 = tt::Ident::new(format!("{}_self", first.text), first.span);
-                            let t2 = tt::Ident::new(format!("{}_other", first.text), first.span);
+                            let t1 = tt::Ident::new(&format!("{}_self", first.sym), first.span);
+                            let t2 = tt::Ident::new(&format!("{}_other", first.sym), first.span);
                             quote!(span =>#t1 .eq( #t2 ))
                         };
                         quote!(span =>#first ##rest)
@@ -728,7 +735,7 @@ fn self_and_other_patterns(
     let self_patterns = adt.shape.as_pattern_map(
         name,
         |it| {
-            let t = tt::Ident::new(format!("{}_self", it.text), it.span);
+            let t = tt::Ident::new(&format!("{}_self", it.sym), it.span);
             quote!(span =>#t)
         },
         span,
@@ -736,7 +743,7 @@ fn self_and_other_patterns(
     let other_patterns = adt.shape.as_pattern_map(
         name,
         |it| {
-            let t = tt::Ident::new(format!("{}_other", it.text), it.span);
+            let t = tt::Ident::new(&format!("{}_other", it.sym), it.span);
             quote!(span =>#t)
         },
         span,
@@ -774,8 +781,8 @@ fn ord_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
             |(pat1, pat2, fields)| {
                 let mut body = quote!(span =>#krate::cmp::Ordering::Equal);
                 for f in fields.into_iter().rev() {
-                    let t1 = tt::Ident::new(format!("{}_self", f.text), f.span);
-                    let t2 = tt::Ident::new(format!("{}_other", f.text), f.span);
+                    let t1 = tt::Ident::new(&format!("{}_self", f.sym), f.span);
+                    let t2 = tt::Ident::new(&format!("{}_other", f.sym), f.span);
                     body = compare(krate, quote!(span =>#t1), quote!(span =>#t2), body, span);
                 }
                 let fat_arrow = fat_arrow(span);
@@ -836,8 +843,8 @@ fn partial_ord_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree>
                 let mut body =
                     quote!(span =>#krate::option::Option::Some(#krate::cmp::Ordering::Equal));
                 for f in fields.into_iter().rev() {
-                    let t1 = tt::Ident::new(format!("{}_self", f.text), f.span);
-                    let t2 = tt::Ident::new(format!("{}_other", f.text), f.span);
+                    let t1 = tt::Ident::new(&format!("{}_self", f.sym), f.span);
+                    let t2 = tt::Ident::new(&format!("{}_other", f.sym), f.span);
                     body = compare(krate, quote!(span =>#t1), quote!(span =>#t2), body, span);
                 }
                 let fat_arrow = fat_arrow(span);

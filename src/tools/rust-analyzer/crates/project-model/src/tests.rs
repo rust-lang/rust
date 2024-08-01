@@ -1,12 +1,14 @@
 use std::ops::Deref;
 
-use base_db::{CrateGraph, FileId, ProcMacroPaths};
+use base_db::{CrateGraph, ProcMacroPaths};
 use cargo_metadata::Metadata;
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect_file, ExpectFile};
+use intern::sym;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
+use span::FileId;
 use triomphe::Arc;
 
 use crate::{
@@ -180,7 +182,7 @@ fn check_crate_graph(crate_graph: CrateGraph, expect: ExpectFile) {
 #[test]
 fn cargo_hello_world_project_model_with_wildcard_overrides() {
     let cfg_overrides = CfgOverrides {
-        global: CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
+        global: CfgDiff::new(Vec::new(), vec![CfgAtom::Flag(sym::test.clone())]).unwrap(),
         selective: Default::default(),
     };
     let (crate_graph, _proc_macros) =
@@ -199,7 +201,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
         global: Default::default(),
         selective: std::iter::once((
             "libc".to_owned(),
-            CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
+            CfgDiff::new(Vec::new(), vec![CfgAtom::Flag(sym::test.clone())]).unwrap(),
         ))
         .collect(),
     };

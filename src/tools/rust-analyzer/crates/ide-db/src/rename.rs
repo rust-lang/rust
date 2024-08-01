@@ -22,10 +22,10 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
-use base_db::{AnchoredPathBuf, FileId, FileRange};
+use base_db::AnchoredPathBuf;
 use either::Either;
-use hir::{FieldSource, HirFileIdExt, InFile, ModuleSource, Semantics};
-use span::SyntaxContextId;
+use hir::{FieldSource, FileRange, HirFileIdExt, InFile, ModuleSource, Semantics};
+use span::{Edition, EditionedFileId, FileId, SyntaxContextId};
 use stdx::{never, TupleExt};
 use syntax::{
     ast::{self, HasName},
@@ -227,7 +227,8 @@ fn rename_mod(
     module: hir::Module,
     new_name: &str,
 ) -> Result<SourceChange> {
-    if IdentifierKind::classify(new_name)? != IdentifierKind::Ident {
+    if IdentifierKind::classify(module.krate().edition(sema.db), new_name)? != IdentifierKind::Ident
+    {
         bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
 
@@ -240,7 +241,7 @@ fn rename_mod(
     let InFile { file_id, value: def_source } = module.definition_source(sema.db);
     if let ModuleSource::SourceFile(..) = def_source {
         let new_name = new_name.trim_start_matches("r#");
-        let anchor = file_id.original_file(sema.db);
+        let anchor = file_id.original_file(sema.db).file_id();
 
         let is_mod_rs = module.is_mod_rs(sema.db);
         let has_detached_child = module.children(sema.db).any(|child| !child.is_inline(sema.db));
@@ -289,7 +290,7 @@ fn rename_mod(
                     .map(TupleExt::head)
                 {
                     source_change.insert_source_edit(
-                        file_id,
+                        file_id.file_id(),
                         TextEdit::replace(file_range.range, new_name.to_owned()),
                     )
                 };
@@ -300,8 +301,8 @@ fn rename_mod(
 
     let def = Definition::Module(module);
     let usages = def.usages(sema).all();
-    let ref_edits = usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(references, def, new_name))
+    let ref_edits = usages.iter().map(|(file_id, references)| {
+        (EditionedFileId::file_id(file_id), source_edit_from_references(references, def, new_name))
     });
     source_change.extend(ref_edits);
 
@@ -313,7 +314,12 @@ fn rename_reference(
     def: Definition,
     new_name: &str,
 ) -> Result<SourceChange> {
-    let ident_kind = IdentifierKind::classify(new_name)?;
+    let ident_kind = IdentifierKind::classify(
+        def.krate(sema.db)
+            .ok_or_else(|| RenameError("definition has no krate?".into()))?
+            .edition(sema.db),
+        new_name,
+    )?;
 
     if matches!(
         def,
@@ -344,8 +350,8 @@ fn rename_reference(
         bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
     let mut source_change = SourceChange::default();
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(references, def, new_name))
+    source_change.extend(usages.iter().map(|(file_id, references)| {
+        (EditionedFileId::file_id(file_id), source_edit_from_references(references, def, new_name))
     }));
 
     let mut insert_def_edit = |def| {
@@ -578,7 +584,7 @@ fn source_edit_from_def(
             }
         }
         let Some(file_id) = file_id else { bail!("No file available to rename") };
-        return Ok((file_id, edit.finish()));
+        return Ok((EditionedFileId::file_id(file_id), edit.finish()));
     }
     let FileRange { file_id, range } = def
         .range_for_rename(sema)
@@ -594,7 +600,7 @@ fn source_edit_from_def(
         _ => (range, new_name.to_owned()),
     };
     edit.replace(range, new_name);
-    Ok((file_id, edit.finish()))
+    Ok((file_id.file_id(), edit.finish()))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -605,8 +611,8 @@ pub enum IdentifierKind {
 }
 
 impl IdentifierKind {
-    pub fn classify(new_name: &str) -> Result<IdentifierKind> {
-        match parser::LexedStr::single_token(new_name) {
+    pub fn classify(edition: Edition, new_name: &str) -> Result<IdentifierKind> {
+        match parser::LexedStr::single_token(edition, new_name) {
             Some(res) => match res {
                 (SyntaxKind::IDENT, _) => {
                     if let Some(inner) = new_name.strip_prefix("r#") {

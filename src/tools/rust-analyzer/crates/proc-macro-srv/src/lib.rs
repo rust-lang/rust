@@ -130,14 +130,13 @@ impl ProcMacroSrvSpan for TokenId {
     type Server = server_impl::token_id::TokenIdServer;
 
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
-        Self::Server { interner: &server_impl::SYMBOL_INTERNER, call_site, def_site, mixed_site }
+        Self::Server { call_site, def_site, mixed_site }
     }
 }
 impl ProcMacroSrvSpan for Span {
     type Server = server_impl::rust_analyzer_span::RaSpanServer;
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
         Self::Server {
-            interner: &server_impl::SYMBOL_INTERNER,
             call_site,
             def_site,
             mixed_site,

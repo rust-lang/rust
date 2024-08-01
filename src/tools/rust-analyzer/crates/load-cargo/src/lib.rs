@@ -15,9 +15,10 @@ use ide_db::{
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
-use project_model::{CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace};
+use project_model::{
+    CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace, ProjectWorkspaceKind,
+};
 use span::Span;
-use tracing::instrument;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -51,7 +52,6 @@ pub fn load_workspace_at(
     load_workspace(workspace, &cargo_config.extra_env, load_config)
 }
 
-#[instrument(skip_all)]
 pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,
@@ -68,11 +68,14 @@ pub fn load_workspace(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into)),
+            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into))
+            .map_err(|e| (e, true)),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroServer::spawn(path, extra_env).map_err(Into::into)
+            ProcMacroServer::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
         }
-        ProcMacroServerChoice::None => Err(anyhow::format_err!("proc macro server disabled")),
+        ProcMacroServerChoice::None => {
+            Err((anyhow::format_err!("proc macro server disabled"), false))
+        }
     };
 
     let (crate_graph, proc_macros) = ws.to_crate_graph(
@@ -87,7 +90,7 @@ pub fn load_workspace(
     let proc_macros = {
         let proc_macro_server = match &proc_macro_server {
             Ok(it) => Ok(it),
-            Err(e) => Err(e.to_string()),
+            Err((e, hard_err)) => Err((e.to_string(), *hard_err)),
         };
         proc_macros
             .into_iter()
@@ -95,7 +98,7 @@ pub fn load_workspace(
                 (
                     crate_id,
                     path.map_or_else(
-                        |_| Err("proc macro crate is missing dylib".to_owned()),
+                        |e| Err((e, true)),
                         |(_, path)| {
                             proc_macro_server.as_ref().map_err(Clone::clone).and_then(
                                 |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
@@ -240,15 +243,34 @@ impl ProjectFolders {
 
         // register the workspace manifest as well, note that this currently causes duplicates for
         // non-virtual cargo workspaces! We ought to fix that
-        for manifest in workspaces.iter().filter_map(|ws| ws.manifest().map(ManifestPath::as_ref)) {
-            let file_set_roots: Vec<VfsPath> = vec![VfsPath::from(manifest.to_owned())];
+        for ws in workspaces.iter() {
+            let mut file_set_roots: Vec<VfsPath> = vec![];
+            let mut entries = vec![];
 
-            let entry = vfs::loader::Entry::Files(vec![manifest.to_owned()]);
+            if let Some(manifest) = ws.manifest().map(ManifestPath::as_ref) {
+                file_set_roots.push(VfsPath::from(manifest.to_owned()));
+                entries.push(manifest.to_owned());
+            }
 
-            res.watch.push(res.load.len());
-            res.load.push(entry);
-            local_filesets.push(fsc.len() as u64);
-            fsc.add_file_set(file_set_roots)
+            // In case of detached files we do **not** look for a rust-analyzer.toml.
+            if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
+                let ws_root = ws.workspace_root();
+                let ratoml_path = {
+                    let mut p = ws_root.to_path_buf();
+                    p.push("rust-analyzer.toml");
+                    p
+                };
+                file_set_roots.push(VfsPath::from(ratoml_path.to_owned()));
+                entries.push(ratoml_path.to_owned());
+            }
+
+            if !file_set_roots.is_empty() {
+                let entry = vfs::loader::Entry::Files(entries);
+                res.watch.push(res.load.len());
+                res.load.push(entry);
+                local_filesets.push(fsc.len() as u64);
+                fsc.add_file_set(file_set_roots)
+            }
         }
 
         let fsc = fsc.build();
@@ -336,8 +358,7 @@ impl SourceRootConfig {
     }
 }
 
-/// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
-/// with an identity dummy expander.
+/// Load the proc-macros for the given lib path, disabling all expanders whose names are in `ignored_macros`.
 pub fn load_proc_macro(
     server: &ProcMacroServer,
     path: &AbsPath,
@@ -364,7 +385,7 @@ pub fn load_proc_macro(
         }
         Err(e) => {
             tracing::warn!("proc-macro loading for {path} failed: {e}");
-            Err(e)
+            Err((e, true))
         }
     }
 }
@@ -379,7 +400,7 @@ fn load_crate_graph(
 ) -> RootDatabase {
     let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
-    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
+    let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
     let mut db = RootDatabase::new(lru_cap);
     let mut analysis_change = ChangeWithProcMacros::new();
 
@@ -428,14 +449,19 @@ fn expander_to_proc_macro(
     expander: proc_macro_api::ProcMacro,
     ignored_macros: &[Box<str>],
 ) -> ProcMacro {
-    let name = From::from(expander.name());
+    let name = expander.name();
     let kind = match expander.kind() {
         proc_macro_api::ProcMacroKind::CustomDerive => ProcMacroKind::CustomDerive,
         proc_macro_api::ProcMacroKind::Bang => ProcMacroKind::Bang,
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
-    let disabled = ignored_macros.iter().any(|replace| **replace == name);
-    ProcMacro { name, kind, expander: sync::Arc::new(Expander(expander)), disabled }
+    let disabled = ignored_macros.iter().any(|replace| **replace == *name);
+    ProcMacro {
+        name: intern::Symbol::intern(name),
+        kind,
+        expander: sync::Arc::new(Expander(expander)),
+        disabled,
+    }
 }
 
 #[derive(Debug)]

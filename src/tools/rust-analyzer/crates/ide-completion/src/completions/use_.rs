@@ -48,16 +48,15 @@ pub(crate) fn complete_use_path(
                     let unknown_is_current = |name: &hir::Name| {
                         matches!(
                             name_ref,
-                            Some(name_ref) if name_ref.syntax().text() == name.to_smol_str().as_str()
+                            Some(name_ref) if name_ref.syntax().text() == name.as_str()
                         )
                     };
                     for (name, def) in module_scope {
                         if !ctx.check_stability(def.attrs(ctx.db).as_deref()) {
                             continue;
                         }
-                        let is_name_already_imported = name
-                            .as_text()
-                            .map_or(false, |text| already_imported_names.contains(text.as_str()));
+                        let is_name_already_imported =
+                            already_imported_names.contains(name.as_str());
 
                         let add_resolution = match def {
                             ScopeDef::Unknown if unknown_is_current(&name) => {
