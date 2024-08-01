@@ -13,7 +13,7 @@ use crate::lists::{
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
 use crate::pairs::{rewrite_pair, PairParts};
-use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -81,12 +81,16 @@ impl<'a> Rewrite for RangeOperand<'a> {
 
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self.kind {
             PatKind::Or(ref pats) => {
                 let pat_strs = pats
                     .iter()
-                    .map(|p| p.rewrite(context, shape))
-                    .collect::<Option<Vec<_>>>()?;
+                    .map(|p| p.rewrite_result(context, shape))
+                    .collect::<Result<Vec<_>, RewriteError>>()?;
 
                 let use_mixed_layout = pats
                     .iter()
@@ -108,7 +112,7 @@ impl Rewrite for Pat {
                     .separator(" |")
                     .separator_place(context.config.binop_separator())
                     .ends_with_newline(false);
-                write_list(&items, &fmt).ok()
+                write_list(&items, &fmt)
             }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
             PatKind::Ident(BindingMode(by_ref, mutability), ident, ref sub_pat) => {
@@ -122,19 +126,25 @@ impl Rewrite for Pat {
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 2 - `@ `.
-                        let width = shape.width.checked_sub(
-                            mut_prefix.len() + ref_kw.len() + mut_infix.len() + id_str.len() + 2,
-                        )?;
+                        let width = shape
+                            .width
+                            .checked_sub(
+                                mut_prefix.len()
+                                    + ref_kw.len()
+                                    + mut_infix.len()
+                                    + id_str.len()
+                                    + 2,
+                            )
+                            .max_width_error(shape.width, p.span())?;
                         let lo = context.snippet_provider.span_after(self.span, "@");
                         combine_strs_with_missing_comments(
                             context,
                             "@",
-                            &p.rewrite(context, Shape::legacy(width, shape.indent))?,
+                            &p.rewrite_result(context, Shape::legacy(width, shape.indent))?,
                             mk_sp(lo, p.span.lo()),
                             shape,
                             true,
-                        )
-                        .ok()?
+                        )?
                     }
                     None => "".to_owned(),
                 };
@@ -153,8 +163,7 @@ impl Rewrite for Pat {
                                 mk_sp(lo, hi),
                                 shape,
                                 true,
-                            )
-                            .ok()?,
+                            )?,
                         )
                     }
                     (false, true) => (
@@ -183,8 +192,7 @@ impl Rewrite for Pat {
                                 mk_sp(lo, hi),
                                 shape,
                                 true,
-                            )
-                            .ok()?,
+                            )?,
                         )
                     }
                     (false, true) => (first_lo, first),
@@ -201,8 +209,7 @@ impl Rewrite for Pat {
                         mk_sp(ident.span.hi(), hi),
                         shape,
                         true,
-                    )
-                    .ok()?
+                    )?
                 } else {
                     id_str.to_owned()
                 };
@@ -215,23 +222,28 @@ impl Rewrite for Pat {
                     shape,
                     true,
                 )
-                .ok()
             }
             PatKind::Wild => {
                 if 1 <= shape.width {
-                    Some("_".to_owned())
+                    Ok("_".to_owned())
                 } else {
-                    None
+                    Err(RewriteError::ExceedsMaxWidth {
+                        configured_width: 1,
+                        span: self.span,
+                    })
                 }
             }
             PatKind::Rest => {
                 if 1 <= shape.width {
-                    Some("..".to_owned())
+                    Ok("..".to_owned())
                 } else {
-                    None
+                    Err(RewriteError::ExceedsMaxWidth {
+                        configured_width: 1,
+                        span: self.span,
+                    })
                 }
             }
-            PatKind::Never => None,
+            PatKind::Never => Err(RewriteError::Unknown),
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
                 let infix = match end_kind.node {
                     RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
@@ -267,38 +279,34 @@ impl Rewrite for Pat {
                     shape,
                     SeparatorPlace::Front,
                 )
-                .ok()
             }
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, shape)
             }
-            PatKind::Tuple(ref items) => {
-                rewrite_tuple_pat(items, None, self.span, context, shape).ok()
-            }
+            PatKind::Tuple(ref items) => rewrite_tuple_pat(items, None, self.span, context, shape),
             PatKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Expr, q_self, path, shape).ok()
+                rewrite_path(context, PathContext::Expr, q_self, path, shape)
             }
             PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
-                let path_str =
-                    rewrite_path(context, PathContext::Expr, q_self, path, shape).ok()?;
-                rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape).ok()
+                let path_str = rewrite_path(context, PathContext::Expr, q_self, path, shape)?;
+                rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
-            PatKind::Lit(ref expr) => expr.rewrite(context, shape),
+            PatKind::Lit(ref expr) => expr.rewrite_result(context, shape),
             PatKind::Slice(ref slice_pat)
                 if context.config.style_edition() <= StyleEdition::Edition2021 =>
             {
                 let rw: Vec<String> = slice_pat
                     .iter()
                     .map(|p| {
-                        if let Some(rw) = p.rewrite(context, shape) {
+                        if let Ok(rw) = p.rewrite_result(context, shape) {
                             rw
                         } else {
                             context.snippet(p.span).to_string()
                         }
                     })
                     .collect();
-                Some(format!("[{}]", rw.join(", ")))
+                Ok(format!("[{}]", rw.join(", ")))
             }
             PatKind::Slice(ref slice_pat) => overflow::rewrite_with_square_brackets(
                 context,
@@ -308,8 +316,7 @@ impl Rewrite for Pat {
                 self.span,
                 None,
                 None,
-            )
-            .ok(),
+            ),
             PatKind::Struct(ref qself, ref path, ref fields, rest) => rewrite_struct_pat(
                 qself,
                 path,
@@ -318,16 +325,21 @@ impl Rewrite for Pat {
                 self.span,
                 context,
                 shape,
-            )
-            .ok(),
+            ),
             PatKind::MacCall(ref mac) => {
-                rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
+                rewrite_macro(mac, None, context, shape, MacroPosition::Pat).unknown_error()
             }
             PatKind::Paren(ref pat) => pat
-                .rewrite(context, shape.offset_left(1)?.sub_width(1)?)
+                .rewrite_result(
+                    context,
+                    shape
+                        .offset_left(1)
+                        .and_then(|s| s.sub_width(1))
+                        .max_width_error(shape.width, self.span)?,
+                )
                 .map(|inner_pat| format!("({})", inner_pat)),
-            PatKind::Err(_) => None,
-            PatKind::Deref(_) => None,
+            PatKind::Err(_) => Err(RewriteError::Unknown),
+            PatKind::Deref(_) => Err(RewriteError::Unknown),
         }
     }
 }
@@ -473,9 +485,13 @@ pub(crate) enum TuplePatField<'a> {
 
 impl<'a> Rewrite for TuplePatField<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match *self {
-            TuplePatField::Pat(p) => p.rewrite(context, shape),
-            TuplePatField::Dotdot(_) => Some("..".to_string()),
+            TuplePatField::Pat(p) => p.rewrite_result(context, shape),
+            TuplePatField::Dotdot(_) => Ok("..".to_string()),
         }
     }
 }

@@ -802,7 +802,7 @@ impl Rewrite for ast::Ty {
                     Mutability::Not => "*const ",
                 };
 
-                rewrite_unary_prefix(context, prefix, &*mt.ty, shape).unknown_error()
+                rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
             }
             ast::TyKind::Ref(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);

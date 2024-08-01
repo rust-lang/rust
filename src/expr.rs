@@ -113,7 +113,7 @@ pub(crate) fn format_expr(
                 })
                 .ok()
         }
-        ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
+        ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape).ok(),
         ast::ExprKind::Struct(ref struct_expr) => {
             let ast::StructExpr {
                 qself,
@@ -213,14 +213,14 @@ pub(crate) fn format_expr(
             };
 
             if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, &format!("break{id_str} "), &**expr, shape)
+                rewrite_unary_prefix(context, &format!("break{id_str} "), &**expr, shape).ok()
             } else {
                 Some(format!("break{id_str}"))
             }
         }
         ast::ExprKind::Yield(ref opt_expr) => {
             if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, "yield ", &**expr, shape)
+                rewrite_unary_prefix(context, "yield ", &**expr, shape).ok()
             } else {
                 Some("yield".to_string())
             }
@@ -253,15 +253,17 @@ pub(crate) fn format_expr(
         }
         ast::ExprKind::Ret(None) => Some("return".to_owned()),
         ast::ExprKind::Ret(Some(ref expr)) => {
-            rewrite_unary_prefix(context, "return ", &**expr, shape)
+            rewrite_unary_prefix(context, "return ", &**expr, shape).ok()
         }
-        ast::ExprKind::Become(ref expr) => rewrite_unary_prefix(context, "become ", &**expr, shape),
+        ast::ExprKind::Become(ref expr) => {
+            rewrite_unary_prefix(context, "become ", &**expr, shape).ok()
+        }
         ast::ExprKind::Yeet(None) => Some("do yeet".to_owned()),
         ast::ExprKind::Yeet(Some(ref expr)) => {
-            rewrite_unary_prefix(context, "do yeet ", &**expr, shape)
+            rewrite_unary_prefix(context, "do yeet ", &**expr, shape).ok()
         }
         ast::ExprKind::AddrOf(borrow_kind, mutability, ref expr) => {
-            rewrite_expr_addrof(context, borrow_kind, mutability, expr, shape)
+            rewrite_expr_addrof(context, borrow_kind, mutability, expr, shape).ok()
         }
         ast::ExprKind::Cast(ref expr, ref ty) => rewrite_pair(
             &**expr,
@@ -344,7 +346,7 @@ pub(crate) fn format_expr(
                     } else {
                         default_sp_delim(None, Some(rhs))
                     };
-                    rewrite_unary_prefix(context, &sp_delim, &*rhs, shape)
+                    rewrite_unary_prefix(context, &sp_delim, &*rhs, shape).ok()
                 }
                 (Some(lhs), None) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
@@ -352,7 +354,7 @@ pub(crate) fn format_expr(
                     } else {
                         default_sp_delim(Some(lhs), None)
                     };
-                    rewrite_unary_suffix(context, &sp_delim, &*lhs, shape)
+                    rewrite_unary_suffix(context, &sp_delim, &*lhs, shape).ok()
                 }
                 (None, None) => Some(delim.to_owned()),
             }
@@ -1970,31 +1972,35 @@ pub(crate) fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
     }
 }
 
-pub(crate) fn rewrite_unary_prefix<R: Rewrite>(
+pub(crate) fn rewrite_unary_prefix<R: Rewrite + Spanned>(
     context: &RewriteContext<'_>,
     prefix: &str,
     rewrite: &R,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
+    let shape = shape
+        .offset_left(prefix.len())
+        .max_width_error(shape.width, rewrite.span())?;
     rewrite
-        .rewrite(context, shape.offset_left(prefix.len())?)
+        .rewrite_result(context, shape)
         .map(|r| format!("{}{}", prefix, r))
 }
 
 // FIXME: this is probably not correct for multi-line Rewrites. we should
 // subtract suffix.len() from the last line budget, not the first!
-pub(crate) fn rewrite_unary_suffix<R: Rewrite>(
+pub(crate) fn rewrite_unary_suffix<R: Rewrite + Spanned>(
     context: &RewriteContext<'_>,
     suffix: &str,
     rewrite: &R,
     shape: Shape,
-) -> Option<String> {
-    rewrite
-        .rewrite(context, shape.sub_width(suffix.len())?)
-        .map(|mut r| {
-            r.push_str(suffix);
-            r
-        })
+) -> RewriteResult {
+    let shape = shape
+        .sub_width(suffix.len())
+        .max_width_error(shape.width, rewrite.span())?;
+    rewrite.rewrite_result(context, shape).map(|mut r| {
+        r.push_str(suffix);
+        r
+    })
 }
 
 fn rewrite_unary_op(
@@ -2002,7 +2008,7 @@ fn rewrite_unary_op(
     op: ast::UnOp,
     expr: &ast::Expr,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     // For some reason, an UnOp is not spanned like BinOp!
     rewrite_unary_prefix(context, op.as_str(), expr, shape)
 }
@@ -2257,7 +2263,7 @@ fn rewrite_expr_addrof(
     mutability: ast::Mutability,
     expr: &ast::Expr,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let operator_str = match (mutability, borrow_kind) {
         (ast::Mutability::Not, ast::BorrowKind::Ref) => "&",
         (ast::Mutability::Not, ast::BorrowKind::Raw) => "&raw const ",
