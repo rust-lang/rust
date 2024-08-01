@@ -1019,13 +1019,12 @@ Below is an example of a valid configuration:
 "rust-analyzer.workspace.discoverConfig": {
     "command": [
         "rust-project",
-        "develop-json",
-        {arg}
+        "develop-json"
     ],
     "progressLabel": "rust-analyzer",
     "filesToWatch": [
-        "BUCK",
-    ],
+        "BUCK"
+    ]
 }
 ```
 
