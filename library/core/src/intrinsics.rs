@@ -1003,11 +1003,11 @@ pub const fn cold_path() {}
 #[miri::intrinsic_fallback_is_spec]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
-    #[cfg(any(bootstrap, miri))]
+    #[cfg(any(bootstrap))]
     {
         b
     }
-    #[cfg(not(any(bootstrap, miri)))]
+    #[cfg(not(any(bootstrap)))]
     if b {
         true
     } else {
@@ -1034,11 +1034,11 @@ pub const fn likely(b: bool) -> bool {
 #[miri::intrinsic_fallback_is_spec]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
-    #[cfg(any(bootstrap, miri))]
+    #[cfg(any(bootstrap))]
     {
         b
     }
-    #[cfg(not(any(bootstrap, miri)))]
+    #[cfg(not(any(bootstrap)))]
     if b {
         cold_path();
         true
