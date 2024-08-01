@@ -49,7 +49,6 @@ run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/symbol-mangling-hashed/Makefile
-run-make/symbol-visibility/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
