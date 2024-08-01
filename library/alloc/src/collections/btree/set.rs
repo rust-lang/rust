@@ -1250,16 +1250,16 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// let mut set = BTreeSet::from([1, 2, 3, 4]);
     ///
     /// let mut cursor = set.lower_bound_mut(Bound::Included(&2));
-    /// assert_eq!(cursor.peek_prev(), Some(&mut 1));
-    /// assert_eq!(cursor.peek_next(), Some(&mut 2));
+    /// assert_eq!(cursor.peek_prev(), Some(&1));
+    /// assert_eq!(cursor.peek_next(), Some(&2));
     ///
     /// let mut cursor = set.lower_bound_mut(Bound::Excluded(&2));
-    /// assert_eq!(cursor.peek_prev(), Some(&mut 2));
-    /// assert_eq!(cursor.peek_next(), Some(&mut 3));
+    /// assert_eq!(cursor.peek_prev(), Some(&2));
+    /// assert_eq!(cursor.peek_next(), Some(&3));
     ///
     /// let mut cursor = set.lower_bound_mut(Bound::Unbounded);
     /// assert_eq!(cursor.peek_prev(), None);
-    /// assert_eq!(cursor.peek_next(), Some(&mut 1));
+    /// assert_eq!(cursor.peek_next(), Some(&1));
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn lower_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
@@ -1336,15 +1336,15 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// let mut set = BTreeSet::from([1, 2, 3, 4]);
     ///
     /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Included(&3)) };
-    /// assert_eq!(cursor.peek_prev(), Some(&mut 3));
-    /// assert_eq!(cursor.peek_next(), Some(&mut 4));
+    /// assert_eq!(cursor.peek_prev(), Some(&3));
+    /// assert_eq!(cursor.peek_next(), Some(&4));
     ///
     /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Excluded(&3)) };
-    /// assert_eq!(cursor.peek_prev(), Some(&mut 2));
-    /// assert_eq!(cursor.peek_next(), Some(&mut 3));
+    /// assert_eq!(cursor.peek_prev(), Some(&2));
+    /// assert_eq!(cursor.peek_next(), Some(&3));
     ///
     /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Unbounded) };
-    /// assert_eq!(cursor.peek_prev(), Some(&mut 4));
+    /// assert_eq!(cursor.peek_prev(), Some(&4));
     /// assert_eq!(cursor.peek_next(), None);
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
