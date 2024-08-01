@@ -1194,7 +1194,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// gap before the smallest element greater than `x`.
     ///
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
-    /// gap before the smallest element in the map.
+    /// gap before the smallest element in the set.
     ///
     /// # Examples
     ///
@@ -1237,7 +1237,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// gap before the smallest element greater than `x`.
     ///
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
-    /// gap before the smallest element in the map.
+    /// gap before the smallest element in the set.
     ///
     /// # Examples
     ///
@@ -1280,7 +1280,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// gap after the greatest element smaller than `x`.
     ///
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
-    /// gap after the greatest element in the map.
+    /// gap after the greatest element in the set.
     ///
     /// # Examples
     ///
@@ -1323,7 +1323,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// gap after the greatest element smaller than `x`.
     ///
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
-    /// gap after the greatest element in the map.
+    /// gap after the greatest element in the set.
     ///
     /// # Examples
     ///
