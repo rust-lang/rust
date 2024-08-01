@@ -46,8 +46,6 @@ fn main() {
         asm!("{}", const const_bar(0));
         asm!("{}", const const_bar(x));
         //~^ ERROR attempt to use a non-constant value in a constant
-        asm!("{}", sym x);
-        //~^ ERROR invalid `sym` operand
 
         // Const operands must be integers and must be constants.
 
@@ -62,10 +60,6 @@ fn main() {
         asm!("{}", const &0);
         //~^ ERROR invalid type for `const` operand
     }
-}
-
-unsafe fn generic<T>() {
-    asm!("{}", sym generic::<T>);
 }
 
 // Const operands must be integers and must be constants.
