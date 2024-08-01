@@ -2,7 +2,6 @@ use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::cmp::{max, min};
-use core::error::Error;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::{FusedIterator, Peekable};
@@ -2177,11 +2176,11 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMut<'a, T, A> {
     ///
     /// If the inserted element is not greater than the element before the
     /// cursor (if any), or if it not less than the element after the cursor (if
-    /// any), then an [`UnorderedError`] is returned since this would
+    /// any), then an [`UnorderedKeyError`] is returned since this would
     /// invalidate the [`Ord`] invariant between the elements of the set.
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn insert_after(&mut self, value: T) -> Result<(), UnorderedError> {
-        self.inner.insert_after(value, SetValZST).map_err(UnorderedError::from_map_error)
+    pub fn insert_after(&mut self, value: T) -> Result<(), UnorderedKeyError> {
+        self.inner.insert_after(value, SetValZST)
     }
 
     /// Inserts a new element into the set in the gap that the
@@ -2192,11 +2191,11 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMut<'a, T, A> {
     ///
     /// If the inserted element is not greater than the element before the
     /// cursor (if any), or if it not less than the element after the cursor (if
-    /// any), then an [`UnorderedError`] is returned since this would
+    /// any), then an [`UnorderedKeyError`] is returned since this would
     /// invalidate the [`Ord`] invariant between the elements of the set.
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn insert_before(&mut self, value: T) -> Result<(), UnorderedError> {
-        self.inner.insert_before(value, SetValZST).map_err(UnorderedError::from_map_error)
+    pub fn insert_before(&mut self, value: T) -> Result<(), UnorderedKeyError> {
+        self.inner.insert_before(value, SetValZST)
     }
 
     /// Removes the next element from the `BTreeSet`.
@@ -2218,29 +2217,8 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMut<'a, T, A> {
     }
 }
 
-/// Error type returned by [`CursorMut::insert_before`] and
-/// [`CursorMut::insert_after`] if the element being inserted is not properly
-/// ordered with regards to adjacent elements.
-#[derive(Clone, PartialEq, Eq, Debug)]
 #[unstable(feature = "btree_cursors", issue = "107540")]
-pub struct UnorderedError {}
-
-impl UnorderedError {
-    fn from_map_error(error: super::map::UnorderedKeyError) -> Self {
-        let super::map::UnorderedKeyError {} = error;
-        Self {}
-    }
-}
-
-#[unstable(feature = "btree_cursors", issue = "107540")]
-impl fmt::Display for UnorderedError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "value is not properly ordered relative to neighbors")
-    }
-}
-
-#[unstable(feature = "btree_cursors", issue = "107540")]
-impl Error for UnorderedError {}
+pub use super::map::UnorderedKeyError;
 
 #[cfg(test)]
 mod tests;
