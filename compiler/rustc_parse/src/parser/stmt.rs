@@ -116,13 +116,12 @@ impl<'a> Parser<'a> {
                 }
             }
         } else if let Some(item) = self.parse_item_common(
-            attrs.clone(),
+            attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
             FnParseMode { req_name: |_| true, req_body: true },
             force_collect,
         )? {
-            // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
             // Do not attempt to parse an expression if we're done here.
