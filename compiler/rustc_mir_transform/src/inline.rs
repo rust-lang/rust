@@ -744,8 +744,8 @@ impl<'tcx> Inliner<'tcx> {
         // Copy required constants from the callee_body into the caller_body. Although we are only
         // pushing unevaluated consts to `required_consts`, here they may have been evaluated
         // because we are calling `instantiate_and_normalize_erasing_regions` -- so we filter again.
-        caller_body.required_consts.extend(
-            callee_body.required_consts.into_iter().filter(|ct| ct.const_.is_required_const()),
+        caller_body.required_consts.as_mut().unwrap().extend(
+            callee_body.required_consts().into_iter().filter(|ct| ct.const_.is_required_const()),
         );
         // Now that we incorporated the callee's `required_consts`, we can remove the callee from
         // `mentioned_items` -- but we have to take their `mentioned_items` in return. This does
@@ -755,12 +755,11 @@ impl<'tcx> Inliner<'tcx> {
         // We need to reconstruct the `required_item` for the callee so that we can find and
         // remove it.
         let callee_item = MentionedItem::Fn(func.ty(caller_body, self.tcx));
-        if let Some(idx) =
-            caller_body.mentioned_items.iter().position(|item| item.node == callee_item)
-        {
+        let caller_mentioned_items = caller_body.mentioned_items.as_mut().unwrap();
+        if let Some(idx) = caller_mentioned_items.iter().position(|item| item.node == callee_item) {
             // We found the callee, so remove it and add its items instead.
-            caller_body.mentioned_items.remove(idx);
-            caller_body.mentioned_items.extend(callee_body.mentioned_items);
+            caller_mentioned_items.remove(idx);
+            caller_mentioned_items.extend(callee_body.mentioned_items());
         } else {
             // If we can't find the callee, there's no point in adding its items. Probably it
             // already got removed by being inlined elsewhere in the same function, so we already
