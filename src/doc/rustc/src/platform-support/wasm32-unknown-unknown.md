@@ -155,3 +155,36 @@ You'll need to consult your WebAssembly engine's documentation to learn more
 about the supported WebAssembly features the engine has.
 
 [reference]: https://doc.rust-lang.org/reference/attributes/codegen.html#wasm32-or-wasm64
+
+Note that it is still possible for Rust crates and libraries to enable
+WebAssembly features on a per-function level. This means that the build
+command above may not be sufficent to disable all WebAssembly features. If the
+final binary still has SIMD instructions, for example, the function in question
+will need to be found and the crate in question will likely contain something
+like:
+
+```rust
+#[target_feature(enable = "simd128")]
+fn foo() {
+    // ...
+}
+```
+
+In this situation there is no compiler flag to disable emission of SIMD
+instructions and the crate must instead be modified to not include this function
+at compile time either by default or through a Cargo feature. For crate authors
+it's recommended to avoid `#[target_feature(enable = "...")]` except where
+necessary and instead use:
+
+```rust
+#[cfg(target_feature = "simd128")]
+fn foo() {
+    // ...
+}
+```
+
+That is to say instead of enabling target features it's recommended to
+conditionally compile code instead. This is notably different to the way native
+platforms such as x86\_64 work, and this is due to the fact that WebAssembly
+binaries must only contain code the engine understands. Native binaries work so
+long as the CPU doesn't execute unknown code dynamically at runtime.
