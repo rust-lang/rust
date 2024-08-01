@@ -500,13 +500,8 @@ where
         }
 
         if self.show_backtrace {
-            let backtrace = self.backtrace();
-
-            if let Some(backtrace) = backtrace {
-                let backtrace = backtrace.to_string();
-
-                f.write_str("\n\nStack backtrace:\n")?;
-                f.write_str(backtrace.trim_end())?;
+            if let Some(backtrace) = self.backtrace() {
+                write!(f, "\n\nStack backtrace:\n{}", backtrace.to_string().trim_end())?;
             }
         }
 
