@@ -260,6 +260,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm
                 | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody
                 | DefKind::Impl { .. },
                 _,
             )

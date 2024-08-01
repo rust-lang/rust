@@ -1756,7 +1756,6 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceKind::Virtual(..)
             | ty::InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::CoroutineKindShim { .. }
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)
             | ty::InstanceKind::ThreadLocalShim(..)
@@ -1874,7 +1873,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     identity_kind_ty.to_opt_closure_kind(),
                     Some(ClosureKind::Fn | ClosureKind::FnMut)
                 );
-                mir.coroutine_by_move_body().unwrap().coroutine_layout_raw()
+                self.optimized_mir(self.coroutine_by_move_body_def_id(def_id))
+                    .coroutine_layout_raw()
             }
         }
     }
