@@ -1,5 +1,14 @@
 use std::arch::{asm, global_asm};
 
+// Sym operands must point to a function or static
+
+const C: i32 = 0;
+static S: i32 = 0;
+global_asm!("{}", sym S);
+global_asm!("{}", sym main);
+global_asm!("{}", sym C);
+//~^ ERROR invalid `sym` operand
+
 fn main() {
     unsafe {
         // Sym operands must point to a function or static
@@ -19,12 +28,3 @@ fn main() {
 unsafe fn generic<T>() {
     asm!("{}", sym generic::<T>);
 }
-
-// Sym operands must point to a function or static
-
-const C: i32 = 0;
-static S: i32 = 0;
-global_asm!("{}", sym S);
-global_asm!("{}", sym main);
-global_asm!("{}", sym C);
-//~^ ERROR invalid `sym` operand

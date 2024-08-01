@@ -1,5 +1,5 @@
 error: invalid `sym` operand
-  --> $DIR/invalid-sym-operand.rs:14:24
+  --> $DIR/invalid-sym-operand.rs:23:24
    |
 LL |         asm!("{}", sym x);
    |                        ^ is a local variable
@@ -7,18 +7,18 @@ LL |         asm!("{}", sym x);
    = help: `sym` operands must refer to either a function or a static
 
 error: invalid `sym` operand
-  --> $DIR/invalid-sym-operand.rs:12:20
+  --> $DIR/invalid-sym-operand.rs:9:19
    |
-LL |         asm!("{}", sym C);
-   |                    ^^^^^ is an `i32`
+LL | global_asm!("{}", sym C);
+   |                   ^^^^^ is an `i32`
    |
    = help: `sym` operands must refer to either a function or a static
 
 error: invalid `sym` operand
-  --> $DIR/invalid-sym-operand.rs:29:19
+  --> $DIR/invalid-sym-operand.rs:21:20
    |
-LL | global_asm!("{}", sym C);
-   |                   ^^^^^ is an `i32`
+LL |         asm!("{}", sym C);
+   |                    ^^^^^ is an `i32`
    |
    = help: `sym` operands must refer to either a function or a static
 
