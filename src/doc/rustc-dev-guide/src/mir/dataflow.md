@@ -190,7 +190,7 @@ They are available as
 graphs, named region variables will be shown with their external name (such as `'static`)
 shown in parenthesis. For region inference variables in universes other than the root universe,
 they will be shown as `/U13` (for universe 13). In the region graph, edges are labelled with
-the MIR locations where the relationship holds, or `All` if it's everywhere.
+the MIR location where the relationship is required to hold, or `All` if the constraint should always be true.
 
 ![A graph showing a small number of strongly connected components on the region-outlives-graph above](../img/scc-graphviz.png)
 
