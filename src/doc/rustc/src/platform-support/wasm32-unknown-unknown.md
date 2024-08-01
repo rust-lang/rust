@@ -6,7 +6,7 @@ The `wasm32-unknown-unknown` target is a WebAssembly compilation target which
 does not import any functions from the host for the standard library. This is
 the "minimal" WebAssembly in the sense of making the fewest assumptions about
 the host environment. This target is often used when compiling to the web or
-JavaScript environments as there is not standard for what functions can be
+JavaScript environments as there is no standard for what functions can be
 imported on the web. This target can also be useful for creating minimal or
 bare-bones WebAssembly binaries.
 
@@ -86,13 +86,13 @@ $ file foo.wasm
 
 ## Cross-compilation
 
-This target can be cross-compiled from any hosts.
+This target can be cross-compiled from any host.
 
 ## Testing
 
 This target is not tested in CI for the rust-lang/rust repository. Many tests
 must be disabled to run on this target and failures are non-obvious because
-println doesn't work in the standard library. It's recommended to test the
+`println!` doesn't work in the standard library. It's recommended to test the
 `wasm32-wasip1` target instead for WebAssembly compatibility.
 
 ## Conditionally compiling code
@@ -118,7 +118,7 @@ Changes to WebAssembly go through a [proposals process][proposals] but reaching
 the final stage (stage 5) does not automatically mean that the feature will be
 enabled in LLVM and Rust by default. At this time the general guidance is that
 features must be present in most engines for a "good chunk of time" before
-they're enabled in LLVM by default. There is currently not exact number of
+they're enabled in LLVM by default. There is currently no exact number of
 months or engines that are required to enable features by default.
 
 [proposals]: https://github.com/WebAssembly/proposals
@@ -144,7 +144,8 @@ will produce a binary that uses only the original WebAssembly features by
 default and no proposals since its inception.
 
 To enable individual features it can be done with `-Ctarget-feature=+foo`.
-Available features can be found through:
+Available features for Rust code itself are documented in the [reference] and
+can also be found through:
 
 ```sh
 $ rustc -Ctarget-feature=help --target wasm32-unknown-unknown
@@ -152,3 +153,5 @@ $ rustc -Ctarget-feature=help --target wasm32-unknown-unknown
 
 You'll need to consult your WebAssembly engine's documentation to learn more
 about the supported WebAssembly features the engine has.
+
+[reference]: https://doc.rust-lang.org/reference/attributes/codegen.html#wasm32-or-wasm64
