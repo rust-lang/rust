@@ -833,6 +833,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
+            Struct if pat.ty().is_box() => {
+                // Outside of the `alloc` crate, the only way to create a struct pattern
+                // of type `Box` is to use a `box` pattern via #[feature(box_patterns)].
+                PatKind::Box { subpattern: hoist(&pat.fields[0]) }
+            }
             Struct | Variant(_) | UnionField => match pat.ty().kind() {
                 ty::Tuple(..) => PatKind::StructLike {
                     enum_info: EnumInfo::NotEnum,
@@ -841,12 +846,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
                         .collect(),
                 },
-                ty::Adt(adt_def, _) if adt_def.is_box() => {
-                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
-                    // of `std`). So this branch is only reachable when the feature is enabled and
-                    // the pattern is a box pattern.
-                    PatKind::Deref { subpattern: subpatterns.next().unwrap() }
-                }
                 &ty::Adt(adt_def, _) => {
                     let variant_index = RustcPatCtxt::variant_index_for_adt(&pat.ctor(), adt_def);
                     let subpatterns = subpatterns

@@ -38,6 +38,10 @@ pub(crate) enum PatKind<'tcx> {
         subpatterns: Vec<FieldPat<'tcx>>,
     },
 
+    Box {
+        subpattern: Box<Pat<'tcx>>,
+    },
+
     Deref {
         subpattern: Box<Pat<'tcx>>,
     },
@@ -64,6 +68,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
         match self.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
+            PatKind::Box { ref subpattern } => write!(f, "box {subpattern}"),
             PatKind::StructLike { ref enum_info, ref subpatterns } => {
                 write_struct_like(f, self.ty, enum_info, subpatterns)
             }
@@ -184,7 +189,6 @@ fn write_ref_like<'tcx>(
     subpattern: &Pat<'tcx>,
 ) -> fmt::Result {
     match ty.kind() {
-        ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
         ty::Ref(_, _, mutbl) => {
             write!(f, "&{}", mutbl.prefix_str())?;
         }
