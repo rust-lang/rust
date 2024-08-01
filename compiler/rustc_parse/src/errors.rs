@@ -3183,6 +3183,7 @@ pub(crate) struct DotDotRangeAttribute {
 #[note]
 pub struct InvalidAttrUnsafe {
     #[primary_span]
+    #[label]
     pub span: Span,
     pub name: Path,
 }

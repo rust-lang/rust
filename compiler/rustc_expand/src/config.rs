@@ -8,7 +8,9 @@ use rustc_ast::tokenstream::{
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_feature::{Features, ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
+use rustc_feature::{
+    AttributeSafety, Features, ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES,
+};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
@@ -263,6 +265,13 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
+        validate_attr::check_attribute_safety(
+            self.features.unwrap_or(&Features::default()),
+            &self.sess.psess,
+            AttributeSafety::Normal,
+            &cfg_attr,
+        );
+
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)
         else {
@@ -385,6 +394,13 @@ impl<'a> StripUnconfigured<'a> {
                 return (true, None);
             }
         };
+
+        validate_attr::deny_builtin_meta_unsafety(
+            self.features.unwrap_or(&Features::default()),
+            &self.sess.psess,
+            &meta_item,
+        );
+
         (
             parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {
                 attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
