@@ -14,6 +14,22 @@ pub struct MissingEq {
     bar: String,
 }
 
+// Check that we honor the `allow` attribute
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Debug, PartialEq)]
+pub struct AllowedMissingEq {
+    foo: u32,
+    bar: String,
+}
+
+// Check that we honor the `expect` attribute
+#[expect(clippy::derive_partial_eq_without_eq)]
+#[derive(Debug, PartialEq)]
+pub struct ExpectedMissingEq {
+    foo: u32,
+    bar: String,
+}
+
 // Eq is derived
 #[derive(PartialEq, Eq)]
 pub struct NotMissingEq {

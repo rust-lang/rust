@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_in_test_function;
+use clippy_utils::is_in_test;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
@@ -41,7 +41,7 @@ fn report(cx: &LateContext<'_>, param: &GenericParam<'_>, generics: &Generics<'_
 pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body: &'tcx Body<'_>, hir_id: HirId) {
     if let FnKind::ItemFn(_, generics, _) = kind
         && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
-        && !is_in_test_function(cx.tcx, hir_id)
+        && !is_in_test(cx.tcx, hir_id)
     {
         for param in generics.params {
             if param.is_impl_trait() {
@@ -59,7 +59,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         && of_trait.is_none()
         && let body = cx.tcx.hir().body(body_id)
         && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
-        && !is_in_test_function(cx.tcx, impl_item.hir_id())
+        && !is_in_test(cx.tcx, impl_item.hir_id())
     {
         for param in impl_item.generics.params {
             if param.is_impl_trait() {
@@ -75,7 +75,7 @@ pub(super) fn check_trait_item(cx: &LateContext<'_>, trait_item: &TraitItem<'_>,
         && let hir::Node::Item(item) = cx.tcx.parent_hir_node(trait_item.hir_id())
         // ^^ (Will always be a trait)
         && !item.vis_span.is_empty() // Is public
-        && !is_in_test_function(cx.tcx, trait_item.hir_id())
+        && !is_in_test(cx.tcx, trait_item.hir_id())
     {
         for param in trait_item.generics.params {
             if param.is_impl_trait() {

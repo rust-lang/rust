@@ -1,9 +1,7 @@
 use crate::cell::Cell;
 use crate::sync as public;
-use crate::sync::atomic::{
-    AtomicU32,
-    Ordering::{Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::once::ExclusiveState;
 use crate::sys::futex::{futex_wait, futex_wake_all};
 
@@ -57,7 +55,7 @@ impl<'a> Drop for CompletionGuard<'a> {
         // up on the Once. `futex_wake_all` does its own synchronization, hence
         // we do not need `AcqRel`.
         if self.state.swap(self.set_state_on_drop_to, Release) == QUEUED {
-            futex_wake_all(&self.state);
+            futex_wake_all(self.state);
         }
     }
 }

@@ -184,20 +184,9 @@ incremental files will be stored.
 
 ## inline-threshold
 
-This option lets you set the default threshold for inlining a function. It
-takes an unsigned integer as a value. Inlining is based on a cost model, where
-a higher threshold will allow more inlining.
+This option is deprecated and does nothing.
 
-The default depends on the [opt-level](#opt-level):
-
-| opt-level | Threshold |
-|-----------|-----------|
-| 0         | N/A, only inlines always-inline functions |
-| 1         | N/A, only inlines always-inline functions and LLVM lifetime intrinsics |
-| 2         | 225 |
-| 3         | 275 |
-| s         | 75 |
-| z         | 25 |
+Consider using `-Cllvm-args=--inline-threshold=...`.
 
 ## instrument-coverage
 
@@ -421,13 +410,16 @@ See also the [`no-prepopulate-passes`](#no-prepopulate-passes) flag.
 
 By default, `rustc` prefers to statically link dependencies. This option will
 indicate that dynamic linking should be used if possible if both a static and
-dynamic versions of a library are available. There is an internal algorithm
-for determining whether or not it is possible to statically or dynamically
-link with a dependency. For example, `cdylib` crate types may only use static
-linkage. This flag takes one of the following values:
+dynamic versions of a library are available.
 
-* `y`, `yes`, `on`, `true` or no value: use dynamic linking.
-* `n`, `no`, `off` or `false`: use static linking (the default).
+There is [an internal algorithm](https://github.com/rust-lang/rust/blob/master/compiler/rustc_metadata/src/dependency_format.rs)
+for determining whether or not it is possible to statically or dynamically link
+with a dependency.
+
+This flag takes one of the following values:
+
+* `y`, `yes`, `on`, `true` or no value: prefer dynamic linking.
+* `n`, `no`, `off` or `false`: prefer static linking (the default).
 
 ## profile-generate
 

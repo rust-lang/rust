@@ -2,17 +2,16 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import type { Env } from "./client";
-import { log } from "./util";
-import { expectNotUndefined, unwrapUndefinable } from "./undefinable";
+import { type Env, log, unwrapUndefinable, expectNotUndefined } from "./util";
 import type { JsonProject } from "./rust_project";
+import type { Disposable } from "./ctx";
 
 export type RunnableEnvCfgItem = {
     mask?: string;
     env: Record<string, string>;
     platform?: string | string[];
 };
-export type RunnableEnvCfg = undefined | Record<string, string> | RunnableEnvCfgItem[];
+export type RunnableEnvCfg = Record<string, string> | RunnableEnvCfgItem[];
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
@@ -31,22 +30,9 @@ export class Config {
         (opt) => `${this.rootSection}.${opt}`,
     );
 
-    readonly package: {
-        version: string;
-        releaseTag: string | null;
-        enableProposedApi: boolean | undefined;
-    } = vscode.extensions.getExtension(this.extensionId)!.packageJSON;
-
-    readonly globalStorageUri: vscode.Uri;
-
-    constructor(ctx: vscode.ExtensionContext) {
-        this.globalStorageUri = ctx.globalStorageUri;
+    constructor(disposables: Disposable[]) {
         this.discoveredWorkspaces = [];
-        vscode.workspace.onDidChangeConfiguration(
-            this.onDidChangeConfiguration,
-            this,
-            ctx.subscriptions,
-        );
+        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, disposables);
         this.refreshLogging();
         this.configureLanguage();
     }
@@ -57,7 +43,10 @@ export class Config {
 
     private refreshLogging() {
         log.setEnabled(this.traceExtension ?? false);
-        log.info("Extension version:", this.package.version);
+        log.info(
+            "Extension version:",
+            vscode.extensions.getExtension(this.extensionId)!.packageJSON.version,
+        );
 
         const cfg = Object.entries(this.cfg).filter(([_, val]) => !(val instanceof Function));
         log.info("Using configuration", Object.fromEntries(cfg));
@@ -277,10 +266,6 @@ export class Config {
 
     get problemMatcher(): string[] {
         return this.get<string[]>("runnables.problemMatcher") || [];
-    }
-
-    get cargoRunner() {
-        return this.get<string | undefined>("cargoRunner");
     }
 
     get testExplorer() {

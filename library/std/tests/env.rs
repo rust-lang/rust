@@ -4,8 +4,9 @@ use std::ffi::{OsStr, OsString};
 use rand::distributions::{Alphanumeric, DistString};
 
 mod common;
-use common::test_rng;
 use std::thread;
+
+use common::test_rng;
 
 #[track_caller]
 fn make_rand_name() -> OsString {

@@ -10,6 +10,11 @@ expand_attribute_meta_item =
 expand_attribute_single_word =
     attribute must only be a single word
 
+expand_attributes_on_expressions_experimental =
+    attributes on expressions are experimental
+    .help_outer_doc = `///` is used for outer documentation comments; for a plain comment, use `//`
+    .help_inner_doc = `//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`
+
 expand_attributes_wrong_form =
     attribute must be of form: `attributes(foo, bar)`
 
@@ -30,6 +35,9 @@ expand_duplicate_matcher_binding = duplicate matcher binding
     .label = duplicate binding
     .label2 = previous binding
 
+expand_empty_delegation_mac =
+    empty {$kind} delegation is not supported
+
 expand_expected_paren_or_brace =
     expected `(` or `{"{"}`, found `{$token}`
 
@@ -49,6 +57,12 @@ expand_feature_removed =
     feature has been removed
     .label = feature has been removed
     .reason = {$reason}
+
+expand_glob_delegation_outside_impls =
+    glob delegation is only supported in impls
+
+expand_glob_delegation_traitless_qpath =
+    qualified path without a trait in glob delegation
 
 expand_helper_attribute_name_invalid =
     `{$name}` cannot be a name of derive helper attribute
@@ -91,6 +105,11 @@ expand_meta_var_dif_seq_matchers = {$msg}
 expand_meta_var_expr_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
 
+expand_missing_fragment_specifier = missing fragment specifier
+    .note = fragment specifiers must be specified in the 2024 edition
+    .suggestion_add_fragspec = try adding a specifier here
+    .valid = {$valid}
+
 expand_module_circular =
     circular modules: {$modules}
 
@@ -115,6 +134,9 @@ expand_not_a_meta_item =
 
 expand_only_one_word =
     must only be one word
+
+expand_proc_macro_back_compat = using an old version of `{$crate_name}`
+    .note = older versions of the `{$crate_name}` crate no longer compile; please update to `{$crate_name}` v{$fixed_version}, or switch to one of the `{$crate_name}` alternatives
 
 expand_proc_macro_derive_panicked =
     proc-macro derive panicked
@@ -146,7 +168,7 @@ expand_unsupported_key_value =
     key-value macro attributes are not supported
 
 expand_var_still_repeating =
-    variable '{$ident}' is still repeating at this depth
+    variable `{$ident}` is still repeating at this depth
 
 expand_wrong_fragment_kind =
     non-{$kind} macro in {$kind} position: {$name}

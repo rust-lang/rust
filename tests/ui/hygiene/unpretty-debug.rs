@@ -2,7 +2,7 @@
 //@ compile-flags: -Zunpretty=expanded,hygiene
 
 // Don't break whenever Symbol numbering changes
-//@ normalize-stdout-test "\d+#" -> "0#"
+//@ normalize-stdout-test: "\d+#" -> "0#"
 
 // minimal junk
 #![feature(no_core)]

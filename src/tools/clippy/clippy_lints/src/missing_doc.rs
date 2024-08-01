@@ -5,10 +5,11 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/cf9cf7c923eb01146971429044f216a3ca905e06/compiler/rustc_lint/src/builtin.rs#L415
 //
 
+use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -20,9 +21,9 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns if there is missing doc for any private documentable item
+    /// Warns if there is missing documentation for any private documentable item.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Doc is good. *rustc* has a `MISSING_DOCS`
     /// allowed-by-default lint for
     /// public members, but has no way to enforce documentation of private items.
@@ -51,18 +52,10 @@ pub struct MissingDoc {
     prev_span: Option<Span>,
 }
 
-impl Default for MissingDoc {
-    #[must_use]
-    fn default() -> Self {
-        Self::new(false)
-    }
-}
-
 impl MissingDoc {
-    #[must_use]
-    pub fn new(crate_items_only: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            crate_items_only,
+            crate_items_only: conf.missing_docs_in_crate_items,
             doc_hidden_stack: vec![false],
             prev_span: None,
         }
@@ -266,8 +259,5 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 }
 
 fn span_to_snippet_contains_docs(cx: &LateContext<'_>, search_span: Span) -> bool {
-    let Some(snippet) = snippet_opt(cx, search_span) else {
-        return false;
-    };
-    snippet.lines().rev().any(|line| line.trim().starts_with("///"))
+    search_span.check_source_text(cx, |src| src.lines().rev().any(|line| line.trim().starts_with("///")))
 }

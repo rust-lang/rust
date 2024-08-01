@@ -17,10 +17,16 @@ enum PermissionPriv {
     /// is relevant
     /// - `conflicted` is set on foreign reads,
     /// - `conflicted` must not be set on child writes (there is UB otherwise).
+    ///
     /// This is so that the behavior of `Reserved` adheres to the rules of `noalias`:
     /// - foreign-read then child-write is UB due to `conflicted`,
     /// - child-write then foreign-read is UB since child-write will activate and then
     ///   foreign-read disables a protected `Active`, which is UB.
+    ///
+    /// Note: since the discovery of `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
+    /// `ty_is_freeze` does not strictly mean that the type has no interior mutability,
+    /// it could be an interior mutable type that lost its interior mutability privileges
+    /// when retagged with a protector.
     Reserved { ty_is_freeze: bool, conflicted: bool },
     /// represents: a unique pointer;
     /// allows: child reads, child writes;
@@ -140,6 +146,12 @@ mod transition {
     /// non-protected interior mutable `Reserved` which stay the same.
     fn foreign_write(state: PermissionPriv, protected: bool) -> Option<PermissionPriv> {
         Some(match state {
+            // FIXME: since the fix related to reservedim_spurious_write, it is now possible
+            // to express these transitions of the state machine without an explicit dependency
+            // on `protected`: because `ty_is_freeze: false` implies `!protected` then
+            // the line handling `Reserved { .. } if protected` could be deleted.
+            // This will however require optimizations to the exhaustive tests because
+            // fewer initial conditions are valid.
             Reserved { .. } if protected => Disabled,
             res @ Reserved { ty_is_freeze: false, .. } => res,
             _ => Disabled,
@@ -185,6 +197,10 @@ impl Permission {
     pub fn is_disabled(&self) -> bool {
         self.inner == Disabled
     }
+    /// Check if `self` is the post-child-write state of a pointer (is `Active`).
+    pub fn is_active(&self) -> bool {
+        self.inner == Active
+    }
 
     /// Default initial permission of the root of a new tree at inbounds positions.
     /// Must *only* be used for the root, this is not in general an "initial" permission!
@@ -202,7 +218,7 @@ impl Permission {
         Self { inner: Frozen }
     }
 
-    /// Default initial permission of  the root of a new tre at out-of-bounds positions.
+    /// Default initial permission of  the root of a new tree at out-of-bounds positions.
     /// Must *only* be used for the root, this is not in general an "initial" permission!
     pub fn new_disabled() -> Self {
         Self { inner: Disabled }
@@ -339,15 +355,15 @@ pub mod diagnostics {
         /// This function assumes that its arguments apply to the same location
         /// and that they were obtained during a normal execution. It will panic otherwise.
         /// - all transitions involved in `self` and `err` should be increasing
-        /// (Reserved < Active < Frozen < Disabled);
+        ///   (Reserved < Active < Frozen < Disabled);
         /// - between `self` and `err` the permission should also be increasing,
-        /// so all permissions inside `err` should be greater than `self.1`;
+        ///   so all permissions inside `err` should be greater than `self.1`;
         /// - `Active` and `Reserved(conflicted=false)` cannot cause an error
-        /// due to insufficient permissions, so `err` cannot be a `ChildAccessForbidden(_)`
-        /// of either of them;
+        ///   due to insufficient permissions, so `err` cannot be a `ChildAccessForbidden(_)`
+        ///   of either of them;
         /// - `err` should not be `ProtectedDisabled(Disabled)`, because the protected
-        /// tag should not have been `Disabled` in the first place (if this occurs it means
-        /// we have unprotected tags that become protected)
+        ///   tag should not have been `Disabled` in the first place (if this occurs it means
+        ///   we have unprotected tags that become protected)
         pub(in super::super) fn is_relevant(&self, err: TransitionError) -> bool {
             // NOTE: `super::super` is the visibility of `TransitionError`
             assert!(self.is_possible());

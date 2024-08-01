@@ -8,7 +8,8 @@ use std::{
 
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ImportPathConfig,
+    ModuleDef, Name,
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
@@ -24,7 +25,7 @@ use ide_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
         SourceDatabase, SourceDatabaseExt,
     },
-    LineIndexDatabase,
+    LineIndexDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -249,10 +250,6 @@ impl flags::AnalysisStats {
         }
         report_metric("total memory", total_span.memory.allocated.megabytes() as u64, "MB");
 
-        if env::var("RA_COUNT").is_ok() {
-            eprintln!("{}", profile::countme::get_all());
-        }
-
         if self.source_stats {
             let mut total_file_size = Bytes::default();
             for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
@@ -438,8 +435,17 @@ impl flags::AnalysisStats {
                 let mut formatter = |_: &hir::Type| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
-                    let generated =
-                        term.gen_source_code(&scope, &mut formatter, false, true).unwrap();
+                    let generated = term
+                        .gen_source_code(
+                            &scope,
+                            &mut formatter,
+                            ImportPathConfig {
+                                prefer_no_std: false,
+                                prefer_prelude: true,
+                                prefer_absolute: false,
+                            },
+                        )
+                        .unwrap();
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
 
                     // Validate if type-checks
@@ -473,7 +479,7 @@ impl flags::AnalysisStats {
                                         .or_insert(1);
                                 } else {
                                     acc.syntax_errors += 1;
-                                    bar.println(format!("Syntax error: \n{}", err));
+                                    bar.println(format!("Syntax error: \n{err}"));
                                 }
                             }
                         }
@@ -645,7 +651,7 @@ impl flags::AnalysisStats {
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file);
-                        let syntax_range = src.value.text_range();
+                        let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
                         format!("processing: {}", full_name())
@@ -939,7 +945,7 @@ impl flags::AnalysisStats {
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file);
-                        let syntax_range = src.value.text_range();
+                        let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
                         format!("processing: {}", full_name())
@@ -976,6 +982,7 @@ impl flags::AnalysisStats {
                     disable_experimental: false,
                     disabled: Default::default(),
                     expr_fill_default: Default::default(),
+                    snippet_cap: SnippetCap::new(true),
                     insert_use: ide_db::imports::insert_use::InsertUseConfig {
                         granularity: ide_db::imports::insert_use::ImportGranularity::Crate,
                         enforce_granularity: true,
@@ -985,7 +992,10 @@ impl flags::AnalysisStats {
                     },
                     prefer_no_std: false,
                     prefer_prelude: true,
+                    prefer_absolute: false,
                     style_lints: false,
+                    term_search_fuel: 400,
+                    term_search_borrowck: true,
                 },
                 ide::AssistResolveStrategy::All,
                 file_id,
@@ -998,6 +1008,11 @@ impl flags::AnalysisStats {
                     type_hints: true,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
+                    generic_parameter_hints: ide::GenericParameterHints {
+                        type_hints: true,
+                        lifetime_hints: true,
+                        const_hints: true,
+                    },
                     chaining_hints: true,
                     adjustment_hints: ide::AdjustmentHints::Always,
                     adjustment_hints_mode: ide::AdjustmentHintsMode::Postfix,

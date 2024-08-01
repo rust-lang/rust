@@ -1,13 +1,12 @@
-use std::{
-    ffi::{c_char, CStr},
-    marker::PhantomData,
-    ops::Deref,
-    ptr::NonNull,
-};
+use std::ffi::{c_char, CStr};
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::ptr::NonNull;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 
-use crate::{errors::LlvmError, llvm};
+use crate::errors::LlvmError;
+use crate::llvm;
 
 /// Responsible for safely creating and disposing llvm::TargetMachine via ffi functions.
 /// Not cloneable as there is no clone function for llvm::TargetMachine.
@@ -32,7 +31,7 @@ impl OwnedTargetMachine {
         unique_section_names: bool,
         trap_unreachable: bool,
         singletree: bool,
-        asm_comments: bool,
+        verbose_asm: bool,
         emit_stack_size_section: bool,
         relax_elf_relocations: bool,
         use_init_array: bool,
@@ -64,7 +63,7 @@ impl OwnedTargetMachine {
                 unique_section_names,
                 trap_unreachable,
                 singletree,
-                asm_comments,
+                verbose_asm,
                 emit_stack_size_section,
                 relax_elf_relocations,
                 use_init_array,

@@ -1,6 +1,7 @@
 //@revisions: stack tree
+// Tree Borrows doesn't support int2ptr casts, but let's make sure we don't immediately crash either.
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@compile-flags: -Zmiri-permissive-provenance
+//@[stack]compile-flags: -Zmiri-permissive-provenance
 #![feature(strict_provenance, exposed_provenance)]
 
 use std::ptr;
@@ -56,9 +57,18 @@ fn ptr_roundtrip_null() {
     assert_eq!(unsafe { *x_ptr_copy }, 42);
 }
 
+fn ptr_roundtrip_offset_from() {
+    let arr = [0; 5];
+    let begin = arr.as_ptr();
+    let end = begin.wrapping_add(arr.len());
+    let end_roundtrip = ptr::with_exposed_provenance::<i32>(end.expose_provenance());
+    unsafe { end_roundtrip.offset_from(begin) };
+}
+
 fn main() {
     ptr_roundtrip_out_of_bounds();
     ptr_roundtrip_confusion();
     ptr_roundtrip_imperfect();
     ptr_roundtrip_null();
+    ptr_roundtrip_offset_from();
 }

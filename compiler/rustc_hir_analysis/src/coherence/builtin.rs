@@ -1,7 +1,7 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use crate::errors;
+use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
@@ -10,20 +10,20 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::infer::{self, RegionResolutionError};
+use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
 };
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::{self, ObligationCause};
-use std::collections::BTreeMap;
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+
+use crate::errors;
 
 pub(super) fn check_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -35,9 +35,13 @@ pub(super) fn check_trait<'tcx>(
     let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
     let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
     res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
-    res = res.and(
-        checker.check(lang_items.const_param_ty_trait(), visit_implementation_of_const_param_ty),
-    );
+    res = res.and(checker.check(lang_items.const_param_ty_trait(), |checker| {
+        visit_implementation_of_const_param_ty(checker, LangItem::ConstParamTy)
+    }));
+    res = res.and(checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
+        visit_implementation_of_const_param_ty(checker, LangItem::UnsizedConstParamTy)
+    }));
+
     res = res.and(
         checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized),
     );
@@ -102,7 +106,13 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
-            Err(infringing_fields_error(tcx, fields, LangItem::Copy, impl_did, span))
+            Err(infringing_fields_error(
+                tcx,
+                fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
+                LangItem::Copy,
+                impl_did,
+                span,
+            ))
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
@@ -115,7 +125,12 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     }
 }
 
-fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_const_param_ty(
+    checker: &Checker<'_>,
+    kind: LangItem,
+) -> Result<(), ErrorGuaranteed> {
+    assert!(matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
+
     let tcx = checker.tcx;
     let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
@@ -124,20 +139,40 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
 
     let param_env = tcx.param_env(impl_did);
 
-    if let ty::ImplPolarity::Negative = header.polarity {
+    if let ty::ImplPolarity::Negative | ty::ImplPolarity::Reservation = header.polarity {
         return Ok(());
     }
 
     let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
-    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
+    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, kind, cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
-            Err(infringing_fields_error(tcx, fields, LangItem::ConstParamTy, impl_did, span))
+            Err(infringing_fields_error(
+                tcx,
+                fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
+                LangItem::ConstParamTy,
+                impl_did,
+                span,
+            ))
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
+        }
+        Err(ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(infringing_tys)) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            Err(infringing_fields_error(
+                tcx,
+                infringing_tys.into_iter().map(|(ty, reason)| (span, ty, reason)),
+                LangItem::ConstParamTy,
+                impl_did,
+                span,
+            ))
+        }
+        Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnUnsized { span }))
         }
     }
 }
@@ -266,7 +301,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         .join(", "),
                 }));
             } else {
-                let ocx = ObligationCtxt::new(&infcx);
+                let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
                 for field in coerced_fields {
                     ocx.register_obligation(Obligation::new(
                         tcx,
@@ -479,7 +514,7 @@ pub fn coerce_unsized_info<'tcx>(
     };
 
     // Register an obligation for `A: Trait<B>`.
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     let obligation = Obligation::new(
         tcx,
@@ -500,9 +535,9 @@ pub fn coerce_unsized_info<'tcx>(
     Ok(CoerceUnsizedInfo { custom_kind: kind })
 }
 
-fn infringing_fields_error(
-    tcx: TyCtxt<'_>,
-    fields: Vec<(&ty::FieldDef, Ty<'_>, InfringingFieldsReason<'_>)>,
+fn infringing_fields_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infringing_tys: impl Iterator<Item = (Span, Ty<'tcx>, InfringingFieldsReason<'tcx>)>,
     lang_item: LangItem,
     impl_did: LocalDefId,
     impl_span: Span,
@@ -520,13 +555,13 @@ fn infringing_fields_error(
 
     let mut label_spans = Vec::new();
 
-    for (field, ty, reason) in fields {
+    for (span, ty, reason) in infringing_tys {
         // Only report an error once per type.
         if !seen_tys.insert(ty) {
             continue;
         }
 
-        label_spans.push(tcx.def_span(field.did));
+        label_spans.push(span);
 
         match reason {
             InfringingFieldsReason::Fulfill(fulfillment_errors) => {
@@ -553,7 +588,7 @@ fn infringing_fields_error(
                         if let ty::Param(_) = ty.kind() {
                             bounds.push((
                                 format!("{ty}"),
-                                trait_ref.print_only_trait_path().to_string(),
+                                trait_ref.print_trait_sugared().to_string(),
                                 Some(trait_ref.def_id),
                             ));
                         }

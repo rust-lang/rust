@@ -15,10 +15,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-linux-gnux32".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p270:32:32-p271:32:32-p272:64:64-\

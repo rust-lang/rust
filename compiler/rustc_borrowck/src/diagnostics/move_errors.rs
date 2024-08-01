@@ -9,10 +9,9 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
-use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
+use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 
-use crate::diagnostics::CapturedMessageOpt;
-use crate::diagnostics::{DescribePlaceOpt, UseSpans};
+use crate::diagnostics::{CapturedMessageOpt, DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
 
@@ -93,7 +92,7 @@ enum GroupedMoveError<'tcx> {
     },
 }
 
-impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     pub(crate) fn report_move_errors(&mut self) {
         let grouped_errors = self.group_move_errors();
         for error in grouped_errors {
@@ -291,7 +290,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'tcx> {
+    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -428,7 +427,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -554,6 +553,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             is_loop_message: false,
             is_move_msg: false,
             is_loop_move: false,
+            has_suggest_reborrow: false,
             maybe_reinitialized_locations_is_empty: true,
         };
         if let Some(use_spans) = use_spans {
@@ -579,15 +579,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span), None);
                     }
 
-                    err.subdiagnostic(
-                        self.dcx(),
-                        crate::session_diagnostics::TypeNoCopy::Label {
-                            is_partial_move: false,
-                            ty: place_ty,
-                            place: &place_desc,
-                            span,
-                        },
-                    );
+                    err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                        is_partial_move: false,
+                        ty: place_ty,
+                        place: &place_desc,
+                        span,
+                    });
                 } else {
                     binds_to.sort();
                     binds_to.dedup();
@@ -620,17 +617,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     );
                 }
 
-                err.subdiagnostic(
-                    self.dcx(),
-                    crate::session_diagnostics::TypeNoCopy::Label {
-                        is_partial_move: false,
-                        ty: place_ty,
-                        place: &place_desc,
-                        span: use_span,
-                    },
-                );
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                    is_partial_move: false,
+                    ty: place_ty,
+                    place: &place_desc,
+                    span: use_span,
+                });
 
-                use_spans.args_subdiag(self.dcx(), err, |args_span| {
+                use_spans.args_subdiag(err, |args_span| {
                     crate::session_diagnostics::CaptureArgLabel::MoveOutPlace {
                         place: place_desc,
                         args_span,
@@ -645,12 +639,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn add_borrow_suggestions(&self, err: &mut Diag<'_>, span: Span) {
         match self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             Ok(snippet) if snippet.starts_with('*') => {
-                err.span_suggestion_verbose(
-                    span.with_hi(span.lo() + BytePos(1)),
-                    "consider removing the dereference here",
-                    String::new(),
-                    Applicability::MaybeIncorrect,
-                );
+                let sp = span.with_lo(span.lo() + BytePos(1));
+                let inner = self.find_expr(sp);
+                let mut is_raw_ptr = false;
+                if let Some(inner) = inner {
+                    let typck_result = self.infcx.tcx.typeck(self.mir_def_id());
+                    if let Some(inner_type) = typck_result.node_type_opt(inner.hir_id) {
+                        if matches!(inner_type.kind(), ty::RawPtr(..)) {
+                            is_raw_ptr = true;
+                        }
+                    }
+                }
+                // If the `inner` is a raw pointer, do not suggest removing the "*", see #126863
+                // FIXME: need to check whether the assigned object can be a raw pointer, see `tests/ui/borrowck/issue-20801.rs`.
+                if !is_raw_ptr {
+                    err.span_suggestion_verbose(
+                        span.with_hi(span.lo() + BytePos(1)),
+                        "consider removing the dereference here",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             _ => {
                 err.span_suggestion_verbose(
@@ -733,15 +742,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     self.suggest_cloning(err, bind_to.ty, expr, None, None);
                 }
 
-                err.subdiagnostic(
-                    self.dcx(),
-                    crate::session_diagnostics::TypeNoCopy::Label {
-                        is_partial_move: false,
-                        ty: bind_to.ty,
-                        place: place_desc,
-                        span: binding_span,
-                    },
-                );
+                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
+                    is_partial_move: false,
+                    ty: bind_to.ty,
+                    place: place_desc,
+                    span: binding_span,
+                });
             }
         }
 

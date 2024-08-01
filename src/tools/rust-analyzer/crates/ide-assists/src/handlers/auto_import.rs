@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use hir::{db::HirDatabase, Module};
+use hir::{db::HirDatabase, ImportPathConfig, Module};
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
@@ -90,14 +90,15 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let cfg = ImportPathConfig {
+        prefer_no_std: ctx.config.prefer_no_std,
+        prefer_prelude: ctx.config.prefer_prelude,
+        prefer_absolute: ctx.config.prefer_absolute,
+    };
+
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
     let mut proposed_imports: Vec<_> = import_assets
-        .search_for_imports(
-            &ctx.sema,
-            ctx.config.insert_use.prefix_kind,
-            ctx.config.prefer_no_std,
-            ctx.config.prefer_no_std,
-        )
+        .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
         .collect();
     if proposed_imports.is_empty() {
         return None;
@@ -140,7 +141,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         acc.add_group(
             &group_label,
             assist_id,
-            format!("Import `{}`", import_name),
+            format!("Import `{import_name}`"),
             range,
             |builder| {
                 let scope = match scope.clone() {
@@ -165,7 +166,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                 acc.add_group(
                     &group_label,
                     assist_id,
-                    format!("Import `{} as _`", import_name),
+                    format!("Import `{import_name} as _`"),
                     range,
                     |builder| {
                         let scope = match scope.clone() {
@@ -272,8 +273,10 @@ fn module_distance_heuristic(db: &dyn HirDatabase, current: &Module, item: &Modu
     // cost of importing from another crate
     let crate_boundary_cost = if current.krate() == item.krate() {
         0
-    } else if item.krate().is_builtin(db) {
+    } else if item.krate().origin(db).is_local() {
         2
+    } else if item.krate().is_builtin(db) {
+        3
     } else {
         4
     };
@@ -362,6 +365,49 @@ pub struct HashMap;
         check_auto_import_order(
             before,
             &["Import `collections::hash_map::HashMap`", "Import `foo::HashMap`"],
+        )
+    }
+
+    #[test]
+    fn prefer_workspace() {
+        let before = r"
+//- /main.rs crate:main deps:foo,bar
+HashMap$0::new();
+
+//- /lib.rs crate:foo
+pub mod module {
+    pub struct HashMap;
+}
+
+//- /lib.rs crate:bar library
+pub struct HashMap;
+        ";
+
+        check_auto_import_order(before, &["Import `foo::module::HashMap`", "Import `bar::HashMap`"])
+    }
+
+    #[test]
+    fn prefer_non_local_over_long_path() {
+        let before = r"
+//- /main.rs crate:main deps:foo,bar
+HashMap$0::new();
+
+//- /lib.rs crate:foo
+pub mod deeply {
+    pub mod nested {
+        pub mod module {
+            pub struct HashMap;
+        }
+    }
+}
+
+//- /lib.rs crate:bar library
+pub struct HashMap;
+        ";
+
+        check_auto_import_order(
+            before,
+            &["Import `bar::HashMap`", "Import `foo::deeply::nested::module::HashMap`"],
         )
     }
 

@@ -19,10 +19,7 @@ fn foo<T: Err>() {
 
     // CHECK-NOT: [foo:_.*]: Foo
     // CHECK-NOT: Box<dyn std::fmt::Display + 'static>
-    let foo: Foo<T> = Foo {
-        x: Ok(Box::new(5_u32)),
-        y: 7_u32,
-    };
+    let foo: Foo<T> = Foo { x: Ok(Box::new(5_u32)), y: 7_u32 };
 
     let x = foo.x;
     let y = foo.y;

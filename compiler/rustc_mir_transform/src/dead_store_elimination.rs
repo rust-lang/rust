@@ -12,7 +12,7 @@
 //!     will still not cause any further changes.
 //!
 
-use crate::util::is_within_packed;
+use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -21,6 +21,8 @@ use rustc_mir_dataflow::impls::{
     borrowed_locals, LivenessTransferFunction, MaybeTransitiveLiveLocals,
 };
 use rustc_mir_dataflow::Analysis;
+
+use crate::util::is_within_packed;
 
 /// Performs the optimization on the body
 ///
@@ -101,7 +103,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 | StatementKind::Nop => (),
 
                 StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
-                    bug!("{:?} not found in this MIR phase!", &statement.kind)
+                    bug!("{:?} not found in this MIR phase!", statement.kind)
                 }
             }
         }

@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet_opt;
 use rustc_data_structures::fx::FxHashSet;
@@ -12,7 +13,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of items through absolute paths, like `std::env::current_dir`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Many codebases have their own style when it comes to importing, but one that is seldom used
     /// is using absolute paths *everywhere*. This is generally considered unidiomatic, and you
     /// should add a `use` statement.
@@ -47,7 +48,16 @@ impl_lint_pass!(AbsolutePaths => [ABSOLUTE_PATHS]);
 
 pub struct AbsolutePaths {
     pub absolute_paths_max_segments: u64,
-    pub absolute_paths_allowed_crates: FxHashSet<String>,
+    pub absolute_paths_allowed_crates: &'static FxHashSet<String>,
+}
+
+impl AbsolutePaths {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            absolute_paths_max_segments: conf.absolute_paths_max_segments,
+            absolute_paths_allowed_crates: &conf.absolute_paths_allowed_crates,
+        }
+    }
 }
 
 impl LateLintPass<'_> for AbsolutePaths {

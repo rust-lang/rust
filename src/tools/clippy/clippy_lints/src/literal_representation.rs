@@ -1,6 +1,7 @@
 //! Lints concerned with the grouping of digits with underscores in integral or
 //! floating-point literal expressions.
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
 use clippy_utils::source::snippet_opt;
@@ -132,8 +133,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Warns if there is a better representation for a numeric literal.
     ///
-    /// ### Why is this bad?
-    /// Especially for big powers of 2 a hexadecimal representation is more
+    /// ### Why restrict this?
+    /// Especially for big powers of 2, a hexadecimal representation is usually more
     /// readable than a decimal representation.
     ///
     /// ### Example
@@ -218,7 +219,6 @@ impl WarningType {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct LiteralDigitGrouping {
     lint_fraction_readability: bool,
 }
@@ -233,11 +233,9 @@ impl_lint_pass!(LiteralDigitGrouping => [
 
 impl EarlyLintPass for LiteralDigitGrouping {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
-            return;
-        }
-
-        if let ExprKind::Lit(lit) = expr.kind {
+        if let ExprKind::Lit(lit) = expr.kind
+            && !in_external_macro(cx.sess(), expr.span)
+        {
             self.check_lit(cx, lit, expr.span);
         }
     }
@@ -247,13 +245,13 @@ impl EarlyLintPass for LiteralDigitGrouping {
 const UUID_GROUP_LENS: [usize; 5] = [8, 4, 4, 4, 12];
 
 impl LiteralDigitGrouping {
-    pub fn new(lint_fraction_readability: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            lint_fraction_readability,
+            lint_fraction_readability: conf.unreadable_literal_lint_fractions,
         }
     }
 
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
+    fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         if let Some(src) = snippet_opt(cx, span)
             && let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
@@ -439,7 +437,6 @@ impl LiteralDigitGrouping {
 }
 
 #[expect(clippy::module_name_repetitions)]
-#[derive(Copy, Clone)]
 pub struct DecimalLiteralRepresentation {
     threshold: u64,
 }
@@ -448,22 +445,21 @@ impl_lint_pass!(DecimalLiteralRepresentation => [DECIMAL_LITERAL_REPRESENTATION]
 
 impl EarlyLintPass for DecimalLiteralRepresentation {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
-            return;
-        }
-
-        if let ExprKind::Lit(lit) = expr.kind {
+        if let ExprKind::Lit(lit) = expr.kind
+            && !in_external_macro(cx.sess(), expr.span)
+        {
             self.check_lit(cx, lit, expr.span);
         }
     }
 }
 
 impl DecimalLiteralRepresentation {
-    #[must_use]
-    pub fn new(threshold: u64) -> Self {
-        Self { threshold }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            threshold: conf.literal_representation_threshold,
+        }
     }
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
+    fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         // Lint integral literals.
         if let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let LitKind::Int(val, _) = lit_kind

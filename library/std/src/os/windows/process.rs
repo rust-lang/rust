@@ -8,15 +8,14 @@ use crate::ffi::OsStr;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::process;
 use crate::sealed::Sealed;
-use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{process, sys};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
     unsafe fn from_raw_handle(handle: RawHandle) -> process::Stdio {
-        let handle = sys::handle::Handle::from_raw_handle(handle as *mut _);
+        let handle = unsafe { sys::handle::Handle::from_raw_handle(handle as *mut _) };
         let io = sys::process::Stdio::Handle(handle);
         process::Stdio::from_inner(io)
     }
@@ -109,7 +108,7 @@ impl IntoRawHandle for process::ChildStderr {
     }
 }
 
-/// Create a `ChildStdin` from the provided `OwnedHandle`.
+/// Creates a `ChildStdin` from the provided `OwnedHandle`.
 ///
 /// The provided handle must be asynchronous, as reading and
 /// writing from and to it is implemented using asynchronous APIs.
@@ -122,7 +121,7 @@ impl From<OwnedHandle> for process::ChildStdin {
     }
 }
 
-/// Create a `ChildStdout` from the provided `OwnedHandle`.
+/// Creates a `ChildStdout` from the provided `OwnedHandle`.
 ///
 /// The provided handle must be asynchronous, as reading and
 /// writing from and to it is implemented using asynchronous APIs.
@@ -135,7 +134,7 @@ impl From<OwnedHandle> for process::ChildStdout {
     }
 }
 
-/// Create a `ChildStderr` from the provided `OwnedHandle`.
+/// Creates a `ChildStderr` from the provided `OwnedHandle`.
 ///
 /// The provided handle must be asynchronous, as reading and
 /// writing from and to it is implemented using asynchronous APIs.
@@ -181,6 +180,14 @@ pub trait CommandExt: Sealed {
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
 
+    /// Sets the field `wShowWindow` of [STARTUPINFO][1] that is passed to `CreateProcess`.
+    /// Allowed values are the ones listed in
+    /// <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow>
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow>
+    #[unstable(feature = "windows_process_extensions_show_window", issue = "127544")]
+    fn show_window(&mut self, cmd_show: u16) -> &mut process::Command;
+
     /// Forces all arguments to be wrapped in quote (`"`) characters.
     ///
     /// This is useful for passing arguments to [MSYS2/Cygwin][1] based
@@ -199,14 +206,14 @@ pub trait CommandExt: Sealed {
 
     /// Append literal text to the command line without any quoting or escaping.
     ///
-    /// This is useful for passing arguments to applications which doesn't follow
+    /// This is useful for passing arguments to applications that don't follow
     /// the standard C run-time escaping rules, such as `cmd.exe /c`.
     ///
-    /// # Bat files
+    /// # Batch files
     ///
-    /// Note the `cmd /c` command line has slightly different escaping rules then bat files
+    /// Note the `cmd /c` command line has slightly different escaping rules than batch files
     /// themselves. If possible, it may be better to write complex arguments to a temporary
-    /// .bat file, with appropriate escaping, and simply run that using:
+    /// `.bat` file, with appropriate escaping, and simply run that using:
     ///
     /// ```no_run
     /// # use std::process::Command;
@@ -217,7 +224,7 @@ pub trait CommandExt: Sealed {
     ///
     /// # Example
     ///
-    /// Run a bat script using both trusted and untrusted arguments.
+    /// Run a batch script using both trusted and untrusted arguments.
     ///
     /// ```no_run
     /// #[cfg(windows)]
@@ -241,9 +248,10 @@ pub trait CommandExt: Sealed {
     ///     if !user_name.chars().all(|c| c.is_alphanumeric()) {
     ///         return Err(Error::new(ErrorKind::InvalidInput, "invalid user name"));
     ///     }
-    ///     // now we've checked the user name, let's add that too.
-    ///     cmd_args.push(' ');
-    ///     cmd_args.push_str(&format!("--user {user_name}"));
+    ///
+    ///     // now we have validated the user name, let's add that too.
+    ///     cmd_args.push_str(" --user ");
+    ///     cmd_args.push_str(user_name);
     ///
     ///     // call cmd.exe and return the output
     ///     Command::new("cmd.exe")
@@ -287,25 +295,37 @@ pub trait CommandExt: Sealed {
     #[unstable(feature = "windows_process_extensions_async_pipes", issue = "98289")]
     fn async_pipes(&mut self, always_async: bool) -> &mut process::Command;
 
-    /// Sets a raw attribute on the command, providing extended configuration options for Windows processes.
+    /// Set a raw attribute on the command, providing extended configuration options for Windows
+    /// processes.
     ///
-    /// This method allows you to specify custom attributes for a child process on Windows systems using raw attribute values.
-    /// Raw attributes provide extended configurability for process creation, but their usage can be complex and potentially unsafe.
+    /// This method allows you to specify custom attributes for a child process on Windows systems
+    /// using raw attribute values. Raw attributes provide extended configurability for process
+    /// creation, but their usage can be complex and potentially unsafe.
     ///
-    /// The `attribute` parameter specifies the raw attribute to be set, while the `value` parameter holds the value associated with that attribute.
-    /// Please refer to the [`windows-rs`](https://microsoft.github.io/windows-docs-rs/doc/windows/) documentation or the [`Win32 API documentation`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute) for detailed information about available attributes and their meanings.
+    /// The `attribute` parameter specifies the raw attribute to be set, while the `value`
+    /// parameter holds the value associated with that attribute. Please refer to the
+    /// [`windows-rs` documentation] or the [Win32 API documentation] for detailed information
+    /// about available attributes and their meanings.
+    ///
+    /// [`windows-rs` documentation]: https://microsoft.github.io/windows-docs-rs/doc/windows/
+    /// [Win32 API documentation]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute
     ///
     /// # Note
     ///
     /// The maximum number of raw attributes is the value of [`u32::MAX`].
-    /// If this limit is exceeded, the call to [`process::Command::spawn`] will return an `Error` indicating that the maximum number of attributes has been exceeded.
+    /// If this limit is exceeded, the call to [`process::Command::spawn`] will return an `Error`
+    /// indicating that the maximum number of attributes has been exceeded.
+    ///
     /// # Safety
     ///
-    /// The usage of raw attributes is potentially unsafe and should be done with caution. Incorrect attribute values or improper configuration can lead to unexpected behavior or errors.
+    /// The usage of raw attributes is potentially unsafe and should be done with caution.
+    /// Incorrect attribute values or improper configuration can lead to unexpected behavior or
+    /// errors.
     ///
     /// # Example
     ///
-    /// The following example demonstrates how to create a child process with a specific parent process ID using a raw attribute.
+    /// The following example demonstrates how to create a child process with a specific parent
+    /// process ID using a raw attribute.
     ///
     /// ```rust
     /// #![feature(windows_process_extensions_raw_attribute)]
@@ -339,7 +359,9 @@ pub trait CommandExt: Sealed {
     ///
     /// # Safety Note
     ///
-    /// Remember that improper use of raw attributes can lead to undefined behavior or security vulnerabilities. Always consult the documentation and ensure proper attribute values are used.
+    /// Remember that improper use of raw attributes can lead to undefined behavior or security
+    /// vulnerabilities. Always consult the documentation and ensure proper attribute values are
+    /// used.
     #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
     unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
         &mut self,
@@ -352,6 +374,11 @@ pub trait CommandExt: Sealed {
 impl CommandExt for process::Command {
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
         self.as_inner_mut().creation_flags(flags);
+        self
+    }
+
+    fn show_window(&mut self, cmd_show: u16) -> &mut process::Command {
+        self.as_inner_mut().show_window(Some(cmd_show));
         self
     }
 
@@ -379,7 +406,7 @@ impl CommandExt for process::Command {
         attribute: usize,
         value: T,
     ) -> &mut process::Command {
-        self.as_inner_mut().raw_attribute(attribute, value);
+        unsafe { self.as_inner_mut().raw_attribute(attribute, value) };
         self
     }
 }

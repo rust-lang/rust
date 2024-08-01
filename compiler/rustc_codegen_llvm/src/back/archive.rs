@@ -1,12 +1,16 @@
 //! A helper class for dealing with static archives
 
-use std::env;
 use std::ffi::{c_char, c_void, CStr, CString, OsString};
-use std::io;
-use std::mem;
 use std::path::{Path, PathBuf};
-use std::ptr;
-use std::str;
+use std::{env, io, mem, ptr, str};
+
+use rustc_codegen_ssa::back::archive::{
+    try_extract_macho_fat_archive, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
+    ArchiveBuilderBuilder, ObjectReader, UnknownArchiveKind, DEFAULT_OBJECT_READER,
+};
+use rustc_session::cstore::DllImport;
+use rustc_session::Session;
+use tracing::trace;
 
 use crate::common;
 use crate::errors::{
@@ -14,13 +18,6 @@ use crate::errors::{
 };
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
-use rustc_codegen_ssa::back::archive::{
-    get_native_object_symbols, try_extract_macho_fat_archive, ArArchiveBuilder,
-    ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder, UnknownArchiveKind,
-};
-
-use rustc_session::cstore::DllImport;
-use rustc_session::Session;
 
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
@@ -100,7 +97,9 @@ impl<'a> ArchiveBuilder for LlvmArchiveBuilder<'a> {
     fn build(mut self: Box<Self>, output: &Path) -> bool {
         match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
-            Err(e) => self.sess.dcx().emit_fatal(ArchiveBuildFailure { error: e }),
+            Err(error) => {
+                self.sess.dcx().emit_fatal(ArchiveBuildFailure { path: output.to_owned(), error })
+            }
         }
     }
 }
@@ -114,7 +113,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         if true {
             Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
         } else {
-            Box::new(ArArchiveBuilder::new(sess, get_llvm_object_symbols))
+            Box::new(ArArchiveBuilder::new(sess, &LLVM_OBJECT_READER))
         }
     }
 
@@ -127,11 +126,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         is_direct_dependency: bool,
     ) -> PathBuf {
         let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
-        let output_path = {
-            let mut output_path: PathBuf = tmpdir.to_path_buf();
-            output_path.push(format!("{lib_name}{name_suffix}"));
-            output_path.with_extension("lib")
-        };
+        let output_path = tmpdir.join(format!("{lib_name}{name_suffix}.lib"));
 
         let target = &sess.target;
         let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(target);
@@ -156,8 +151,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions. Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            let def_file_path =
-                tmpdir.join(format!("{lib_name}{name_suffix}")).with_extension("def");
+            let def_file_path = tmpdir.join(format!("{lib_name}{name_suffix}.def"));
 
             let def_file_content = format!(
                 "EXPORTS\n{}",
@@ -200,21 +194,20 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 _ => panic!("unsupported arch {}", sess.target.arch),
             };
             let mut dlltool_cmd = std::process::Command::new(&dlltool);
-            dlltool_cmd.args([
-                "-d",
-                def_file_path.to_str().unwrap(),
-                "-D",
-                lib_name,
-                "-l",
-                output_path.to_str().unwrap(),
-                "-m",
-                dlltool_target_arch,
-                "-f",
-                dlltool_target_bitness,
-                "--no-leading-underscore",
-                "--temp-prefix",
-                temp_prefix.to_str().unwrap(),
-            ]);
+            dlltool_cmd
+                .arg("-d")
+                .arg(def_file_path)
+                .arg("-D")
+                .arg(lib_name)
+                .arg("-l")
+                .arg(&output_path)
+                .arg("-m")
+                .arg(dlltool_target_arch)
+                .arg("-f")
+                .arg(dlltool_target_bitness)
+                .arg("--no-leading-underscore")
+                .arg("--temp-prefix")
+                .arg(temp_prefix);
 
             match dlltool_cmd.output() {
                 Err(e) => {
@@ -296,57 +289,82 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 
 // The object crate doesn't know how to get symbols for LLVM bitcode and COFF bigobj files.
 // As such we need to use LLVM for them.
-#[deny(unsafe_op_in_unsafe_fn)]
-fn get_llvm_object_symbols(
-    buf: &[u8],
-    f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
-) -> io::Result<bool> {
+
+static LLVM_OBJECT_READER: ObjectReader = ObjectReader {
+    get_symbols: get_llvm_object_symbols,
+    is_64_bit_object_file: llvm_is_64_bit_object_file,
+    is_ec_object_file: llvm_is_ec_object_file,
+    get_xcoff_member_alignment: DEFAULT_OBJECT_READER.get_xcoff_member_alignment,
+};
+
+fn should_use_llvm_reader(buf: &[u8]) -> bool {
     let is_bitcode = unsafe { llvm::LLVMRustIsBitcode(buf.as_ptr(), buf.len()) };
 
     // COFF bigobj file, msvc LTO file or import library. See
     // https://github.com/llvm/llvm-project/blob/453f27bc9/llvm/lib/BinaryFormat/Magic.cpp#L38-L51
     let is_unsupported_windows_obj_file = buf.get(0..4) == Some(b"\0\0\xFF\xFF");
 
-    if is_bitcode || is_unsupported_windows_obj_file {
-        let mut state = Box::new(f);
+    is_bitcode || is_unsupported_windows_obj_file
+}
 
-        let err = unsafe {
-            llvm::LLVMRustGetSymbols(
-                buf.as_ptr(),
-                buf.len(),
-                std::ptr::addr_of_mut!(*state) as *mut c_void,
-                callback,
-                error_callback,
-            )
-        };
-
-        if err.is_null() {
-            return Ok(true);
-        } else {
-            return Err(unsafe { *Box::from_raw(err as *mut io::Error) });
-        }
-
-        unsafe extern "C" fn callback(
-            state: *mut c_void,
-            symbol_name: *const c_char,
-        ) -> *mut c_void {
-            let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
-            match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
-                Ok(()) => std::ptr::null_mut(),
-                Err(err) => Box::into_raw(Box::new(err)) as *mut c_void,
-            }
-        }
-
-        unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
-            let error = unsafe { CStr::from_ptr(error) };
-            Box::into_raw(Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                format!("LLVM error: {}", error.to_string_lossy()),
-            ))) as *mut c_void
-        }
-    } else {
-        get_native_object_symbols(buf, f)
+#[deny(unsafe_op_in_unsafe_fn)]
+fn get_llvm_object_symbols(
+    buf: &[u8],
+    f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
+) -> io::Result<bool> {
+    if !should_use_llvm_reader(buf) {
+        return (DEFAULT_OBJECT_READER.get_symbols)(buf, f);
     }
+
+    let mut state = Box::new(f);
+
+    let err = unsafe {
+        llvm::LLVMRustGetSymbols(
+            buf.as_ptr(),
+            buf.len(),
+            std::ptr::addr_of_mut!(*state) as *mut c_void,
+            callback,
+            error_callback,
+        )
+    };
+
+    if err.is_null() {
+        return Ok(true);
+    } else {
+        return Err(unsafe { *Box::from_raw(err as *mut io::Error) });
+    }
+
+    unsafe extern "C" fn callback(state: *mut c_void, symbol_name: *const c_char) -> *mut c_void {
+        let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
+        match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
+            Ok(()) => std::ptr::null_mut(),
+            Err(err) => Box::into_raw(Box::new(err)) as *mut c_void,
+        }
+    }
+
+    unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
+        let error = unsafe { CStr::from_ptr(error) };
+        Box::into_raw(Box::new(io::Error::new(
+            io::ErrorKind::Other,
+            format!("LLVM error: {}", error.to_string_lossy()),
+        ))) as *mut c_void
+    }
+}
+
+fn llvm_is_64_bit_object_file(buf: &[u8]) -> bool {
+    if !should_use_llvm_reader(buf) {
+        return (DEFAULT_OBJECT_READER.is_64_bit_object_file)(buf);
+    }
+
+    unsafe { llvm::LLVMRustIs64BitSymbolicFile(buf.as_ptr(), buf.len()) }
+}
+
+fn llvm_is_ec_object_file(buf: &[u8]) -> bool {
+    if !should_use_llvm_reader(buf) {
+        return (DEFAULT_OBJECT_READER.is_ec_object_file)(buf);
+    }
+
+    unsafe { llvm::LLVMRustIsECObject(buf.as_ptr(), buf.len()) }
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {

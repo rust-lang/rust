@@ -1,13 +1,12 @@
+use core::hash::{Hash, Hasher};
+use core::ops::Neg;
+
 use crate::cmp::Ordering;
-use crate::fmt;
-use crate::mem;
 use crate::ptr::null;
 use crate::sys::c;
 use crate::sys_common::IntoInner;
 use crate::time::Duration;
-
-use core::hash::{Hash, Hasher};
-use core::ops::Neg;
+use crate::{fmt, mem};
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 const INTERVALS_PER_SEC: u64 = NANOS_PER_SEC / 100;
@@ -76,8 +75,8 @@ impl SystemTime {
     fn from_intervals(intervals: i64) -> SystemTime {
         SystemTime {
             t: c::FILETIME {
-                dwLowDateTime: intervals as c::DWORD,
-                dwHighDateTime: (intervals >> 32) as c::DWORD,
+                dwLowDateTime: intervals as u32,
+                dwHighDateTime: (intervals >> 32) as u32,
             },
         }
     }
@@ -166,13 +165,12 @@ fn intervals2dur(intervals: u64) -> Duration {
 mod perf_counter {
     use super::NANOS_PER_SEC;
     use crate::sync::atomic::{AtomicU64, Ordering};
-    use crate::sys::c;
-    use crate::sys::cvt;
+    use crate::sys::{c, cvt};
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
 
     pub struct PerformanceCounterInstant {
-        ts: c::LARGE_INTEGER,
+        ts: i64,
     }
     impl PerformanceCounterInstant {
         pub fn now() -> Self {
@@ -196,7 +194,7 @@ mod perf_counter {
         }
     }
 
-    fn frequency() -> c::LARGE_INTEGER {
+    fn frequency() -> i64 {
         // Either the cached result of `QueryPerformanceFrequency` or `0` for
         // uninitialized. Storing this as a single `AtomicU64` allows us to use
         // `Relaxed` operations, as we are only interested in the effects on a
@@ -206,7 +204,7 @@ mod perf_counter {
         let cached = FREQUENCY.load(Ordering::Relaxed);
         // If a previous thread has filled in this global state, use that.
         if cached != 0 {
-            return cached as c::LARGE_INTEGER;
+            return cached as i64;
         }
         // ... otherwise learn for ourselves ...
         let mut frequency = 0;
@@ -218,8 +216,8 @@ mod perf_counter {
         frequency
     }
 
-    fn query() -> c::LARGE_INTEGER {
-        let mut qpc_value: c::LARGE_INTEGER = 0;
+    fn query() -> i64 {
+        let mut qpc_value: i64 = 0;
         cvt(unsafe { c::QueryPerformanceCounter(&mut qpc_value) }).unwrap();
         qpc_value
     }
@@ -230,7 +228,7 @@ pub(super) struct WaitableTimer {
     handle: c::HANDLE,
 }
 impl WaitableTimer {
-    /// Create a high-resolution timer. Will fail before Windows 10, version 1803.
+    /// Creates a high-resolution timer. Will fail before Windows 10, version 1803.
     pub fn high_resolution() -> Result<Self, ()> {
         let handle = unsafe {
             c::CreateWaitableTimerExW(

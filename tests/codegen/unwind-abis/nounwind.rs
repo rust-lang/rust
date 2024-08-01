@@ -2,7 +2,6 @@
 //@ needs-unwind
 
 #![crate_type = "lib"]
-#![feature(c_unwind)]
 
 // We disable optimizations to prevent LLVM from inferring the attribute.
 

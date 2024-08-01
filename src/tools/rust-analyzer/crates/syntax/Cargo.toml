@@ -33,6 +33,7 @@ text-edit.workspace = true
 [dev-dependencies]
 rayon.workspace = true
 expect-test = "1.4.0"
+rustc_apfloat = "0.2.0"
 
 test-utils.workspace = true
 

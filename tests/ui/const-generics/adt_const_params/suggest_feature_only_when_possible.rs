@@ -8,9 +8,8 @@ fn uwu_0<const N: &'static mut ()>() {}
 //~| HELP: add `#![feature(adt_const_params)]`
 //~| HELP: add `#![feature(adt_const_params)]`
 //~| HELP: add `#![feature(adt_const_params)]`
-//~| HELP: add `#![feature(adt_const_params)]`
-//~| HELP: add `#![feature(adt_const_params)]`
-//~| HELP: add `#![feature(adt_const_params)]`
+//~| HELP: add `#![feature(unsized_const_params)]`
+//~| HELP: add `#![feature(unsized_const_params)]`
 
 // Needs the feature but can be used, so suggest adding the feature.
 fn owo_0<const N: &'static u32>() {}

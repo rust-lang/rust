@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
 #![warn(unused)]
 
 #[warn(unused_variables)]

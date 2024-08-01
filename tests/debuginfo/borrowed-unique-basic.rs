@@ -42,11 +42,14 @@
 // gdb-command:print *u64_ref
 // gdb-check:$12 = 64
 
+// gdb-command:print *f16_ref
+// gdb-check:$13 = 1.5
+
 // gdb-command:print *f32_ref
-// gdb-check:$13 = 2.5
+// gdb-check:$14 = 2.5
 
 // gdb-command:print *f64_ref
-// gdb-check:$14 = 3.5
+// gdb-check:$15 = 3.5
 
 
 // === LLDB TESTS ==================================================================================
@@ -103,6 +106,10 @@
 // lldbg-check:[...] 64
 // lldbr-check:(u64) *u64_ref = 64
 
+// lldb-command:v *f16_ref
+// lldbg-check:[...] 1.5
+// lldbr-check:(f16) *f16_ref = 1.5
+
 // lldb-command:v *f32_ref
 // lldbg-check:[...] 2.5
 // lldbr-check:(f32) *f32_ref = 2.5
@@ -114,6 +121,7 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
+#![feature(f16)]
 
 fn main() {
     let bool_box: Box<bool> = Box::new(true);
@@ -151,6 +159,9 @@ fn main() {
 
     let u64_box: Box<u64> = Box::new(64);
     let u64_ref: &u64 = &*u64_box;
+
+    let f16_box: Box<f16> = Box::new(1.5);
+    let f16_ref: &f16 = &*f16_box;
 
     let f32_box: Box<f32> = Box::new(2.5);
     let f32_ref: &f32 = &*f32_box;

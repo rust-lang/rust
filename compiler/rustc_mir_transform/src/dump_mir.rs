@@ -3,11 +3,11 @@
 use std::fs::File;
 use std::io;
 
-use crate::MirPass;
-use rustc_middle::mir::write_mir_pretty;
-use rustc_middle::mir::Body;
+use rustc_middle::mir::{write_mir_pretty, Body};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
+
+use crate::MirPass;
 
 pub struct Marker(pub &'static str);
 
@@ -28,6 +28,9 @@ pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {
         OutFileName::Real(path) => {
             let mut f = io::BufWriter::new(File::create(&path)?);
             write_mir_pretty(tcx, None, &mut f)?;
+            if tcx.sess.opts.json_artifact_notifications {
+                tcx.dcx().emit_artifact_notification(&path, "mir");
+            }
         }
     }
     Ok(())

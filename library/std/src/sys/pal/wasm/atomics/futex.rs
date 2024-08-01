@@ -1,6 +1,15 @@
-use crate::arch::wasm32;
+#[cfg(target_arch = "wasm32")]
+use core::arch::wasm32 as wasm;
+#[cfg(target_arch = "wasm64")]
+use core::arch::wasm64 as wasm;
+
 use crate::sync::atomic::AtomicU32;
 use crate::time::Duration;
+
+/// An atomic for use as a futex that is at least 8-bits but may be larger.
+pub type SmallAtomic = AtomicU32;
+/// Must be the underlying type of SmallAtomic
+pub type SmallPrimitive = u32;
 
 /// Wait for a futex_wake operation to wake us.
 ///
@@ -10,25 +19,22 @@ use crate::time::Duration;
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
     let timeout = timeout.and_then(|t| t.as_nanos().try_into().ok()).unwrap_or(-1);
     unsafe {
-        wasm32::memory_atomic_wait32(
-            futex as *const AtomicU32 as *mut i32,
-            expected as i32,
-            timeout,
-        ) < 2
+        wasm::memory_atomic_wait32(futex as *const AtomicU32 as *mut i32, expected as i32, timeout)
+            < 2
     }
 }
 
-/// Wake up one thread that's blocked on futex_wait on this futex.
+/// Wakes up one thread that's blocked on `futex_wait` on this futex.
 ///
 /// Returns true if this actually woke up such a thread,
 /// or false if no thread was waiting on this futex.
 pub fn futex_wake(futex: &AtomicU32) -> bool {
-    unsafe { wasm32::memory_atomic_notify(futex as *const AtomicU32 as *mut i32, 1) > 0 }
+    unsafe { wasm::memory_atomic_notify(futex as *const AtomicU32 as *mut i32, 1) > 0 }
 }
 
-/// Wake up all threads that are waiting on futex_wait on this futex.
+/// Wakes up all threads that are waiting on `futex_wait` on this futex.
 pub fn futex_wake_all(futex: &AtomicU32) {
     unsafe {
-        wasm32::memory_atomic_notify(futex as *const AtomicU32 as *mut i32, i32::MAX as u32);
+        wasm::memory_atomic_notify(futex as *const AtomicU32 as *mut i32, i32::MAX as u32);
     }
 }

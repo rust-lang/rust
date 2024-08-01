@@ -123,7 +123,7 @@ fn try_lookup_include_path(
     {
         return None;
     }
-    let path = token.value()?;
+    let path = token.value().ok()?;
 
     let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
     let size = sema.db.file_text(file_id).len().try_into().ok()?;
@@ -179,11 +179,11 @@ fn try_filter_trait_item_definition(
         AssocItem::Const(..) | AssocItem::TypeAlias(..) => {
             let trait_ = assoc.implemented_trait(db)?;
             let name = def.name(db)?;
-            let discri_value = discriminant(&assoc);
+            let discriminant_value = discriminant(&assoc);
             trait_
                 .items(db)
                 .iter()
-                .filter(|itm| discriminant(*itm) == discri_value)
+                .filter(|itm| discriminant(*itm) == discriminant_value)
                 .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
                 .map(|it| it.collect())
         }
@@ -2287,6 +2287,30 @@ macro_rules! baz {
     () => {};
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn goto_shadowed_preludes_in_block_module() {
+        check(
+            r#"
+//- /main.rs crate:main edition:2021 deps:core
+pub struct S;
+         //^
+
+fn main() {
+    fn f() -> S$0 {
+        fn inner() {} // forces a block def map
+        return S;
+    }
+}
+//- /core.rs crate:core
+pub mod prelude {
+    pub mod rust_2021 {
+        pub enum S;
+    }
+}
+        "#,
         );
     }
 }

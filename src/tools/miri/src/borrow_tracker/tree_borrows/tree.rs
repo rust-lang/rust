@@ -530,13 +530,11 @@ impl<'tcx> Tree {
         span: Span,        // diagnostics
     ) -> InterpResult<'tcx> {
         self.perform_access(
-            AccessKind::Write,
             tag,
-            Some(access_range),
+            Some((access_range, AccessKind::Write, diagnostics::AccessCause::Dealloc)),
             global,
             alloc_id,
             span,
-            diagnostics::AccessCause::Dealloc,
         )?;
         for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size) {
             TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
@@ -570,12 +568,16 @@ impl<'tcx> Tree {
     }
 
     /// Map the per-node and per-location `LocationState::perform_access`
-    /// to each location of `access_range`, on every tag of the allocation.
+    /// to each location of the first component of `access_range_and_kind`,
+    /// on every tag of the allocation.
     ///
-    /// If `access_range` is `None`, this is interpreted as the special
+    /// If `access_range_and_kind` is `None`, this is interpreted as the special
     /// access that is applied on protector release:
     /// - the access will be applied only to initialized locations of the allocation,
-    /// - and it will not be visible to children.
+    /// - it will not be visible to children,
+    /// - it will be recorded as a `FnExit` diagnostic access
+    /// - and it will be a read except if the location is `Active`, i.e. has been written to,
+    ///   in which case it will be a write.
     ///
     /// `LocationState::perform_access` will take care of raising transition
     /// errors and updating the `initialized` status of each location,
@@ -585,13 +587,11 @@ impl<'tcx> Tree {
     /// - recording the history.
     pub fn perform_access(
         &mut self,
-        access_kind: AccessKind,
         tag: BorTag,
-        access_range: Option<AllocRange>,
+        access_range_and_kind: Option<(AllocRange, AccessKind, diagnostics::AccessCause)>,
         global: &GlobalState,
-        alloc_id: AllocId,                      // diagnostics
-        span: Span,                             // diagnostics
-        access_cause: diagnostics::AccessCause, // diagnostics
+        alloc_id: AllocId, // diagnostics
+        span: Span,        // diagnostics
     ) -> InterpResult<'tcx> {
         use std::ops::Range;
         // Performs the per-node work:
@@ -605,6 +605,8 @@ impl<'tcx> Tree {
         // `perms_range` is only for diagnostics (it is the range of
         // the `RangeMap` on which we are currently working).
         let node_app = |perms_range: Range<u64>,
+                        access_kind: AccessKind,
+                        access_cause: diagnostics::AccessCause,
                         args: NodeAppArgs<'_>|
          -> Result<ContinueTraversal, TransitionError> {
             let NodeAppArgs { node, mut perm, rel_pos } = args;
@@ -618,14 +620,13 @@ impl<'tcx> Tree {
 
             let protected = global.borrow().protected_tags.contains_key(&node.tag);
             let transition = old_state.perform_access(access_kind, rel_pos, protected)?;
-
             // Record the event as part of the history
             if !transition.is_noop() {
                 node.debug_info.history.push(diagnostics::Event {
                     transition,
                     is_foreign: rel_pos.is_foreign(),
                     access_cause,
-                    access_range,
+                    access_range: access_range_and_kind.map(|x| x.0),
                     transition_range: perms_range,
                     span,
                 });
@@ -636,6 +637,7 @@ impl<'tcx> Tree {
         // Error handler in case `node_app` goes wrong.
         // Wraps the faulty transition in more context for diagnostics.
         let err_handler = |perms_range: Range<u64>,
+                           access_cause: diagnostics::AccessCause,
                            args: ErrHandlerArgs<'_, TransitionError>|
          -> InterpError<'tcx> {
             let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
@@ -650,7 +652,7 @@ impl<'tcx> Tree {
             .build()
         };
 
-        if let Some(access_range) = access_range {
+        if let Some((access_range, access_kind, access_cause)) = access_range_and_kind {
             // Default branch: this is a "normal" access through a known range.
             // We iterate over affected locations and traverse the tree for each of them.
             for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size)
@@ -658,8 +660,8 @@ impl<'tcx> Tree {
                 TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                     .traverse_parents_this_children_others(
                         tag,
-                        |args| node_app(perms_range.clone(), args),
-                        |args| err_handler(perms_range.clone(), args),
+                        |args| node_app(perms_range.clone(), access_kind, access_cause, args),
+                        |args| err_handler(perms_range.clone(), access_cause, args),
                     )?;
             }
         } else {
@@ -678,11 +680,14 @@ impl<'tcx> Tree {
                 if let Some(p) = perms.get(idx)
                     && p.initialized
                 {
+                    let access_kind =
+                        if p.permission.is_active() { AccessKind::Write } else { AccessKind::Read };
+                    let access_cause = diagnostics::AccessCause::FnExit(access_kind);
                     TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                         .traverse_nonchildren(
                         tag,
-                        |args| node_app(perms_range.clone(), args),
-                        |args| err_handler(perms_range.clone(), args),
+                        |args| node_app(perms_range.clone(), access_kind, access_cause, args),
+                        |args| err_handler(perms_range.clone(), access_cause, args),
                     )?;
                 }
             }

@@ -2,13 +2,23 @@ error: missing `for` in a trait impl
   --> $DIR/impl-parsing.rs:4:11
    |
 LL | impl Trait Type {}
-   |           ^ help: add `for` here
+   |           ^
+   |
+help: add `for` here
+   |
+LL | impl Trait for Type {}
+   |            +++
 
 error: missing `for` in a trait impl
   --> $DIR/impl-parsing.rs:5:11
    |
 LL | impl Trait .. {}
-   |           ^ help: add `for` here
+   |           ^
+   |
+help: add `for` here
+   |
+LL | impl Trait for .. {}
+   |            +++
 
 error: expected a trait, found type
   --> $DIR/impl-parsing.rs:6:6

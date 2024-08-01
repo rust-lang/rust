@@ -1,15 +1,14 @@
 #![allow(clippy::useless_format, clippy::derive_partial_eq_without_eq, rustc::internal)]
 
-#[macro_use]
-mod util;
-
 mod arg;
 mod phases;
 mod setup;
+mod util;
 
 use std::{env, iter};
 
 use crate::phases::*;
+use crate::util::show_error;
 
 /// Returns `true` if our flags look like they may be for rustdoc, i.e., this is cargo calling us to
 /// be rustdoc. It's hard to be sure as cargo does not have a RUSTDOC_WRAPPER or an env var that

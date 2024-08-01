@@ -1,4 +1,4 @@
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 pub static STATIC: i32 = 1234;
 
@@ -18,7 +18,7 @@ impl<T1, T2> Drop for Struct<T1, T2> {
 pub enum Enum {
     Variant1,
     Variant2(u32),
-    Variant3 { x: u32 }
+    Variant3 { x: u32 },
 }
 
 pub struct TupleStruct(pub i8, pub i16, pub i32, pub i64);

@@ -23,7 +23,7 @@
 //@[ASAN]          compile-flags:
 //@[ASAN-FAT-LTO]  compile-flags: -Cprefer-dynamic=false -Clto=fat
 
-#![crate_type="staticlib"]
+#![crate_type = "staticlib"]
 
 // The test below mimics `CACHED_POW10` from `library/core/src/num/flt2dec/strategy/grisu.rs` which
 // (because of incorrect handling of `___asan_globals_registered` during LTO) was incorrectly

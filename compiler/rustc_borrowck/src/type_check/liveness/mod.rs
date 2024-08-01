@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
@@ -9,17 +11,11 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
-use std::rc::Rc;
-
-use crate::{
-    constraints::OutlivesConstraintSet,
-    facts::{AllFacts, AllFactsExt},
-    location::LocationTable,
-    region_infer::values::LivenessValues,
-    universal_regions::UniversalRegions,
-};
 
 use super::TypeChecker;
+use crate::constraints::OutlivesConstraintSet;
+use crate::region_infer::values::LivenessValues;
+use crate::universal_regions::UniversalRegions;
 
 mod local_use_map;
 mod polonius;
@@ -37,10 +33,8 @@ pub(super) fn generate<'mir, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<DenseLocationMap>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    location_table: &LocationTable,
-    use_polonius: bool,
 ) {
     debug!("liveness::generate");
 
@@ -51,13 +45,8 @@ pub(super) fn generate<'mir, 'tcx>(
     );
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
-    let facts_enabled = use_polonius || AllFacts::enabled(typeck.tcx());
 
-    let polonius_drop_used = facts_enabled.then(|| {
-        let mut drop_used = Vec::new();
-        polonius::populate_access_facts(typeck, body, location_table, move_data, &mut drop_used);
-        drop_used
-    });
+    polonius::populate_access_facts(typeck, body, move_data);
 
     trace::trace(
         typeck,
@@ -67,7 +56,6 @@ pub(super) fn generate<'mir, 'tcx>(
         move_data,
         relevant_live_locals,
         boring_locals,
-        polonius_drop_used,
     );
 
     // Mark regions that should be live where they appear within rvalues or within a call: like

@@ -8,28 +8,27 @@
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters.
 
-use super::elaborate;
+use std::iter;
+use std::ops::ControlFlow;
 
-use crate::infer::TyCtxtInferExt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{self, Obligation, ObligationCause};
-use rustc_errors::{DelayDm, FatalError, MultiSpan};
+use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, EarlyBinder, ExistentialPredicateStableCmpExt as _, GenericArgs, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, Upcast,
 };
-use rustc_middle::ty::{GenericArg, GenericArgs};
-use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
-use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_target::abi::Abi;
 use smallvec::SmallVec;
 
-use std::iter;
-use std::ops::ControlFlow;
-
+use super::elaborate;
+use crate::infer::TyCtxtInferExt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{util, Obligation, ObligationCause};
 pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
 
 /// Returns the object safety violations that affect HIR ty lowering.
@@ -43,7 +42,8 @@ pub fn hir_ty_lowering_object_safety_violations(
     trait_def_id: DefId,
 ) -> Vec<ObjectSafetyViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
-    let violations = traits::supertrait_def_ids(tcx, trait_def_id)
+    let violations = tcx
+        .supertrait_def_ids(trait_def_id)
         .map(|def_id| predicates_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
         .map(ObjectSafetyViolation::SupertraitSelf)
@@ -57,50 +57,19 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     debug!("object_safety_violations: {:?}", trait_def_id);
 
     tcx.arena.alloc_from_iter(
-        traits::supertrait_def_ids(tcx, trait_def_id)
+        tcx.supertrait_def_ids(trait_def_id)
             .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id)),
     )
 }
 
-fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
-    let violations = tcx.object_safety_violations(trait_def_id);
-
-    if violations.is_empty() {
-        return true;
-    }
-
-    // If the trait contains any other violations, then let the error reporting path
-    // report it instead of emitting a warning here.
-    if violations.iter().all(|violation| {
-        matches!(
-            violation,
-            ObjectSafetyViolation::Method(_, MethodViolationCode::WhereClauseReferencesSelf, _)
-        )
-    }) {
-        for violation in violations {
-            if let ObjectSafetyViolation::Method(
-                _,
-                MethodViolationCode::WhereClauseReferencesSelf,
-                span,
-            ) = violation
-            {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, violation);
-            }
-        }
-        return true;
-    }
-
-    false
+fn is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+    tcx.object_safety_violations(trait_def_id).is_empty()
 }
 
 /// We say a method is *vtable safe* if it can be invoked on a trait
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
-///
-/// [`MethodViolationCode::WhereClauseReferencesSelf`] is considered object safe due to backwards
-/// compatibility, see <https://github.com/rust-lang/rust/issues/51443> and
-/// [`WHERE_CLAUSES_OBJECT_SAFETY`].
 pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
@@ -109,9 +78,7 @@ pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::A
         return false;
     }
 
-    virtual_call_violations_for_method(tcx, trait_def_id, method)
-        .iter()
-        .all(|v| matches!(v, MethodViolationCode::WhereClauseReferencesSelf))
+    virtual_call_violations_for_method(tcx, trait_def_id, method).is_empty()
 }
 
 fn object_safety_violations_for_trait(
@@ -144,58 +111,20 @@ fn object_safety_violations_for_trait(
         violations.push(ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans));
     }
 
+    if violations.is_empty() {
+        for item in tcx.associated_items(trait_def_id).in_definition_order() {
+            if let ty::AssocKind::Fn = item.kind {
+                check_receiver_correct(tcx, trait_def_id, *item);
+            }
+        }
+    }
+
     debug!(
         "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
         trait_def_id, violations
     );
 
     violations
-}
-
-/// Lint object-unsafe trait.
-fn lint_object_unsafe_trait(
-    tcx: TyCtxt<'_>,
-    span: Span,
-    trait_def_id: DefId,
-    violation: &ObjectSafetyViolation,
-) {
-    // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
-    // It's also hard to get a use site span, so we use the method definition span.
-    tcx.node_span_lint(
-        WHERE_CLAUSES_OBJECT_SAFETY,
-        hir::CRATE_HIR_ID,
-        span,
-        DelayDm(|| format!("the trait `{}` cannot be made into an object", tcx.def_path_str(trait_def_id))),
-        |err| {
-            let node = tcx.hir().get_if_local(trait_def_id);
-            let mut spans = MultiSpan::from_span(span);
-            if let Some(hir::Node::Item(item)) = node {
-                spans.push_span_label(
-                    item.ident.span,
-                    "this trait cannot be made into an object...",
-                );
-                spans.push_span_label(span, format!("...because {}", violation.error_msg()));
-            } else {
-                spans.push_span_label(
-                    span,
-                    format!(
-                        "the trait cannot be made into an object because {}",
-                        violation.error_msg()
-                    ),
-                );
-            };
-            err.span_note(
-                spans,
-                "for a trait to be \"object safe\" it needs to allow building a vtable to allow the \
-                call to be resolvable dynamically; for more information visit \
-                <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
-            );
-            if node.is_some() {
-                // Only provide the help if its a local trait, otherwise it's not
-                violation.solution().add_to(err);
-            }
-        },
-    );
 }
 
 fn sized_trait_bound_spans<'tcx>(
@@ -256,15 +185,21 @@ fn predicates_reference_self(
 ) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
-        tcx.super_predicates_of(trait_def_id)
+        tcx.explicit_super_predicates_of(trait_def_id)
     } else {
         tcx.predicates_of(trait_def_id)
     };
     predicates
         .predicates
         .iter()
-        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, &trait_ref), sp))
-        .filter_map(|predicate| predicate_references_self(tcx, predicate))
+        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, trait_ref), sp))
+        .filter_map(|(clause, sp)| {
+            // Super predicates cannot allow self projections, since they're
+            // impossible to make into existential bounds without eager resolution
+            // or something.
+            // e.g. `trait A: B<Item = Self::Assoc>`.
+            predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::No)
+        })
         .collect()
 }
 
@@ -272,21 +207,26 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
     tcx.associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Type)
-        .flat_map(|item| tcx.explicit_item_bounds(item.def_id).instantiate_identity_iter_copied())
-        .filter_map(|c| predicate_references_self(tcx, c))
+        .flat_map(|item| tcx.explicit_item_bounds(item.def_id).iter_identity_copied())
+        .filter_map(|(clause, sp)| {
+            // Item bounds *can* have self projections, since they never get
+            // their self type erased.
+            predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::Yes)
+        })
         .collect()
 }
 
 fn predicate_references_self<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (predicate, sp): (ty::Clause<'tcx>, Span),
+    trait_def_id: DefId,
+    predicate: ty::Clause<'tcx>,
+    sp: Span,
+    allow_self_projections: AllowSelfProjections,
 ) -> Option<Span> {
-    let self_ty = tcx.types.self_param;
-    let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.args[1..].iter().any(has_self_ty).then_some(sp)
+            data.trait_ref.args[1..].iter().any(|&arg| contains_illegal_self_type_reference(tcx, trait_def_id, arg, allow_self_projections)).then_some(sp)
         }
         ty::ClauseKind::Projection(ref data) => {
             // And similarly for projections. This should be redundant with
@@ -304,9 +244,9 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_ty.args[1..].iter().any(has_self_ty).then_some(sp)
+            data.projection_term.args[1..].iter().any(|&arg| contains_illegal_self_type_reference(tcx, trait_def_id, arg, allow_self_projections)).then_some(sp)
         }
-        ty::ClauseKind::ConstArgHasType(_ct, ty) => has_self_ty(&ty.into()).then_some(sp),
+        ty::ClauseKind::ConstArgHasType(_ct, ty) => contains_illegal_self_type_reference(tcx, trait_def_id, ty, allow_self_projections).then_some(sp),
 
         ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::TypeOutlives(..)
@@ -325,7 +265,7 @@ fn super_predicates_have_non_lifetime_binders(
     if !tcx.features().non_lifetime_binders {
         return SmallVec::new();
     }
-    tcx.super_predicates_of(trait_def_id)
+    tcx.explicit_super_predicates_of(trait_def_id)
         .predicates
         .iter()
         .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(*span))
@@ -397,7 +337,7 @@ pub fn object_safety_violations_for_assoc_item(
         // Associated types can only be object safe if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
             if !tcx.features().generic_associated_types_extended
-                && !tcx.generics_of(item.def_id).own_params.is_empty()
+                && !tcx.generics_of(item.def_id).is_own_empty()
                 && !item.is_impl_trait_in_trait()
             {
                 vec![ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span)]
@@ -452,7 +392,12 @@ fn virtual_call_violations_for_method<'tcx>(
     let mut errors = Vec::new();
 
     for (i, &input_ty) in sig.skip_binder().inputs().iter().enumerate().skip(1) {
-        if contains_illegal_self_type_reference(tcx, trait_def_id, sig.rebind(input_ty)) {
+        if contains_illegal_self_type_reference(
+            tcx,
+            trait_def_id,
+            sig.rebind(input_ty),
+            AllowSelfProjections::Yes,
+        ) {
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
@@ -465,7 +410,12 @@ fn virtual_call_violations_for_method<'tcx>(
             errors.push(MethodViolationCode::ReferencesSelfInput(span));
         }
     }
-    if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
+    if contains_illegal_self_type_reference(
+        tcx,
+        trait_def_id,
+        sig.output(),
+        AllowSelfProjections::Yes,
+    ) {
         errors.push(MethodViolationCode::ReferencesSelfOutput);
     }
     if let Some(code) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
@@ -497,59 +447,8 @@ fn virtual_call_violations_for_method<'tcx>(
             };
             errors.push(MethodViolationCode::UndispatchableReceiver(span));
         } else {
-            // Do sanity check to make sure the receiver actually has the layout of a pointer.
-
-            use rustc_target::abi::Abi;
-
-            let param_env = tcx.param_env(method.def_id);
-
-            let abi_of_ty = |ty: Ty<'tcx>| -> Option<Abi> {
-                match tcx.layout_of(param_env.and(ty)) {
-                    Ok(layout) => Some(layout.abi),
-                    Err(err) => {
-                        // #78372
-                        tcx.dcx().span_delayed_bug(
-                            tcx.def_span(method.def_id),
-                            format!("error: {err}\n while computing layout for type {ty:?}"),
-                        );
-                        None
-                    }
-                }
-            };
-
-            // e.g., `Rc<()>`
-            let unit_receiver_ty =
-                receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method.def_id);
-
-            match abi_of_ty(unit_receiver_ty) {
-                Some(Abi::Scalar(..)) => (),
-                abi => {
-                    tcx.dcx().span_delayed_bug(
-                        tcx.def_span(method.def_id),
-                        format!(
-                            "receiver when `Self = ()` should have a Scalar ABI; found {abi:?}"
-                        ),
-                    );
-                }
-            }
-
-            let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
-
-            // e.g., `Rc<dyn Trait>`
-            let trait_object_receiver =
-                receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method.def_id);
-
-            match abi_of_ty(trait_object_receiver) {
-                Some(Abi::ScalarPair(..)) => (),
-                abi => {
-                    tcx.dcx().span_delayed_bug(
-                        tcx.def_span(method.def_id),
-                        format!(
-                            "receiver when `Self = {trait_object_ty}` should have a ScalarPair ABI; found {abi:?}"
-                        ),
-                    );
-                }
-            }
+            // We confirm that the `receiver_is_dispatchable` is accurate later,
+            // see `check_receiver_correct`. It should be kept in sync with this code.
         }
     }
 
@@ -602,12 +501,61 @@ fn virtual_call_violations_for_method<'tcx>(
             return false;
         }
 
-        contains_illegal_self_type_reference(tcx, trait_def_id, pred)
+        contains_illegal_self_type_reference(tcx, trait_def_id, pred, AllowSelfProjections::Yes)
     }) {
         errors.push(MethodViolationCode::WhereClauseReferencesSelf);
     }
 
     errors
+}
+
+/// This code checks that `receiver_is_dispatchable` is correctly implemented.
+///
+/// This check is outlined from the object safety check to avoid cycles with
+/// layout computation, which relies on knowing whether methods are object safe.
+pub fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
+    if !is_vtable_safe_method(tcx, trait_def_id, method) {
+        return;
+    }
+
+    let method_def_id = method.def_id;
+    let sig = tcx.fn_sig(method_def_id).instantiate_identity();
+    let param_env = tcx.param_env(method_def_id);
+    let receiver_ty = tcx.liberate_late_bound_regions(method_def_id, sig.input(0));
+
+    if receiver_ty == tcx.types.self_param {
+        // Assumed OK, may change later if unsized_locals permits `self: Self` as dispatchable.
+        return;
+    }
+
+    // e.g., `Rc<()>`
+    let unit_receiver_ty = receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method_def_id);
+    match tcx.layout_of(param_env.and(unit_receiver_ty)).map(|l| l.abi) {
+        Ok(Abi::Scalar(..)) => (),
+        abi => {
+            tcx.dcx().span_delayed_bug(
+                tcx.def_span(method_def_id),
+                format!("receiver {unit_receiver_ty:?} when `Self = ()` should have a Scalar ABI; found {abi:?}"),
+            );
+        }
+    }
+
+    let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
+
+    // e.g., `Rc<dyn Trait>`
+    let trait_object_receiver =
+        receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method_def_id);
+    match tcx.layout_of(param_env.and(trait_object_receiver)).map(|l| l.abi) {
+        Ok(Abi::ScalarPair(..)) => (),
+        abi => {
+            tcx.dcx().span_delayed_bug(
+                tcx.def_span(method_def_id),
+                format!(
+                    "receiver {trait_object_receiver:?} when `Self = {trait_object_ty}` should have a ScalarPair ABI; found {abi:?}"
+                ),
+            );
+        }
+    }
 }
 
 /// Performs a type instantiation to produce the version of `receiver_ty` when `Self = self_ty`.
@@ -648,11 +596,11 @@ fn object_ty_for_trait<'tcx>(
     ));
     debug!(?trait_predicate);
 
-    let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
+    let pred: ty::Predicate<'tcx> = trait_ref.upcast(tcx);
     let mut elaborated_predicates: Vec<_> = elaborate(tcx, [pred])
         .filter_map(|pred| {
             debug!(?pred);
-            let pred = pred.to_opt_poly_projection_pred()?;
+            let pred = pred.as_projection_clause()?;
             Some(pred.map_bound(|p| {
                 ty::ExistentialPredicate::Projection(ty::ExistentialProjection::erase_self_ty(
                     tcx, p,
@@ -751,8 +699,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         // Self: Unsize<U>
         let unsize_predicate =
-            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty])
-                .to_predicate(tcx);
+            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]).upcast(tcx);
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
@@ -761,7 +708,7 @@ fn receiver_is_dispatchable<'tcx>(
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::TraitRef::new(tcx, trait_def_id, args).to_predicate(tcx)
+            ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
         let caller_bounds =
@@ -783,120 +730,181 @@ fn receiver_is_dispatchable<'tcx>(
     infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
+#[derive(Copy, Clone)]
+enum AllowSelfProjections {
+    Yes,
+    No,
+}
+
+/// This is somewhat subtle. In general, we want to forbid
+/// references to `Self` in the argument and return types,
+/// since the value of `Self` is erased. However, there is one
+/// exception: it is ok to reference `Self` in order to access
+/// an associated type of the current trait, since we retain
+/// the value of those associated types in the object type
+/// itself.
+///
+/// ```rust,ignore (example)
+/// trait SuperTrait {
+///     type X;
+/// }
+///
+/// trait Trait : SuperTrait {
+///     type Y;
+///     fn foo(&self, x: Self) // bad
+///     fn foo(&self) -> Self // bad
+///     fn foo(&self) -> Option<Self> // bad
+///     fn foo(&self) -> Self::Y // OK, desugars to next example
+///     fn foo(&self) -> <Self as Trait>::Y // OK
+///     fn foo(&self) -> Self::X // OK, desugars to next example
+///     fn foo(&self) -> <Self as SuperTrait>::X // OK
+/// }
+/// ```
+///
+/// However, it is not as simple as allowing `Self` in a projected
+/// type, because there are illegal ways to use `Self` as well:
+///
+/// ```rust,ignore (example)
+/// trait Trait : SuperTrait {
+///     ...
+///     fn foo(&self) -> <Self as SomeOtherTrait>::X;
+/// }
+/// ```
+///
+/// Here we will not have the type of `X` recorded in the
+/// object type, and we cannot resolve `Self as SomeOtherTrait`
+/// without knowing what `Self` is.
 fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     value: T,
+    allow_self_projections: AllowSelfProjections,
 ) -> bool {
-    // This is somewhat subtle. In general, we want to forbid
-    // references to `Self` in the argument and return types,
-    // since the value of `Self` is erased. However, there is one
-    // exception: it is ok to reference `Self` in order to access
-    // an associated type of the current trait, since we retain
-    // the value of those associated types in the object type
-    // itself.
-    //
-    // ```rust
-    // trait SuperTrait {
-    //     type X;
-    // }
-    //
-    // trait Trait : SuperTrait {
-    //     type Y;
-    //     fn foo(&self, x: Self) // bad
-    //     fn foo(&self) -> Self // bad
-    //     fn foo(&self) -> Option<Self> // bad
-    //     fn foo(&self) -> Self::Y // OK, desugars to next example
-    //     fn foo(&self) -> <Self as Trait>::Y // OK
-    //     fn foo(&self) -> Self::X // OK, desugars to next example
-    //     fn foo(&self) -> <Self as SuperTrait>::X // OK
-    // }
-    // ```
-    //
-    // However, it is not as simple as allowing `Self` in a projected
-    // type, because there are illegal ways to use `Self` as well:
-    //
-    // ```rust
-    // trait Trait : SuperTrait {
-    //     ...
-    //     fn foo(&self) -> <Self as SomeOtherTrait>::X;
-    // }
-    // ```
-    //
-    // Here we will not have the type of `X` recorded in the
-    // object type, and we cannot resolve `Self as SomeOtherTrait`
-    // without knowing what `Self` is.
+    value
+        .visit_with(&mut IllegalSelfTypeVisitor {
+            tcx,
+            trait_def_id,
+            supertraits: None,
+            allow_self_projections,
+        })
+        .is_break()
+}
 
-    struct IllegalSelfTypeVisitor<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
-        supertraits: Option<Vec<DefId>>,
-    }
+struct IllegalSelfTypeVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+    supertraits: Option<Vec<ty::TraitRef<'tcx>>>,
+    allow_self_projections: AllowSelfProjections,
+}
 
-    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
-        type Result = ControlFlow<()>;
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
+    type Result = ControlFlow<()>;
 
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-            match t.kind() {
-                ty::Param(_) => {
-                    if t == self.tcx.types.self_param {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                }
-                ty::Alias(ty::Projection, ref data)
-                    if self.tcx.is_impl_trait_in_trait(data.def_id) =>
-                {
-                    // We'll deny these later in their own pass
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        match t.kind() {
+            ty::Param(_) => {
+                if t == self.tcx.types.self_param {
+                    ControlFlow::Break(())
+                } else {
                     ControlFlow::Continue(())
                 }
-                ty::Alias(ty::Projection, ref data) => {
-                    // This is a projected type `<Foo as SomeTrait>::X`.
-
-                    // Compute supertraits of current trait lazily.
-                    if self.supertraits.is_none() {
-                        let trait_ref =
-                            ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id));
-                        self.supertraits = Some(
-                            traits::supertraits(self.tcx, trait_ref).map(|t| t.def_id()).collect(),
-                        );
-                    }
-
-                    // Determine whether the trait reference `Foo as
-                    // SomeTrait` is in fact a supertrait of the
-                    // current trait. In that case, this type is
-                    // legal, because the type `X` will be specified
-                    // in the object type. Note that we can just use
-                    // direct equality here because all of these types
-                    // are part of the formal parameter listing, and
-                    // hence there should be no inference variables.
-                    let is_supertrait_of_current_trait = self
-                        .supertraits
-                        .as_ref()
-                        .unwrap()
-                        .contains(&data.trait_ref(self.tcx).def_id);
-
-                    if is_supertrait_of_current_trait {
-                        ControlFlow::Continue(()) // do not walk contained types, do not report error, do collect $200
-                    } else {
-                        t.super_visit_with(self) // DO walk contained types, POSSIBLY reporting an error
-                    }
-                }
-                _ => t.super_visit_with(self), // walk contained types, if any
             }
-        }
+            ty::Alias(ty::Projection, ref data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
+                // We'll deny these later in their own pass
+                ControlFlow::Continue(())
+            }
+            ty::Alias(ty::Projection, ref data) => {
+                match self.allow_self_projections {
+                    AllowSelfProjections::Yes => {
+                        // This is a projected type `<Foo as SomeTrait>::X`.
 
-        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
-            // Constants can only influence object safety if they are generic and reference `Self`.
-            // This is only possible for unevaluated constants, so we walk these here.
-            self.tcx.expand_abstract_consts(ct).super_visit_with(self)
+                        // Compute supertraits of current trait lazily.
+                        if self.supertraits.is_none() {
+                            self.supertraits = Some(
+                                util::supertraits(
+                                    self.tcx,
+                                    ty::Binder::dummy(ty::TraitRef::identity(
+                                        self.tcx,
+                                        self.trait_def_id,
+                                    )),
+                                )
+                                .map(|trait_ref| {
+                                    self.tcx.erase_regions(
+                                        self.tcx.instantiate_bound_regions_with_erased(trait_ref),
+                                    )
+                                })
+                                .collect(),
+                            );
+                        }
+
+                        // Determine whether the trait reference `Foo as
+                        // SomeTrait` is in fact a supertrait of the
+                        // current trait. In that case, this type is
+                        // legal, because the type `X` will be specified
+                        // in the object type. Note that we can just use
+                        // direct equality here because all of these types
+                        // are part of the formal parameter listing, and
+                        // hence there should be no inference variables.
+                        let is_supertrait_of_current_trait =
+                            self.supertraits.as_ref().unwrap().contains(
+                                &data.trait_ref(self.tcx).fold_with(
+                                    &mut EraseEscapingBoundRegions {
+                                        tcx: self.tcx,
+                                        binder: ty::INNERMOST,
+                                    },
+                                ),
+                            );
+
+                        // only walk contained types if it's not a super trait
+                        if is_supertrait_of_current_trait {
+                            ControlFlow::Continue(())
+                        } else {
+                            t.super_visit_with(self) // POSSIBLY reporting an error
+                        }
+                    }
+                    AllowSelfProjections::No => t.super_visit_with(self),
+                }
+            }
+            _ => t.super_visit_with(self),
         }
     }
 
-    value
-        .visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
-        .is_break()
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
+        // Constants can only influence object safety if they are generic and reference `Self`.
+        // This is only possible for unevaluated constants, so we walk these here.
+        self.tcx.expand_abstract_consts(ct).super_visit_with(self)
+    }
+}
+
+struct EraseEscapingBoundRegions<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    binder: ty::DebruijnIndex,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEscapingBoundRegions<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        self.binder.shift_in(1);
+        let result = t.super_fold_with(self);
+        self.binder.shift_out(1);
+        result
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if let ty::ReBound(debruijn, _) = *r
+            && debruijn < self.binder
+        {
+            r
+        } else {
+            self.tcx.lifetimes.re_erased
+        }
+    }
 }
 
 pub fn contains_illegal_impl_trait_in_trait<'tcx>(
@@ -926,7 +934,7 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         object_safety_violations,
-        check_is_object_safe,
+        is_object_safe,
         generics_require_sized_self,
         ..*providers
     };

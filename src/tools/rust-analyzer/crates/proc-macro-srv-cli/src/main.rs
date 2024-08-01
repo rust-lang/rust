@@ -6,6 +6,8 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
+use proc_macro_api::json::{read_json, write_json};
+
 use std::io;
 
 fn main() -> std::io::Result<()> {
@@ -26,19 +28,49 @@ fn main() -> std::io::Result<()> {
 
 #[cfg(not(any(feature = "sysroot-abi", rust_analyzer)))]
 fn run() -> io::Result<()> {
-    eprintln!("proc-macro-srv-cli requires the `sysroot-abi` feature to be enabled");
-    std::process::exit(70);
+    let err = "proc-macro-srv-cli needs to be compiled with the `sysroot-abi` feature to function";
+    eprintln!("{err}");
+    use proc_macro_api::msg::{self, Message};
+
+    let read_request =
+        |buf: &mut String| msg::Request::read(read_json, &mut io::stdin().lock(), buf);
+
+    let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
+
+    let mut buf = String::new();
+
+    while let Some(req) = read_request(&mut buf)? {
+        let res = match req {
+            msg::Request::ListMacros { .. } => msg::Response::ListMacros(Err(err.to_owned())),
+            msg::Request::ExpandMacro(_) => {
+                msg::Response::ExpandMacro(Err(msg::PanicMessage(err.to_owned())))
+            }
+            msg::Request::ApiVersionCheck {} => {
+                msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
+            }
+            msg::Request::SetConfig(_) => {
+                msg::Response::SetConfig(proc_macro_api::msg::ServerConfig {
+                    span_mode: msg::SpanMode::Id,
+                })
+            }
+        };
+        write_response(res)?
+    }
+    Ok(())
 }
 
 #[cfg(any(feature = "sysroot-abi", rust_analyzer))]
 fn run() -> io::Result<()> {
     use proc_macro_api::msg::{self, Message};
+    use proc_macro_srv::EnvSnapshot;
 
-    let read_request = |buf: &mut String| msg::Request::read(&mut io::stdin().lock(), buf);
+    let read_request =
+        |buf: &mut String| msg::Request::read(read_json, &mut io::stdin().lock(), buf);
 
-    let write_response = |msg: msg::Response| msg.write(&mut io::stdout().lock());
+    let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
 
-    let mut srv = proc_macro_srv::ProcMacroSrv::default();
+    let env = EnvSnapshot::new();
+    let mut srv = proc_macro_srv::ProcMacroSrv::new(&env);
     let mut buf = String::new();
 
     while let Some(req) = read_request(&mut buf)? {

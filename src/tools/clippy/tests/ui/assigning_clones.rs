@@ -62,6 +62,16 @@ fn clone_method_rhs_complex(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFr
     *mut_thing = (ref_thing + ref_thing).clone();
 }
 
+fn clone_method_macro() {
+    let mut s = String::from("");
+    s = format!("{} {}", "hello", "world").clone();
+}
+
+fn clone_function_macro() {
+    let mut s = String::from("");
+    s = Clone::clone(&format!("{} {}", "hello", "world"));
+}
+
 fn assign_to_init_mut_var(b: HasCloneFrom) -> HasCloneFrom {
     let mut a = HasCloneFrom;
     for _ in 1..10 {
@@ -84,6 +94,12 @@ fn assign_to_uninit_var(b: HasCloneFrom) {
 fn assign_to_uninit_mut_var(b: HasCloneFrom) {
     let mut a;
     a = b.clone();
+}
+
+fn late_init_let_tuple() {
+    let (p, q): (String, String);
+    p = "ghi".to_string();
+    q = p.clone();
 }
 
 #[derive(Clone)]
@@ -208,6 +224,16 @@ fn owned_function_val(mut mut_thing: String, ref_str: &str) {
     mut_thing = ToOwned::to_owned(ref_str);
 }
 
+fn owned_method_macro() {
+    let mut s = String::from("");
+    s = format!("{} {}", "hello", "world").to_owned();
+}
+
+fn owned_function_macro() {
+    let mut s = String::from("");
+    s = ToOwned::to_owned(&format!("{} {}", "hello", "world"));
+}
+
 struct FakeToOwned;
 impl FakeToOwned {
     /// This looks just like `ToOwned::to_owned`
@@ -244,5 +270,61 @@ impl<'a> Add for &'a mut HasCloneFrom {
     type Output = Self;
     fn add(self, _: &'a mut HasCloneFrom) -> Self {
         self
+    }
+}
+
+mod borrowck_conflicts {
+    //! Cases where clone_into and friends cannot be used because the src/dest have conflicting
+    //! borrows.
+    use std::path::PathBuf;
+
+    fn issue12444(mut name: String) {
+        let parts = name.split(", ").collect::<Vec<_>>();
+        let first = *parts.first().unwrap();
+        name = first.to_owned();
+    }
+
+    fn issue12444_simple() {
+        let mut s = String::new();
+        let s2 = &s;
+        s = s2.to_owned();
+    }
+
+    fn issue12444_nodrop_projections() {
+        struct NoDrop;
+
+        impl Clone for NoDrop {
+            fn clone(&self) -> Self {
+                todo!()
+            }
+            fn clone_from(&mut self, other: &Self) {
+                todo!()
+            }
+        }
+
+        let mut s = NoDrop;
+        let s2 = &s;
+        s = s2.clone();
+
+        let mut s = (NoDrop, NoDrop);
+        let s2 = &s.0;
+        s.0 = s2.clone();
+
+        // This *could* emit a warning, but PossibleBorrowerMap only works with locals so it
+        // considers `s` fully borrowed
+        let mut s = (NoDrop, NoDrop);
+        let s2 = &s.1;
+        s.0 = s2.clone();
+    }
+
+    fn issue12460(mut name: String) {
+        if let Some(stripped_name) = name.strip_prefix("baz-") {
+            name = stripped_name.to_owned();
+        }
+    }
+
+    fn issue12749() {
+        let mut path = PathBuf::from("/a/b/c");
+        path = path.components().as_path().to_owned();
     }
 }

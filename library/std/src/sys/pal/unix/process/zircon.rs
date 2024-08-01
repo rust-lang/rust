@@ -1,10 +1,10 @@
 #![allow(non_camel_case_types, unused)]
 
+use libc::{c_int, c_void, size_t};
+
 use crate::io;
 use crate::mem::MaybeUninit;
 use crate::os::raw::c_char;
-
-use libc::{c_int, c_void, size_t};
 
 pub type zx_handle_t = u32;
 pub type zx_vaddr_t = usize;

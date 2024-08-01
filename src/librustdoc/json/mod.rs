@@ -18,7 +18,6 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::def_id::LOCAL_CRATE;
-
 use rustdoc_json_types as types;
 
 use crate::clean::types::{ExternalCrate, ExternalLocation};
@@ -186,7 +185,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Impl(_)
                 | types::ItemEnum::TypeAlias(_)
                 | types::ItemEnum::OpaqueTy(_)
-                | types::ItemEnum::Constant(_)
+                | types::ItemEnum::Constant { .. }
                 | types::ItemEnum::Static(_)
                 | types::ItemEnum::ForeignType
                 | types::ItemEnum::Macro(_)

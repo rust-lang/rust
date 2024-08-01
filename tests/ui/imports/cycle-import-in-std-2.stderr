@@ -1,0 +1,12 @@
+error[E0432]: unresolved import `ops`
+  --> $DIR/cycle-import-in-std-2.rs:5:11
+   |
+LL | use ops::{self as std};
+   |           ^^^^^^^^^^^ no external crate `ops`
+   |
+   = help: consider importing this module instead:
+           std::ops
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

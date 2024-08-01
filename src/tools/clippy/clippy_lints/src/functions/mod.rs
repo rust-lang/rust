@@ -2,15 +2,19 @@ mod impl_trait_in_params;
 mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
+mod renamed_function_params;
 mod result;
 mod too_many_arguments;
 mod too_many_lines;
 
+use clippy_config::Conf;
+use clippy_utils::def_path_def_ids;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{DefIdSet, LocalDefId};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -336,8 +340,10 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Lints when `impl Trait` is being used in a function's parameters.
-    /// ### Why is this bad?
-    /// Turbofish syntax (`::<>`) cannot be used when `impl Trait` is being used, making `impl Trait` less powerful. Readability may also be a factor.
+    ///
+    /// ### Why restrict this?
+    /// Turbofish syntax (`::<>`) cannot be used to specify the type of an `impl Trait` parameter,
+    /// making `impl Trait` less powerful. Readability may also be a factor.
     ///
     /// ### Example
     /// ```no_run
@@ -359,27 +365,62 @@ declare_clippy_lint! {
     "`impl Trait` is used in the function's parameters"
 }
 
-#[derive(Copy, Clone)]
-#[allow(clippy::struct_field_names)]
+declare_clippy_lint! {
+    /// ### What it does
+    /// Lints when the name of function parameters from trait impl is
+    /// different than its default implementation.
+    ///
+    /// ### Why restrict this?
+    /// Using the default name for parameters of a trait method is more consistent.
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct A(u32);
+    ///
+    /// impl PartialEq for A {
+    ///     fn eq(&self, b: &Self) -> bool {
+    ///         self.0 == b.0
+    ///     }
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// struct A(u32);
+    ///
+    /// impl PartialEq for A {
+    ///     fn eq(&self, other: &Self) -> bool {
+    ///         self.0 == other.0
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub RENAMED_FUNCTION_PARAMS,
+    restriction,
+    "renamed function parameters in trait implementation"
+}
+
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,
     large_error_threshold: u64,
     avoid_breaking_exported_api: bool,
+    /// A set of resolved `def_id` of traits that are configured to allow
+    /// function params renaming.
+    trait_ids: DefIdSet,
 }
 
 impl Functions {
-    pub fn new(
-        too_many_arguments_threshold: u64,
-        too_many_lines_threshold: u64,
-        large_error_threshold: u64,
-        avoid_breaking_exported_api: bool,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
-            too_many_arguments_threshold,
-            too_many_lines_threshold,
-            large_error_threshold,
-            avoid_breaking_exported_api,
+            too_many_arguments_threshold: conf.too_many_arguments_threshold,
+            too_many_lines_threshold: conf.too_many_lines_threshold,
+            large_error_threshold: conf.large_error_threshold,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            trait_ids: conf
+                .allow_renamed_params_for
+                .iter()
+                .flat_map(|p| def_path_def_ids(tcx, &p.split("::").collect::<Vec<_>>()))
+                .collect(),
         }
     }
 }
@@ -395,6 +436,7 @@ impl_lint_pass!(Functions => [
     RESULT_LARGE_ERR,
     MISNAMED_GETTERS,
     IMPL_TRAIT_IN_PARAMS,
+    RENAMED_FUNCTION_PARAMS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -424,6 +466,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         must_use::check_impl_item(cx, item);
         result::check_impl_item(cx, item, self.large_error_threshold);
         impl_trait_in_params::check_impl_item(cx, item);
+        renamed_function_params::check_impl_item(cx, item, &self.trait_ids);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {

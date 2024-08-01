@@ -81,7 +81,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                                 );
                             }
 
-                            let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
+                            let instance = Instance::mono(tcx, def_id);
                             let symbol = tcx.symbol_name(instance);
                             global_asm.push_str(symbol.name);
                         }

@@ -3,4 +3,6 @@
 
 static FOO: usize = 3;
 
-pub fn foo() -> &'static usize { &FOO }
+pub fn foo() -> &'static usize {
+    &FOO
+}

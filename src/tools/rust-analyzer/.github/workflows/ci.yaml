@@ -63,15 +63,15 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update ${{ env.RUST_CHANNEL }}
-          rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
           rustup default ${{ env.RUST_CHANNEL }}
+          rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
         if: matrix.os == 'ubuntu-latest'
         run: echo "::add-matcher::.github/rust.json"
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
+        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
         with:
           key: ${{ env.RUST_CHANNEL }}
 
@@ -140,7 +140,7 @@ jobs:
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@640a22190e7a783d4c409684cea558f081f92012
+        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
 
       - name: Check
         run: |

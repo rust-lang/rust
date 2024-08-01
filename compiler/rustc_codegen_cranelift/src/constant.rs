@@ -50,7 +50,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 ) -> CValue<'tcx> {
     let tls_ptr = if !def_id.is_local() && fx.tcx.needs_thread_local_shim(def_id) {
         let instance = ty::Instance {
-            def: ty::InstanceDef::ThreadLocalShim(def_id),
+            def: ty::InstanceKind::ThreadLocalShim(def_id),
             args: ty::GenericArgs::empty(),
         };
         let func_ref = fx.get_function_ref(instance);
@@ -100,7 +100,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     assert!(layout.is_sized(), "unsized const value");
 
     if layout.is_zst() {
-        return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
+        return CValue::zst(layout);
     }
 
     match const_val {
@@ -110,7 +110,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 if fx.clif_type(layout.ty).is_some() {
                     return CValue::const_val(fx, layout, int);
                 } else {
-                    let raw_val = int.size().truncate(int.assert_bits(int.size()));
+                    let raw_val = int.size().truncate(int.to_bits(int.size()));
                     let val = match int.size().bytes() {
                         1 => fx.bcx.ins().iconst(types::I8, raw_val as i64),
                         2 => fx.bcx.ins().iconst(types::I16, raw_val as i64),
@@ -155,7 +155,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                     }
-                    GlobalAlloc::Function(instance) => {
+                    GlobalAlloc::Function { instance, .. } => {
                         let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
                         let local_func_id =
                             fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
@@ -258,7 +258,7 @@ fn data_id_for_static(
 ) -> DataId {
     let attrs = tcx.codegen_fn_attrs(def_id);
 
-    let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
+    let instance = Instance::mono(tcx, def_id);
     let symbol_name = tcx.symbol_name(instance).name;
 
     if let Some(import_linkage) = attrs.import_linkage {
@@ -351,7 +351,9 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             TodoItem::Alloc(alloc_id) => {
                 let alloc = match tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => alloc,
-                    GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::VTable(..) => {
+                    GlobalAlloc::Function { .. }
+                    | GlobalAlloc::Static(_)
+                    | GlobalAlloc::VTable(..) => {
                         unreachable!()
                     }
                 };
@@ -383,15 +385,43 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 
         if let Some(section_name) = section_name {
             let (segment_name, section_name) = if tcx.sess.target.is_like_osx {
-                let section_name = section_name.as_str();
-                if let Some(names) = section_name.split_once(',') {
-                    names
-                } else {
+                // See https://github.com/llvm/llvm-project/blob/main/llvm/lib/MC/MCSectionMachO.cpp
+                let mut parts = section_name.as_str().split(',');
+                let Some(segment_name) = parts.next() else {
                     tcx.dcx().fatal(format!(
                         "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
                         section_name
                     ));
+                };
+                let Some(section_name) = parts.next() else {
+                    tcx.dcx().fatal(format!(
+                        "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
+                        section_name
+                    ));
+                };
+                if section_name.len() > 16 {
+                    tcx.dcx().fatal(format!(
+                        "#[link_section = \"{}\"] is not valid for macos target: section name bigger than 16 bytes",
+                        section_name
+                    ));
                 }
+                let section_type = parts.next().unwrap_or("regular");
+                if section_type != "regular" && section_type != "cstring_literals" {
+                    tcx.dcx().fatal(format!(
+                        "#[link_section = \"{}\"] is not supported: unsupported section type {}",
+                        section_name, section_type,
+                    ));
+                }
+                let _attrs = parts.next();
+                if parts.next().is_some() {
+                    tcx.dcx().fatal(format!(
+                        "#[link_section = \"{}\"] is not valid for macos target: too many components",
+                        section_name
+                    ));
+                }
+                // FIXME(bytecodealliance/wasmtime#8901) set S_CSTRING_LITERALS section type when
+                // cstring_literals is specified
+                (segment_name, section_name)
             } else {
                 ("", section_name.as_str())
             };
@@ -415,7 +445,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 
             let reloc_target_alloc = tcx.global_alloc(alloc_id);
             let data_id = match reloc_target_alloc {
-                GlobalAlloc::Function(instance) => {
+                GlobalAlloc::Function { instance, .. } => {
                     assert_eq!(addend, 0);
                     let func_id =
                         crate::abi::import_function(tcx, module, instance.polymorphize(tcx));
@@ -501,12 +531,12 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                             Ordering::Equal => scalar_int,
                                             Ordering::Less => match ty.kind() {
                                                 ty::Uint(_) => ScalarInt::try_from_uint(
-                                                    scalar_int.assert_uint(scalar_int.size()),
+                                                    scalar_int.to_uint(scalar_int.size()),
                                                     fx.layout_of(*ty).size,
                                                 )
                                                 .unwrap(),
                                                 ty::Int(_) => ScalarInt::try_from_int(
-                                                    scalar_int.assert_int(scalar_int.size()),
+                                                    scalar_int.to_int(scalar_int.size()),
                                                     fx.layout_of(*ty).size,
                                                 )
                                                 .unwrap(),
@@ -565,6 +595,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     {
                         return None;
                     }
+                    TerminatorKind::TailCall { .. } => return None,
                     TerminatorKind::Call { .. } => {}
                 }
             }

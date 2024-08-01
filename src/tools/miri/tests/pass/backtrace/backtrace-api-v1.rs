@@ -32,7 +32,7 @@ fn func_d() -> Box<[*mut ()]> {
 fn main() {
     let mut seen_main = false;
     let frames = func_a();
-    for frame in frames.into_iter() {
+    for frame in frames.iter() {
         let miri_frame = unsafe { miri_resolve_frame(*frame, 1) };
 
         let mut name = vec![0; miri_frame.name_len];

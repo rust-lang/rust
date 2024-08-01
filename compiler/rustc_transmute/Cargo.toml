@@ -18,13 +18,13 @@ tracing = "0.1"
 
 [features]
 rustc = [
-    "rustc_hir",
-    "rustc_infer",
-    "rustc_macros",
-    "rustc_middle",
-    "rustc_span",
-    "rustc_target",
-    "rustc_ast_ir",
+    "dep:rustc_hir",
+    "dep:rustc_infer",
+    "dep:rustc_macros",
+    "dep:rustc_middle",
+    "dep:rustc_span",
+    "dep:rustc_target",
+    "dep:rustc_ast_ir",
 ]
 
 [dev-dependencies]

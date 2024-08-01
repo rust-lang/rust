@@ -1,10 +1,9 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
 use core::alloc::LayoutError;
-use core::cmp;
-use core::hint;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ptr::{self, NonNull, Unique};
+use core::{cmp, hint};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -52,7 +51,7 @@ impl Cap {
 /// * Produces `Unique::dangling()` on zero-length allocations.
 /// * Avoids freeing `Unique::dangling()`.
 /// * Catches all overflows in capacity computations (promotes them to "capacity overflow" panics).
-/// * Guards against 32-bit systems allocating more than isize::MAX bytes.
+/// * Guards against 32-bit systems allocating more than `isize::MAX` bytes.
 /// * Guards against overflowing your length.
 /// * Calls `handle_alloc_error` for fallible allocations.
 /// * Contains a `ptr::Unique` and thus endows the user with all related benefits.
@@ -429,6 +428,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     pub fn shrink_to_fit(&mut self, cap: usize) {
         if let Err(err) = self.shrink(cap) {
             handle_error(err);
@@ -483,7 +483,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
+        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
         unsafe { self.set_ptr_and_cap(ptr, cap) };
         Ok(())
     }
@@ -503,7 +503,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
+        // SAFETY: `finish_grow` would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
         unsafe {
             self.set_ptr_and_cap(ptr, cap);
         }
@@ -511,9 +511,25 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     fn shrink(&mut self, cap: usize) -> Result<(), TryReserveError> {
         assert!(cap <= self.capacity(), "Tried to shrink to a larger capacity");
+        // SAFETY: Just checked this isn't trying to grow
+        unsafe { self.shrink_unchecked(cap) }
+    }
 
+    /// `shrink`, but without the capacity check.
+    ///
+    /// This is split out so that `shrink` can inline the check, since it
+    /// optimizes out in things like `shrink_to_fit`, without needing to
+    /// also inline all this code, as doing that ends up failing the
+    /// `vec-shrink-panic` codegen test when `shrink_to_fit` ends up being too
+    /// big for LLVM to be willing to inline.
+    ///
+    /// # Safety
+    /// `cap <= self.capacity()`
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn shrink_unchecked(&mut self, cap: usize) -> Result<(), TryReserveError> {
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         // See current_memory() why this assert is here
         const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };

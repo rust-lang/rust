@@ -314,7 +314,9 @@ Attr =
   '#' '!'? '[' Meta ']'
 
 Meta =
-  Path ('=' Expr | TokenTree)?
+  'unsafe' '(' Path ('=' Expr | TokenTree)? ')'
+| Path ('=' Expr | TokenTree)?
+
 
 //****************************//
 // Statements and Expressions //

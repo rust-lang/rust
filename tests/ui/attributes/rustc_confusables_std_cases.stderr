@@ -26,6 +26,14 @@ error[E0599]: no method named `push` found for struct `VecDeque` in the current 
 LL |     x.push(1);
    |       ^^^^ method not found in `VecDeque<_>`
    |
+note: there's an earlier shadowed binding `x` of type `Vec<_>` that has method `push` available
+  --> $DIR/rustc_confusables_std_cases.rs:8:9
+   |
+LL |     let mut x = Vec::new();
+   |         ^^^^^ `x` of type `Vec<_>` that has method `push` defined earlier here
+...
+LL |     let mut x = VecDeque::new();
+   |         ----- earlier `x` shadowed here with type `VecDeque`
 help: you might have meant to use `push_back`
    |
 LL |     x.push_back(1);

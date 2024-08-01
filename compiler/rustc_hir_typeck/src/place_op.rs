@@ -1,15 +1,18 @@
-use crate::method::MethodCallee;
-use crate::{FnCtxt, PlaceOp};
-use rustc_ast as ast;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCoercion};
-use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::span_bug;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, OverloadedDeref,
+    PointerCoercion,
+};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use crate::method::MethodCallee;
+use crate::{FnCtxt, PlaceOp};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type-check `*oprnd_expr` with `oprnd_expr` type-checked already.
@@ -19,8 +22,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         oprnd_expr: &'tcx hir::Expr<'tcx>,
         oprnd_ty: Ty<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        if let Some(mt) = oprnd_ty.builtin_deref(true) {
-            return Some(mt.ty);
+        if let Some(ty) = oprnd_ty.builtin_deref(true) {
+            return Some(ty);
         }
 
         let ok = self.try_overloaded_deref(expr.span, oprnd_ty)?;
@@ -36,7 +39,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             span_bug!(expr.span, "input to deref is not a ref?");
         }
-        let ty = self.make_overloaded_place_return_type(method).ty;
+        let ty = self.make_overloaded_place_return_type(method);
         self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
         Some(ty)
     }
@@ -173,7 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
-                return Some((input_ty, self.make_overloaded_place_return_type(method).ty));
+                return Some((input_ty, self.make_overloaded_place_return_type(method)));
             }
         }
 
@@ -342,8 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .borrow()
             .expr_ty_adjusted(base_expr)
             .builtin_deref(false)
-            .expect("place op takes something that is not a ref")
-            .ty;
+            .expect("place op takes something that is not a ref");
 
         let arg_ty = match op {
             PlaceOp::Deref => None,

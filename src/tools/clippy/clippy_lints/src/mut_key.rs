@@ -1,9 +1,10 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::trait_ref_of_method;
 use clippy_utils::ty::InteriorMut;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
@@ -67,17 +68,12 @@ declare_clippy_lint! {
 }
 
 pub struct MutableKeyType<'tcx> {
-    ignore_interior_mutability: Vec<String>,
     interior_mut: InteriorMut<'tcx>,
 }
 
 impl_lint_pass!(MutableKeyType<'_> => [ MUTABLE_KEY_TYPE ]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        self.interior_mut = InteriorMut::without_pointers(cx, &self.ignore_interior_mutability);
-    }
-
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Fn(ref sig, ..) = item.kind {
             self.check_sig(cx, item.owner_id.def_id, sig.decl);
@@ -107,10 +103,9 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
 }
 
 impl<'tcx> MutableKeyType<'tcx> {
-    pub fn new(ignore_interior_mutability: Vec<String>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf) -> Self {
         Self {
-            ignore_interior_mutability,
-            interior_mut: InteriorMut::default(),
+            interior_mut: InteriorMut::without_pointers(tcx, &conf.ignore_interior_mutability),
         }
     }
 

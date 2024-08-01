@@ -8,11 +8,9 @@
 // CHECK: Function Attrs: nounwind uwtable
 // CHECK-NEXT: define void @normal_uwtable()
 #[no_mangle]
-pub fn normal_uwtable() {
-}
+pub fn normal_uwtable() {}
 
 // CHECK: Function Attrs: nounwind uwtable
 // CHECK-NEXT: define void @extern_uwtable()
 #[no_mangle]
-pub extern fn extern_uwtable() {
-}
+pub extern "C" fn extern_uwtable() {}

@@ -1,8 +1,10 @@
-use measureme::{event_id::SEPARATOR_BYTE, EventId, StringComponent, StringId};
-use rustc_data_structures::profiling::{SelfProfiler, TimingGuard};
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use std::sync::Arc;
+
+use measureme::event_id::SEPARATOR_BYTE;
+use measureme::{EventId, StringComponent, StringId};
+use rustc_data_structures::profiling::{SelfProfiler, TimingGuard};
 
 fn llvm_args_to_string_id(profiler: &SelfProfiler, pass_name: &str, ir_name: &str) -> EventId {
     let pass_name = profiler.get_or_alloc_cached_string(pass_name);
@@ -46,13 +48,15 @@ pub unsafe extern "C" fn selfprofile_before_pass_callback(
     pass_name: *const c_char,
     ir_name: *const c_char,
 ) {
-    let llvm_self_profiler = &mut *(llvm_self_profiler as *mut LlvmSelfProfiler<'_>);
-    let pass_name = CStr::from_ptr(pass_name).to_str().expect("valid UTF-8");
-    let ir_name = CStr::from_ptr(ir_name).to_str().expect("valid UTF-8");
-    llvm_self_profiler.before_pass_callback(pass_name, ir_name);
+    unsafe {
+        let llvm_self_profiler = &mut *(llvm_self_profiler as *mut LlvmSelfProfiler<'_>);
+        let pass_name = CStr::from_ptr(pass_name).to_str().expect("valid UTF-8");
+        let ir_name = CStr::from_ptr(ir_name).to_str().expect("valid UTF-8");
+        llvm_self_profiler.before_pass_callback(pass_name, ir_name);
+    }
 }
 
 pub unsafe extern "C" fn selfprofile_after_pass_callback(llvm_self_profiler: *mut c_void) {
-    let llvm_self_profiler = &mut *(llvm_self_profiler as *mut LlvmSelfProfiler<'_>);
+    let llvm_self_profiler = unsafe { &mut *(llvm_self_profiler as *mut LlvmSelfProfiler<'_>) };
     llvm_self_profiler.after_pass_callback();
 }

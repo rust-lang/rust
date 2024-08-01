@@ -1,10 +1,10 @@
-use crate::mir;
+use std::intrinsics::transmute_unchecked;
+use std::mem::MaybeUninit;
+
 use crate::query::CyclePlaceholder;
-use crate::traits;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty};
-use std::intrinsics::transmute_unchecked;
-use std::mem::{size_of, MaybeUninit};
+use crate::{mir, traits};
 
 #[derive(Copy, Clone)]
 pub struct Erased<T: Copy> {
@@ -114,9 +114,11 @@ impl EraseType for Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed> {
     type Result = [u8; size_of::<Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl EraseType for Result<Option<ty::EarlyBinder<ty::Const<'_>>>, rustc_errors::ErrorGuaranteed> {
+impl EraseType
+    for Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, rustc_errors::ErrorGuaranteed>
+{
     type Result = [u8; size_of::<
-        Result<Option<ty::EarlyBinder<ty::Const<'static>>>, rustc_errors::ErrorGuaranteed>,
+        Result<Option<ty::EarlyBinder<'static, ty::Const<'static>>>, rustc_errors::ErrorGuaranteed>,
     >()];
 }
 
@@ -155,9 +157,10 @@ impl EraseType for Result<mir::ConstValue<'_>, mir::interpret::ErrorHandled> {
     type Result = [u8; size_of::<Result<mir::ConstValue<'static>, mir::interpret::ErrorHandled>>()];
 }
 
-impl EraseType for Result<Option<ty::ValTree<'_>>, mir::interpret::ErrorHandled> {
-    type Result =
-        [u8; size_of::<Result<Option<ty::ValTree<'static>>, mir::interpret::ErrorHandled>>()];
+impl EraseType for Result<Result<ty::ValTree<'_>, Ty<'_>>, mir::interpret::ErrorHandled> {
+    type Result = [u8; size_of::<
+        Result<Result<ty::ValTree<'static>, Ty<'static>>, mir::interpret::ErrorHandled>,
+    >()];
 }
 
 impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
@@ -165,8 +168,8 @@ impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
         [u8; size_of::<Result<&'static ty::List<Ty<'static>>, ty::util::AlwaysRequiresDrop>>()];
 }
 
-impl EraseType for Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
-    type Result = [u8; size_of::<Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder>>()];
+impl EraseType for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
+    type Result = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
 }
 
 impl<T> EraseType for Option<&'_ T> {
@@ -185,15 +188,15 @@ impl EraseType for Option<ty::ImplTraitHeader<'_>> {
     type Result = [u8; size_of::<Option<ty::ImplTraitHeader<'static>>>()];
 }
 
-impl EraseType for Option<ty::EarlyBinder<Ty<'_>>> {
-    type Result = [u8; size_of::<Option<ty::EarlyBinder<Ty<'static>>>>()];
+impl EraseType for Option<ty::EarlyBinder<'_, Ty<'_>>> {
+    type Result = [u8; size_of::<Option<ty::EarlyBinder<'static, Ty<'static>>>>()];
 }
 
 impl EraseType for rustc_hir::MaybeOwner<'_> {
     type Result = [u8; size_of::<rustc_hir::MaybeOwner<'static>>()];
 }
 
-impl<T: EraseType> EraseType for ty::EarlyBinder<T> {
+impl<T: EraseType> EraseType for ty::EarlyBinder<'_, T> {
     type Result = T::Result;
 }
 
@@ -236,6 +239,7 @@ trivial! {
     Option<rustc_hir::CoroutineKind>,
     Option<rustc_hir::HirId>,
     Option<rustc_middle::middle::stability::DeprecationEntry>,
+    Option<rustc_middle::ty::AsyncDestructor>,
     Option<rustc_middle::ty::Destructor>,
     Option<rustc_middle::ty::ImplTraitInTraitData>,
     Option<rustc_middle::ty::ScalarInt>,
@@ -293,6 +297,7 @@ trivial! {
     rustc_middle::ty::AssocItem,
     rustc_middle::ty::AssocItemContainer,
     rustc_middle::ty::Asyncness,
+    rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,
     rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,
@@ -361,7 +366,7 @@ tcx_lifetime! {
     rustc_middle::ty::GenericPredicates,
     rustc_middle::ty::inhabitedness::InhabitedPredicate,
     rustc_middle::ty::Instance,
-    rustc_middle::ty::InstanceDef,
+    rustc_middle::ty::InstanceKind,
     rustc_middle::ty::layout::FnAbiError,
     rustc_middle::ty::layout::LayoutError,
     rustc_middle::ty::ParamEnv,

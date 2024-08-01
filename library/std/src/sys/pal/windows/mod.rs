@@ -1,5 +1,7 @@
 #![allow(missing_docs, nonstandard_style)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
+pub use self::rand::hashmap_random_keys;
 use crate::ffi::{OsStr, OsString};
 use crate::io::ErrorKind;
 use crate::mem::MaybeUninit;
@@ -7,8 +9,6 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
 use crate::sys::pal::windows::api::wide_str;
 use crate::time::Duration;
-
-pub use self::rand::hashmap_random_keys;
 
 #[macro_use]
 pub mod compat;
@@ -31,8 +31,6 @@ pub mod process;
 pub mod rand;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local_dtor;
-pub mod thread_local_key;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
@@ -56,11 +54,13 @@ impl<T> IoResult<T> for Result<T, api::WinError> {
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
-    stack_overflow::init();
+    unsafe {
+        stack_overflow::init();
 
-    // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
-    // exists, we have to call it ourselves.
-    thread::Thread::set_name_wide(wide_str!("main"));
+        // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
+        // exists, we have to call it ourselves.
+        thread::Thread::set_name_wide(wide_str!("main"));
+    }
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -77,7 +77,7 @@ pub fn is_interrupted(_errno: i32) -> bool {
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     use ErrorKind::*;
 
-    match errno as c::DWORD {
+    match errno as u32 {
         c::ERROR_ACCESS_DENIED => return PermissionDenied,
         c::ERROR_ALREADY_EXISTS => return AlreadyExists,
         c::ERROR_FILE_EXISTS => return AlreadyExists,
@@ -218,7 +218,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
 // from this closure is then the return value of the function.
 pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
 where
-    F1: FnMut(*mut u16, c::DWORD) -> c::DWORD,
+    F1: FnMut(*mut u16, u32) -> u32,
     F2: FnOnce(&[u16]) -> T,
 {
     // Start off with a stack buf but then spill over to the heap if we end up
@@ -227,7 +227,7 @@ where
     // This initial size also works around `GetFullPathNameW` returning
     // incorrect size hints for some short paths:
     // https://github.com/dylni/normpath/issues/5
-    let mut stack_buf: [MaybeUninit<u16>; 512] = MaybeUninit::uninit_array();
+    let mut stack_buf: [MaybeUninit<u16>; 512] = [MaybeUninit::uninit(); 512];
     let mut heap_buf: Vec<MaybeUninit<u16>> = Vec::new();
     unsafe {
         let mut n = stack_buf.len();
@@ -240,7 +240,7 @@ where
                 // We used `reserve` and not `reserve_exact`, so in theory we
                 // may have gotten more than requested. If so, we'd like to use
                 // it... so long as we won't cause overflow.
-                n = heap_buf.capacity().min(c::DWORD::MAX as usize);
+                n = heap_buf.capacity().min(u32::MAX as usize);
                 // Safety: MaybeUninit<u16> does not need initialization
                 heap_buf.set_len(n);
                 &mut heap_buf[..]
@@ -256,13 +256,13 @@ where
             // error" is still 0 then we interpret it as a 0 length buffer and
             // not an actual error.
             c::SetLastError(0);
-            let k = match f1(buf.as_mut_ptr().cast::<u16>(), n as c::DWORD) {
+            let k = match f1(buf.as_mut_ptr().cast::<u16>(), n as u32) {
                 0 if api::get_last_error().code == 0 => 0,
                 0 => return Err(crate::io::Error::last_os_error()),
                 n => n,
             } as usize;
             if k == n && api::get_last_error().code == c::ERROR_INSUFFICIENT_BUFFER {
-                n = n.saturating_mul(2).min(c::DWORD::MAX as usize);
+                n = n.saturating_mul(2).min(u32::MAX as usize);
             } else if k > n {
                 n = k;
             } else if k == n {
@@ -310,7 +310,7 @@ pub fn cvt<I: IsZero>(i: I) -> crate::io::Result<I> {
     if i.is_zero() { Err(crate::io::Error::last_os_error()) } else { Ok(i) }
 }
 
-pub fn dur2timeout(dur: Duration) -> c::DWORD {
+pub fn dur2timeout(dur: Duration) -> u32 {
     // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the
     // timeouts in windows APIs are typically u32 milliseconds. To translate, we
     // have two pieces to take care of:
@@ -322,7 +322,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         .checked_mul(1000)
         .and_then(|ms| ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000))
         .and_then(|ms| ms.checked_add(if dur.subsec_nanos() % 1_000_000 > 0 { 1 } else { 0 }))
-        .map(|ms| if ms > <c::DWORD>::MAX as u64 { c::INFINITE } else { ms as c::DWORD })
+        .map(|ms| if ms > <u32>::MAX as u64 { c::INFINITE } else { ms as u32 })
         .unwrap_or(c::INFINITE)
 }
 

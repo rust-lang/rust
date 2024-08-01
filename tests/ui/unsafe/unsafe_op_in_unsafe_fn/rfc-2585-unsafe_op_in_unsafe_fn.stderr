@@ -1,4 +1,4 @@
-error: call to unsafe function `unsf` is unsafe and requires unsafe block (error E0133)
+error[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:9:5
    |
 LL |     unsf();
@@ -17,7 +17,7 @@ note: the lint level is defined here
 LL | #![deny(unsafe_op_in_unsafe_fn)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe block
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:11:5
    |
 LL |     *PTR;
@@ -26,7 +26,7 @@ LL |     *PTR;
    = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
-error: use of mutable static is unsafe and requires unsafe block (error E0133)
+error[E0133]: use of mutable static is unsafe and requires unsafe block
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:13:5
    |
 LL |     VOID = ();
@@ -47,7 +47,7 @@ note: the lint level is defined here
 LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^
 
-error: call to unsafe function `unsf` is unsafe and requires unsafe block (error E0133)
+error[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:24:5
    |
 LL |     unsf();
@@ -67,7 +67,7 @@ LL | #[deny(warnings)]
    |        ^^^^^^^^
    = note: `#[deny(unsafe_op_in_unsafe_fn)]` implied by `#[deny(warnings)]`
 
-error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe block
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:26:5
    |
 LL |     *PTR;
@@ -76,7 +76,7 @@ LL |     *PTR;
    = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
-error: use of mutable static is unsafe and requires unsafe block (error E0133)
+error[E0133]: use of mutable static is unsafe and requires unsafe block
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:28:5
    |
 LL |     VOID = ();

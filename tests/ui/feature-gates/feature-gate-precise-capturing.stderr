@@ -1,8 +1,8 @@
 error[E0658]: precise captures on `impl Trait` are experimental
-  --> $DIR/feature-gate-precise-capturing.rs:1:20
+  --> $DIR/feature-gate-precise-capturing.rs:1:28
    |
-LL | fn hello() -> impl use<> Sized {}
-   |                    ^^^
+LL | fn hello() -> impl Sized + use<> {}
+   |                            ^^^
    |
    = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
    = help: add `#![feature(precise_capturing)]` to the crate attributes to enable

@@ -4,7 +4,7 @@ error: `{closure@$DIR/non-structural-match-types.rs:9:17: 9:19}` cannot be used 
 LL |         const { || {} } => {}
    |         ^^^^^^^^^^^^^^^
 
-error: `{async block@$DIR/non-structural-match-types.rs:12:17: 12:25}` cannot be used in patterns
+error: `{async block@$DIR/non-structural-match-types.rs:12:17: 12:22}` cannot be used in patterns
   --> $DIR/non-structural-match-types.rs:12:9
    |
 LL |         const { async {} } => {}

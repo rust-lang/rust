@@ -215,3 +215,29 @@ declare_deprecated_lint! {
     pub WRONG_PUB_SELF_CONVENTION,
     "set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items"
 }
+
+declare_deprecated_lint! {
+    /// ### What it does
+    /// Nothing. This lint has been deprecated.
+    ///
+    /// ### Deprecation reason
+    /// This lint has been superseded by rustc's own [`unexpected_cfgs`] lint that is able to detect the `#[cfg(features)]` and `#[cfg(tests)]` typos.
+    ///
+    /// [`unexpected_cfgs`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unexpected-cfgs
+    #[clippy::version = "1.80.0"]
+    pub MAYBE_MISUSED_CFG,
+    "this lint has been replaced by `unexpected_cfgs`"
+}
+
+declare_deprecated_lint! {
+    /// ### What it does
+    /// Nothing. This lint has been deprecated.
+    ///
+    /// ### Deprecation reason
+    /// This lint has been superseded by rustc's own [`unexpected_cfgs`] lint that is able to detect invalid `#[cfg(linux)]` attributes.
+    ///
+    /// [`unexpected_cfgs`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unexpected-cfgs
+    #[clippy::version = "1.80.0"]
+    pub MISMATCHED_TARGET_OS,
+    "this lint has been replaced by `unexpected_cfgs`"
+}

@@ -1,6 +1,7 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use super::sync::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -8,14 +9,14 @@ pub fn is_dyn_sym(_name: &str) -> bool {
     false
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
@@ -131,8 +132,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let dtor = this.read_pointer(dtor)?;
                 let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?;
-                let active_thread = this.get_active_thread();
-                this.machine.tls.set_macos_thread_dtor(active_thread, dtor, data)?;
+                let active_thread = this.active_thread();
+                this.machine.tls.add_macos_thread_dtor(active_thread, dtor, data)?;
             }
 
             // Querying system information
@@ -174,9 +175,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
+            "os_unfair_lock_lock" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_lock(lock_op)?;
+            }
+            "os_unfair_lock_trylock" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_trylock(lock_op, dest)?;
+            }
+            "os_unfair_lock_unlock" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_unlock(lock_op)?;
+            }
+            "os_unfair_lock_assert_owner" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_assert_owner(lock_op)?;
+            }
+            "os_unfair_lock_assert_not_owner" => {
+                let [lock_op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.os_unfair_lock_assert_not_owner(lock_op)?;
+            }
+
             _ => return Ok(EmulateItemResult::NotSupported),
         };
 
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

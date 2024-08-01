@@ -1,6 +1,7 @@
 use rustc_index::IndexSlice;
+use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::{mir::*, thir::*};
 use rustc_span::Span;
 
 use super::{PResult, ParseCtxt, ParseError};
@@ -38,7 +39,7 @@ macro_rules! parse_by_kind {
     ) => {{
         let expr_id = $self.preparse($expr_id);
         let expr = &$self.thir[expr_id];
-        debug!("Trying to parse {:?} as {}", expr.kind, $expected);
+        tracing::debug!("Trying to parse {:?} as {}", expr.kind, $expected);
         let $expr_name = expr;
         match &expr.kind {
             $(
@@ -91,7 +92,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn parse_args(&mut self, params: &IndexSlice<ParamId, Param<'tcx>>) -> PResult<()> {
+    pub(crate) fn parse_args(&mut self, params: &IndexSlice<ParamId, Param<'tcx>>) -> PResult<()> {
         for param in params.iter() {
             let (var, span) = {
                 let pat = param.pat.as_ref().unwrap();
@@ -149,7 +150,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     ///
     /// This allows us to easily parse the basic blocks declarations, local declarations, and
     /// basic block definitions in order.
-    pub fn parse_body(&mut self, expr_id: ExprId) -> PResult<()> {
+    pub(crate) fn parse_body(&mut self, expr_id: ExprId) -> PResult<()> {
         let body = parse_by_kind!(self, expr_id, _, "whole body",
             ExprKind::Block { block } => self.thir[*block].expr.unwrap(),
         );

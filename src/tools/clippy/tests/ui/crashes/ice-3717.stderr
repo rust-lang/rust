@@ -1,5 +1,5 @@
 error: parameter of type `HashSet` should be generalized over different hashers
-  --> tests/ui/crashes/ice-3717.rs:7:21
+  --> tests/ui/crashes/ice-3717.rs:9:21
    |
 LL | pub fn ice_3717(_: &HashSet<usize>) {
    |                     ^^^^^^^^^^^^^^

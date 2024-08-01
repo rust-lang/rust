@@ -5,10 +5,9 @@ use std::{fmt, fs, path::Path};
 use stdx::format_to_acc;
 
 use crate::{
-    codegen::{
-        add_preamble, ensure_file_contents, list_rust_files, reformat, CommentBlock, Location,
-    },
+    codegen::{add_preamble, ensure_file_contents, reformat, CommentBlock, Location},
     project_root,
+    util::list_rust_files,
 };
 
 pub(crate) fn generate(check: bool) {
@@ -45,8 +44,9 @@ r#####"
                 buf.push_str(&test)
             }
         }
-        let buf = add_preamble("sourcegen_assists_docs", reformat(buf));
+        let buf = add_preamble(crate::flags::CodegenType::AssistsDocTests, reformat(buf));
         ensure_file_contents(
+            crate::flags::CodegenType::AssistsDocTests,
             &project_root().join("crates/ide-assists/src/tests/generated.rs"),
             &buf,
             check,
@@ -59,7 +59,7 @@ r#####"
         // a release.
 
         let contents = add_preamble(
-            "sourcegen_assists_docs",
+            crate::flags::CodegenType::AssistsDocTests,
             assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n"),
         );
         let dst = project_root().join("docs/user/generated_assists.adoc");
@@ -194,4 +194,9 @@ fn reveal_hash_comments(text: &str) -> String {
             }
         })
         .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
+}
+
+#[test]
+fn test() {
+    generate(true);
 }

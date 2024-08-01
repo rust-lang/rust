@@ -1,11 +1,8 @@
 //! Code that is useful in various codegen modules.
 
-use crate::consts::const_alloc_to_llvm;
-pub use crate::context::CodegenCx;
-use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
-use crate::type_::Type;
-use crate::value::Value;
+use std::fmt::Write;
 
+use libc::{c_char, c_uint};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
@@ -16,9 +13,13 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
 use rustc_target::spec::Target;
+use tracing::debug;
 
-use libc::{c_char, c_uint};
-use std::fmt::Write;
+use crate::consts::const_alloc_to_llvm;
+pub use crate::context::CodegenCx;
+use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
+use crate::type_::Type;
+use crate::value::Value;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -243,7 +244,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(int) => {
-                let data = int.assert_bits(layout.size(self));
+                let data = int.to_bits(layout.size(self));
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);
                 if matches!(layout.primitive(), Pointer(_)) {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
@@ -288,8 +289,8 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             (value, AddressSpace::DATA)
                         }
                     }
-                    GlobalAlloc::Function(fn_instance) => (
-                        self.get_fn_addr(fn_instance.polymorphize(self.tcx)),
+                    GlobalAlloc::Function { instance, .. } => (
+                        self.get_fn_addr(instance.polymorphize(self.tcx)),
                         self.data_layout().instruction_address_space,
                     ),
                     GlobalAlloc::VTable(ty, trait_ref) => {
@@ -326,10 +327,6 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_llvm(self, alloc, /*static*/ false)
-    }
-
-    fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        self.const_bitcast(val, ty)
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {

@@ -1,10 +1,8 @@
-use rustc_pattern_analysis::{
-    constructor::{
-        Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
-    },
-    usefulness::{PlaceValidity, UsefulnessReport},
-    Captures, MatchArm, PatCx, PrivateUninhabitedField,
+use rustc_pattern_analysis::constructor::{
+    Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
+use rustc_pattern_analysis::usefulness::{PlaceValidity, UsefulnessReport};
+use rustc_pattern_analysis::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
 
 /// Sets up `tracing` for easier debugging. Tries to look like the `rustc` setup.
 pub fn init_tracing() {
@@ -13,7 +11,6 @@ pub fn init_tracing() {
     use tracing_subscriber::Layer;
     let _ = tracing_tree::HierarchicalLayer::default()
         .with_writer(std::io::stderr)
-        .with_indent_lines(true)
         .with_ansi(true)
         .with_targets(true)
         .with_indent_amount(2)
@@ -26,7 +23,7 @@ pub fn init_tracing() {
 
 /// A simple set of types.
 #[allow(dead_code)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Ty {
     /// Booleans
     Bool,
@@ -34,6 +31,8 @@ pub enum Ty {
     U8,
     /// Tuples.
     Tuple(&'static [Ty]),
+    /// Enum with one variant of each given type.
+    Enum(&'static [Ty]),
     /// A struct with `arity` fields of type `ty`.
     BigStruct { arity: usize, ty: &'static Ty },
     /// A enum with `arity` variants of type `ty`.
@@ -47,9 +46,20 @@ impl Ty {
         match (ctor, *self) {
             (Struct, Ty::Tuple(tys)) => tys.iter().copied().collect(),
             (Struct, Ty::BigStruct { arity, ty }) => (0..arity).map(|_| *ty).collect(),
+            (Variant(i), Ty::Enum(tys)) => vec![tys[*i]],
             (Variant(_), Ty::BigEnum { ty, .. }) => vec![*ty],
             (Bool(..) | IntRange(..) | NonExhaustive | Missing | Wildcard, _) => vec![],
             _ => panic!("Unexpected ctor {ctor:?} for type {self:?}"),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        match *self {
+            Ty::Bool | Ty::U8 => false,
+            Ty::Tuple(tys) => tys.iter().any(|ty| ty.is_empty()),
+            Ty::Enum(tys) => tys.iter().all(|ty| ty.is_empty()),
+            Ty::BigStruct { arity, ty } => arity != 0 && ty.is_empty(),
+            Ty::BigEnum { arity, ty } => arity == 0 || ty.is_empty(),
         }
     }
 
@@ -65,10 +75,32 @@ impl Ty {
                 range_2: None,
             },
             Ty::Tuple(..) | Ty::BigStruct { .. } => ConstructorSet::Struct { empty: false },
-            Ty::BigEnum { arity, .. } => ConstructorSet::Variants {
-                variants: (0..arity).map(|_| VariantVisibility::Visible).collect(),
+            Ty::Enum(tys) if tys.is_empty() => ConstructorSet::NoConstructors,
+            Ty::Enum(tys) => ConstructorSet::Variants {
+                variants: tys
+                    .iter()
+                    .map(|ty| {
+                        if ty.is_empty() {
+                            VariantVisibility::Empty
+                        } else {
+                            VariantVisibility::Visible
+                        }
+                    })
+                    .collect(),
                 non_exhaustive: false,
             },
+            Ty::BigEnum { arity: 0, .. } => ConstructorSet::NoConstructors,
+            Ty::BigEnum { arity, ty } => {
+                let vis = if ty.is_empty() {
+                    VariantVisibility::Empty
+                } else {
+                    VariantVisibility::Visible
+                };
+                ConstructorSet::Variants {
+                    variants: (0..arity).map(|_| vis).collect(),
+                    non_exhaustive: false,
+                }
+            }
         }
     }
 
@@ -80,6 +112,7 @@ impl Ty {
         match (*self, ctor) {
             (Ty::Tuple(..), _) => Ok(()),
             (Ty::BigStruct { .. }, _) => write!(f, "BigStruct"),
+            (Ty::Enum(..), Constructor::Variant(i)) => write!(f, "Enum::Variant{i}"),
             (Ty::BigEnum { .. }, Constructor::Variant(i)) => write!(f, "BigEnum::Variant{i}"),
             _ => write!(f, "{:?}::{:?}", self, ctor),
         }
@@ -120,7 +153,7 @@ impl PatCx for Cx {
     }
 
     fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
-        false
+        true
     }
 
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize {

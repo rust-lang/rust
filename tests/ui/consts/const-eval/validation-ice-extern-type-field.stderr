@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/validation-ice-extern-type-field.rs:12:1
+   |
+LL | const C1: &ThinDst = unsafe { std::mem::transmute(b"d".as_ptr()) };
+   | ^^^^^^^^^^^^^^^^^^ `extern type` field does not have a known offset
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

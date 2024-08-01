@@ -1,0 +1,47 @@
+error: function pointer types may not have generic parameters
+  --> $DIR/generics.rs:15:42
+   |
+LL |     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
+   |                                          ^^^^^^^^^
+
+error[E0412]: cannot find type `U` in this scope
+  --> $DIR/generics.rs:15:52
+   |
+LL | struct Test<T: Copy> {
+   |             - similarly named type parameter `T` defined here
+LL |     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
+   |                                                    ^
+   |
+help: a type parameter with a similar name exists
+   |
+LL |     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(T, u32, u32, u32) -> u64,
+   |                                                    ~
+help: you might be missing a type parameter
+   |
+LL | struct Test<T: Copy, U> {
+   |                    +++
+
+error[E0562]: `impl Trait` is not allowed in `fn` pointer parameters
+  --> $DIR/generics.rs:17:43
+   |
+LL |     f2: extern "C-cmse-nonsecure-call" fn(impl Copy, u32, u32, u32) -> u64,
+   |                                           ^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0798]: function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:19:9
+   |
+LL |     f3: extern "C-cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0798]: function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:20:9
+   |
+LL |     f4: extern "C-cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0412, E0562, E0798.
+For more information about an error, try `rustc --explain E0412`.

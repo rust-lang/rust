@@ -56,7 +56,7 @@ fn test_join() {
 
         let y = String::new();
         let x = join!(async {
-            println!("{}", &y);
+            println!("{y}");
             1
         })
         .await;

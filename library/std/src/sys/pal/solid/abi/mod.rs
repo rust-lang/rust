@@ -3,7 +3,6 @@ use crate::os::raw::c_int;
 mod fs;
 pub mod sockets;
 pub use self::fs::*;
-
 // `solid_types.h`
 pub use super::itron::abi::{ER, ER_ID, E_TMOUT, ID};
 

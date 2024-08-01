@@ -1,4 +1,3 @@
-//@ ignore-windows
 //@ ignore-wasi wasi codegens the main symbol differently
 
 //@ compile-flags: -g -C no-prepopulate-passes
@@ -13,6 +12,6 @@
 
 pub struct Generic<Type>(Type);
 
-fn main () {
+fn main() {
     let generic = Generic(10);
 }

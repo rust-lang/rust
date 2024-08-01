@@ -1,13 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::query::{IntoQueryParam, Providers};
-use crate::ty::layout::IntegerExt;
-use crate::ty::{
-    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
-};
-use crate::ty::{GenericArgKind, GenericArgsRef};
+use std::{fmt, iter};
+
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
@@ -20,10 +14,18 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Integer, IntegerType, Primitive, Size};
+use rustc_target::abi::{Float, Integer, IntegerType, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
-use std::{fmt, iter};
+use tracing::{debug, instrument, trace};
+
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::query::{IntoQueryParam, Providers};
+use crate::ty::layout::{FloatExt, IntegerExt};
+use crate::ty::{
+    self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
+};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
@@ -381,6 +383,64 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(ty::Destructor { did, constness })
     }
 
+    /// Calculate the async destructor of a given type.
+    pub fn calculate_async_dtor(
+        self,
+        adt_did: DefId,
+        validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
+    ) -> Option<ty::AsyncDestructor> {
+        let async_drop_trait = self.lang_items().async_drop_trait()?;
+        self.ensure().coherent_trait(async_drop_trait).ok()?;
+
+        let ty = self.type_of(adt_did).instantiate_identity();
+        let mut dtor_candidate = None;
+        self.for_each_relevant_impl(async_drop_trait, ty, |impl_did| {
+            if validate(self, impl_did).is_err() {
+                // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                return;
+            }
+
+            let [future, ctor] = self.associated_item_def_ids(impl_did) else {
+                self.dcx().span_delayed_bug(
+                    self.def_span(impl_did),
+                    "AsyncDrop impl without async_drop function or Dropper type",
+                );
+                return;
+            };
+
+            if let Some((_, _, old_impl_did)) = dtor_candidate {
+                self.dcx()
+                    .struct_span_err(self.def_span(impl_did), "multiple async drop impls found")
+                    .with_span_note(self.def_span(old_impl_did), "other impl here")
+                    .delay_as_bug();
+            }
+
+            dtor_candidate = Some((*future, *ctor, impl_did));
+        });
+
+        let (future, ctor, _) = dtor_candidate?;
+        Some(ty::AsyncDestructor { future, ctor })
+    }
+
+    /// Returns async drop glue morphology for a definition. To get async drop
+    /// glue morphology for a type see [`Ty::async_drop_glue_morphology`].
+    //
+    // FIXME: consider making this a query
+    pub fn async_drop_glue_morphology(self, did: DefId) -> AsyncDropGlueMorphology {
+        let ty: Ty<'tcx> = self.type_of(did).instantiate_identity();
+
+        // Async drop glue morphology is an internal detail, so reveal_all probably
+        // should be fine
+        let param_env = ty::ParamEnv::reveal_all();
+        if ty.needs_async_drop(self, param_env) {
+            AsyncDropGlueMorphology::Custom
+        } else if ty.needs_drop(self, param_env) {
+            AsyncDropGlueMorphology::DeferredDropInPlace
+        } else {
+            AsyncDropGlueMorphology::Noop
+        }
+    }
+
     /// Returns the set of types that are required to be alive in
     /// order to run the destructor of `def` (see RFCs 769 and
     /// 1238).
@@ -495,42 +555,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 GenericArgKind::Const(c) => match c.kind() {
                     ty::ConstKind::Param(p) => {
                         if !seen.insert(p.index) {
-                            return Err(NotUniqueParam::DuplicateParam(c.into()));
-                        }
-                    }
-                    _ => return Err(NotUniqueParam::NotParam(c.into())),
-                },
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Checks whether each generic argument is simply a unique generic placeholder.
-    ///
-    /// This is used in the new solver, which canonicalizes params to placeholders
-    /// for better caching.
-    pub fn uses_unique_placeholders_ignoring_regions(
-        self,
-        args: GenericArgsRef<'tcx>,
-    ) -> Result<(), NotUniqueParam<'tcx>> {
-        let mut seen = GrowableBitSet::default();
-        for arg in args {
-            match arg.unpack() {
-                // Ignore regions, since we can't resolve those in a canonicalized
-                // query in the trait solver.
-                GenericArgKind::Lifetime(_) => {}
-                GenericArgKind::Type(t) => match t.kind() {
-                    ty::Placeholder(p) => {
-                        if !seen.insert(p.bound.var) {
-                            return Err(NotUniqueParam::DuplicateParam(t.into()));
-                        }
-                    }
-                    _ => return Err(NotUniqueParam::NotParam(t.into())),
-                },
-                GenericArgKind::Const(c) => match c.kind() {
-                    ty::ConstKind::Placeholder(p) => {
-                        if !seen.insert(p.bound) {
                             return Err(NotUniqueParam::DuplicateParam(c.into()));
                         }
                     }
@@ -693,7 +717,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<Ty<'tcx>>> {
+    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         let coroutine_layout = self.mir_coroutine_witnesses(def_id);
         coroutine_layout
             .as_ref()
@@ -708,7 +732,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<ty::Binder<'tcx, Ty<'tcx>>>> {
+    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
         let coroutine_layout = self.mir_coroutine_witnesses(def_id);
         coroutine_layout
             .as_ref()
@@ -1060,7 +1084,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1086,7 +1110,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
         {
             p.kind()
                 .rebind(ty::ProjectionPredicate {
-                    projection_ty: projection_pred.projection_ty.fold_with(self),
+                    projection_term: projection_pred.projection_term.fold_with(self),
                     // Don't fold the term on the RHS of the projection predicate.
                     // This is because for default trait methods with RPITITs, we
                     // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
@@ -1094,7 +1118,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
                     // anything that requires `ParamEnv::with_reveal_all_normalized`.
                     term: projection_pred.term,
                 })
-                .to_predicate(self.tcx)
+                .upcast(self.tcx)
         } else {
             p.super_fold_with(self)
         }
@@ -1107,7 +1131,7 @@ struct WeakAliasTypeExpander<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1130,11 +1154,23 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if !ct.ty().has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
             return ct;
         }
         ct.super_fold_with(self)
     }
+}
+
+/// Indicates the form of `AsyncDestruct::Destructor`. Used to simplify async
+/// drop glue for types not using async drop.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AsyncDropGlueMorphology {
+    /// Async destructor simply does nothing
+    Noop,
+    /// Async destructor simply runs `drop_in_place`
+    DeferredDropInPlace,
+    /// Async destructor has custom logic
+    Custom,
 }
 
 impl<'tcx> Ty<'tcx> {
@@ -1145,8 +1181,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Char => Size::from_bytes(4),
             ty::Int(ity) => Integer::from_int_ty(&tcx, ity).size(),
             ty::Uint(uty) => Integer::from_uint_ty(&tcx, uty).size(),
-            ty::Float(ty::FloatTy::F32) => Primitive::F32.size(&tcx),
-            ty::Float(ty::FloatTy::F64) => Primitive::F64.size(&tcx),
+            ty::Float(fty) => Float::from_float_ty(fty).size(),
             _ => bug!("non primitive type"),
         }
     }
@@ -1162,7 +1197,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the minimum and maximum values for the given numeric type (including `char`s) or
     /// returns `None` if the type is not numeric.
     pub fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)> {
-        use rustc_apfloat::ieee::{Double, Single};
+        use rustc_apfloat::ieee::{Double, Half, Quad, Single};
         Some(match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = self.int_size_and_signed(tcx);
@@ -1172,12 +1207,14 @@ impl<'tcx> Ty<'tcx> {
                 (min, max)
             }
             ty::Char => (0, std::char::MAX as u128),
+            ty::Float(ty::FloatTy::F16) => ((-Half::INFINITY).to_bits(), Half::INFINITY.to_bits()),
             ty::Float(ty::FloatTy::F32) => {
                 ((-Single::INFINITY).to_bits(), Single::INFINITY.to_bits())
             }
             ty::Float(ty::FloatTy::F64) => {
                 ((-Double::INFINITY).to_bits(), Double::INFINITY.to_bits())
             }
+            ty::Float(ty::FloatTy::F128) => ((-Quad::INFINITY).to_bits(), Quad::INFINITY.to_bits()),
             _ => return None,
         })
     }
@@ -1232,7 +1269,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Returning true means the type is known to be `Freeze`. Returning
     /// `false` means nothing -- could be `Freeze`, might not be.
-    fn is_trivially_freeze(self) -> bool {
+    pub fn is_trivially_freeze(self) -> bool {
         match self.kind() {
             ty::Int(_)
             | ty::Uint(_)
@@ -1303,80 +1340,16 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Checks whether values of this type `T` implements the `AsyncDrop`
-    /// trait.
-    pub fn has_surface_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.could_have_surface_async_drop() && tcx.has_surface_async_drop_raw(param_env.and(self))
-    }
-
-    /// Fast path helper for testing if a type has `AsyncDrop`
-    /// implementation.
-    ///
-    /// Returning `false` means the type is known to not have `AsyncDrop`
-    /// implementation. Returning `true` means nothing -- could be
-    /// `AsyncDrop`, might not be.
-    fn could_have_surface_async_drop(self) -> bool {
-        !self.is_async_destructor_trivially_noop()
-            && !matches!(
-                self.kind(),
-                ty::Tuple(_)
-                    | ty::Slice(_)
-                    | ty::Array(_, _)
-                    | ty::Closure(..)
-                    | ty::CoroutineClosure(..)
-                    | ty::Coroutine(..)
-            )
-    }
-
-    /// Checks whether values of this type `T` implements the `Drop`
-    /// trait.
-    pub fn has_surface_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.could_have_surface_drop() && tcx.has_surface_drop_raw(param_env.and(self))
-    }
-
-    /// Fast path helper for testing if a type has `Drop` implementation.
-    ///
-    /// Returning `false` means the type is known to not have `Drop`
-    /// implementation. Returning `true` means nothing -- could be
-    /// `Drop`, might not be.
-    fn could_have_surface_drop(self) -> bool {
-        !self.is_async_destructor_trivially_noop()
-            && !matches!(
-                self.kind(),
-                ty::Tuple(_)
-                    | ty::Slice(_)
-                    | ty::Array(_, _)
-                    | ty::Closure(..)
-                    | ty::CoroutineClosure(..)
-                    | ty::Coroutine(..)
-            )
-    }
-
-    /// Checks whether values of this type `T` implement has noop async destructor.
+    /// Get morphology of the async drop glue, needed for types which do not
+    /// use async drop. To get async drop glue morphology for a definition see
+    /// [`TyCtxt::async_drop_glue_morphology`]. Used for `AsyncDestruct::Destructor`
+    /// type construction.
     //
-    // FIXME: implement optimization to make ADTs, which do not need drop,
-    // to skip fields or to have noop async destructor.
-    pub fn is_async_destructor_noop(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool {
-        self.is_async_destructor_trivially_noop()
-            || if let ty::Adt(adt_def, _) = self.kind() {
-                (adt_def.is_union() || adt_def.is_payloadfree())
-                    && !self.has_surface_async_drop(tcx, param_env)
-                    && !self.has_surface_drop(tcx, param_env)
-            } else {
-                false
-            }
-    }
-
-    /// Fast path helper for testing if a type has noop async destructor.
-    ///
-    /// Returning `true` means the type is known to have noop async destructor
-    /// implementation. Returning `true` means nothing -- could be
-    /// `Drop`, might not be.
-    fn is_async_destructor_trivially_noop(self) -> bool {
+    // FIXME: implement optimization to not instantiate a certain morphology of
+    // async drop glue too soon to allow per type optimizations, see array case
+    // for more info. Perhaps then remove this method and use `needs_(async_)drop`
+    // instead.
+    pub fn async_drop_glue_morphology(self, tcx: TyCtxt<'tcx>) -> AsyncDropGlueMorphology {
         match self.kind() {
             ty::Int(_)
             | ty::Uint(_)
@@ -1388,10 +1361,43 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnDef(..)
-            | ty::FnPtr(_) => true,
-            ty::Tuple(tys) => tys.is_empty(),
-            ty::Adt(adt_def, _) => adt_def.is_manually_drop(),
-            _ => false,
+            | ty::FnPtr(_)
+            | ty::Infer(ty::FreshIntTy(_))
+            | ty::Infer(ty::FreshFloatTy(_)) => AsyncDropGlueMorphology::Noop,
+
+            ty::Tuple(tys) if tys.is_empty() => AsyncDropGlueMorphology::Noop,
+            ty::Adt(adt_def, _) if adt_def.is_manually_drop() => AsyncDropGlueMorphology::Noop,
+
+            // Foreign types can never have destructors.
+            ty::Foreign(_) => AsyncDropGlueMorphology::Noop,
+
+            // FIXME: implement dynamic types async drops
+            ty::Error(_) | ty::Dynamic(..) => AsyncDropGlueMorphology::DeferredDropInPlace,
+
+            ty::Tuple(_) | ty::Array(_, _) | ty::Slice(_) => {
+                // Assume worst-case scenario, because we can instantiate async
+                // destructors in different orders:
+                //
+                // 1. Instantiate [T; N] with T = String and N = 0
+                // 2. Instantiate <[String; 0] as AsyncDestruct>::Destructor
+                //
+                // And viceversa, thus we cannot rely on String not using async
+                // drop or array having zero (0) elements
+                AsyncDropGlueMorphology::Custom
+            }
+            ty::Pat(ty, _) => ty.async_drop_glue_morphology(tcx),
+
+            ty::Adt(adt_def, _) => tcx.async_drop_glue_morphology(adt_def.did()),
+
+            ty::Closure(did, _)
+            | ty::CoroutineClosure(did, _)
+            | ty::Coroutine(did, _)
+            | ty::CoroutineWitness(did, _) => tcx.async_drop_glue_morphology(*did),
+
+            ty::Alias(..) | ty::Param(_) | ty::Bound(..) | ty::Placeholder(..) | ty::Infer(_) => {
+                // No specifics, but would usually mean forwarding async drop glue
+                AsyncDropGlueMorphology::Custom
+            }
         }
     }
 
@@ -1426,6 +1432,46 @@ impl<'tcx> Ty<'tcx> {
                     .unwrap_or_else(|_| tcx.erase_regions(query_ty));
 
                 tcx.needs_drop_raw(param_env.and(query_ty))
+            }
+        }
+    }
+
+    /// If `ty.needs_async_drop(...)` returns `true`, then `ty` is definitely
+    /// non-copy and *might* have a async destructor attached; if it returns
+    /// `false`, then `ty` definitely has no async destructor (i.e., no async
+    /// drop glue).
+    ///
+    /// (Note that this implies that if `ty` has an async destructor attached,
+    /// then `needs_async_drop` will definitely return `true` for `ty`.)
+    ///
+    /// When constructing `AsyncDestruct::Destructor` type, use
+    /// [`Ty::async_drop_glue_morphology`] instead.
+    //
+    // FIXME(zetanumbers): Note that this method is used to check eligible types
+    // in unions.
+    #[inline]
+    pub fn needs_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        // Avoid querying in simple cases.
+        match needs_drop_components(tcx, self) {
+            Err(AlwaysRequiresDrop) => true,
+            Ok(components) => {
+                let query_ty = match *components {
+                    [] => return false,
+                    // If we've got a single component, call the query with that
+                    // to increase the chance that we hit the query cache.
+                    [component_ty] => component_ty,
+                    _ => self,
+                };
+
+                // This doesn't depend on regions, so try to minimize distinct
+                // query keys used.
+                // If normalization fails, we just use `query_ty`.
+                debug_assert!(!param_env.has_infer());
+                let query_ty = tcx
+                    .try_normalize_erasing_regions(param_env, query_ty)
+                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
+
+                tcx.needs_async_drop_raw(param_env.and(query_ty))
             }
         }
     }
@@ -1601,9 +1647,24 @@ impl<'tcx> ExplicitSelf<'tcx> {
 /// Returns a list of types such that the given type needs drop if and only if
 /// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
 /// this type always needs drop.
+//
+// FIXME(zetanumbers): consider replacing this with only
+// `needs_drop_components_with_async`
+#[inline]
 pub fn needs_drop_components<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
+) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
+    needs_drop_components_with_async(tcx, ty, Asyncness::No)
+}
+
+/// Returns a list of types such that the given type needs drop if and only if
+/// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
+/// this type always needs drop.
+pub fn needs_drop_components_with_async<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    asyncness: Asyncness,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
     match *ty.kind() {
         ty::Infer(ty::FreshIntTy(_))
@@ -1623,11 +1684,18 @@ pub fn needs_drop_components<'tcx>(
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
 
-        ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
+        // FIXME(zetanumbers): Temporary workaround for async drop of dynamic types
+        ty::Dynamic(..) | ty::Error(_) => {
+            if asyncness.is_async() {
+                Ok(SmallVec::new())
+            } else {
+                Err(AlwaysRequiresDrop)
+            }
+        }
 
-        ty::Pat(ty, _) | ty::Slice(ty) => needs_drop_components(tcx, ty),
+        ty::Pat(ty, _) | ty::Slice(ty) => needs_drop_components_with_async(tcx, ty, asyncness),
         ty::Array(elem_ty, size) => {
-            match needs_drop_components(tcx, elem_ty) {
+            match needs_drop_components_with_async(tcx, elem_ty, asyncness) {
                 Ok(v) if v.is_empty() => Ok(v),
                 res => match size.try_to_target_usize(tcx) {
                     // Arrays of size zero don't need drop, even if their element
@@ -1643,7 +1711,7 @@ pub fn needs_drop_components<'tcx>(
         }
         // If any field needs drop, then the whole tuple does.
         ty::Tuple(fields) => fields.iter().try_fold(SmallVec::new(), move |mut acc, elem| {
-            acc.extend(needs_drop_components(tcx, elem)?);
+            acc.extend(needs_drop_components_with_async(tcx, elem, asyncness)?);
             Ok(acc)
         }),
 
@@ -1730,7 +1798,7 @@ where
             for t in iter {
                 new_list.push(t.try_fold_with(folder)?)
             }
-            Ok(intern(folder.interner(), &new_list))
+            Ok(intern(folder.cx(), &new_list))
         }
         Some((_, Err(err))) => {
             return Err(err);

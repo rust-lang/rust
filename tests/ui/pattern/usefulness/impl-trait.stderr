@@ -4,6 +4,7 @@ error: unreachable pattern
 LL |             _ => {}
    |             ^
    |
+   = note: this pattern matches no values because `Void` is uninhabited
 note: the lint level is defined here
   --> $DIR/impl-trait.rs:5:9
    |
@@ -15,36 +16,48 @@ error: unreachable pattern
    |
 LL |             _ => {}
    |             ^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:45:13
    |
 LL |             Some(_) => {}
    |             ^^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:49:13
    |
+LL |             None => {}
+   |             ---- matches all the values already
 LL |             _ => {}
-   |             ^
+   |             ^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:59:13
    |
 LL |             Some(_) => {}
    |             ^^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:63:13
    |
+LL |             None => {}
+   |             ---- matches all the values already
 LL |             _ => {}
-   |             ^
+   |             ^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:76:9
    |
 LL |         _ => {}
    |         ^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:86:9
@@ -59,12 +72,16 @@ error: unreachable pattern
    |
 LL |             _ => {}
    |             ^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:105:9
    |
+LL |         Some((a, b)) => {}
+   |         ------------ matches all the values already
 LL |         Some((mut x, mut y)) => {
-   |         ^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:124:13
@@ -79,12 +96,16 @@ error: unreachable pattern
    |
 LL |             _ => {}
    |             ^
+   |
+   = note: this pattern matches no values because `SecretelyVoid` is uninhabited
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:151:13
    |
 LL |             _ => {}
    |             ^
+   |
+   = note: this pattern matches no values because `SecretelyDoubleVoid` is uninhabited
 
 error[E0004]: non-exhaustive patterns: type `impl Copy` is non-empty
   --> $DIR/impl-trait.rs:23:11

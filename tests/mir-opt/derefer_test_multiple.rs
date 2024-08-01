@@ -1,7 +1,7 @@
 // skip-filecheck
 //@ test-mir-pass: Derefer
 // EMIT_MIR derefer_test_multiple.main.Derefer.diff
-fn main () {
+fn main() {
     let mut a = (42, 43);
     let mut b = (99, &mut a);
     let mut c = (11, &mut b);

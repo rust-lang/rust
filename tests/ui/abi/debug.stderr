@@ -576,7 +576,9 @@ error: ABIs are not compatible
                            },
                            abi: Scalar(
                                Initialized {
-                                   value: F32,
+                                   value: Float(
+                                       F32,
+                                   ),
                                    valid_range: $FULL,
                                },
                            ),

@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
@@ -59,9 +60,10 @@ pub struct ManualRetain {
 }
 
 impl ManualRetain {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -70,9 +72,8 @@ impl_lint_pass!(ManualRetain => [MANUAL_RETAIN]);
 impl<'tcx> LateLintPass<'tcx> for ManualRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Assign(left_expr, collect_expr, _) = &expr.kind
-            && let hir::ExprKind::MethodCall(seg, ..) = &collect_expr.kind
+            && let hir::ExprKind::MethodCall(seg, target_expr, [], _) = &collect_expr.kind
             && seg.args.is_none()
-            && let hir::ExprKind::MethodCall(_, target_expr, [], _) = &collect_expr.kind
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::iterator_collect_fn, collect_def_id)
         {

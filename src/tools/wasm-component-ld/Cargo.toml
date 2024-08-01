@@ -1,0 +1,13 @@
+# See the `README.md` in this directory for what this tool is.
+
+[package]
+name = "wasm-component-ld-wrapper"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "wasm-component-ld"
+path = "src/main.rs"
+
+[dependencies]
+wasm-component-ld = "0.5.4"

@@ -8,7 +8,7 @@ LL | fn m(){print!("",(c for&g
    |       unclosed delimiter
 ...
 LL | e
-   |   ^
+   |  ^
 
 error: aborting due to 1 previous error
 

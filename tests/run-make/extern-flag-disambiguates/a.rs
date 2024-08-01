@@ -3,4 +3,6 @@
 
 static FOO: usize = 3;
 
-pub fn token() -> &'static usize { &FOO }
+pub fn token() -> &'static usize {
+    &FOO
+}

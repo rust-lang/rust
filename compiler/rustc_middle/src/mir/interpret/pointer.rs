@@ -1,10 +1,11 @@
-use super::{AllocId, InterpResult};
+use std::fmt;
+use std::num::NonZero;
 
 use rustc_data_structures::static_assert_size;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{HasDataLayout, Size};
 
-use std::{fmt, num::NonZero};
+use super::{AllocId, InterpResult};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic
@@ -180,9 +181,12 @@ impl Provenance for CtfeProvenance {
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Print AllocId.
         fmt::Debug::fmt(&ptr.provenance.alloc_id(), f)?; // propagates `alternate` flag
-        // Print offset only if it is non-zero.
-        if ptr.offset.bytes() > 0 {
-            write!(f, "+{:#x}", ptr.offset.bytes())?;
+        // Print offset only if it is non-zero. Print it signed.
+        let signed_offset = ptr.offset.bytes() as i64;
+        if signed_offset > 0 {
+            write!(f, "+{:#x}", signed_offset)?;
+        } else if signed_offset < 0 {
+            write!(f, "-{:#x}", signed_offset.unsigned_abs())?;
         }
         // Print immutable status.
         if ptr.provenance.immutable() {

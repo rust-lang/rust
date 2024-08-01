@@ -27,7 +27,7 @@ help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL ~     if let Some(1) = loop {
 LL |
- ...
+...
 LL |         return;
 LL ~     } { todo!() };
    |

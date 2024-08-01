@@ -183,7 +183,7 @@
 //!
 //!     let spinlock_clone = Arc::clone(&spinlock);
 //!
-//!     let thread = thread::spawn(move|| {
+//!     let thread = thread::spawn(move || {
 //!         spinlock_clone.store(0, Ordering::Release);
 //!     });
 //!
@@ -223,12 +223,9 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use self::Ordering::*;
-
 use crate::cell::UnsafeCell;
-use crate::fmt;
-use crate::intrinsics;
-
 use crate::hint::spin_loop;
+use crate::{fmt, intrinsics};
 
 // Some architectures don't have byte-sized atomics, which results in LLVM
 // emulating them using a LL/SC loop. However for AtomicBool we can take
@@ -443,8 +440,8 @@ impl AtomicBool {
     ///
     /// # Safety
     ///
-    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that on some platforms this can
-    ///   be bigger than `align_of::<bool>()`).
+    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that this is always true, since
+    ///   `align_of::<AtomicBool>() == 1`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
     /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
     ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
@@ -481,7 +478,7 @@ impl AtomicBool {
         unsafe { &mut *(self.v.get() as *mut bool) }
     }
 
-    /// Get atomic access to a `&mut bool`.
+    /// Gets atomic access to a `&mut bool`.
     ///
     /// # Examples
     ///
@@ -503,7 +500,7 @@ impl AtomicBool {
         unsafe { &mut *(v as *mut bool as *mut Self) }
     }
 
-    /// Get non-atomic access to a `&mut [AtomicBool]` slice.
+    /// Gets non-atomic access to a `&mut [AtomicBool]` slice.
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
@@ -537,7 +534,7 @@ impl AtomicBool {
         unsafe { &mut *(this as *mut [Self] as *mut [bool]) }
     }
 
-    /// Get atomic access to a `&mut [bool]` slice.
+    /// Gets atomic access to a `&mut [bool]` slice.
     ///
     /// # Examples
     ///
@@ -1069,7 +1066,6 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_bool_fetch_not)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
@@ -1081,7 +1077,7 @@ impl AtomicBool {
     /// assert_eq!(foo.load(Ordering::SeqCst), true);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_bool_fetch_not", issue = "98485")]
+    #[stable(feature = "atomic_bool_fetch_not", since = "1.81.0")]
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_not(&self, order: Ordering) -> bool {
@@ -1277,7 +1273,7 @@ impl<T> AtomicPtr<T> {
         self.p.get_mut()
     }
 
-    /// Get atomic access to a pointer.
+    /// Gets atomic access to a pointer.
     ///
     /// # Examples
     ///
@@ -1296,7 +1292,6 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic_equal_alignment = "ptr")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut *mut T) -> &mut Self {
-        use crate::mem::align_of;
         let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
         // SAFETY:
         //  - the mutable reference guarantees unique ownership.
@@ -1305,7 +1300,7 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *(v as *mut *mut T as *mut Self) }
     }
 
-    /// Get non-atomic access to a `&mut [AtomicPtr]` slice.
+    /// Gets non-atomic access to a `&mut [AtomicPtr]` slice.
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
@@ -1345,7 +1340,7 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *(this as *mut [Self] as *mut [*mut T]) }
     }
 
-    /// Get atomic access to a slice of pointers.
+    /// Gets atomic access to a slice of pointers.
     ///
     /// # Examples
     ///
@@ -2092,10 +2087,10 @@ impl<T> From<*mut T> for AtomicPtr<T> {
 }
 
 #[allow(unused_macros)] // This macro ends up being unused on some architectures.
-macro_rules! if_not_8_bit {
-    (u8, $($tt:tt)*) => { "" };
-    (i8, $($tt:tt)*) => { "" };
-    ($_:ident, $($tt:tt)*) => { $($tt)* };
+macro_rules! if_8_bit {
+    (u8, $( yes = [$($yes:tt)*], )? $( no = [$($no:tt)*], )? ) => { concat!("", $($($yes)*)?) };
+    (i8, $( yes = [$($yes:tt)*], )? $( no = [$($no:tt)*], )? ) => { concat!("", $($($yes)*)?) };
+    ($_:ident, $( yes = [$($yes:tt)*], )? $( no = [$($no:tt)*], )? ) => { concat!("", $($($no)*)?) };
 }
 
 #[cfg(target_has_atomic_load_store)]
@@ -2117,18 +2112,24 @@ macro_rules! atomic_int {
      $int_type:ident $atomic_type:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
-        /// This type has the same size and bit validity as the underlying
-        /// integer type, [`
+        /// This type has the same
+        #[doc = if_8_bit!(
+            $int_type,
+            yes = ["size, alignment, and bit validity"],
+            no = ["size and bit validity"],
+        )]
+        /// as the underlying integer type, [`
         #[doc = $s_int_type]
         /// `].
-        #[doc = if_not_8_bit! {
+        #[doc = if_8_bit! {
             $int_type,
-            concat!(
+            no = [
                 "However, the alignment of this type is always equal to its ",
                 "size, even on targets where [`", $s_int_type, "`] has a ",
                 "lesser alignment."
-            )
+            ],
         }]
+        ///
         /// For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
@@ -2221,9 +2222,19 @@ macro_rules! atomic_int {
             ///
             /// # Safety
             ///
-            #[doc = concat!(" * `ptr` must be aligned to \
-                `align_of::<", stringify!($atomic_type), ">()` (note that on some platforms this \
-                can be bigger than `align_of::<", stringify!($int_type), ">()`).")]
+            /// * `ptr` must be aligned to
+            #[doc = concat!("  `align_of::<", stringify!($atomic_type), ">()`")]
+            #[doc = if_8_bit!{
+                $int_type,
+                yes = [
+                    "  (note that this is always true, since `align_of::<",
+                    stringify!($atomic_type), ">() == 1`)."
+                ],
+                no = [
+                    "  (note that on some platforms this can be bigger than `align_of::<",
+                    stringify!($int_type), ">()`)."
+                ],
+            }]
             /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
             /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
             ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
@@ -2262,12 +2273,12 @@ macro_rules! atomic_int {
 
             #[doc = concat!("Get atomic access to a `&mut ", stringify!($int_type), "`.")]
             ///
-            #[doc = if_not_8_bit! {
+            #[doc = if_8_bit! {
                 $int_type,
-                concat!(
+                no = [
                     "**Note:** This function is only available on targets where `",
                     stringify!($int_type), "` has an alignment of ", $align, " bytes."
-                )
+                ],
             }]
             ///
             /// # Examples
@@ -2286,7 +2297,6 @@ macro_rules! atomic_int {
             #[$cfg_align]
             #[unstable(feature = "atomic_from_mut", issue = "76314")]
             pub fn from_mut(v: &mut $int_type) -> &mut Self {
-                use crate::mem::align_of;
                 let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                 // SAFETY:
                 //  - the mutable reference guarantees unique ownership.
@@ -2354,7 +2364,6 @@ macro_rules! atomic_int {
             #[$cfg_align]
             #[unstable(feature = "atomic_from_mut", issue = "76314")]
             pub fn from_mut_slice(v: &mut [$int_type]) -> &mut [Self] {
-                use crate::mem::align_of;
                 let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                 // SAFETY:
                 //  - the mutable reference guarantees unique ownership.
@@ -3753,7 +3762,7 @@ impl<T> fmt::Debug for AtomicPtr<T> {
 #[stable(feature = "atomic_pointer", since = "1.24.0")]
 impl<T> fmt::Pointer for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)
+        fmt::Pointer::fmt(&self.load(Ordering::Relaxed), f)
     }
 }
 

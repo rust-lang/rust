@@ -2,18 +2,17 @@
 //! typically those used in AST fragments during macro expansion.
 //! The traits are not implemented exhaustively, only when actually necessary.
 
+use std::fmt;
+use std::marker::PhantomData;
+
 use crate::ptr::P;
 use crate::token::Nonterminal;
 use crate::tokenstream::LazyAttrTokenStream;
-use crate::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
-use crate::{AssocItem, Expr, ForeignItem, Item, NodeId};
-use crate::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
-use crate::{AttrVec, Attribute, Stmt, StmtKind};
-
-use rustc_span::Span;
-
-use std::fmt;
-use std::marker::PhantomData;
+use crate::{
+    Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
+    FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
+    Ty, Variant, Visibility,
+};
 
 /// A utility trait to reduce boilerplate.
 /// Standard `Deref(Mut)` cannot be reused due to coherence.
@@ -88,37 +87,6 @@ impl<T: AstDeref<Target: HasNodeId>> HasNodeId for T {
     }
     fn node_id_mut(&mut self) -> &mut NodeId {
         self.ast_deref_mut().node_id_mut()
-    }
-}
-
-/// A trait for AST nodes having a span.
-pub trait HasSpan {
-    fn span(&self) -> Span;
-}
-
-macro_rules! impl_has_span {
-    ($($T:ty),+ $(,)?) => {
-        $(
-            impl HasSpan for $T {
-                fn span(&self) -> Span {
-                    self.span
-                }
-            }
-        )+
-    };
-}
-
-impl_has_span!(AssocItem, Block, Expr, ForeignItem, Item, Pat, Path, Stmt, Ty, Visibility);
-
-impl<T: AstDeref<Target: HasSpan>> HasSpan for T {
-    fn span(&self) -> Span {
-        self.ast_deref().span()
-    }
-}
-
-impl HasSpan for AttrItem {
-    fn span(&self) -> Span {
-        self.span()
     }
 }
 
@@ -240,7 +208,6 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtPath(path) => path.tokens(),
             Nonterminal::NtVis(vis) => vis.tokens(),
             Nonterminal::NtBlock(block) => block.tokens(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
@@ -254,7 +221,6 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtVis(vis) => vis.tokens_mut(),
             Nonterminal::NtBlock(block) => block.tokens_mut(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
 }

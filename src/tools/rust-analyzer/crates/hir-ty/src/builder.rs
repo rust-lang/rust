@@ -14,10 +14,10 @@ use hir_def::{
 use smallvec::SmallVec;
 
 use crate::{
-    consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime,
-    infer::unify::InferenceTable, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics,
-    Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy,
-    Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
+    consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime, generics::generics,
+    infer::unify::InferenceTable, primitive, to_assoc_type_id, to_chalk_trait_id, Binders,
+    BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy, Substitution,
+    TraitRef, Ty, TyDefId, TyExt, TyKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,7 +63,14 @@ impl<D> TyBuilder<D> {
     }
 
     fn build_internal(self) -> (D, Substitution) {
-        assert_eq!(self.vec.len(), self.param_kinds.len(), "{:?}", &self.param_kinds);
+        assert_eq!(
+            self.vec.len(),
+            self.param_kinds.len(),
+            "{} args received, {} expected ({:?})",
+            self.vec.len(),
+            self.param_kinds.len(),
+            &self.param_kinds
+        );
         for (a, e) in self.vec.iter().zip(self.param_kinds.iter()) {
             self.assert_match_kind(a, e);
         }
@@ -246,13 +253,15 @@ impl TyBuilder<()> {
     /// - yield type of coroutine ([`Coroutine::Yield`](std::ops::Coroutine::Yield))
     /// - return type of coroutine ([`Coroutine::Return`](std::ops::Coroutine::Return))
     /// - generic parameters in scope on `parent`
+    ///
     /// in this order.
     ///
     /// This method prepopulates the builder with placeholder substitution of `parent`, so you
     /// should only push exactly 3 `GenericArg`s before building.
     pub fn subst_for_coroutine(db: &dyn HirDatabase, parent: DefWithBodyId) -> TyBuilder<()> {
-        let parent_subst =
-            parent.as_generic_def_id().map(|p| generics(db.upcast(), p).placeholder_subst(db));
+        let parent_subst = parent
+            .as_generic_def_id(db.upcast())
+            .map(|p| generics(db.upcast(), p).placeholder_subst(db));
         // These represent resume type, yield type, and return type of coroutine.
         let params = std::iter::repeat(ParamKind::Type).take(3).collect();
         TyBuilder::new((), params, parent_subst)
@@ -265,7 +274,7 @@ impl TyBuilder<()> {
     ) -> Substitution {
         let sig_ty = sig_ty.cast(Interner);
         let self_subst = iter::once(&sig_ty);
-        let Some(parent) = parent.as_generic_def_id() else {
+        let Some(parent) = parent.as_generic_def_id(db.upcast()) else {
             return Substitution::from_iter(Interner, self_subst);
         };
         Substitution::from_iter(
@@ -295,7 +304,8 @@ impl TyBuilder<hir_def::AdtId> {
     ) -> Self {
         // Note that we're building ADT, so we never have parent generic parameters.
         let defaults = db.generic_defaults(self.data.into());
-        for default_ty in defaults.iter().skip(self.vec.len()) {
+
+        for default_ty in &defaults[self.vec.len()..] {
             // NOTE(skip_binders): we only check if the arg type is error type.
             if let Some(x) = default_ty.skip_binders().ty(Interner) {
                 if x.is_unknown() {

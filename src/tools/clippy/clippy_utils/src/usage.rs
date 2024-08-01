@@ -1,11 +1,10 @@
-use crate::visitors::{for_each_expr, for_each_expr_with_closures, Descend, Visitable};
+use crate::visitors::{for_each_expr, for_each_expr_without_closures, Descend, Visitable};
 use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
 use core::ops::ControlFlow;
 use hir::def::Res;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, HirIdSet};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceBase, PlaceWithHirId};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
@@ -17,15 +16,9 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
         used_mutably: HirIdSet::default(),
         skip: false,
     };
-    let infcx = cx.tcx.infer_ctxt().build();
-    ExprUseVisitor::new(
-        &mut delegate,
-        &infcx,
-        expr.hir_id.owner.def_id,
-        cx.param_env,
-        cx.typeck_results(),
-    )
-    .walk_expr(expr);
+    ExprUseVisitor::for_clippy(cx, expr.hir_id.owner.def_id, &mut delegate)
+        .walk_expr(expr)
+        .into_ok();
 
     if delegate.skip {
         return None;
@@ -152,7 +145,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
 }
 
 pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
-    for_each_expr(expression, |e| {
+    for_each_expr_without_closures(expression, |e| {
         match e.kind {
             ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => ControlFlow::Break(()),
             // Something special could be done here to handle while or for loop
@@ -166,7 +159,7 @@ pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
 }
 
 pub fn local_used_in<'tcx>(cx: &LateContext<'tcx>, local_id: HirId, v: impl Visitable<'tcx>) -> bool {
-    for_each_expr_with_closures(cx, v, |e| {
+    for_each_expr(cx, v, |e| {
         if utils::path_to_local_id(e, local_id) {
             ControlFlow::Break(())
         } else {
@@ -191,7 +184,7 @@ pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr
     let loop_start = get_enclosing_loop_or_multi_call_closure(cx, after).map(|e| e.hir_id);
 
     let mut past_expr = false;
-    for_each_expr_with_closures(cx, block, |e| {
+    for_each_expr(cx, block, |e| {
         if past_expr {
             if utils::path_to_local_id(e, local_id) {
                 ControlFlow::Break(())

@@ -1,34 +1,14 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
 #![feature(associated_type_defaults)]
-#![feature(try_blocks)]
 #![feature(let_chains)]
+#![feature(rustdoc_internals)]
+#![feature(try_blocks)]
+// tidy-alphabetical-end
 
 mod errors;
-
-use rustc_ast::visit::{try_visit, VisitorResult};
-use rustc_ast::MacroDef;
-use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::intern::Interned;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
-use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
-use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Const, GenericParamDefKind};
-use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
-use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
-use tracing::debug;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -39,6 +19,28 @@ use errors::{
     ItemIsPrivate, PrivateInterfacesOrBoundsLint, ReportEffectiveVisibility, UnnameableTypesLint,
     UnnamedItemIsPrivate,
 };
+use rustc_ast::visit::{try_visit, VisitorResult};
+use rustc_ast::MacroDef;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::intern::Interned;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
+use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
+use rustc_middle::query::Providers;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::{
+    self, Const, GenericArgs, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
+};
+use rustc_middle::{bug, span_bug};
+use rustc_session::lint;
+use rustc_span::hygiene::Transparency;
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Span;
+use tracing::debug;
+use {rustc_attr as attr, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -116,7 +118,7 @@ where
         if V::SHALLOW { V::Result::output() } else { args.visit_with(self) }
     }
 
-    fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> V::Result {
+    fn visit_projection_term(&mut self, projection: ty::AliasTerm<'tcx>) -> V::Result {
         let tcx = self.def_id_visitor.tcx();
         let (trait_ref, assoc_args) = projection.trait_ref_and_own_args(tcx);
         try_visit!(self.visit_trait(trait_ref));
@@ -134,9 +136,12 @@ where
             ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
                 self.visit_trait(trait_ref)
             }
-            ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
+            ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                projection_term: projection_ty,
+                term,
+            }) => {
                 try_visit!(term.visit_with(self));
-                self.visit_projection_ty(projection_ty)
+                self.visit_projection_term(projection_ty)
             }
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => ty.visit_with(self),
             ty::ClauseKind::RegionOutlives(..) => V::Result::output(),
@@ -225,7 +230,7 @@ where
                 return if V::SHALLOW {
                     V::Result::output()
                 } else if kind == ty::Projection {
-                    self.visit_projection_ty(data)
+                    self.visit_projection_term(data.into())
                 } else {
                     V::Result::from_branch(
                         data.args.iter().try_for_each(|arg| arg.visit_with(self).branch()),
@@ -967,8 +972,12 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        let old_maybe_typeck_results =
-            self.maybe_typeck_results.replace(self.tcx.typeck_body(body_id));
+        let new_typeck_results = self.tcx.typeck_body(body_id);
+        // Do not try reporting privacy violations if we failed to infer types.
+        if new_typeck_results.tainted_by_errors.is_some() {
+            return;
+        }
+        let old_maybe_typeck_results = self.maybe_typeck_results.replace(new_typeck_results);
         self.visit_body(self.tcx.hir().body(body_id));
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
@@ -1691,7 +1700,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
 
         if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id) {
-            visitor.visit_nested_body(body_id);
+            visitor.visit_nested_body(body_id.id());
         }
     }
 

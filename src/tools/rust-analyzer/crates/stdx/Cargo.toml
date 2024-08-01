@@ -22,7 +22,7 @@ itertools.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 miow = "0.6.0"
-winapi = { version = "0.3.9", features = ["winerror"] }
+windows-sys = { version = "0.52", features = ["Win32_Foundation"] }
 
 [features]
 # Uncomment to enable for the whole crate graph

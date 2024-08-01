@@ -1,5 +1,4 @@
 PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = #[allow(warnings)] 0; 0 }, }
-PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): enum E { V = { let _ = #[allow(warnings)] #[allow(warnings)] 0; 0 }, }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",
@@ -65,31 +64,6 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                 ],
                                 span: #0 bytes(544..561),
                             },
-                            Punct {
-                                ch: '#',
-                                spacing: Alone,
-                                span: #0 bytes(543..544),
-                            },
-                            Group {
-                                delimiter: Bracket,
-                                stream: TokenStream [
-                                    Ident {
-                                        ident: "allow",
-                                        span: #0 bytes(545..550),
-                                    },
-                                    Group {
-                                        delimiter: Parenthesis,
-                                        stream: TokenStream [
-                                            Ident {
-                                                ident: "warnings",
-                                                span: #0 bytes(551..559),
-                                            },
-                                        ],
-                                        span: #0 bytes(550..560),
-                                    },
-                                ],
-                                span: #0 bytes(544..561),
-                            },
                             Literal {
                                 kind: Integer,
                                 symbol: "0",
@@ -122,8 +96,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: #3 bytes(308..357),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { 0; }; 0 }, }
-PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): enum E { V = { let _ = { 0 }; 0 }, }
+PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { 0 }; 0 }, }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",
@@ -280,8 +253,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: #11 bytes(432..485),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { PATH; }; 0 }, }
-PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): enum E { V = { let _ = { PATH }; 0 }, }
+PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { PATH }; 0 }, }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",
@@ -358,8 +330,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: #15 bytes(432..485),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { 0 + 1; }; 0 }, }
-PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): enum E { V = { let _ = { 0 + 1 }; 0 }, }
+PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { 0 + 1 }; 0 }, }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",
@@ -449,8 +420,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: #19 bytes(432..485),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { PATH + 1; }; 0 }, }
-PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): enum E { V = { let _ = { PATH + 1 }; 0 }, }
+PRINT-DERIVE INPUT (DISPLAY): enum E { V = { let _ = { PATH + 1 }; 0 }, }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "enum",

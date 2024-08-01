@@ -50,6 +50,11 @@ pub struct TripleU16 {
     h: u16,
 }
 #[repr(C)]
+pub struct DoubleI32 {
+    f: i32,
+    g: i32,
+}
+#[repr(C)]
 pub struct TripleU32 {
     f: u32,
     g: u32,
@@ -179,6 +184,11 @@ pub unsafe extern "ptx-kernel" fn f_triple_u8_arg(_a: TripleU8) {}
 // CHECK: .param .align 2 .b8 f_triple_u16_arg_param_0[6]
 #[no_mangle]
 pub unsafe extern "ptx-kernel" fn f_triple_u16_arg(_a: TripleU16) {}
+
+// CHECK: .visible .entry f_double_i32_arg(
+// CHECK: .param .align 4 .b8 f_double_i32_arg_param_0[8]
+#[no_mangle]
+pub unsafe extern "ptx-kernel" fn f_double_i32_arg(_a: DoubleI32) {}
 
 // CHECK: .visible .entry f_triple_u32_arg(
 // CHECK: .param .align 4 .b8 f_triple_u32_arg_param_0[12]

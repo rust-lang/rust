@@ -16,7 +16,7 @@ LL | #![c={#![c[)x
    |   |  unclosed delimiter
    |   unclosed delimiter
 LL |
-   |                                                                    ^
+   |                                                                   ^
 
 error: aborting due to 2 previous errors
 

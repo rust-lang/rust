@@ -15,7 +15,7 @@ use crate::RootDatabase;
 /// you'd want to include minicore (see `test_utils::MiniCore`) declaration at
 /// the start of your tests:
 ///
-/// ```
+/// ```text
 /// //- minicore: iterator, ord, derive
 /// ```
 pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Crate);
@@ -104,6 +104,10 @@ impl FamousDefs<'_, '_> {
 
     pub fn core_marker_Copy(&self) -> Option<Trait> {
         self.find_trait("core:marker:Copy")
+    }
+
+    pub fn core_future_Future(&self) -> Option<Trait> {
+        self.find_trait("core:future:Future")
     }
 
     pub fn core_macros_builtin_derive(&self) -> Option<Macro> {

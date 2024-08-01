@@ -67,6 +67,10 @@ impl BuiltinFnLikeExpander {
         let span = span_with_def_site_ctxt(db, span, id);
         self.expander()(db, id, tt, span)
     }
+
+    pub fn is_asm(&self) -> bool {
+        matches!(self, Self::Asm | Self::GlobalAsm)
+    }
 }
 
 impl EagerExpander {
@@ -441,21 +445,21 @@ fn unquote_str(lit: &tt::Literal) -> Option<(String, Span)> {
     let span = lit.span;
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::String::cast(lit)?;
-    token.value().map(|it| (it.into_owned(), span))
+    token.value().ok().map(|it| (it.into_owned(), span))
 }
 
 fn unquote_char(lit: &tt::Literal) -> Option<(char, Span)> {
     let span = lit.span;
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::Char::cast(lit)?;
-    token.value().zip(Some(span))
+    token.value().ok().zip(Some(span))
 }
 
 fn unquote_byte_string(lit: &tt::Literal) -> Option<(Vec<u8>, Span)> {
     let span = lit.span;
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::ByteString::cast(lit)?;
-    token.value().map(|it| (it.into_owned(), span))
+    token.value().ok().map(|it| (it.into_owned(), span))
 }
 
 fn compile_error_expand(

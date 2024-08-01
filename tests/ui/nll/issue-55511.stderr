@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/issue-55511.rs:13:28
+  --> $DIR/issue-55511.rs:12:28
    |
 LL |     let a = 22;
    |         - binding `a` declared here

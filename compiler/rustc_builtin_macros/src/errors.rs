@@ -1,9 +1,11 @@
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
-    SingleLabelManySpans, SubdiagMessageOp, Subdiagnostic,
+    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_requires_cfg_pattern)]
@@ -296,6 +298,13 @@ pub(crate) struct DerivePathArgsValue {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_derive_unsafe_path)]
+pub(crate) struct DeriveUnsafePath {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_no_default_variant)]
 #[help]
 pub(crate) struct NoDefaultVariant {
@@ -427,7 +436,7 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 // Hand-written implementation to support custom user messages.
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         #[expect(
             rustc::untranslatable_diagnostic,
             reason = "cannot translate user-provided messages"
@@ -722,6 +731,14 @@ pub(crate) struct AsmExpectedComma {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_asm_expected_string_literal)]
+pub(crate) struct AsmExpectedStringLiteral {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_asm_underscore_input)]
 pub(crate) struct AsmUnderscoreInput {
     #[primary_span]
@@ -775,6 +792,14 @@ pub(crate) struct AsmNoReturn {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_asm_no_matched_argument_name)]
+pub(crate) struct AsmNoMatchedArgumentName {
+    pub(crate) name: String,
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_asm_mayunwind)]
 pub(crate) struct AsmMayUnwind {
     #[primary_span]
@@ -794,7 +819,7 @@ pub(crate) struct AsmClobberNoReg {
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_abi,
@@ -814,6 +839,17 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_asm_opt_already_provided)]
 pub(crate) struct AsmOptAlreadyprovided {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: Symbol,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub(crate) full_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_global_asm_unsupported_option)]
+pub(crate) struct GlobalAsmUnsupportedOption {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -864,4 +900,38 @@ pub(crate) struct TakesNoArguments<'a> {
     #[primary_span]
     pub span: Span,
     pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro_attribute_only_be_used_on_bare_functions)]
+pub(crate) struct AttributeOnlyBeUsedOnBareFunctions<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub path: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro_attribute_only_usable_with_crate_type)]
+pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub path: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_source_uitls_expected_item)]
+pub(crate) struct ExpectedItem<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub token: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_naked_functions_testing_attribute, code = E0736)]
+pub struct NakedFunctionTestingAttribute {
+    #[primary_span]
+    #[label(builtin_macros_naked_attribute)]
+    pub naked_span: Span,
+    #[label]
+    pub testing_span: Span,
 }

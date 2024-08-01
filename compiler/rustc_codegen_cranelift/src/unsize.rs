@@ -39,8 +39,7 @@ pub(crate) fn unsized_info<'tcx>(
             }
 
             // trait upcasting coercion
-            let vptr_entry_idx =
-                fx.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
+            let vptr_entry_idx = fx.tcx.supertrait_vtable_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();
@@ -127,7 +126,7 @@ pub(crate) fn coerce_unsized_into<'tcx>(
     let dst_ty = dst.layout().ty;
     let mut coerce_ptr = || {
         let (base, info) =
-            if fx.layout_of(src.layout().ty.builtin_deref(true).unwrap().ty).is_unsized() {
+            if fx.layout_of(src.layout().ty.builtin_deref(true).unwrap()).is_unsized() {
                 let (old_base, old_info) = src.load_scalar_pair(fx);
                 unsize_ptr(fx, old_base, src.layout(), dst.layout(), Some(old_info))
             } else {

@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::{find_format_args, format_args_inputs_span};
+use clippy_utils::macros::{format_args_inputs_span, FormatArgsStorage};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::{sym, ExpnId};
 
 declare_clippy_lint! {
@@ -38,7 +38,17 @@ declare_clippy_lint! {
     "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"
 }
 
-declare_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
+pub struct ExplicitWrite {
+    format_args: FormatArgsStorage,
+}
+
+impl ExplicitWrite {
+    pub fn new(format_args: FormatArgsStorage) -> Self {
+        Self { format_args }
+    }
+}
+
+impl_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
 
 impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -57,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 Some(sym::io_stderr) => ("stderr", "e"),
                 _ => return,
             };
-            let Some(format_args) = find_format_args(cx, write_arg, ExpnId::root()) else {
+            let Some(format_args) = self.format_args.get(cx, write_arg, ExpnId::root()) else {
                 return;
             };
 
@@ -83,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             };
             let mut applicability = Applicability::MachineApplicable;
             let inputs_snippet =
-                snippet_with_applicability(cx, format_args_inputs_span(&format_args), "..", &mut applicability);
+                snippet_with_applicability(cx, format_args_inputs_span(format_args), "..", &mut applicability);
             span_lint_and_sugg(
                 cx,
                 EXPLICIT_WRITE,

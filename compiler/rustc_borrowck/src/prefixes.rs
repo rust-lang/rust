@@ -4,9 +4,9 @@
 //! is borrowed. But: writing `a` is legal if `*a` is borrowed,
 //! whether or not `a` is a shared or mutable reference. [...] "
 
-use super::MirBorrowckCtxt;
-
 use rustc_middle::mir::{PlaceRef, ProjectionElem};
+
+use super::MirBorrowckCtxt;
 
 pub trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool;
@@ -34,7 +34,7 @@ pub(super) enum PrefixSet {
     Shallow,
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     /// Returns an iterator over the prefixes of `place`
     /// (inclusive) from longest to smallest, potentially
     /// terminating the iteration early based on `kind`.

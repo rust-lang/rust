@@ -11,8 +11,10 @@ use rustc_session::declare_lint_pass;
 declare_clippy_lint! {
     /// ### What it does
     /// Warns for a Bitwise XOR (`^`) operator being probably confused as a powering. It will not trigger if any of the numbers are not in decimal.
-    /// ### Why is this bad?
+    ///
+    /// ### Why restrict this?
     /// It's most probably a typo and may lead to unexpected behaviours.
+    ///
     /// ### Example
     /// ```no_run
     /// let x = 3_i32 ^ 4_i32;

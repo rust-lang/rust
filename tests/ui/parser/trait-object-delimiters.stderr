@@ -2,7 +2,12 @@ error: ambiguous `+` in a type
   --> $DIR/trait-object-delimiters.rs:3:13
    |
 LL | fn foo1(_: &dyn Drop + AsRef<str>) {}
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: use parentheses to disambiguate: `(dyn Drop + AsRef<str>)`
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn foo1(_: &(dyn Drop + AsRef<str>)) {}
+   |             +                     +
 
 error: incorrect parentheses around trait bounds
   --> $DIR/trait-object-delimiters.rs:6:17
@@ -34,11 +39,11 @@ error: expected parameter name, found `{`
 LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
    |                 ^ expected parameter name
 
-error: expected one of `!`, `(`, `)`, `*`, `,`, `?`, `async`, `const`, `for`, `~`, lifetime, or path, found `{`
+error: expected one of `!`, `(`, `)`, `*`, `,`, `?`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
   --> $DIR/trait-object-delimiters.rs:10:17
    |
 LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
-   |                -^ expected one of 12 possible tokens
+   |                -^ expected one of 13 possible tokens
    |                |
    |                help: missing `,`
 
@@ -52,9 +57,14 @@ error: invalid `dyn` keyword
   --> $DIR/trait-object-delimiters.rs:16:25
    |
 LL | fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
-   |                         ^^^ help: remove this keyword
+   |                         ^^^
    |
    = help: `dyn` is only needed at the start of a trait `+`-separated list
+help: remove this keyword
+   |
+LL - fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
+LL + fn foo5(_: &(dyn Drop + AsRef<str>)) {}
+   |
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-delimiters.rs:3:24

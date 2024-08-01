@@ -11,9 +11,12 @@ error[E0432]: unresolved import `non_existent`
   --> $DIR/issue-55457.rs:2:5
    |
 LL | use non_existent::non_existent;
-   |     ^^^^^^^^^^^^ maybe a missing crate `non_existent`?
+   |     ^^^^^^^^^^^^ you might be missing crate `non_existent`
    |
-   = help: consider adding `extern crate non_existent` to use the `non_existent` crate
+help: consider importing the `non_existent` crate
+   |
+LL + extern crate non_existent;
+   |
 
 error: aborting due to 2 previous errors
 

@@ -34,12 +34,9 @@
 //!   Rust user code is to call the functions provided by this library instead (such as
 //!   `ptr::copy`).
 //!
-//! * `rust_begin_panic` - This function takes four arguments, a
-//!   `fmt::Arguments`, a `&'static str`, and two `u32`'s. These four arguments
-//!   dictate the panic message, the file at which panic was invoked, and the
-//!   line and column inside the file. It is up to consumers of this core
+//! * Panic handler - This function takes one argument, a `&panic::PanicInfo`. It is up to consumers of this core
 //!   library to define this panic function; it is only required to never
-//!   return. This requires a `lang` attribute named `panic_impl`.
+//!   return. You should mark your implementation using `#[panic_handler]`.
 //!
 //! * `rust_eh_personality` - is used by the failure mechanisms of the
 //!    compiler. This is often mapped to GCC's personality function, but crates
@@ -106,9 +103,11 @@
 #![deny(ffi_unwind_calls)]
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
+#![warn(rustdoc::unescaped_backticks)]
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(offset_of_nested))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(char_indices_offset)]
@@ -122,7 +121,6 @@
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_cell_into_inner)]
-#![feature(const_char_from_u32_unchecked)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
 #![feature(const_float_bits_conv)]
@@ -130,9 +128,7 @@
 #![feature(const_fmt_arguments_new)]
 #![feature(const_hash)]
 #![feature(const_heap)]
-#![feature(const_hint_assert_unchecked)]
 #![feature(const_index_range_slice_index)]
-#![feature(const_int_from_str)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
@@ -140,7 +136,6 @@
 #![feature(const_likely)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
-#![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_midpoint)]
 #![feature(const_option)]
@@ -169,18 +164,15 @@
 #![feature(const_ub_checks)]
 #![feature(const_unicode_case_lookup)]
 #![feature(const_unsafecell_get_mut)]
-#![feature(const_waker)]
 #![feature(coverage_attribute)]
+#![feature(do_not_recommend)]
 #![feature(duration_consts_float)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
-#![feature(ip_bits)]
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
 #![feature(link_cfg)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(offset_of_enum)]
-#![feature(offset_of_nested)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
@@ -191,6 +183,7 @@
 #![feature(str_split_remainder)]
 #![feature(strict_provenance)]
 #![feature(ub_checks)]
+#![feature(unchecked_neg)]
 #![feature(unchecked_shifts)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
@@ -205,23 +198,19 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm_const)]
 #![feature(auto_traits)]
-#![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
-#![feature(const_closures)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_for)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
-#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
-#![feature(effects)]
 #![feature(extern_types)]
 #![feature(f128)]
 #![feature(f16)]
@@ -235,6 +224,7 @@
 #![feature(let_chains)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
+#![feature(marker_trait_attr)]
 #![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]
@@ -402,6 +392,8 @@ pub mod panicking;
 #[unstable(feature = "core_pattern_types", issue = "none")]
 pub mod pat;
 pub mod pin;
+#[unstable(feature = "new_range_api", issue = "125687")]
+pub mod range;
 pub mod result;
 pub mod sync;
 

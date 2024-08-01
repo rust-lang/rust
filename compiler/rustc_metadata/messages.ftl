@@ -91,9 +91,6 @@ metadata_found_staticlib =
     found staticlib `{$crate_name}` instead of rlib or dylib{$add_info}
     .help = please recompile that crate using --crate-type lib
 
-metadata_framework_only_windows =
-    link kind `raw-dylib` is only supported on Windows targets
-
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
 
@@ -233,6 +230,9 @@ metadata_profiler_builtins_needs_core =
 metadata_raw_dylib_no_nul =
     link name must not contain NUL characters if link kind is `raw-dylib`
 
+metadata_raw_dylib_only_windows =
+    link kind `raw-dylib` is only supported on Windows targets
+
 metadata_renaming_no_link =
     renaming of the library `{$lib_name}` was specified, however this crate contains no `#[link(...)]` attributes referencing this library
 
@@ -248,13 +248,13 @@ metadata_rustc_lib_required =
     .help = try adding `extern crate rustc_driver;` at the top level of this crate
 
 metadata_stable_crate_id_collision =
-    found crates (`{$crate_name0}` and `{$crate_name1}`) with colliding StableCrateId values.
+    found crates (`{$crate_name0}` and `{$crate_name1}`) with colliding StableCrateId values
 
 metadata_std_required =
     `std` is required by `{$current_crate}` because it does not declare `#![no_std]`
 
 metadata_symbol_conflicts_current =
-    the current crate is indistinguishable from one of its dependencies: it has the same crate-name `{$crate_name}` and was compiled with the same `-C metadata` arguments. This will result in symbol conflicts between the two.
+    the current crate is indistinguishable from one of its dependencies: it has the same crate-name `{$crate_name}` and was compiled with the same `-C metadata` arguments, so this will result in symbol conflicts between the two
 
 metadata_target_no_std_support =
     the `{$locator_triple}` target may not support the standard library
@@ -284,8 +284,6 @@ metadata_unsupported_abi =
 metadata_unsupported_abi_i686 =
     ABI not supported by `#[link(kind = "raw-dylib")]` on i686
 
-metadata_wasm_c_abi =
-    older versions of the `wasm-bindgen` crate will be incompatible with future versions of Rust; please update to `wasm-bindgen` v0.2.88
 metadata_wasm_import_form =
     wasm import module must be of the form `wasm_import_module = "string"`
 

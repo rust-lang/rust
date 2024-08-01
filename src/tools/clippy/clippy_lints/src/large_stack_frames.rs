@@ -1,5 +1,6 @@
 use std::{fmt, ops};
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::fn_has_unsatisfiable_preds;
 use clippy_utils::source::snippet_opt;
@@ -85,10 +86,9 @@ pub struct LargeStackFrames {
 }
 
 impl LargeStackFrames {
-    #[must_use]
-    pub fn new(size: u64) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            maximum_allowed_size: size,
+            maximum_allowed_size: conf.stack_size_threshold,
         }
     }
 }

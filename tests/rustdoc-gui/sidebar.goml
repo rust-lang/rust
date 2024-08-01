@@ -72,6 +72,7 @@ click: "#structs + .item-table .item-name > a"
 assert-count: (".sidebar .sidebar-crate", 1)
 assert-count: (".sidebar .location", 1)
 assert-count: (".sidebar h2", 3)
+assert-text: (".sidebar-elems ul.block > li.current > a", "Foo")
 // We check that there is no crate listed outside of the top level.
 assert-false: ".sidebar-elems > .crate"
 
@@ -110,6 +111,7 @@ click: "#functions + .item-table .item-name > a"
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
 assert-count: (".sidebar .location", 0)
 assert-count: (".sidebar h2", 1)
+assert-text: (".sidebar-elems ul.block > li.current > a", "foobar")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
 
@@ -118,6 +120,7 @@ assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
 assert-text: (".sidebar > .location", "Module module")
 assert-count: (".sidebar .location", 1)
+assert-text: (".sidebar-elems ul.block > li.current > a", "module")
 // Module page requires three headings:
 //   - Presistent crate branding (name and version)
 //   - Module name, followed by TOC for module headings
@@ -138,6 +141,7 @@ assert-text: (".sidebar > .sidebar-elems > h2", "In lib2::module::sub_module")
 assert-property: (".sidebar > .sidebar-elems > h2 > a", {
     "href": "/module/sub_module/index.html",
 }, ENDS_WITH)
+assert-text: (".sidebar-elems ul.block > li.current > a", "sub_sub_module")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems .crate"
 assert-text: (".sidebar-elems > section ul > li:nth-child(1)", "Functions")
@@ -179,3 +183,18 @@ assert-property: (".sidebar .sidebar-crate h2 a", {
     "offsetTop": |index_sidebar_y|,
     "offsetLeft": |index_sidebar_x|,
 })
+
+// Check that the sidebar links touch the left side of the box
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-position: (".sidebar .block a", {"x": -4})
+assert-position: (".sidebar-crate > h2 > a", {"x": -3})
+
+// Check that the main sidebar links touch the left side of the box
+// but the crate name doesn't, because the logo takes that space
+go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
+assert-position: (".sidebar .block a", {"x": -4})
+// when side-by-side, it's not line wrapped
+assert-position-false: (".sidebar-crate > h2 > a", {"x": -3})
+// when line-wrapped, see that it becomes flush-left again
+drag-and-drop: ((205, 100), (108, 100))
+assert-position: (".sidebar-crate > h2 > a", {"x": -3})

@@ -1,51 +1,48 @@
-use crate::creader::CrateMetadataRef;
-use decoder::Metadata;
-use def_path_hash_map::DefPathHashMapRef;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_macros::{Decodable, Encodable, TyDecodable, TyEncodable};
-use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
-use rustc_middle::middle::lib_features::FeatureStability;
-use table::TableBuilder;
+use std::marker::PhantomData;
+use std::num::NonZero;
 
-use rustc_ast as ast;
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
+use decoder::{DecodeContext, Metadata};
+use def_path_hash_map::DefPathHashMapRef;
+use encoder::EncodeContext;
+pub use encoder::{encode_metadata, rendered_const, EncodedMetadata};
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_attr as attr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_macros::{MetadataDecodable, MetadataEncodable};
+use rustc_macros::{
+    Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable, TyEncodable,
+};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
-use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, ReprOptions, Ty, UnusedGenericParams};
-use rustc_middle::ty::{DeducedParamAttrs, ParameterizedOverTcx, TyCtxt};
+use rustc_middle::ty::{
+    self, DeducedParamAttrs, ParameterizedOverTcx, ReprOptions, Ty, TyCtxt, UnusedGenericParams,
+};
 use rustc_middle::util::Providers;
+use rustc_middle::{mir, trivially_parameterized_over_tcx};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{ExpnIndex, MacroKind};
+use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
+use table::TableBuilder;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
-use std::marker::PhantomData;
-use std::num::NonZero;
-
-use decoder::DecodeContext;
-pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
-use encoder::EncodeContext;
-pub use encoder::{encode_metadata, rendered_const, EncodedMetadata};
-use rustc_span::hygiene::SyntaxContextData;
+use crate::creader::CrateMetadataRef;
 
 mod decoder;
 mod def_path_hash_map;
@@ -294,6 +291,8 @@ pub(crate) struct CrateRoot {
     panic_runtime: bool,
     profiler_runtime: bool,
     symbol_mangling_version: SymbolManglingVersion,
+
+    specialization_enabled_in: bool,
 }
 
 /// On-disk representation of `DefId`.
@@ -393,7 +392,9 @@ define_tables! {
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
+    associated_type_for_effects: Table<DefIndex, Option<LazyValue<DefId>>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
+    is_effects_desugaring: Table<DefIndex, bool>,
     unused_generic_params: Table<DefIndex, UnusedGenericParams>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
@@ -418,23 +419,23 @@ define_tables! {
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
-    super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    explicit_super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     // As an optimization, we only store this for trait aliases,
-    // since it's identical to super_predicates_of for traits.
-    implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
-    type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<Ty<'static>>>>,
+    // since it's identical to explicit_super_predicates_of for traits.
+    explicit_implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
-    fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::PolyFnSig<'static>>>>,
+    fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
     impl_trait_header: Table<DefIndex, LazyValue<ty::ImplTraitHeader<'static>>>,
-    const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<rustc_middle::ty::Const<'static>>>>,
+    const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>>,
     object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     closure_saved_names_of_captured_variables: Table<DefIndex, LazyValue<IndexVec<FieldIdx, Symbol>>>,
     mir_coroutine_witnesses: Table<DefIndex, LazyValue<mir::CoroutineLayout<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
-    thir_abstract_const: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::Const<'static>>>>,
+    thir_abstract_const: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
     impl_parent: Table<DefIndex, RawDefId>,
     constness: Table<DefIndex, hir::Constness>,
     defaultness: Table<DefIndex, hir::Defaultness>,
@@ -442,6 +443,7 @@ define_tables! {
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
+    rendered_precise_capturing_args: Table<DefIndex, LazyArray<Symbol>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
     fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
@@ -463,7 +465,7 @@ define_tables! {
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
-    trait_impl_trait_tys: Table<DefIndex, LazyValue<DefIdMap<ty::EarlyBinder<Ty<'static>>>>>,
+    trait_impl_trait_tys: Table<DefIndex, LazyValue<DefIdMap<ty::EarlyBinder<'static, Ty<'static>>>>>,
     doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
     assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,

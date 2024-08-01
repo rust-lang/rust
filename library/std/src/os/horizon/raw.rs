@@ -38,6 +38,7 @@ pub type time_t = libc::time_t;
 #[repr(C)]
 #[derive(Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
+#[allow(dead_code)] // This exists for parity with other `raw` modules, but isn't actually used.
 pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_dev: dev_t,

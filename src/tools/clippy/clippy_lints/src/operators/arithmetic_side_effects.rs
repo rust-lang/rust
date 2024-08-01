@@ -1,4 +1,5 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -11,19 +12,9 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
-const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[["f32", "f32"], ["f64", "f64"], ["std::string::String", "str"]];
-const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
-const DISALLOWED_INT_METHODS: &[Symbol] = &[
-    sym::saturating_div,
-    sym::wrapping_div,
-    sym::wrapping_rem,
-    sym::wrapping_rem_euclid,
-];
-
-#[derive(Debug)]
 pub struct ArithmeticSideEffects {
-    allowed_binary: FxHashMap<String, FxHashSet<String>>,
-    allowed_unary: FxHashSet<String>,
+    allowed_binary: FxHashMap<&'static str, FxHashSet<&'static str>>,
+    allowed_unary: FxHashSet<&'static str>,
     // Used to check whether expressions are constants, such as in enum discriminants and consts
     const_span: Option<Span>,
     disallowed_int_methods: FxHashSet<Symbol>,
@@ -33,26 +24,38 @@ pub struct ArithmeticSideEffects {
 impl_lint_pass!(ArithmeticSideEffects => [ARITHMETIC_SIDE_EFFECTS]);
 
 impl ArithmeticSideEffects {
-    #[must_use]
-    pub fn new(user_allowed_binary: Vec<[String; 2]>, user_allowed_unary: Vec<String>) -> Self {
-        let mut allowed_binary: FxHashMap<String, FxHashSet<String>> = <_>::default();
-        for [lhs, rhs] in user_allowed_binary.into_iter().chain(
-            HARD_CODED_ALLOWED_BINARY
-                .iter()
-                .copied()
-                .map(|[lhs, rhs]| [lhs.to_string(), rhs.to_string()]),
-        ) {
+    pub fn new(conf: &'static Conf) -> Self {
+        let mut allowed_binary = FxHashMap::<&'static str, FxHashSet<&'static str>>::default();
+        let mut allowed_unary = FxHashSet::<&'static str>::default();
+
+        allowed_unary.extend(["f32", "f64", "std::num::Saturating", "std::num::Wrapping"]);
+        allowed_unary.extend(conf.arithmetic_side_effects_allowed_unary.iter().map(|x| &**x));
+        allowed_binary.extend([
+            ("f32", FxHashSet::from_iter(["f32"])),
+            ("f64", FxHashSet::from_iter(["f64"])),
+            ("std::string::String", FxHashSet::from_iter(["str"])),
+        ]);
+        for [lhs, rhs] in &conf.arithmetic_side_effects_allowed_binary {
             allowed_binary.entry(lhs).or_default().insert(rhs);
         }
-        let allowed_unary = user_allowed_unary
-            .into_iter()
-            .chain(HARD_CODED_ALLOWED_UNARY.iter().copied().map(String::from))
-            .collect();
+        for s in &conf.arithmetic_side_effects_allowed {
+            allowed_binary.entry(s).or_default().insert("*");
+            allowed_binary.entry("*").or_default().insert(s);
+            allowed_unary.insert(s);
+        }
+
         Self {
             allowed_binary,
             allowed_unary,
+            disallowed_int_methods: [
+                sym::saturating_div,
+                sym::wrapping_div,
+                sym::wrapping_rem,
+                sym::wrapping_rem_euclid,
+            ]
+            .into_iter()
+            .collect(),
             const_span: None,
-            disallowed_int_methods: DISALLOWED_INT_METHODS.iter().copied().collect(),
             expr_span: None,
         }
     }

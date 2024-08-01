@@ -30,7 +30,7 @@ pub(super) fn ra_fixture(
     if !active_parameter.ident().map_or(false, |name| name.text().starts_with("ra_fixture")) {
         return None;
     }
-    let value = literal.value()?;
+    let value = literal.value().ok()?;
 
     if let Some(range) = literal.open_quote_text_range() {
         hl.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
@@ -299,6 +299,7 @@ fn module_def_to_hl_tag(def: Definition) -> HlTag {
         Definition::Trait(_) => SymbolKind::Trait,
         Definition::TraitAlias(_) => SymbolKind::TraitAlias,
         Definition::TypeAlias(_) => SymbolKind::TypeAlias,
+        Definition::BuiltinLifetime(_) => SymbolKind::LifetimeParam,
         Definition::BuiltinType(_) => return HlTag::BuiltinType,
         Definition::Macro(_) => SymbolKind::Macro,
         Definition::Field(_) | Definition::TupleField(_) => SymbolKind::Field,

@@ -5,10 +5,9 @@ use clippy_utils::{get_attr, higher};
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_ast::LitIntType;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
 use rustc_hir::{
-    ArrayLen, BindingMode, CaptureBy, Closure, ClosureKind, CoroutineKind, ExprKind, FnRetTy, HirId, Lit, PatKind,
-    QPath, StmtKind, TyKind,
+    self as hir, ArrayLen, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind,
+    ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -137,9 +136,9 @@ impl<'tcx> LateLintPass<'tcx> for Author {
 
 fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
     let hir = cx.tcx.hir();
-    if let Some(body_id) = hir.maybe_body_owned_by(hir_id.expect_owner().def_id) {
+    if let Some(body) = hir.maybe_body_owned_by(hir_id.expect_owner().def_id) {
         check_node(cx, hir_id, |v| {
-            v.expr(&v.bind("expr", hir.body(body_id).value));
+            v.expr(&v.bind("expr", body.value));
         });
     }
 }
@@ -267,6 +266,21 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
         } else if let Ok(path) = path_to_string(qpath.value) {
             chain!(self, "match_qpath({qpath}, &[{}])", path);
+        }
+    }
+
+    fn const_arg(&self, const_arg: &Binding<&ConstArg<'_>>) {
+        match const_arg.value.kind {
+            ConstArgKind::Path(ref qpath) => {
+                bind!(self, qpath);
+                chain!(self, "let ConstArgKind::Path(ref {qpath}) = {const_arg}.kind");
+                self.qpath(qpath);
+            },
+            ConstArgKind::Anon(anon_const) => {
+                bind!(self, anon_const);
+                chain!(self, "let ConstArgKind::Anon({anon_const}) = {const_arg}.kind");
+                self.body(field!(anon_const.body));
+            },
         }
     }
 
@@ -602,10 +616,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(value);
                 match length.value {
                     ArrayLen::Infer(..) => chain!(self, "let ArrayLen::Infer(..) = length"),
-                    ArrayLen::Body(anon_const) => {
-                        bind!(self, anon_const);
-                        chain!(self, "let ArrayLen::Body({anon_const}) = {length}");
-                        self.body(field!(anon_const.body));
+                    ArrayLen::Body(const_arg) => {
+                        bind!(self, const_arg);
+                        chain!(self, "let ArrayLen::Body({const_arg}) = {length}");
+                        self.const_arg(const_arg);
                     },
                 }
             },
@@ -733,7 +747,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         match stmt.value.kind {
             StmtKind::Let(local) => {
                 bind!(self, local);
-                kind!("Local({local})");
+                kind!("Let({local})");
                 self.option(field!(local.init), "init", |init| {
                     self.expr(init);
                 });

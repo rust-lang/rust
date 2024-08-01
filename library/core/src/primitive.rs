@@ -12,7 +12,7 @@
 //!     const SOME_PROPERTY: bool = true;
 //! }
 //!
-//! # trait QueryId { const SOME_PROPERTY: core::primitive::bool; }
+//! # trait QueryId { const SOME_PROPERTY: ::core::primitive::bool; }
 //! ```
 //!
 //! Note that the `SOME_PROPERTY` associated constant would not compile, as its
@@ -25,11 +25,17 @@
 //! pub struct bool;
 //!
 //! impl QueryId for bool {
-//!     const SOME_PROPERTY: core::primitive::bool = true;
+//!     const SOME_PROPERTY: ::core::primitive::bool = true;
 //! }
 //!
-//! # trait QueryId { const SOME_PROPERTY: core::primitive::bool; }
+//! # trait QueryId { const SOME_PROPERTY: ::core::primitive::bool; }
 //! ```
+//!
+//! We also used `::core` instead of `core`, because `core` can be
+//! shadowed, too. Paths, starting with `::`, are searched in
+//! the [extern prelude] since Edition 2018.
+//!
+//! [extern prelude]: https://doc.rust-lang.org/nightly/reference/names/preludes.html#extern-prelude
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use bool;

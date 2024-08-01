@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {
-    let _p = tracing::span!(tracing::Level::INFO, "parser::validate").entered();
+    let _p = tracing::info_span!("parser::validate").entered();
     // FIXME:
     // * Add unescape validation of raw string literals and raw byte string literals
     // * Add validation of doc comments are being attached to nodes

@@ -1,19 +1,19 @@
 ## `cargo lintcheck`
 
-Runs clippy on a fixed set of crates read from
+Runs Clippy on a fixed set of crates read from
 `lintcheck/lintcheck_crates.toml` and saves logs of the lint warnings into the
 repo.  We can then check the diff and spot new or disappearing warnings.
 
 From the repo root, run:
 
 ```
-cargo run --target-dir lintcheck/target --manifest-path lintcheck/Cargo.toml
+cargo lintcheck
 ```
 
 or
 
 ```
-cargo lintcheck
+cargo run --target-dir lintcheck/target --manifest-path lintcheck/Cargo.toml
 ```
 
 By default, the logs will be saved into
@@ -26,13 +26,15 @@ the repo root.
 The results will then be saved to `lintcheck-logs/custom_logs.toml`.
 
 The `custom.toml` file may be built using <https://crates.io> recently most
-downloaded crates by using the `popular-crates` binary from the `lintcheck`
-directory. For example, to retrieve the 100 recently most downloaded crates:
+downloaded crates by using `cargo lintcheck popular`. For example, to retrieve
+the 200 recently most downloaded crates:
 
 ```
-cargo run --release --bin popular-crates -- -n 100 custom.toml
+cargo lintcheck popular -n 200 custom.toml
 ```
 
+> Note: Lintcheck isn't sandboxed. Only use it to check crates that you trust or
+> sandbox it manually.
 
 ### Configuring the Crate Sources
 
@@ -65,17 +67,11 @@ sources.
 #### Command Line Options (optional)
 
 ```toml
-bitflags = {name = "bitflags", versions = ['1.2.1'], options = ['-Wclippy::pedantic', '-Wclippy::cargo']}
+clap = {name = "clap", versions = ['4.5.8'], options = ['-Fderive']}
 ```
 
 It is possible to specify command line options for each crate. This makes it
-possible to only check a crate for certain lint groups. If no options are
-specified, the lint groups `clippy::all`, `clippy::pedantic`, and
-`clippy::cargo` are checked. If an empty array is specified only `clippy::all`
-is checked.
-
-**Note:** `-Wclippy::all` is always enabled by default, unless `-Aclippy::all`
-is explicitly specified in the options.
+possible to enable or disable features.
 
 ### Fix mode
 You can run `cargo lintcheck --fix` which will run Clippy with `--fix` and
@@ -84,7 +80,7 @@ This lets us spot bad suggestions or false positives automatically in some cases
 
 > Note: Fix mode implies `--all-targets`, so it can fix as much code as it can.
 
-Please note that the target dir should be cleaned afterwards since clippy will modify
+Please note that the target dir should be cleaned afterwards since Clippy will modify
 the downloaded sources which can lead to unexpected results when running lintcheck again afterwards.
 
 ### Recursive mode

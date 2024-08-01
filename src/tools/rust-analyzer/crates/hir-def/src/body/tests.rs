@@ -150,18 +150,18 @@ fn desugar_builtin_format_args() {
 fn main() {
     let are = "are";
     let count = 10;
-    builtin#format_args("hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
+    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", last = "!");
 }
 "#,
     );
 
     expect![[r#"
-        fn main() {
+        fn main() -> () {
             let are = "are";
             let count = 10;
             builtin#lang(Arguments::new_v1_formatted)(
                 &[
-                    "hello ", " ", " friends, we ", " ", "",
+                    "\u{1b}hello ", " ", " friends, we ", " ", "",
                 ],
                 &[
                     builtin#lang(Argument::new_display)(
@@ -258,7 +258,7 @@ impl SsrError {
 
     assert_eq!(db.body_with_source_map(def).1.diagnostics(), &[]);
     expect![[r#"
-        fn main() {
+        fn main() -> () {
             _ = $crate::error::SsrError::new(
                 builtin#lang(Arguments::new_v1_formatted)(
                     &[
@@ -303,7 +303,7 @@ macro_rules! m {
     };
 }
 
-fn f() {
+fn f(a: i32, b: u32) -> String {
     m!();
 }
 "#,
@@ -317,19 +317,21 @@ fn f() {
     }
 
     expect![[r#"
-        fn f() {
-            $crate::panicking::panic_fmt(
-                builtin#lang(Arguments::new_v1_formatted)(
-                    &[
-                        "cc",
-                    ],
-                    &[],
-                    &[],
-                    unsafe {
-                        builtin#lang(UnsafeArg::new)()
-                    },
-                ),
-            );
+        fn f(a: i32, b: u32) -> String {
+            {
+                $crate::panicking::panic_fmt(
+                    builtin#lang(Arguments::new_v1_formatted)(
+                        &[
+                            "cc",
+                        ],
+                        &[],
+                        &[],
+                        unsafe {
+                            builtin#lang(UnsafeArg::new)()
+                        },
+                    ),
+                );
+            };
         }"#]]
     .assert_eq(&body.pretty_print(&db, def))
 }

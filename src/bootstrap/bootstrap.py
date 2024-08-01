@@ -3,7 +3,6 @@ import argparse
 import contextlib
 import datetime
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -52,7 +51,7 @@ def get(base, url, path, checksums, verbose=False):
 
     try:
         if url not in checksums:
-            raise RuntimeError(("src/stage0.json doesn't contain a checksum for {}. "
+            raise RuntimeError(("src/stage0 doesn't contain a checksum for {}. "
                                 "Pre-built artifacts might not be available for this "
                                 "target at this time, see https://doc.rust-lang.org/nightly"
                                 "/rustc/platform-support.html for more information.")
@@ -421,9 +420,9 @@ def output(filepath):
 
 
 class Stage0Toolchain:
-    def __init__(self, stage0_payload):
-        self.date = stage0_payload["date"]
-        self.version = stage0_payload["version"]
+    def __init__(self, date, version):
+        self.date = date
+        self.version = version
 
     def channel(self):
         return self.version + "-" + self.date
@@ -439,7 +438,7 @@ class DownloadInfo:
         bin_root,
         tarball_path,
         tarball_suffix,
-        checksums_sha256,
+        stage0_data,
         pattern,
         verbose,
     ):
@@ -448,7 +447,7 @@ class DownloadInfo:
         self.bin_root = bin_root
         self.tarball_path = tarball_path
         self.tarball_suffix = tarball_suffix
-        self.checksums_sha256 = checksums_sha256
+        self.stage0_data = stage0_data
         self.pattern = pattern
         self.verbose = verbose
 
@@ -458,7 +457,7 @@ def download_component(download_info):
             download_info.base_download_url,
             download_info.download_path,
             download_info.tarball_path,
-            download_info.checksums_sha256,
+            download_info.stage0_data,
             verbose=download_info.verbose,
         )
 
@@ -510,11 +509,12 @@ class RustBuild(object):
         build_dir = args.build_dir or self.get_toml('build-dir', 'build') or 'build'
         self.build_dir = os.path.abspath(build_dir)
 
-        with open(os.path.join(self.rust_root, "src", "stage0.json")) as f:
-            data = json.load(f)
-        self.checksums_sha256 = data["checksums_sha256"]
-        self.stage0_compiler = Stage0Toolchain(data["compiler"])
-        self.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
+        self.stage0_data = parse_stage0_file(os.path.join(self.rust_root, "src", "stage0"))
+        self.stage0_compiler = Stage0Toolchain(
+            self.stage0_data["compiler_date"],
+            self.stage0_data["compiler_version"]
+        )
+        self.download_url = os.getenv("RUSTUP_DIST_SERVER") or self.stage0_data["dist_server"]
 
         self.build = args.build or self.build_triple()
 
@@ -581,7 +581,7 @@ class RustBuild(object):
                     bin_root=self.bin_root(),
                     tarball_path=os.path.join(rustc_cache, filename),
                     tarball_suffix=tarball_suffix,
-                    checksums_sha256=self.checksums_sha256,
+                    stage0_data=self.stage0_data,
                     pattern=pattern,
                     verbose=self.verbose,
                 )
@@ -599,6 +599,12 @@ class RustBuild(object):
                 print('Choosing a pool size of', pool_size, 'for the unpacking of the tarballs')
             p = Pool(pool_size)
             try:
+                # FIXME: A cheap workaround for https://github.com/rust-lang/rust/issues/125578,
+                # remove this once the issue is closed.
+                bootstrap_out = self.bootstrap_out()
+                if os.path.exists(bootstrap_out):
+                    shutil.rmtree(bootstrap_out)
+
                 p.map(unpack_component, tarballs_download_info)
             finally:
                 p.close()
@@ -611,6 +617,9 @@ class RustBuild(object):
                 self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
                 self.fix_bin_or_dylib("{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root))
                 lib_dir = "{}/lib".format(bin_root)
+                rustlib_bin_dir = "{}/rustlib/{}/bin".format(lib_dir, self.build)
+                self.fix_bin_or_dylib("{}/rust-lld".format(rustlib_bin_dir))
+                self.fix_bin_or_dylib("{}/gcc-ld/ld.lld".format(rustlib_bin_dir))
                 for lib in os.listdir(lib_dir):
                     # .so is not necessarily the suffix, there can be version numbers afterwards.
                     if ".so" in lib:
@@ -725,12 +734,9 @@ class RustBuild(object):
 
         patchelf = "{}/bin/patchelf".format(nix_deps_dir)
         rpath_entries = [
-            # Relative default, all binary and dynamic libraries we ship
-            # appear to have this (even when `../lib` is redundant).
-            "$ORIGIN/../lib",
             os.path.join(os.path.realpath(nix_deps_dir), "lib")
         ]
-        patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
+        patchelf_args = ["--add-rpath", ":".join(rpath_entries)]
         if ".so" not in fname:
             # Finally, set the correct .interp for binaries
             with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
@@ -864,6 +870,16 @@ class RustBuild(object):
             return line[start + 1:end]
         return None
 
+    def bootstrap_out(self):
+        """Return the path of the bootstrap build artifacts
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap")
+        True
+        """
+        return os.path.join(self.build_dir, "bootstrap")
+
     def bootstrap_binary(self):
         """Return the path of the bootstrap binary
 
@@ -873,7 +889,7 @@ class RustBuild(object):
         ... "debug", "bootstrap")
         True
         """
-        return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
+        return os.path.join(self.bootstrap_out(), "debug", "bootstrap")
 
     def build_bootstrap(self):
         """Build bootstrap"""
@@ -1022,7 +1038,7 @@ class RustBuild(object):
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
-        # keep this consistent with the equivalent check in rustbuild:
+        # keep this consistent with the equivalent check in bootstrap:
         # https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/lib.rs#L399-L405
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:
@@ -1070,6 +1086,16 @@ def parse_args(args):
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
     return parser.parse_known_args(args)[0]
+
+def parse_stage0_file(path):
+    result = {}
+    with open(path, 'r') as file:
+        for line in file:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                key, value = line.split('=', 1)
+                result[key.strip()] = value.strip()
+    return result
 
 def bootstrap(args):
     """Configure, fetch, build and run the initial bootstrap"""

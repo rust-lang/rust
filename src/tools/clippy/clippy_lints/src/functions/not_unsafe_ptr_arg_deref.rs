@@ -5,7 +5,7 @@ use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::type_is_unsafe_function;
-use clippy_utils::visitors::for_each_expr_with_closures;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{iter_input_pats, path_to_local};
 
 use core::ops::ControlFlow;
@@ -19,37 +19,37 @@ pub(super) fn check_fn<'tcx>(
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
-    let unsafety = match kind {
-        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }) => unsafety,
-        intravisit::FnKind::Method(_, sig) => sig.header.unsafety,
+    let safety = match kind {
+        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { safety, .. }) => safety,
+        intravisit::FnKind::Method(_, sig) => sig.header.safety,
         intravisit::FnKind::Closure => return,
     };
 
-    check_raw_ptr(cx, unsafety, decl, body, def_id);
+    check_raw_ptr(cx, safety, decl, body, def_id);
 }
 
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
-        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.owner_id.def_id);
+        check_raw_ptr(cx, sig.header.safety, sig.decl, body, item.owner_id.def_id);
     }
 }
 
 fn check_raw_ptr<'tcx>(
     cx: &LateContext<'tcx>,
-    unsafety: hir::Unsafety,
+    safety: hir::Safety,
     decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
-    if unsafety == hir::Unsafety::Normal && cx.effective_visibilities.is_exported(def_id) {
+    if safety == hir::Safety::Safe && cx.effective_visibilities.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
             .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();
 
         if !raw_ptrs.is_empty() {
             let typeck = cx.tcx.typeck_body(body.id());
-            let _: Option<!> = for_each_expr_with_closures(cx, body.value, |e| {
+            let _: Option<!> = for_each_expr(cx, body.value, |e| {
                 match e.kind {
                     hir::ExprKind::Call(f, args) if type_is_unsafe_function(cx, typeck.expr_ty(f)) => {
                         for arg in args {
@@ -58,7 +58,7 @@ fn check_raw_ptr<'tcx>(
                     },
                     hir::ExprKind::MethodCall(_, recv, args, _) => {
                         let def_id = typeck.type_dependent_def_id(e.hir_id).unwrap();
-                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().unsafety == hir::Unsafety::Unsafe {
+                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().safety == hir::Safety::Unsafe {
                             check_arg(cx, &raw_ptrs, recv);
                             for arg in args {
                                 check_arg(cx, &raw_ptrs, arg);

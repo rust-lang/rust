@@ -23,8 +23,6 @@
 //! There are also a couple of ad-hoc diagnostics implemented directly here, we
 //! don't yet have a great pattern for how to do them properly.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod handlers {
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod expected_function;
@@ -86,7 +84,7 @@ use ide_db::{
     label::Label,
     source_change::SourceChange,
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-    FxHashMap, FxHashSet, RootDatabase,
+    FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
 use once_cell::sync::Lazy;
 use stdx::never;
@@ -229,9 +227,13 @@ pub struct DiagnosticsConfig {
     pub expr_fill_default: ExprFillDefaultMode,
     pub style_lints: bool,
     // FIXME: We may want to include a whole `AssistConfig` here
+    pub snippet_cap: Option<SnippetCap>,
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
+    pub prefer_absolute: bool,
+    pub term_search_fuel: u64,
+    pub term_search_borrowck: bool,
 }
 
 impl DiagnosticsConfig {
@@ -247,6 +249,7 @@ impl DiagnosticsConfig {
             disabled: Default::default(),
             expr_fill_default: Default::default(),
             style_lints: true,
+            snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
                 granularity: ImportGranularity::Preserve,
                 enforce_granularity: false,
@@ -256,6 +259,9 @@ impl DiagnosticsConfig {
             },
             prefer_no_std: false,
             prefer_prelude: true,
+            prefer_absolute: false,
+            term_search_fuel: 400,
+            term_search_borrowck: true,
         }
     }
 }
@@ -295,22 +301,25 @@ pub fn diagnostics(
     resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
-    let _p = tracing::span!(tracing::Level::INFO, "diagnostics").entered();
+    let _p = tracing::info_span!("diagnostics").entered();
     let sema = Semantics::new(db);
-    let parse = db.parse(file_id);
     let mut res = Vec::new();
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    res.extend(parse.errors().into_iter().take(128).map(|err| {
+    res.extend(db.parse_errors(file_id).as_deref().into_iter().flatten().take(128).map(|err| {
         Diagnostic::new(
             DiagnosticCode::RustcHardError("syntax-error"),
             format!("Syntax Error: {err}"),
             FileRange { file_id, range: err.range() },
         )
     }));
+    let parse_errors = res.len();
 
     let parse = sema.parse(file_id);
 
+    // FIXME: This iterates the entire file which is a rather expensive operation.
+    // We should implement these differently in some form?
+    // Salsa caching + incremental re-parse would be better here
     for node in parse.syntax().descendants() {
         handlers::useless_braces::useless_braces(&mut res, file_id, &node);
         handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
@@ -323,7 +332,10 @@ pub fn diagnostics(
 
     let mut diags = Vec::new();
     match module {
-        Some(m) => m.diagnostics(db, &mut diags, config.style_lints),
+        // A bunch of parse errors in a file indicate some bigger structural parse changes in the
+        // file, so we skip semantic diagnostics so we can show these faster.
+        Some(m) if parse_errors < 16 => m.diagnostics(db, &mut diags, config.style_lints),
+        Some(_) => (),
         None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id),
     }
 
@@ -340,7 +352,8 @@ pub fn diagnostics(
             AnyDiagnostic::MacroDefError(d) => handlers::macro_error::macro_def_error(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MacroExpansionParseError(d) => {
-                res.extend(d.errors.iter().take(32).map(|err| {
+                // FIXME: Point to the correct error span here, not just the macro-call name
+                res.extend(d.errors.iter().take(16).map(|err| {
                     {
                         Diagnostic::new(
                             DiagnosticCode::RustcHardError("syntax-error"),
@@ -480,7 +493,7 @@ fn handle_lint_attributes(
     clippy_stack: &mut FxHashMap<String, Vec<Severity>>,
     diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
 ) {
-    let _g = tracing::span!(tracing::Level::INFO, "handle_lint_attributes").entered();
+    let _g = tracing::info_span!("handle_lint_attributes").entered();
     let file_id = sema.hir_file_for(root);
     let preorder = root.preorder();
     for ev in preorder {

@@ -1,17 +1,18 @@
+use std::fmt;
+use std::ops::Deref;
+
 use rustc_data_structures::intern::Interned;
+use rustc_macros::HashStable_Generic;
+pub use Float::*;
 pub use Integer::*;
 pub use Primitive::*;
 
 use crate::json::{Json, ToJson};
 
-use std::fmt;
-use std::ops::Deref;
-
-use rustc_macros::HashStable_Generic;
-
 pub mod call;
 
-pub use rustc_abi::*;
+// Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
+pub use rustc_abi::{Float, *};
 
 impl ToJson for Endian {
     fn to_json(&self) -> Json {
@@ -207,7 +208,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         C: HasDataLayout,
     {
         match self.abi {
-            Abi::Scalar(scalar) => matches!(scalar.primitive(), F32 | F64),
+            Abi::Scalar(scalar) => matches!(scalar.primitive(), Float(F32 | F64)),
             Abi::Aggregate { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)
@@ -252,29 +253,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_transparent(self)
-    }
-
-    pub fn offset_of_subfield<C, I>(self, cx: &C, indices: I) -> Size
-    where
-        Ty: TyAbiInterface<'a, C>,
-        I: Iterator<Item = (VariantIdx, FieldIdx)>,
-    {
-        let mut layout = self;
-        let mut offset = Size::ZERO;
-
-        for (variant, field) in indices {
-            layout = layout.for_variant(cx, variant);
-            let index = field.index();
-            offset += layout.fields.offset(index);
-            layout = layout.field(cx, index);
-            assert!(
-                layout.is_sized(),
-                "offset of unsized field (type {:?}) cannot be computed statically",
-                layout.ty
-            );
-        }
-
-        offset
     }
 
     /// Finds the one field that is not a 1-ZST.

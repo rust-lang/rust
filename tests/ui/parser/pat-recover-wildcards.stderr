@@ -32,9 +32,14 @@ error[E0586]: inclusive range with no end
   --> $DIR/pat-recover-wildcards.rs:35:10
    |
 LL |         0..._ => ()
-   |          ^^^ help: use `..` instead
+   |          ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -         0..._ => ()
+LL +         0.._ => ()
+   |
 
 error: expected one of `=>`, `if`, or `|`, found reserved identifier `_`
   --> $DIR/pat-recover-wildcards.rs:35:13

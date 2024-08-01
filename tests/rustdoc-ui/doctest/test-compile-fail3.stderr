@@ -2,7 +2,7 @@ error[E0765]: unterminated double quote string
  --> $DIR/test-compile-fail3.rs:3:1
   |
 3 | "fail
-  | ^^^^^^
+  | ^^^^^
 
 error: aborting due to 1 previous error
 

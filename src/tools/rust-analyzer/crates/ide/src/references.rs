@@ -55,7 +55,7 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<Vec<ReferenceSearchResult>> {
-    let _p = tracing::span!(tracing::Level::INFO, "find_all_refs").entered();
+    let _p = tracing::info_span!("find_all_refs").entered();
     let syntax = sema.parse(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {

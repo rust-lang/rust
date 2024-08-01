@@ -1,13 +1,11 @@
-#[cfg(feature = "rustc_serialize")]
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-
 use std::borrow::{Borrow, BorrowMut};
-use std::fmt;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, RangeBounds};
-use std::slice;
-use std::vec;
+use std::{fmt, slice, vec};
+
+#[cfg(feature = "nightly")]
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::{Idx, IndexSlice};
 
@@ -208,6 +206,11 @@ impl<I: Idx, T> IndexVec<I, Option<T>> {
     pub fn remove(&mut self, index: I) -> Option<T> {
         self.get_mut(index)?.take()
     }
+
+    #[inline]
+    pub fn contains(&self, index: I) -> bool {
+        self.get(index).and_then(Option::as_ref).is_some()
+    }
 }
 
 impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
@@ -317,14 +320,14 @@ impl<I: Idx, T, const N: usize> From<[T; N]> for IndexVec<I, T> {
     }
 }
 
-#[cfg(feature = "rustc_serialize")]
+#[cfg(feature = "nightly")]
 impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
     fn encode(&self, s: &mut S) {
         Encodable::encode(&self.raw, s);
     }
 }
 
-#[cfg(feature = "rustc_serialize")]
+#[cfg(feature = "nightly")]
 impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
     fn decode(d: &mut D) -> Self {
         IndexVec::from_raw(Vec::<T>::decode(d))

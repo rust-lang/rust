@@ -1,19 +1,22 @@
-use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
+use std::any::Any;
+use std::backtrace::Backtrace;
+use std::borrow::Cow;
+use std::fmt;
 
-use crate::error;
-use crate::mir::{ConstAlloc, ConstValue};
-use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
-
+use either::Either;
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
-use rustc_span::{def_id::DefId, Span, DUMMY_SP};
+use rustc_span::def_id::DefId;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
-use std::borrow::Cow;
-use std::{any::Any, backtrace::Backtrace, fmt};
+use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
+use crate::error;
+use crate::mir::{ConstAlloc, ConstValue};
+use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {
@@ -63,6 +66,9 @@ impl ReportedErrorInfo {
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
         ReportedErrorInfo { is_tainted_by_errors: true, error }
     }
+    pub fn is_tainted_by_errors(&self) -> bool {
+        self.is_tainted_by_errors
+    }
 }
 
 impl From<ErrorGuaranteed> for ReportedErrorInfo {
@@ -84,9 +90,11 @@ TrivialTypeTraversalImpls! { ErrorHandled }
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
-/// `Ok(None)` indicates the constant was fine, but the valtree couldn't be constructed.
-/// This is needed in `thir::pattern::lower_inline_const`.
-pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
+/// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
+/// because the value containts something of type `ty` that is not valtree-compatible.
+/// The caller can then show an appropriate error; the query does not have the
+/// necssary context to give good user-facing errors for this case.
+pub type EvalToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
 
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(InterpErrorInfo<'_>, 8);
@@ -188,8 +196,9 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 }
 
 /// Error information for when the program we executed turned out not to actually be a valid
-/// program. This cannot happen in stand-alone Miri, but it can happen during CTFE/ConstProp
-/// where we work on generic code or execution does not have all information available.
+/// program. This cannot happen in stand-alone Miri (except for layout errors that are only detect
+/// during monomorphization), but it can happen during CTFE/ConstProp where we work on generic code
+/// or execution does not have all information available.
 #[derive(Debug)]
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
@@ -309,6 +318,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     RemainderOverflow,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
+    /// Overflow in arithmetic that may not overflow.
+    ArithOverflow { intrinsic: Symbol },
+    /// Shift by too much.
+    ShiftOverflow { intrinsic: Symbol, shift_amount: Either<u128, i128> },
     /// Invalid metadata in a wide pointer
     InvalidMeta(InvalidMetaKind),
     /// Reading a C string that does not end within its allocation.
@@ -316,16 +329,21 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a pointer after it got freed.
     PointerUseAfterFree(AllocId, CheckInAllocMsg),
     /// Used a pointer outside the bounds it is valid for.
-    /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be in-bounds.)
     PointerOutOfBounds {
         alloc_id: AllocId,
         alloc_size: Size,
         ptr_offset: i64,
-        ptr_size: Size,
+        /// The size of the memory range that was expected to be in-bounds.
+        inbounds_size: Size,
         msg: CheckInAllocMsg,
     },
     /// Using an integer as a pointer in the wrong way.
-    DanglingIntPointer(u64, CheckInAllocMsg),
+    DanglingIntPointer {
+        addr: u64,
+        /// The size of the memory range that was expected to be in-bounds (or 0 if we don't know).
+        inbounds_size: Size,
+        msg: CheckInAllocMsg,
+    },
     /// Used a pointer with bad alignment.
     AlignmentCheckFailed(Misalignment, CheckAlignMsg),
     /// Writing to read-only memory.
@@ -427,9 +445,6 @@ pub enum ValidationErrorKind<'tcx> {
         ptr_kind: PointerKind,
         ty: Ty<'tcx>,
     },
-    PtrToStatic {
-        ptr_kind: PointerKind,
-    },
     ConstRefToMutable,
     ConstRefToExtern,
     MutableRefToImmutable,
@@ -507,11 +522,13 @@ pub enum ValidationErrorKind<'tcx> {
 /// Miri engine, e.g., CTFE does not support dereferencing pointers at integral addresses.
 #[derive(Debug)]
 pub enum UnsupportedOpInfo {
-    /// Free-form case. Only for errors that are never caught!
+    /// Free-form case. Only for errors that are never caught! Used by Miri.
     // FIXME still use translatable diagnostics
     Unsupported(String),
     /// Unsized local variables.
     UnsizedLocal,
+    /// Extern type field with an indeterminate offset.
+    ExternTypeField,
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
@@ -591,4 +608,118 @@ impl InterpError<'_> {
                 | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
         )
     }
+}
+
+// Macros for constructing / throwing `InterpError`
+#[macro_export]
+macro_rules! err_unsup {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Unsupported(
+            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_unsup_format {
+    ($($tt:tt)*) => { $crate::err_unsup!(Unsupported(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! err_inval {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::InvalidProgram(
+            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::UndefinedBehavior(
+            $crate::mir::interpret::UndefinedBehaviorInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub_format {
+    ($($tt:tt)*) => { $crate::err_ub!(Ub(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! err_ub_custom {
+    ($msg:expr $(, $($name:ident = $value:expr),* $(,)?)?) => {{
+        $(
+            let ($($name,)*) = ($($value,)*);
+        )?
+        $crate::err_ub!(Custom(
+            $crate::error::CustomSubdiagnostic {
+                msg: || $msg,
+                add_args: Box::new(move |mut set_arg| {
+                    $($(
+                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagArg::into_diag_arg($name));
+                    )*)?
+                })
+            }
+        ))
+    }};
+}
+
+#[macro_export]
+macro_rules! err_exhaust {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::ResourceExhaustion(
+            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_machine_stop {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*))
+    };
+}
+
+// In the `throw_*` macros, avoid `return` to make them work with `try {}`.
+#[macro_export]
+macro_rules! throw_unsup {
+    ($($tt:tt)*) => { do yeet $crate::err_unsup!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_unsup_format {
+    ($($tt:tt)*) => { do yeet $crate::err_unsup_format!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_inval {
+    ($($tt:tt)*) => { do yeet $crate::err_inval!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_ub {
+    ($($tt:tt)*) => { do yeet $crate::err_ub!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_ub_format {
+    ($($tt:tt)*) => { do yeet $crate::err_ub_format!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_ub_custom {
+    ($($tt:tt)*) => { do yeet $crate::err_ub_custom!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_exhaust {
+    ($($tt:tt)*) => { do yeet $crate::err_exhaust!($($tt)*) };
+}
+
+#[macro_export]
+macro_rules! throw_machine_stop {
+    ($($tt:tt)*) => { do yeet $crate::err_machine_stop!($($tt)*) };
 }

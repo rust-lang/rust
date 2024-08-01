@@ -1,0 +1,36 @@
+- // MIR for `removable` before InstSimplify-after-simplifycfg
++ // MIR for `removable` after InstSimplify-after-simplifycfg
+  
+  fn removable() -> () {
+      let mut _0: ();
+      let _1: ();
+      let _2: ();
+      let _3: ();
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = assert_inhabited::<()>() -> [return: bb1, unwind unreachable];
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          StorageLive(_2);
+-         _2 = assert_zero_valid::<u8>() -> [return: bb2, unwind unreachable];
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          StorageLive(_3);
+-         _3 = assert_mem_uninitialized_valid::<u8>() -> [return: bb3, unwind unreachable];
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_3);
+          _0 = const ();
+          return;
+      }
+  }
+  

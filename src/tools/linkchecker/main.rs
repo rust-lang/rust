@@ -14,18 +14,18 @@
 //! A few exceptions are allowed as there's known bugs in rustdoc, but this
 //! should catch the majority of "broken link" cases.
 
-use html5ever::tendril::ByteTendril;
-use html5ever::tokenizer::{
-    BufferQueue, TagToken, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
-};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::env;
-use std::fs;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::time::Instant;
+use std::{env, fs};
+
+use html5ever::tendril::ByteTendril;
+use html5ever::tokenizer::{
+    BufferQueue, TagToken, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
+};
 
 // Add linkcheck exceptions here
 // If at all possible you should use intra-doc links to avoid linkcheck issues. These
@@ -59,6 +59,8 @@ const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // This is being used in the sense of 'inclusive range', not a markdown link
     ("core/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("std/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("core/range/legacy/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
+    ("std/range/legacy/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("core/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("alloc/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
     ("std/slice/trait.SliceIndex.html", &["begin</code>, <code>end"]),
@@ -503,7 +505,7 @@ fn maybe_redirect(source: &str) -> Option<String> {
 
 fn parse_html<Sink: TokenSink>(source: &str, sink: Sink) -> Sink {
     let tendril: ByteTendril = source.as_bytes().into();
-    let mut input = BufferQueue::new();
+    let mut input = BufferQueue::default();
     input.push_back(tendril.try_reinterpret().unwrap());
 
     let mut tok = Tokenizer::new(sink, TokenizerOpts::default());

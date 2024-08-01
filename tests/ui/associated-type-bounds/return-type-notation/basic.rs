@@ -17,7 +17,7 @@ async fn foo<T: Foo>() -> Result<(), ()> {
 fn is_send(_: impl Send) {}
 
 fn test<
-    #[cfg(with)] T: Foo<method(): Send>,
+    #[cfg(with)] T: Foo<method(..): Send>,
     #[cfg(without)] T: Foo,
 >() {
     is_send(foo::<T>());

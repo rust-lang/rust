@@ -2,12 +2,14 @@ use std::cell::Cell;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
-
-use hir::CRATE_HIR_ID;
-use rustc_errors::DiagCtxt;
-use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
+use rustc_errors::DiagCtxtHandle;
+use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathData;
+use rustc_hir::{self as hir};
 use rustc_index::IndexVec;
-use rustc_middle::mir;
+use rustc_infer::infer::at::ToTrace;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::interpret::{
     CtfeProvenance, ErrorHandled, InvalidMetaKind, ReportedErrorInfo,
 };
@@ -17,21 +19,24 @@ use rustc_middle::ty::layout::{
     TyAndLayout,
 };
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable, Variance};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
 use rustc_span::Span;
-use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_trait_selection::traits::ObligationCtxt;
+use tracing::{debug, info, info_span, instrument, trace};
 
 use super::{
-    GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
-    Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable,
-    Provenance, Scalar, StackPopJump,
+    err_inval, throw_inval, throw_ub, throw_ub_custom, throw_unsup, GlobalId, Immediate,
+    InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, MemoryKind,
+    OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance,
+    ReturnAction, Scalar,
 };
-use crate::errors;
-use crate::util;
-use crate::{fluent_generated as fluent, ReportErrorExt};
+use crate::{errors, fluent_generated as fluent, util, ReportErrorExt};
 
-pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
     ///
     /// Note: the stack is provided by the machine.
@@ -46,7 +51,7 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
     /// The virtual memory system.
-    pub memory: Memory<'mir, 'tcx, M>,
+    pub memory: Memory<'tcx, M>,
 
     /// The recursion limit (cached from `tcx.recursion_limit(())`)
     pub recursion_limit: Limit,
@@ -87,12 +92,12 @@ impl Drop for SpanGuard {
 }
 
 /// A stack frame.
-pub struct Frame<'mir, 'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
+pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
     /// The MIR for the function called on this frame.
-    pub body: &'mir mir::Body<'tcx>,
+    pub body: &'tcx mir::Body<'tcx>,
 
     /// The def_id and args of the current function.
     pub instance: ty::Instance<'tcx>,
@@ -155,6 +160,19 @@ pub enum StackPopCleanup {
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
     Root { cleanup: bool },
+}
+
+/// Return type of [`InterpCx::pop_stack_frame`].
+pub struct StackPopInfo<'tcx, Prov: Provenance> {
+    /// Additional information about the action to be performed when returning from the popped
+    /// stack frame.
+    pub return_action: ReturnAction,
+
+    /// [`return_to_block`](Frame::return_to_block) of the popped stack frame.
+    pub return_to_block: StackPopCleanup,
+
+    /// [`return_place`](Frame::return_place) of the popped stack frame.
+    pub return_place: MPlaceTy<'tcx, Prov>,
 }
 
 /// State of a local variable including a memoized layout
@@ -229,8 +247,8 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
-    pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Prov, Extra> {
+impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
+    pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'tcx, Prov, Extra> {
         Frame {
             body: self.body,
             instance: self.instance,
@@ -244,10 +262,10 @@ impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
+impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
     /// Get the current location within the Frame.
     ///
-    /// If this is `Left`, we are not currently executing any particular statement in
+    /// If this is `Right`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     ///
@@ -268,13 +286,18 @@ impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
         }
     }
 
-    pub fn lint_root(&self) -> Option<hir::HirId> {
-        self.current_source_info().and_then(|source_info| {
-            match &self.body.source_scopes[source_info.scope].local_data {
+    pub fn lint_root(&self, tcx: TyCtxt<'tcx>) -> Option<hir::HirId> {
+        // We first try to get a HirId via the current source scope,
+        // and fall back to `body.source`.
+        self.current_source_info()
+            .and_then(|source_info| match &self.body.source_scopes[source_info.scope].local_data {
                 mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                 mir::ClearCrossCrate::Clear => None,
-            }
-        })
+            })
+            .or_else(|| {
+                let def_id = self.body.source.def_id().as_local();
+                def_id.map(|def_id| tcx.local_def_id_to_hir_id(def_id))
+            })
     }
 
     /// Returns the address of the buffer where the locals are stored. This is used by `Place` as a
@@ -342,16 +365,16 @@ impl<'tcx> FrameInfo<'tcx> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> HasDataLayout for InterpCx<'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'mir, 'tcx, M>
+impl<'tcx, M> layout::HasTyCtxt<'tcx> for InterpCx<'tcx, M>
 where
-    M: Machine<'mir, 'tcx>,
+    M: Machine<'tcx>,
 {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -359,16 +382,16 @@ where
     }
 }
 
-impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'mir, 'tcx, M>
+impl<'tcx, M> layout::HasParamEnv<'tcx> for InterpCx<'tcx, M>
 where
-    M: Machine<'mir, 'tcx>,
+    M: Machine<'tcx>,
 {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
     type LayoutOfResult = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
@@ -388,7 +411,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpC
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
     type FnAbiOfResult = InterpResult<'tcx, &'tcx FnAbi<'tcx, Ty<'tcx>>>;
 
     fn handle_fn_abi_err(
@@ -467,7 +490,7 @@ pub(super) fn from_known_layout<'tcx>(
 ///
 /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
 /// However, this is useful when error messages appear in ICEs.
-pub fn format_interp_error<'tcx>(dcx: &DiagCtxt, e: InterpErrorInfo<'tcx>) -> String {
+pub fn format_interp_error<'tcx>(dcx: DiagCtxtHandle<'_>, e: InterpErrorInfo<'tcx>) -> String {
     let (e, backtrace) = e.into_parts();
     backtrace.print_backtrace();
     // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
@@ -481,7 +504,7 @@ pub fn format_interp_error<'tcx>(dcx: &DiagCtxt, e: InterpErrorInfo<'tcx>) -> St
     s
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         root_span: Span,
@@ -497,6 +520,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Returns the span of the currently executed statement/terminator.
+    /// This is the span typically used for error reporting.
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
@@ -504,24 +529,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack().last().map_or(self.tcx.span, |f| f.current_span())
     }
 
-    #[inline(always)]
-    /// Find the first stack frame that is within the current crate, if any, otherwise return the crate's HirId
-    pub fn best_lint_scope(&self) -> hir::HirId {
-        self.stack()
-            .iter()
-            .find_map(|frame| frame.body.source.def_id().as_local())
-            .map_or(CRATE_HIR_ID, |def_id| self.tcx.local_def_id_to_hir_id(def_id))
-    }
-
-    #[inline(always)]
-    pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>] {
+    pub(crate) fn stack(&self) -> &[Frame<'tcx, M::Provenance, M::FrameExtra>] {
         M::stack(self)
     }
 
     #[inline(always)]
-    pub(crate) fn stack_mut(
-        &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>> {
+    pub(crate) fn stack_mut(&mut self) -> &mut Vec<Frame<'tcx, M::Provenance, M::FrameExtra>> {
         M::stack_mut(self)
     }
 
@@ -533,17 +546,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
+    pub fn frame(&self) -> &Frame<'tcx, M::Provenance, M::FrameExtra> {
         self.stack().last().expect("no call frames exist")
     }
 
     #[inline(always)]
-    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'tcx, M::Provenance, M::FrameExtra> {
         self.stack_mut().last_mut().expect("no call frames exist")
     }
 
     #[inline(always)]
-    pub fn body(&self) -> &'mir mir::Body<'tcx> {
+    pub fn body(&self) -> &'tcx mir::Body<'tcx> {
         self.frame().body
     }
 
@@ -565,7 +578,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn load_mir(
         &self,
-        instance: ty::InstanceDef<'tcx>,
+        instance: ty::InstanceKind<'tcx>,
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
@@ -599,7 +612,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     >(
         &self,
-        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
+        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         value: T,
     ) -> Result<T, ErrorHandled> {
         frame
@@ -621,7 +634,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("resolve: {:?}, {:#?}", def, args);
         trace!("param_env: {:#?}", self.param_env);
         trace!("args: {:#?}", args);
-        match ty::Instance::resolve(*self.tcx, self.param_env, def, args) {
+        match ty::Instance::try_resolve(*self.tcx, self.param_env, def, args) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
@@ -630,8 +643,35 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Check if the two things are equal in the current param_env, using an infctx to get proper
+    /// equality checks.
+    pub(super) fn eq_in_param_env<T>(&self, a: T, b: T) -> bool
+    where
+        T: PartialEq + TypeFoldable<TyCtxt<'tcx>> + ToTrace<'tcx>,
+    {
+        // Fast path: compare directly.
+        if a == b {
+            return true;
+        }
+        // Slow path: spin up an inference context to check if these traits are sufficiently equal.
+        let infcx = self.tcx.infer_ctxt().build();
+        let ocx = ObligationCtxt::new(&infcx);
+        let cause = ObligationCause::dummy_with_span(self.cur_span());
+        // equate the two trait refs after normalization
+        let a = ocx.normalize(&cause, self.param_env, a);
+        let b = ocx.normalize(&cause, self.param_env, b);
+        if ocx.eq(&cause, self.param_env, a, b).is_ok() {
+            if ocx.select_all_or_error().is_empty() {
+                // All good.
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
-    /// frame which is not `#[track_caller]`. This is the fancy version of `cur_span`.
+    /// frame which is not `#[track_caller]`. This matches the `caller_location` intrinsic,
+    /// and is primarily intended for the panic machinery.
     pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
         for frame in self.stack().iter().rev() {
             debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
@@ -677,7 +717,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub(super) fn layout_of_local(
         &self,
-        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
+        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -764,10 +804,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 Ok(Some((full_size, full_align)))
             }
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(expected_trait, _, ty::Dyn) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
-                Ok(Some(self.get_vtable_size_and_align(vtable)?))
+                Ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
             }
 
             ty::Slice(_) | ty::Str => {
@@ -800,27 +840,53 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
-        body: &'mir mir::Body<'tcx>,
+        body: &'tcx mir::Body<'tcx>,
         return_place: &MPlaceTy<'tcx, M::Provenance>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
+
+        // First push a stack frame so we have access to the local args
+        self.push_new_stack_frame(instance, body, return_to_block, return_place.clone())?;
+
+        self.after_stack_frame_push(instance, body)?;
+
+        Ok(())
+    }
+
+    /// Creates a new stack frame, initializes it and pushes it onto the stack.
+    /// A private helper for [`push_stack_frame`](InterpCx::push_stack_frame).
+    fn push_new_stack_frame(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        body: &'tcx mir::Body<'tcx>,
+        return_to_block: StackPopCleanup,
+        return_place: MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
         let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
         let locals = IndexVec::from_elem(dead_local, &body.local_decls);
-        // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place: return_place.clone(),
+            return_place,
             locals,
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),
         };
-        let frame = M::init_frame_extra(self, pre_frame)?;
+        let frame = M::init_frame(self, pre_frame)?;
         self.stack_mut().push(frame);
 
+        Ok(())
+    }
+
+    /// A private helper for [`push_stack_frame`](InterpCx::push_stack_frame).
+    fn after_stack_frame_push(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        body: &'tcx mir::Body<'tcx>,
+    ) -> InterpResult<'tcx> {
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         for &const_ in &body.required_consts {
             let c =
@@ -839,6 +905,61 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.frame_mut().tracing_span.enter(span);
 
         Ok(())
+    }
+
+    /// Pops a stack frame from the stack and returns some information about it.
+    ///
+    /// This also deallocates locals, if necessary.
+    ///
+    /// [`M::before_stack_pop`] should be called before calling this function.
+    /// [`M::after_stack_pop`] is called by this function automatically.
+    ///
+    /// [`M::before_stack_pop`]: Machine::before_stack_pop
+    /// [`M::after_stack_pop`]: Machine::after_stack_pop
+    pub fn pop_stack_frame(
+        &mut self,
+        unwinding: bool,
+    ) -> InterpResult<'tcx, StackPopInfo<'tcx, M::Provenance>> {
+        let cleanup = self.cleanup_current_frame_locals()?;
+
+        let frame =
+            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+
+        let return_to_block = frame.return_to_block;
+        let return_place = frame.return_place.clone();
+
+        let return_action;
+        if cleanup {
+            return_action = M::after_stack_pop(self, frame, unwinding)?;
+            assert_ne!(return_action, ReturnAction::NoCleanup);
+        } else {
+            return_action = ReturnAction::NoCleanup;
+        };
+
+        Ok(StackPopInfo { return_action, return_to_block, return_place })
+    }
+
+    /// A private helper for [`pop_stack_frame`](InterpCx::pop_stack_frame).
+    /// Returns `true` if cleanup has been done, `false` otherwise.
+    fn cleanup_current_frame_locals(&mut self) -> InterpResult<'tcx, bool> {
+        // Cleanup: deallocate locals.
+        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
+        // We do this while the frame is still on the stack, so errors point to the callee.
+        let return_to_block = self.frame().return_to_block;
+        let cleanup = match return_to_block {
+            StackPopCleanup::Goto { .. } => true,
+            StackPopCleanup::Root { cleanup, .. } => cleanup,
+        };
+
+        if cleanup {
+            // We need to take the locals out, since we need to mutate while iterating.
+            let locals = mem::take(&mut self.frame_mut().locals);
+            for local in &locals {
+                self.deallocate_local(local.value)?;
+            }
+        }
+
+        Ok(cleanup)
     }
 
     /// Jump to the given block.
@@ -888,7 +1009,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Pops the current frame from the stack, deallocating the
-    /// memory for allocated locals.
+    /// memory for allocated locals, and jumps to an appropriate place.
     ///
     /// If `unwinding` is `false`, then we are performing a normal return
     /// from a function. In this case, we jump back into the frame of the caller,
@@ -901,7 +1022,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// The cleanup block ends with a special `Resume` terminator, which will
     /// cause us to continue unwinding.
     #[instrument(skip(self), level = "debug")]
-    pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
+    pub(super) fn return_from_current_stack_frame(
+        &mut self,
+        unwinding: bool,
+    ) -> InterpResult<'tcx> {
         info!(
             "popping stack frame ({})",
             if unwinding { "during unwinding" } else { "returning from function" }
@@ -949,45 +1073,31 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(())
         };
 
-        // Cleanup: deallocate locals.
-        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
-        // We do this while the frame is still on the stack, so errors point to the callee.
-        let return_to_block = self.frame().return_to_block;
-        let cleanup = match return_to_block {
-            StackPopCleanup::Goto { .. } => true,
-            StackPopCleanup::Root { cleanup, .. } => cleanup,
-        };
-        if cleanup {
-            // We need to take the locals out, since we need to mutate while iterating.
-            let locals = mem::take(&mut self.frame_mut().locals);
-            for local in &locals {
-                self.deallocate_local(local.value)?;
-            }
-        }
-
         // All right, now it is time to actually pop the frame.
-        // Note that its locals are gone already, but that's fine.
-        let frame =
-            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+        let stack_pop_info = self.pop_stack_frame(unwinding)?;
+
         // Report error from return value copy, if any.
         copy_ret_result?;
 
-        // If we are not doing cleanup, also skip everything else.
-        if !cleanup {
-            assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
-            assert!(!unwinding, "tried to skip cleanup during unwinding");
-            // Skip machine hook.
-            return Ok(());
-        }
-        if M::after_stack_pop(self, frame, unwinding)? == StackPopJump::NoJump {
-            // The hook already did everything.
-            return Ok(());
+        match stack_pop_info.return_action {
+            ReturnAction::Normal => {}
+            ReturnAction::NoJump => {
+                // The hook already did everything.
+                return Ok(());
+            }
+            ReturnAction::NoCleanup => {
+                // If we are not doing cleanup, also skip everything else.
+                assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
+                assert!(!unwinding, "tried to skip cleanup during unwinding");
+                // Skip machine hook.
+                return Ok(());
+            }
         }
 
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            let unwind = match return_to_block {
+            let unwind = match stack_pop_info.return_to_block {
                 StackPopCleanup::Goto { unwind, .. } => unwind,
                 StackPopCleanup::Root { .. } => {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
@@ -997,7 +1107,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.
-            match return_to_block {
+            match stack_pop_info.return_to_block {
                 StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
                 StackPopCleanup::Root { .. } => {
                     assert!(
@@ -1056,7 +1166,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
 
-                ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
+                ty::Tuple(tys) => tys.last().is_none_or(|ty| is_very_trivially_sized(*ty)),
 
                 ty::Pat(ty, ..) => is_very_trivially_sized(*ty),
 
@@ -1102,11 +1212,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Operand::Immediate(Immediate::Uninit)
         });
 
-        // StorageLive expects the local to be dead, and marks it live.
+        // If the local is already live, deallocate its old memory.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
-        if !matches!(old, LocalValue::Dead) {
-            throw_ub_custom!(fluent::const_eval_double_storage_live);
-        }
+        self.deallocate_local(old)?;
         Ok(())
     }
 
@@ -1120,7 +1228,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        // It is entirely okay for this local to be already dead (at least that's how we currently generate MIR)
+        // If the local is already dead, this is a NOP.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
         self.deallocate_local(old)?;
         Ok(())
@@ -1179,9 +1287,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
             let const_val = val.eval(*ecx.tcx, ecx.param_env, span).map_err(|err| {
-                if M::ALL_CONSTS_ARE_PRECHECKED && !matches!(err, ErrorHandled::TooGeneric(..)) {
-                    // Looks like the const is not captued by `required_consts`, that's bad.
-                    bug!("interpret const eval failure of {val:?} which is not in required_consts");
+                if M::ALL_CONSTS_ARE_PRECHECKED {
+                    match err {
+                        ErrorHandled::TooGeneric(..) => {},
+                        ErrorHandled::Reported(reported, span) => {
+                            if reported.is_tainted_by_errors() {
+                                // const-eval will return "tainted" errors if e.g. the layout cannot
+                                // be computed as the type references non-existing names.
+                                // See <https://github.com/rust-lang/rust/issues/124348>.
+                            } else {
+                                // Looks like the const is not captued by `required_consts`, that's bad.
+                                span_bug!(span, "interpret const eval failure of {val:?} which is not in required_consts");
+                            }
+                        }
+                    }
                 }
                 err.emit_note(*ecx.tcx);
                 err
@@ -1191,10 +1310,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[must_use]
-    pub fn dump_place(
-        &self,
-        place: &PlaceTy<'tcx, M::Provenance>,
-    ) -> PlacePrinter<'_, 'mir, 'tcx, M> {
+    pub fn dump_place(&self, place: &PlaceTy<'tcx, M::Provenance>) -> PlacePrinter<'_, 'tcx, M> {
         PlacePrinter { ecx: self, place: *place.place() }
     }
 
@@ -1206,14 +1322,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
 #[doc(hidden)]
 /// Helper struct for the `dump_place` function.
-pub struct PlacePrinter<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
-    ecx: &'a InterpCx<'mir, 'tcx, M>,
+pub struct PlacePrinter<'a, 'tcx, M: Machine<'tcx>> {
+    ecx: &'a InterpCx<'tcx, M>,
     place: Place<M::Provenance>,
 }
 
-impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
-    for PlacePrinter<'a, 'mir, 'tcx, M>
-{
+impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for PlacePrinter<'a, 'tcx, M> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.place {
             Place::Local { local, offset, locals_addr } => {

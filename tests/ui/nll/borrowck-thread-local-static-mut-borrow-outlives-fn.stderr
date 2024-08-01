@@ -11,7 +11,7 @@ LL |         S1 { a: unsafe { &mut X1 } }
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |         S1 { a: unsafe { addr_of_mut!(X1) } }
-   |                          ~~~~~~~~~~~~~~~~
+   |                          ~~~~~~~~~~~~~  +
 
 warning: 1 warning emitted
 

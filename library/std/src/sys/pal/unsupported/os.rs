@@ -1,10 +1,9 @@
 use super::unsupported;
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
+use crate::{fmt, io};
 
 pub fn errno() -> i32 {
     0
@@ -96,11 +95,11 @@ pub fn getenv(_: &OsStr) -> Option<OsString> {
     None
 }
 
-pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
     Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot set env vars on this platform"))
 }
 
-pub fn unsetenv(_: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(_: &OsStr) -> io::Result<()> {
     Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot unset env vars on this platform"))
 }
 

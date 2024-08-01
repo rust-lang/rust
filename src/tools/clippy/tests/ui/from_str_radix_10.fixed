@@ -59,3 +59,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/12731
+fn issue_12731() {
+    const A: Result<u32, std::num::ParseIntError> = u32::from_str_radix("123", 10);
+    const B: () = {
+        let _ = u32::from_str_radix("123", 10);
+    };
+    const fn foo() {
+        let _ = u32::from_str_radix("123", 10);
+    }
+}

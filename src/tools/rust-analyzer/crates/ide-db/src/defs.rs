@@ -11,8 +11,8 @@ use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
     Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
     Function, GenericParam, HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module,
-    ModuleDef, Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias, TupleField,
-    TypeAlias, Variant, VariantDef, Visibility,
+    ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
+    TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use stdx::{format_to, impl_from};
 use syntax::{
@@ -39,12 +39,13 @@ pub enum Definition {
     Trait(Trait),
     TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
-    BuiltinType(BuiltinType),
     SelfType(Impl),
     GenericParam(GenericParam),
     Local(Local),
     Label(Label),
     DeriveHelper(DeriveHelper),
+    BuiltinType(BuiltinType),
+    BuiltinLifetime(StaticLifetime),
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
     ExternCrateDecl(ExternCrateDecl),
@@ -83,6 +84,7 @@ impl Definition {
             Definition::DeriveHelper(it) => it.derive().module(db),
             Definition::BuiltinAttr(_)
             | Definition::BuiltinType(_)
+            | Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
             | Definition::ToolModule(_) => return None,
         };
@@ -112,6 +114,7 @@ impl Definition {
             Definition::BuiltinType(_) | Definition::TupleField(_) => Visibility::Public,
             Definition::Macro(_) => return None,
             Definition::BuiltinAttr(_)
+            | Definition::BuiltinLifetime(_)
             | Definition::ToolModule(_)
             | Definition::SelfType(_)
             | Definition::Local(_)
@@ -141,6 +144,7 @@ impl Definition {
             Definition::Local(it) => it.name(db),
             Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
+            Definition::BuiltinLifetime(StaticLifetime) => hir::known::STATIC_LIFETIME,
             Definition::BuiltinAttr(_) => return None, // FIXME
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
@@ -174,6 +178,7 @@ impl Definition {
                     doc_owner.docs(fd.0.db)
                 })
             }
+            Definition::BuiltinLifetime(StaticLifetime) => None,
             Definition::Local(_) => None,
             Definition::SelfType(impl_def) => {
                 impl_def.self_ty(db).as_adt().map(|adt| adt.docs(db))?
@@ -228,6 +233,7 @@ impl Definition {
             Definition::TraitAlias(it) => it.display(db).to_string(),
             Definition::TypeAlias(it) => it.display(db).to_string(),
             Definition::BuiltinType(it) => it.name().display(db).to_string(),
+            Definition::BuiltinLifetime(it) => it.name().display(db).to_string(),
             Definition::Local(it) => {
                 let ty = it.ty(db);
                 let ty_display = ty.display_truncated(db, None);
@@ -407,7 +413,7 @@ impl NameClass {
     }
 
     pub fn classify(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<NameClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameClass::classify").entered();
+        let _p = tracing::info_span!("NameClass::classify").entered();
 
         let parent = name.syntax().parent()?;
 
@@ -499,8 +505,7 @@ impl NameClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameClass::classify_lifetime", ?lifetime)
-            .entered();
+        let _p = tracing::info_span!("NameClass::classify_lifetime", ?lifetime).entered();
         let parent = lifetime.syntax().parent()?;
 
         if let Some(it) = ast::LifetimeParam::cast(parent.clone()) {
@@ -591,8 +596,7 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         name_ref: &ast::NameRef,
     ) -> Option<NameRefClass> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "NameRefClass::classify", ?name_ref).entered();
+        let _p = tracing::info_span!("NameRefClass::classify", ?name_ref).entered();
 
         let parent = name_ref.syntax().parent()?;
 
@@ -691,8 +695,10 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameRefClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameRefClass::classify_lifetime", ?lifetime)
-            .entered();
+        let _p = tracing::info_span!("NameRefClass::classify_lifetime", ?lifetime).entered();
+        if lifetime.text() == "'static" {
+            return Some(NameRefClass::Definition(Definition::BuiltinLifetime(StaticLifetime)));
+        }
         let parent = lifetime.syntax().parent()?;
         match parent.kind() {
             SyntaxKind::BREAK_EXPR | SyntaxKind::CONTINUE_EXPR => {

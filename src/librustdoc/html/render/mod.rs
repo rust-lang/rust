@@ -30,37 +30,34 @@ mod tests;
 
 mod context;
 mod print_item;
-mod sidebar;
+pub(crate) mod sidebar;
 mod span_map;
 mod type_layout;
 mod write_shared;
 
-pub(crate) use self::context::*;
-pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
-
 use std::collections::VecDeque;
 use std::fmt::{self, Write};
-use std::fs;
 use std::iter::Peekable;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::str;
+use std::{fs, str};
 
-use askama::Template;
+use rinja::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
+use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
-use rustc_span::{
-    symbol::{sym, Symbol},
-    BytePos, FileName, RealFileName, DUMMY_SP,
-};
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{BytePos, FileName, RealFileName, DUMMY_SP};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 
+pub(crate) use self::context::*;
+pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -72,15 +69,13 @@ use crate::html::format::{
     print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
     Buffer, Ending, HrefError, PrintWithSpace,
 };
-use crate::html::highlight;
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
 };
-use crate::html::sources;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
+use crate::html::{highlight, sources};
 use crate::scrape_examples::{CallData, CallLocation};
-use crate::try_none;
-use crate::DOC_RUST_LANG_ORG_CHANNEL;
+use crate::{try_none, DOC_RUST_LANG_ORG_CHANNEL};
 
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
@@ -505,7 +500,6 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             edition: shared.edition(),
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1,
-            custom_code_classes_in_docs: false,
         }
         .into_string()
     )
@@ -539,7 +533,6 @@ fn render_markdown<'a, 'cx: 'a>(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(move |f| {
-        let custom_code_classes_in_docs = cx.tcx().features().custom_code_classes_in_docs;
         write!(
             f,
             "<div class=\"docblock\">{}</div>",
@@ -551,7 +544,6 @@ fn render_markdown<'a, 'cx: 'a>(
                 edition: cx.shared.edition(),
                 playground: &cx.shared.playground,
                 heading_offset,
-                custom_code_classes_in_docs,
             }
             .into_string()
         )
@@ -927,13 +919,15 @@ fn assoc_method(
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
-        RenderMode::Normal => {
-            print_constness_with_space(&header.constness, meth.const_stability(tcx))
-        }
+        RenderMode::Normal => print_constness_with_space(
+            &header.constness,
+            meth.stable_since(tcx),
+            meth.const_stability(tcx),
+        ),
         RenderMode::ForDeref { .. } => "",
     };
     let asyncness = header.asyncness.print_with_space();
-    let unsafety = header.unsafety.print_with_space();
+    let safety = header.safety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let href = assoc_href_attr(meth, link, cx);
 
@@ -944,7 +938,7 @@ fn assoc_method(
         + defaultness.len()
         + constness.len()
         + asyncness.len()
-        + unsafety.len()
+        + safety.len()
         + abi.len()
         + name.as_str().len()
         + generics_len;
@@ -963,14 +957,14 @@ fn assoc_method(
     w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
     write!(
         w,
-        "{indent}{vis}{defaultness}{constness}{asyncness}{unsafety}{abi}fn \
+        "{indent}{vis}{defaultness}{constness}{asyncness}{safety}{abi}fn \
          <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
         indent = indent_str,
         vis = vis,
         defaultness = defaultness,
         constness = constness,
         asyncness = asyncness,
-        unsafety = unsafety,
+        safety = safety,
         abi = abi,
         href = href,
         name = name,
@@ -1015,18 +1009,23 @@ fn render_stability_since_raw_with_extra(
                 .map(|since| (format!("const since {since}"), format!("const: {since}")))
         }
         Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }) => {
-            let unstable = if let Some(n) = issue {
-                format!(
-                    "<a \
+            if stable_version.is_none() {
+                // don't display const unstable if entirely unstable
+                None
+            } else {
+                let unstable = if let Some(n) = issue {
+                    format!(
+                        "<a \
                         href=\"https://github.com/rust-lang/rust/issues/{n}\" \
                         title=\"Tracking issue for {feature}\"\
                        >unstable</a>"
-                )
-            } else {
-                String::from("unstable")
-            };
+                    )
+                } else {
+                    String::from("unstable")
+                };
 
-            Some((String::from("const unstable"), format!("const: {unstable}")))
+                Some((String::from("const unstable"), format!("const: {unstable}")))
+            }
         }
         _ => None,
     };
@@ -1085,22 +1084,26 @@ fn render_assoc_item(
         clean::MethodItem(m, _) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
-        kind @ (clean::TyAssocConstItem(generics, ty) | clean::AssocConstItem(generics, ty, _)) => {
-            assoc_const(
-                w,
-                item,
-                generics,
-                ty,
-                match kind {
-                    clean::TyAssocConstItem(..) => None,
-                    clean::AssocConstItem(.., default) => Some(default),
-                    _ => unreachable!(),
-                },
-                link,
-                if parent == ItemType::Trait { 4 } else { 0 },
-                cx,
-            )
-        }
+        clean::TyAssocConstItem(generics, ty) => assoc_const(
+            w,
+            item,
+            generics,
+            ty,
+            None,
+            link,
+            if parent == ItemType::Trait { 4 } else { 0 },
+            cx,
+        ),
+        clean::AssocConstItem(ci) => assoc_const(
+            w,
+            item,
+            &ci.generics,
+            &ci.type_,
+            Some(&ci.kind),
+            link,
+            if parent == ItemType::Trait { 4 } else { 0 },
+            cx,
+        ),
         clean::TyAssocTypeItem(ref generics, ref bounds) => assoc_type(
             w,
             item,
@@ -1423,6 +1426,10 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     if let Some(impls) = cx.cache().impls.get(&did) {
         for i in impls {
             let impl_ = i.inner_impl();
+            if impl_.polarity != ty::ImplPolarity::Positive {
+                continue;
+            }
+
             if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
                 // Two different types might have the same did,
                 // without actually being the same.
@@ -1458,6 +1465,10 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
 
     for i in impls {
         let impl_ = i.inner_impl();
+        if impl_.polarity != ty::ImplPolarity::Positive {
+            continue;
+        }
+
         if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
             // Two different types might have the same did,
             // without actually being the same.
@@ -1677,8 +1688,7 @@ fn render_impl(
                     w.write_str("</h4></section>");
                 }
             }
-            kind @ (clean::TyAssocConstItem(generics, ty)
-            | clean::AssocConstItem(generics, ty, _)) => {
+            clean::TyAssocConstItem(generics, ty) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
@@ -1693,11 +1703,29 @@ fn render_impl(
                     item,
                     generics,
                     ty,
-                    match kind {
-                        clean::TyAssocConstItem(..) => None,
-                        clean::AssocConstItem(.., default) => Some(default),
-                        _ => unreachable!(),
-                    },
+                    None,
+                    link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                    0,
+                    cx,
+                );
+                w.write_str("</h4></section>");
+            }
+            clean::AssocConstItem(ci) => {
+                let source_id = format!("{item_type}.{name}");
+                let id = cx.derive_id(&source_id);
+                write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
+                render_rightside(w, cx, item, render_mode);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
+                }
+                w.write_str("<h4 class=\"code-header\">");
+                assoc_const(
+                    w,
+                    item,
+                    &ci.generics,
+                    &ci.type_,
+                    Some(&ci.kind),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
                     0,
                     cx,
@@ -1869,7 +1897,6 @@ fn render_impl(
                      </div>",
                 );
             }
-            let custom_code_classes_in_docs = cx.tcx().features().custom_code_classes_in_docs;
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
@@ -1881,7 +1908,6 @@ fn render_impl(
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
                     heading_offset: HeadingOffset::H4,
-                    custom_code_classes_in_docs,
                 }
                 .into_string()
             );

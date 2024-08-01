@@ -1,12 +1,10 @@
-//@ known-bug: #110395
-// FIXME: effects
-
+//@ check-pass
+//@ compile-flags: -Znext-solver
 #![feature(const_trait_impl, effects)]
+#![allow(incomplete_features)]
 
-// This fails because `~const Uwu` doesn't imply (non-const) `Uwu`.
-
-// FIXME: #[const_trait]
-pub trait Owo<X = <Self as /* FIXME: ~const */ Uwu>::T> {}
+#[const_trait]
+pub trait Owo<X = <Self as Uwu>::T> {}
 
 #[const_trait]
 pub trait Uwu: Owo {

@@ -1,5 +1,7 @@
-use super::{abi, error::expect_success};
-use crate::{mem::MaybeUninit, time::Duration};
+use super::abi;
+use super::error::expect_success;
+use crate::mem::MaybeUninit;
+use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(abi::SYSTIM);

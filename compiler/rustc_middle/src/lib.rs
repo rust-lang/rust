@@ -4,15 +4,16 @@
 //! has their own README with further details).
 //!
 //! - **HIR.** The "high-level (H) intermediate representation (IR)" is
-//!   defined in the `hir` module.
+//!   defined in the [`hir`] module.
 //! - **MIR.** The "mid-level (M) intermediate representation (IR)" is
-//!   defined in the `mir` module. This module contains only the
+//!   defined in the [`mir`] module. This module contains only the
 //!   *definition* of the MIR; the passes that transform and operate
 //!   on MIR are found in `rustc_const_eval` crate.
 //! - **Types.** The internal representation of types used in rustc is
-//!   defined in the `ty` module. This includes the **type context**
-//!   (or `tcx`), which is the central context during most of
-//!   compilation, containing the interners and other things.
+//!   defined in the [`ty`] module. This includes the
+//!   [**type context**][ty::TyCtxt] (or `tcx`), which is the central
+//!   context during most of compilation, containing the interners and
+//!   other things.
 //!
 //! For more information about how rustc works, see the [rustc dev guide].
 //!
@@ -22,49 +23,46 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::potential_query_instability)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(min_exhaustive_patterns)]
-#![feature(rustdoc_internals)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]
-#![feature(core_intrinsics)]
+#![feature(const_option)]
 #![feature(const_type_name)]
-#![feature(discriminant_kind)]
+#![feature(core_intrinsics)]
 #![feature(coroutines)]
-#![feature(stmt_expr_attributes)]
+#![feature(decl_macro)]
+#![feature(discriminant_kind)]
+#![feature(extern_types)]
+#![feature(extract_if)]
 #![feature(if_let_guard)]
+#![feature(intra_doc_pointers)]
 #![feature(iter_from_coroutine)]
+#![feature(let_chains)]
+#![feature(macro_metavar_expr)]
+#![feature(min_exhaustive_patterns)]
+#![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(extern_types)]
 #![feature(new_uninit)]
-#![feature(let_chains)]
-#![feature(min_specialization)]
-#![feature(trusted_len)]
-#![feature(type_alias_impl_trait)]
-#![feature(strict_provenance)]
-#![feature(rustc_attrs)]
-#![feature(control_flow_enum)]
-#![feature(trait_upcasting)]
-#![feature(try_blocks)]
-#![feature(decl_macro)]
-#![feature(extract_if)]
-#![feature(intra_doc_pointers)]
-#![feature(yeet_expr)]
-#![feature(const_option)]
 #![feature(ptr_alignment_type)]
-#![feature(macro_metavar_expr)]
-#![allow(internal_features)]
-#![allow(rustc::potential_query_instability)]
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
-#[macro_use]
-extern crate tracing;
+#![feature(rustc_attrs)]
+#![feature(rustdoc_internals)]
+#![feature(strict_provenance)]
+#![feature(trait_upcasting)]
+#![feature(trusted_len)]
+#![feature(try_blocks)]
+#![feature(type_alias_impl_trait)]
+#![feature(yeet_expr)]
+// tidy-alphabetical-end
 
 #[cfg(test)]
 mod tests;

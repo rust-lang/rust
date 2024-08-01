@@ -7,8 +7,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::process::Command;
 
 // The output from "ps -A -o pid,ppid,args" should look like this:
@@ -28,6 +26,7 @@ use std::process::Command;
 
 #[cfg(unix)]
 fn find_zombies() {
+    extern crate libc;
     let my_pid = unsafe { libc::getpid() };
 
     // https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html

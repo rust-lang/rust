@@ -5,10 +5,10 @@
 use std::{ptr, mem};
 
 // Strip out raw byte dumps to make comparison platform-independent:
-//@ normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
-//@ normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
-//@ normalize-stderr-test "offset \d+" -> "offset N"
-//@ normalize-stderr-test "size \d+" -> "size N"
+//@ normalize-stderr-test: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr-test: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ normalize-stderr-test: "offset \d+" -> "offset N"
+//@ normalize-stderr-test: "size \d+" -> "size N"
 
 
 /// A newtype wrapper to prevent MIR generation from inserting reborrows that would affect the error
@@ -113,27 +113,27 @@ const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| vtable
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| vtable
 // bad trait object
 const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| vtable
 const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
-//~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~^ ERROR evaluation of constant value failed
+//~| vtable
 const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
-//~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~^ ERROR evaluation of constant value failed
+//~| vtable
 const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
-//~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~^ ERROR evaluation of constant value failed
+//~| vtable
 const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 //~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+//~| vtable
 
 // bad data *inside* the trait object
 const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
@@ -142,21 +142,25 @@ const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool
 
 // # raw trait object
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| null pointer
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| vtable
 const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) } as *const dyn Trait; // ok because raw
 // Officially blessed way to get the vtable
 const DYN_METADATA: ptr::DynMetadata<dyn Send> = ptr::metadata::<dyn Send>(ptr::null::<i32>());
 
-// Const eval fails for these, so they need to be statics to error.
+
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
-//~^ ERROR it is undefined behavior to use this value
     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
+    //~^ ERROR could not evaluate static initializer
+    //~| null pointer
 };
 static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
-//~^ ERROR it is undefined behavior to use this value
     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
+    //~^ ERROR could not evaluate static initializer
+    //~| vtable
 };
 
 fn main() {}

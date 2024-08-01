@@ -142,8 +142,8 @@ pub struct MiriConfig {
     /// Whether Stacked Borrows and Tree Borrows retagging should recurse into fields of datatypes.
     pub retag_fields: RetagFields,
     /// The location of a shared object file to load when calling external functions
-    /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
-    pub external_so_file: Option<PathBuf>,
+    /// FIXME! consider allowing users to specify paths to multiple files, or to a directory
+    pub native_lib: Option<PathBuf>,
     /// Run a garbage collector for BorTags every N basic blocks.
     pub gc_interval: u32,
     /// The number of CPUs to be reported by miri.
@@ -188,7 +188,7 @@ impl Default for MiriConfig {
             preemption_rate: 0.01, // 1%
             report_progress: None,
             retag_fields: RetagFields::Yes,
-            external_so_file: None,
+            native_lib: None,
             gc_interval: 10_000,
             num_cpus: 1,
             page_size: None,
@@ -214,7 +214,7 @@ enum MainThreadState<'tcx> {
 impl<'tcx> MainThreadState<'tcx> {
     fn on_main_stack_empty(
         &mut self,
-        this: &mut MiriInterpCx<'_, 'tcx>,
+        this: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
         use MainThreadState::*;
         match self {
@@ -263,12 +263,12 @@ impl<'tcx> MainThreadState<'tcx> {
 
 /// Returns a freshly created `InterpCx`.
 /// Public because this is also used by `priroda`.
-pub fn create_ecx<'mir, 'tcx: 'mir>(
+pub fn create_ecx<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>> {
+) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx =
@@ -282,7 +282,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     })?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"], Namespace::ValueNS);
+    let sentinel =
+        helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
     if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
         tcx.dcx().fatal(
             "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
@@ -303,7 +304,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
         for arg in config.args.iter() {
             // Make space for `0` terminator.
-            let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
+            let size = u64::try_from(arg.len()).unwrap().strict_add(1);
             let arg_type = Ty::new_array(tcx, tcx.types.u8, size);
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
@@ -375,7 +376,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             });
             let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
-            let start_instance = ty::Instance::resolve(
+            let start_instance = ty::Instance::try_resolve(
                 tcx,
                 ty::ParamEnv::reveal_all(),
                 start_id,
@@ -468,7 +469,7 @@ pub fn eval_entry<'tcx>(
         // Check for thread leaks.
         if !ecx.have_all_terminated() {
             tcx.dcx().err("the main thread terminated without waiting for all remaining threads");
-            tcx.dcx().note("pass `-Zmiri-ignore-leaks` to disable this check");
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             return None;
         }
         // Check for memory leaks.
@@ -476,14 +477,7 @@ pub fn eval_entry<'tcx>(
         let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
         if !leaks.is_empty() {
             report_leaks(&ecx, leaks);
-            let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
-            if ecx.machine.collect_leak_backtraces {
-                // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
-                tcx.dcx().note(leak_message);
-            } else {
-                // If we do not have backtraces, we just report an error without any span.
-                tcx.dcx().err(leak_message);
-            };
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

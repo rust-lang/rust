@@ -11,15 +11,14 @@ unsafe impl GlobalAlloc for B {
         1 as *mut u8
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, x: Layout) {
-    }
+    unsafe fn dealloc(&self, ptr: *mut u8, x: Layout) {}
 }
 
 #[global_allocator]
 static A: B = B;
 
 #[no_mangle]
-pub extern fn foo(a: u32) -> u32 {
+pub extern "C" fn foo(a: u32) -> u32 {
     assert_eq!(a, 3);
     a * 2
 }

@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// There is a good explanation the reason why this lint should work in this way and how it is useful
     /// [in this issue](https://github.com/rust-lang/rust-clippy/issues/5122).
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// `as` conversions will perform many kinds of
     /// conversions, including silently lossy conversions and dangerous coercions.
     /// There are cases when it makes sense to use `as`, so the lint is

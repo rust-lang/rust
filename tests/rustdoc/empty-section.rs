@@ -3,8 +3,8 @@
 
 pub struct Foo;
 
-// @has foo/struct.Foo.html
-// @!hasraw - 'Auto Trait Implementations'
+//@ has foo/struct.Foo.html
+//@ !hasraw - 'Auto Trait Implementations'
 impl !Send for Foo {}
 impl !Sync for Foo {}
 impl !std::marker::Freeze for Foo {}

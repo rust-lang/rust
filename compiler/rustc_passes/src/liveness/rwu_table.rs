@@ -1,5 +1,6 @@
-use crate::liveness::{LiveNode, Variable};
 use std::iter;
+
+use crate::liveness::{LiveNode, Variable};
 
 #[derive(Clone, Copy)]
 pub(super) struct RWU {

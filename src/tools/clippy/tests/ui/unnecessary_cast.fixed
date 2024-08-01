@@ -206,7 +206,7 @@ mod fixable {
 
     fn issue_9563() {
         let _: f64 = (-8.0_f64).exp();
-        #[allow(clippy::precedence)]
+        #[allow(ambiguous_negative_literals)]
         let _: f64 = -8.0_f64.exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
     }
 

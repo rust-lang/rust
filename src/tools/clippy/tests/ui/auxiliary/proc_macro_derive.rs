@@ -169,3 +169,16 @@ pub fn derive_ignored_unit_pattern(_: TokenStream) -> TokenStream {
         }
     }
 }
+
+#[proc_macro_derive(NonCanonicalClone)]
+pub fn non_canonical_clone_derive(_: TokenStream) -> TokenStream {
+    quote! {
+        struct NonCanonicalClone;
+        impl Clone for NonCanonicalClone {
+            fn clone(&self) -> Self {
+                todo!()
+            }
+        }
+        impl Copy for NonCanonicalClone {}
+    }
+}

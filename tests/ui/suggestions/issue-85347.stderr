@@ -14,16 +14,17 @@ help: add missing lifetime argument
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<'a, Target = Self>>;
    |                                              +++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-85347.rs:3:46
    |
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
-   |                                              ^^^^^^^^^^^^^ associated type not allowed here
+   |                                              ^^^^^^^^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
-LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
-   |                                             ~~~~~~~~~~~~~~~
+LL -     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
+LL +     type Bar<'a>: Deref<Target = <Self>::Bar>;
+   |
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/issue-85347.rs:3:42
@@ -42,17 +43,18 @@ help: add missing lifetime argument
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<'a, Target = Self>>;
    |                                              +++
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-85347.rs:3:46
    |
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
-   |                                              ^^^^^^^^^^^^^ associated type not allowed here
+   |                                              ^^^^^^^^^^^^^ associated item constraint not allowed here
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
-LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
-   |                                             ~~~~~~~~~~~~~~~
+LL -     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
+LL +     type Bar<'a>: Deref<Target = <Self>::Bar>;
+   |
 
 error: aborting due to 4 previous errors
 

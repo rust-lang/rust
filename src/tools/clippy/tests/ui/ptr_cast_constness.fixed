@@ -46,6 +46,10 @@ fn main() {
     let _ = external!($ptr as *const u32);
 }
 
+fn lifetime_to_static(v: *mut &()) -> *const &'static () {
+    v as _
+}
+
 #[clippy::msrv = "1.64"]
 fn _msrv_1_64() {
     let ptr: *const u32 = &42_u32;

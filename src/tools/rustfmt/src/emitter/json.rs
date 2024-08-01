@@ -212,7 +212,7 @@ mod tests {
     #[test]
     fn emits_array_with_files_with_diffs() {
         let file_name = "src/bin.rs";
-        let original = vec![
+        let original = [
             "fn main() {",
             "println!(\"Hello, world!\");",
             "}",
@@ -225,7 +225,7 @@ mod tests {
             "}",
             "}",
         ];
-        let formatted = vec![
+        let formatted = [
             "fn main() {",
             "    println!(\"Hello, world!\");",
             "}",
@@ -285,11 +285,11 @@ mod tests {
     #[test]
     fn emits_valid_json_with_multiple_files() {
         let bin_file = "src/bin.rs";
-        let bin_original = vec!["fn main() {", "println!(\"Hello, world!\");", "}"];
-        let bin_formatted = vec!["fn main() {", "    println!(\"Hello, world!\");", "}"];
+        let bin_original = ["fn main() {", "println!(\"Hello, world!\");", "}"];
+        let bin_formatted = ["fn main() {", "    println!(\"Hello, world!\");", "}"];
         let lib_file = "src/lib.rs";
-        let lib_original = vec!["fn greet() {", "println!(\"Greetings!\");", "}"];
-        let lib_formatted = vec!["fn greet() {", "    println!(\"Greetings!\");", "}"];
+        let lib_original = ["fn greet() {", "println!(\"Greetings!\");", "}"];
+        let lib_formatted = ["fn greet() {", "    println!(\"Greetings!\");", "}"];
         let mut writer = Vec::new();
         let mut emitter = JsonEmitter::default();
         let _ = emitter.emit_header(&mut writer);

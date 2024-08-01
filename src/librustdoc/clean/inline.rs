@@ -3,11 +3,7 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use thin_vec::{thin_vec, ThinVec};
-
-use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalModDefId};
 use rustc_hir::Mutability;
@@ -17,17 +13,18 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
+use thin_vec::{thin_vec, ThinVec};
+use {rustc_ast as ast, rustc_hir as hir};
 
+use super::Item;
 use crate::clean::{
     self, clean_bound_vars, clean_generics, clean_impl_item, clean_middle_assoc_item,
-    clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_bindings,
+    clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_constraints,
     clean_ty, clean_ty_alias_inner_type, clean_ty_generics, clean_variant_def, utils, Attributes,
     AttributesExt, ImplKind, ItemId, Type,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
-
-use super::Item;
 
 /// Attempt to inline a definition into this AST.
 ///
@@ -130,7 +127,10 @@ pub(crate) fn try_inline(
         }
         Res::Def(DefKind::Const, did) => {
             record_extern_fqn(cx, did, ItemType::Constant);
-            cx.with_param_env(did, |cx| clean::ConstantItem(build_const(cx, did)))
+            cx.with_param_env(did, |cx| {
+                let ct = build_const_item(cx, did);
+                clean::ConstantItem(Box::new(ct))
+            })
         }
         Res::Def(DefKind::Macro(kind), did) => {
             let is_doc_hidden = cx.tcx.is_doc_hidden(did)
@@ -566,7 +566,7 @@ pub(crate) fn build_impl(
     };
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait
-        .map(|t| clean_trait_ref_with_bindings(cx, ty::Binder::dummy(t), ThinVec::new()));
+        .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
@@ -613,7 +613,7 @@ pub(crate) fn build_impl(
         did,
         None,
         clean::ImplItem(Box::new(clean::Impl {
-            unsafety: hir::Unsafety::Normal,
+            safety: hir::Safety::Safe,
             generics,
             trait_,
             for_,
@@ -688,7 +688,7 @@ fn build_module_items(
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Default::default(),
-                                        bindings: ThinVec::new(),
+                                        constraints: ThinVec::new(),
                                     },
                                 }],
                             },
@@ -717,31 +717,27 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     }
 }
 
-fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
+fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     let mut generics =
         clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
-
-    clean::Constant {
-        type_: Box::new(clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
-            cx,
-            Some(def_id),
-            None,
-        )),
-        generics,
-        kind: clean::ConstantKind::Extern { def_id },
-    }
+    let ty = clean_middle_ty(
+        ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
+        cx,
+        None,
+        None,
+    );
+    clean::Constant { generics, type_: ty, kind: clean::ConstantKind::Extern { def_id } }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
-        type_: clean_middle_ty(
+        type_: Box::new(clean_middle_ty(
             ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity()),
             cx,
             Some(did),
             None,
-        ),
+        )),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: None,
     }

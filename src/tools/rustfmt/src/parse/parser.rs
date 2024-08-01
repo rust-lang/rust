@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use rustc_ast::token::TokenKind;
 use rustc_ast::{ast, attr, ptr};
 use rustc_errors::Diag;
-use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
+use rustc_parse::parser::Parser as RawParser;
+use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_span::{sym, Span};
 use thin_vec::ThinVec;
 
@@ -50,12 +51,9 @@ impl<'a> ParserBuilder<'a> {
 
         let parser = match Self::parser(psess.inner(), input) {
             Ok(p) => p,
-            Err(db) => {
-                if let Some(diagnostics) = db {
-                    psess.emit_diagnostics(diagnostics);
-                    return Err(ParserError::ParserCreationError);
-                }
-                return Err(ParserError::ParsePanicError);
+            Err(diagnostics) => {
+                psess.emit_diagnostics(diagnostics);
+                return Err(ParserError::ParserCreationError);
             }
         };
 
@@ -65,18 +63,14 @@ impl<'a> ParserBuilder<'a> {
     fn parser(
         psess: &'a rustc_session::parse::ParseSess,
         input: Input,
-    ) -> Result<rustc_parse::parser::Parser<'a>, Option<Vec<Diag<'a>>>> {
+    ) -> Result<RawParser<'a>, Vec<Diag<'a>>> {
         match input {
-            Input::File(ref file) => catch_unwind(AssertUnwindSafe(move || {
-                new_parser_from_file(psess, file, None)
-            }))
-            .map_err(|_| None),
-            Input::Text(text) => rustc_parse::maybe_new_parser_from_source_str(
+            Input::File(ref file) => new_parser_from_file(psess, file, None),
+            Input::Text(text) => new_parser_from_source_str(
                 psess,
                 rustc_span::FileName::Custom("stdin".to_owned()),
                 text,
-            )
-            .map_err(Some),
+            ),
         }
     }
 }
@@ -111,7 +105,8 @@ impl<'a> Parser<'a> {
         span: Span,
     ) -> Result<(ast::AttrVec, ThinVec<ptr::P<ast::Item>>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
-            let mut parser = new_parser_from_file(psess.inner(), path, Some(span));
+            let mut parser =
+                unwrap_or_emit_fatal(new_parser_from_file(psess.inner(), path, Some(span)));
             match parser.parse_mod(&TokenKind::Eof) {
                 Ok((a, i, spans)) => Some((a, i, spans.inner_span)),
                 Err(e) => {

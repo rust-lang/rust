@@ -6,7 +6,7 @@
 //@ edition: 2021
 #![crate_name = "user"]
 
-// @has user/type.F.html
-// @has - '//*[@class="rust item-decl"]//code' \
+//@ has user/type.F.html
+//@ has - '//*[@class="rust item-decl"]//code' \
 //     "for<'z, 'a, '_unused> fn(_: &'z for<'b> fn(_: &'b str), _: &'a ()) -> &'a ();"
 pub use fn_type::F;

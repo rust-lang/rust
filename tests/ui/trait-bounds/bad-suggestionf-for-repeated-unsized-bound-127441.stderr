@@ -1,0 +1,192 @@
+error[E0203]: type parameter has more than one relaxed default bound, only one is supported
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:12:12
+   |
+LL | fn foo2<T: ?Sized + ?Sized>(a: T) {}
+   |            ^^^^^^   ^^^^^^
+
+error[E0203]: type parameter has more than one relaxed default bound, only one is supported
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:16:12
+   |
+LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: T) {}
+   |            ^^^^^^   ^^^^^^
+
+error[E0203]: type parameter has more than one relaxed default bound, only one is supported
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:20:12
+   |
+LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: T) {}
+   |            ^^^^^^           ^^^^^^
+
+error[E0203]: type parameter has more than one relaxed default bound, only one is supported
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:27:17
+   |
+LL | fn foo6(_: impl ?Sized + ?Sized) {}
+   |                 ^^^^^^   ^^^^^^
+
+error[E0203]: type parameter has more than one relaxed default bound, only one is supported
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:31:17
+   |
+LL | fn foo7(_: impl ?Sized + ?Sized + Debug) {}
+   |                 ^^^^^^   ^^^^^^
+
+error[E0203]: type parameter has more than one relaxed default bound, only one is supported
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:35:17
+   |
+LL | fn foo8(_: impl ?Sized + Debug + ?Sized ) {}
+   |                 ^^^^^^           ^^^^^^
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:9:20
+   |
+LL | fn foo1<T: ?Sized>(a: T) {}
+   |         -          ^ doesn't have a size known at compile-time
+   |         |
+   |         this type parameter needs to be `Sized`
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn foo1<T: ?Sized>(a: T) {}
+LL + fn foo1<T>(a: T) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo1<T: ?Sized>(a: &T) {}
+   |                       +
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:12:29
+   |
+LL | fn foo2<T: ?Sized + ?Sized>(a: T) {}
+   |         -                   ^ doesn't have a size known at compile-time
+   |         |
+   |         this type parameter needs to be `Sized`
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn foo2<T: ?Sized + ?Sized>(a: T) {}
+LL + fn foo2<T>(a: T) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo2<T: ?Sized + ?Sized>(a: &T) {}
+   |                                +
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:16:37
+   |
+LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: T) {}
+   |         -                           ^ doesn't have a size known at compile-time
+   |         |
+   |         this type parameter needs to be `Sized`
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider restricting type parameters
+   |
+LL - fn foo3<T: ?Sized + ?Sized + Debug>(a: T) {}
+LL + fn foo3<T: Debug>(a: T) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: &T) {}
+   |                                        +
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:20:38
+   |
+LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: T) {}
+   |         -                            ^ doesn't have a size known at compile-time
+   |         |
+   |         this type parameter needs to be `Sized`
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider restricting type parameters
+   |
+LL - fn foo4<T: ?Sized + Debug + ?Sized >(a: T) {}
+LL + fn foo4<T: Debug >(a: T) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: &T) {}
+   |                                         +
+
+error[E0277]: the size for values of type `impl ?Sized` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:24:9
+   |
+LL | fn foo5(_: impl ?Sized) {}
+   |         ^  ----------- this type parameter needs to be `Sized`
+   |         |
+   |         doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider replacing `?Sized` with `Sized`
+   |
+LL - fn foo5(_: impl ?Sized) {}
+LL + fn foo5(_: impl Sized) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo5(_: &impl ?Sized) {}
+   |            +
+
+error[E0277]: the size for values of type `impl ?Sized + ?Sized` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:27:9
+   |
+LL | fn foo6(_: impl ?Sized + ?Sized) {}
+   |         ^  -------------------- this type parameter needs to be `Sized`
+   |         |
+   |         doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider restricting type parameters
+   |
+LL - fn foo6(_: impl ?Sized + ?Sized) {}
+LL + fn foo6(_: impl Sized) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo6(_: &impl ?Sized + ?Sized) {}
+   |            +
+
+error[E0277]: the size for values of type `impl ?Sized + ?Sized + Debug` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:31:9
+   |
+LL | fn foo7(_: impl ?Sized + ?Sized + Debug) {}
+   |         ^  ---------------------------- this type parameter needs to be `Sized`
+   |         |
+   |         doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider restricting type parameters
+   |
+LL - fn foo7(_: impl ?Sized + ?Sized + Debug) {}
+LL + fn foo7(_: impl Debug) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo7(_: &impl ?Sized + ?Sized + Debug) {}
+   |            +
+
+error[E0277]: the size for values of type `impl ?Sized + Debug + ?Sized` cannot be known at compilation time
+  --> $DIR/bad-suggestionf-for-repeated-unsized-bound-127441.rs:35:9
+   |
+LL | fn foo8(_: impl ?Sized + Debug + ?Sized ) {}
+   |         ^  ---------------------------- this type parameter needs to be `Sized`
+   |         |
+   |         doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider restricting type parameters
+   |
+LL - fn foo8(_: impl ?Sized + Debug + ?Sized ) {}
+LL + fn foo8(_: impl Debug ) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo8(_: &impl ?Sized + Debug + ?Sized ) {}
+   |            +
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0203, E0277.
+For more information about an error, try `rustc --explain E0203`.

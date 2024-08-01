@@ -1,16 +1,12 @@
-use crate::base::{DummyResult, SyntaxExtension, SyntaxExtensionKind};
-use crate::base::{ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, TTMacroExpander};
-use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
-use crate::mbe;
-use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
-use crate::mbe::macro_check;
-use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatcherLoc, NamedMatch::*};
-use crate::mbe::transcribe::transcribe;
+use std::borrow::Cow;
+use std::collections::hash_map::Entry;
+use std::{mem, slice};
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind, TokenKind::*};
+use rustc_ast::token::NtPatKind::*;
+use rustc_ast::token::TokenKind::*;
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
@@ -31,12 +27,19 @@ use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace, trace_span};
 
-use std::borrow::Cow;
-use std::collections::hash_map::Entry;
-use std::{mem, slice};
-
 use super::diagnostics;
 use super::macro_parser::{NamedMatches, NamedParseResult};
+use crate::base::{
+    DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, SyntaxExtension,
+    SyntaxExtensionKind, TTMacroExpander,
+};
+use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
+use crate::mbe;
+use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
+use crate::mbe::macro_check;
+use crate::mbe::macro_parser::NamedMatch::*;
+use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
+use crate::mbe::transcribe::transcribe;
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -79,11 +82,10 @@ impl<'a> ParserAnyMacro<'a> {
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             if is_local {
-                parser.psess.buffer_lint_with_diagnostic(
+                parser.psess.buffer_lint(
                     SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
                     parser.token.span,
                     lint_node_id,
-                    "trailing semicolon in macro used in expression position",
                     BuiltinLintDiag::TrailingMacro(is_trailing_mac, macro_ident),
                 );
             }
@@ -152,7 +154,7 @@ pub(super) trait Tracker<'matcher> {
     /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
-    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure;
+    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure;
 
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
@@ -167,6 +169,11 @@ pub(super) trait Tracker<'matcher> {
     fn recovery() -> Recovery {
         Recovery::Forbidden
     }
+
+    fn set_expected_token(&mut self, _tok: &'matcher Token) {}
+    fn get_expected_token(&self) -> Option<&'matcher Token> {
+        None
+    }
 }
 
 /// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to
@@ -176,7 +183,7 @@ pub(super) struct NoopTracker;
 impl<'matcher> Tracker<'matcher> for NoopTracker {
     type Failure = ();
 
-    fn build_failure(_tok: Token, _position: usize, _msg: &'static str) -> Self::Failure {}
+    fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
 
     fn description() -> &'static str {
         "none"
@@ -219,7 +226,8 @@ fn expand_macro<'cx>(
             let arm_span = rhses[i].span();
 
             // rhs has holes ( `$id` and `$(...)` that need filled)
-            let tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
+            let id = cx.current_expansion.id;
+            let tts = match transcribe(psess, &named_matches, rhs, rhs_span, transparency, id) {
                 Ok(tts) => tts,
                 Err(err) => {
                     let guar = err.emit();
@@ -378,7 +386,7 @@ pub fn compile_declarative_macro(
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
 
-    let dcx = &sess.psess.dcx;
+    let dcx = sess.dcx();
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -447,20 +455,18 @@ pub fn compile_declarative_macro(
                 // For this we need to reclone the macro body as the previous parser consumed it.
                 let retry_parser = create_parser();
 
-                let parse_result = tt_parser.parse_tt(
-                    &mut Cow::Owned(retry_parser),
-                    &argument_gram,
-                    &mut diagnostics::FailureForwarder,
-                );
+                let mut track = diagnostics::FailureForwarder::new();
+                let parse_result =
+                    tt_parser.parse_tt(&mut Cow::Owned(retry_parser), &argument_gram, &mut track);
                 let Failure((token, _, msg)) = parse_result else {
                     unreachable!("matcher returned something other than Failure after retry");
                 };
 
-                let s = parse_failure_msg(&token);
+                let s = parse_failure_msg(&token, track.get_expected_token());
                 let sp = token.span.substitute_dummy(def.span);
                 let mut err = sess.dcx().struct_span_err(sp, s);
                 err.span_label(sp, msg);
-                annotate_doc_comment(sess.dcx(), &mut err, sess.source_map(), sp);
+                annotate_doc_comment(&mut err, sess.source_map(), sp);
                 let guar = err.emit();
                 return dummy_syn_ext(guar);
             }
@@ -1142,20 +1148,22 @@ fn check_matcher_core<'tt>(
                     // Macros defined in the current crate have a real node id,
                     // whereas macros from an external crate have a dummy id.
                     if def.id != DUMMY_NODE_ID
-                        && matches!(kind, NonterminalKind::PatParam { inferred: true })
-                        && matches!(next_token, TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or))
+                        && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
+                        && matches!(
+                            next_token,
+                            TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or)
+                        )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
                         let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
                             span,
                             name,
-                            Some(NonterminalKind::PatParam { inferred: false }),
+                            Some(NonterminalKind::Pat(PatParam { inferred: false })),
                         ));
-                        sess.psess.buffer_lint_with_diagnostic(
+                        sess.psess.buffer_lint(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
-                            "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",
                             BuiltinLintDiag::OrPatternsBackCompat(span, suggestion),
                         );
                     }
@@ -1183,14 +1191,14 @@ fn check_matcher_core<'tt>(
                             );
                             err.span_label(sp, format!("not allowed after `{kind}` fragments"));
 
-                            if kind == NonterminalKind::PatWithOr
+                            if kind == NonterminalKind::Pat(PatWithOr)
                                 && sess.psess.edition.at_least_rust_2021()
                                 && next_token.is_token(&BinOp(token::BinOpToken::Or))
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
                                     span,
                                     name,
-                                    Some(NonterminalKind::PatParam { inferred: false }),
+                                    Some(NonterminalKind::Pat(PatParam { inferred: false })),
                                 ));
                                 err.span_suggestion(
                                     span,
@@ -1290,7 +1298,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 // maintain
                 IsInFollow::Yes
             }
-            NonterminalKind::Stmt | NonterminalKind::Expr => {
+            NonterminalKind::Stmt | NonterminalKind::Expr(_) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1300,7 +1308,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::PatParam { .. } => {
+            NonterminalKind::Pat(PatParam { .. }) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1313,7 +1321,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::PatWithOr => {
+            NonterminalKind::Pat(PatWithOr) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {

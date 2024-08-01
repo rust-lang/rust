@@ -33,26 +33,26 @@
 //! HIR ty lowering.
 //!
 //! Similarly generics, predicates and header are set to the "default" values.
-//! In case of discrepancy with callee function the `NotSupportedDelegation` error will
+//! In case of discrepancy with callee function the `UnsupportedDelegation` error will
 //! also be emitted during HIR ty lowering.
 
-use crate::{ImplTraitPosition, ResolverAstLoweringExt};
-
-use super::{ImplTraitContext, LoweringContext, ParamMode};
+use std::iter;
 
 use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
 use hir::{BodyId, HirId};
-use rustc_ast as ast;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, ResolverAstLowering};
-use rustc_span::{symbol::Ident, Span};
+use rustc_span::symbol::Ident;
+use rustc_span::Span;
 use rustc_target::spec::abi;
-use std::iter;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use crate::{ImplTraitPosition, ResolverAstLoweringExt};
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -66,12 +66,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let Ok(sig_id) = sig_id else {
             return false;
         };
-        if let Some(local_sig_id) = sig_id.as_local() {
-            self.resolver.delegation_fn_sigs[&local_sig_id].has_self
+        self.has_self(sig_id, span)
+    }
+
+    fn has_self(&self, def_id: DefId, span: Span) -> bool {
+        if let Some(local_sig_id) = def_id.as_local() {
+            // The value may be missing due to recursive delegation.
+            // Error will be emmited later during HIR ty lowering.
+            self.resolver.delegation_fn_sigs.get(&local_sig_id).map_or(false, |sig| sig.has_self)
         } else {
-            match self.tcx.def_kind(sig_id) {
+            match self.tcx.def_kind(def_id) {
                 DefKind::Fn => false,
-                DefKind::AssocFn => self.tcx.associated_item(sig_id).fn_has_self_parameter,
+                DefKind::AssocFn => self.tcx.associated_item(def_id).fn_has_self_parameter,
                 _ => span_bug!(span, "unexpected DefKind for delegation item"),
             }
         }
@@ -105,12 +111,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
     ) -> Result<DefId, ErrorGuaranteed> {
         let sig_id = if self.is_in_trait_impl { item_id } else { path_id };
-        let sig_id =
-            self.resolver.get_partial_res(sig_id).and_then(|r| r.expect_full_res().opt_def_id());
-        sig_id.ok_or_else(|| {
-            self.tcx
-                .dcx()
-                .span_delayed_bug(span, "LoweringContext: couldn't resolve delegation item")
+        self.get_resolution_id(sig_id, span)
+    }
+
+    fn get_resolution_id(&self, node_id: NodeId, span: Span) -> Result<DefId, ErrorGuaranteed> {
+        let def_id =
+            self.resolver.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id());
+        def_id.ok_or_else(|| {
+            self.tcx.dcx().span_delayed_bug(
+                span,
+                format!("LoweringContext: couldn't resolve node {:?} in delegation item", node_id),
+            )
         })
     }
 
@@ -120,7 +131,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             predicates: &[],
             has_where_clause_predicates: false,
             where_clause_span: span,
-            span: span,
+            span,
         })
     }
 
@@ -188,7 +199,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Asyncness::No => hir::IsAsync::NotAsync,
             };
             hir::FnHeader {
-                unsafety: sig.unsafety,
+                safety: sig.safety,
                 constness: self.tcx.constness(sig_id),
                 asyncness,
                 abi: sig.abi,
@@ -220,12 +231,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }));
 
         let path = self.arena.alloc(hir::Path { span, res: Res::Local(param_id), segments });
-
-        hir::Expr {
-            hir_id: self.next_id(),
-            kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
-            span,
-        }
+        self.mk_expr(hir::ExprKind::Path(hir::QPath::Resolved(None, path)), span)
     }
 
     fn lower_delegation_body(
@@ -234,19 +240,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         param_count: usize,
         span: Span,
     ) -> BodyId {
-        let path = self.lower_qpath(
-            delegation.id,
-            &delegation.qself,
-            &delegation.path,
-            ParamMode::Optional,
-            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-            None,
-        );
         let block = delegation.body.as_deref();
 
         self.lower_body(|this| {
-            let mut parameters: Vec<hir::Param<'_>> = Vec::new();
-            let mut args: Vec<hir::Expr<'hir>> = Vec::new();
+            let mut parameters: Vec<hir::Param<'_>> = Vec::with_capacity(param_count);
+            let mut args: Vec<hir::Expr<'_>> = Vec::with_capacity(param_count);
 
             for idx in 0..param_count {
                 let (param, pat_node_id) = this.generate_param(span);
@@ -261,12 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self_param_id: pat_node_id,
                     };
                     self_resolver.visit_block(block);
-                    let block = this.lower_block(block, false);
-                    hir::Expr {
-                        hir_id: this.next_id(),
-                        kind: hir::ExprKind::Block(block, None),
-                        span: block.span,
-                    }
+                    this.lower_target_expr(&block)
                 } else {
                     let pat_hir_id = this.lower_node_id(pat_node_id);
                     this.generate_arg(pat_hir_id, span)
@@ -274,43 +267,96 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 args.push(arg);
             }
 
-            let args = self.arena.alloc_from_iter(args);
-            let final_expr = this.generate_call(path, args);
+            let final_expr = this.finalize_body_lowering(delegation, args, span);
             (this.arena.alloc_from_iter(parameters), final_expr)
         })
     }
 
-    fn generate_call(
+    // FIXME(fn_delegation): Alternatives for target expression lowering:
+    // https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600.
+    fn lower_target_expr(&mut self, block: &Block) -> hir::Expr<'hir> {
+        if block.stmts.len() == 1
+            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+        {
+            return self.lower_expr_mut(expr);
+        }
+
+        let block = self.lower_block(block, false);
+        self.mk_expr(hir::ExprKind::Block(block, None), block.span)
+    }
+
+    // Generates expression for the resulting body. If possible, `MethodCall` is used
+    // to allow autoref/autoderef for target expression. For example in:
+    //
+    // trait Trait : Sized {
+    //     fn by_value(self) -> i32 { 1 }
+    //     fn by_mut_ref(&mut self) -> i32 { 2 }
+    //     fn by_ref(&self) -> i32 { 3 }
+    // }
+    //
+    // struct NewType(SomeType);
+    // impl Trait for NewType {
+    //     reuse Trait::* { self.0 }
+    // }
+    //
+    // `self.0` will automatically coerce.
+    fn finalize_body_lowering(
         &mut self,
-        path: hir::QPath<'hir>,
-        args: &'hir [hir::Expr<'hir>],
+        delegation: &Delegation,
+        args: Vec<hir::Expr<'hir>>,
+        span: Span,
     ) -> hir::Expr<'hir> {
-        let callee = self.arena.alloc(hir::Expr {
-            hir_id: self.next_id(),
-            kind: hir::ExprKind::Path(path),
-            span: path.span(),
-        });
+        let args = self.arena.alloc_from_iter(args);
 
-        let expr = self.arena.alloc(hir::Expr {
-            hir_id: self.next_id(),
-            kind: hir::ExprKind::Call(callee, args),
-            span: path.span(),
-        });
+        let has_generic_args =
+            delegation.path.segments.iter().rev().skip(1).any(|segment| segment.args.is_some());
 
+        let call = if self
+            .get_resolution_id(delegation.id, span)
+            .and_then(|def_id| Ok(self.has_self(def_id, span)))
+            .unwrap_or_default()
+            && delegation.qself.is_none()
+            && !has_generic_args
+        {
+            let ast_segment = delegation.path.segments.last().unwrap();
+            let segment = self.lower_path_segment(
+                delegation.path.span,
+                ast_segment,
+                ParamMode::Optional,
+                ParenthesizedGenericArgs::Err,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
+            let segment = self.arena.alloc(segment);
+
+            self.arena.alloc(hir::Expr {
+                hir_id: self.next_id(),
+                kind: hir::ExprKind::MethodCall(segment, &args[0], &args[1..], span),
+                span,
+            })
+        } else {
+            let path = self.lower_qpath(
+                delegation.id,
+                &delegation.qself,
+                &delegation.path,
+                ParamMode::Optional,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
+
+            let callee_path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(path), span));
+            self.arena.alloc(self.mk_expr(hir::ExprKind::Call(callee_path, args), span))
+        };
         let block = self.arena.alloc(hir::Block {
             stmts: &[],
-            expr: Some(expr),
+            expr: Some(call),
             hir_id: self.next_id(),
             rules: hir::BlockCheckMode::DefaultBlock,
-            span: path.span(),
+            span,
             targeted_by_break: false,
         });
 
-        hir::Expr {
-            hir_id: self.next_id(),
-            kind: hir::ExprKind::Block(block, None),
-            span: path.span(),
-        }
+        self.mk_expr(hir::ExprKind::Block(block, None), span)
     }
 
     fn generate_delegation_error(
@@ -331,21 +377,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.generate_header_error();
         let sig = hir::FnSig { decl, header, span };
 
-        let body_id = self.lower_body(|this| {
-            let expr =
-                hir::Expr { hir_id: this.next_id(), kind: hir::ExprKind::Err(err), span: span };
-            (&[], expr)
-        });
+        let body_id = self.lower_body(|this| (&[], this.mk_expr(hir::ExprKind::Err(err), span)));
         DelegationResults { generics, body_id, sig }
     }
 
     fn generate_header_error(&self) -> hir::FnHeader {
         hir::FnHeader {
-            unsafety: hir::Unsafety::Normal,
+            safety: hir::Safety::Safe,
             constness: hir::Constness::NotConst,
             asyncness: hir::IsAsync::NotAsync,
             abi: abi::Abi::Rust,
         }
+    }
+
+    #[inline]
+    fn mk_expr(&mut self, kind: hir::ExprKind<'hir>, span: Span) -> hir::Expr<'hir> {
+        hir::Expr { hir_id: self.next_id(), kind, span }
     }
 }
 

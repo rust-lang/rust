@@ -7,6 +7,7 @@ pub trait Trait2<A> {
     fn doit(&self) -> A;
 }
 
+#[allow(dead_code)]
 pub struct Impl<A1, A2, A3> {
     m1: marker::PhantomData<(A1,A2,A3)>,
     /*

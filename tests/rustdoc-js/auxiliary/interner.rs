@@ -77,17 +77,14 @@ pub trait Interner: Sized {
     type ClosureKind: Copy + Debug + Hash + Eq;
 
     // Required method
-    fn mk_canonical_var_infos(
-        self,
-        infos: &[CanonicalVarInfo<Self>]
-    ) -> Self::CanonicalVars;
+    fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 }
 
 pub trait DebugWithInfcx<I: Interner>: Debug {
     // Required method
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
         this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut Formatter<'_>
+        f: &mut Formatter<'_>,
     ) -> std::fmt::Result;
 }
 
@@ -130,11 +127,7 @@ pub struct TypeFlags;
 
 pub trait Ty<I: Interner<Ty = Self>> {
     // Required method
-    fn new_anon_bound(
-        interner: I,
-        debruijn: DebruijnIndex,
-        var: BoundVar
-    ) -> Self;
+    fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar) -> Self;
 }
 
 pub trait PlaceholderLike {
@@ -152,12 +145,7 @@ pub struct BoundVar;
 pub struct ConstKind<I>(std::marker::PhantomData<I>);
 pub trait Const<I: Interner<Const = Self>> {
     // Required method
-    fn new_anon_bound(
-        interner: I,
-        debruijn: DebruijnIndex,
-        var: BoundVar,
-        ty: I::Ty
-    ) -> Self;
+    fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar, ty: I::Ty) -> Self;
 }
 
 pub trait ConstTy<I: Interner> {
@@ -170,25 +158,28 @@ pub struct DebruijnIndex;
 pub struct RegionKind<I>(std::marker::PhantomData<I>);
 pub trait Region<I: Interner<Region = Self>> {
     // Required method
-    fn new_anon_bound(
-        interner: I,
-        debruijn: DebruijnIndex,
-        var: BoundVar
-    ) -> Self;
+    fn new_anon_bound(interner: I, debruijn: DebruijnIndex, var: BoundVar) -> Self;
 }
 
 pub trait TypeVisitor<I: Interner>: Sized {
     type Result: VisitorResult = ();
 
     // Provided methods
-    fn visit_binder<T: TypeVisitable<I>>(
-        &mut self,
-        t: &I::Binder<T>
-    ) -> Self::Result { unimplemented!() }
-    fn visit_ty(&mut self, t: I::Ty) -> Self::Result { unimplemented!() }
-    fn visit_region(&mut self, _r: I::Region) -> Self::Result { unimplemented!() }
-    fn visit_const(&mut self, c: I::Const) -> Self::Result { unimplemented!() }
-    fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result { unimplemented!() }
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> Self::Result {
+        unimplemented!()
+    }
+    fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
+        unimplemented!()
+    }
+    fn visit_region(&mut self, _r: I::Region) -> Self::Result {
+        unimplemented!()
+    }
+    fn visit_const(&mut self, c: I::Const) -> Self::Result {
+        unimplemented!()
+    }
+    fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
+        unimplemented!()
+    }
 }
 
 pub trait VisitorResult {
@@ -206,7 +197,9 @@ impl VisitorResult for () {
     fn output() -> Self {}
     fn from_residual(_: Self::Residual) -> Self {}
     fn from_branch(_: ControlFlow<Self::Residual>) -> Self {}
-    fn branch(self) -> ControlFlow<Self::Residual> { ControlFlow::Continue(()) }
+    fn branch(self) -> ControlFlow<Self::Residual> {
+        ControlFlow::Continue(())
+    }
 }
 
 pub struct WithInfcx<'a, Infcx: InferCtxtLike, T> {
@@ -221,24 +214,18 @@ pub trait InferCtxtLike {
     fn interner(&self) -> Self::Interner;
     fn universe_of_ty(&self, ty: TyVid) -> Option<UniverseIndex>;
     fn root_ty_var(&self, vid: TyVid) -> TyVid;
-    fn probe_ty_var(
-        &self,
-        vid: TyVid
-    ) -> Option<<Self::Interner as Interner>::Ty>;
+    fn probe_ty_var(&self, vid: TyVid) -> Option<<Self::Interner as Interner>::Ty>;
     fn universe_of_lt(
         &self,
-        lt: <Self::Interner as Interner>::InferRegion
+        lt: <Self::Interner as Interner>::InferRegion,
     ) -> Option<UniverseIndex>;
     fn opportunistic_resolve_lt_var(
         &self,
-        vid: <Self::Interner as Interner>::InferRegion
+        vid: <Self::Interner as Interner>::InferRegion,
     ) -> Option<<Self::Interner as Interner>::Region>;
     fn universe_of_ct(&self, ct: ConstVid) -> Option<UniverseIndex>;
     fn root_ct_var(&self, vid: ConstVid) -> ConstVid;
-    fn probe_ct_var(
-        &self,
-        vid: ConstVid
-    ) -> Option<<Self::Interner as Interner>::Const>;
+    fn probe_ct_var(&self, vid: ConstVid) -> Option<<Self::Interner as Interner>::Const>;
 }
 
 pub struct TyVid;

@@ -4,7 +4,7 @@ use gccjit::OutputKind;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::link_or_copy;
 use rustc_session::config::OutputType;
 use rustc_span::fatal_error::FatalError;
@@ -15,7 +15,7 @@ use crate::{GccCodegenBackend, GccContext};
 
 pub(crate) unsafe fn codegen(
     cgcx: &CodegenContext<GccCodegenBackend>,
-    dcx: &DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
 ) -> Result<CompiledModule, FatalError> {
@@ -31,6 +31,7 @@ pub(crate) unsafe fn codegen(
 
         // NOTE: Only generate object files with GIMPLE when this environment variable is set for
         // now because this requires a particular setup (same gcc/lto1/lto-wrapper commit as libgccjit).
+        // TODO: remove this environment variable.
         let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
@@ -56,6 +57,8 @@ pub(crate) unsafe fn codegen(
                     .generic_activity_with_arg("GCC_module_codegen_emit_bitcode", &*module.name);
                 context.add_command_line_option("-flto=auto");
                 context.add_command_line_option("-flto-partition=one");
+                // TODO: remove since we don't want fat objects when it is for Bitcode only.
+                context.add_command_line_option("-ffat-lto-objects");
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
             }
@@ -104,7 +107,7 @@ pub(crate) unsafe fn codegen(
                     // FIXME(antoyo): segfault in dump_reproducer_to_file() might be caused by
                     // transmuting an rvalue to an lvalue.
                     // Segfault is actually in gcc::jit::reproducer::get_identifier_as_lvalue
-                    context.dump_reproducer_to_file(&format!("/tmp/reproducers/{}.c", module.name));
+                    context.dump_reproducer_to_file(format!("/tmp/reproducers/{}.c", module.name));
                     println!("Dumped reproducer {}", module.name);
                 }
                 if env::var("CG_GCCJIT_DUMP_TO_FILE").as_deref() == Ok("1") {
@@ -113,17 +116,20 @@ pub(crate) unsafe fn codegen(
                     context.set_debug_info(true);
                     context.dump_to_file(path, true);
                 }
-                if should_combine_object_files && fat_lto {
-                    context.add_command_line_option("-flto=auto");
-                    context.add_command_line_option("-flto-partition=one");
+                if should_combine_object_files {
+                    if fat_lto {
+                        context.add_command_line_option("-flto=auto");
+                        context.add_command_line_option("-flto-partition=one");
+
+                        // NOTE: without -fuse-linker-plugin, we get the following error:
+                        // lto1: internal compiler error: decompressed stream: Destination buffer is too small
+                        context.add_driver_option("-fuse-linker-plugin");
+                    }
 
                     context.add_driver_option("-Wl,-r");
                     // NOTE: we need -nostdlib, otherwise, we get the following error:
                     // /usr/bin/ld: cannot find -lgcc_s: No such file or directory
                     context.add_driver_option("-nostdlib");
-                    // NOTE: without -fuse-linker-plugin, we get the following error:
-                    // lto1: internal compiler error: decompressed stream: Destination buffer is too small
-                    context.add_driver_option("-fuse-linker-plugin");
 
                     // NOTE: this doesn't actually generate an executable. With the above flags, it combines the .o files together in another .o.
                     context.compile_to_file(
@@ -166,7 +172,7 @@ pub(crate) unsafe fn codegen(
 
 pub(crate) fn link(
     _cgcx: &CodegenContext<GccCodegenBackend>,
-    _dcx: &DiagCtxt,
+    _dcx: DiagCtxtHandle<'_>,
     mut _modules: Vec<ModuleCodegen<GccContext>>,
 ) -> Result<ModuleCodegen<GccContext>, FatalError> {
     unimplemented!();

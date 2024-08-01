@@ -31,7 +31,6 @@ fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
 
 fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
 //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-//~| ERROR implementation of `Bar` is not general enough
 
 fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
 //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
@@ -64,6 +63,5 @@ fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<
 // `'b` is not in scope for the outlives bound.
 fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
 //~^ ERROR use of undeclared lifetime name `'b` [E0261]
-//~| ERROR implementation of `Bar` is not general enough
 
 fn main() {}

@@ -4,7 +4,7 @@ error: expected unsuffixed literal, found `test`
 LL | #[deprecated(note = test)]
    |                     ^^^^
    |
-help: surround the identifier with quotation marks to parse it as a string
+help: surround the identifier with quotation marks to make it into a string literal
    |
 LL | #[deprecated(note = "test")]
    |                     +    +

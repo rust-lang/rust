@@ -1,6 +1,6 @@
 use arbitrary::{Arbitrary, Unstructured};
 use expect_test::{expect, Expect};
-use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
+use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
 use syntax::{ast, AstNode, Edition};
 
 use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};
@@ -8,7 +8,12 @@ use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};
 fn assert_parse_result(input: &str, expected: CfgExpr) {
     let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-    let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
+    let tt = syntax_node_to_token_tree(
+        tt.syntax(),
+        DummyTestSpanMap,
+        DUMMY,
+        DocCommentDesugarMode::ProcMacro,
+    );
     let cfg = CfgExpr::parse(&tt);
     assert_eq!(cfg, expected);
 }
@@ -16,7 +21,12 @@ fn assert_parse_result(input: &str, expected: CfgExpr) {
 fn check_dnf(input: &str, expect: Expect) {
     let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-    let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
+    let tt = syntax_node_to_token_tree(
+        tt.syntax(),
+        DummyTestSpanMap,
+        DUMMY,
+        DocCommentDesugarMode::ProcMacro,
+    );
     let cfg = CfgExpr::parse(&tt);
     let actual = format!("#![cfg({})]", DnfExpr::new(cfg));
     expect.assert_eq(&actual);
@@ -25,7 +35,12 @@ fn check_dnf(input: &str, expect: Expect) {
 fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
     let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-    let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
+    let tt = syntax_node_to_token_tree(
+        tt.syntax(),
+        DummyTestSpanMap,
+        DUMMY,
+        DocCommentDesugarMode::ProcMacro,
+    );
     let cfg = CfgExpr::parse(&tt);
     let dnf = DnfExpr::new(cfg);
     let why_inactive = dnf.why_inactive(opts).unwrap().to_string();
@@ -36,7 +51,12 @@ fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
 fn check_enable_hints(input: &str, opts: &CfgOptions, expected_hints: &[&str]) {
     let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
     let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-    let tt = syntax_node_to_token_tree(tt.syntax(), DummyTestSpanMap, DUMMY);
+    let tt = syntax_node_to_token_tree(
+        tt.syntax(),
+        DummyTestSpanMap,
+        DUMMY,
+        DocCommentDesugarMode::ProcMacro,
+    );
     let cfg = CfgExpr::parse(&tt);
     let dnf = DnfExpr::new(cfg);
     let hints = dnf.compute_enable_hints(opts).map(|diff| diff.to_string()).collect::<Vec<_>>();

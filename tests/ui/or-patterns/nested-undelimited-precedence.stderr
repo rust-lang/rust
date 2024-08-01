@@ -2,31 +2,56 @@ error: top-level or-patterns are not allowed in `let` bindings
   --> $DIR/nested-undelimited-precedence.rs:19:9
    |
 LL |     let b @ A | B: E = A;
-   |         ^^^^^^^^^ help: wrap the pattern in parentheses: `(b @ A | B)`
+   |         ^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (b @ A | B): E = A;
+   |         +         +
 
 error: top-level or-patterns are not allowed in `let` bindings
   --> $DIR/nested-undelimited-precedence.rs:34:9
    |
 LL |     let &A(_) | B(_): F = A(3);
-   |         ^^^^^^^^^^^^ help: wrap the pattern in parentheses: `(&A(_) | B(_))`
+   |         ^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&A(_) | B(_)): F = A(3);
+   |         +            +
 
 error: top-level or-patterns are not allowed in `let` bindings
   --> $DIR/nested-undelimited-precedence.rs:36:9
    |
 LL |     let &&A(_) | B(_): F = A(3);
-   |         ^^^^^^^^^^^^^ help: wrap the pattern in parentheses: `(&&A(_) | B(_))`
+   |         ^^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&&A(_) | B(_)): F = A(3);
+   |         +             +
 
 error: top-level or-patterns are not allowed in `let` bindings
   --> $DIR/nested-undelimited-precedence.rs:38:9
    |
 LL |     let &mut A(_) | B(_): F = A(3);
-   |         ^^^^^^^^^^^^^^^^ help: wrap the pattern in parentheses: `(&mut A(_) | B(_))`
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&mut A(_) | B(_)): F = A(3);
+   |         +                +
 
 error: top-level or-patterns are not allowed in `let` bindings
   --> $DIR/nested-undelimited-precedence.rs:40:9
    |
 LL |     let &&mut A(_) | B(_): F = A(3);
-   |         ^^^^^^^^^^^^^^^^^ help: wrap the pattern in parentheses: `(&&mut A(_) | B(_))`
+   |         ^^^^^^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&&mut A(_) | B(_)): F = A(3);
+   |         +                 +
 
 error[E0408]: variable `b` is not bound in all patterns
   --> $DIR/nested-undelimited-precedence.rs:19:17

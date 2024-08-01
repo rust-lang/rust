@@ -1,6 +1,7 @@
 //! Builtin derives.
 
 use itertools::izip;
+use mbe::DocCommentDesugarMode;
 use rustc_hash::FxHashSet;
 use span::{MacroCallId, Span};
 use stdx::never;
@@ -262,7 +263,12 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                 match this {
                     Some(it) => {
                         param_type_set.insert(it.as_name());
-                        mbe::syntax_node_to_token_tree(it.syntax(), tm, call_site)
+                        mbe::syntax_node_to_token_tree(
+                            it.syntax(),
+                            tm,
+                            call_site,
+                            DocCommentDesugarMode::ProcMacro,
+                        )
                     }
                     None => {
                         tt::Subtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
@@ -270,15 +276,27 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                 }
             };
             let bounds = match &param {
-                ast::TypeOrConstParam::Type(it) => it
-                    .type_bound_list()
-                    .map(|it| mbe::syntax_node_to_token_tree(it.syntax(), tm, call_site)),
+                ast::TypeOrConstParam::Type(it) => it.type_bound_list().map(|it| {
+                    mbe::syntax_node_to_token_tree(
+                        it.syntax(),
+                        tm,
+                        call_site,
+                        DocCommentDesugarMode::ProcMacro,
+                    )
+                }),
                 ast::TypeOrConstParam::Const(_) => None,
             };
             let ty = if let ast::TypeOrConstParam::Const(param) = param {
                 let ty = param
                     .ty()
-                    .map(|ty| mbe::syntax_node_to_token_tree(ty.syntax(), tm, call_site))
+                    .map(|ty| {
+                        mbe::syntax_node_to_token_tree(
+                            ty.syntax(),
+                            tm,
+                            call_site,
+                            DocCommentDesugarMode::ProcMacro,
+                        )
+                    })
                     .unwrap_or_else(|| {
                         tt::Subtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
                     });
@@ -292,7 +310,14 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
 
     let where_clause = if let Some(w) = where_clause {
         w.predicates()
-            .map(|it| mbe::syntax_node_to_token_tree(it.syntax(), tm, call_site))
+            .map(|it| {
+                mbe::syntax_node_to_token_tree(
+                    it.syntax(),
+                    tm,
+                    call_site,
+                    DocCommentDesugarMode::ProcMacro,
+                )
+            })
             .collect()
     } else {
         vec![]
@@ -322,7 +347,14 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
             let name = p.path()?.qualifier()?.as_single_name_ref()?.as_name();
             param_type_set.contains(&name).then_some(p)
         })
-        .map(|it| mbe::syntax_node_to_token_tree(it.syntax(), tm, call_site))
+        .map(|it| {
+            mbe::syntax_node_to_token_tree(
+                it.syntax(),
+                tm,
+                call_site,
+                DocCommentDesugarMode::ProcMacro,
+            )
+        })
         .collect();
     let name_token = name_to_token(tm, name)?;
     Ok(BasicAdtInfo { name: name_token, shape, param_types, where_clause, associated_types })

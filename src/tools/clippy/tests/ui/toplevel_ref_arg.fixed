@@ -36,4 +36,6 @@ fn main() {
 
     // do not lint in external macro
     external!(let ref _y = 42;);
+
+    fn f(#[allow(clippy::toplevel_ref_arg)] ref x: i32) {}
 }

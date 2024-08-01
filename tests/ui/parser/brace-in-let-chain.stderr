@@ -17,21 +17,15 @@ LL | fn qux() {
    |          - unclosed delimiter
 ...
 LL | fn foo() {
-   |          - unclosed delimiter
+   |          - another 3 unclosed delimiters begin from here
 ...
-LL | fn bar() {
-   |          - unclosed delimiter
-...
-LL | fn baz() {
-   |          - unclosed delimiter
-LL |     if false {
 LL |         {
    |         - this delimiter might not be properly closed...
 LL |             && let () = ()
 LL |     }
    |     - ...as it matches this but it has different indentation
 LL | }
-   |                                                      ^
+   |                                                     ^
 
 error: found a `{` in the middle of a let-chain
   --> $DIR/brace-in-let-chain.rs:14:24

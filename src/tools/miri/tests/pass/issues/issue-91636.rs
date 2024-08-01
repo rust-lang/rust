@@ -10,6 +10,7 @@ impl Function {
     }
 }
 
+#[inline(never)]
 fn dummy(_: &str) {}
 
 fn main() {

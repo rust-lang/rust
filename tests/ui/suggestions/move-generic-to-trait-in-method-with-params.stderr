@@ -13,7 +13,7 @@ help: consider moving this generic argument to the `Foo` trait, which takes up t
    |
 LL |     Foo::<i32>::bar(1, 0);
    |     ~~~~~~~~~~~~~~~~~~~~~
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     1.bar::<i32>(0);
 LL +     1.bar(0);

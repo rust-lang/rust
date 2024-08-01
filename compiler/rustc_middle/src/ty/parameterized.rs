@@ -1,7 +1,8 @@
+use std::hash::Hash;
+
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
-use std::hash::Hash;
 
 use crate::ty;
 
@@ -33,8 +34,8 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::Binder<'static, T> {
     type Value<'tcx> = ty::Binder<'tcx, T::Value<'tcx>>;
 }
 
-impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::EarlyBinder<T> {
-    type Value<'tcx> = ty::EarlyBinder<T::Value<'tcx>>;
+impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::EarlyBinder<'static, T> {
+    type Value<'tcx> = ty::EarlyBinder<'tcx, T::Value<'tcx>>;
 }
 
 #[macro_export]

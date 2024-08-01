@@ -35,7 +35,7 @@ fn main() {
   }>;
 
   let _fail = Example::<external_macro!()>;
-  //~^ ERROR: type provided when a constant was expected
+  //~^ ERROR: type provided when a constant
 
   let _fail = Example::<gimme_a_const!()>;
   //~^ ERROR unexpected end of macro invocation

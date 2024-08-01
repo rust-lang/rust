@@ -37,17 +37,17 @@ macro_rules! count_depth_limits {
     };
 }
 
-/// Produce (index, length) pairs for literals in a macro repetition.
+/// Produce (index, len) pairs for literals in a macro repetition.
 /// The literal is not included in the output, so this macro uses the
 /// `ignore` meta-variable expression to create a non-expanding
 /// repetition binding.
 macro_rules! enumerate_literals {
     ( $( ($l:stmt) ),* ) => {
-        [$( ${ignore($l)} (${index()}, ${length()}) ),*]
+        [$( ${ignore($l)} (${index()}, ${len()}) ),*]
     };
 }
 
-/// Produce index and length tuples for literals in a 2-dimensional
+/// Produce index and len tuples for literals in a 2-dimensional
 /// macro repetition.
 macro_rules! enumerate_literals_2 {
     ( $( [ $( ($l:literal) ),* ] ),* ) => {
@@ -56,9 +56,9 @@ macro_rules! enumerate_literals_2 {
                 $(
                     (
                         ${index(1)},
-                        ${length(1)},
+                        ${len(1)},
                         ${index(0)},
-                        ${length(0)},
+                        ${len(0)},
                         $l
                     ),
                 )*
@@ -134,7 +134,6 @@ fn main() {
             (0, 2, 0, 3, "foo"),
             (0, 2, 1, 3, "bar"),
             (0, 2, 2, 3, "baz"),
-
             (1, 2, 0, 4, "qux"),
             (1, 2, 1, 4, "quux"),
             (1, 2, 2, 4, "quuz"),

@@ -2,7 +2,7 @@
 
 #![allow(incomplete_features)]
 #![crate_type = "lib"]
-#![feature(adt_const_params, generic_const_exprs)]
+#![feature(adt_const_params, unsized_const_params, generic_const_exprs)]
 
 struct Changes<const CHANGES: &[&'static str]>
 //~^ ERROR `&` without an explicit lifetime name cannot be used here

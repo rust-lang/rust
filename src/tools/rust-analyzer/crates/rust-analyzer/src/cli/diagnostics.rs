@@ -13,6 +13,17 @@ use crate::cli::flags;
 
 impl flags::Diagnostics {
     pub fn run(self) -> anyhow::Result<()> {
+        const STACK_SIZE: usize = 1024 * 1024 * 8;
+
+        let handle = stdx::thread::Builder::new(stdx::thread::ThreadIntent::LatencySensitive)
+            .name("BIG_STACK_THREAD".into())
+            .stack_size(STACK_SIZE)
+            .spawn(|| self.run_())
+            .unwrap();
+
+        handle.join()
+    }
+    fn run_(self) -> anyhow::Result<()> {
         let cargo_config =
             CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let with_proc_macro_server = if let Some(p) = &self.proc_macro_srv {

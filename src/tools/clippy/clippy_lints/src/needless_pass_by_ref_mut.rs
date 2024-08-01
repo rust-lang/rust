@@ -1,8 +1,10 @@
 use super::needless_pass_by_value::requires_exact_signature;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_expr_with_closures;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
+use core::ops::ControlFlow;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -11,7 +13,6 @@ use rustc_hir::{
     PatKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
@@ -21,14 +22,12 @@ use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-use core::ops::ControlFlow;
-
 declare_clippy_lint! {
     /// ### What it does
     /// Check if a `&mut` function argument is actually used mutably.
     ///
     /// Be careful if the function is publicly reexported as it would break compatibility with
-    /// users of this function.
+    /// users of this function, when the users pass this function as an argument.
     ///
     /// ### Why is this bad?
     /// Less `mut` means less fights with the borrow checker. It can also lead to more
@@ -52,7 +51,6 @@ declare_clippy_lint! {
     "using a `&mut` argument when it's not mutated"
 }
 
-#[derive(Clone)]
 pub struct NeedlessPassByRefMut<'tcx> {
     avoid_breaking_exported_api: bool,
     used_fn_def_ids: FxHashSet<LocalDefId>,
@@ -60,9 +58,9 @@ pub struct NeedlessPassByRefMut<'tcx> {
 }
 
 impl NeedlessPassByRefMut<'_> {
-    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
             used_fn_def_ids: FxHashSet::default(),
             fn_def_ids_to_maybe_unused_mut: FxIndexMap::default(),
         }
@@ -102,7 +100,6 @@ fn should_skip<'tcx>(
 fn check_closures<'tcx>(
     ctx: &mut MutablyUsedVariablesCtxt<'tcx>,
     cx: &LateContext<'tcx>,
-    infcx: &InferCtxt<'tcx>,
     checked_closures: &mut FxHashSet<LocalDefId>,
     closures: FxHashSet<LocalDefId>,
 ) {
@@ -119,7 +116,9 @@ fn check_closures<'tcx>(
             .associated_body()
             .map(|(_, body_id)| hir.body(body_id))
         {
-            euv::ExprUseVisitor::new(ctx, infcx, closure, cx.param_env, cx.typeck_results()).consume_body(body);
+            euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx)
+                .consume_body(body)
+                .into_ok();
         }
     }
 }
@@ -135,6 +134,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         fn_def_id: LocalDefId,
     ) {
         if span.from_expansion() {
+            return;
+        }
+
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(fn_def_id) {
             return;
         }
 
@@ -196,27 +199,28 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                 async_closures: FxHashSet::default(),
                 tcx: cx.tcx,
             };
-            let infcx = cx.tcx.infer_ctxt().build();
-            euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
+            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
+                .consume_body(body)
+                .into_ok();
 
             let mut checked_closures = FxHashSet::default();
 
             // We retrieve all the closures declared in the function because they will not be found
             // by `euv::Delegate`.
             let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
-            for_each_expr_with_closures(cx, body, |expr| {
+            for_each_expr(cx, body, |expr| {
                 if let ExprKind::Closure(closure) = expr.kind {
                     closures.insert(closure.def_id);
                 }
                 ControlFlow::<()>::Continue(())
             });
-            check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
+            check_closures(&mut ctx, cx, &mut checked_closures, closures);
 
             if is_async {
                 while !ctx.async_closures.is_empty() {
                     let async_closures = ctx.async_closures.clone();
                     ctx.async_closures.clear();
-                    check_closures(&mut ctx, cx, &infcx, &mut checked_closures, async_closures);
+                    check_closures(&mut ctx, cx, &mut checked_closures, async_closures);
                 }
             }
             ctx.generate_mutably_used_ids_from_aliases()
@@ -261,9 +265,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             .iter()
             .filter(|(def_id, _)| !self.used_fn_def_ids.contains(def_id))
         {
-            let show_semver_warning =
-                self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(*fn_def_id);
-
             let mut is_cfged = None;
             for input in unused {
                 // If the argument is never used mutably, we emit the warning.
@@ -283,7 +284,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                                 format!("&{}", snippet(cx, cx.tcx.hir().span(inner_ty.ty.hir_id), "_"),),
                                 Applicability::Unspecified,
                             );
-                            if show_semver_warning {
+                            if cx.effective_visibilities.is_exported(*fn_def_id) {
                                 diag.warn("changing this function will impact semver compatibility");
                             }
                             if *is_cfged {

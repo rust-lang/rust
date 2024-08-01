@@ -48,7 +48,6 @@ pub enum Abi {
     AvrInterrupt,
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
-    Wasm,
     System {
         unwind: bool,
     },
@@ -123,7 +122,6 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
     AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
     AbiData { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call" },
-    AbiData { abi: Abi::Wasm, name: "wasm" },
     AbiData { abi: Abi::System { unwind: false }, name: "system" },
     AbiData { abi: Abi::System { unwind: true }, name: "system-unwind" },
     AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
@@ -148,6 +146,9 @@ pub fn lookup(name: &str) -> Result<Abi, AbiUnsupported> {
         },
         "riscv-interrupt-u" => AbiUnsupported::Reason {
             explain: "user-mode interrupt handlers have been removed from LLVM pending standardization, see: https://reviews.llvm.org/D149314",
+        },
+        "wasm" => AbiUnsupported::Reason {
+            explain: "non-standard wasm ABI is no longer supported",
         },
 
         _ => AbiUnsupported::Unrecognized,
@@ -241,10 +242,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::abi_c_cmse_nonsecure_call,
             explain: "C-cmse-nonsecure-call ABI is experimental and subject to change",
         }),
-        "wasm" => Err(AbiDisabled::Unstable {
-            feature: sym::wasm_abi,
-            explain: "wasm ABI is experimental and subject to change",
-        }),
         _ => Err(AbiDisabled::Unrecognized),
     }
 }
@@ -287,16 +284,15 @@ impl Abi {
             AvrInterrupt => 23,
             AvrNonBlockingInterrupt => 24,
             CCmseNonSecureCall => 25,
-            Wasm => 26,
             // Cross-platform ABIs
-            System { unwind: false } => 27,
-            System { unwind: true } => 28,
-            RustIntrinsic => 29,
-            RustCall => 30,
-            Unadjusted => 31,
-            RustCold => 32,
-            RiscvInterruptM => 33,
-            RiscvInterruptS => 34,
+            System { unwind: false } => 26,
+            System { unwind: true } => 27,
+            RustIntrinsic => 28,
+            RustCall => 29,
+            Unadjusted => 30,
+            RustCold => 31,
+            RiscvInterruptM => 32,
+            RiscvInterruptS => 33,
         };
         debug_assert!(
             AbiDatas

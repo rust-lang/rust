@@ -32,13 +32,12 @@ macro_rules! ignore {
     }};
 }
 
-macro_rules! length {
+macro_rules! len {
     ( $( $e:stmt ),* ) => {
-        $( ${ignore($e)} ${length()} )*
+        $( ${ignore($e)} ${len()} )*
         //~^ ERROR meta-variable expressions are unstable
         //~| ERROR meta-variable expressions are unstable
     };
 }
 
-fn main() {
-}
+fn main() {}

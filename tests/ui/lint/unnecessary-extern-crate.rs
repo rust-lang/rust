@@ -1,12 +1,12 @@
 //@ edition:2018
 
 #![deny(unused_extern_crates)]
-#![feature(test, rustc_private)]
+#![feature(test)]
 
-extern crate libc;
+extern crate core;
 //~^ ERROR unused extern crate
 //~| HELP remove
-extern crate libc as x;
+extern crate core as x;
 //~^ ERROR unused extern crate
 //~| HELP remove
 
@@ -28,11 +28,11 @@ mod foo {
 
     pub(super) extern crate alloc as d;
 
-    extern crate libc;
+    extern crate core;
     //~^ ERROR unused extern crate
     //~| HELP remove
 
-    extern crate libc as x;
+    extern crate core as x;
     //~^ ERROR unused extern crate
     //~| HELP remove
 
@@ -41,11 +41,11 @@ mod foo {
     pub extern crate test as y;
 
     mod bar {
-        extern crate libc;
+        extern crate core;
         //~^ ERROR unused extern crate
         //~| HELP remove
 
-        extern crate libc as x;
+        extern crate core as x;
         //~^ ERROR unused extern crate
         //~| HELP remove
 

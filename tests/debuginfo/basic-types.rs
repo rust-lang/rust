@@ -39,13 +39,15 @@
 // gdb-check:$11 = 32
 // gdb-command:print u64
 // gdb-check:$12 = 64
+// gdb-command:print f16
+// gdb-check:$13 = 1.5
 // gdb-command:print f32
-// gdb-check:$13 = 2.5
+// gdb-check:$14 = 2.5
 // gdb-command:print f64
-// gdb-check:$14 = 3.5
+// gdb-check:$15 = 3.5
 // gdb-command:print s
-// gdbg-check:$15 = {data_ptr = [...] "Hello, World!", length = 13}
-// gdbr-check:$15 = "Hello, World!"
+// gdbg-check:$16 = {data_ptr = [...] "Hello, World!", length = 13}
+// gdbr-check:$16 = "Hello, World!"
 
 // === LLDB TESTS ==================================================================================
 
@@ -122,6 +124,8 @@
 // cdb-check:u32              : 0x20 [Type: unsigned int]
 // cdb-command:dx u64
 // cdb-check:u64              : 0x40 [Type: unsigned __int64]
+// cdb-command:dx f16
+// cdb-check:f16              : 1.500000 [Type: f16]
 // cdb-command:dx f32
 // cdb-check:f32              : 2.500000 [Type: float]
 // cdb-command:dx f64
@@ -134,6 +138,7 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
+#![feature(f16)]
 
 fn main() {
     let b: bool = false;
@@ -148,6 +153,7 @@ fn main() {
     let u16: u16 = 16;
     let u32: u32 = 32;
     let u64: u64 = 64;
+    let f16: f16 = 1.5;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
     let s: &str = "Hello, World!";

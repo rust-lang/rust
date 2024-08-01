@@ -390,9 +390,7 @@ mod issue7344 {
 
     impl<T> RetImplTraitSelf2<T> {
         // should not trigger lint
-        fn new(t: T) -> impl Trait2<(), Self> {
-            unimplemented!()
-        }
+        fn new(t: T) -> impl Trait2<(), Self> {}
     }
 
     struct RetImplTraitNoSelf2<T>(T);
@@ -401,7 +399,6 @@ mod issue7344 {
         // should trigger lint
         fn new(t: T) -> impl Trait2<(), i32> {
             //~^ ERROR: methods called `new` usually return `Self`
-            unimplemented!()
         }
     }
 

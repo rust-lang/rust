@@ -3,14 +3,15 @@
 use std::iter::once;
 use std::ops::Range;
 
-use rustc_errors::{Applicability, DiagCtxt, ErrorGuaranteed};
+use rustc_errors::{Applicability, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
+use tracing::debug;
 
 use crate::errors::{MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError};
 
 pub(crate) fn emit_unescape_error(
-    dcx: &DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     // interior part of the literal, between quotes
     lit: &str,
     // full span of the literal, including quotes and any prefix
@@ -39,7 +40,8 @@ pub(crate) fn emit_unescape_error(
             dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: false })
         }
         EscapeError::MoreThanOneChar => {
-            use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
+            use unicode_normalization::char::is_combining_mark;
+            use unicode_normalization::UnicodeNormalization;
             let mut sugg = None;
             let mut note = None;
 

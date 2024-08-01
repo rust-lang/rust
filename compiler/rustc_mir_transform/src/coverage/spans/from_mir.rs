@@ -1,127 +1,47 @@
-use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
-    self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    self, FakeReadCause, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
+use rustc_span::{Span, Symbol};
 
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
+use crate::coverage::spans::Covspan;
+use crate::coverage::unexpand::unexpand_into_body_span_with_visible_macro;
 use crate::coverage::ExtractedHirInfo;
+
+pub(crate) struct ExtractedCovspans {
+    pub(crate) covspans: Vec<SpanFromMir>,
+}
 
 /// Traverses the MIR body to produce an initial collection of coverage-relevant
 /// spans, each associated with a node in the coverage graph (BCB) and possibly
 /// other metadata.
-///
-/// The returned spans are sorted in a specific order that is expected by the
-/// subsequent span-refinement step.
-pub(super) fn mir_to_initial_sorted_coverage_spans(
+pub(crate) fn extract_covspans_from_mir(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Vec<SpanFromMir> {
+) -> ExtractedCovspans {
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
-    let mut initial_spans = vec![];
+    let mut covspans = vec![];
 
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
-        initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
+        bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data, &mut covspans);
     }
 
     // Only add the signature span if we found at least one span in the body.
-    if !initial_spans.is_empty() {
+    if !covspans.is_empty() {
         // If there is no usable signature span, add a fake one (before refinement)
         // to avoid an ugly gap between the body start and the first real span.
         // FIXME: Find a more principled way to solve this problem.
         let fn_sig_span = hir_info.fn_sig_span_extended.unwrap_or_else(|| body_span.shrink_to_lo());
-        initial_spans.push(SpanFromMir::for_fn_sig(fn_sig_span));
+        covspans.push(SpanFromMir::for_fn_sig(fn_sig_span));
     }
 
-    initial_spans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
-    remove_unwanted_macro_spans(&mut initial_spans);
-    split_visible_macro_spans(&mut initial_spans);
-
-    initial_spans.sort_by(|a, b| {
-        // First sort by span start.
-        Ord::cmp(&a.span.lo(), &b.span.lo())
-            // If span starts are the same, sort by span end in reverse order.
-            // This ensures that if spans A and B are adjacent in the list,
-            // and they overlap but are not equal, then either:
-            // - Span A extends further left, or
-            // - Both have the same start and span A extends further right
-            .then_with(|| Ord::cmp(&a.span.hi(), &b.span.hi()).reverse())
-            // If two spans have the same lo & hi, put hole spans first,
-            // as they take precedence over non-hole spans.
-            .then_with(|| Ord::cmp(&a.is_hole, &b.is_hole).reverse())
-            // After deduplication, we want to keep only the most-dominated BCB.
-            .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
-    });
-
-    // Among covspans with the same span, keep only one. Hole spans take
-    // precedence, otherwise keep the one with the most-dominated BCB.
-    // (Ideally we should try to preserve _all_ non-dominating BCBs, but that
-    // requires a lot more complexity in the span refiner, for little benefit.)
-    initial_spans.dedup_by(|b, a| a.span.source_equal(b.span));
-
-    initial_spans
-}
-
-/// Macros that expand into branches (e.g. `assert!`, `trace!`) tend to generate
-/// multiple condition/consequent blocks that have the span of the whole macro
-/// invocation, which is unhelpful. Keeping only the first such span seems to
-/// give better mappings, so remove the others.
-///
-/// (The input spans should be sorted in BCB dominator order, so that the
-/// retained "first" span is likely to dominate the others.)
-fn remove_unwanted_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
-    let mut seen_macro_spans = FxHashSet::default();
-    initial_spans.retain(|covspan| {
-        // Ignore (retain) hole spans and non-macro-expansion spans.
-        if covspan.is_hole || covspan.visible_macro.is_none() {
-            return true;
-        }
-
-        // Retain only the first macro-expanded covspan with this span.
-        seen_macro_spans.insert(covspan.span)
-    });
-}
-
-/// When a span corresponds to a macro invocation that is visible from the
-/// function body, split it into two parts. The first part covers just the
-/// macro name plus `!`, and the second part covers the rest of the macro
-/// invocation. This seems to give better results for code that uses macros.
-fn split_visible_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
-    let mut extra_spans = vec![];
-
-    initial_spans.retain(|covspan| {
-        if covspan.is_hole {
-            return true;
-        }
-
-        let Some(visible_macro) = covspan.visible_macro else { return true };
-
-        let split_len = visible_macro.as_str().len() as u32 + 1;
-        let (before, after) = covspan.span.split_at(split_len);
-        if !covspan.span.contains(before) || !covspan.span.contains(after) {
-            // Something is unexpectedly wrong with the split point.
-            // The debug assertion in `split_at` will have already caught this,
-            // but in release builds it's safer to do nothing and maybe get a
-            // bug report for unexpected coverage, rather than risk an ICE.
-            return true;
-        }
-
-        assert!(!covspan.is_hole);
-        extra_spans.push(SpanFromMir::new(before, covspan.visible_macro, covspan.bcb, false));
-        extra_spans.push(SpanFromMir::new(after, covspan.visible_macro, covspan.bcb, false));
-        false // Discard the original covspan that we just split.
-    });
-
-    // The newly-split spans are added at the end, so any previous sorting
-    // is not preserved.
-    initial_spans.extend(extra_spans);
+    ExtractedCovspans { covspans }
 }
 
 // Generate a set of coverage spans from the filtered set of `Statement`s and `Terminator`s of
@@ -134,8 +54,9 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     body_span: Span,
     bcb: BasicCoverageBlock,
     bcb_data: &'a BasicCoverageBlockData,
-) -> impl Iterator<Item = SpanFromMir> + Captures<'a> + Captures<'tcx> {
-    bcb_data.basic_blocks.iter().flat_map(move |&bb| {
+    initial_covspans: &mut Vec<SpanFromMir>,
+) {
+    for &bb in &bcb_data.basic_blocks {
         let data = &mir_body[bb];
 
         let unexpand = move |expn_span| {
@@ -145,35 +66,25 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
                 .filter(|(span, _)| !span.source_equal(body_span))
         };
 
-        let statement_spans = data.statements.iter().filter_map(move |statement| {
+        let mut extract_statement_span = |statement| {
             let expn_span = filtered_statement_span(statement)?;
             let (span, visible_macro) = unexpand(expn_span)?;
 
-            // A statement that looks like the assignment of a closure expression
-            // is treated as a "hole" span, to be carved out of other spans.
-            Some(SpanFromMir::new(span, visible_macro, bcb, is_closure_like(statement)))
-        });
+            initial_covspans.push(SpanFromMir::new(span, visible_macro, bcb));
+            Some(())
+        };
+        for statement in data.statements.iter() {
+            extract_statement_span(statement);
+        }
 
-        let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
+        let mut extract_terminator_span = |terminator| {
             let expn_span = filtered_terminator_span(terminator)?;
             let (span, visible_macro) = unexpand(expn_span)?;
 
-            Some(SpanFromMir::new(span, visible_macro, bcb, false))
-        });
-
-        statement_spans.chain(terminator_span)
-    })
-}
-
-fn is_closure_like(statement: &Statement<'_>) -> bool {
-    match statement.kind {
-        StatementKind::Assign(box (_, Rvalue::Aggregate(box ref agg_kind, _))) => match agg_kind {
-            AggregateKind::Closure(_, _)
-            | AggregateKind::Coroutine(_, _)
-            | AggregateKind::CoroutineClosure(..) => true,
-            _ => false,
-        },
-        _ => false,
+            initial_covspans.push(SpanFromMir::new(span, visible_macro, bcb));
+            Some(())
+        };
+        extract_terminator_span(data.terminator());
     }
 }
 
@@ -253,7 +164,8 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
         | TerminatorKind::Goto { .. } => None,
 
         // Call `func` operand can have a more specific span when part of a chain of calls
-        | TerminatorKind::Call { ref func, .. } => {
+        TerminatorKind::Call { ref func, .. }
+        | TerminatorKind::TailCall { ref func, .. } => {
             let mut span = terminator.source_info.span;
             if let mir::Operand::Constant(box constant) = func {
                 if constant.span.lo() > span.lo() {
@@ -276,61 +188,24 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
     }
 }
 
-/// Returns an extrapolated span (pre-expansion[^1]) corresponding to a range
-/// within the function's body source. This span is guaranteed to be contained
-/// within, or equal to, the `body_span`. If the extrapolated span is not
-/// contained within the `body_span`, `None` is returned.
-///
-/// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
-/// etc.).
-pub(crate) fn unexpand_into_body_span_with_visible_macro(
-    original_span: Span,
-    body_span: Span,
-) -> Option<(Span, Option<Symbol>)> {
-    let (span, prev) = unexpand_into_body_span_with_prev(original_span, body_span)?;
-
-    let visible_macro = prev
-        .map(|prev| match prev.ctxt().outer_expn_data().kind {
-            ExpnKind::Macro(MacroKind::Bang, name) => Some(name),
-            _ => None,
-        })
-        .flatten();
-
-    Some((span, visible_macro))
+#[derive(Debug)]
+pub(crate) struct Hole {
+    pub(crate) span: Span,
 }
 
-/// Walks through the expansion ancestors of `original_span` to find a span that
-/// is contained in `body_span` and has the same [`SyntaxContext`] as `body_span`.
-/// The ancestor that was traversed just before the matching span (if any) is
-/// also returned.
-///
-/// For example, a return value of `Some((ancestor, Some(prev))` means that:
-/// - `ancestor == original_span.find_ancestor_inside_same_ctxt(body_span)`
-/// - `ancestor == prev.parent_callsite()`
-///
-/// [`SyntaxContext`]: rustc_span::SyntaxContext
-fn unexpand_into_body_span_with_prev(
-    original_span: Span,
-    body_span: Span,
-) -> Option<(Span, Option<Span>)> {
-    let mut prev = None;
-    let mut curr = original_span;
+impl Hole {
+    pub(crate) fn merge_if_overlapping_or_adjacent(&mut self, other: &mut Self) -> bool {
+        if !self.span.overlaps_or_adjacent(other.span) {
+            return false;
+        }
 
-    while !body_span.contains(curr) || !curr.eq_ctxt(body_span) {
-        prev = Some(curr);
-        curr = curr.parent_callsite()?;
+        self.span = self.span.to(other.span);
+        true
     }
-
-    debug_assert_eq!(Some(curr), original_span.find_ancestor_in_same_ctxt(body_span));
-    if let Some(prev) = prev {
-        debug_assert_eq!(Some(curr), prev.parent_callsite());
-    }
-
-    Some((curr, prev))
 }
 
 #[derive(Debug)]
-pub(super) struct SpanFromMir {
+pub(crate) struct SpanFromMir {
     /// A span that has been extracted from MIR and then "un-expanded" back to
     /// within the current function's `body_span`. After various intermediate
     /// processing steps, this span is emitted as part of the final coverage
@@ -338,26 +213,22 @@ pub(super) struct SpanFromMir {
     ///
     /// With the exception of `fn_sig_span`, this should always be contained
     /// within `body_span`.
-    pub(super) span: Span,
-    visible_macro: Option<Symbol>,
-    pub(super) bcb: BasicCoverageBlock,
-    /// If true, this covspan represents a "hole" that should be carved out
-    /// from other spans, e.g. because it represents a closure expression that
-    /// will be instrumented separately as its own function.
-    pub(super) is_hole: bool,
+    pub(crate) span: Span,
+    pub(crate) visible_macro: Option<Symbol>,
+    pub(crate) bcb: BasicCoverageBlock,
 }
 
 impl SpanFromMir {
     fn for_fn_sig(fn_sig_span: Span) -> Self {
-        Self::new(fn_sig_span, None, START_BCB, false)
+        Self::new(fn_sig_span, None, START_BCB)
     }
 
-    fn new(
-        span: Span,
-        visible_macro: Option<Symbol>,
-        bcb: BasicCoverageBlock,
-        is_hole: bool,
-    ) -> Self {
-        Self { span, visible_macro, bcb, is_hole }
+    pub(crate) fn new(span: Span, visible_macro: Option<Symbol>, bcb: BasicCoverageBlock) -> Self {
+        Self { span, visible_macro, bcb }
+    }
+
+    pub(crate) fn into_covspan(self) -> Covspan {
+        let Self { span, visible_macro: _, bcb } = self;
+        Covspan { span, bcb }
     }
 }

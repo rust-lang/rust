@@ -7,14 +7,14 @@
 //@ [x86_64] needs-llvm-components:
 //@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
-#[lang="copy"]
-trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
 
 impl Copy for i32 {}
 

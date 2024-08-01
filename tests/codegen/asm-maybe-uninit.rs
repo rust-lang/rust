@@ -4,8 +4,8 @@
 #![crate_type = "rlib"]
 #![allow(asm_sub_register)]
 
-use std::mem::MaybeUninit;
 use std::arch::asm;
+use std::mem::MaybeUninit;
 
 // CHECK-LABEL: @int
 #[no_mangle]

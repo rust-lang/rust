@@ -1,4 +1,5 @@
 //@ test-mir-pass: GVN
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // EMIT_MIR tuple_literal_propagation.main.GVN.diff
 
@@ -10,4 +11,4 @@ fn main() {
 }
 
 #[inline(never)]
-fn consume(_: (u32, u32)) { }
+fn consume(_: (u32, u32)) {}

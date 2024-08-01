@@ -12,11 +12,10 @@ use stdx::never;
 use crate::{
     builder::ParamKind,
     consteval, error_lifetime,
+    generics::generics,
     method_resolution::{self, VisibleFromModule},
-    to_chalk_trait_id,
-    utils::generics,
-    InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
-    TyKind, ValueTyDefId,
+    to_chalk_trait_id, InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty,
+    TyBuilder, TyExt, TyKind, ValueTyDefId,
 };
 
 use super::{ExprOrPatId, InferenceContext};
@@ -42,14 +41,7 @@ impl InferenceContext<'_> {
     fn resolve_value_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<ValuePathResolution> {
         let (value, self_subst) = self.resolve_value_path_inner(path, id)?;
 
-        let value_def = match value {
-            ValueNs::LocalBinding(pat) => match self.result.type_of_binding.get(pat) {
-                Some(ty) => return Some(ValuePathResolution::NonGeneric(ty.clone())),
-                None => {
-                    never!("uninferred pattern?");
-                    return None;
-                }
-            },
+        let value_def: ValueTyDefId = match value {
             ValueNs::FunctionId(it) => it.into(),
             ValueNs::ConstId(it) => it.into(),
             ValueNs::StaticId(it) => it.into(),
@@ -63,48 +55,79 @@ impl InferenceContext<'_> {
 
                 it.into()
             }
+            ValueNs::LocalBinding(pat) => {
+                return match self.result.type_of_binding.get(pat) {
+                    Some(ty) => Some(ValuePathResolution::NonGeneric(ty.clone())),
+                    None => {
+                        never!("uninferred pattern?");
+                        None
+                    }
+                }
+            }
             ValueNs::ImplSelf(impl_id) => {
-                let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
+                let generics = crate::generics::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
-                if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
-                    return Some(ValuePathResolution::GenericDef(
+                return if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
+                    Some(ValuePathResolution::GenericDef(
                         struct_id.into(),
                         struct_id.into(),
                         substs.clone(),
-                    ));
+                    ))
                 } else {
                     // FIXME: report error, invalid Self reference
-                    return None;
-                }
+                    None
+                };
             }
             ValueNs::GenericParam(it) => {
                 return Some(ValuePathResolution::NonGeneric(self.db.const_param_ty(it)))
             }
         };
 
+        let generic_def_id = value_def.to_generic_def_id(self.db);
+        let Some(generic_def) = generic_def_id else {
+            // `value_def` is the kind of item that can never be generic (i.e. statics, at least
+            // currently). We can just skip the binders to get its type.
+            let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
+            stdx::always!(binders.is_empty(Interner), "non-empty binders for non-generic def",);
+            return Some(ValuePathResolution::NonGeneric(ty));
+        };
+
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
         let substs = ctx.substs_from_path(path, value_def, true);
         let substs = substs.as_slice(Interner);
+
+        if let ValueNs::EnumVariantId(_) = value {
+            let mut it = self_subst
+                .as_ref()
+                .map_or(&[][..], |s| s.as_slice(Interner))
+                .iter()
+                .chain(substs)
+                .cloned();
+            let builder = TyBuilder::subst_for_def(self.db, generic_def, None);
+            let substs = builder
+                .fill(|x| {
+                    it.next().unwrap_or_else(|| match x {
+                        ParamKind::Type => {
+                            self.result.standard_types.unknown.clone().cast(Interner)
+                        }
+                        ParamKind::Const(ty) => consteval::unknown_const_as_generic(ty.clone()),
+                        ParamKind::Lifetime => error_lifetime().cast(Interner),
+                    })
+                })
+                .build();
+
+            return Some(ValuePathResolution::GenericDef(value_def, generic_def, substs));
+        }
+
         let parent_substs = self_subst.or_else(|| {
-            let generics = generics(self.db.upcast(), value_def.to_generic_def_id()?);
+            let generics = generics(self.db.upcast(), generic_def_id?);
             let parent_params_len = generics.parent_generics()?.len();
             let parent_args = &substs[substs.len() - parent_params_len..];
             Some(Substitution::from_iter(Interner, parent_args))
         });
         let parent_substs_len = parent_substs.as_ref().map_or(0, |s| s.len(Interner));
         let mut it = substs.iter().take(substs.len() - parent_substs_len).cloned();
-
-        let Some(generic_def) = value_def.to_generic_def_id() else {
-            // `value_def` is the kind of item that can never be generic (i.e. statics, at least
-            // currently). We can just skip the binders to get its type.
-            let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
-            stdx::always!(
-                parent_substs.is_none() && binders.is_empty(Interner),
-                "non-empty binders for non-generic def",
-            );
-            return Some(ValuePathResolution::NonGeneric(ty));
-        };
         let builder = TyBuilder::subst_for_def(self.db, generic_def, parent_substs);
         let substs = builder
             .fill(|x| {

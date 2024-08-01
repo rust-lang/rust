@@ -2,45 +2,57 @@ error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:2:5
    |
 LL |     'l0 while false {}
-   |     ----^^^^^^^^^^^^^^
-   |     |  |
-   |     |  help: add `:` after the label
+   |     ---^^^^^^^^^^^^^^^
+   |     |
    |     the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     'l0: while false {}
+   |        +
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:3:5
    |
 LL |     'l1 for _ in 0..1 {}
-   |     ----^^^^^^^^^^^^^^^^
-   |     |  |
-   |     |  help: add `:` after the label
+   |     ---^^^^^^^^^^^^^^^^^
+   |     |
    |     the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     'l1: for _ in 0..1 {}
+   |        +
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:4:5
    |
 LL |     'l2 loop {}
-   |     ----^^^^^^^
-   |     |  |
-   |     |  help: add `:` after the label
+   |     ---^^^^^^^^
+   |     |
    |     the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     'l2: loop {}
+   |        +
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:5:5
    |
 LL |     'l3 {}
-   |     ----^^
-   |     |  |
-   |     |  help: add `:` after the label
+   |     ---^^^
+   |     |
    |     the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     'l3: {}
+   |        +
 
 error: expected `while`, `for`, `loop` or `{` after a label
   --> $DIR/labeled-no-colon-expr.rs:6:9
@@ -58,12 +70,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:6:9
    |
 LL |     'l4 0;
-   |     ----^
-   |     |  |
-   |     |  help: add `:` after the label
+   |     --- ^
+   |     |
    |     the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     'l4: 0;
+   |        +
 
 error: cannot use a `block` macro fragment here
   --> $DIR/labeled-no-colon-expr.rs:11:17
@@ -86,14 +101,16 @@ error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:14:8
    |
 LL |             'l5 $b;
-   |             ---- help: add `:` after the label
-   |             |
-   |             the label
+   |             --- the label
 ...
 LL |     m!({});
    |        ^^
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |             'l5: $b;
+   |                +
 
 error: aborting due to 8 previous errors
 

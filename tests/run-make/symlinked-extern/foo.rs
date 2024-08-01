@@ -2,4 +2,6 @@
 
 pub struct S;
 
-pub fn foo() -> S { S }
+pub fn foo() -> S {
+    S
+}

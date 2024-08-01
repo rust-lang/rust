@@ -5,9 +5,9 @@ fn constant_eq(s: &str, b: bool) -> u32 {
     // Check that we only test "a" once
 
     // CHECK-LABEL: fn constant_eq(
-    // CHECK: bb0: {
-    // CHECK: [[a:_.*]] = const "a";
-    // CHECK-NOT: {{_.*}} = const "a";
+    // CHECK-NOT: const "a"
+    // CHECK: {{_[0-9]+}} = const "a" as &[u8] (Transmute);
+    // CHECK-NOT: const "a"
     match (s, b) {
         ("a", _) if true => 1,
         ("b", true) => 2,

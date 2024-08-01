@@ -90,8 +90,12 @@ extern "C" {
     fn byval_rect_with_many_huge(a: Huge, b: Huge, c: Huge, d: Huge, e: Huge, f: Huge, g: Rect);
 
     fn byval_rect_with_many_huge64(
-        a: Huge64, b: Huge64, c: Huge64,
-        d: Huge64, e: Huge64, f: Huge64,
+        a: Huge64,
+        b: Huge64,
+        c: Huge64,
+        d: Huge64,
+        e: Huge64,
+        f: Huge64,
         g: Rect,
     );
 

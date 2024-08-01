@@ -1,0 +1,20 @@
+error[E0425]: cannot find function `foo` in module `to_reuse`
+  --> $DIR/ice-issue-124342.rs:7:21
+   |
+LL |     reuse to_reuse::foo { foo }
+   |                     ^^^ not found in `to_reuse`
+
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/ice-issue-124342.rs:7:27
+   |
+LL |     reuse to_reuse::foo { foo }
+   |                           ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |     reuse to_reuse::foo { Self::foo }
+   |                           ++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

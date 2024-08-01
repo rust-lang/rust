@@ -1,29 +1,30 @@
-use crate::errors;
-use crate::thir::cx::region::Scope;
-use crate::thir::cx::Cx;
-use crate::thir::util::UserAnnotatedTyHelpers;
 use itertools::Itertools;
-use rustc_ast::LitKind;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::Idx;
-use rustc_middle::hir::place::Place as HirPlace;
-use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
-use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
+use rustc_middle::hir::place::{
+    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
+};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
-use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
-    self, AdtKind, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs, UserType,
+    self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs,
+    UserType,
 };
-use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_middle::{bug, span_bug};
+use rustc_span::{sym, Span};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use tracing::{debug, info, instrument, trace};
+
+use crate::errors;
+use crate::thir::cx::region::Scope;
+use crate::thir::cx::Cx;
+use crate::thir::util::UserAnnotatedTyHelpers;
 
 impl<'tcx> Cx<'tcx> {
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
@@ -897,14 +898,10 @@ impl<'tcx> Cx<'tcx> {
                 let hir_id = self.tcx.local_def_id_to_hir_id(def_id.expect_local());
                 let generics = self.tcx.generics_of(hir_id.owner);
                 let Some(&index) = generics.param_def_id_to_index.get(&def_id) else {
-                    let guar = self.tcx.dcx().has_errors().unwrap();
-                    // We already errored about a late bound const
-
-                    let lit = self
-                        .tcx
-                        .hir_arena
-                        .alloc(Spanned { span: DUMMY_SP, node: LitKind::Err(guar) });
-                    return ExprKind::Literal { lit, neg: false };
+                    span_bug!(
+                        expr.span,
+                        "Should have already errored about late bound consts: {def_id:?}"
+                    );
                 };
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);
@@ -937,9 +934,11 @@ impl<'tcx> Cx<'tcx> {
                 }
             }
 
-            // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
-            // a constant reference (or constant raw pointer for `static mut`) in MIR
+            // A source Rust `path::to::STATIC` is a place expr like *&ident is.
+            // In THIR, we make them exactly equivalent by inserting the implied *& or *&raw,
+            // but distinguish between &STATIC and &THREAD_LOCAL as they have different semantics
             Res::Def(DefKind::Static { .. }, id) => {
+                // this is &raw for extern static or static mut, and & for other statics
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self
                     .rvalue_scopes

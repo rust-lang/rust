@@ -29,8 +29,8 @@ LL |             Some(entry) => Ok(entry),
    |
 help: consider introducing a named lifetime parameter
    |
-LL |     fn attemptTraverse<'a>(&'a self, room: &'a Room, directionStr: &str) -> Result<&Room, &str> {
-   |                       ++++  ++              ++
+LL |     fn attemptTraverse<'a>(&self, room: &'a Room, directionStr: &str) -> Result<&'a Room, &'a str> {
+   |                       ++++               ++                                      ++        ++
 
 error: aborting due to 2 previous errors
 

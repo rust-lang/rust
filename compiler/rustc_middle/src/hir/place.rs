@@ -1,9 +1,9 @@
-use crate::ty;
-use crate::ty::Ty;
-
 use rustc_hir::HirId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_target::abi::{FieldIdx, VariantIdx};
+
+use crate::ty;
+use crate::ty::Ty;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]

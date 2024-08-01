@@ -3,8 +3,7 @@
 #[macro_use] // import iterator! and forward_iterator!
 mod macros;
 
-use crate::cmp;
-use crate::fmt;
+use super::{from_raw_parts, from_raw_parts_mut};
 use crate::hint::assert_unchecked;
 use crate::iter::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
@@ -13,8 +12,10 @@ use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ptr::{self, without_provenance, without_provenance_mut, NonNull};
+use crate::{cmp, fmt};
 
-use super::{from_raw_parts, from_raw_parts_mut};
+#[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
+impl<T> !Iterator for [T] {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a [T] {
@@ -385,6 +386,9 @@ pub(super) trait SplitIter: DoubleEndedIterator {
 /// ```
 /// let slice = [10, 40, 33, 20];
 /// let mut iter = slice.split(|num| num % 3 == 0);
+/// assert_eq!(iter.next(), Some(&[10, 40][..]));
+/// assert_eq!(iter.next(), Some(&[20][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`split`]: slice::split
@@ -538,6 +542,9 @@ impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
 /// ```
 /// let slice = [10, 40, 33, 20];
 /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
+/// assert_eq!(iter.next(), Some(&[10, 40, 33][..]));
+/// assert_eq!(iter.next(), Some(&[20][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`split_inclusive`]: slice::split_inclusive
@@ -911,7 +918,10 @@ impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> b
 ///
 /// ```
 /// let slice = [11, 22, 33, 0, 44, 55];
-/// let iter = slice.rsplit(|num| *num == 0);
+/// let mut iter = slice.rsplit(|num| *num == 0);
+/// assert_eq!(iter.next(), Some(&[44, 55][..]));
+/// assert_eq!(iter.next(), Some(&[11, 22, 33][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`rsplit`]: slice::rsplit
@@ -1131,7 +1141,10 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
 ///
 /// ```
 /// let slice = [10, 40, 30, 20, 60, 50];
-/// let iter = slice.splitn(2, |num| *num % 3 == 0);
+/// let mut iter = slice.splitn(2, |num| *num % 3 == 0);
+/// assert_eq!(iter.next(), Some(&[10, 40][..]));
+/// assert_eq!(iter.next(), Some(&[20, 60, 50][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`splitn`]: slice::splitn
@@ -1172,7 +1185,10 @@ where
 ///
 /// ```
 /// let slice = [10, 40, 30, 20, 60, 50];
-/// let iter = slice.rsplitn(2, |num| *num % 3 == 0);
+/// let mut iter = slice.rsplitn(2, |num| *num % 3 == 0);
+/// assert_eq!(iter.next(), Some(&[50][..]));
+/// assert_eq!(iter.next(), Some(&[10, 40, 30, 20][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`rsplitn`]: slice::rsplitn
@@ -1297,7 +1313,11 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 ///
 /// ```
 /// let slice = ['r', 'u', 's', 't'];
-/// let iter = slice.windows(2);
+/// let mut iter = slice.windows(2);
+/// assert_eq!(iter.next(), Some(&['r', 'u'][..]));
+/// assert_eq!(iter.next(), Some(&['u', 's'][..]));
+/// assert_eq!(iter.next(), Some(&['s', 't'][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`windows`]: slice::windows
@@ -1445,7 +1465,11 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Windows<'a, T> {
 ///
 /// ```
 /// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.chunks(2);
+/// let mut iter = slice.chunks(2);
+/// assert_eq!(iter.next(), Some(&['l', 'o'][..]));
+/// assert_eq!(iter.next(), Some(&['r', 'e'][..]));
+/// assert_eq!(iter.next(), Some(&['m'][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`chunks`]: slice::chunks
@@ -1816,7 +1840,10 @@ unsafe impl<T> Sync for ChunksMut<'_, T> where T: Sync {}
 ///
 /// ```
 /// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.chunks_exact(2);
+/// let mut iter = slice.chunks_exact(2);
+/// assert_eq!(iter.next(), Some(&['l', 'o'][..]));
+/// assert_eq!(iter.next(), Some(&['r', 'e'][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`chunks_exact`]: slice::chunks_exact
@@ -2160,7 +2187,11 @@ unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 /// #![feature(array_windows)]
 ///
 /// let slice = [0, 1, 2, 3];
-/// let iter = slice.array_windows::<2>();
+/// let mut iter = slice.array_windows::<2>();
+/// assert_eq!(iter.next(), Some(&[0, 1]));
+/// assert_eq!(iter.next(), Some(&[1, 2]));
+/// assert_eq!(iter.next(), Some(&[2, 3]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`array_windows`]: slice::array_windows
@@ -2282,7 +2313,10 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
 /// #![feature(array_chunks)]
 ///
 /// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.array_chunks::<2>();
+/// let mut iter = slice.array_chunks::<2>();
+/// assert_eq!(iter.next(), Some(&['l', 'o']));
+/// assert_eq!(iter.next(), Some(&['r', 'e']));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`array_chunks`]: slice::array_chunks
@@ -2523,7 +2557,11 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunksMu
 ///
 /// ```
 /// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.rchunks(2);
+/// let mut iter = slice.rchunks(2);
+/// assert_eq!(iter.next(), Some(&['e', 'm'][..]));
+/// assert_eq!(iter.next(), Some(&['o', 'r'][..]));
+/// assert_eq!(iter.next(), Some(&['l'][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`rchunks`]: slice::rchunks
@@ -2889,7 +2927,10 @@ unsafe impl<T> Sync for RChunksMut<'_, T> where T: Sync {}
 ///
 /// ```
 /// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.rchunks_exact(2);
+/// let mut iter = slice.rchunks_exact(2);
+/// assert_eq!(iter.next(), Some(&['e', 'm'][..]));
+/// assert_eq!(iter.next(), Some(&['o', 'r'][..]));
+/// assert_eq!(iter.next(), None);
 /// ```
 ///
 /// [`rchunks_exact`]: slice::rchunks_exact

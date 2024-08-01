@@ -1,9 +1,9 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
 use rustc_session::config::OptLevel;
+use tracing::instrument;
 
-use super::FunctionCx;
-use super::LocalRef;
+use super::{FunctionCx, LocalRef};
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

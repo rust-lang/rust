@@ -3,9 +3,7 @@
 // much sense at the moment.
 //@ ignore-test
 
-//
-// We specify incremental here because we want to test the partitioning for
-//@ incremental compilation
+// We specify incremental here because we want to test the partitioning for incremental compilation
 //@ incremental
 //@ compile-flags:-Zprint-mono-items=lazy
 
@@ -17,7 +15,7 @@ struct SomeType;
 struct SomeGenericType<T1, T2>(T1, T2);
 
 mod mod1 {
-    use super::{SomeType, SomeGenericType};
+    use super::{SomeGenericType, SomeType};
 
     // Even though the impl is in `mod1`, the methods should end up in the
     // parent module, since that is where their self-type is.
@@ -42,8 +40,7 @@ trait Trait {
 
 // We provide an implementation of `Trait` for all types. The corresponding
 // monomorphizations should end up in whichever module the concrete `T` is.
-impl<T> Trait for T
-{
+impl<T> Trait for T {
     fn foo(&self) {}
 }
 

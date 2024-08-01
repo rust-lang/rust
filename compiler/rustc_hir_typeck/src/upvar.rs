@@ -30,9 +30,9 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use super::FnCtxt;
+use std::iter;
 
-use crate::expr_use_visitor as euv;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
@@ -47,15 +47,14 @@ use rustc_middle::ty::{
     self, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, UpvarArgs,
     UpvarCapture,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::sym;
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{sym, BytePos, Pos, Span, Symbol};
+use rustc_target::abi::FIRST_VARIANT;
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_target::abi::FIRST_VARIANT;
-
-use std::iter;
+use super::FnCtxt;
+use crate::expr_use_visitor as euv;
 
 /// Describe the relationship between the paths of two places
 /// eg:
@@ -203,6 +202,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fake_reads: Default::default(),
         };
 
+        let _ = euv::ExprUseVisitor::new(
+            &FnCtxt::new(self, self.tcx.param_env(closure_def_id), closure_def_id),
+            &mut delegate,
+        )
+        .consume_body(body);
+
+        // There are several curious situations with coroutine-closures where
+        // analysis is too aggressive with borrows when the coroutine-closure is
+        // marked `move`. Specifically:
+        //
+        // 1. If the coroutine-closure was inferred to be `FnOnce` during signature
+        // inference, then it's still possible that we try to borrow upvars from
+        // the coroutine-closure because they are not used by the coroutine body
+        // in a way that forces a move. See the test:
+        // `async-await/async-closures/force-move-due-to-inferred-kind.rs`.
+        //
+        // 2. If the coroutine-closure is forced to be `FnOnce` due to the way it
+        // uses its upvars, but not *all* upvars would force the closure to `FnOnce`.
+        // See the test: `async-await/async-closures/force-move-due-to-actually-fnonce.rs`.
+        //
+        // This would lead to an impossible to satisfy situation, since `AsyncFnOnce`
+        // coroutine bodies can't borrow from their parent closure. To fix this,
+        // we force the inner coroutine to also be `move`. This only matters for
+        // coroutine-closures that are `move` since otherwise they themselves will
+        // be borrowing from the outer environment, so there's no self-borrows occuring.
+        //
+        // One *important* note is that we do a call to `process_collected_capture_information`
+        // to eagerly test whether the coroutine would end up `FnOnce`, but we do this
+        // *before* capturing all the closure args by-value below, since that would always
+        // cause the analysis to return `FnOnce`.
+        if let UpvarArgs::Coroutine(..) = args
+            && let hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) =
+                self.tcx.coroutine_kind(closure_def_id).expect("coroutine should have kind")
+            && let parent_hir_id =
+                self.tcx.local_def_id_to_hir_id(self.tcx.local_parent(closure_def_id))
+            && let parent_ty = self.node_ty(parent_hir_id)
+            && let hir::CaptureBy::Value { move_kw } =
+                self.tcx.hir_node(parent_hir_id).expect_closure().capture_clause
+        {
+            // (1.) Closure signature inference forced this closure to `FnOnce`.
+            if let Some(ty::ClosureKind::FnOnce) = self.closure_kind(parent_ty) {
+                capture_clause = hir::CaptureBy::Value { move_kw };
+            }
+            // (2.) The way that the closure uses its upvars means it's `FnOnce`.
+            else if let (_, ty::ClosureKind::FnOnce, _) = self
+                .process_collected_capture_information(
+                    capture_clause,
+                    &delegate.capture_information,
+                )
+            {
+                capture_clause = hir::CaptureBy::Value { move_kw };
+            }
+        }
+
         // As noted in `lower_coroutine_body_with_moved_arguments`, we default the capture mode
         // to `ByRef` for the `async {}` block internal to async fns/closure. This means
         // that we would *not* be moving all of the parameters into the async block by default.
@@ -252,37 +305,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        euv::ExprUseVisitor::new(
-            &mut delegate,
-            &self.infcx,
-            closure_def_id,
-            self.param_env,
-            &self.typeck_results.borrow(),
-        )
-        .consume_body(body);
-
-        // If a coroutine is comes from a coroutine-closure that is `move`, but
-        // the coroutine-closure was inferred to be `FnOnce` during signature
-        // inference, then it's still possible that we try to borrow upvars from
-        // the coroutine-closure because they are not used by the coroutine body
-        // in a way that forces a move.
-        //
-        // This would lead to an impossible to satisfy situation, since `AsyncFnOnce`
-        // coroutine bodies can't borrow from their parent closure. To fix this,
-        // we force the inner coroutine to also be `move`. This only matters for
-        // coroutine-closures that are `move` since otherwise they themselves will
-        // be borrowing from the outer environment, so there's no self-borrows occuring.
-        if let UpvarArgs::Coroutine(..) = args
-            && let hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) =
-                self.tcx.coroutine_kind(closure_def_id).expect("coroutine should have kind")
-            && let parent_hir_id =
-                self.tcx.local_def_id_to_hir_id(self.tcx.local_parent(closure_def_id))
-            && let parent_ty = self.node_ty(parent_hir_id)
-            && let Some(ty::ClosureKind::FnOnce) = self.closure_kind(parent_ty)
-        {
-            capture_clause = self.tcx.hir_node(parent_hir_id).expect_closure().capture_clause;
-        }
-
         debug!(
             "For closure={:?}, capture_information={:#?}",
             closure_def_id, delegate.capture_information
@@ -291,7 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
 
         let (capture_information, closure_kind, origin) = self
-            .process_collected_capture_information(capture_clause, delegate.capture_information);
+            .process_collected_capture_information(capture_clause, &delegate.capture_information);
 
         self.compute_min_captures(closure_def_id, capture_information, span);
 
@@ -421,7 +443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         [],
                         tupled_upvars_ty_for_borrow,
                         false,
-                        hir::Unsafety::Normal,
+                        hir::Safety::Safe,
                         rustc_target::spec::abi::Abi::Rust,
                     ),
                     self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
@@ -547,13 +569,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn process_collected_capture_information(
         &self,
         capture_clause: hir::CaptureBy,
-        capture_information: InferredCaptureInformation<'tcx>,
+        capture_information: &InferredCaptureInformation<'tcx>,
     ) -> (InferredCaptureInformation<'tcx>, ty::ClosureKind, Option<(Span, Place<'tcx>)>) {
         let mut closure_kind = ty::ClosureKind::LATTICE_BOTTOM;
         let mut origin: Option<(Span, Place<'tcx>)> = None;
 
         let processed = capture_information
-            .into_iter()
+            .iter()
+            .cloned()
             .map(|(place, mut capture_info)| {
                 // Apply rules for safety before inferring closure kind
                 let (place, capture_kind) =
@@ -930,8 +953,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
                 closure_head_span,
-                reasons.migration_message(),
                 |lint| {
+                    lint.primary_message(reasons.migration_message());
+
                     for NeededMigration { var_hir_id, diagnostics_info } in &need_migrations {
                         // Labels all the usage of the captured variable and why they are responsible
                         // for migration being needed

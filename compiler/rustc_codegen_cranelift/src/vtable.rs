@@ -59,7 +59,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 
         if let ty::Ref(_, ty, _) = arg.layout().ty.kind() {
             if ty.is_dyn_star() {
-                let inner_layout = fx.layout_of(arg.layout().ty.builtin_deref(true).unwrap().ty);
+                let inner_layout = fx.layout_of(arg.layout().ty.builtin_deref(true).unwrap());
                 let dyn_star = CPlace::for_ptr(Pointer::new(arg.load_scalar(fx)), inner_layout);
                 let ptr = dyn_star.place_field(fx, FieldIdx::ZERO).to_ptr();
                 let vtable =

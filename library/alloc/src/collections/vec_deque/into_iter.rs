@@ -1,10 +1,11 @@
 use core::iter::{FusedIterator, TrustedLen};
+use core::mem::MaybeUninit;
 use core::num::NonZero;
-use core::{array, fmt, mem::MaybeUninit, ops::Try, ptr};
-
-use crate::alloc::{Allocator, Global};
+use core::ops::Try;
+use core::{array, fmt, ptr};
 
 use super::VecDeque;
+use crate::alloc::{Allocator, Global};
 
 /// An owning iterator over the elements of a `VecDeque`.
 ///
@@ -132,7 +133,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     fn next_chunk<const N: usize>(
         &mut self,
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
-        let mut raw_arr = MaybeUninit::uninit_array();
+        let mut raw_arr = [const { MaybeUninit::uninit() }; N];
         let raw_arr_ptr = raw_arr.as_mut_ptr().cast();
         let (head, tail) = self.inner.as_slices();
 

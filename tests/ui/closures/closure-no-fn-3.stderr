@@ -3,6 +3,12 @@ error[E0605]: non-primitive cast: `{closure@$DIR/closure-no-fn-3.rs:6:28: 6:30}`
    |
 LL |     let baz: fn() -> u8 = (|| { b }) as fn() -> u8;
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+   |
+note: closures can only be coerced to `fn` types if they do not capture any variables
+  --> $DIR/closure-no-fn-3.rs:6:33
+   |
+LL |     let baz: fn() -> u8 = (|| { b }) as fn() -> u8;
+   |                                 ^ `b` captured here
 
 error: aborting due to 1 previous error
 

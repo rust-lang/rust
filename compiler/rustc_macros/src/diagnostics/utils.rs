@@ -1,20 +1,21 @@
-use crate::diagnostics::error::{
-    span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
-};
-use proc_macro::Span;
-use proc_macro2::{Ident, TokenStream};
-use quote::{format_ident, quote, ToTokens};
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::str::FromStr;
+
+use proc_macro::Span;
+use proc_macro2::{Ident, TokenStream};
+use quote::{format_ident, quote, ToTokens};
 use syn::meta::ParseNestedMeta;
 use syn::punctuated::Punctuated;
-use syn::{parenthesized, LitStr, Path, Token};
-use syn::{spanned::Spanned, Attribute, Field, Meta, Type, TypeTuple};
+use syn::spanned::Spanned;
+use syn::{parenthesized, Attribute, Field, LitStr, Meta, Path, Token, Type, TypeTuple};
 use synstructure::{BindingInfo, VariantInfo};
 
 use super::error::invalid_attr;
+use crate::diagnostics::error::{
+    span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
+};
 
 thread_local! {
     pub(crate) static CODE_IDENT_COUNT: RefCell<u32> = RefCell::new(0);
@@ -575,8 +576,12 @@ pub(super) enum SubdiagnosticKind {
     Label,
     /// `#[note(...)]`
     Note,
+    /// `#[note_once(...)]`
+    NoteOnce,
     /// `#[help(...)]`
     Help,
+    /// `#[help_once(...)]`
+    HelpOnce,
     /// `#[warning(...)]`
     Warn,
     /// `#[suggestion{,_short,_hidden,_verbose}]`
@@ -624,7 +629,9 @@ impl SubdiagnosticVariant {
         let mut kind = match name {
             "label" => SubdiagnosticKind::Label,
             "note" => SubdiagnosticKind::Note,
+            "note_once" => SubdiagnosticKind::NoteOnce,
             "help" => SubdiagnosticKind::Help,
+            "help_once" => SubdiagnosticKind::HelpOnce,
             "warning" => SubdiagnosticKind::Warn,
             _ => {
                 // Recover old `#[(multipart_)suggestion_*]` syntaxes
@@ -682,7 +689,9 @@ impl SubdiagnosticVariant {
                 match kind {
                     SubdiagnosticKind::Label
                     | SubdiagnosticKind::Note
+                    | SubdiagnosticKind::NoteOnce
                     | SubdiagnosticKind::Help
+                    | SubdiagnosticKind::HelpOnce
                     | SubdiagnosticKind::Warn
                     | SubdiagnosticKind::MultipartSuggestion { .. } => {
                         return Ok(Some(SubdiagnosticVariant { kind, slug: None, no_span: false }));
@@ -836,7 +845,9 @@ impl SubdiagnosticVariant {
             }
             SubdiagnosticKind::Label
             | SubdiagnosticKind::Note
+            | SubdiagnosticKind::NoteOnce
             | SubdiagnosticKind::Help
+            | SubdiagnosticKind::HelpOnce
             | SubdiagnosticKind::Warn => {}
         }
 
@@ -849,7 +860,9 @@ impl quote::IdentFragment for SubdiagnosticKind {
         match self {
             SubdiagnosticKind::Label => write!(f, "label"),
             SubdiagnosticKind::Note => write!(f, "note"),
+            SubdiagnosticKind::NoteOnce => write!(f, "note_once"),
             SubdiagnosticKind::Help => write!(f, "help"),
+            SubdiagnosticKind::HelpOnce => write!(f, "help_once"),
             SubdiagnosticKind::Warn => write!(f, "warn"),
             SubdiagnosticKind::Suggestion { .. } => write!(f, "suggestions_with_style"),
             SubdiagnosticKind::MultipartSuggestion { .. } => {

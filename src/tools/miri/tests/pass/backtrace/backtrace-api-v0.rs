@@ -27,7 +27,7 @@ fn func_d() -> Box<[*mut ()]> {
 fn main() {
     let mut seen_main = false;
     let frames = func_a();
-    for frame in frames.into_iter() {
+    for frame in frames.iter() {
         let miri_frame = unsafe { miri_resolve_frame(*frame, 0) };
         let name = String::from_utf8(miri_frame.name.into()).unwrap();
         let filename = String::from_utf8(miri_frame.filename.into()).unwrap();

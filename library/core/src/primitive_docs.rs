@@ -1467,22 +1467,26 @@ mod prim_usize {}
 /// For all types, `T: ?Sized`, and for all `t: &T` or `t: &mut T`, when such values cross an API
 /// boundary, the following invariants must generally be upheld:
 ///
+/// * `t` is non-null
 /// * `t` is aligned to `align_of_val(t)`
-/// * `t` is dereferenceable for `size_of_val(t)` many bytes
+/// * if `size_of_val(t) > 0`, then `t` is dereferenceable for `size_of_val(t)` many bytes
 ///
 /// If `t` points at address `a`, being "dereferenceable" for N bytes means that the memory range
 /// `[a, a + N)` is all contained within a single [allocated object].
 ///
 /// For instance, this means that unsafe code in a safe function may assume these invariants are
 /// ensured of arguments passed by the caller, and it may assume that these invariants are ensured
-/// of return values from any safe functions it calls. In most cases, the inverse is also true:
-/// unsafe code must not violate these invariants when passing arguments to safe functions or
-/// returning values from safe functions; such violations may result in undefined behavior. Where
-/// exceptions to this latter requirement exist, they will be called out explicitly in documentation.
+/// of return values from any safe functions it calls.
+///
+/// For the other direction, things are more complicated: when unsafe code passes arguments
+/// to safe functions or returns values from safe functions, they generally must *at least*
+/// not violate these invariants. The full requirements are stronger, as the reference generally
+/// must point to data that is safe to use at type `T`.
 ///
 /// It is not decided yet whether unsafe code may violate these invariants temporarily on internal
 /// data. As a consequence, unsafe code which violates these invariants temporarily on internal data
-/// may become unsound in future versions of Rust depending on how this question is decided.
+/// may be unsound or become unsound in future versions of Rust depending on how this question is
+/// decided.
 ///
 /// [allocated object]: ptr#allocated-object
 #[stable(feature = "rust1", since = "1.0.0")]

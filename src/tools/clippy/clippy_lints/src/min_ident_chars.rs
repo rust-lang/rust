@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
 use rustc_data_structures::fx::FxHashSet;
@@ -12,14 +13,13 @@ use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for idents which comprise of a single letter.
+    /// Checks for identifiers which consist of a single character (or fewer than the configured threshold).
     ///
     /// Note: This lint can be very noisy when enabled; it may be desirable to only enable it
     /// temporarily.
     ///
-    /// ### Why is this bad?
-    /// In many cases it's not, but at times it can severely hinder readability. Some codebases may
-    /// wish to disallow this to improve readability.
+    /// ### Why restrict this?
+    /// To improve readability by requiring that every variable has a name more specific than a single letter can be.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -40,13 +40,19 @@ declare_clippy_lint! {
 }
 impl_lint_pass!(MinIdentChars => [MIN_IDENT_CHARS]);
 
-#[derive(Clone)]
 pub struct MinIdentChars {
-    pub allowed_idents_below_min_chars: FxHashSet<String>,
-    pub min_ident_chars_threshold: u64,
+    allowed_idents_below_min_chars: &'static FxHashSet<String>,
+    min_ident_chars_threshold: u64,
 }
 
 impl MinIdentChars {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            allowed_idents_below_min_chars: &conf.allowed_idents_below_min_chars,
+            min_ident_chars_threshold: conf.min_ident_chars_threshold,
+        }
+    }
+
     #[expect(clippy::cast_possible_truncation)]
     fn is_ident_too_short(&self, cx: &LateContext<'_>, str: &str, span: Span) -> bool {
         !in_external_macro(cx.sess(), span)
@@ -133,11 +139,11 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
                 return;
             }
 
-            // `struct Awa<T>(T)`
-            //                ^
+            // `struct Array<T, const N: usize>([T; N])`
+            //                                   ^  ^
             if let Node::PathSegment(path) = node {
                 if let Res::Def(def_kind, ..) = path.res
-                    && let DefKind::TyParam = def_kind
+                    && let DefKind::TyParam | DefKind::ConstParam = def_kind
                 {
                     return;
                 }

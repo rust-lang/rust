@@ -1,6 +1,7 @@
-use semver::Version;
 use std::path::Path;
 use std::process::{Command, Stdio};
+
+use semver::Version;
 
 pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let cargo_list = Command::new(cargo).args(["install", "--list"]).stdout(Stdio::piped()).spawn();
@@ -52,7 +53,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
             );
         }
     } else {
-        return tidy_error!(bad, "failed to check version of `x`: {}", cargo_list.status);
+        tidy_error!(bad, "failed to check version of `x`: {}", cargo_list.status)
     }
 }
 

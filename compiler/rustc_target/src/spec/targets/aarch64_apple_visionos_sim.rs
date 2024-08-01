@@ -1,9 +1,9 @@
-use crate::spec::base::apple::{opts, visionos_sim_llvm_target, Arch};
+use crate::spec::base::apple::{opts, visionos_sim_llvm_target, Arch, TargetAbi};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let arch = Arch::Arm64_sim;
-    let mut base = opts("visionos", arch);
+    let arch = Arch::Arm64;
+    let mut base = opts("visionos", arch, TargetAbi::Simulator);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {

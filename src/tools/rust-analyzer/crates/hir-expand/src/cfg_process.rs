@@ -189,8 +189,8 @@ pub(crate) fn process_cfg_attrs(
     // FIXME: #[cfg_eval] is not implemented. But it is not stable yet
     let is_derive = match loc.def.kind {
         MacroDefKind::BuiltInDerive(..)
-        | MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _) => true,
-        MacroDefKind::BuiltInAttr(expander, _) => expander.is_derive(),
+        | MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive) => true,
+        MacroDefKind::BuiltInAttr(_, expander) => expander.is_derive(),
         _ => false,
     };
     if !is_derive {

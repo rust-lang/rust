@@ -10,7 +10,6 @@ LL |     t.clone()
    |
    = note: expected type parameter `_`
                    found reference `&_`
-   = note: the caller chooses a type for `T` which can be different from `&T`
 note: `T` does not implement `Clone`, so `&T` was cloned instead
   --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:3:5
    |

@@ -1,6 +1,8 @@
 #![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
 #![warn(clippy::cast_lossless)]
 
+// FIXME(f16_f128): add tests for these types once const casting is available
+
 type F32 = f32;
 type F64 = f64;
 

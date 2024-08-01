@@ -3,7 +3,10 @@
 use hir::AsAssocItem;
 use ide_db::{base_db::FilePosition, FxHashMap};
 use parsing::Placeholder;
-use syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
+use syntax::{
+    ast::{self, HasGenericArgs},
+    SmolStr, SyntaxKind, SyntaxNode, SyntaxToken,
+};
 
 use crate::{errors::error, parsing, SsrError};
 

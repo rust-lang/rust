@@ -2,7 +2,7 @@
 // Regression test for issue #105170.
 //
 //@ needs-asm-support
-//@ needs-profiler-support
+//@ compile-flags: -Zno-profiler-runtime
 //@ compile-flags: -Cinstrument-coverage
 #![crate_type = "lib"]
 #![feature(naked_functions)]

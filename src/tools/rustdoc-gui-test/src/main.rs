@@ -1,10 +1,11 @@
-use build_helper::util::try_run;
-use compiletest::header::TestProps;
-use config::Config;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 use std::{env, fs};
+
+use build_helper::util::try_run;
+use compiletest::header::TestProps;
+use config::Config;
 
 mod config;
 
@@ -123,9 +124,7 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
                     cargo.env("RUSTDOCFLAGS", test_props.compile_flags.join(" "));
                 }
 
-                if let Some(flags) = &test_props.run_flags {
-                    cargo.arg(flags);
-                }
+                cargo.args(&test_props.run_flags);
             }
 
             if try_run(&mut cargo, config.verbose).is_err() {

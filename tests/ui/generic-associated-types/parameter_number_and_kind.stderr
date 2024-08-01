@@ -2,7 +2,7 @@ error[E0107]: associated type takes 1 lifetime argument but 2 lifetime arguments
   --> $DIR/parameter_number_and_kind.rs:11:24
    |
 LL |     type FErr1 = Self::E<'static, 'static>;
-   |                        ^          ------- help: remove this lifetime argument
+   |                        ^        --------- help: remove the lifetime argument
    |                        |
    |                        expected 1 lifetime argument
    |
@@ -32,7 +32,7 @@ error[E0107]: associated type takes 1 generic argument but 2 generic arguments w
   --> $DIR/parameter_number_and_kind.rs:14:27
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>;
-   |                           ^             --- help: remove this generic argument
+   |                           ^           ----- help: remove the unnecessary generic argument
    |                           |
    |                           expected 1 generic argument
    |

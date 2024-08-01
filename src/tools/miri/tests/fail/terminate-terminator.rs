@@ -7,8 +7,6 @@
 // Enable MIR inlining to ensure that `TerminatorKind::UnwindTerminate` is generated
 // instead of just `UnwindAction::Terminate`.
 
-#![feature(c_unwind)]
-
 struct Foo;
 
 impl Drop for Foo {

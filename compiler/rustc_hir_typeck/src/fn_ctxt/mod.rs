@@ -5,28 +5,27 @@ mod checks;
 mod inspect_obligations;
 mod suggestions;
 
-use rustc_errors::ErrorGuaranteed;
+use std::cell::{Cell, RefCell};
+use std::ops::Deref;
+
+use hir::def_id::CRATE_DEF_ID;
+use rustc_errors::DiagCtxtHandle;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
+use rustc_infer::infer;
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
+use rustc_session::Session;
+use rustc_span::symbol::Ident;
+use rustc_span::{self, sym, Span, DUMMY_SP};
+use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
+use rustc_trait_selection::error_reporting::TypeErrCtxt;
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
 use crate::fn_ctxt::checks::DivergingBlockBehavior;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
-use hir::def_id::CRATE_DEF_ID;
-use rustc_errors::DiagCtxt;
-use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::infer;
-use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
-use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
-use rustc_session::Session;
-use rustc_span::symbol::Ident;
-use rustc_span::{self, sym, Span, DUMMY_SP};
-use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
-
-use std::cell::{Cell, RefCell};
-use std::ops::Deref;
 
 /// The `FnCtxt` stores type-checking context needed to type-check bodies of
 /// functions, closures, and `const`s, including performing type inference
@@ -124,7 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         body_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
         let (diverging_fallback_behavior, diverging_block_behavior) =
-            parse_never_type_options_attr(root_ctxt.tcx);
+            never_type_behavior(root_ctxt.tcx);
         FnCtxt {
             body_id,
             param_env,
@@ -145,8 +144,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
-        self.tcx.dcx()
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'a> {
+        self.root_ctxt.infcx.dcx()
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
@@ -154,7 +153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
-        self.cause(span, ObligationCauseCode::MiscObligation)
+        self.cause(span, ObligationCauseCode::Misc)
     }
 
     pub fn sess(&self) -> &Session {
@@ -163,9 +162,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Creates an `TypeErrCtxt` with a reference to the in-progress
     /// `TypeckResults` which is used for diagnostics.
-    /// Use [`InferCtxt::err_ctxt`] to start one without a `TypeckResults`.
+    /// Use [`InferCtxtErrorExt::err_ctxt`] to start one without a `TypeckResults`.
     ///
-    /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
+    /// [`InferCtxtErrorExt::err_ctxt`]: rustc_trait_selection::error_reporting::InferCtxtErrorExt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
         let mut sub_relations = SubRelations::default();
         sub_relations.add_constraints(
@@ -213,25 +212,25 @@ impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> DefId {
-        self.body_id.to_def_id()
+    fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.root_ctxt.dcx()
     }
 
-    fn allow_infer(&self) -> bool {
-        true
+    fn item_def_id(&self) -> LocalDefId {
+        self.body_id
     }
 
-    fn re_infer(&self, def: Option<&ty::GenericParamDef>, span: Span) -> Option<ty::Region<'tcx>> {
-        let v = match def {
-            Some(def) => infer::RegionParameterDefinition(span, def.name),
-            None => infer::MiscVariable(span),
+    fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
+        let v = match reason {
+            RegionInferReason::Param(def) => infer::RegionParameterDefinition(span, def.name),
+            _ => infer::MiscVariable(span),
         };
-        Some(self.next_region_var(v))
+        self.next_region_var(v)
     }
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
@@ -241,12 +240,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn ct_infer(
-        &self,
-        ty: Ty<'tcx>,
-        param: Option<&ty::GenericParamDef>,
-        span: Span,
-    ) -> Const<'tcx> {
+    fn ct_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         // FIXME ideally this shouldn't use unwrap
         match param {
             Some(
@@ -256,7 +250,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
                 },
             ) => self.var_for_effect(param).as_const().unwrap(),
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
-            None => self.next_const_var(ty, span),
+            None => self.next_const_var(span),
         }
     }
 
@@ -284,6 +278,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
                     }
                 }),
             ),
+            effects_min_tys: ty::List::empty(),
         }
     }
 
@@ -307,7 +302,7 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
             trait_ref.args,
         );
 
-        Ty::new_projection(self.tcx(), item_def_id, item_args)
+        Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
@@ -347,8 +342,20 @@ impl<'a, 'tcx> HirTyLowerer<'tcx> for FnCtxt<'a, 'tcx> {
         Some(&self.infcx)
     }
 
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
-        self.infcx.set_tainted_by_errors(e)
+    fn lower_fn_sig(
+        &self,
+        decl: &rustc_hir::FnDecl<'tcx>,
+        _generics: Option<&rustc_hir::Generics<'_>>,
+        _hir_id: rustc_hir::HirId,
+        _hir_ty: Option<&hir::Ty<'_>>,
+    ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
+        let input_tys = decl.inputs.iter().map(|a| self.lowerer().lower_arg_ty(a, None)).collect();
+
+        let output_ty = match decl.output {
+            hir::FnRetTy::Return(output) => self.lowerer().lower_ty(output),
+            hir::FnRetTy::DefaultReturn(..) => self.tcx().types.unit,
+        };
+        (input_tys, output_ty)
     }
 }
 
@@ -380,11 +387,33 @@ impl<'tcx> LoweredTy<'tcx> {
     }
 }
 
+fn never_type_behavior(tcx: TyCtxt<'_>) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
+    let (fallback, block) = parse_never_type_options_attr(tcx);
+    let fallback = fallback.unwrap_or_else(|| default_fallback(tcx));
+    let block = block.unwrap_or_default();
+
+    (fallback, block)
+}
+
+/// Returns the default fallback which is used when there is no explicit override via `#![never_type_options(...)]`.
+fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
+    // Edition 2024: fallback to `!`
+    if tcx.sess.edition().at_least_rust_2024() {
+        return DivergingFallbackBehavior::ToNever;
+    }
+
+    // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
+    if tcx.features().never_type_fallback {
+        return DivergingFallbackBehavior::ContextDependent;
+    }
+
+    // Otherwise: fallback to `()`
+    DivergingFallbackBehavior::ToUnit
+}
+
 fn parse_never_type_options_attr(
     tcx: TyCtxt<'_>,
-) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
-    use DivergingFallbackBehavior::*;
-
+) -> (Option<DivergingFallbackBehavior>, Option<DivergingBlockBehavior>) {
     // Error handling is dubious here (unwraps), but that's probably fine for an internal attribute.
     // Just don't write incorrect attributes <3
 
@@ -400,10 +429,10 @@ fn parse_never_type_options_attr(
         if item.has_name(sym::fallback) && fallback.is_none() {
             let mode = item.value_str().unwrap();
             match mode {
-                sym::unit => fallback = Some(FallbackToUnit),
-                sym::niko => fallback = Some(FallbackToNiko),
-                sym::never => fallback = Some(FallbackToNever),
-                sym::no => fallback = Some(NoFallback),
+                sym::unit => fallback = Some(DivergingFallbackBehavior::ToUnit),
+                sym::niko => fallback = Some(DivergingFallbackBehavior::ContextDependent),
+                sym::never => fallback = Some(DivergingFallbackBehavior::ToNever),
+                sym::no => fallback = Some(DivergingFallbackBehavior::NoFallback),
                 _ => {
                     tcx.dcx().span_err(item.span(), format!("unknown never type fallback mode: `{mode}` (supported: `unit`, `niko`, `never` and `no`)"));
                 }
@@ -431,12 +460,6 @@ fn parse_never_type_options_attr(
             ),
         );
     }
-
-    let fallback = fallback.unwrap_or_else(|| {
-        if tcx.features().never_type_fallback { FallbackToNiko } else { FallbackToUnit }
-    });
-
-    let block = block.unwrap_or_default();
 
     (fallback, block)
 }

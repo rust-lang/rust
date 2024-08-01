@@ -6,11 +6,11 @@ use crate::{
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
     SsrMatches,
 };
-use hir::Semantics;
+use hir::{ImportPathConfig, Semantics};
 use ide_db::{base_db::FileRange, FxHashMap};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
-    ast::{self, AstNode, AstToken},
+    ast::{self, AstNode, AstToken, HasGenericArgs},
     SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
@@ -575,7 +575,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                             .resolve_method_call_as_callable(code)
                             .and_then(|callable| {
                                 let (self_param, _) = callable.receiver_param(self.sema.db)?;
-                                Some(self_param.source(self.sema.db)?.value.kind())
+                                Some(self.sema.source(self_param)?.value.kind())
                             })
                             .unwrap_or(ast::SelfParamKind::Owned);
                     }
@@ -663,10 +663,14 @@ impl Match {
             .module();
         for (path, resolved_path) in &template.resolved_paths {
             if let hir::PathResolution::Def(module_def) = resolved_path.resolution {
-                let mod_path =
-                    module.find_use_path(sema.db, module_def, false, true).ok_or_else(|| {
-                        match_error!("Failed to render template path `{}` at match location")
-                    })?;
+                let cfg = ImportPathConfig {
+                    prefer_no_std: false,
+                    prefer_prelude: true,
+                    prefer_absolute: false,
+                };
+                let mod_path = module.find_path(sema.db, module_def, cfg).ok_or_else(|| {
+                    match_error!("Failed to render template path `{}` at match location")
+                })?;
                 self.rendered_template_paths.insert(path.clone(), mod_path);
             }
         }

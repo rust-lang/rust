@@ -1,14 +1,11 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
+use crate::intrinsics::transmute_unchecked;
+use crate::iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
+use crate::mem::MaybeUninit;
 use crate::num::NonZero;
-use crate::{
-    fmt,
-    intrinsics::transmute_unchecked,
-    iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce},
-    mem::MaybeUninit,
-    ops::{IndexRange, Range},
-    ptr,
-};
+use crate::ops::{IndexRange, Range};
+use crate::{fmt, ptr};
 
 /// A by-value [array] iterator.
 #[stable(feature = "array_value_iter", since = "1.51.0")]
@@ -38,7 +35,7 @@ pub struct IntoIter<T, const N: usize> {
     alive: IndexRange,
 }
 
-// Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
+// Note: the `#[rustc_skip_during_method_dispatch(array)]` on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2021,
 // so those calls will still resolve to the slice implementation, by reference.
 #[stable(feature = "array_into_iter_impl", since = "1.53.0")]
@@ -47,8 +44,10 @@ impl<T, const N: usize> IntoIterator for [T; N] {
     type IntoIter = IntoIter<T, N>;
 
     /// Creates a consuming iterator, that is, one that moves each value out of
-    /// the array (from start to end). The array cannot be used after calling
-    /// this unless `T` implements `Copy`, so the whole array is copied.
+    /// the array (from start to end).
+    ///
+    /// The array cannot be used after calling this unless `T` implements
+    /// `Copy`, so the whole array is copied.
     ///
     /// Arrays have special behavior when calling `.into_iter()` prior to the
     /// 2021 edition -- see the [array] Editions section for more information.
@@ -101,7 +100,6 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// ```
     /// #![feature(array_into_iter_constructors)]
     /// #![feature(maybe_uninit_uninit_array_transpose)]
-    /// #![feature(maybe_uninit_uninit_array)]
     /// use std::array::IntoIter;
     /// use std::mem::MaybeUninit;
     ///
@@ -111,7 +109,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// fn next_chunk<T: Copy, const N: usize>(
     ///     it: &mut impl Iterator<Item = T>,
     /// ) -> Result<[T; N], IntoIter<T, N>> {
-    ///     let mut buffer = MaybeUninit::uninit_array();
+    ///     let mut buffer = [const { MaybeUninit::uninit() }; N];
     ///     let mut i = 0;
     ///     while i < N {
     ///         match it.next() {
@@ -203,7 +201,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
     #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
     pub const fn empty() -> Self {
-        let buffer = MaybeUninit::uninit_array();
+        let buffer = [const { MaybeUninit::uninit() }; N];
         let initialized = 0..0;
 
         // SAFETY: We're telling it that none of the elements are initialized,
@@ -405,7 +403,8 @@ impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
     fn clone(&self) -> Self {
         // Note, we don't really need to match the exact same alive range, so
         // we can just clone into offset 0 regardless of where `self` is.
-        let mut new = Self { data: MaybeUninit::uninit_array(), alive: IndexRange::zero_to(0) };
+        let mut new =
+            Self { data: [const { MaybeUninit::uninit() }; N], alive: IndexRange::zero_to(0) };
 
         // Clone all alive elements.
         for (src, dst) in iter::zip(self.as_slice(), &mut new.data) {

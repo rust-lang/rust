@@ -2,7 +2,7 @@ error[E0107]: struct takes at most 2 generic arguments but 3 generic arguments w
   --> $DIR/generic-impl-more-params-with-defaults.rs:13:5
    |
 LL |     Vec::<isize, Heap, bool>::new();
-   |     ^^^                ---- help: remove this generic argument
+   |     ^^^              ------ help: remove the unnecessary generic argument
    |     |
    |     expected at most 2 generic arguments
    |

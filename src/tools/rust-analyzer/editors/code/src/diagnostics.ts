@@ -8,7 +8,7 @@ import {
     window,
 } from "vscode";
 import type { Ctx } from "./ctx";
-import { unwrapUndefinable } from "./undefinable";
+import { unwrapUndefinable } from "./util";
 
 export const URI_SCHEME = "rust-analyzer-diagnostics-view";
 

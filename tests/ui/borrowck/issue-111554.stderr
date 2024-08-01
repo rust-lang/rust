@@ -19,10 +19,13 @@ LL |         || bar(&mut self);
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-111554.rs:21:16
    |
-LL |     pub fn quux(self) {
-   |                 ---- help: consider changing this to be mutable: `mut self`
 LL |         || bar(&mut self);
    |                ^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     pub fn quux(mut self) {
+   |                 +++
 
 error: aborting due to 4 previous errors
 

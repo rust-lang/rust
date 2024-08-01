@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `inner`
+  --> $DIR/ice-unresolved-import-100241.rs:9:13
+   |
+LL |     pub use inner::S;
+   |             ^^^^^ you might be missing crate `inner`
+   |
+help: consider importing the `inner` crate
+   |
+LL + extern crate inner;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

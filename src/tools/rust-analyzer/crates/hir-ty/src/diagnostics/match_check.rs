@@ -51,6 +51,7 @@ pub(crate) struct Pat {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PatKind {
     Wild,
+    Never,
 
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
@@ -294,6 +295,7 @@ impl HirDisplay for Pat {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match &*self.kind {
             PatKind::Wild => write!(f, "_"),
+            PatKind::Never => write!(f, "!"),
             PatKind::Binding { name, subpattern } => {
                 write!(f, "{}", name.display(f.db.upcast()))?;
                 if let Some(subpattern) = subpattern {

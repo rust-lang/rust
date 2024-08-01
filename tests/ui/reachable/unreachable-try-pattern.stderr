@@ -19,6 +19,7 @@ warning: unreachable pattern
 LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
    |                        ^^^^^
    |
+   = note: this pattern matches no values because `!` is uninhabited
 note: the lint level is defined here
   --> $DIR/unreachable-try-pattern.rs:4:9
    |
@@ -30,6 +31,8 @@ warning: unreachable pattern
    |
 LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
    |                                        ^^^^^^
+   |
+   = note: this pattern matches no values because `Void` is uninhabited
 
 warning: 3 warnings emitted
 

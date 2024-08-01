@@ -1,0 +1,31 @@
+error[E0282]: type annotations needed
+  --> $DIR/call_method_on_inherent_impl_ref.rs:17:13
+   |
+LL |         let x = my_foo();
+   |             ^
+LL |
+LL |         x.my_debug();
+   |         - type must be known at this point
+   |
+help: consider giving `x` an explicit type
+   |
+LL |         let x: /* Type */ = my_foo();
+   |              ++++++++++++
+
+error[E0282]: type annotations needed for `&_`
+  --> $DIR/call_method_on_inherent_impl_ref.rs:27:13
+   |
+LL |         let x = &my_bar();
+   |             ^
+LL |
+LL |         x.my_debug();
+   |           -------- type must be known at this point
+   |
+help: consider giving `x` an explicit type, where the placeholders `_` are specified
+   |
+LL |         let x: &_ = &my_bar();
+   |              ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

@@ -200,6 +200,7 @@ The following table shows known good combinations of toolchain versions.
 | 1.60 - 1.64  |      14       |
 | 1.65 - 1.69  |      15       |
 | 1.70 - 1.72  |      16       |
-| 1.73 - 1.74  |      17       |
+| 1.73 - 1.77  |      17       |
+| 1.78         |      18       |
 
 Note that the compatibility policy for this feature might change in the future.

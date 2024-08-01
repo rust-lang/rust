@@ -4,10 +4,10 @@
 #[cfg(test)]
 mod tests;
 
-pub use self::imp::read2;
 use std::io::{self, Write};
-use std::mem::replace;
 use std::process::{Child, Output};
+
+pub use self::imp::read2;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Truncated {
@@ -101,10 +101,10 @@ impl ProcOutput {
                     return;
                 }
 
-                let mut head = replace(bytes, Vec::new());
+                let mut head = std::mem::take(bytes);
                 // Don't truncate if this as a whole line.
                 // That should make it less likely that we cut a JSON line in half.
-                if head.last() != Some(&('\n' as u8)) {
+                if head.last() != Some(&b'\n') {
                     head.truncate(MAX_OUT_LEN);
                 }
                 let skipped = new_len - head.len();
@@ -155,11 +155,10 @@ mod imp {
 
 #[cfg(unix)]
 mod imp {
-    use std::io;
     use std::io::prelude::*;
-    use std::mem;
     use std::os::unix::prelude::*;
     use std::process::{ChildStderr, ChildStdout};
+    use std::{io, mem};
 
     pub fn read2(
         mut out_pipe: ChildStdout,
@@ -229,10 +228,9 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use std::io;
     use std::os::windows::prelude::*;
     use std::process::{ChildStderr, ChildStdout};
-    use std::slice;
+    use std::{io, slice};
 
     use miow::iocp::{CompletionPort, CompletionStatus};
     use miow::pipe::NamedPipe;

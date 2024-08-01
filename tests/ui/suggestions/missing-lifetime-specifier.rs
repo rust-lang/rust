@@ -1,6 +1,11 @@
-// different number of duplicated diagnostics on different targets
-//@ only-x86_64
-//@ only-linux
+// The specific errors produced depend the thread-local implementation.
+// Run only on platforms with "fast" TLS.
+//@ ignore-windows FIXME(#84933)
+//@ ignore-wasm globals are used instead of thread locals
+//@ ignore-emscripten globals are used instead of thread locals
+//@ ignore-android does not use #[thread_local]
+//@ ignore-nto does not use #[thread_local]
+// Different number of duplicated diagnostics on different targets
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![allow(bare_trait_objects)]
@@ -21,23 +26,19 @@ trait Tar<'t, 'k, I> {}
 
 thread_local! {
     static a: RefCell<HashMap<i32, Vec<Vec<Foo>>>> = RefCell::new(HashMap::new());
-      //~^ ERROR missing lifetime specifiers
-      //~| ERROR missing lifetime specifiers
+    //~^ ERROR missing lifetime specifiers
 }
 thread_local! {
     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap::new());
-      //~^ ERROR missing lifetime specifiers
-      //~| ERROR missing lifetime specifiers
+    //~^ ERROR missing lifetime specifiers
 }
 thread_local! {
     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(HashMap::new());
     //~^ ERROR missing lifetime specifiers
-    //~| ERROR missing lifetime specifiers
 }
 thread_local! {
     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(HashMap::new());
     //~^ ERROR missing lifetime specifiers
-    //~| ERROR missing lifetime specifiers
 }
 
 thread_local! {
@@ -47,8 +48,7 @@ thread_local! {
 thread_local! {
     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
     //~^ ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR missing lifetime
-    //~| ERROR missing lifetime
+    //~| ERROR missing lifetime specifier
 }
 
 fn main() {}

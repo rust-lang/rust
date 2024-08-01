@@ -10,9 +10,8 @@ fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
 
 pub fn copy_any<T>(t: &T) -> T {
     copy::<dyn Setup<From=T>>(t)
-    //~^ ERROR the type `&<dyn Setup<From = T> as Setup>::From` is not well-formed
+    //~^ ERROR the trait bound `T: Copy` is not satisfied in `dyn Setup<From = T>`
     //~| ERROR mismatched types
-    //~| ERROR the type `<dyn Setup<From = T> as Setup>::From` is not well-formed
     //~| ERROR the trait bound `T: Copy` is not satisfied
 
     // FIXME(-Znext-solver): These error messages are horrible and some of them

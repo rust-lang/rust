@@ -5,7 +5,7 @@
 //@ only-x86_64-fortanix-unknown-sgx
 
 #[no_mangle]
-pub extern fn myret() {}
+pub extern "C" fn myret() {}
 // CHECK: myret:
 // CHECK: popq [[REGISTER:%[a-z]+]]
 // CHECK-NEXT: lfence

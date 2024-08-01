@@ -1,13 +1,14 @@
 use std::iter;
 
-use super::MirPass;
-use rustc_middle::{
-    mir::{
-        interpret::Scalar, BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement,
-        StatementKind, SwitchTargets, TerminatorKind,
-    },
-    ty::{Ty, TyCtxt},
+use rustc_middle::bug;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::{
+    BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement, StatementKind, SwitchTargets,
+    TerminatorKind,
 };
+use rustc_middle::ty::{Ty, TyCtxt};
+
+use super::MirPass;
 
 /// Pass to convert `if` conditions on integrals into switches on the integral.
 /// For an example, it turns something like
@@ -48,7 +49,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                     let layout = tcx
                         .layout_of(param_env.and(opt.branch_value_ty))
                         .expect("if we have an evaluated constant we must know the layout");
-                    int.assert_bits(layout.size)
+                    int.to_bits(layout.size)
                 }
                 Scalar::Ptr(..) => continue,
             };

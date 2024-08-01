@@ -26,6 +26,7 @@ pub(crate) mod file_lines;
 #[allow(unreachable_pub)]
 pub(crate) mod lists;
 pub(crate) mod macro_names;
+pub(crate) mod style_edition;
 
 // This macro defines configuration options used in rustfmt. Each option
 // is defined as follows:
@@ -73,7 +74,7 @@ create_config! {
     format_strings: bool, false, false, "Format string literals where necessary";
     format_macro_matchers: bool, false, false,
         "Format the metavariable matching patterns in macros";
-    format_macro_bodies: bool, true, false, "Format the bodies of macros";
+    format_macro_bodies: bool, true, false, "Format the bodies of declarative macro definitions";
     skip_macro_invocations: MacroSelectors, MacroSelectors::default(), false,
         "Skip formatting the bodies of macros invoked with the following names.";
     hex_literal_case: HexLiteralCase, HexLiteralCase::Preserve, false,
@@ -150,6 +151,8 @@ create_config! {
         "Write an item and its attribute on the same line \
         if their combined width is below a threshold";
     format_generated_files: bool, true, false, "Format generated files";
+    generated_marker_line_search_limit: usize, 5, false, "Number of lines to check for a \
+        `@generated` marker when `format_generated_files` is enabled";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
@@ -168,7 +171,8 @@ create_config! {
             "Enables unstable features. Only available on nightly channel";
     disable_all_formatting: bool, false, true, "Don't reformat anything";
     skip_children: bool, false, false, "Don't reformat out of line modules";
-    hide_parse_errors: bool, false, false, "Hide errors from the parser";
+    hide_parse_errors: bool, false, false, "(deprecated: use show_parse_errors instead)";
+    show_parse_errors: bool, true, false, "Show errors from the parser (unstable)";
     error_on_line_overflow: bool, false, false, "Error if unable to get all lines within max_width";
     error_on_unformatted: bool, false, false,
         "Error if unable to get comments or string literals within max_width, \
@@ -203,6 +207,7 @@ impl PartialConfig {
         cloned.print_misformatted_file_names = None;
         cloned.merge_imports = None;
         cloned.fn_args_layout = None;
+        cloned.hide_parse_errors = None;
 
         ::toml::to_string(&cloned).map_err(ToTomlError)
     }
@@ -282,7 +287,7 @@ impl Config {
                 }
             }
 
-            // If none was found ther either, check in the user's configuration directory.
+            // If none was found there either, check in the user's configuration directory.
             if let Some(mut config_dir) = dirs::config_dir() {
                 config_dir.push("rustfmt");
                 if let Some(path) = get_toml_path(&config_dir)? {
@@ -454,6 +459,13 @@ mod test {
                 "(deprecated: use fn_params_layout instead)";
             fn_params_layout: Density, Density::Tall, true,
                 "Control the layout of parameters in a function signatures.";
+
+            // hide_parse_errors renamed to show_parse_errors
+            hide_parse_errors: bool, false, false,
+                "(deprecated: use show_parse_errors instead)";
+            show_parse_errors: bool, true, false,
+                "Show errors from the parser (unstable)";
+
 
             // Width Heuristics
             use_small_heuristics: Heuristics, Heuristics::Default, true,
@@ -670,6 +682,7 @@ edition = "2015"
 version = "One"
 inline_attribute_width = 0
 format_generated_files = true
+generated_marker_line_search_limit = 5
 merge_derives = true
 use_try_shorthand = false
 use_field_init_shorthand = false
@@ -680,7 +693,7 @@ required_version = "{}"
 unstable_features = false
 disable_all_formatting = false
 skip_children = false
-hide_parse_errors = false
+show_parse_errors = true
 error_on_line_overflow = false
 error_on_unformatted = false
 ignore = []

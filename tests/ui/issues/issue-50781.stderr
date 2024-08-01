@@ -1,24 +1,52 @@
-error: the trait `X` cannot be made into an object
-  --> $DIR/issue-50781.rs:6:8
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/issue-50781.rs:11:16
    |
-LL |     fn foo(&self) where Self: Trait;
-   |        ^^^
+LL | impl Trait for dyn X {}
+   |                ^^^^^ `X` cannot be made into an object
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #51443 <https://github.com/rust-lang/rust/issues/51443>
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-50781.rs:6:8
+  --> $DIR/issue-50781.rs:4:8
    |
 LL | trait X {
    |       - this trait cannot be made into an object...
 LL |     fn foo(&self) where Self: Trait;
    |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
    = help: consider moving `foo` to another trait
-note: the lint level is defined here
-  --> $DIR/issue-50781.rs:1:9
+   = help: only type `()` implements the trait, consider using it directly instead
+
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/issue-50781.rs:16:23
    |
-LL | #![deny(where_clauses_object_safety)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     <dyn X as X>::foo(&());
+   |                       ^^^ `X` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-50781.rs:4:8
+   |
+LL | trait X {
+   |       - this trait cannot be made into an object...
+LL |     fn foo(&self) where Self: Trait;
+   |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
+   = help: consider moving `foo` to another trait
+   = help: only type `()` implements the trait, consider using it directly instead
+   = note: required for the cast from `&()` to `&dyn X`
 
-error: aborting due to 1 previous error
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/issue-50781.rs:16:6
+   |
+LL |     <dyn X as X>::foo(&());
+   |      ^^^^^ `X` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-50781.rs:4:8
+   |
+LL | trait X {
+   |       - this trait cannot be made into an object...
+LL |     fn foo(&self) where Self: Trait;
+   |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
+   = help: consider moving `foo` to another trait
+   = help: only type `()` implements the trait, consider using it directly instead
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

@@ -50,7 +50,7 @@ use crate::time::SystemTime;
 /// }
 /// ```
 ///
-/// Read the contents of a file into a [`String`] (you can also use [`read`]):
+/// Reads the contents of a file into a [`String`] (you can also use [`read`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -229,7 +229,7 @@ pub struct DirBuilder {
     recursive: bool,
 }
 
-/// Read the entire contents of a file into a bytes vector.
+/// Reads the entire contents of a file into a bytes vector.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_end`]
 /// with fewer imports and without an intermediate variable.
@@ -268,7 +268,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     inner(path.as_ref())
 }
 
-/// Read the entire contents of a file into a string.
+/// Reads the entire contents of a file into a string.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_string`]
 /// with fewer imports and without an intermediate variable.
@@ -311,7 +311,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     inner(path.as_ref())
 }
 
-/// Write a slice as the entire contents of a file.
+/// Writes a slice as the entire contents of a file.
 ///
 /// This function will create a file if it does not exist,
 /// and will entirely replace its contents if it does.
@@ -767,11 +767,33 @@ fn buffer_capacity_required(mut file: &File) -> Option<usize> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for &File {
+    /// Reads some bytes from the file.
+    ///
+    /// See [`Read::read`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `read` function on Unix and
+    /// the `NtReadFile` function on Windows. Note that this [may change in
+    /// the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 
+    /// Like `read`, except that it reads into a slice of buffers.
+    ///
+    /// See [`Read::read_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `readv` function on Unix and
+    /// falls back to the `read` implementation on Windows. Note that this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
@@ -782,6 +804,16 @@ impl Read for &File {
         self.inner.read_buf(cursor)
     }
 
+    /// Determines if `File` has an efficient `read_vectored` implementation.
+    ///
+    /// See [`Read::is_read_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// Note that this [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
@@ -803,19 +835,63 @@ impl Read for &File {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for &File {
+    /// Writes some bytes from the file.
+    ///
+    /// See [`Write::write`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `write` function on Unix and
+    /// the `NtWriteFile` function on Windows. Note that this [may change in
+    /// the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
 
+    /// Like `write`, except that it writes into a slice of buffers.
+    ///
+    /// See [`Write::write_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `writev` function on Unix
+    /// and falls back to the `write` implementation on Windows. Note that this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
     }
 
+    /// Determines if `File` has an efficient `write_vectored` implementation.
+    ///
+    /// See [`Write::is_write_vectored`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently returns `true` on Unix an `false` on Windows.
+    /// Note that this [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn is_write_vectored(&self) -> bool {
         self.inner.is_write_vectored()
     }
 
+    /// Flushes the file, ensuring that all intermediately buffered contents
+    /// reach their destination.
+    ///
+    /// See [`Write::flush`] docs for more info.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// Since a `File` structure doesn't contain any buffers, this function is
+    /// currently a no-op on Unix and Windows. Note that this [may change in
+    /// the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         self.inner.flush()
@@ -1450,7 +1526,7 @@ impl FromInner<fs_imp::FileAttr> for Metadata {
 }
 
 impl FileTimes {
-    /// Create a new `FileTimes` with no times set.
+    /// Creates a new `FileTimes` with no times set.
     ///
     /// Using the resulting `FileTimes` in [`File::set_times`] will not modify any timestamps.
     #[stable(feature = "file_set_times", since = "1.75.0")]
@@ -1929,7 +2005,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::unlink(path.as_ref())
 }
 
-/// Given a path, query the file system to get information about a file,
+/// Given a path, queries the file system to get information about a file,
 /// directory, etc.
 ///
 /// This function will traverse symbolic links to query information about the
@@ -1968,7 +2044,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_ref()).map(Metadata)
 }
 
-/// Query the metadata about a file without following symlinks.
+/// Queries the metadata about a file without following symlinks.
 ///
 /// # Platform-specific behavior
 ///
@@ -2003,7 +2079,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::lstat(path.as_ref()).map(Metadata)
 }
 
-/// Rename a file or directory to a new name, replacing the original file if
+/// Renames a file or directory to a new name, replacing the original file if
 /// `to` already exists.
 ///
 /// This will not work if the new name is on a different mount point.
@@ -2226,7 +2302,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// This function currently corresponds to the `realpath` function on Unix
 /// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
-/// Note that, this [may change in the future][changes].
+/// Note that this [may change in the future][changes].
 ///
 /// On Windows, this converts the path to use [extended length path][path]
 /// syntax, which allows your program to use longer path names, but means you
@@ -2310,6 +2386,9 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// If this function returns an error, some of the parent components might have
 /// been created already.
 ///
+/// If the empty path is passed to this function, it always succeeds without
+/// creating any directories.
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to multiple calls to the `mkdir`
@@ -2321,13 +2400,8 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Errors
 ///
-/// This function will return an error in the following situations, but is not
-/// limited to just these cases:
-///
-/// * If any directory in the path specified by `path`
-/// does not already exist and it could not be created otherwise. The specific
-/// error conditions for when a directory is being created (after it is
-/// determined to not exist) are outlined by [`fs::create_dir`].
+/// The function will return an error if any directory specified in path does not exist and
+/// could not be created. There may be other error conditions; see [`fs::create_dir`] for specifics.
 ///
 /// Notable exception is made for situations where any of the directories
 /// specified in the `path` could not be created as it was being created concurrently.
@@ -2663,18 +2737,15 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(fs_try_exists)]
 /// use std::fs;
 ///
-/// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
-/// assert!(fs::try_exists("/root/secret_file.txt").is_err());
+/// assert!(!fs::exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
+/// assert!(fs::exists("/root/secret_file.txt").is_err());
 /// ```
 ///
 /// [`Path::exists`]: crate::path::Path::exists
-// FIXME: stabilization should modify documentation of `exists()` to recommend this method
-// instead.
-#[unstable(feature = "fs_try_exists", issue = "83186")]
+#[stable(feature = "fs_try_exists", since = "1.81.0")]
 #[inline]
-pub fn try_exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
-    fs_imp::try_exists(path.as_ref())
+pub fn exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
+    fs_imp::exists(path.as_ref())
 }

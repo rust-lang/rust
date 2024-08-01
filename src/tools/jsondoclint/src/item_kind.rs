@@ -150,7 +150,7 @@ impl Kind {
             ItemEnum::Impl(_) => Impl,
             ItemEnum::TypeAlias(_) => TypeAlias,
             ItemEnum::OpaqueTy(_) => OpaqueTy,
-            ItemEnum::Constant(_) => Constant,
+            ItemEnum::Constant { .. } => Constant,
             ItemEnum::Static(_) => Static,
             ItemEnum::Macro(_) => Macro,
             ItemEnum::ProcMacro(_) => ProcMacro,

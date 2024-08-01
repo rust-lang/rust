@@ -58,12 +58,10 @@ declare_lint_pass!(LetIfSeq => [USELESS_LET_IF_SEQ]);
 
 impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        let mut it = block.stmts.iter().peekable();
-        while let Some(stmt) = it.next() {
-            if let Some(expr) = it.peek()
-                && let hir::StmtKind::Let(local) = stmt.kind
+        for [stmt, next] in block.stmts.array_windows::<2>() {
+            if let hir::StmtKind::Let(local) = stmt.kind
                 && let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind
-                && let hir::StmtKind::Expr(if_) = expr.kind
+                && let hir::StmtKind::Expr(if_) = next.kind
                 && let hir::ExprKind::If(
                     hir::Expr {
                         kind: hir::ExprKind::DropTemps(cond),

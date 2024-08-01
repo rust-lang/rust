@@ -1,9 +1,6 @@
 use crate::any::type_name;
-use crate::fmt;
-use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
-use crate::ptr;
-use crate::slice;
+use crate::{fmt, intrinsics, ptr, slice};
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
@@ -120,12 +117,8 @@ use crate::slice;
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let data = {
-///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
-///     // safe because the type we are claiming to have initialized here is a
-///     // bunch of `MaybeUninit`s, which do not require initialization.
-///     let mut data: [MaybeUninit<Vec<u32>>; 1000] = unsafe {
-///         MaybeUninit::uninit().assume_init()
-///     };
+///     // Create an uninitialized array of `MaybeUninit`.
+///     let mut data: [MaybeUninit<Vec<u32>>; 1000] = [const { MaybeUninit::uninit() }; 1000];
 ///
 ///     // Dropping a `MaybeUninit` does nothing, so if there is a panic during this loop,
 ///     // we have a memory leak, but there is no memory safety issue.
@@ -147,10 +140,8 @@ use crate::slice;
 /// ```
 /// use std::mem::MaybeUninit;
 ///
-/// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
-/// // safe because the type we are claiming to have initialized here is a
-/// // bunch of `MaybeUninit`s, which do not require initialization.
-/// let mut data: [MaybeUninit<String>; 1000] = unsafe { MaybeUninit::uninit().assume_init() };
+/// // Create an uninitialized array of `MaybeUninit`.
+/// let mut data: [MaybeUninit<String>; 1000] = [const { MaybeUninit::uninit() }; 1000];
 /// // Count the number of elements we have assigned.
 /// let mut data_len: usize = 0;
 ///
@@ -280,6 +271,8 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let v: MaybeUninit<Vec<u8>> = MaybeUninit::new(vec![42]);
+    /// # // Prevent leaks for Miri
+    /// # unsafe { let _ = MaybeUninit::assume_init(v); }
     /// ```
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
@@ -314,7 +307,7 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
-    /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
+    /// Creates a new array of `MaybeUninit<T>` items, in an uninitialized state.
     ///
     /// Note: in a future Rust version this method may become unnecessary
     /// when Rust allows
@@ -348,8 +341,7 @@ impl<T> MaybeUninit<T> {
     #[must_use]
     #[inline(always)]
     pub const fn uninit_array<const N: usize>() -> [Self; N] {
-        // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
-        unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() }
+        [const { MaybeUninit::uninit() }; N]
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
@@ -453,6 +445,9 @@ impl<T> MaybeUninit<T> {
     /// let mut x = MaybeUninit::<String>::uninit();
     ///
     /// x.write("Hello".to_string());
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # unsafe { MaybeUninit::assume_init_drop(&mut x); }
     /// // This leaks the contained string:
     /// x.write("hello".to_string());
     /// // x is initialized now:
@@ -513,6 +508,8 @@ impl<T> MaybeUninit<T> {
     /// // Create a reference into the `MaybeUninit<T>`. This is okay because we initialized it.
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// assert_eq!(x_vec.len(), 3);
+    /// # // Prevent leaks for Miri
+    /// # unsafe { MaybeUninit::assume_init_drop(&mut x); }
     /// ```
     ///
     /// *Incorrect* usage of this method:
@@ -552,6 +549,8 @@ impl<T> MaybeUninit<T> {
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
     /// x_vec.push(3);
     /// assert_eq!(x_vec.len(), 4);
+    /// # // Prevent leaks for Miri
+    /// # unsafe { MaybeUninit::assume_init_drop(&mut x); }
     /// ```
     ///
     /// *Incorrect* usage of this method:
@@ -753,6 +752,8 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
+    /// # let mut x_mu = x;
+    /// # let mut x = &mut x_mu;
     /// // Initialize `x`:
     /// x.write(vec![1, 2, 3]);
     /// // Now that our `MaybeUninit<_>` is known to be initialized, it is okay to
@@ -762,6 +763,8 @@ impl<T> MaybeUninit<T> {
     ///     x.assume_init_ref()
     /// };
     /// assert_eq!(x, &vec![1, 2, 3]);
+    /// # // Prevent leaks for Miri
+    /// # unsafe { MaybeUninit::assume_init_drop(&mut x_mu); }
     /// ```
     ///
     /// ### *Incorrect* usages of this method:
@@ -924,11 +927,10 @@ impl<T> MaybeUninit<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_uninit_array)]
     /// #![feature(maybe_uninit_array_assume_init)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut array: [MaybeUninit<i32>; 3] = MaybeUninit::uninit_array();
+    /// let mut array: [MaybeUninit<i32>; 3] = [MaybeUninit::uninit(); 3];
     /// array[0].write(0);
     /// array[1].write(1);
     /// array[2].write(2);
@@ -1096,6 +1098,8 @@ impl<T> MaybeUninit<T> {
     /// let init = MaybeUninit::clone_from_slice(&mut dst, &src);
     ///
     /// assert_eq!(init, src);
+    /// # // Prevent leaks for Miri
+    /// # unsafe { std::ptr::drop_in_place(init); }
     /// ```
     ///
     /// ```

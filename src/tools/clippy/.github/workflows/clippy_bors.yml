@@ -116,9 +116,7 @@ jobs:
       working-directory: clippy_dev
 
     - name: Test clippy-driver
-      run: |
-        TOOLCHAIN=$(rustup show active-toolchain | cut -f1 -d' ')
-        rustup run $TOOLCHAIN bash .github/driver.sh
+      run: .github/driver.sh
       env:
         OS: ${{ runner.os }}
 

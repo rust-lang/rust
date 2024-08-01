@@ -1,11 +1,11 @@
 //! Emulated wait status for non-Unix #[cfg(unix) platforms
 //!
 //! Separate module to facilitate testing against a real Unix implementation.
+
+use super::ExitStatusError;
 use crate::ffi::c_int;
 use crate::fmt;
 use crate::num::NonZero;
-
-use super::ExitStatusError;
 
 /// Emulated wait status for use by `process_unsupported.rs`
 ///

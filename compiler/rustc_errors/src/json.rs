@@ -9,16 +9,12 @@
 
 // FIXME: spec the JSON output properly.
 
-use crate::emitter::{
-    should_show_source_code, ColorConfig, Destination, Emitter, HumanEmitter,
-    HumanReadableErrorType,
-};
-use crate::registry::Registry;
-use crate::translation::{to_fluent_args, Translate};
-use crate::{
-    diagnostic::IsLint, CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel,
-    Subdiag, TerminalUrl,
-};
+use std::error::Report;
+use std::io::{self, Write};
+use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::vec;
+
 use derive_setters::Setters;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::FluentArgs;
@@ -27,12 +23,18 @@ use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::SourceMap;
 use rustc_span::Span;
 use serde::Serialize;
-use std::error::Report;
-use std::io::{self, Write};
-use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::vec;
 use termcolor::{ColorSpec, WriteColor};
+
+use crate::diagnostic::IsLint;
+use crate::emitter::{
+    should_show_source_code, ColorConfig, Destination, Emitter, HumanEmitter,
+    HumanReadableErrorType,
+};
+use crate::registry::Registry;
+use crate::translation::{to_fluent_args, Translate};
+use crate::{
+    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, TerminalUrl,
+};
 
 #[cfg(test)]
 mod tests;
@@ -135,7 +137,12 @@ impl Emitter for JsonEmitter {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
-                if diag.level == crate::Level::Allow {
+                // Allowed or expected lints don't normally (by definition) emit a lint
+                // but future incompat lints are special and are emitted anyway.
+                //
+                // So to avoid ICEs and confused users we "upgrade" the lint level for
+                // those `FutureBreakageItem` to warn.
+                if matches!(diag.level, crate::Level::Allow | crate::Level::Expect(..)) {
                     diag.level = crate::Level::Warning;
                 }
                 FutureBreakageItem {

@@ -1,7 +1,8 @@
+use std::thread;
+
 use super::*;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
-use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     configure_with_args(&[cmd.to_owned()], host, target)
@@ -13,15 +14,18 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     config.save_toolstates = None;
     config.dry_run = DryRun::SelfCheck;
 
-    // Ignore most submodules, since we don't need them for a dry run.
-    // But make sure to check out the `doc` and `rust-analyzer` submodules, since some steps need them
-    // just to know which commands to run.
+    // Ignore most submodules, since we don't need them for a dry run, and the
+    // tests run much faster without them.
+    //
+    // The src/doc/book submodule is needed because TheBook step tries to
+    // access files even during a dry-run (may want to consider just skipping
+    // that in a dry run).
     let submodule_build = Build::new(Config {
         // don't include LLVM, so CI doesn't require ninja/cmake to be installed
         rust_codegen_backends: vec![],
         ..Config::parse(&["check".to_owned()])
     });
-    submodule_build.update_submodule(Path::new("src/doc/book"));
+    submodule_build.require_submodule("src/doc/book", None);
     config.submodules = Some(false);
 
     config.ninja_in_file = false;
@@ -60,7 +64,14 @@ fn check_cli<const N: usize>(paths: [&str; N]) {
 macro_rules! std {
     ($host:ident => $target:ident, stage = $stage:literal) => {
         compile::Std::new(
-            Compiler { host: TargetSelection::from_user(concat!(stringify!($host), "-", stringify!($host))), stage: $stage },
+            Compiler {
+                host: TargetSelection::from_user(concat!(
+                    stringify!($host),
+                    "-",
+                    stringify!($host)
+                )),
+                stage: $stage,
+            },
             TargetSelection::from_user(concat!(stringify!($target), "-", stringify!($target))),
         )
     };
@@ -68,13 +79,9 @@ macro_rules! std {
 
 macro_rules! doc_std {
     ($host:ident => $target:ident, stage = $stage:literal) => {{
-        let config = configure("doc", &["A-A"], &["A-A"]);
-        let build = Build::new(config);
-        let builder = Builder::new(&build);
         doc::Std::new(
             $stage,
             TargetSelection::from_user(concat!(stringify!($target), "-", stringify!($target))),
-            &builder,
             DocumentationFormat::Html,
         )
     }};
@@ -83,7 +90,14 @@ macro_rules! doc_std {
 macro_rules! rustc {
     ($host:ident => $target:ident, stage = $stage:literal) => {
         compile::Rustc::new(
-            Compiler { host: TargetSelection::from_user(concat!(stringify!($host), "-", stringify!($host))), stage: $stage },
+            Compiler {
+                host: TargetSelection::from_user(concat!(
+                    stringify!($host),
+                    "-",
+                    stringify!($host)
+                )),
+                stage: $stage,
+            },
             TargetSelection::from_user(concat!(stringify!($target), "-", stringify!($target))),
         )
     };
@@ -108,11 +122,14 @@ fn test_intersection() {
         PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
     };
     let library_set = set(&["library/core", "library/alloc", "library/std"]);
-    let mut command_paths =
-        vec![Path::new("library/core"), Path::new("library/alloc"), Path::new("library/stdarch")];
+    let mut command_paths = vec![
+        PathBuf::from("library/core"),
+        PathBuf::from("library/alloc"),
+        PathBuf::from("library/stdarch"),
+    ];
     let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
     assert_eq!(subset, set(&["library/core", "library/alloc"]),);
-    assert_eq!(command_paths, vec![Path::new("library/stdarch")]);
+    assert_eq!(command_paths, vec![PathBuf::from("library/stdarch")]);
 }
 
 #[test]
@@ -126,6 +143,30 @@ fn validate_path_remap() {
         .for_each(|path| {
             assert!(path.exists(), "{} should exist.", path.display());
         });
+}
+
+#[test]
+fn check_missing_paths_for_x_test_tests() {
+    let build = Build::new(configure("test", &["A-A"], &["A-A"]));
+
+    let (_, tests_remap_paths) =
+        PATH_REMAP.iter().find(|(target_path, _)| *target_path == "tests").unwrap();
+
+    let tests_dir = fs::read_dir(build.src.join("tests")).unwrap();
+    for dir in tests_dir {
+        let path = dir.unwrap().path();
+
+        // Skip if not a test directory.
+        if path.ends_with("tests/auxiliary") || !path.is_dir() {
+            continue;
+        }
+
+        assert!(
+            tests_remap_paths.iter().any(|item| path.ends_with(*item)),
+            "{} is missing in PATH_REMAP tests list.",
+            path.display()
+        );
+    }
 }
 
 #[test]
@@ -165,15 +206,17 @@ fn alias_and_path_for_library() {
         &[std!(A => A, stage = 0), std!(A => A, stage = 1)]
     );
 
-    let mut cache = run_build(&["library".into(), "core".into()], configure("doc", &["A-A"], &["A-A"]));
+    let mut cache =
+        run_build(&["library".into(), "core".into()], configure("doc", &["A-A"], &["A-A"]));
     assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
 }
 
 mod defaults {
+    use pretty_assertions::assert_eq;
+
     use super::{configure, first, run_build};
     use crate::core::builder::*;
     use crate::Config;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn build_default() {
@@ -224,7 +267,7 @@ mod defaults {
         // rustdoc/rustcc/std here (the user only requested a host=B build, so
         // there's not really a need for us to build for target A in this case
         // (since we're producing stage 1 libraries/binaries).  But currently
-        // rustbuild is just a bit buggy here; this should be fixed though.
+        // bootstrap is just a bit buggy here; this should be fixed though.
         assert_eq!(
             first(cache.all::<compile::Std>()),
             &[
@@ -281,9 +324,10 @@ mod defaults {
 }
 
 mod dist {
+    use pretty_assertions::assert_eq;
+
     use super::{first, run_build, Config};
     use crate::core::builder::*;
-    use pretty_assertions::assert_eq;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
         Config { stage: 2, ..super::configure("dist", host, target) }

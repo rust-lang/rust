@@ -19,7 +19,6 @@
 //@ [ENABLE_NEON] compile-flags: -C target-feature=+neon -Copt-level=0
 // ENABLE_NEON: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(\+fp-armv8,?)|(\+neon,?))*}}" }
 
-
 #![feature(no_core, lang_items)]
 #![no_core]
 

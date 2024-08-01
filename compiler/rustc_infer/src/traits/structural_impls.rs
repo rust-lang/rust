@@ -1,11 +1,12 @@
-use crate::traits;
-use crate::traits::project::Normalized;
+use std::fmt;
+
 use rustc_ast_ir::try_visit;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, TyCtxt};
 
-use std::fmt;
+use crate::traits;
+use crate::traits::project::Normalized;
 
 // Structural impls for the structs in `traits`.
 
@@ -25,33 +26,6 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
             )
         } else {
             write!(f, "Obligation(predicate={:?}, depth={})", self.predicate, self.recursion_depth)
-        }
-    }
-}
-
-impl<'tcx> fmt::Debug for traits::FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
-    }
-}
-
-impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::FulfillmentErrorCode::*;
-        match *self {
-            SelectionError(ref e) => write!(f, "{e:?}"),
-            ProjectionError(ref e) => write!(f, "{e:?}"),
-            SubtypeError(ref a, ref b) => {
-                write!(f, "CodeSubtypeError({a:?}, {b:?})")
-            }
-            ConstEquateError(ref a, ref b) => {
-                write!(f, "CodeConstEquateError({a:?}, {b:?})")
-            }
-            Ambiguity { overflow: None } => write!(f, "Ambiguity"),
-            Ambiguity { overflow: Some(suggest_increasing_limit) } => {
-                write!(f, "Overflow({suggest_increasing_limit})")
-            }
-            Cycle(ref cycle) => write!(f, "Cycle({cycle:?})"),
         }
     }
 }

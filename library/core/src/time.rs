@@ -43,11 +43,15 @@ const DAYS_PER_WEEK: u64 = 7;
 #[rustc_layout_scalar_valid_range_end(999_999_999)]
 struct Nanoseconds(u32);
 
+impl Nanoseconds {
+    // SAFETY: 0 is within the valid range
+    const ZERO: Self = unsafe { Nanoseconds(0) };
+}
+
 impl Default for Nanoseconds {
     #[inline]
     fn default() -> Self {
-        // SAFETY: 0 is within the valid range
-        unsafe { Nanoseconds(0) }
+        Self::ZERO
     }
 }
 
@@ -236,7 +240,7 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_secs(secs: u64) -> Duration {
-        Duration::new(secs, 0)
+        Duration { secs, nanos: Nanoseconds::ZERO }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
@@ -256,7 +260,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_millis(millis: u64) -> Duration {
-        Duration::new(millis / MILLIS_PER_SEC, ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI)
+        let secs = millis / MILLIS_PER_SEC;
+        let subsec_millis = (millis % MILLIS_PER_SEC) as u32;
+        // SAFETY: (x % 1_000) * 1_000_000 < 1_000_000_000
+        //         => x % 1_000 < 1_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_millis * NANOS_PER_MILLI) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of microseconds.
@@ -276,7 +286,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_micros(micros: u64) -> Duration {
-        Duration::new(micros / MICROS_PER_SEC, ((micros % MICROS_PER_SEC) as u32) * NANOS_PER_MICRO)
+        let secs = micros / MICROS_PER_SEC;
+        let subsec_micros = (micros % MICROS_PER_SEC) as u32;
+        // SAFETY: (x % 1_000_000) * 1_000 < 1_000_000_000
+        //         => x % 1_000_000 < 1_000_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_micros * NANOS_PER_MICRO) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of nanoseconds.
@@ -301,7 +317,13 @@ impl Duration {
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_nanos(nanos: u64) -> Duration {
-        Duration::new(nanos / (NANOS_PER_SEC as u64), (nanos % (NANOS_PER_SEC as u64)) as u32)
+        const NANOS_PER_SEC: u64 = self::NANOS_PER_SEC as u64;
+        let secs = nanos / NANOS_PER_SEC;
+        let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
+        // SAFETY: x % 1_000_000_000 < 1_000_000_000
+        let subsec_nanos = unsafe { Nanoseconds(subsec_nanos) };
+
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of weeks.
@@ -326,7 +348,7 @@ impl Duration {
     #[inline]
     pub const fn from_weeks(weeks: u64) -> Duration {
         if weeks > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK) {
-            panic!("overflow in Duration::from_days");
+            panic!("overflow in Duration::from_weeks");
         }
 
         Duration::from_secs(weeks * MINS_PER_HOUR * SECS_PER_MINUTE * HOURS_PER_DAY * DAYS_PER_WEEK)
@@ -598,13 +620,14 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_abs_diff)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(100, 0).abs_diff(Duration::new(80, 0)), Duration::new(20, 0));
     /// assert_eq!(Duration::new(100, 400_000_000).abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
     /// ```
-    #[unstable(feature = "duration_abs_diff", issue = "117618")]
+    #[stable(feature = "duration_abs_diff", since = "1.81.0")]
+    #[rustc_const_stable(feature = "duration_abs_diff", since = "1.81.0")]
+    #[rustc_allow_const_fn_unstable(const_option)]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -820,7 +843,7 @@ impl Duration {
 
     /// Returns the number of seconds contained by this `Duration` as `f64`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -839,7 +862,7 @@ impl Duration {
 
     /// Returns the number of seconds contained by this `Duration` as `f32`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -858,7 +881,7 @@ impl Duration {
 
     /// Returns the number of milliseconds contained by this `Duration` as `f64`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -879,7 +902,7 @@ impl Duration {
 
     /// Returns the number of milliseconds contained by this `Duration` as `f32`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -1014,7 +1037,7 @@ impl Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
 
-    /// Divide `Duration` by `f64`.
+    /// Divides `Duration` by `f64`.
     ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
@@ -1035,7 +1058,7 @@ impl Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
     }
 
-    /// Divide `Duration` by `f32`.
+    /// Divides `Duration` by `f32`.
     ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
@@ -1058,44 +1081,46 @@ impl Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
 
-    /// Divide `Duration` by `Duration` and return `f64`.
+    /// Divides `Duration` by `Duration` and returns `f64`.
     ///
     /// # Examples
     /// ```
-    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
     /// ```
-    #[unstable(feature = "div_duration", issue = "63139")]
+    #[stable(feature = "div_duration", since = "1.80.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_duration_f64(self, rhs: Duration) -> f64 {
-        self.as_secs_f64() / rhs.as_secs_f64()
+        let self_nanos = (self.secs as f64) * (NANOS_PER_SEC as f64) + (self.nanos.0 as f64);
+        let rhs_nanos = (rhs.secs as f64) * (NANOS_PER_SEC as f64) + (rhs.nanos.0 as f64);
+        self_nanos / rhs_nanos
     }
 
-    /// Divide `Duration` by `Duration` and return `f32`.
+    /// Divides `Duration` by `Duration` and returns `f32`.
     ///
     /// # Examples
     /// ```
-    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
     /// ```
-    #[unstable(feature = "div_duration", issue = "63139")]
+    #[stable(feature = "div_duration", since = "1.80.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn div_duration_f32(self, rhs: Duration) -> f32 {
-        self.as_secs_f32() / rhs.as_secs_f32()
+        let self_nanos = (self.secs as f32) * (NANOS_PER_SEC as f32) + (self.nanos.0 as f32);
+        let rhs_nanos = (rhs.secs as f32) * (NANOS_PER_SEC as f32) + (rhs.nanos.0 as f32);
+        self_nanos / rhs_nanos
     }
 }
 

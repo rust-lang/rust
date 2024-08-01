@@ -1,7 +1,7 @@
 error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/unable-fulfill-trait.rs:4:17
    |
-LL |     field1: dyn Bar<'a, 'b,>,
+LL |     field1: dyn Bar<'a, 'b>,
    |                 ^^^ expected 1 generic argument
    |
 note: trait defined here, with 1 generic parameter: `U`
@@ -11,14 +11,14 @@ LL | pub trait Bar<'x, 's, U>
    |           ^^^         -
 help: add missing generic argument
    |
-LL |     field1: dyn Bar<'a, 'b, U,>,
+LL |     field1: dyn Bar<'a, 'b, U>,
    |                           +++
 
 error[E0227]: ambiguous lifetime bound, explicit lifetime bound required
   --> $DIR/unable-fulfill-trait.rs:4:13
    |
-LL |     field1: dyn Bar<'a, 'b,>,
-   |             ^^^^^^^^^^^^^^^^
+LL |     field1: dyn Bar<'a, 'b>,
+   |             ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

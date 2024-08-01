@@ -1,10 +1,11 @@
+// tidy-alphabetical-start
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
+#![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
@@ -12,12 +13,10 @@
 #![feature(round_char_boundary)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![feature(if_let_guard)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate rustc_middle;
 
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
@@ -35,10 +34,11 @@ use rustc_middle::mir::{
     LocalDecl, MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
     SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
-use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
-use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
+use rustc_middle::{bug, query, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
 #[macro_use]
@@ -50,13 +50,12 @@ mod abort_unwinding_calls;
 mod add_call_guards;
 mod add_moves_for_packed_drops;
 mod add_retag;
+mod add_subtyping_projections;
+mod check_alignment;
 mod check_const_item_mutation;
 mod check_packed_ref;
-mod remove_place_mention;
 // This pass is public to allow external drivers to perform MIR cleanup
-mod add_subtyping_projections;
 pub mod cleanup_post_borrowck;
-mod const_debuginfo;
 mod copy_prop;
 mod coroutine;
 mod cost_checker;
@@ -88,12 +87,12 @@ mod lower_slice_len;
 mod match_branches;
 mod mentioned_items;
 mod multiple_return_terminators;
-mod normalize_array_len;
 mod nrvo;
 mod prettify;
 mod promote_consts;
 mod ref_prop;
 mod remove_noop_landing_pads;
+mod remove_place_mention;
 mod remove_storage_markers;
 mod remove_uninit_drops;
 mod remove_unneeded_drops;
@@ -103,16 +102,16 @@ mod reveal_all;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
-mod check_alignment;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
+mod single_use_consts;
 mod sroa;
 mod unreachable_enum_branching;
 mod unreachable_prop;
+mod validate;
 
-use rustc_const_eval::transform::check_consts::{self, ConstCx};
-use rustc_const_eval::transform::validate;
+use rustc_const_eval::check_consts::{self, ConstCx};
 use rustc_mir_dataflow::rustc_peek;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -160,8 +159,9 @@ fn remap_mir_for_const_eval_select<'tcx>(
             } if let ty::FnDef(def_id, _) = *const_.ty().kind()
                 && tcx.is_intrinsic(def_id, sym::const_eval_select) =>
             {
-                let [tupled_args, called_in_const, called_at_rt]: [_; 3] =
-                    std::mem::take(args).try_into().unwrap();
+                let Ok([tupled_args, called_in_const, called_at_rt]) = take_array(args) else {
+                    unreachable!()
+                };
                 let ty = tupled_args.node.ty(&body.local_decls, tcx);
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
@@ -209,6 +209,11 @@ fn remap_mir_for_const_eval_select<'tcx>(
         }
     }
     body
+}
+
+fn take_array<T, const N: usize>(b: &mut Box<[T]>) -> Result<[T; N], Box<[T]>> {
+    let b: Box<[T; N]> = std::mem::take(b).try_into()?;
+    Ok(*b)
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -397,7 +402,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     if is_fn_like {
         // Do not compute the mir call graph without said call graph actually being used.
         if pm::should_run_pass(tcx, &inline::Inline) {
-            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
+            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
         }
     }
 
@@ -513,7 +518,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &add_subtyping_projections::Subtyper, // calling this after reveal_all ensures that we don't deal with opaque types
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
-        // necessary as well as well as forcing any call in a non-unwinding
+        // necessary as well as forcing any call in a non-unwinding
         // function calling a possibly-unwinding function to abort the process.
         &abort_unwinding_calls::AbortUnwindingCalls,
         // AddMovesForPackedDrops needs to run after drop
@@ -566,6 +571,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
             // Also simple, so can just do first
             &lower_slice_len::LowerSliceLenCalls,
+            // Perform instsimplify before inline to eliminate some trivial calls (like clone shims).
+            &instsimplify::InstSimplify::BeforeInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
             // Code from other crates may have storage markers, so this needs to happen after inlining.
@@ -580,21 +587,19 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify::SimplifyCfg::AfterUnreachableEnumBranching),
             // Inlining may have introduced a lot of redundant code and a large move pattern.
             // Now, we need to shrink the generated MIR.
-
-            // Has to run after `slice::len` lowering
-            &normalize_array_len::NormalizeArrayLen,
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instsimplify::InstSimplify,
+            // After simplifycfg, it allows us to discover new opportunities for peephole optimizations.
+            &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
-            &const_debuginfo::ConstDebugInfo,
+            &single_use_consts::SingleUseConsts,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,

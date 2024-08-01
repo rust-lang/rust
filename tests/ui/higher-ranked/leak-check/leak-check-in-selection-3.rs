@@ -1,9 +1,9 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
 
-// cc #119820, the previous behavior here was inconsistent,
+// cc #119820, the behavior here is  inconsistent,
 // using the leak check to guide inference for `for<'a> Box<_>: Leak<'a>`
-// but not for `for<'a> Box<_>: IndirectLeak<'a>`
+// but not for `for<'a> Box<_>: IndirectLeak<'a>`.
 
 trait Leak<'a> {}
 impl Leak<'_> for Box<u32> {}
@@ -16,7 +16,7 @@ fn direct() {
     // The `Box<u16>` impls fails the leak check,
     // meaning that we apply the `Box<u32>` impl.
     impls_leak::<Box<_>>();
-    //~^ ERROR type annotations needed
+    //[next]~^ ERROR type annotations needed
 }
 
 trait IndirectLeak<'a> {}

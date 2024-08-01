@@ -24,6 +24,15 @@ fn test_os_string_clear() {
 }
 
 #[test]
+fn test_os_string_leak() {
+    let os_string = OsString::from("have a cake");
+    let (len, cap) = (os_string.len(), os_string.capacity());
+    let leaked = os_string.leak();
+    assert_eq!(leaked.as_encoded_bytes(), b"have a cake");
+    unsafe { drop(String::from_raw_parts(leaked as *mut OsStr as _, len, cap)) }
+}
+
+#[test]
 fn test_os_string_capacity() {
     let os_string = OsString::with_capacity(0);
     assert_eq!(0, os_string.capacity());

@@ -10,18 +10,18 @@
 
 #![crate_name = "local"]
 
-// @!has-dir local/use_crate
-// @has local/index.html
-// @has - '//code' 'pub use use_crate'
+//@ !has-dir local/use_crate
+//@ has local/index.html
+//@ has - '//code' 'pub use use_crate'
 pub use use_crate;
 
-// @has-dir local/asdf
-// @has local/asdf/index.html
-// @has local/index.html '//a/@href' 'asdf/index.html'
+//@ has-dir local/asdf
+//@ has local/asdf/index.html
+//@ has local/index.html '//a/@href' 'asdf/index.html'
 pub use use_crate::asdf;
 
-// @has-dir local/use_crate_2
-// @has local/use_crate_2/index.html
-// @has local/index.html '//a/@href' 'use_crate_2/index.html'
+//@ has-dir local/use_crate_2
+//@ has local/use_crate_2/index.html
+//@ has local/index.html '//a/@href' 'use_crate_2/index.html'
 #[doc(inline)]
 pub use use_crate_2;

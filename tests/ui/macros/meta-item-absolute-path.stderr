@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: maybe a missing crate `Absolute`?
+error[E0433]: failed to resolve: you might be missing crate `Absolute`
   --> $DIR/meta-item-absolute-path.rs:1:12
    |
 LL | #[derive(::Absolute)]
-   |            ^^^^^^^^ maybe a missing crate `Absolute`?
+   |            ^^^^^^^^ you might be missing crate `Absolute`
 
-error[E0433]: failed to resolve: maybe a missing crate `Absolute`?
+error[E0433]: failed to resolve: you might be missing crate `Absolute`
   --> $DIR/meta-item-absolute-path.rs:1:12
    |
 LL | #[derive(::Absolute)]
-   |            ^^^^^^^^ maybe a missing crate `Absolute`?
+   |            ^^^^^^^^ you might be missing crate `Absolute`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

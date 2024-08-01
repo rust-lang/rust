@@ -1,8 +1,7 @@
 //! Operations related to UTF-8 validation.
 
-use crate::mem;
-
 use super::Utf8Error;
+use crate::mem;
 
 /// Returns the initial codepoint accumulator for the first byte.
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits

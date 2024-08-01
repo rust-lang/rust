@@ -71,22 +71,17 @@
 mod tests;
 
 use crate::borrow::{Borrow, Cow};
-use crate::cmp;
 use crate::collections::TryReserveError;
 use crate::error::Error;
-use crate::fmt;
-use crate::fs;
+use crate::ffi::{os_str, OsStr, OsString};
 use crate::hash::{Hash, Hasher};
-use crate::io;
 use crate::iter::FusedIterator;
 use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
-
-use crate::ffi::{os_str, OsStr, OsString};
-use crate::sys;
 use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR};
+use crate::{cmp, fmt, fs, io, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -1163,11 +1158,6 @@ pub struct PathBuf {
 }
 
 impl PathBuf {
-    #[inline]
-    fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        self.inner.as_mut_vec_for_path_buf()
-    }
-
     /// Allocates an empty `PathBuf`.
     ///
     /// # Examples
@@ -1226,6 +1216,25 @@ impl PathBuf {
         self
     }
 
+    /// Consumes and leaks the `PathBuf`, returning a mutable reference to the contents,
+    /// `&'a mut Path`.
+    ///
+    /// The caller has free choice over the returned lifetime, including 'static.
+    /// Indeed, this function is ideally used for data that lives for the remainder of
+    /// the program’s life, as dropping the returned reference will cause a memory leak.
+    ///
+    /// It does not reallocate or shrink the `PathBuf`, so the leaked allocation may include
+    /// unused capacity that is not part of the returned slice. If you want to discard excess
+    /// capacity, call [`into_boxed_path`], and then [`Box::leak`] instead.
+    /// However, keep in mind that trimming the capacity may result in a reallocation and copy.
+    ///
+    /// [`into_boxed_path`]: Self::into_boxed_path
+    #[unstable(feature = "os_string_pathbuf_leak", issue = "125965")]
+    #[inline]
+    pub fn leak<'a>(self) -> &'a mut Path {
+        Path::from_inner_mut(self.inner.leak())
+    }
+
     /// Extends `self` with `path`.
     ///
     /// If `path` is absolute, it replaces the current path.
@@ -1271,7 +1280,8 @@ impl PathBuf {
 
     fn _push(&mut self, path: &Path) {
         // in general, a separator is needed if the rightmost byte is not a separator
-        let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
+        let buf = self.inner.as_encoded_bytes();
+        let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
         // in the special case of `C:` on Windows, do *not* add a separator
         let comps = self.components();
@@ -1285,7 +1295,7 @@ impl PathBuf {
 
         // absolute `path` replaces `self`
         if path.is_absolute() || path.prefix().is_some() {
-            self.as_mut_vec().truncate(0);
+            self.inner.truncate(0);
 
         // verbatim paths need . and .. removed
         } else if comps.prefix_verbatim() && !path.inner.is_empty() {
@@ -1330,7 +1340,7 @@ impl PathBuf {
         // `path` has a root but no prefix, e.g., `\windows` (Windows only)
         } else if path.has_root() {
             let prefix_len = self.components().prefix_remaining();
-            self.as_mut_vec().truncate(prefix_len);
+            self.inner.truncate(prefix_len);
 
         // `path` is a pure relative path
         } else if need_sep {
@@ -1363,7 +1373,7 @@ impl PathBuf {
     pub fn pop(&mut self) -> bool {
         match self.parent().map(|p| p.as_u8_slice().len()) {
             Some(len) => {
-                self.as_mut_vec().truncate(len);
+                self.inner.truncate(len);
                 true
             }
             None => false,
@@ -1425,6 +1435,11 @@ impl PathBuf {
     /// If `extension` is the empty string, [`self.extension`] will be [`None`]
     /// afterwards, not `Some("")`.
     ///
+    /// # Panics
+    ///
+    /// Panics if the passed extension contains a path separator (see
+    /// [`is_separator`]).
+    ///
     /// # Caveats
     ///
     /// The new `extension` may contain dots and will be used in its entirety,
@@ -1470,6 +1485,14 @@ impl PathBuf {
     }
 
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
+        for &b in extension.as_encoded_bytes() {
+            if b < 128 {
+                if is_separator(b as char) {
+                    panic!("extension cannot contain path separators: {:?}", extension);
+                }
+            }
+        }
+
         let file_stem = match self.file_stem() {
             None => return false,
             Some(f) => f.as_encoded_bytes(),
@@ -1478,15 +1501,82 @@ impl PathBuf {
         // truncate until right after the file stem
         let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
         let start = self.inner.as_encoded_bytes().as_ptr().addr();
-        let v = self.as_mut_vec();
-        v.truncate(end_file_stem.wrapping_sub(start));
+        self.inner.truncate(end_file_stem.wrapping_sub(start));
 
         // add the new extension, if any
-        let new = extension.as_encoded_bytes();
+        let new = extension;
         if !new.is_empty() {
-            v.reserve_exact(new.len() + 1);
-            v.push(b'.');
-            v.extend_from_slice(new);
+            self.inner.reserve_exact(new.len() + 1);
+            self.inner.push(OsStr::new("."));
+            self.inner.push(new);
+        }
+
+        true
+    }
+
+    /// Append [`self.extension`] with `extension`.
+    ///
+    /// Returns `false` and does nothing if [`self.file_name`] is [`None`],
+    /// returns `true` and updates the extension otherwise.
+    ///
+    /// # Caveats
+    ///
+    /// The appended `extension` may contain dots and will be used in its entirety,
+    /// but only the part after the final dot will be reflected in
+    /// [`self.extension`].
+    ///
+    /// See the examples below.
+    ///
+    /// [`self.file_name`]: Path::file_name
+    /// [`self.extension`]: Path::extension
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(path_add_extension)]
+    ///
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut p = PathBuf::from("/feel/the");
+    ///
+    /// p.add_extension("formatted");
+    /// assert_eq!(Path::new("/feel/the.formatted"), p.as_path());
+    ///
+    /// p.add_extension("dark.side");
+    /// assert_eq!(Path::new("/feel/the.formatted.dark.side"), p.as_path());
+    ///
+    /// p.set_extension("cookie");
+    /// assert_eq!(Path::new("/feel/the.formatted.dark.cookie"), p.as_path());
+    ///
+    /// p.set_extension("");
+    /// assert_eq!(Path::new("/feel/the.formatted.dark"), p.as_path());
+    ///
+    /// p.add_extension("");
+    /// assert_eq!(Path::new("/feel/the.formatted.dark"), p.as_path());
+    /// ```
+    #[unstable(feature = "path_add_extension", issue = "127292")]
+    pub fn add_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
+        self._add_extension(extension.as_ref())
+    }
+
+    fn _add_extension(&mut self, extension: &OsStr) -> bool {
+        let file_name = match self.file_name() {
+            None => return false,
+            Some(f) => f.as_encoded_bytes(),
+        };
+
+        let new = extension;
+        if !new.is_empty() {
+            // truncate until right after the file name
+            // this is necessary for trimming the trailing slash
+            let end_file_name = file_name[file_name.len()..].as_ptr().addr();
+            let start = self.inner.as_encoded_bytes().as_ptr().addr();
+            self.inner.truncate(end_file_name.wrapping_sub(start));
+
+            // append the new extension
+            self.inner.reserve_exact(new.len() + 1);
+            self.inner.push(OsStr::new("."));
+            self.inner.push(new);
         }
 
         true
@@ -1702,7 +1792,7 @@ impl<T: ?Sized + AsRef<OsStr>> From<&T> for PathBuf {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<OsString> for PathBuf {
-    /// Converts an [`OsString`] into a [`PathBuf`]
+    /// Converts an [`OsString`] into a [`PathBuf`].
     ///
     /// This conversion does not allocate or copy memory.
     #[inline]
@@ -1984,10 +2074,8 @@ impl AsRef<OsStr> for PathBuf {
 #[stable(feature = "rust1", since = "1.0.0")]
 // `Path::new` current implementation relies
 // on `Path` being layout-compatible with `OsStr`.
-// However, `Path` layout is considered an implementation detail and must not be relied upon. We
-// want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
-// `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
-#[cfg_attr(not(doc), repr(transparent))]
+// However, `Path` layout is considered an implementation detail and must not be relied upon.
+#[repr(transparent)]
 pub struct Path {
     inner: OsStr,
 }
@@ -2613,19 +2701,45 @@ impl Path {
             None => {
                 // Enough capacity for the extension and the dot
                 let capacity = self_len + extension.len() + 1;
-                let whole_path = self_bytes.iter();
+                let whole_path = self_bytes;
                 (capacity, whole_path)
             }
             Some(previous_extension) => {
                 let capacity = self_len + extension.len() - previous_extension.len();
-                let path_till_dot = self_bytes[..self_len - previous_extension.len()].iter();
+                let path_till_dot = &self_bytes[..self_len - previous_extension.len()];
                 (capacity, path_till_dot)
             }
         };
 
         let mut new_path = PathBuf::with_capacity(new_capacity);
-        new_path.as_mut_vec().extend(slice_to_copy);
+        new_path.inner.extend_from_slice(slice_to_copy);
         new_path.set_extension(extension);
+        new_path
+    }
+
+    /// Creates an owned [`PathBuf`] like `self` but with the extension added.
+    ///
+    /// See [`PathBuf::add_extension`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(path_add_extension)]
+    ///
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let path = Path::new("foo.rs");
+    /// assert_eq!(path.with_added_extension("txt"), PathBuf::from("foo.rs.txt"));
+    ///
+    /// let path = Path::new("foo.tar.gz");
+    /// assert_eq!(path.with_added_extension(""), PathBuf::from("foo.tar.gz"));
+    /// assert_eq!(path.with_added_extension("xz"), PathBuf::from("foo.tar.gz.xz"));
+    /// assert_eq!(path.with_added_extension("").with_added_extension("txt"), PathBuf::from("foo.tar.gz.txt"));
+    /// ```
+    #[unstable(feature = "path_add_extension", issue = "127292")]
+    pub fn with_added_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
+        let mut new_path = self.to_path_buf();
+        new_path.add_extension(extension);
         new_path
     }
 
@@ -2875,6 +2989,8 @@ impl Path {
     /// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
     /// where those bugs are not an issue.
     ///
+    /// This is an alias for [`std::fs::exists`](crate::fs::exists).
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -2887,7 +3003,7 @@ impl Path {
     #[stable(feature = "path_try_exists", since = "1.63.0")]
     #[inline]
     pub fn try_exists(&self) -> io::Result<bool> {
-        fs::try_exists(self)
+        fs::exists(self)
     }
 
     /// Returns `true` if the path exists on disk and is pointing at a regular file.
@@ -3069,15 +3185,19 @@ impl Hash for Path {
         let bytes = &bytes[prefix_len..];
 
         let mut component_start = 0;
-        let mut bytes_hashed = 0;
+        // track some extra state to avoid prefix collisions.
+        // ["foo", "bar"] and ["foobar"], will have the same payload bytes
+        // but result in different chunk_bits
+        let mut chunk_bits: usize = 0;
 
         for i in 0..bytes.len() {
             let is_sep = if verbatim { is_verbatim_sep(bytes[i]) } else { is_sep_byte(bytes[i]) };
             if is_sep {
                 if i > component_start {
                     let to_hash = &bytes[component_start..i];
+                    chunk_bits = chunk_bits.wrapping_add(to_hash.len());
+                    chunk_bits = chunk_bits.rotate_right(2);
                     h.write(to_hash);
-                    bytes_hashed += to_hash.len();
                 }
 
                 // skip over separator and optionally a following CurDir item
@@ -3098,11 +3218,12 @@ impl Hash for Path {
 
         if component_start < bytes.len() {
             let to_hash = &bytes[component_start..];
+            chunk_bits = chunk_bits.wrapping_add(to_hash.len());
+            chunk_bits = chunk_bits.rotate_right(2);
             h.write(to_hash);
-            bytes_hashed += to_hash.len();
         }
 
-        h.write_usize(bytes_hashed);
+        h.write_usize(chunk_bits);
     }
 }
 
@@ -3313,65 +3434,79 @@ impl Error for StripPrefixError {
 /// Makes the path absolute without accessing the filesystem.
 ///
 /// If the path is relative, the current directory is used as the base directory.
-/// All intermediate components will be resolved according to platforms-specific
-/// rules but unlike [`canonicalize`][crate::fs::canonicalize] this does not
+/// All intermediate components will be resolved according to platform-specific
+/// rules, but unlike [`canonicalize`][crate::fs::canonicalize], this does not
 /// resolve symlinks and may succeed even if the path does not exist.
 ///
 /// If the `path` is empty or getting the
-/// [current directory][crate::env::current_dir] fails then an error will be
+/// [current directory][crate::env::current_dir] fails, then an error will be
 /// returned.
+///
+/// # Platform-specific behavior
+///
+/// On POSIX platforms, the path is resolved using [POSIX semantics][posix-semantics],
+/// except that it stops short of resolving symlinks. This means it will keep `..`
+/// components and trailing slashes.
+///
+/// On Windows, for verbatim paths, this will simply return the path as given. For other
+/// paths, this is currently equivalent to calling
+/// [`GetFullPathNameW`][windows-path].
+///
+/// Note that these [may change in the future][changes].
+///
+/// # Errors
+///
+/// This function may return an error in the following situations:
+///
+/// * If `path` is syntactically invalid; in particular, if it is empty.
+/// * If getting the [current directory][crate::env::current_dir] fails.
 ///
 /// # Examples
 ///
-/// ## Posix paths
+/// ## POSIX paths
 ///
 /// ```
 /// # #[cfg(unix)]
 /// fn main() -> std::io::Result<()> {
-///   use std::path::{self, Path};
+///     use std::path::{self, Path};
 ///
-///   // Relative to absolute
-///   let absolute = path::absolute("foo/./bar")?;
-///   assert!(absolute.ends_with("foo/bar"));
+///     // Relative to absolute
+///     let absolute = path::absolute("foo/./bar")?;
+///     assert!(absolute.ends_with("foo/bar"));
 ///
-///   // Absolute to absolute
-///   let absolute = path::absolute("/foo//test/.././bar.rs")?;
-///   assert_eq!(absolute, Path::new("/foo/test/../bar.rs"));
-///   Ok(())
+///     // Absolute to absolute
+///     let absolute = path::absolute("/foo//test/.././bar.rs")?;
+///     assert_eq!(absolute, Path::new("/foo/test/../bar.rs"));
+///     Ok(())
 /// }
 /// # #[cfg(not(unix))]
 /// # fn main() {}
 /// ```
-///
-/// The path is resolved using [POSIX semantics][posix-semantics] except that
-/// it stops short of resolving symlinks. This means it will keep `..`
-/// components and trailing slashes.
 ///
 /// ## Windows paths
 ///
 /// ```
 /// # #[cfg(windows)]
 /// fn main() -> std::io::Result<()> {
-///   use std::path::{self, Path};
+///     use std::path::{self, Path};
 ///
-///   // Relative to absolute
-///   let absolute = path::absolute("foo/./bar")?;
-///   assert!(absolute.ends_with(r"foo\bar"));
+///     // Relative to absolute
+///     let absolute = path::absolute("foo/./bar")?;
+///     assert!(absolute.ends_with(r"foo\bar"));
 ///
-///   // Absolute to absolute
-///   let absolute = path::absolute(r"C:\foo//test\..\./bar.rs")?;
+///     // Absolute to absolute
+///     let absolute = path::absolute(r"C:\foo//test\..\./bar.rs")?;
 ///
-///   assert_eq!(absolute, Path::new(r"C:\foo\bar.rs"));
-///   Ok(())
+///     assert_eq!(absolute, Path::new(r"C:\foo\bar.rs"));
+///     Ok(())
 /// }
 /// # #[cfg(not(windows))]
 /// # fn main() {}
 /// ```
 ///
-/// For verbatim paths this will simply return the path as given. For other
-/// paths this is currently equivalent to calling [`GetFullPathNameW`][windows-path]
-/// This may change in the future.
+/// Note that this [may change in the future][changes].
 ///
+/// [changes]: io#platform-specific-behavior
 /// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
 #[stable(feature = "absolute_path", since = "1.79.0")]

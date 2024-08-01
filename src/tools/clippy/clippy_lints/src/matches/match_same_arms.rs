@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lint_allowed, path_to_local, search_same, SpanlessEq, SpanlessHash};
 use core::cmp::Ordering;
 use core::{iter, slice};
@@ -9,9 +9,9 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatKind, RangeEnd};
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
-use rustc_span::{ErrorGuaranteed, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 use super::MATCH_SAME_ARMS;
 
@@ -110,20 +110,22 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
             && check_same_body()
     };
 
+    let mut appl = Applicability::MaybeIncorrect;
     let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();
     for (&(i, arm1), &(j, arm2)) in search_same(&indexed_arms, hash, eq) {
         if matches!(arm2.pat.kind, PatKind::Wild) {
             if !cx.tcx.features().non_exhaustive_omitted_patterns_lint
                 || is_lint_allowed(cx, NON_EXHAUSTIVE_OMITTED_PATTERNS, arm2.hir_id)
             {
+                let arm_span = adjusted_arm_span(cx, arm1.span);
                 span_lint_hir_and_then(
                     cx,
                     MATCH_SAME_ARMS,
                     arm1.hir_id,
-                    arm1.span,
+                    arm_span,
                     "this match arm has an identical body to the `_` wildcard arm",
                     |diag| {
-                        diag.span_suggestion(arm1.span, "try removing the arm", "", Applicability::MaybeIncorrect)
+                        diag.span_suggestion(arm_span, "try removing the arm", "", appl)
                             .help("or try changing either arm body")
                             .span_note(arm2.span, "`_` wildcard arm here");
                     },
@@ -144,21 +146,34 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                 keep_arm.span,
                 "this match arm has an identical body to another arm",
                 |diag| {
-                    let move_pat_snip = snippet(cx, move_arm.pat.span, "<pat2>");
-                    let keep_pat_snip = snippet(cx, keep_arm.pat.span, "<pat1>");
+                    let move_pat_snip = snippet_with_applicability(cx, move_arm.pat.span, "<pat2>", &mut appl);
+                    let keep_pat_snip = snippet_with_applicability(cx, keep_arm.pat.span, "<pat1>", &mut appl);
 
                     diag.span_suggestion(
                         keep_arm.pat.span,
-                        "try merging the arm patterns",
+                        "or try merging the arm patterns",
                         format!("{keep_pat_snip} | {move_pat_snip}"),
-                        Applicability::MaybeIncorrect,
+                        appl,
                     )
-                    .help("or try changing either arm body")
-                    .span_note(move_arm.span, "other arm here");
+                    .span_suggestion(
+                        adjusted_arm_span(cx, move_arm.span),
+                        "and remove this obsolete arm",
+                        "",
+                        appl,
+                    )
+                    .help("try changing either arm body");
                 },
             );
         }
     }
+}
+
+/// Extend arm's span to include the comma and whitespaces after it.
+fn adjusted_arm_span(cx: &LateContext<'_>, span: Span) -> Span {
+    let source_map = cx.sess().source_map();
+    source_map
+        .span_extend_while(span, |c| c == ',' || c.is_ascii_whitespace())
+        .unwrap_or(span)
 }
 
 #[derive(Clone, Copy)]

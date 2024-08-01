@@ -1,22 +1,22 @@
-use crate::base::{DummyResult, ExtCtxt, MacResult};
-use crate::expand::{parse_ast_fragment, AstFragmentKind};
-use crate::mbe::{
-    macro_parser::{MatcherLoc, NamedParseResult, ParseResult::*, TtParser},
-    macro_rules::{try_match_macro, Tracker},
-};
+use std::borrow::Cow;
+
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diag, DiagCtxt, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
-use std::borrow::Cow;
 use tracing::debug;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
+use crate::base::{DummyResult, ExtCtxt, MacResult};
+use crate::expand::{parse_ast_fragment, AstFragmentKind};
+use crate::mbe::macro_parser::ParseResult::*;
+use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
+use crate::mbe::macro_rules::{try_match_macro, Tracker};
 
 pub(super) fn failed_to_match_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
@@ -55,13 +55,13 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     let span = token.span.substitute_dummy(sp);
 
-    let mut err = cx.dcx().struct_span_err(span, parse_failure_msg(&token));
+    let mut err = cx.dcx().struct_span_err(span, parse_failure_msg(&token, None));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
     }
 
-    annotate_doc_comment(cx.sess.dcx(), &mut err, psess.source_map(), span);
+    annotate_doc_comment(&mut err, psess.source_map(), span);
 
     if let Some(span) = remaining_matcher.span() {
         err.span_note(span, format!("while trying to match {remaining_matcher}"));
@@ -73,12 +73,6 @@ pub(super) fn failed_to_match_macro<'cx>(
         && (matches!(expected_token.kind, TokenKind::Interpolated(_))
             || matches!(token.kind, TokenKind::Interpolated(_)))
     {
-        if let TokenKind::Interpolated(node) = &expected_token.kind {
-            err.span_label(node.1, "");
-        }
-        if let TokenKind::Interpolated(node) = &token.kind {
-            err.span_label(node.1, "");
-        }
         err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
         err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
 
@@ -126,21 +120,21 @@ struct CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
 
 struct BestFailure {
     token: Token,
-    position_in_tokenstream: usize,
+    position_in_tokenstream: u32,
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: usize) -> bool {
+    fn is_better_position(&self, position: u32) -> bool {
         position > self.position_in_tokenstream
     }
 }
 
 impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
-    type Failure = (Token, usize, &'static str);
+    type Failure = (Token, u32, &'static str);
 
-    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure {
+    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
         (tok, position, msg)
     }
 
@@ -206,17 +200,33 @@ impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx, '_> {
 }
 
 /// Currently used by macro_rules! compilation to extract a little information from the `Failure` case.
-pub struct FailureForwarder;
+pub struct FailureForwarder<'matcher> {
+    expected_token: Option<&'matcher Token>,
+}
 
-impl<'matcher> Tracker<'matcher> for FailureForwarder {
-    type Failure = (Token, usize, &'static str);
+impl<'matcher> FailureForwarder<'matcher> {
+    pub fn new() -> Self {
+        Self { expected_token: None }
+    }
+}
 
-    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure {
+impl<'matcher> Tracker<'matcher> for FailureForwarder<'matcher> {
+    type Failure = (Token, u32, &'static str);
+
+    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
         (tok, position, msg)
     }
 
     fn description() -> &'static str {
         "failure-forwarder"
+    }
+
+    fn set_expected_token(&mut self, tok: &'matcher Token) {
+        self.expected_token = Some(tok);
+    }
+
+    fn get_expected_token(&self) -> Option<&'matcher Token> {
+        self.expected_token
     }
 }
 
@@ -314,21 +324,31 @@ enum ExplainDocComment {
     },
 }
 
-pub(super) fn annotate_doc_comment(dcx: &DiagCtxt, err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
+pub(super) fn annotate_doc_comment(err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
-            err.subdiagnostic(dcx, ExplainDocComment::Outer { span });
+            err.subdiagnostic(ExplainDocComment::Outer { span });
         } else if src.starts_with("//!") || src.starts_with("/*!") {
-            err.subdiagnostic(dcx, ExplainDocComment::Inner { span });
+            err.subdiagnostic(ExplainDocComment::Inner { span });
         }
     }
 }
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub(super) fn parse_failure_msg(tok: &Token) -> Cow<'static, str> {
-    match tok.kind {
-        token::Eof => Cow::from("unexpected end of macro invocation"),
-        _ => Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok))),
+pub(super) fn parse_failure_msg(tok: &Token, expected_token: Option<&Token>) -> Cow<'static, str> {
+    if let Some(expected_token) = expected_token {
+        Cow::from(format!(
+            "expected `{}`, found `{}`",
+            pprust::token_to_string(expected_token),
+            pprust::token_to_string(tok),
+        ))
+    } else {
+        match tok.kind {
+            token::Eof => Cow::from("unexpected end of macro invocation"),
+            _ => {
+                Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok)))
+            }
+        }
     }
 }

@@ -1,19 +1,20 @@
-use crate::dep_graph::dep_kinds;
-use crate::query::plumbing::CyclePlaceholder;
+use std::collections::VecDeque;
+use std::fmt::Write;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::ty::Representability;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
 use rustc_query_system::query::{report_cycle, CycleError};
 use rustc_query_system::Value;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 
-use std::collections::VecDeque;
-use std::fmt::Write;
-use std::ops::ControlFlow;
+use crate::dep_graph::dep_kinds;
+use crate::query::plumbing::CyclePlaceholder;
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
@@ -23,7 +24,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
+impl<'tcx> Value<TyCtxt<'tcx>> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
         Err(CyclePlaceholder(guar))
     }
@@ -65,7 +66,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
             std::iter::repeat(err).take(arity),
             err,
             false,
-            rustc_hir::Unsafety::Normal,
+            rustc_hir::Safety::Safe,
             rustc_target::spec::abi::Abi::Rust,
         ));
 
@@ -111,7 +112,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<Ty<'_>> {
+impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, Ty<'_>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -121,7 +122,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<Ty<'_>> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>> {
+impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<'_>>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -142,7 +143,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
             && let Some(def_id) = frame.query.def_id
         {
             let n = tcx.generics_of(def_id).own_params.len();
-            vec![ty::Variance::Bivariant; n].leak()
+            vec![ty::Bivariant; n].leak()
         } else {
             span_bug!(
                 cycle_error.usage.as_ref().unwrap().0,

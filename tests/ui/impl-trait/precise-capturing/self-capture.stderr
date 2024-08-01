@@ -1,11 +1,10 @@
-warning: the feature `precise_capturing` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/self-capture.rs:3:12
+error: `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
+  --> $DIR/self-capture.rs:4:34
    |
-LL | #![feature(precise_capturing)]
-   |            ^^^^^^^^^^^^^^^^^
+LL |     fn bar<'a>() -> impl Sized + use<Self>;
+   |                                  ^^^^^^^^^
    |
-   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+   = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 

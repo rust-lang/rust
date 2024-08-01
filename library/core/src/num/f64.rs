@@ -327,6 +327,11 @@ pub mod consts {
     #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_PI: f64 = 0.564189583547756286948079451560772586_f64;
 
+    /// 1/sqrt(2π)
+    #[doc(alias = "FRAC_1_SQRT_TAU")]
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_2PI: f64 = 0.398942280401432677939946059934381868_f64;
+
     /// 2/π
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_2_PI: f64 = 0.636619772367581343075535053490057448_f64;
@@ -484,6 +489,21 @@ impl f64 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
+    /// Sign bit
+    const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
+
+    /// Exponent mask
+    const EXP_MASK: u64 = 0x7ff0_0000_0000_0000;
+
+    /// Mantissa mask
+    const MAN_MASK: u64 = 0x000f_ffff_ffff_ffff;
+
+    /// Minimum representable positive value (min subnormal)
+    const TINY_BITS: u64 = 0x1;
+
+    /// Minimum representable negative value (min negative subnormal)
+    const NEG_TINY_BITS: u64 = Self::TINY_BITS | Self::SIGN_MASK;
+
     /// Returns `true` if this value is NaN.
     ///
     /// ```
@@ -509,9 +529,7 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub(crate) const fn abs_private(self) -> f64 {
         // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
-        unsafe {
-            mem::transmute::<u64, f64>(mem::transmute::<f64, u64>(self) & 0x7fff_ffff_ffff_ffff)
-        }
+        unsafe { mem::transmute::<u64, f64>(mem::transmute::<f64, u64>(self) & !Self::SIGN_MASK) }
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -668,13 +686,10 @@ impl f64 {
     // and some normal floating point numbers truncated from an x87 FPU.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const unsafe fn partial_classify(self) -> FpCategory {
-        const EXP_MASK: u64 = 0x7ff0000000000000;
-        const MAN_MASK: u64 = 0x000fffffffffffff;
-
         // SAFETY: The caller is not asking questions for which this will tell lies.
         let b = unsafe { mem::transmute::<f64, u64>(self) };
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -686,12 +701,9 @@ impl f64 {
     // plus a transmute. We do not live in a just world, but we can make it more so.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const fn classify_bits(b: u64) -> FpCategory {
-        const EXP_MASK: u64 = 0x7ff0000000000000;
-        const MAN_MASK: u64 = 0x000fffffffffffff;
-
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
-            (_, EXP_MASK) => FpCategory::Nan,
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -699,11 +711,13 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE 754 doesn't assign any
-    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
-    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
-    /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// positive sign bit and positive infinity.
+    ///
+    /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
+    /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
+    /// conserved over arithmetic operations, the result of `is_sign_positive` on
+    /// a NaN might produce an unexpected result in some cases. See [explanation
+    /// of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -730,11 +744,13 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE 754 doesn't assign any
-    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
-    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
-    /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// negative sign bit and negative infinity.
+    ///
+    /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
+    /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
+    /// conserved over arithmetic operations, the result of `is_sign_negative` on
+    /// a NaN might produce an unexpected result in some cases. See [explanation
+    /// of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -751,7 +767,7 @@ impl f64 {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
         // SAFETY: This is just transmuting to get the sign bit, it's fine.
-        unsafe { mem::transmute::<f64, u64>(self) & 0x8000_0000_0000_0000 != 0 }
+        unsafe { mem::transmute::<f64, u64>(self) & Self::SIGN_MASK != 0 }
     }
 
     #[must_use]
@@ -792,19 +808,17 @@ impl f64 {
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
-        // We must use strictly integer arithmetic to prevent denormals from
-        // flushing to zero after an arithmetic operation on some platforms.
-        const TINY_BITS: u64 = 0x1; // Smallest positive f64.
-        const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
-
+        // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
+        // denormals to zero. This is in general unsound and unsupported, but here
+        // we do our best to still produce the correct result on such targets.
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & !Self::SIGN_MASK;
         let next_bits = if abs == 0 {
-            TINY_BITS
+            Self::TINY_BITS
         } else if bits == abs {
             bits + 1
         } else {
@@ -842,19 +856,17 @@ impl f64 {
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
-        // We must use strictly integer arithmetic to prevent denormals from
-        // flushing to zero after an arithmetic operation on some platforms.
-        const NEG_TINY_BITS: u64 = 0x8000_0000_0000_0001; // Smallest (in magnitude) negative f64.
-        const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
-
+        // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
+        // denormals to zero. This is in general unsound and unsupported, but here
+        // we do our best to still produce the correct result on such targets.
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & !Self::SIGN_MASK;
         let next_bits = if abs == 0 {
-            NEG_TINY_BITS
+            Self::NEG_TINY_BITS
         } else if bits == abs {
             bits - 1
         } else {
@@ -912,8 +924,8 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_radians(self) -> f64 {
-        let value: f64 = consts::PI;
-        self * (value / 180.0)
+        const RADS_PER_DEG: f64 = consts::PI / 180.0;
+        self * RADS_PER_DEG
     }
 
     /// Returns the maximum of the two numbers, ignoring NaN.
@@ -1111,7 +1123,6 @@ impl f64 {
     /// ```
     /// assert!((1f64).to_bits() != 1f64 as u64); // to_bits() is not casting!
     /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
-    ///
     /// ```
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -1245,7 +1256,7 @@ impl f64 {
         intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64)
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -1266,7 +1277,7 @@ impl f64 {
         self.to_bits().to_be_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -1287,7 +1298,7 @@ impl f64 {
         self.to_bits().to_le_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// native byte order.
     ///
     /// As the target platform's native endianness is used, portable code
@@ -1321,7 +1332,7 @@ impl f64 {
         self.to_bits().to_ne_bytes()
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Creates a floating point value from its representation as a byte array in big endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1340,7 +1351,7 @@ impl f64 {
         Self::from_bits(u64::from_be_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in little endian.
+    /// Creates a floating point value from its representation as a byte array in little endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1359,7 +1370,7 @@ impl f64 {
         Self::from_bits(u64::from_le_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in native endian.
+    /// Creates a floating point value from its representation as a byte array in native endian.
     ///
     /// As the target platform's native endianness is used, portable code
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
@@ -1389,7 +1400,7 @@ impl f64 {
         Self::from_bits(u64::from_ne_bytes(bytes))
     }
 
-    /// Return the ordering between `self` and `other`.
+    /// Returns the ordering between `self` and `other`.
     ///
     /// Unlike the standard partial comparison between floating point numbers,
     /// this comparison always produces an ordering in accordance to

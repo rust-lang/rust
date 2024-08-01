@@ -1,0 +1,84 @@
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:145:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:147:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:149:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:151:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:153:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:155:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:157:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:159:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error[E0599]: no method named `Au` found for struct `M0` in the current scope
+  --> $DIR/probe-for-diagnostic-doesnt-do-extra-work.rs:161:19
+   |
+LL | struct M0 {
+   | --------- method `Au` not found for this struct
+...
+LL |     M0::default().Au();
+   |                   ^^ method not found in `M0`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

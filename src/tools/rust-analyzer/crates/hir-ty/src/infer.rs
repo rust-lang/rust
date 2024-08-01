@@ -49,6 +49,7 @@ use hir_def::{
 use hir_expand::name::{name, Name};
 use indexmap::IndexSet;
 use la_arena::{ArenaMap, Entry};
+use once_cell::unsync::OnceCell;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 use triomphe::Arc;
@@ -56,14 +57,15 @@ use triomphe::Arc;
 use crate::{
     db::HirDatabase,
     error_lifetime, fold_tys,
+    generics::Generics,
     infer::{coerce::CoerceMany, unify::InferenceTable},
     lower::ImplTraitLoweringMode,
     to_assoc_type_id,
     traits::FnTrait,
-    utils::{Generics, InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
+    utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
-    ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ProjectionTy, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt,
+    ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ParamLoweringMode, ProjectionTy,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -79,7 +81,7 @@ pub(crate) use closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = tracing::span!(tracing::Level::INFO, "infer_query").entered();
+    let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db.upcast());
     let body = db.body(def);
     let mut ctx = InferenceContext::new(db, def, &body, resolver);
@@ -198,6 +200,7 @@ pub enum InferenceDiagnostic {
     NoSuchField {
         field: ExprOrPatId,
         private: bool,
+        variant: VariantId,
     },
     PrivateField {
         expr: ExprId,
@@ -525,6 +528,7 @@ pub(crate) struct InferenceContext<'a> {
     pub(crate) owner: DefWithBodyId,
     pub(crate) body: &'a Body,
     pub(crate) resolver: Resolver,
+    generics: OnceCell<Option<Generics>>,
     table: unify::InferenceTable<'a>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
@@ -610,6 +614,7 @@ impl<'a> InferenceContext<'a> {
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
         InferenceContext {
+            generics: OnceCell::new(),
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(db, trait_env),
             tuple_field_accesses_rev: Default::default(),
@@ -631,8 +636,14 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    pub(crate) fn generics(&self) -> Option<Generics> {
-        Some(crate::utils::generics(self.db.upcast(), self.resolver.generic_def()?))
+    pub(crate) fn generics(&self) -> Option<&Generics> {
+        self.generics
+            .get_or_init(|| {
+                self.resolver
+                    .generic_def()
+                    .map(|def| crate::generics::generics(self.db.upcast(), def))
+            })
+            .as_ref()
     }
 
     // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
@@ -690,18 +701,23 @@ impl<'a> InferenceContext<'a> {
         table.propagate_diverging_flag();
         for ty in type_of_expr.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_pat.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_binding.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_rpit.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
 
         *has_errors = !type_mismatches.is_empty();
@@ -780,7 +796,8 @@ impl<'a> InferenceContext<'a> {
 
     fn collect_fn(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, func.into())
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into())
+            .with_type_param_mode(ParamLoweringMode::Placeholder)
             .with_impl_trait_mode(ImplTraitLoweringMode::Param);
         let mut param_tys =
             data.params.iter().map(|type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
@@ -815,6 +832,7 @@ impl<'a> InferenceContext<'a> {
         let return_ty = &*data.ret_type;
 
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into())
+            .with_type_param_mode(ParamLoweringMode::Placeholder)
             .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
         let return_ty = ctx.lower_ty(return_ty);
         let return_ty = self.insert_type_vars(return_ty);
@@ -822,11 +840,7 @@ impl<'a> InferenceContext<'a> {
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
             // RPIT opaque types use substitution of their parent function.
             let fn_placeholders = TyBuilder::placeholder_subst(self.db, func);
-            let result = self.insert_inference_vars_for_impl_trait(
-                return_ty,
-                rpits.clone(),
-                fn_placeholders,
-            );
+            let result = self.insert_inference_vars_for_impl_trait(return_ty, fn_placeholders);
             let rpits = rpits.skip_binders();
             for (id, _) in rpits.impl_traits.iter() {
                 if let Entry::Vacant(e) = self.result.type_of_rpit.entry(id) {
@@ -849,12 +863,7 @@ impl<'a> InferenceContext<'a> {
         self.insert_atpit_coercion_table(params_and_ret_tys.iter());
     }
 
-    fn insert_inference_vars_for_impl_trait<T>(
-        &mut self,
-        t: T,
-        rpits: Arc<chalk_ir::Binders<crate::ImplTraits>>,
-        placeholders: Substitution,
-    ) -> T
+    fn insert_inference_vars_for_impl_trait<T>(&mut self, t: T, placeholders: Substitution) -> T
     where
         T: crate::HasInterner<Interner = Interner> + crate::TypeFoldable<Interner>,
     {
@@ -865,13 +874,21 @@ impl<'a> InferenceContext<'a> {
                     TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
                     _ => return ty,
                 };
-                let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
-                    ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
-                    ImplTraitId::AssociatedTypeImplTrait(_, idx) => idx,
-                    _ => unreachable!(),
+                let (impl_traits, idx) =
+                    match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
+                        ImplTraitId::ReturnTypeImplTrait(def, idx) => {
+                            (self.db.return_type_impl_traits(def), idx)
+                        }
+                        ImplTraitId::AssociatedTypeImplTrait(def, idx) => {
+                            (self.db.type_alias_impl_traits(def), idx)
+                        }
+                        _ => unreachable!(),
+                    };
+                let Some(impl_traits) = impl_traits else {
+                    return ty;
                 };
-                let bounds =
-                    (*rpits).map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.iter()));
+                let bounds = (*impl_traits)
+                    .map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.iter()));
                 let var = self.table.new_type_var();
                 let var_subst = Substitution::from1(Interner, var.clone());
                 for bound in bounds {
@@ -879,11 +896,8 @@ impl<'a> InferenceContext<'a> {
                     let (var_predicate, binders) =
                         predicate.substitute(Interner, &var_subst).into_value_and_skipped_binders();
                     always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
-                    let var_predicate = self.insert_inference_vars_for_impl_trait(
-                        var_predicate,
-                        rpits.clone(),
-                        placeholders.clone(),
-                    );
+                    let var_predicate = self
+                        .insert_inference_vars_for_impl_trait(var_predicate, placeholders.clone());
                     self.push_obligation(var_predicate.cast(Interner));
                 }
                 self.result.type_of_rpit.insert(idx, var.clone());
@@ -970,16 +984,8 @@ impl<'a> InferenceContext<'a> {
                     self.db.lookup_intern_impl_trait_id(opaque_ty_id.into())
                 {
                     if assoc_tys.contains(&alias_id) {
-                        let atpits = self
-                            .db
-                            .type_alias_impl_traits(alias_id)
-                            .expect("Marked as ATPIT but no impl traits!");
                         let alias_placeholders = TyBuilder::placeholder_subst(self.db, alias_id);
-                        let ty = self.insert_inference_vars_for_impl_trait(
-                            ty,
-                            atpits,
-                            alias_placeholders,
-                        );
+                        let ty = self.insert_inference_vars_for_impl_trait(ty, alias_placeholders);
                         return Some((opaque_ty_id, ty));
                     }
                 }
@@ -1262,7 +1268,7 @@ impl<'a> InferenceContext<'a> {
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
             TypeNs::SelfType(impl_id) => {
-                let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
+                let generics = crate::generics::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
                 let mut ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
 

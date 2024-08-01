@@ -32,10 +32,7 @@ impl<'a, T: 'a> Handle<'a, T, UIView<'a, T>, Result<(), io::Error>> for TUIHandl
         F: FnOnce(&mut UIView<'a, T>) -> Result<(), io::Error> + Send + 'static,
     {
         real_dispatch(f)
-        //~^ ERROR lifetime may not live long enough
-        //~| ERROR implementation of `FnOnce` is not general enough
-        //~| ERROR mismatched types
-        //
+        //~^ ERROR expected a `FnOnce(&mut UIView<'_, T>)` closure, found `F`
     }
 }
 

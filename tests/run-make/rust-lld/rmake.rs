@@ -5,9 +5,10 @@
 //@ ignore-msvc
 //@ ignore-s390x lld does not yet support s390x as target
 
+use std::process::Output;
+
 use run_make_support::regex::Regex;
 use run_make_support::rustc;
-use std::process::Output;
 
 fn main() {
     // Opt-in to lld and the self-contained linker, to link with rust-lld. We'll check that by
@@ -21,8 +22,9 @@ fn main() {
         .input("main.rs")
         .run();
     assert!(
-        find_lld_version_in_logs(output),
-        "the LLD version string should be present in the output logs"
+        find_lld_version_in_logs(output.stderr_utf8()),
+        "the LLD version string should be present in the output logs:\n{}",
+        output.stderr_utf8()
     );
 
     // It should not be used when we explictly opt-out of lld.
@@ -33,8 +35,9 @@ fn main() {
         .input("main.rs")
         .run();
     assert!(
-        !find_lld_version_in_logs(output),
-        "the LLD version string should not be present in the output logs"
+        !find_lld_version_in_logs(output.stderr_utf8()),
+        "the LLD version string should not be present in the output logs:\n{}",
+        output.stderr_utf8()
     );
 
     // While we're here, also check that the last linker feature flag "wins" when passed multiple
@@ -50,13 +53,13 @@ fn main() {
         .input("main.rs")
         .run();
     assert!(
-        find_lld_version_in_logs(output),
-        "the LLD version string should be present in the output logs"
+        find_lld_version_in_logs(output.stderr_utf8()),
+        "the LLD version string should be present in the output logs:\n{}",
+        output.stderr_utf8()
     );
 }
 
-fn find_lld_version_in_logs(output: Output) -> bool {
+fn find_lld_version_in_logs(stderr: String) -> bool {
     let lld_version_re = Regex::new(r"^LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
-    let stderr = std::str::from_utf8(&output.stderr).unwrap();
-    stderr.lines().any(|line| lld_version_re.is_match(line))
+    stderr.lines().any(|line| lld_version_re.is_match(line.trim()))
 }

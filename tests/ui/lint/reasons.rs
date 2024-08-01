@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
 #![warn(elided_lifetimes_in_paths,
         //~^ NOTE the lint level is defined here
         reason = "explicit anonymous lifetimes aid reasoning about ownership")]

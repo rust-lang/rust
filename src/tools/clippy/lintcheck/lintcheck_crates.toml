@@ -1,38 +1,44 @@
+# If you want to check a local project it's usually easier to use:
+# ```
+# cargo dev lint <path>
+# ```
+#
+# For testing you can also add sources to git and local repos like this:
+# ```
+# crate = {name = "crate", git_url = "https://github.com/name/repo.git", git_hash = "coo1cafe"}
+# crate = {name = "crate", path = "/path/to/project"}
+# ```
+
 [crates]
-# some of these are from cargotest
-cargo = {name = "cargo", versions = ['0.64.0']}
-iron = {name = "iron", versions = ['0.6.1']}
-ripgrep = {name = "ripgrep", versions = ['12.1.1']}
-xsv = {name = "xsv", versions = ['0.13.0']}
-# commented out because of 173K clippy::match_same_arms msgs in language_type.rs
-#tokei = { name = "tokei", versions = ['12.0.4']}
-rayon = {name = "rayon", versions = ['1.5.0']}
-serde = {name = "serde", versions = ['1.0.118']}
-# top 10 crates.io dls
-bitflags = {name = "bitflags", versions = ['1.2.1']}
-# crash = {name = "clippy_crash", path = "/tmp/clippy_crash"}
-libc = {name = "libc", versions = ['0.2.81']}
-log = {name = "log", versions = ['0.4.11']}
-proc-macro2 = {name = "proc-macro2", versions = ['1.0.24']}
-quote = {name = "quote", versions = ['1.0.7']}
-rand = {name = "rand", versions = ['0.7.3']}
-rand_core = {name = "rand_core", versions = ['0.6.0']}
-regex = {name = "regex", versions = ['1.3.2']}
-syn = {name = "syn", versions = ['1.0.54']}
-unicode-xid = {name = "unicode-xid", versions = ['0.2.1']}
-# some more of dtolnays crates
-anyhow = {name = "anyhow", versions = ['1.0.38']}
-async-trait = {name = "async-trait", versions = ['0.1.42']}
-cxx = {name = "cxx", versions = ['1.0.32']}
-ryu = {name = "ryu", versions = ['1.0.5']}
-serde_yaml = {name = "serde_yaml", versions = ['0.8.17']}
-thiserror = {name = "thiserror", versions = ['1.0.24']}
-# some embark crates, there are other interesting crates but
-# unfortunately adding them increases lintcheck runtime drastically
-cfg-expr = {name = "cfg-expr", versions = ['0.7.1']}
-puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
-rpmalloc = {name = "rpmalloc", versions = ['0.2.0']}
-tame-oidc = {name = "tame-oidc", versions = ['0.1.0']}
+
+# Some binaries
+cargo = {name = "cargo", version = '0.80.0', online_link = 'https://docs.rs/cargo/{version}/src/{file}.html#{line}'}
+ripgrep = {name = "ripgrep", version = '14.1.0'}
+mdbook = {name = "mdbook", version = '0.4.40'}
+
+# Common libraries
+rayon = {name = "rayon", version = '1.10.0'}
+serde = {name = "serde", version = '1.0.204'}
+bitflags = {name = "bitflags", version = '2.6.0'}
+log = {name = "log", version = '0.4.22'}
+quote = {name = "quote", version = '1.0.36'}
+proc-macro2 = {name = "proc-macro2", version = '1.0.86'}
+rand = {name = "rand", version = '0.8.5'}
+rand_core = {name = "rand_core", version = '0.6.4'}
+regex = {name = "regex", version = '1.10.5'}
+syn = {name = "syn", version = '2.0.71'}
+anyhow = {name = "anyhow", version = '1.0.86'}
+async-trait = { name = 'async-trait', version = '0.1.81' }
+cxx = {name = "cxx", version = '1.0.124'}
+ryu = {name = "ryu", version = '1.0.18'}
+thiserror = {name = "thiserror", version = '1.0.63'}
+serde_yaml = {name = "serde_yaml", version = '0.9.33'}
+puffin = {name = "puffin", version = '0.19.0'}
+bumpalo = {name = "bumpalo", version = '3.16.0'}
+wasmi = {name = "wasmi", version = '0.35.0'}
+base64 = { name = 'base64', version = '0.22.1' }
+once_cell = { name = 'once_cell', version = '1.19.0' }
+tokio = { name = 'tokio', version = '1.38.1' }
 
 [recursive]
 ignore = [

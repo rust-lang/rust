@@ -1,4 +1,4 @@
-warning: call to unsafe function `unsf` is unsafe and requires unsafe block (error E0133)
+warning[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
   --> $DIR/edition_2024_default.rs:13:5
    |
 LL |     unsf();
@@ -15,3 +15,4 @@ LL | unsafe fn foo() {
 
 warning: 1 warning emitted
 
+For more information about this error, try `rustc --explain E0133`.

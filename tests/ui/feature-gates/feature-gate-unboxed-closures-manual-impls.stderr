@@ -80,7 +80,7 @@ error[E0277]: expected a `FnMut()` closure, found `Foo`
 LL | impl Fn<()> for Foo {
    |                 ^^^ expected an `FnMut()` closure, found `Foo`
    |
-   = help: the trait `FnMut<()>` is not implemented for `Foo`
+   = help: the trait `FnMut()` is not implemented for `Foo`
    = note: wrap the `Foo` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `Fn`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
@@ -89,13 +89,14 @@ error[E0053]: method `call` has an incompatible type for trait
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:13:32
    |
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
-   |                                ^^^^
-   |                                |
-   |                                expected `&Foo`, found `Foo`
-   |                                help: change the self-receiver type to match the trait: `&self`
+   |                                ^^^^ expected `&Foo`, found `Foo`
    |
    = note: expected signature `extern "rust-call" fn(&Foo, ()) -> _`
-              found signature `extern "rust-call" fn(Foo, ())`
+              found signature `extern "rust-call" fn(Foo, ()) -> ()`
+help: change the self-receiver type to match the trait
+   |
+LL |     extern "rust-call" fn call(&self, args: ()) -> () {}
+   |                                ~~~~~
 
 error[E0183]: manual implementations of `FnOnce` are experimental
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
@@ -105,11 +106,11 @@ LL | impl FnOnce() for Foo1 {
    |
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
    |
 LL | impl FnOnce() for Foo1 {
-   |      ^^^^^^^^ associated type not allowed here
+   |      ^^^^^^^^ associated item constraint not allowed here
    |
 help: parenthesized trait syntax expands to `FnOnce<(), Output=()>`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
@@ -149,7 +150,7 @@ error[E0277]: expected a `FnOnce()` closure, found `Bar`
 LL | impl FnMut<()> for Bar {
    |                    ^^^ expected an `FnOnce()` closure, found `Bar`
    |
-   = help: the trait `FnOnce<()>` is not implemented for `Bar`
+   = help: the trait `FnOnce()` is not implemented for `Bar`
    = note: wrap the `Bar` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `FnMut`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
@@ -158,13 +159,14 @@ error[E0053]: method `call_mut` has an incompatible type for trait
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:36
    |
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
-   |                                    ^^^^^
-   |                                    |
-   |                                    types differ in mutability
-   |                                    help: change the self-receiver type to match the trait: `&mut self`
+   |                                    ^^^^^ types differ in mutability
    |
    = note: expected signature `extern "rust-call" fn(&mut Bar, ()) -> _`
-              found signature `extern "rust-call" fn(&Bar, ())`
+              found signature `extern "rust-call" fn(&Bar, ()) -> ()`
+help: change the self-receiver type to match the trait
+   |
+LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
+   |                                    ~~~~~~~~~
 
 error[E0046]: not all trait items implemented, missing: `Output`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:1

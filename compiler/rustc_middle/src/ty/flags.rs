@@ -1,6 +1,6 @@
-use crate::ty::{self, InferConst, Ty, TypeFlags};
-use crate::ty::{GenericArg, GenericArgKind};
 use std::slice;
+
+use crate::ty::{self, GenericArg, GenericArgKind, InferConst, Ty, TypeFlags};
 
 #[derive(Debug)]
 pub struct FlagComputation {
@@ -28,10 +28,9 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_const(c: &ty::ConstKind<'_>, t: Ty<'_>) -> FlagComputation {
+    pub fn for_const_kind(kind: &ty::ConstKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
-        result.add_const_kind(c);
-        result.add_ty(t);
+        result.add_const_kind(kind);
         result
     }
 
@@ -294,10 +293,10 @@ impl FlagComputation {
                 self.add_ty(b);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                projection_ty,
+                projection_term,
                 term,
             })) => {
-                self.add_alias_ty(projection_ty);
+                self.add_alias_term(projection_term);
                 self.add_term(term);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
@@ -313,7 +312,7 @@ impl FlagComputation {
             }
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) => {
-                self.add_alias_ty(alias);
+                self.add_alias_term(alias);
                 self.add_term(term);
             }
             ty::PredicateKind::AliasRelate(t1, t2, _) => {
@@ -373,27 +372,8 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
-            ty::ConstKind::Value(_) => {}
-            ty::ConstKind::Expr(e) => {
-                use ty::Expr;
-                match e {
-                    Expr::Binop(_, l, r) => {
-                        self.add_const(l);
-                        self.add_const(r);
-                    }
-                    Expr::UnOp(_, v) => self.add_const(v),
-                    Expr::FunctionCall(f, args) => {
-                        self.add_const(f);
-                        for arg in args {
-                            self.add_const(arg);
-                        }
-                    }
-                    Expr::Cast(_, c, t) => {
-                        self.add_ty(t);
-                        self.add_const(c);
-                    }
-                }
-            }
+            ty::ConstKind::Value(ty, _) => self.add_ty(ty),
+            ty::ConstKind::Expr(e) => self.add_args(e.args()),
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }
@@ -408,6 +388,10 @@ impl FlagComputation {
 
     fn add_alias_ty(&mut self, alias_ty: ty::AliasTy<'_>) {
         self.add_args(alias_ty.args);
+    }
+
+    fn add_alias_term(&mut self, alias_term: ty::AliasTerm<'_>) {
+        self.add_args(alias_term.args);
     }
 
     fn add_args(&mut self, args: &[GenericArg<'_>]) {

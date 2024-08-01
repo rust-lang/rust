@@ -6,7 +6,8 @@ use crate::{
     ast::{
         self,
         operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
-        support, AstChildren, AstNode,
+        support, ArgList, AstChildren, AstNode, BlockExpr, ClosureExpr, Const, Expr, Fn,
+        FormatArgsArg, FormatArgsExpr, MacroDef, Static, TokenTree,
     },
     AstToken,
     SyntaxKind::*,
@@ -433,5 +434,59 @@ impl AstNode for CallableExpr {
             Self::Call(it) => it.syntax(),
             Self::MethodCall(it) => it.syntax(),
         }
+    }
+}
+
+impl MacroDef {
+    fn tts(&self) -> (Option<ast::TokenTree>, Option<ast::TokenTree>) {
+        let mut types = support::children(self.syntax());
+        let first = types.next();
+        let second = types.next();
+        (first, second)
+    }
+
+    pub fn args(&self) -> Option<TokenTree> {
+        match self.tts() {
+            (Some(args), Some(_)) => Some(args),
+            _ => None,
+        }
+    }
+
+    pub fn body(&self) -> Option<TokenTree> {
+        match self.tts() {
+            (Some(body), None) | (_, Some(body)) => Some(body),
+            _ => None,
+        }
+    }
+}
+
+impl ClosureExpr {
+    pub fn body(&self) -> Option<Expr> {
+        support::child(&self.syntax)
+    }
+}
+impl Const {
+    pub fn body(&self) -> Option<Expr> {
+        support::child(&self.syntax)
+    }
+}
+impl Fn {
+    pub fn body(&self) -> Option<BlockExpr> {
+        support::child(&self.syntax)
+    }
+}
+impl Static {
+    pub fn body(&self) -> Option<Expr> {
+        support::child(&self.syntax)
+    }
+}
+impl FormatArgsExpr {
+    pub fn args(&self) -> AstChildren<FormatArgsArg> {
+        support::children(&self.syntax)
+    }
+}
+impl ArgList {
+    pub fn args(&self) -> AstChildren<Expr> {
+        support::children(&self.syntax)
     }
 }

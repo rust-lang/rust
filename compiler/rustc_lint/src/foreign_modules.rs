@@ -8,6 +8,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::declare_lint;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
+use tracing::{debug, instrument};
 
 use crate::lints::{BuiltinClashingExtern, BuiltinClashingExternSub};
 use crate::{types, LintVec};
@@ -345,8 +346,8 @@ fn structurally_same_type_impl<'tcx>(
                     let a_sig = tcx.instantiate_bound_regions_with_erased(a_poly_sig);
                     let b_sig = tcx.instantiate_bound_regions_with_erased(b_poly_sig);
 
-                    (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
-                        == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
+                    (a_sig.abi, a_sig.safety, a_sig.c_variadic)
+                        == (b_sig.abi, b_sig.safety, b_sig.c_variadic)
                         && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
                             structurally_same_type_impl(seen_types, tcx, param_env, *a, *b, ckind)
                         })

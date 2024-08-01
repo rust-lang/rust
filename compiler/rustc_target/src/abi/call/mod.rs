@@ -1,10 +1,11 @@
-use crate::abi::{self, Abi, Align, FieldsShape, Size};
-use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt};
-use rustc_macros::HashStable_Generic;
-use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
+
+use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
+
+use crate::abi::{self, Abi, Align, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -30,6 +31,7 @@ mod wasm;
 mod x86;
 mod x86_64;
 mod x86_win64;
+mod xtensa;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum PassMode {
@@ -237,8 +239,10 @@ impl Reg {
                 _ => panic!("unsupported integer: {self:?}"),
             },
             RegKind::Float => match self.size.bits() {
+                16 => dl.f16_align.abi,
                 32 => dl.f32_align.abi,
                 64 => dl.f64_align.abi,
+                128 => dl.f128_align.abi,
                 _ => panic!("unsupported float: {self:?}"),
             },
             RegKind::Vector => dl.vector_align(self.size).abi,
@@ -339,7 +343,9 @@ impl CastTarget {
         }
     }
 
-    pub fn size<C: HasDataLayout>(&self, _cx: &C) -> Size {
+    /// When you only access the range containing valid data, you can use this unaligned size;
+    /// otherwise, use the safer `size` method.
+    pub fn unaligned_size<C: HasDataLayout>(&self, _cx: &C) -> Size {
         // Prefix arguments are passed in specific designated registers
         let prefix_size = self
             .prefix
@@ -351,6 +357,10 @@ impl CastTarget {
             self.rest.unit.size * self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes());
 
         prefix_size + rest_size
+    }
+
+    pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
+        self.unaligned_size(cx).align_to(self.align(cx))
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
@@ -444,7 +454,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             Abi::Scalar(scalar) => {
                 let kind = match scalar.primitive() {
                     abi::Int(..) | abi::Pointer(_) => RegKind::Integer,
-                    abi::F16 | abi::F32 | abi::F64 | abi::F128 => RegKind::Float,
+                    abi::Float(_) => RegKind::Float,
                 };
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
@@ -780,16 +790,21 @@ impl RiscvInterruptKind {
 /// Metadata describing how the arguments to a native function
 /// should be passed in order to respect the native ABI.
 ///
+/// The signature represented by this type may not match the MIR function signature.
+/// Certain attributes, like `#[track_caller]` can introduce additional arguments, which are present in [`FnAbi`], but not in `FnSig`.
+/// While this difference is rarely relevant, it should still be kept in mind.
+///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
-    /// The LLVM types of each argument.
+    /// The type, layout, and information about how each argument is passed.
     pub args: Box<[ArgAbi<'a, Ty>]>,
 
-    /// LLVM return type.
+    /// The layout, type, and the way a value is returned from this function.
     pub ret: ArgAbi<'a, Ty>,
 
+    /// Marks this function as variadic (accepting a variable number of arguments).
     pub c_variadic: bool,
 
     /// The count of non-variadic arguments.
@@ -797,9 +812,9 @@ pub struct FnAbi<'a, Ty> {
     /// Should only be different from args.len() when c_variadic is true.
     /// This can be used to know whether an argument is variadic or not.
     pub fixed_count: u32,
-
+    /// The calling convention of this function.
     pub conv: Conv,
-
+    /// Indicates if an unwind may happen across a call to this function.
     pub can_unwind: bool,
 }
 
@@ -843,7 +858,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             return Ok(());
         }
 
-        match &cx.target_spec().arch[..] {
+        let spec = cx.target_spec();
+        match &spec.arch[..] {
             "x86" => {
                 let flavor = if let spec::abi::Abi::Fastcall { .. }
                 | spec::abi::Abi::Vectorcall { .. } = abi
@@ -890,23 +906,23 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic)
-                    == spec::abi::Abi::PtxKernel
-                {
+                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
                 }
             }
             "hexagon" => hexagon::compute_abi_info(self),
+            "xtensa" => xtensa::compute_abi_info(cx, self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" | "wasm64" => {
-                if cx.target_spec().adjust_abi(cx, abi, self.c_variadic) == spec::abi::Abi::Wasm {
+            "wasm32" => {
+                if spec.os == "unknown" && cx.wasm_c_abi_opt() == WasmCAbi::Legacy {
                     wasm::compute_wasm_abi_info(self)
                 } else {
                     wasm::compute_c_abi_info(cx, self)
                 }
             }
+            "wasm64" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
             "v810" => v810::compute_abi_info(self),
             arch => {
@@ -956,8 +972,9 @@ impl FromStr for Conv {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ArgAbi<'_, usize>, 56);
     static_assert_size!(FnAbi<'_, usize>, 80);

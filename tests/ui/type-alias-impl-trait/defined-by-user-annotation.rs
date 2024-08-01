@@ -1,4 +1,4 @@
-// User type annotation in fn bodies is a a valid defining site for opaque types.
+// User type annotation in fn bodies is a valid defining site for opaque types.
 //@ check-pass
 #![feature(type_alias_impl_trait)]
 

@@ -1,27 +1,24 @@
-use crate::clean;
-use crate::clean::utils::has_doc_flag;
-use crate::docfs::PathError;
-use crate::error::Error;
-use crate::html::format;
-use crate::html::highlight;
-use crate::html::layout;
-use crate::html::render::Context;
-use crate::visit::DocVisitor;
+use std::cell::RefCell;
+use std::ffi::OsStr;
+use std::ops::RangeInclusive;
+use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
+use std::{fmt, fs};
 
-use askama::Template;
+use rinja::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{sym, FileName};
 
-use std::cell::RefCell;
-use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
-use std::ops::RangeInclusive;
-use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
+use crate::clean;
+use crate::clean::utils::has_doc_flag;
+use crate::docfs::PathError;
+use crate::error::Error;
+use crate::html::render::Context;
+use crate::html::{format, highlight, layout};
+use crate::visit::DocVisitor;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
     info!("emitting source files");

@@ -1,9 +1,7 @@
-use crate::iter::adapters::{
-    zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
-};
+use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::adapters::{SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
-use crate::mem::MaybeUninit;
-use crate::mem::SizedTypeProperties;
+use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::Try;
 use crate::{array, ptr};
@@ -202,7 +200,7 @@ where
     T: Copy,
 {
     fn spec_next_chunk(&mut self) -> Result<[T; N], array::IntoIter<T, N>> {
-        let mut raw_array = MaybeUninit::uninit_array();
+        let mut raw_array = [const { MaybeUninit::uninit() }; N];
 
         let len = self.len();
 

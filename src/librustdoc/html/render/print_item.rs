@@ -1,3 +1,10 @@
+use std::cell::{RefCell, RefMut};
+use std::cmp::Ordering;
+use std::fmt;
+use std::rc::Rc;
+
+use itertools::Itertools;
+use rinja::Template;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -8,10 +15,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::VariantIdx;
-use std::cell::{RefCell, RefMut};
-use std::cmp::Ordering;
-use std::fmt;
-use std::rc::Rc;
 
 use super::type_layout::document_type_layout;
 use super::{
@@ -26,7 +29,7 @@ use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
@@ -36,10 +39,7 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
-use askama::Template;
-use itertools::Itertools;
-
-/// Generates an Askama template struct for rendering items with common methods.
+/// Generates a Rinja template struct for rendering items with common methods.
 ///
 /// Usage:
 /// ```ignore (illustrative)
@@ -254,7 +254,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
 
     match &*item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
-        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) => {
+        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f, _) => {
             item_function(buf, cx, item, f)
         }
         clean::TraitItem(ref t) => item_trait(buf, cx, item, t),
@@ -265,8 +265,9 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::MacroItem(ref m) => item_macro(buf, cx, item, m),
         clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
-        clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) => item_static(buf, cx, item, i),
-        clean::ConstantItem(ref c) => item_constant(buf, cx, item, c),
+        clean::StaticItem(ref i) => item_static(buf, cx, item, i, None),
+        clean::ForeignStaticItem(ref i, safety) => item_static(buf, cx, item, i, Some(*safety)),
+        clean::ConstantItem(ci) => item_constant(buf, cx, item, &ci.generics, &ci.type_, &ci.kind),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
         clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e),
@@ -308,14 +309,15 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
+trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + fmt::Display {
     fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
 }
 
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     write!(w, "{}", document(cx, item, None, HeadingOffset::H2));
 
-    let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
+    let mut not_stripped_items =
+        items.iter().filter(|i| !i.is_stripped()).enumerate().collect::<Vec<_>>();
 
     // the order of item types in the listing
     fn reorder(ty: ItemType) -> u8 {
@@ -337,37 +339,29 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         }
     }
 
-    fn cmp(
-        i1: &clean::Item,
-        i2: &clean::Item,
-        idx1: usize,
-        idx2: usize,
-        tcx: TyCtxt<'_>,
-    ) -> Ordering {
-        let ty1 = i1.type_();
-        let ty2 = i2.type_();
-        if item_ty_to_section(ty1) != item_ty_to_section(ty2)
-            || (ty1 != ty2 && (ty1 == ItemType::ExternCrate || ty2 == ItemType::ExternCrate))
-        {
-            return (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2));
+    fn cmp(i1: &clean::Item, i2: &clean::Item, tcx: TyCtxt<'_>) -> Ordering {
+        let rty1 = reorder(i1.type_());
+        let rty2 = reorder(i2.type_());
+        if rty1 != rty2 {
+            return rty1.cmp(&rty2);
         }
-        let s1 = i1.stability(tcx).as_ref().map(|s| s.level);
-        let s2 = i2.stability(tcx).as_ref().map(|s| s.level);
-        if let (Some(a), Some(b)) = (s1, s2) {
-            match (a.is_stable(), b.is_stable()) {
-                (true, true) | (false, false) => {}
-                (false, true) => return Ordering::Greater,
-                (true, false) => return Ordering::Less,
-            }
+        let is_stable1 = i1.stability(tcx).as_ref().map(|s| s.level.is_stable()).unwrap_or(true);
+        let is_stable2 = i2.stability(tcx).as_ref().map(|s| s.level.is_stable()).unwrap_or(true);
+        if is_stable1 != is_stable2 {
+            // true is bigger than false in the standard bool ordering,
+            // but we actually want stable items to come first
+            return is_stable2.cmp(&is_stable1);
         }
         let lhs = i1.name.unwrap_or(kw::Empty);
         let rhs = i2.name.unwrap_or(kw::Empty);
         compare_names(lhs.as_str(), rhs.as_str())
     }
 
+    let tcx = cx.tcx();
+
     match cx.shared.module_sorting {
         ModuleSorting::Alphabetical => {
-            indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2, cx.tcx()));
+            not_stripped_items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
         }
         ModuleSorting::DeclarationOrder => {}
     }
@@ -390,24 +384,19 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
     // can be identical even if the elements are different (mostly in imports).
     // So in case this is an import, we keep everything by adding a "unique id"
     // (which is the position in the vector).
-    indices.dedup_by_key(|i| {
+    not_stripped_items.dedup_by_key(|(idx, i)| {
         (
-            items[*i].item_id,
-            if items[*i].name.is_some() { Some(full_path(cx, &items[*i])) } else { None },
-            items[*i].type_(),
-            if items[*i].is_import() { *i } else { 0 },
+            i.item_id,
+            if i.name.is_some() { Some(full_path(cx, i)) } else { None },
+            i.type_(),
+            if i.is_import() { *idx } else { 0 },
         )
     });
 
-    debug!("{indices:?}");
+    debug!("{not_stripped_items:?}");
     let mut last_section = None;
 
-    for &idx in &indices {
-        let myitem = &items[idx];
-        if myitem.is_stripped() {
-            continue;
-        }
-
+    for (_, myitem) in &not_stripped_items {
         let my_section = item_ty_to_section(myitem.type_());
         if Some(my_section) != last_section {
             if last_section.is_some() {
@@ -423,7 +412,6 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             );
         }
 
-        let tcx = cx.tcx();
         match *myitem.kind {
             clean::ExternCrateItem { ref src } => {
                 use crate::html::format::anchor;
@@ -435,7 +423,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         "<div class=\"item-name\"><code>{}extern crate {} as {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
-                        myitem.name.unwrap(),
+                        EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     ),
                     None => write!(
                         w,
@@ -452,7 +440,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 let stab_tags = if let Some(import_def_id) = import.source.did {
                     // Just need an item with the correct def_id and attrs
                     let import_item =
-                        clean::Item { item_id: import_def_id.into(), ..myitem.clone() };
+                        clean::Item { item_id: import_def_id.into(), ..(*myitem).clone() };
 
                     let stab_tags = Some(extra_info_tags(&import_item, item, tcx).to_string());
                     stab_tags
@@ -491,10 +479,13 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 }
 
                 let unsafety_flag = match *myitem.kind {
-                    clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
-                        if myitem.fn_header(tcx).unwrap().unsafety == hir::Unsafety::Unsafe =>
+                    clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
+                        if myitem.fn_header(tcx).unwrap().safety == hir::Safety::Unsafe =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
+                    }
+                    clean::ForeignStaticItem(_, hir::Safety::Unsafe) => {
+                        "<sup title=\"unsafe static\">⚠</sup>"
                     }
                     _ => "",
                 };
@@ -529,7 +520,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         {stab_tags}\
                      </div>\
                      {docs_before}{docs}{docs_after}",
-                    name = myitem.name.unwrap(),
+                    name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     visibility_and_hidden = visibility_and_hidden,
                     stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
@@ -567,7 +558,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             display_fn(move |f| {
                 write!(
                     f,
-                    r#"<span class="stab {class}" title="{title}">{contents}</span>"#,
+                    r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
                     title = Escape(title),
                 )
             })
@@ -615,8 +606,19 @@ fn extra_info_tags<'a, 'tcx: 'a>(
 fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
     let tcx = cx.tcx();
     let header = it.fn_header(tcx).expect("printing a function which isn't a function");
-    let constness = print_constness_with_space(&header.constness, it.const_stability(tcx));
-    let unsafety = header.unsafety.print_with_space();
+    debug!(
+        "item_function/const: {:?} {:?} {:?} {:?}",
+        it.name,
+        &header.constness,
+        it.stable_since(tcx),
+        it.const_stability(tcx),
+    );
+    let constness = print_constness_with_space(
+        &header.constness,
+        it.stable_since(tcx),
+        it.const_stability(tcx),
+    );
+    let safety = header.safety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();
     let visibility = visibility_print_with_space(it, cx).to_string();
@@ -627,7 +629,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + visibility.len()
         + constness.len()
         + asyncness.len()
-        + unsafety.len()
+        + safety.len()
         + abi.len()
         + name.as_str().len()
         + generics_len;
@@ -638,13 +640,13 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         w.reserve(header_len);
         write!(
             w,
-            "{attrs}{vis}{constness}{asyncness}{unsafety}{abi}fn \
+            "{attrs}{vis}{constness}{asyncness}{safety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
             attrs = render_attributes_in_pre(it, "", cx),
             vis = visibility,
             constness = constness,
             asyncness = asyncness,
-            unsafety = unsafety,
+            safety = safety,
             abi = abi,
             name = name,
             generics = f.generics.print(cx),
@@ -674,10 +676,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     wrap_item(w, |mut w| {
         write!(
             w,
-            "{attrs}{vis}{unsafety}{is_auto}trait {name}{generics}{bounds}",
+            "{attrs}{vis}{safety}{is_auto}trait {name}{generics}{bounds}",
             attrs = render_attributes_in_pre(it, "", cx),
             vis = visibility_print_with_space(it, cx),
-            unsafety = t.unsafety(tcx).print_with_space(),
+            safety = t.safety(tcx).print_with_space(),
             is_auto = if t.is_auto(tcx) { "auto " } else { "" },
             name = it.name.unwrap(),
             generics = t.generics.print(cx),
@@ -1833,7 +1835,14 @@ fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Ite
     }
 }
 
-fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
+fn item_constant(
+    w: &mut Buffer,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    generics: &clean::Generics,
+    ty: &clean::Type,
+    c: &clean::ConstantKind,
+) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
         render_attributes_in_code(w, it, cx);
@@ -1843,9 +1852,9 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
             "{vis}const {name}{generics}: {typ}{where_clause}",
             vis = visibility_print_with_space(it, cx),
             name = it.name.unwrap(),
-            generics = c.generics.print(cx),
-            typ = c.type_.print(cx),
-            where_clause = print_where_clause(&c.generics, cx, 0, Ending::NoNewline),
+            generics = generics.print(cx),
+            typ = ty.print(cx),
+            where_clause = print_where_clause(&generics, cx, 0, Ending::NoNewline),
         );
 
         // FIXME: The code below now prints
@@ -1902,7 +1911,7 @@ fn item_fields(
     w: &mut Buffer,
     cx: &mut Context<'_>,
     it: &clean::Item,
-    fields: &Vec<clean::Item>,
+    fields: &[clean::Item],
     ctor_kind: Option<CtorKind>,
 ) {
     let mut fields = fields
@@ -1939,13 +1948,22 @@ fn item_fields(
     }
 }
 
-fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
+fn item_static(
+    w: &mut impl fmt::Write,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    s: &clean::Static,
+    safety: Option<hir::Safety>,
+) {
     wrap_item(w, |buffer| {
         render_attributes_in_code(buffer, it, cx);
         write!(
             buffer,
-            "{vis}static {mutability}{name}: {typ}",
+            "{vis}{safe}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it, cx),
+            safe = safety
+                .map(|safe| if safe == hir::Safety::Unsafe { "unsafe " } else { "" })
+                .unwrap_or(""),
             mutability = s.mutability.print_with_space(),
             name = it.name.unwrap(),
             typ = s.type_.print(cx)
@@ -1979,40 +1997,102 @@ fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
 }
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
-pub(crate) fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
-    /// Takes a non-numeric and a numeric part from the given &str.
-    fn take_parts<'a>(s: &mut &'a str) -> (&'a str, &'a str) {
-        let i = s.find(|c: char| c.is_ascii_digit());
-        let (a, b) = s.split_at(i.unwrap_or(s.len()));
-        let i = b.find(|c: char| !c.is_ascii_digit());
-        let (b, c) = b.split_at(i.unwrap_or(b.len()));
-        *s = c;
-        (a, b)
-    }
+///
+/// This code is copied from [`rustfmt`], and should probably be released as a crate at some point.
+///
+/// [`rustfmt`]:https://github.com/rust-lang/rustfmt/blob/rustfmt-2.0.0-rc.2/src/formatting/reorder.rs#L32
+pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
+    let mut left = left.chars().peekable();
+    let mut right = right.chars().peekable();
 
-    while !lhs.is_empty() || !rhs.is_empty() {
-        let (la, lb) = take_parts(&mut lhs);
-        let (ra, rb) = take_parts(&mut rhs);
-        // First process the non-numeric part.
-        match la.cmp(ra) {
-            Ordering::Equal => (),
-            x => return x,
-        }
-        // Then process the numeric part, if both sides have one (and they fit in a u64).
-        if let (Ok(ln), Ok(rn)) = (lb.parse::<u64>(), rb.parse::<u64>()) {
-            match ln.cmp(&rn) {
-                Ordering::Equal => (),
-                x => return x,
+    loop {
+        // The strings are equal so far and not inside a number in both sides
+        let (l, r) = match (left.next(), right.next()) {
+            // Is this the end of both strings?
+            (None, None) => return Ordering::Equal,
+            // If for one, the shorter one is considered smaller
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(l), Some(r)) => (l, r),
+        };
+        let next_ordering = match (l.to_digit(10), r.to_digit(10)) {
+            // If neither is a digit, just compare them
+            (None, None) => Ord::cmp(&l, &r),
+            // The one with shorter non-digit run is smaller
+            // For `strverscmp` it's smaller iff next char in longer is greater than digits
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            // If both start numbers, we have to compare the numbers
+            (Some(l), Some(r)) => {
+                if l == 0 || r == 0 {
+                    // Fraction mode: compare as if there was leading `0.`
+                    let ordering = Ord::cmp(&l, &r);
+                    if ordering != Ordering::Equal {
+                        return ordering;
+                    }
+                    loop {
+                        // Get next pair
+                        let (l, r) = match (left.peek(), right.peek()) {
+                            // Is this the end of both strings?
+                            (None, None) => return Ordering::Equal,
+                            // If for one, the shorter one is considered smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            (Some(l), Some(r)) => (l, r),
+                        };
+                        // Are they digits?
+                        match (l.to_digit(10), r.to_digit(10)) {
+                            // If out of digits, use the stored ordering due to equal length
+                            (None, None) => break Ordering::Equal,
+                            // If one is shorter, it's smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            // If both are digits, consume them and take into account
+                            (Some(l), Some(r)) => {
+                                left.next();
+                                right.next();
+                                let ordering = Ord::cmp(&l, &r);
+                                if ordering != Ordering::Equal {
+                                    return ordering;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Integer mode
+                    let mut same_length_ordering = Ord::cmp(&l, &r);
+                    loop {
+                        // Get next pair
+                        let (l, r) = match (left.peek(), right.peek()) {
+                            // Is this the end of both strings?
+                            (None, None) => return same_length_ordering,
+                            // If for one, the shorter one is considered smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            (Some(l), Some(r)) => (l, r),
+                        };
+                        // Are they digits?
+                        match (l.to_digit(10), r.to_digit(10)) {
+                            // If out of digits, use the stored ordering due to equal length
+                            (None, None) => break same_length_ordering,
+                            // If one is shorter, it's smaller
+                            (None, Some(_)) => return Ordering::Less,
+                            (Some(_), None) => return Ordering::Greater,
+                            // If both are digits, consume them and take into account
+                            (Some(l), Some(r)) => {
+                                left.next();
+                                right.next();
+                                same_length_ordering = same_length_ordering.then(Ord::cmp(&l, &r));
+                            }
+                        }
+                    }
+                }
             }
-        }
-        // Then process the numeric part again, but this time as strings.
-        match lb.cmp(rb) {
-            Ordering::Equal => (),
-            x => return x,
+        };
+        if next_ordering != Ordering::Equal {
+            return next_ordering;
         }
     }
-
-    Ordering::Equal
 }
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
@@ -2031,16 +2111,23 @@ pub(super) fn item_path(ty: ItemType, name: &str) -> String {
 
 fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> String {
     let mut bounds = String::new();
-    if !t_bounds.is_empty() {
-        if !trait_alias {
+    if t_bounds.is_empty() {
+        return bounds;
+    }
+    let has_lots_of_bounds = t_bounds.len() > 2;
+    let inter_str = if has_lots_of_bounds { "\n    + " } else { " + " };
+    if !trait_alias {
+        if has_lots_of_bounds {
+            bounds.push_str(":\n    ");
+        } else {
             bounds.push_str(": ");
         }
-        for (i, p) in t_bounds.iter().enumerate() {
-            if i > 0 {
-                bounds.push_str(" + ");
-            }
-            bounds.push_str(&p.print(cx).to_string());
+    }
+    for (i, p) in t_bounds.iter().enumerate() {
+        if i > 0 {
+            bounds.push_str(inter_str);
         }
+        bounds.push_str(&p.print(cx).to_string());
     }
     bounds
 }

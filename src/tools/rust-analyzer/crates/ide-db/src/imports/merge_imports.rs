@@ -157,10 +157,14 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                     }
 
                     match (tree_contains_self(lhs_t), tree_contains_self(&rhs_t)) {
-                        (Some(true), None) => continue,
+                        (Some(true), None) => {
+                            remove_subtree_if_only_self(lhs_t);
+                            continue;
+                        }
                         (None, Some(true)) => {
                             ted::replace(lhs_t.syntax(), rhs_t.syntax());
                             *lhs_t = rhs_t;
+                            remove_subtree_if_only_self(lhs_t);
                             continue;
                         }
                         _ => (),
@@ -278,14 +282,20 @@ pub fn try_normalize_use_tree_mut(
 fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Option<()> {
     let use_tree_list = use_tree.use_tree_list()?;
     let merge_subtree_into_parent_tree = |single_subtree: &ast::UseTree| {
+        let subtree_is_only_self = single_subtree.path().as_ref().map_or(false, path_is_self);
+
         let merged_path = match (use_tree.path(), single_subtree.path()) {
+            // If the subtree is `{self}` then we cannot merge: `use
+            // foo::bar::{self}` is not equivalent to `use foo::bar`. See
+            // https://github.com/rust-lang/rust-analyzer/pull/17140#issuecomment-2079189725.
+            _ if subtree_is_only_self => None,
+
             (None, None) => None,
             (Some(outer), None) => Some(outer),
-            (None, Some(inner)) if path_is_self(&inner) => None,
             (None, Some(inner)) => Some(inner),
-            (Some(outer), Some(inner)) if path_is_self(&inner) => Some(outer),
             (Some(outer), Some(inner)) => Some(make::path_concat(outer, inner).clone_for_update()),
         };
+
         if merged_path.is_some()
             || single_subtree.use_tree_list().is_some()
             || single_subtree.star_token().is_some()
@@ -705,4 +715,21 @@ fn path_is_self(path: &ast::Path) -> bool {
 
 fn path_len(path: ast::Path) -> usize {
     path.segments().count()
+}
+
+fn get_single_subtree(use_tree: &ast::UseTree) -> Option<ast::UseTree> {
+    use_tree
+        .use_tree_list()
+        .and_then(|tree_list| tree_list.use_trees().collect_tuple())
+        .map(|(single_subtree,)| single_subtree)
+}
+
+fn remove_subtree_if_only_self(use_tree: &ast::UseTree) {
+    let Some(single_subtree) = get_single_subtree(use_tree) else { return };
+    match (use_tree.path(), single_subtree.path()) {
+        (Some(_), Some(inner)) if path_is_self(&inner) => {
+            ted::remove_all_iter(single_subtree.syntax().children_with_tokens());
+        }
+        _ => (),
+    }
 }

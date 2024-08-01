@@ -43,7 +43,7 @@ mod allow {
 }
 
 pub fn incorrect_case(db: &dyn HirDatabase, owner: ModuleDefId) -> Vec<IncorrectCase> {
-    let _p = tracing::span!(tracing::Level::INFO, "incorrect_case").entered();
+    let _p = tracing::info_span!("incorrect_case").entered();
     let mut validator = DeclValidator::new(db);
     validator.validate_item(owner);
     validator.sink

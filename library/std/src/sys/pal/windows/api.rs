@@ -227,8 +227,10 @@ pub fn set_file_information_by_handle<T: SetFileInformation>(
         info: *const c_void,
         size: u32,
     ) -> Result<(), WinError> {
-        let result = c::SetFileInformationByHandle(handle, class, info, size);
-        (result != 0).then_some(()).ok_or_else(get_last_error)
+        unsafe {
+            let result = c::SetFileInformationByHandle(handle, class, info, size);
+            (result != 0).then_some(()).ok_or_else(get_last_error)
+        }
     }
     // SAFETY: The `SetFileInformation` trait ensures that this is safe.
     unsafe { set_info(handle, T::CLASS, info.as_ptr(), info.size()) }
@@ -250,4 +252,40 @@ pub fn get_last_error() -> WinError {
 #[repr(transparent)]
 pub struct WinError {
     pub code: u32,
+}
+impl WinError {
+    const fn new(code: u32) -> Self {
+        Self { code }
+    }
+}
+
+// Error code constants.
+// The constant names should be the same as the winapi constants except for the leading `ERROR_`.
+// Due to the sheer number of codes, error codes should only be added here on an as-needed basis.
+// However, they should never be removed as the assumption is they may be useful again in the future.
+#[allow(unused)]
+impl WinError {
+    /// Success is not an error.
+    /// Some Windows APIs do use this to distinguish between a zero return and an error return
+    /// but we should never return this to users as an error.
+    pub const SUCCESS: Self = Self::new(c::ERROR_SUCCESS);
+    // tidy-alphabetical-start
+    pub const ACCESS_DENIED: Self = Self::new(c::ERROR_ACCESS_DENIED);
+    pub const ALREADY_EXISTS: Self = Self::new(c::ERROR_ALREADY_EXISTS);
+    pub const CANT_ACCESS_FILE: Self = Self::new(c::ERROR_CANT_ACCESS_FILE);
+    pub const DELETE_PENDING: Self = Self::new(c::ERROR_DELETE_PENDING);
+    pub const DIRECTORY: Self = Self::new(c::ERROR_DIRECTORY);
+    pub const FILE_NOT_FOUND: Self = Self::new(c::ERROR_FILE_NOT_FOUND);
+    pub const INSUFFICIENT_BUFFER: Self = Self::new(c::ERROR_INSUFFICIENT_BUFFER);
+    pub const INVALID_FUNCTION: Self = Self::new(c::ERROR_INVALID_FUNCTION);
+    pub const INVALID_HANDLE: Self = Self::new(c::ERROR_INVALID_HANDLE);
+    pub const INVALID_PARAMETER: Self = Self::new(c::ERROR_INVALID_PARAMETER);
+    pub const NO_MORE_FILES: Self = Self::new(c::ERROR_NO_MORE_FILES);
+    pub const NOT_FOUND: Self = Self::new(c::ERROR_NOT_FOUND);
+    pub const NOT_SUPPORTED: Self = Self::new(c::ERROR_NOT_SUPPORTED);
+    pub const OPERATION_ABORTED: Self = Self::new(c::ERROR_OPERATION_ABORTED);
+    pub const PATH_NOT_FOUND: Self = Self::new(c::ERROR_PATH_NOT_FOUND);
+    pub const SHARING_VIOLATION: Self = Self::new(c::ERROR_SHARING_VIOLATION);
+    pub const TIMEOUT: Self = Self::new(c::ERROR_TIMEOUT);
+    // tidy-alphabetical-end
 }

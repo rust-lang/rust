@@ -34,6 +34,11 @@ LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                  |               |
    |                  |               let's call the lifetime of this reference `'1`
    |                  lifetime `'a` defined here
+   |
+help: consider reusing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn bar<'a>(self: Alias<&'a Self>, arg: &'a ()) -> &() { arg }
+   |                                   ++
 
 error: aborting due to 3 previous errors
 

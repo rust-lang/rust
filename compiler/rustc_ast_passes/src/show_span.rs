@@ -8,6 +8,7 @@ use std::str::FromStr;
 use rustc_ast as ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
+use rustc_errors::DiagCtxtHandle;
 
 use crate::errors;
 
@@ -31,7 +32,7 @@ impl FromStr for Mode {
 }
 
 struct ShowSpanVisitor<'a> {
-    dcx: &'a rustc_errors::DiagCtxt,
+    dcx: DiagCtxtHandle<'a>,
     mode: Mode,
 }
 
@@ -58,7 +59,7 @@ impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
     }
 }
 
-pub fn run(dcx: &rustc_errors::DiagCtxt, mode: &str, krate: &ast::Crate) {
+pub fn run(dcx: DiagCtxtHandle<'_>, mode: &str, krate: &ast::Crate) {
     let Ok(mode) = mode.parse() else {
         return;
     };

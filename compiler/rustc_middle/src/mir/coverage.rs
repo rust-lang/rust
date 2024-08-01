@@ -1,10 +1,10 @@
 //! Metadata from source code coverage analysis and instrumentation.
 
+use std::fmt::{self, Debug, Formatter};
+
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
-
-use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
     /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR
@@ -103,7 +103,7 @@ pub enum CoverageKind {
     SpanMarker,
 
     /// Marks its enclosing basic block with an ID that can be referred to by
-    /// side data in [`BranchInfo`].
+    /// side data in [`CoverageInfoHi`].
     ///
     /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
@@ -129,17 +129,11 @@ pub enum CoverageKind {
     /// Marks the point in MIR control flow represented by a evaluated condition.
     ///
     /// This is eventually lowered to `llvm.instrprof.mcdc.condbitmap.update` in LLVM IR.
-    ///
-    /// If this statement does not survive MIR optimizations, the condition would never be
-    /// taken as evaluated.
     CondBitmapUpdate { id: ConditionId, value: bool, decision_depth: u16 },
 
     /// Marks the point in MIR control flow represented by a evaluated decision.
     ///
     /// This is eventually lowered to `llvm.instrprof.mcdc.tvbitmap.update` in LLVM IR.
-    ///
-    /// If this statement does not survive MIR optimizations, the decision would never be
-    /// taken as evaluated.
     TestVectorBitmapUpdate { bitmap_idx: u32, decision_depth: u16 },
 }
 
@@ -187,8 +181,8 @@ impl Debug for CodeRegion {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum Op {
     Subtract,
     Add,
@@ -226,19 +220,6 @@ pub enum MappingKind {
 }
 
 impl MappingKind {
-    /// Iterator over all coverage terms in this mapping kind.
-    pub fn terms(&self) -> impl Iterator<Item = CovTerm> {
-        let zero = || None.into_iter().chain(None);
-        let one = |a| Some(a).into_iter().chain(None);
-        let two = |a, b| Some(a).into_iter().chain(Some(b));
-        match *self {
-            Self::Code(term) => one(term),
-            Self::Branch { true_term, false_term } => two(true_term, false_term),
-            Self::MCDCBranch { true_term, false_term, .. } => two(true_term, false_term),
-            Self::MCDCDecision(_) => zero(),
-        }
-    }
-
     /// Returns a copy of this mapping kind, in which all coverage terms have
     /// been replaced with ones returned by the given function.
     pub fn map_terms(&self, map_fn: impl Fn(CovTerm) -> CovTerm) -> Self {
@@ -280,10 +261,15 @@ pub struct FunctionCoverageInfo {
     pub mcdc_num_condition_bitmaps: usize,
 }
 
-/// Branch information recorded during THIR-to-MIR lowering, and stored in MIR.
+/// Coverage information for a function, recorded during MIR building and
+/// attached to the corresponding `mir::Body`. Used by the `InstrumentCoverage`
+/// MIR pass.
+///
+/// ("Hi" indicates that this is "high-level" information collected at the
+/// THIR/MIR boundary, before the MIR-based coverage instrumentation pass.)
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct BranchInfo {
+pub struct CoverageInfoHi {
     /// 1 more than the highest-numbered [`CoverageKind::BlockMarker`] that was
     /// injected into the MIR body. This makes it possible to allocate per-ID
     /// data structures without having to scan the entire body first.
@@ -335,14 +321,14 @@ pub struct MCDCBranchSpan {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DecisionInfo {
     pub bitmap_idx: u32,
-    pub conditions_num: u16,
+    pub num_conditions: u16,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub conditions_num: usize,
+    pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
 }

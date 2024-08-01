@@ -2,13 +2,14 @@ error[E0053]: method `fmt` has an incompatible type for trait
   --> $DIR/trait_type.rs:7:21
    |
 LL |    fn fmt(&self, x: &str) -> () { }
-   |                     ^^^^
-   |                     |
-   |                     types differ in mutability
-   |                     help: change the parameter type to match the trait: `&mut Formatter<'_>`
+   |                     ^^^^ types differ in mutability
    |
    = note: expected signature `fn(&MyType, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
-              found signature `fn(&MyType, &str)`
+              found signature `fn(&MyType, &str) -> ()`
+help: change the parameter type to match the trait
+   |
+LL |    fn fmt(&self, x: &mut Formatter<'_>) -> () { }
+   |                     ~~~~~~~~~~~~~~~~~~
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
   --> $DIR/trait_type.rs:12:11

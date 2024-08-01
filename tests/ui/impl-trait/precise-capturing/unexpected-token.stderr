@@ -1,16 +1,8 @@
 error: expected one of `,` or `>`, found `{`
-  --> $DIR/unexpected-token.rs:5:27
+  --> $DIR/unexpected-token.rs:5:35
    |
-LL | fn hello() -> impl use<'a {}> Sized {}
-   |                           ^ expected one of `,` or `>`
+LL | fn hello() -> impl Sized + use<'a {}> {}
+   |                                   ^ expected one of `,` or `>`
 
-error: expected item, found `>`
-  --> $DIR/unexpected-token.rs:5:29
-   |
-LL | fn hello() -> impl use<'a {}> Sized {}
-   |                             ^ expected item
-   |
-   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

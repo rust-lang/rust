@@ -43,8 +43,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::error::Error;
-use core::fmt;
-use core::hash;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
 use core::iter::FusedIterator;
@@ -55,10 +53,11 @@ use core::ops::AddAssign;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Range, RangeBounds};
-use core::ptr;
-use core::slice;
 use core::str::pattern::Pattern;
+use core::{fmt, hash, ptr, slice};
 
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::Allocator;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
@@ -1495,10 +1494,7 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_remove_matches", reason = "new API", issue = "72826")]
-    pub fn remove_matches<'a, P>(&'a mut self, pat: P)
-    where
-        P: for<'x> Pattern<'x>,
-    {
+    pub fn remove_matches<P: Pattern>(&mut self, pat: P) {
         use core::str::pattern::Searcher;
 
         let rejections = {
@@ -1940,8 +1936,10 @@ impl String {
 
     /// Converts this `String` into a <code>[Box]<[str]></code>.
     ///
-    /// This will drop any excess capacity.
+    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
+    /// Note that this call may reallocate and copy the bytes of the string.
     ///
+    /// [`shrink_to_fit`]: String::shrink_to_fit
     /// [str]: prim@str "str"
     ///
     /// # Examples
@@ -1967,10 +1965,10 @@ impl String {
     /// this function is ideally used for data that lives for the remainder of the program's life,
     /// as dropping the returned reference will cause a memory leak.
     ///
-    /// It does not reallocate or shrink the `String`,
-    /// so the leaked allocation may include unused capacity that is not part
-    /// of the returned slice. If you don't want that, call [`into_boxed_str`],
-    /// and then [`Box::leak`].
+    /// It does not reallocate or shrink the `String`, so the leaked allocation may include unused
+    /// capacity that is not part of the returned slice. If you want to discard excess capacity,
+    /// call [`into_boxed_str`], and then [`Box::leak`] instead. However, keep in mind that
+    /// trimming the capacity may result in a reallocation and copy.
     ///
     /// [`into_boxed_str`]: Self::into_boxed_str
     ///
@@ -1980,6 +1978,9 @@ impl String {
     /// let x = String::from("bucket");
     /// let static_ref: &'static mut str = x.leak();
     /// assert_eq!(static_ref, "bucket");
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # drop(unsafe { Box::from_raw(static_ref) });
     /// ```
     #[stable(feature = "string_leak", since = "1.72.0")]
     #[inline]
@@ -2155,8 +2156,8 @@ impl FromIterator<String> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl FromIterator<Box<str>> for String {
-    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {
+impl<A: Allocator> FromIterator<Box<str, A>> for String {
+    fn from_iter<I: IntoIterator<Item = Box<str, A>>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
         buf
@@ -2237,8 +2238,8 @@ impl<'a> Extend<&'a str> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl Extend<Box<str>> for String {
-    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
+impl<A: Allocator> Extend<Box<str, A>> for String {
+    fn extend<I: IntoIterator<Item = Box<str, A>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }
@@ -2281,35 +2282,41 @@ impl<'a> Extend<Cow<'a, str>> for String {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'a, 'b> Pattern<'a> for &'b String {
-    type Searcher = <&'b str as Pattern<'a>>::Searcher;
+impl<'b> Pattern for &'b String {
+    type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
 
-    fn into_searcher(self, haystack: &'a str) -> <&'b str as Pattern<'a>>::Searcher {
+    fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {
         self[..].into_searcher(haystack)
     }
 
     #[inline]
-    fn is_contained_in(self, haystack: &'a str) -> bool {
+    fn is_contained_in(self, haystack: &str) -> bool {
         self[..].is_contained_in(haystack)
     }
 
     #[inline]
-    fn is_prefix_of(self, haystack: &'a str) -> bool {
+    fn is_prefix_of(self, haystack: &str) -> bool {
         self[..].is_prefix_of(haystack)
     }
 
     #[inline]
-    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+    fn strip_prefix_of(self, haystack: &str) -> Option<&str> {
         self[..].strip_prefix_of(haystack)
     }
 
     #[inline]
-    fn is_suffix_of(self, haystack: &'a str) -> bool {
+    fn is_suffix_of<'a>(self, haystack: &'a str) -> bool
+    where
+        Self::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
+    {
         self[..].is_suffix_of(haystack)
     }
 
     #[inline]
-    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
+    fn strip_suffix_of<'a>(self, haystack: &'a str) -> Option<&str>
+    where
+        Self::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
+    {
         self[..].strip_suffix_of(haystack)
     }
 }

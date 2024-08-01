@@ -1,5 +1,5 @@
+//~ ERROR overflow evaluating the requirement `{closure@$DIR/overflow-during-mono.rs:13:41: 13:44}: Sized`
 //@ build-fail
-//~^ ERROR overflow evaluating the requirement
 
 #![recursion_limit = "32"]
 

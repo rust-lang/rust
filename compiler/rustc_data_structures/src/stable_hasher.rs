@@ -1,175 +1,20 @@
-use crate::sip128::SipHasher128;
-use rustc_index::bit_set::{self, BitSet};
-use rustc_index::{Idx, IndexSlice, IndexVec};
-use smallvec::SmallVec;
-use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
 
+use rustc_index::bit_set::{self, BitSet};
+use rustc_index::{Idx, IndexSlice, IndexVec};
+use smallvec::SmallVec;
+
 #[cfg(test)]
 mod tests;
 
+pub use rustc_stable_hash::{
+    FromStableHash, SipHasher128Hash as StableHasherHash, StableSipHasher128 as StableHasher,
+};
+
 pub use crate::hashes::{Hash128, Hash64};
-
-/// When hashing something that ends up affecting properties like symbol names,
-/// we want these symbol names to be calculated independently of other factors
-/// like what architecture you're compiling *from*.
-///
-/// To that end we always convert integers to little-endian format before
-/// hashing and the architecture dependent `isize` and `usize` types are
-/// extended to 64 bits if needed.
-pub struct StableHasher {
-    state: SipHasher128,
-}
-
-impl fmt::Debug for StableHasher {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.state)
-    }
-}
-
-pub trait StableHasherResult: Sized {
-    fn finish(hasher: StableHasher) -> Self;
-}
-
-impl StableHasher {
-    #[inline]
-    pub fn new() -> Self {
-        StableHasher { state: SipHasher128::new_with_keys(0, 0) }
-    }
-
-    #[inline]
-    pub fn finish<W: StableHasherResult>(self) -> W {
-        W::finish(self)
-    }
-}
-
-impl StableHasher {
-    #[inline]
-    pub fn finalize(self) -> (u64, u64) {
-        self.state.finish128()
-    }
-}
-
-impl Hasher for StableHasher {
-    fn finish(&self) -> u64 {
-        panic!("use StableHasher::finalize instead");
-    }
-
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) {
-        self.state.write(bytes);
-    }
-
-    #[inline]
-    fn write_str(&mut self, s: &str) {
-        self.state.write_str(s);
-    }
-
-    #[inline]
-    fn write_length_prefix(&mut self, len: usize) {
-        // Our impl for `usize` will extend it if needed.
-        self.write_usize(len);
-    }
-
-    #[inline]
-    fn write_u8(&mut self, i: u8) {
-        self.state.write_u8(i);
-    }
-
-    #[inline]
-    fn write_u16(&mut self, i: u16) {
-        self.state.short_write(i.to_le_bytes());
-    }
-
-    #[inline]
-    fn write_u32(&mut self, i: u32) {
-        self.state.short_write(i.to_le_bytes());
-    }
-
-    #[inline]
-    fn write_u64(&mut self, i: u64) {
-        self.state.short_write(i.to_le_bytes());
-    }
-
-    #[inline]
-    fn write_u128(&mut self, i: u128) {
-        self.write_u64(i as u64);
-        self.write_u64((i >> 64) as u64);
-    }
-
-    #[inline]
-    fn write_usize(&mut self, i: usize) {
-        // Always treat usize as u64 so we get the same results on 32 and 64 bit
-        // platforms. This is important for symbol hashes when cross compiling,
-        // for example.
-        self.state.short_write((i as u64).to_le_bytes());
-    }
-
-    #[inline]
-    fn write_i8(&mut self, i: i8) {
-        self.state.write_i8(i);
-    }
-
-    #[inline]
-    fn write_i16(&mut self, i: i16) {
-        self.state.short_write((i as u16).to_le_bytes());
-    }
-
-    #[inline]
-    fn write_i32(&mut self, i: i32) {
-        self.state.short_write((i as u32).to_le_bytes());
-    }
-
-    #[inline]
-    fn write_i64(&mut self, i: i64) {
-        self.state.short_write((i as u64).to_le_bytes());
-    }
-
-    #[inline]
-    fn write_i128(&mut self, i: i128) {
-        self.state.write(&(i as u128).to_le_bytes());
-    }
-
-    #[inline]
-    fn write_isize(&mut self, i: isize) {
-        // Always treat isize as a 64-bit number so we get the same results on 32 and 64 bit
-        // platforms. This is important for symbol hashes when cross compiling,
-        // for example. Sign extending here is preferable as it means that the
-        // same negative number hashes the same on both 32 and 64 bit platforms.
-        let value = i as u64;
-
-        // Cold path
-        #[cold]
-        #[inline(never)]
-        fn hash_value(state: &mut SipHasher128, value: u64) {
-            state.write_u8(0xFF);
-            state.short_write(value.to_le_bytes());
-        }
-
-        // `isize` values often seem to have a small (positive) numeric value in practice.
-        // To exploit this, if the value is small, we will hash a smaller amount of bytes.
-        // However, we cannot just skip the leading zero bytes, as that would produce the same hash
-        // e.g. if you hash two values that have the same bit pattern when they are swapped.
-        // See https://github.com/rust-lang/rust/pull/93014 for context.
-        //
-        // Therefore, we employ the following strategy:
-        // 1) When we encounter a value that fits within a single byte (the most common case), we
-        // hash just that byte. This is the most common case that is being optimized. However, we do
-        // not do this for the value 0xFF, as that is a reserved prefix (a bit like in UTF-8).
-        // 2) When we encounter a larger value, we hash a "marker" 0xFF and then the corresponding
-        // 8 bytes. Since this prefix cannot occur when we hash a single byte, when we hash two
-        // `isize`s that fit within a different amount of bytes, they should always produce a different
-        // byte stream for the hasher.
-        if value < 0xFF {
-            self.state.write_u8(value as u8);
-        } else {
-            hash_value(&mut self.state, value);
-        }
-    }
-}
 
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
 /// stable across multiple compilation sessions.
@@ -238,12 +83,21 @@ pub trait ToStableHashKey<HCX> {
 /// The associated constant `CAN_USE_UNSTABLE_SORT` denotes whether
 /// unstable sorting can be used for this type. Set to true if and
 /// only if `a == b` implies `a` and `b` are fully indistinguishable.
-pub unsafe trait StableOrd: Ord {
+pub trait StableOrd: Ord {
     const CAN_USE_UNSTABLE_SORT: bool;
+
+    /// Marker to ensure that implementors have carefully considered
+    /// whether their `Ord` implementation obeys this trait's contract.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: ();
 }
 
-unsafe impl<T: StableOrd> StableOrd for &T {
+impl<T: StableOrd> StableOrd for &T {
     const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of a reference is exactly that of the referent, and since
+    // the ordering of the referet is stable so must be the ordering of the
+    // reference.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 /// This is a companion trait to `StableOrd`. Some types like `Symbol` can be
@@ -290,8 +144,12 @@ macro_rules! impl_stable_traits_for_trivial_type {
             }
         }
 
-        unsafe impl $crate::stable_hasher::StableOrd for $t {
+        impl $crate::stable_hasher::StableOrd for $t {
             const CAN_USE_UNSTABLE_SORT: bool = true;
+
+            // Encoding and decoding doesn't change the bytes of trivial types
+            // and `Ord::cmp` depends only on those bytes.
+            const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
     };
 }
@@ -327,8 +185,12 @@ impl<CTX> HashStable<CTX> for Hash128 {
     }
 }
 
-unsafe impl StableOrd for Hash128 {
+impl StableOrd for Hash128 {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // Encoding and decoding doesn't change the bytes of `Hash128`
+    // and `Ord::cmp` depends only on those bytes.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<CTX> HashStable<CTX> for ! {
@@ -392,8 +254,12 @@ impl<T1: HashStable<CTX>, T2: HashStable<CTX>, CTX> HashStable<CTX> for (T1, T2)
     }
 }
 
-unsafe impl<T1: StableOrd, T2: StableOrd> StableOrd for (T1, T2) {
+impl<T1: StableOrd, T2: StableOrd> StableOrd for (T1, T2) {
     const CAN_USE_UNSTABLE_SORT: bool = T1::CAN_USE_UNSTABLE_SORT && T2::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of tuples is a pure function of their elements' ordering, and since
+    // the ordering of each element is stable so must be the ordering of the tuple.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T1, T2, T3, CTX> HashStable<CTX> for (T1, T2, T3)
@@ -410,9 +276,13 @@ where
     }
 }
 
-unsafe impl<T1: StableOrd, T2: StableOrd, T3: StableOrd> StableOrd for (T1, T2, T3) {
+impl<T1: StableOrd, T2: StableOrd, T3: StableOrd> StableOrd for (T1, T2, T3) {
     const CAN_USE_UNSTABLE_SORT: bool =
         T1::CAN_USE_UNSTABLE_SORT && T2::CAN_USE_UNSTABLE_SORT && T3::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of tuples is a pure function of their elements' ordering, and since
+    // the ordering of each element is stable so must be the ordering of the tuple.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T1, T2, T3, T4, CTX> HashStable<CTX> for (T1, T2, T3, T4)
@@ -431,13 +301,15 @@ where
     }
 }
 
-unsafe impl<T1: StableOrd, T2: StableOrd, T3: StableOrd, T4: StableOrd> StableOrd
-    for (T1, T2, T3, T4)
-{
+impl<T1: StableOrd, T2: StableOrd, T3: StableOrd, T4: StableOrd> StableOrd for (T1, T2, T3, T4) {
     const CAN_USE_UNSTABLE_SORT: bool = T1::CAN_USE_UNSTABLE_SORT
         && T2::CAN_USE_UNSTABLE_SORT
         && T3::CAN_USE_UNSTABLE_SORT
         && T4::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of tuples is a pure function of their elements' ordering, and since
+    // the ordering of each element is stable so must be the ordering of the tuple.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
@@ -530,8 +402,12 @@ impl<CTX> HashStable<CTX> for str {
     }
 }
 
-unsafe impl StableOrd for &str {
+impl StableOrd for &str {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // Encoding and decoding doesn't change the bytes of string slices
+    // and `Ord::cmp` depends only on those bytes.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<CTX> HashStable<CTX> for String {
@@ -541,10 +417,12 @@ impl<CTX> HashStable<CTX> for String {
     }
 }
 
-// Safety: String comparison only depends on their contents and the
-// contents are not changed by (de-)serialization.
-unsafe impl StableOrd for String {
+impl StableOrd for String {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // String comparison only depends on their contents and the
+    // contents are not changed by (de-)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<HCX> ToStableHashKey<HCX> for String {
@@ -570,9 +448,11 @@ impl<CTX> HashStable<CTX> for bool {
     }
 }
 
-// Safety: sort order of bools is not changed by (de-)serialization.
-unsafe impl StableOrd for bool {
+impl StableOrd for bool {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // sort order of bools is not changed by (de-)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T, CTX> HashStable<CTX> for Option<T>
@@ -590,9 +470,11 @@ where
     }
 }
 
-// Safety: the Option wrapper does not add instability to comparison.
-unsafe impl<T: StableOrd> StableOrd for Option<T> {
+impl<T: StableOrd> StableOrd for Option<T> {
     const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
+
+    // the Option wrapper does not add instability to comparison.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T1, T2, CTX> HashStable<CTX> for Result<T1, T2>

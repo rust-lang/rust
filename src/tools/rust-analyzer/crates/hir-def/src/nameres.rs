@@ -16,8 +16,8 @@
 //!
 //! This happens in the `raw` module, which parses a single source file into a
 //! set of top-level items. Nested imports are desugared to flat imports in this
-//! phase. Macro calls are represented as a triple of (Path, Option<Name>,
-//! TokenTree).
+//! phase. Macro calls are represented as a triple of `(Path, Option<Name>,
+//! TokenTree)`.
 //!
 //! ## Collecting Modules
 //!
@@ -81,8 +81,16 @@ use crate::{
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
     AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
-    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
+
+const PREDEFINED_TOOLS: &[SmolStr] = &[
+    SmolStr::new_static("clippy"),
+    SmolStr::new_static("rustfmt"),
+    SmolStr::new_static("diagnostic"),
+    SmolStr::new_static("miri"),
+    SmolStr::new_static("rust_analyzer"),
+];
 
 /// Contains the results of (early) name resolution.
 ///
@@ -95,12 +103,13 @@ use crate::{
 /// is computed by the `block_def_map` query.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
+    /// The crate this `DefMap` belongs to.
+    krate: CrateId,
     /// When this is a block def map, this will hold the block id of the block and module that
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.
     pub modules: Arena<ModuleData>,
-    krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
@@ -116,6 +125,7 @@ pub struct DefMap {
 
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
+    // FIXME: Figure out a better way for the IDE layer to resolve these?
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
 
     /// The diagnostics that need to be emitted for this crate.
@@ -129,7 +139,7 @@ pub struct DefMap {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DefMapCrateData {
     /// The extern prelude which contains all root modules of external crates that are in scope.
-    extern_prelude: FxHashMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
+    extern_prelude: FxIndexMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
@@ -155,12 +165,12 @@ struct DefMapCrateData {
 impl DefMapCrateData {
     fn new(edition: Edition) -> Self {
         Self {
-            extern_prelude: FxHashMap::default(),
+            extern_prelude: FxIndexMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
             proc_macro_loading_error: None,
             registered_attrs: Vec::new(),
-            registered_tools: Vec::new(),
+            registered_tools: PREDEFINED_TOOLS.into(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
             no_core: false,
@@ -325,7 +335,7 @@ impl DefMap {
         let crate_graph = db.crate_graph();
         let krate = &crate_graph[crate_id];
         let name = krate.display_name.as_deref().unwrap_or_default();
-        let _p = tracing::span!(tracing::Level::INFO, "crate_def_map_query", ?name).entered();
+        let _p = tracing::info_span!("crate_def_map_query", ?name).entered();
 
         let module_data = ModuleData::new(
             ModuleOrigin::CrateRoot { definition: krate.root_file_id },
@@ -578,7 +588,8 @@ impl DefMap {
 
     pub(crate) fn extern_prelude(
         &self,
-    ) -> impl Iterator<Item = (&Name, (CrateRootModuleId, Option<ExternCrateId>))> + '_ {
+    ) -> impl DoubleEndedIterator<Item = (&Name, (CrateRootModuleId, Option<ExternCrateId>))> + '_
+    {
         self.data.extern_prelude.iter().map(|(name, &def)| (name, def))
     }
 

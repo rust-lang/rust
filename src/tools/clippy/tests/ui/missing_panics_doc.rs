@@ -191,3 +191,11 @@ fn from_declared_macro_should_lint_at_macrosite() {
     // Not here.
     some_macro_that_panics!()
 }
+
+pub fn issue_12760<const N: usize>() {
+    const {
+        if N == 0 {
+            panic!();
+        }
+    }
+}

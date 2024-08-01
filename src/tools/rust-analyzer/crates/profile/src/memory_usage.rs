@@ -37,8 +37,7 @@ impl MemoryUsage {
                 // There doesn't seem to be an API for determining heap usage, so we try to
                 // approximate that by using the Commit Charge value.
 
-                use winapi::um::processthreadsapi::*;
-                use winapi::um::psapi::*;
+                use windows_sys::Win32::System::{Threading::*, ProcessStatus::*};
                 use std::mem::{MaybeUninit, size_of};
 
                 let proc = unsafe { GetCurrentProcess() };

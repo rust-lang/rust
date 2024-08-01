@@ -10,6 +10,8 @@ driver_impl_ice_path_error = the ICE couldn't be written to `{$path}`: {$error}
 driver_impl_ice_path_error_env = the environment variable `RUSTC_ICE` is set to `{$env_var}`
 driver_impl_ice_version = rustc {$version} running on {$triple}
 
+driver_impl_rlink_corrupt_file = corrupt metadata encountered in `{$file}`
+
 driver_impl_rlink_empty_version_number = The input does not contain version number
 
 driver_impl_rlink_encoding_version_mismatch = .rlink file was produced with encoding version `{$version_array}`, but the current version is `{$rlink_version}`

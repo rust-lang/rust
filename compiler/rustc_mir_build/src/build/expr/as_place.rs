@@ -1,22 +1,23 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::expr::category::Category;
-use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
-use crate::build::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
+use std::assert_matches::assert_matches;
+use std::iter;
+
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::hir::place::Projection as HirProjection;
-use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
+use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::AdtDef;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, Variance};
+use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use tracing::{debug, instrument, trace};
 
-use std::assert_matches::assert_matches;
-use std::iter;
+use crate::build::expr::category::Category;
+use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
+use crate::build::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
 
 /// The "outermost" place that holds this value.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -128,7 +129,7 @@ fn convert_to_hir_projections_and_truncate_for_capture(
 /// Eg: 1. `foo.x` which is represented using `projections=[Field(x)]` is an ancestor of
 ///        `foo.x.y` which is represented using `projections=[Field(x), Field(y)]`.
 ///        Note both `foo.x` and `foo.x.y` start off of the same root variable `foo`.
-///     2. Since we only look at the projections here function will return `bar.x` as an a valid
+///     2. Since we only look at the projections here function will return `bar.x` as a valid
 ///        ancestor of `foo.x.y`. It's the caller's responsibility to ensure that both projections
 ///        list are being applied to the same root variable.
 fn is_ancestor_or_same_capture(
@@ -250,7 +251,18 @@ fn strip_prefix<'a, 'tcx>(
 
 impl<'tcx> PlaceBuilder<'tcx> {
     pub(in crate::build) fn to_place(&self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
-        self.try_to_place(cx).unwrap()
+        self.try_to_place(cx).unwrap_or_else(|| match self.base {
+            PlaceBase::Local(local) => span_bug!(
+                cx.local_decls[local].source_info.span,
+                "could not resolve local: {local:#?} + {:?}",
+                self.projection
+            ),
+            PlaceBase::Upvar { var_hir_id, closure_def_id: _ } => span_bug!(
+                cx.tcx.hir().span(var_hir_id.0),
+                "could not resolve upvar: {var_hir_id:?} + {:?}",
+                self.projection
+            ),
+        })
     }
 
     /// Creates a `Place` or returns `None` if an upvar cannot be resolved

@@ -4,11 +4,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn foo() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
 LL | fn foo() -> impl Trait { Struct }
    |             ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL | fn foo() -> Box<dyn Trait> { Box::new(Struct) }
    |             ++++         +   +++++++++      +
@@ -19,10 +19,7 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bar() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
-   |
-LL | fn bar() -> impl Trait {
-   |             ~~~~
+   = help: if there were a single returned type, you could use `impl Trait` instead
 help: box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bar() -> Box<dyn Trait> {

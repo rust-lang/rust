@@ -1,6 +1,6 @@
 //! A regression test for #120343. The overlap error was previously
 //! silenced in coherence because projecting `<() as ToUnit>::Unit`
-//! failed. Then then silenced the missing items error in the `ToUnit`
+//! failed. Then silenced the missing items error in the `ToUnit`
 //! impl, causing us to not emit any errors and ICEing due to a
 //! `span_delay_bug`.
 

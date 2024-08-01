@@ -1,7 +1,9 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir;
-use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
+use std::cell::Cell;
+use std::fmt::{self, Debug};
+
+use derive_where::derive_where;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
@@ -12,10 +14,10 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use smallvec::SmallVec;
-use std::cell::Cell;
-use std::fmt::{self, Debug};
 
 use super::{ConstValue, SourceInfo};
+use crate::mir;
+use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
@@ -224,13 +226,7 @@ rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
-#[derive(derivative::Derivative)]
-#[derivative(
-    PartialOrd,
-    Ord,
-    PartialOrd = "feature_allow_slow_enum",
-    Ord = "feature_allow_slow_enum"
-)]
+#[derive_where(PartialOrd, Ord)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
@@ -240,7 +236,7 @@ pub enum ConstraintCategory<'tcx> {
     Cast {
         /// Whether this is an unsizing cast and if yes, this contains the target type.
         /// Region variables are erased to ReErased.
-        #[derivative(PartialOrd = "ignore", Ord = "ignore")]
+        #[derive_where(skip)]
         unsize_to: Option<Ty<'tcx>>,
     },
 
@@ -250,7 +246,7 @@ pub enum ConstraintCategory<'tcx> {
     ClosureBounds,
 
     /// Contains the function type if available.
-    CallArgument(#[derivative(PartialOrd = "ignore", Ord = "ignore")] Option<Ty<'tcx>>),
+    CallArgument(#[derive_where(skip)] Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment,
@@ -274,6 +270,9 @@ pub enum ConstraintCategory<'tcx> {
 
     /// A constraint that doesn't correspond to anything the user sees.
     Internal,
+
+    /// An internal constraint derived from an illegal universe relation.
+    IllegalUniverse,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -362,8 +361,4 @@ pub struct CoverageIdsInfo {
     /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
     /// were removed by MIR optimizations.
     pub max_counter_id: mir::coverage::CounterId,
-
-    /// Coverage codegen for mcdc needs to know the size of the global bitmap so that it can
-    /// set the `bytemap-bytes` argument of the `llvm.instrprof.mcdc.tvbitmap.update` intrinsic.
-    pub mcdc_bitmap_bytes: u32,
 }

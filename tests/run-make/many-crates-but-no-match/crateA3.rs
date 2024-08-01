@@ -1,4 +1,6 @@
-#![crate_name="crateA"]
+#![crate_name = "crateA"]
 
 // Base crate
-pub fn foo<T>() { println!("world!"); }
+pub fn foo<T>() {
+    println!("world!");
+}

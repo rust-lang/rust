@@ -49,12 +49,12 @@ declare_lint_pass!(TypeParamMismatch => [MISMATCHING_TYPE_PARAM_ORDER]);
 
 impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if !item.span.from_expansion()
-            && let ItemKind::Impl(imp) = &item.kind
+        if let ItemKind::Impl(imp) = &item.kind
             && let TyKind::Path(QPath::Resolved(_, path)) = &imp.self_ty.kind
-            && let Some(segment) = path.segments.iter().next()
+            && let [segment, ..] = path.segments
             && let Some(generic_args) = segment.args
             && !generic_args.args.is_empty()
+            && !item.span.from_expansion()
         {
             // get the name and span of the generic parameters in the Impl
             let mut impl_params = Vec::new();

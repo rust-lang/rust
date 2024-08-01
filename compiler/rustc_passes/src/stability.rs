@@ -1,7 +1,9 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use crate::errors;
+use std::mem::replace;
+use std::num::NonZero;
+
 use rustc_attr::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     Unstable, UnstableReason, VERSION_PLACEHOLDER,
@@ -25,9 +27,9 @@ use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPR
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, info};
 
-use std::mem::replace;
-use std::num::NonZero;
+use crate::errors;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -936,12 +938,6 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let declared_lib_features = &tcx.features().declared_lib_features;
     let mut remaining_lib_features = FxIndexMap::default();
     for (feature, span) in declared_lib_features {
-        if !tcx.sess.opts.unstable_features.is_nightly_build() {
-            tcx.dcx().emit_err(errors::FeatureOnlyOnNightly {
-                span: *span,
-                release_channel: env!("CFG_RELEASE_CHANNEL"),
-            });
-        }
         if remaining_lib_features.contains_key(&feature) {
             // Warn if the user enables a lib feature multiple times.
             tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *span, feature: *feature });

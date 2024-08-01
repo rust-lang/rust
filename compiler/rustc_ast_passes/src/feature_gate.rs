@@ -1,7 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
-use rustc_ast::{token, PatKind};
+use rustc_ast::{attr, token, NodeId, PatKind};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -161,6 +160,22 @@ impl<'a> PostExpansionVisitor<'a> {
             non_lt_param_spans,
             crate::fluent_generated::ast_passes_forbidden_non_lifetime_param
         );
+
+        // FIXME(non_lifetime_binders): Const bound params are pretty broken.
+        // Let's keep users from using this feature accidentally.
+        if self.features.non_lifetime_binders {
+            let const_param_spans: Vec<_> = params
+                .iter()
+                .filter_map(|param| match param.kind {
+                    ast::GenericParamKind::Const { .. } => Some(param.ident.span),
+                    _ => None,
+                })
+                .collect();
+
+            if !const_param_spans.is_empty() {
+                self.sess.dcx().emit_err(errors::ForbiddenConstParam { const_param_spans });
+            }
+        }
 
         for param in params {
             if !param.bounds.is_empty() {
@@ -344,7 +359,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         for predicate in &g.where_clause.predicates {
             match predicate {
                 ast::WherePredicate::BoundPredicate(bound_pred) => {
-                    // A type binding, eg `for<'c> Foo: Send+Clone+'c`
+                    // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
                     self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
                 }
                 _ => {}
@@ -445,23 +460,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_fn(self, fn_kind)
     }
 
-    fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
-        if let AssocConstraintKind::Bound { .. } = constraint.kind {
-            if let Some(ast::GenericArgs::Parenthesized(args)) = constraint.gen_args.as_ref()
-                && args.inputs.is_empty()
-                && matches!(args.output, ast::FnRetTy::Default(..))
-            {
-                gate!(
-                    &self,
-                    return_type_notation,
-                    constraint.span,
-                    "return type notation is experimental"
-                );
-            }
-        }
-        visit::walk_assoc_constraint(self, constraint)
-    }
-
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
         let is_fn = match &i.kind {
             ast::AssocItemKind::Fn(_) => true,
@@ -560,6 +558,13 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
     gate_all!(precise_capturing, "precise captures on `impl Trait` are experimental");
+    gate_all!(global_registration, "global registration is experimental");
+    gate_all!(unsafe_attributes, "`#[unsafe()]` markers for attributes are experimental");
+    gate_all!(
+        unsafe_extern_blocks,
+        "`unsafe extern {}` blocks and `safe` keyword are experimental"
+    );
+    gate_all!(return_type_notation, "return type notation is experimental");
 
     if !visitor.features.never_patterns {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -605,10 +610,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     gate_all_legacy_dont_use!(trait_alias, "trait aliases are experimental");
-    // Despite being a new feature, `where T: Trait<Assoc(): Sized>`, which is RTN syntax now,
-    // used to be gated under associated_type_bounds, which are right above, so RTN needs to
-    // be too.
-    gate_all_legacy_dont_use!(return_type_notation, "return type notation is experimental");
     gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
     gate_all_legacy_dont_use!(try_blocks, "`try` blocks are unstable");
     gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
@@ -621,8 +622,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
     // does not check the same for lib features unless there's at least one
     // declared lang feature
     if !sess.opts.unstable_features.is_nightly_build() {
-        let lang_features = &features.declared_lang_features;
-        if lang_features.len() == 0 {
+        if features.declared_features.is_empty() {
             return;
         }
         for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
@@ -638,7 +638,8 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
                 attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident())
             {
                 let name = ident.name;
-                let stable_since = lang_features
+                let stable_since = features
+                    .declared_lang_features
                     .iter()
                     .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
                     .next();

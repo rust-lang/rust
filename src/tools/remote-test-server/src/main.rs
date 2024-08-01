@@ -12,22 +12,17 @@
 
 #[cfg(not(windows))]
 use std::fs::Permissions;
-use std::net::SocketAddr;
-#[cfg(not(windows))]
-use std::os::unix::prelude::*;
-
-use std::cmp;
-use std::env;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
+#[cfg(not(windows))]
+use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
-use std::str;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::{cmp, env, str, thread};
 
 macro_rules! t {
     ($e:expr) => {
@@ -282,7 +277,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     cmd.env(library_path, env::join_paths(paths).unwrap());
 
     // Some tests assume RUST_TEST_TMPDIR exists
-    cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());
+    cmd.env("RUST_TEST_TMPDIR", tmp);
 
     let socket = Arc::new(Mutex::new(reader.into_inner()));
 

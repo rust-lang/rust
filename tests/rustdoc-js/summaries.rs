@@ -1,6 +1,5 @@
 #![crate_type = "lib"]
 #![crate_name = "summaries"]
-
 #![allow(rustdoc::broken_intra_doc_links)]
 
 //! This *summary* has a [link], [`code`], and [`Sidebar2`] intra-doc.

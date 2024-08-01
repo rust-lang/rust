@@ -271,5 +271,11 @@ error: deref which would be done by auto-deref
 LL |         let _ = &mut (*{ x.u }).x;
    |                      ^^^^^^^^^^ help: try: `{ x.u }`
 
-error: aborting due to 45 previous errors
+error: deref which would be done by auto-deref
+  --> tests/ui/explicit_auto_deref.rs:367:13
+   |
+LL |         foo(&*wrapped_bar);
+   |             ^^^^^^^^^^^^^ help: try: `&wrapped_bar`
+
+error: aborting due to 46 previous errors
 

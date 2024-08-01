@@ -2,17 +2,19 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    self, BasicBlock, Body, FakeBorrowKind, Location, NonDivergingIntrinsic, Place, Rvalue,
+    self, BasicBlock, Body, BorrowKind, FakeBorrowKind, InlineAsmOperand, Location, Mutability,
+    NonDivergingIntrinsic, Operand, Place, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind,
 };
-use rustc_middle::mir::{BorrowKind, Mutability, Operand};
-use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
-use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
+use crate::borrow_set::BorrowSet;
+use crate::facts::AllFacts;
+use crate::location::LocationTable;
+use crate::path_utils::*;
 use crate::{
-    borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, path_utils::*, AccessDepth,
-    Activation, ArtificialField, BorrowIndex, Deep, LocalMutationIsAllowed, Read, ReadKind,
-    ReadOrWrite, Reservation, Shallow, Write, WriteKind,
+    AccessDepth, Activation, ArtificialField, BorrowIndex, Deep, LocalMutationIsAllowed, Read,
+    ReadKind, ReadOrWrite, Reservation, Shallow, Write, WriteKind,
 };
 
 /// Emit `loan_invalidated_at` facts.
@@ -124,6 +126,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
                     self.consume_operand(location, &arg.node);
                 }
                 self.mutate_place(location, *destination, Deep);
+            }
+            TerminatorKind::TailCall { func, args, .. } => {
+                self.consume_operand(location, func);
+                for arg in args {
+                    self.consume_operand(location, &arg.node);
+                }
             }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(location, cond);
@@ -302,8 +310,7 @@ impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, box (operand1, operand2))
-            | Rvalue::CheckedBinaryOp(_bin_op, box (operand1, operand2)) => {
+            Rvalue::BinaryOp(_bin_op, box (operand1, operand2)) => {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }

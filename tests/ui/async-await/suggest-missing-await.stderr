@@ -133,6 +133,18 @@ help: consider `await`ing on the `Future`
 LL |     match dummy_result().await {
    |                         ++++++
 
-error: aborting due to 7 previous errors
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:77:27
+   |
+LL |     Some(do_async()).map(|()| {});
+   |                           ^^
+   |                           |
+   |                           expected future, found `()`
+   |                           expected due to this
+   |
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

@@ -83,5 +83,21 @@ LL +         };
 LL +     }
    |
 
-error: aborting due to 7 previous errors
+error: for loop over a single element
+  --> tests/ui/single_element_loop.rs:61:5
+   |
+LL | /     for (Ok(mut _x) | Err(mut _x)) in [res_void] {
+LL | |         let ptr: *const bool = std::ptr::null();
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let (Ok(mut _x) | Err(mut _x)) = res_void;
+LL +         let ptr: *const bool = std::ptr::null();
+LL +     }
+   |
+
+error: aborting due to 8 previous errors
 

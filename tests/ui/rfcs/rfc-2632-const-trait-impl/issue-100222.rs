@@ -1,6 +1,9 @@
 //@ revisions: nn ny yn yy
+//@ compile-flags: -Znext-solver
 //@ check-pass
-#![feature(const_trait_impl, associated_type_defaults, const_mut_refs)]
+
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects, associated_type_defaults, const_mut_refs)]
 
 #[cfg_attr(any(yn, yy), const_trait)]
 pub trait Index {

@@ -1,16 +1,15 @@
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
-fn lt<'a>() -> impl use<'a, 'a> Sized {}
+fn lt<'a>() -> impl Sized + use<'a, 'a> {}
 //~^ ERROR cannot capture parameter `'a` twice
 
-fn ty<T>() -> impl use<T, T> Sized {}
+fn ty<T>() -> impl Sized + use<T, T> {}
 //~^ ERROR cannot capture parameter `T` twice
 
-fn ct<const N: usize>() -> impl use<N, N> Sized {}
+fn ct<const N: usize>() -> impl Sized + use<N, N> {}
 //~^ ERROR cannot capture parameter `N` twice
 
-fn ordering<'a, T>() -> impl use<T, 'a> Sized {}
+fn ordering<'a, T>() -> impl Sized + use<T, 'a> {}
 //~^ ERROR lifetime parameter `'a` must be listed before non-lifetime parameters
 
 fn main() {}

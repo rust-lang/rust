@@ -25,6 +25,7 @@ mod decode;
 mod methods;
 
 // stable re-exports
+#[rustfmt::skip]
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use self::convert::CharTryFromError;
 #[stable(feature = "char_from_str", since = "1.20.0")]
@@ -33,19 +34,20 @@ pub use self::convert::ParseCharError;
 pub use self::decode::{DecodeUtf16, DecodeUtf16Error};
 
 // perma-unstable re-exports
+#[rustfmt::skip]
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::methods::encode_utf16_raw;
+pub use self::methods::encode_utf16_raw; // perma-unstable
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::methods::encode_utf8_raw;
+pub use self::methods::encode_utf8_raw; // perma-unstable
 
+#[rustfmt::skip]
 use crate::ascii;
+pub(crate) use self::methods::EscapeDebugExtArgs;
 use crate::error::Error;
 use crate::escape;
 use crate::fmt::{self, Write};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
-
-pub(crate) use self::methods::EscapeDebugExtArgs;
 
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8 = 0b1000_0000;
@@ -123,7 +125,7 @@ pub const fn from_u32(i: u32) -> Option<char> {
 /// Converts a `u32` to a `char`, ignoring validity. Use [`char::from_u32_unchecked`].
 /// instead.
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
-#[rustc_const_unstable(feature = "const_char_from_u32_unchecked", issue = "89259")]
+#[rustc_const_stable(feature = "const_char_from_u32_unchecked", since = "1.81.0")]
 #[must_use]
 #[inline]
 pub const unsafe fn from_u32_unchecked(i: u32) -> char {
@@ -152,10 +154,9 @@ pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
 pub struct EscapeUnicode(escape::EscapeIterInner<10>);
 
 impl EscapeUnicode {
-    fn new(chr: char) -> Self {
-        let mut data = [ascii::Char::Null; 10];
-        let range = escape::escape_unicode_into(&mut data, chr);
-        Self(escape::EscapeIterInner::new(data, range))
+    #[inline]
+    const fn new(c: char) -> Self {
+        Self(escape::EscapeIterInner::unicode(c))
     }
 }
 
@@ -219,18 +220,19 @@ impl fmt::Display for EscapeUnicode {
 pub struct EscapeDefault(escape::EscapeIterInner<10>);
 
 impl EscapeDefault {
-    fn printable(chr: ascii::Char) -> Self {
-        let data = [chr];
-        Self(escape::EscapeIterInner::from_array(data))
+    #[inline]
+    const fn printable(c: ascii::Char) -> Self {
+        Self(escape::EscapeIterInner::ascii(c.to_u8()))
     }
 
-    fn backslash(chr: ascii::Char) -> Self {
-        let data = [ascii::Char::ReverseSolidus, chr];
-        Self(escape::EscapeIterInner::from_array(data))
+    #[inline]
+    const fn backslash(c: ascii::Char) -> Self {
+        Self(escape::EscapeIterInner::backslash(c))
     }
 
-    fn from_unicode(esc: EscapeUnicode) -> Self {
-        Self(esc.0)
+    #[inline]
+    const fn unicode(c: char) -> Self {
+        Self(escape::EscapeIterInner::unicode(c))
     }
 }
 
@@ -304,23 +306,24 @@ enum EscapeDebugInner {
 }
 
 impl EscapeDebug {
-    fn printable(chr: char) -> Self {
+    #[inline]
+    const fn printable(chr: char) -> Self {
         Self(EscapeDebugInner::Char(chr))
     }
 
-    fn backslash(chr: ascii::Char) -> Self {
-        let data = [ascii::Char::ReverseSolidus, chr];
-        let iter = escape::EscapeIterInner::from_array(data);
-        Self(EscapeDebugInner::Bytes(iter))
+    #[inline]
+    const fn backslash(c: ascii::Char) -> Self {
+        Self(EscapeDebugInner::Bytes(escape::EscapeIterInner::backslash(c)))
     }
 
-    fn from_unicode(esc: EscapeUnicode) -> Self {
-        Self(EscapeDebugInner::Bytes(esc.0))
+    #[inline]
+    const fn unicode(c: char) -> Self {
+        Self(EscapeDebugInner::Bytes(escape::EscapeIterInner::unicode(c)))
     }
 
+    #[inline]
     fn clear(&mut self) {
-        let bytes = escape::EscapeIterInner::from_array([]);
-        self.0 = EscapeDebugInner::Bytes(bytes);
+        self.0 = EscapeDebugInner::Bytes(escape::EscapeIterInner::empty());
     }
 }
 
@@ -339,6 +342,7 @@ impl Iterator for EscapeDebug {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = self.len();
         (n, Some(n))

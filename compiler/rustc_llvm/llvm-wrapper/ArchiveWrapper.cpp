@@ -13,10 +13,7 @@ struct RustArchiveMember {
   Archive::Child Child;
 
   RustArchiveMember()
-      : Filename(nullptr), Name(nullptr),
-        Child(nullptr, nullptr, nullptr)
-  {
-  }
+      : Filename(nullptr), Name(nullptr), Child(nullptr, nullptr, nullptr) {}
   ~RustArchiveMember() {}
 };
 
@@ -27,11 +24,8 @@ struct RustArchiveIterator {
   std::unique_ptr<Error> Err;
 
   RustArchiveIterator(Archive::child_iterator Cur, Archive::child_iterator End,
-      std::unique_ptr<Error> Err)
-    : First(true),
-      Cur(Cur),
-      End(End),
-      Err(std::move(Err)) {}
+                      std::unique_ptr<Error> Err)
+      : First(true), Cur(Cur), End(End), Err(std::move(Err)) {}
 };
 
 enum class LLVMRustArchiveKind {
@@ -66,8 +60,8 @@ typedef Archive::Child const *LLVMRustArchiveChildConstRef;
 typedef RustArchiveIterator *LLVMRustArchiveIteratorRef;
 
 extern "C" LLVMRustArchiveRef LLVMRustOpenArchive(char *Path) {
-  ErrorOr<std::unique_ptr<MemoryBuffer>> BufOr =
-      MemoryBuffer::getFile(Path, /*IsText*/false, /*RequiresNullTerminator=*/false);
+  ErrorOr<std::unique_ptr<MemoryBuffer>> BufOr = MemoryBuffer::getFile(
+      Path, /*IsText*/ false, /*RequiresNullTerminator=*/false);
   if (!BufOr) {
     LLVMRustSetLastError(BufOr.getError().message().c_str());
     return nullptr;
@@ -146,8 +140,8 @@ extern "C" const char *
 LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
   Expected<StringRef> NameOrErr = Child->getName();
   if (!NameOrErr) {
-    // rustc_codegen_llvm currently doesn't use this error string, but it might be
-    // useful in the future, and in the meantime this tells LLVM that the
+    // rustc_codegen_llvm currently doesn't use this error string, but it might
+    // be useful in the future, and in the meantime this tells LLVM that the
     // error was not ignored and that it shouldn't abort the process.
     LLVMRustSetLastError(toString(NameOrErr.takeError()).c_str());
     return nullptr;
@@ -172,10 +166,9 @@ extern "C" void LLVMRustArchiveMemberFree(LLVMRustArchiveMemberRef Member) {
   delete Member;
 }
 
-extern "C" LLVMRustResult
-LLVMRustWriteArchive(char *Dst, size_t NumMembers,
-                     const LLVMRustArchiveMemberRef *NewMembers,
-                     bool WriteSymbtab, LLVMRustArchiveKind RustKind, bool isEC) {
+extern "C" LLVMRustResult LLVMRustWriteArchive(
+    char *Dst, size_t NumMembers, const LLVMRustArchiveMemberRef *NewMembers,
+    bool WriteSymbtab, LLVMRustArchiveKind RustKind, bool isEC) {
 
   std::vector<NewArchiveMember> Members;
   auto Kind = fromRust(RustKind);
@@ -206,8 +199,10 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
 #if LLVM_VERSION_LT(18, 0)
   auto Result = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
 #else
-  auto SymtabMode = WriteSymbtab ? SymtabWritingMode::NormalSymtab : SymtabWritingMode::NoSymtab;
-  auto Result = writeArchive(Dst, Members, SymtabMode, Kind, true, false, nullptr, isEC);
+  auto SymtabMode = WriteSymbtab ? SymtabWritingMode::NormalSymtab
+                                 : SymtabWritingMode::NoSymtab;
+  auto Result =
+      writeArchive(Dst, Members, SymtabMode, Kind, true, false, nullptr, isEC);
 #endif
   if (!Result)
     return LLVMRustResult::Success;

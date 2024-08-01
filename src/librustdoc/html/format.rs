@@ -12,11 +12,10 @@ use std::cell::Cell;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
-use rustc_ast as ast;
-use rustc_attr::{ConstStability, StabilityLevel};
+use itertools::Itertools;
+use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_metadata::creader::{CStore, LoadedMacro};
@@ -25,20 +24,17 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
+use {rustc_ast as ast, rustc_hir as hir};
 
-use itertools::Itertools;
-
-use crate::clean::{
-    self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, PrimitiveType,
-};
+use super::url_parts_builder::{estimate_item_path_byte_length, UrlPartsBuilder};
+use crate::clean::types::ExternalLocation;
+use crate::clean::utils::find_nearest_parent_module;
+use crate::clean::{self, ExternalCrate, PrimitiveType};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
-
-use super::url_parts_builder::estimate_item_path_byte_length;
-use super::url_parts_builder::UrlPartsBuilder;
 
 pub(crate) trait Print {
     fn print(self, buffer: &mut Buffer);
@@ -375,7 +371,7 @@ impl clean::Lifetime {
     }
 }
 
-impl clean::Constant {
+impl clean::ConstantKind {
     pub(crate) fn print(&self, tcx: TyCtxt<'_>) -> impl Display + '_ {
         let expr = self.expr(tcx);
         display_fn(
@@ -412,6 +408,20 @@ impl clean::GenericBound {
                 })?;
                 ty.print(cx).fmt(f)
             }
+            clean::GenericBound::Use(args) => {
+                if f.alternate() {
+                    f.write_str("use<")?;
+                } else {
+                    f.write_str("use&lt;")?;
+                }
+                for (i, arg) in args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    arg.fmt(f)?;
+                }
+                if f.alternate() { f.write_str(">") } else { f.write_str("&gt;") }
+            }
         })
     }
 }
@@ -420,8 +430,8 @@ impl clean::GenericArgs {
     fn print<'a, 'tcx: 'a>(&'a self, cx: &'a Context<'tcx>) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             match self {
-                clean::GenericArgs::AngleBracketed { args, bindings } => {
-                    if !args.is_empty() || !bindings.is_empty() {
+                clean::GenericArgs::AngleBracketed { args, constraints } => {
+                    if !args.is_empty() || !constraints.is_empty() {
                         if f.alternate() {
                             f.write_str("<")?;
                         } else {
@@ -439,15 +449,15 @@ impl clean::GenericArgs {
                                 write!(f, "{}", arg.print(cx))?;
                             }
                         }
-                        for binding in bindings.iter() {
+                        for constraint in constraints.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
                             comma = true;
                             if f.alternate() {
-                                write!(f, "{:#}", binding.print(cx))?;
+                                write!(f, "{:#}", constraint.print(cx))?;
                             } else {
-                                write!(f, "{}", binding.print(cx))?;
+                                write!(f, "{}", constraint.print(cx))?;
                             }
                         }
                         if f.alternate() {
@@ -836,7 +846,7 @@ fn resolved_path<'cx>(
         }
     }
     if w.alternate() {
-        write!(w, "{}{:#}", &last.name, last.args.print(cx))?;
+        write!(w, "{}{:#}", last.name, last.args.print(cx))?;
     } else {
         let path = if use_absolute {
             if let Ok((_, _, fqp)) = href(did, cx) {
@@ -978,6 +988,7 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
                 f,
                 r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
                 path = join_with_double_colon(&fqp),
+                text = EscapeBodyText(text.as_str()),
             )
         } else {
             f.write_str(text.as_str())
@@ -1013,7 +1024,7 @@ fn fmt_type<'cx>(
         }
         clean::BareFunction(ref decl) => {
             print_higher_ranked_params_with_space(&decl.generic_params, cx).fmt(f)?;
-            decl.unsafety.print_with_space().fmt(f)?;
+            decl.safety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
             if f.alternate() {
                 f.write_str("fn")?;
@@ -1303,7 +1314,7 @@ impl clean::Impl {
                 // Link should match `# Trait implementations`
 
                 print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
-                bare_fn.unsafety.print_with_space().fmt(f)?;
+                bare_fn.safety.print_with_space().fmt(f)?;
                 print_abi_with_space(bare_fn.abi).fmt(f)?;
                 let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
                 primitive_link_fragment(
@@ -1438,13 +1449,9 @@ impl clean::FnDecl {
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
+
+        let last_input_index = self.inputs.values.len().checked_sub(1);
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if i > 0 {
-                match line_wrapping_indent {
-                    None => write!(f, ", ")?,
-                    Some(n) => write!(f, ",\n{}", Indent(n + 4))?,
-                };
-            }
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -1477,18 +1484,25 @@ impl clean::FnDecl {
                 write!(f, "{}: ", input.name)?;
                 input.type_.print(cx).fmt(f)?;
             }
+            match (line_wrapping_indent, last_input_index) {
+                (_, None) => (),
+                (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
+                (None, Some(_)) => (),
+                (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
+                (Some(_), Some(_)) => write!(f, ",\n")?,
+            }
         }
 
         if self.c_variadic {
             match line_wrapping_indent {
                 None => write!(f, ", ...")?,
-                Some(n) => write!(f, "\n{}...", Indent(n + 4))?,
+                Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
             };
         }
 
         match line_wrapping_indent {
             None => write!(f, ")")?,
-            Some(n) => write!(f, "\n{})", Indent(n))?,
+            Some(n) => write!(f, "{})", Indent(n))?,
         };
 
         self.print_output(cx).fmt(f)
@@ -1604,11 +1618,11 @@ pub(crate) trait PrintWithSpace {
     fn print_with_space(&self) -> &str;
 }
 
-impl PrintWithSpace for hir::Unsafety {
+impl PrintWithSpace for hir::Safety {
     fn print_with_space(&self) -> &str {
         match self {
-            hir::Unsafety::Unsafe => "unsafe ",
-            hir::Unsafety::Normal => "",
+            hir::Safety::Unsafe => "unsafe ",
+            hir::Safety::Safe => "",
         }
     }
 }
@@ -1633,17 +1647,24 @@ impl PrintWithSpace for hir::Mutability {
 
 pub(crate) fn print_constness_with_space(
     c: &hir::Constness,
-    s: Option<ConstStability>,
+    overall_stab: Option<StableSince>,
+    const_stab: Option<ConstStability>,
 ) -> &'static str {
-    match (c, s) {
-        // const stable or when feature(staged_api) is not set
-        (
-            hir::Constness::Const,
-            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }),
-        )
-        | (hir::Constness::Const, None) => "const ",
-        // const unstable or not const
-        _ => "",
+    match c {
+        hir::Constness::Const => match (overall_stab, const_stab) {
+            // const stable...
+            (_, Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }))
+            // ...or when feature(staged_api) is not set...
+            | (_, None)
+            // ...or when const unstable, but overall unstable too
+            | (None, Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => {
+                "const "
+            }
+            // const unstable (and overall stable)
+            (Some(_), Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => "",
+        },
+        // not const
+        hir::Constness::NotConst => "",
     }
 }
 
@@ -1699,7 +1720,7 @@ impl clean::ImportSource {
     }
 }
 
-impl clean::TypeBinding {
+impl clean::AssocItemConstraint {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
@@ -1708,11 +1729,11 @@ impl clean::TypeBinding {
             f.write_str(self.assoc.name.as_str())?;
             self.assoc.args.print(cx).fmt(f)?;
             match self.kind {
-                clean::TypeBindingKind::Equality { ref term } => {
+                clean::AssocItemConstraintKind::Equality { ref term } => {
                     f.write_str(" = ")?;
                     term.print(cx).fmt(f)?;
                 }
-                clean::TypeBindingKind::Constraint { ref bounds } => {
+                clean::AssocItemConstraintKind::Bound { ref bounds } => {
                     if !bounds.is_empty() {
                         f.write_str(": ")?;
                         print_generic_bounds(bounds, cx).fmt(f)?;

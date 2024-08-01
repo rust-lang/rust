@@ -200,8 +200,8 @@ fn expr_macro_def_expanded_in_various_places() {
             100..119 'for _ ...!() {}': IntoIterator::IntoIter<isize>
             100..119 'for _ ...!() {}': !
             100..119 'for _ ...!() {}': IntoIterator::IntoIter<isize>
-            100..119 'for _ ...!() {}': &mut IntoIterator::IntoIter<isize>
-            100..119 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
+            100..119 'for _ ...!() {}': &'? mut IntoIterator::IntoIter<isize>
+            100..119 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&'? mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
             100..119 'for _ ...!() {}': Option<IntoIterator::Item<isize>>
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
@@ -221,7 +221,7 @@ fn expr_macro_def_expanded_in_various_places() {
             281..303 'Spam {...m!() }': {unknown}
             309..325 'spam!(...am!()]': {unknown}
             350..366 'spam!(... usize': usize
-            372..380 '&spam!()': &isize
+            372..380 '&spam!()': &'? isize
             386..394 '-spam!()': isize
             400..416 'spam!(...pam!()': {unknown}
             422..439 'spam!(...pam!()': isize
@@ -293,8 +293,8 @@ fn expr_macro_rules_expanded_in_various_places() {
             114..133 'for _ ...!() {}': IntoIterator::IntoIter<isize>
             114..133 'for _ ...!() {}': !
             114..133 'for _ ...!() {}': IntoIterator::IntoIter<isize>
-            114..133 'for _ ...!() {}': &mut IntoIterator::IntoIter<isize>
-            114..133 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
+            114..133 'for _ ...!() {}': &'? mut IntoIterator::IntoIter<isize>
+            114..133 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&'? mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
             114..133 'for _ ...!() {}': Option<IntoIterator::Item<isize>>
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
@@ -314,7 +314,7 @@ fn expr_macro_rules_expanded_in_various_places() {
             295..317 'Spam {...m!() }': {unknown}
             323..339 'spam!(...am!()]': {unknown}
             364..380 'spam!(... usize': usize
-            386..394 '&spam!()': &isize
+            386..394 '&spam!()': &'? isize
             400..408 '-spam!()': isize
             414..430 'spam!(...pam!()': {unknown}
             436..453 'spam!(...pam!()': isize
@@ -539,7 +539,7 @@ fn test() {
     let msg = foo::Message(foo::MessageRef);
     let r = msg.deref();
     r;
-  //^ &MessageRef
+  //^ &'? MessageRef
 }
 
 //- /lib.rs crate:foo
@@ -703,9 +703,9 @@ fn infer_builtin_macros_file() {
         }
         "#,
         expect![[r#"
-            !0..2 '""': &str
+            !0..2 '""': &'static str
             63..87 '{     ...!(); }': ()
-            73..74 'x': &str
+            73..74 'x': &'static str
         "#]],
     );
 }
@@ -741,9 +741,9 @@ fn infer_builtin_macros_concat() {
         }
         "#,
         expect![[r#"
-            !0..13 '"helloworld!"': &str
+            !0..13 '"helloworld!"': &'static str
             65..121 '{     ...")); }': ()
-            75..76 'x': &str
+            75..76 'x': &'static str
         "#]],
     );
 }
@@ -820,7 +820,7 @@ macro_rules! include_str {() => {}}
 fn main() {
     let a = include_str!("foo.rs");
     a;
-} //^ &str
+} //^ &'static str
 
 //- /foo.rs
 hello
@@ -847,7 +847,7 @@ macro_rules! m {
 fn main() {
     let a = include_str!(m!(".rs"));
     a;
-} //^ &str
+} //^ &'static str
 
 //- /foo.rs
 hello
@@ -960,9 +960,9 @@ fn infer_builtin_macros_concat_with_lazy() {
         }
         "#,
         expect![[r#"
-            !0..13 '"helloworld!"': &str
+            !0..13 '"helloworld!"': &'static str
             103..160 '{     ...")); }': ()
-            113..114 'x': &str
+            113..114 'x': &'static str
         "#]],
     );
 }
@@ -977,7 +977,7 @@ fn infer_builtin_macros_env() {
 
         fn main() {
             let x = env!("foo");
-              //^ &str
+              //^ &'static str
         }
         "#,
     );
@@ -991,7 +991,7 @@ fn infer_builtin_macros_option_env() {
 //- /main.rs env:foo=bar
 fn main() {
     let x = option_env!("foo");
-      //^ Option<&str>
+      //^ Option<&'static str>
 }
         "#,
     );

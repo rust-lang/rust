@@ -2,10 +2,10 @@
 
 /// Helper methods to process immutable bytes.
 pub(crate) trait ByteSlice {
-    /// Read 8 bytes as a 64-bit integer in little-endian order.
+    /// Reads 8 bytes as a 64-bit integer in little-endian order.
     fn read_u64(&self) -> u64;
 
-    /// Write a 64-bit integer as 8 bytes in little-endian order.
+    /// Writes a 64-bit integer as 8 bytes in little-endian order.
     fn write_u64(&mut self, value: u64);
 
     /// Calculate the offset of a slice from another.
@@ -39,9 +39,7 @@ impl ByteSlice for [u8] {
     fn parse_digits(&self, mut func: impl FnMut(u8)) -> &Self {
         let mut s = self;
 
-        // FIXME: Can't use s.split_first() here yet,
-        // see https://github.com/rust-lang/rust/issues/109328
-        while let [c, s_next @ ..] = s {
+        while let Some((c, s_next)) = s.split_first() {
             let c = c.wrapping_sub(b'0');
             if c < 10 {
                 func(c);

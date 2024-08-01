@@ -1,8 +1,9 @@
-#![allow(non_snake_case)]
+//@ run-rustfix
+#![allow(non_snake_case, dead_code)]
 
 use std::pin::Pin;
 
-struct Struct { }
+struct Struct {}
 
 impl Struct {
     // Test using `&mut self` sugar:
@@ -40,4 +41,4 @@ impl Struct {
     }
 }
 
-fn main() { }
+fn main() {}

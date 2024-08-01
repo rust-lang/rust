@@ -1,21 +1,15 @@
-use crate::{
-    hir::place::Place as HirPlace,
-    infer::canonical::Canonical,
-    traits::ObligationCause,
-    ty::{
-        self, tls, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind,
-        GenericArgs, GenericArgsRef, Ty, UserArgs,
-    },
-};
+use std::collections::hash_map::Entry;
+use std::hash::Hash;
+use std::iter;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{
-    self as hir,
-    def::{DefKind, Res},
-    def_id::{DefId, LocalDefId, LocalDefIdMap},
-    hir_id::OwnerId,
-    BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
+    self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -23,9 +17,15 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
-use std::{collections::hash_map::Entry, hash::Hash, iter};
 
 use super::RvalueScopes;
+use crate::hir::place::Place as HirPlace;
+use crate::infer::canonical::Canonical;
+use crate::traits::ObligationCause;
+use crate::ty::{
+    self, tls, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
+    GenericArgsRef, Ty, UserArgs,
+};
 
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct TypeckResults<'tcx> {
@@ -78,6 +78,10 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the actual binding mode for all instances of [`BindingMode`].
     pat_binding_modes: ItemLocalMap<BindingMode>,
+
+    /// Top-level patterns whose match ergonomics need to be desugared
+    /// by the Rust 2021 -> 2024 migration lint.
+    rust_2024_migration_desugared_pats: ItemLocalSet,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
     /// for later usage in THIR lowering. For example,
@@ -229,6 +233,7 @@ impl<'tcx> TypeckResults<'tcx> {
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
+            rust_2024_migration_desugared_pats: Default::default(),
             skipped_ref_pats: Default::default(),
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
@@ -432,6 +437,20 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
+    pub fn rust_2024_migration_desugared_pats(&self) -> LocalSetInContext<'_> {
+        LocalSetInContext {
+            hir_owner: self.hir_owner,
+            data: &self.rust_2024_migration_desugared_pats,
+        }
+    }
+
+    pub fn rust_2024_migration_desugared_pats_mut(&mut self) -> LocalSetInContextMut<'_> {
+        LocalSetInContextMut {
+            hir_owner: self.hir_owner,
+            data: &mut self.rust_2024_migration_desugared_pats,
+        }
+    }
+
     pub fn skipped_ref_pats(&self) -> LocalSetInContext<'_> {
         LocalSetInContext { hir_owner: self.hir_owner, data: &self.skipped_ref_pats }
     }
@@ -588,7 +607,9 @@ impl<'a, V> ::std::ops::Index<HirId> for LocalTableInContext<'a, V> {
     type Output = V;
 
     fn index(&self, key: HirId) -> &V {
-        self.get(key).expect("LocalTableInContext: key not found")
+        self.get(key).unwrap_or_else(|| {
+            bug!("LocalTableInContext({:?}): key {:?} not found", self.hir_owner, key)
+        })
     }
 }
 

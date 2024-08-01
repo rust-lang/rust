@@ -83,19 +83,22 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 use std::mem;
 
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
+
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 
 #[derive(Debug)]
-pub struct Scopes<'tcx> {
+pub(crate) struct Scopes<'tcx> {
     scopes: Vec<Scope>,
 
     /// The current set of breakable scopes. See module comment for more details.
@@ -508,12 +511,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let target = self.cfg.start_new_block();
                 let source_info = self.source_info(span);
                 self.cfg.terminate(
-                    unpack!(normal_block),
+                    normal_block.into_block(),
                     source_info,
                     TerminatorKind::Goto { target },
                 );
                 self.cfg.terminate(
-                    unpack!(exit_block),
+                    exit_block.into_block(),
                     source_info,
                     TerminatorKind::Goto { target },
                 );
@@ -550,14 +553,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scope = IfThenScope { region_scope, else_drops: DropTree::new() };
         let previous_scope = mem::replace(&mut self.scopes.if_then_scope, Some(scope));
 
-        let then_block = unpack!(f(self));
+        let then_block = f(self).into_block();
 
         let if_then_scope = mem::replace(&mut self.scopes.if_then_scope, previous_scope).unwrap();
         assert!(if_then_scope.region_scope == region_scope);
 
-        let else_block = self
-            .build_exit_tree(if_then_scope.else_drops, region_scope, span, None)
-            .map_or_else(|| self.cfg.start_new_block(), |else_block_and| unpack!(else_block_and));
+        let else_block =
+            self.build_exit_tree(if_then_scope.else_drops, region_scope, span, None).map_or_else(
+                || self.cfg.start_new_block(),
+                |else_block_and| else_block_and.into_block(),
+            );
 
         (then_block, else_block)
     }
@@ -583,7 +588,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.push_scope(region_scope);
         let mut block;
         let rv = unpack!(block = f(self));
-        unpack!(block = self.pop_scope(region_scope, block));
+        block = self.pop_scope(region_scope, block).into_block();
         self.source_scope = source_scope;
         debug!(?block);
         block.and(rv)
@@ -655,7 +660,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some(destination), Some(value)) => {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.expr_into_dest(destination, block, value));
+                block = self.expr_into_dest(destination, block, value).into_block();
                 self.block_context.pop();
             }
             (Some(destination), None) => {
@@ -743,6 +748,91 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
+    /// Sets up the drops for explict tail calls.
+    ///
+    /// Unlike other kinds of early exits, tail calls do not go through the drop tree.
+    /// Instead, all scheduled drops are immediately added to the CFG.
+    pub(crate) fn break_for_tail_call(
+        &mut self,
+        mut block: BasicBlock,
+        args: &[Spanned<Operand<'tcx>>],
+        source_info: SourceInfo,
+    ) -> BlockAnd<()> {
+        let arg_drops: Vec<_> = args
+            .iter()
+            .rev()
+            .filter_map(|arg| match &arg.node {
+                Operand::Copy(_) => bug!("copy op in tail call args"),
+                Operand::Move(place) => {
+                    let local =
+                        place.as_local().unwrap_or_else(|| bug!("projection in tail call args"));
+
+                    Some(DropData { source_info, local, kind: DropKind::Value })
+                }
+                Operand::Constant(_) => None,
+            })
+            .collect();
+
+        let mut unwind_to = self.diverge_cleanup_target(
+            self.scopes.scopes.iter().rev().nth(1).unwrap().region_scope,
+            DUMMY_SP,
+        );
+        let unwind_drops = &mut self.scopes.unwind_drops;
+
+        // the innermost scope contains only the destructors for the tail call arguments
+        // we only want to drop these in case of a panic, so we skip it
+        for scope in self.scopes.scopes[1..].iter().rev().skip(1) {
+            // FIXME(explicit_tail_calls) code duplication with `build_scope_drops`
+            for drop_data in scope.drops.iter().rev() {
+                let source_info = drop_data.source_info;
+                let local = drop_data.local;
+
+                match drop_data.kind {
+                    DropKind::Value => {
+                        // `unwind_to` should drop the value that we're about to
+                        // schedule. If dropping this value panics, then we continue
+                        // with the *next* value on the unwind path.
+                        debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
+                        debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
+                        unwind_to = unwind_drops.drops[unwind_to].next;
+
+                        let mut unwind_entry_point = unwind_to;
+
+                        // the tail call arguments must be dropped if any of these drops panic
+                        for drop in arg_drops.iter().copied() {
+                            unwind_entry_point = unwind_drops.add_drop(drop, unwind_entry_point);
+                        }
+
+                        unwind_drops.add_entry_point(block, unwind_entry_point);
+
+                        let next = self.cfg.start_new_block();
+                        self.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::Drop {
+                                place: local.into(),
+                                target: next,
+                                unwind: UnwindAction::Continue,
+                                replace: false,
+                            },
+                        );
+                        block = next;
+                    }
+                    DropKind::Storage => {
+                        // Only temps and vars need their storage dead.
+                        assert!(local.index() > self.arg_count);
+                        self.cfg.push(
+                            block,
+                            Statement { source_info, kind: StatementKind::StorageDead(local) },
+                        );
+                    }
+                }
+            }
+        }
+
+        block.unit()
+    }
+
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -751,7 +841,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
-        unpack!(build_scope_drops(
+        build_scope_drops(
             &mut self.cfg,
             &mut self.scopes.unwind_drops,
             scope,
@@ -759,7 +849,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unwind_to,
             is_coroutine && needs_cleanup,
             self.arg_count,
-        ))
+        )
+        .into_block()
     }
 
     /// Possibly creates a new source scope if `current_root` and `parent_root`
@@ -1521,6 +1612,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
             | TerminatorKind::CoroutineDrop

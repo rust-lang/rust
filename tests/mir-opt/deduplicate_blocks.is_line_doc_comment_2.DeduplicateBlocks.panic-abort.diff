@@ -22,59 +22,55 @@
   
       bb1: {
           StorageDead(_3);
-          _7 = Len((*_2));
-          _8 = const 4_usize;
-          _9 = Ge(move _7, move _8);
--         switchInt(move _9) -> [0: bb2, otherwise: bb7];
-+         switchInt(move _9) -> [0: bb2, otherwise: bb6];
+          _4 = Len((*_2));
+          _5 = const 4_usize;
+          _6 = Ge(move _4, move _5);
+          switchInt(move _6) -> [0: bb2, otherwise: bb3];
       }
   
       bb2: {
-          _4 = Len((*_2));
-          _5 = const 3_usize;
-          _6 = Ge(move _4, move _5);
--         switchInt(move _6) -> [0: bb3, otherwise: bb4];
-+         switchInt(move _6) -> [0: bb10, otherwise: bb3];
+          _7 = Len((*_2));
+          _8 = const 3_usize;
+          _9 = Ge(move _7, move _8);
+-         switchInt(move _9) -> [0: bb7, otherwise: bb8];
++         switchInt(move _9) -> [0: bb10, otherwise: bb7];
       }
   
       bb3: {
--         _0 = const false;
--         goto -> bb14;
-+         switchInt((*_2)[0 of 3]) -> [47: bb4, otherwise: bb10];
+          switchInt((*_2)[0 of 4]) -> [47: bb4, otherwise: bb2];
       }
   
       bb4: {
--         switchInt((*_2)[0 of 3]) -> [47: bb5, otherwise: bb3];
-+         switchInt((*_2)[1 of 3]) -> [47: bb5, otherwise: bb10];
+          switchInt((*_2)[1 of 4]) -> [47: bb5, otherwise: bb2];
       }
   
       bb5: {
--         switchInt((*_2)[1 of 3]) -> [47: bb6, otherwise: bb3];
-+         switchInt((*_2)[2 of 3]) -> [47: bb11, 33: bb11, otherwise: bb10];
+          switchInt((*_2)[2 of 4]) -> [47: bb6, otherwise: bb2];
       }
   
       bb6: {
--         switchInt((*_2)[2 of 3]) -> [47: bb12, 33: bb13, otherwise: bb3];
-+         switchInt((*_2)[0 of 4]) -> [47: bb7, otherwise: bb2];
-      }
-  
-      bb7: {
--         switchInt((*_2)[0 of 4]) -> [47: bb8, otherwise: bb2];
-+         switchInt((*_2)[1 of 4]) -> [47: bb8, otherwise: bb2];
-      }
-  
-      bb8: {
--         switchInt((*_2)[1 of 4]) -> [47: bb9, otherwise: bb2];
-+         switchInt((*_2)[2 of 4]) -> [47: bb9, otherwise: bb2];
-      }
-  
-      bb9: {
--         switchInt((*_2)[2 of 4]) -> [47: bb10, otherwise: bb2];
+-         switchInt((*_2)[3 of 4]) -> [47: bb11, otherwise: bb2];
 +         switchInt((*_2)[3 of 4]) -> [47: bb10, otherwise: bb2];
       }
   
+      bb7: {
+-         _0 = const false;
+-         goto -> bb14;
++         switchInt((*_2)[0 of 3]) -> [47: bb8, otherwise: bb10];
+      }
+  
+      bb8: {
+-         switchInt((*_2)[0 of 3]) -> [47: bb9, otherwise: bb7];
++         switchInt((*_2)[1 of 3]) -> [47: bb9, otherwise: bb10];
+      }
+  
+      bb9: {
+-         switchInt((*_2)[1 of 3]) -> [47: bb10, otherwise: bb7];
++         switchInt((*_2)[2 of 3]) -> [47: bb11, 33: bb11, otherwise: bb10];
+      }
+  
       bb10: {
--         switchInt((*_2)[3 of 4]) -> [47: bb11, otherwise: bb2];
+-         switchInt((*_2)[2 of 3]) -> [47: bb12, 33: bb13, otherwise: bb7];
 -     }
 - 
 -     bb11: {

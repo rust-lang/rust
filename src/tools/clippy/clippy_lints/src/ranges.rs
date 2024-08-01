@@ -1,7 +1,8 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet, snippet_with_applicability, SpanRangeExt};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, higher, in_constant, is_integer_const, path_to_local};
 use rustc_ast::ast::RangeLimits;
@@ -164,9 +165,10 @@ pub struct Ranges {
 }
 
 impl Ranges {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -285,9 +287,10 @@ fn check_possible_range_contains(
     if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind
         && op == lhs_op.node
         && let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent())
-        && let Some(snip) = &snippet_opt(cx, new_span)
-        // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
-        && snip.matches('(').count() == snip.matches(')').count()
+        && new_span.check_source_text(cx, |src| {
+            // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
+            src.matches('(').count() == src.matches(')').count()
+        })
     {
         check_possible_range_contains(cx, op, new_lhs, right, expr, new_span);
     }
@@ -363,17 +366,19 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             |diag| {
                 let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
                 let end = Sugg::hir(cx, y, "y").maybe_par();
-                if let Some(is_wrapped) = &snippet_opt(cx, span) {
-                    if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
+                match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
+                    Some(true) => {
                         diag.span_suggestion(span, "use", format!("({start}..={end})"), Applicability::MaybeIncorrect);
-                    } else {
+                    },
+                    Some(false) => {
                         diag.span_suggestion(
                             span,
                             "use",
                             format!("{start}..={end}"),
                             Applicability::MachineApplicable, // snippet
                         );
-                    }
+                    },
+                    None => {},
                 }
             },
         );

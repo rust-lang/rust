@@ -6,10 +6,10 @@ extern crate std;
 //@ check-pass
 
 fn main() {
-        let x = 1;
-        // Should flatten to println!("a 123 b {x} xyz\n"):
-        {
-                ::std::io::_print(format_arguments::new_v1(&["a 123 b ",
-                                    " xyz\n"], &[format_argument::new_display(&x)]));
-            };
-    }
+    let x = 1;
+    // Should flatten to println!("a 123 b {x} xyz\n"):
+    {
+        ::std::io::_print(format_arguments::new_v1(&["a 123 b ", " xyz\n"],
+                &[format_argument::new_display(&x)]));
+    };
+}

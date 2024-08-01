@@ -19,6 +19,7 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::CrateId;
+use mbe::DocCommentDesugarMode;
 use span::SyntaxContextId;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use triomphe::Arc;
@@ -38,7 +39,7 @@ pub fn expand_eager_macro_input(
     ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
     call_site: SyntaxContextId,
-    resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
+    resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let expand_to = ExpandTo::from_call_site(macro_call);
 
@@ -80,7 +81,12 @@ pub fn expand_eager_macro_input(
         return ExpandResult { value: None, err };
     };
 
-    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map, span);
+    let mut subtree = mbe::syntax_node_to_token_tree(
+        &expanded_eager_input,
+        arg_map,
+        span,
+        DocCommentDesugarMode::Mbe,
+    );
 
     subtree.delimiter.kind = crate::tt::DelimiterKind::Invisible;
 
@@ -132,7 +138,7 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     call_site: SyntaxContextId,
-    macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
+    macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
     let original = curr.value.clone_for_update();
 
@@ -166,7 +172,7 @@ fn eager_macro_recur(
         let def = match call.path().and_then(|path| {
             ModPath::from_src(db, path, &mut |range| span_map.span_at(range.start()).ctx)
         }) {
-            Some(path) => match macro_resolver(path.clone()) {
+            Some(path) => match macro_resolver(&path) {
                 Some(def) => def,
                 None => {
                     error =

@@ -1,10 +1,5 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
-pub mod builtin;
-
-#[cfg(test)]
-mod tests;
-
 use std::{borrow::Cow, hash::Hash, ops, slice::Iter as SliceIter};
 
 use base_db::CrateId;
@@ -75,7 +70,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         v: VariantId,
     ) -> Arc<ArenaMap<LocalFieldId, Attrs>> {
-        let _p = tracing::span!(tracing::Level::INFO, "fields_attrs_query").entered();
+        let _p = tracing::info_span!("fields_attrs_query").entered();
         // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
 
@@ -326,7 +321,7 @@ impl AttrsWithOwner {
     }
 
     pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
-        let _p = tracing::span!(tracing::Level::INFO, "attrs_query").entered();
+        let _p = tracing::info_span!("attrs_query").entered();
         // FIXME: this should use `Trace` to avoid duplication in `source_map` below
         let raw_attrs = match def {
             AttrDefId::ModuleId(module) => {
@@ -645,4 +640,56 @@ pub(crate) fn fields_attrs_source_map(
     }
 
     Arc::new(res)
+}
+
+#[cfg(test)]
+mod tests {
+    //! This module contains tests for doc-expression parsing.
+    //! Currently, it tests `#[doc(hidden)]` and `#[doc(alias)]`.
+
+    use triomphe::Arc;
+
+    use base_db::FileId;
+    use hir_expand::span_map::{RealSpanMap, SpanMap};
+    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode};
+    use syntax::{ast, AstNode, TextRange};
+
+    use crate::attr::{DocAtom, DocExpr};
+
+    fn assert_parse_result(input: &str, expected: DocExpr) {
+        let source_file = ast::SourceFile::parse(input, span::Edition::CURRENT).ok().unwrap();
+        let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+        let map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
+        let tt = syntax_node_to_token_tree(
+            tt.syntax(),
+            map.as_ref(),
+            map.span_for_range(TextRange::empty(0.into())),
+            DocCommentDesugarMode::ProcMacro,
+        );
+        let cfg = DocExpr::parse(&tt);
+        assert_eq!(cfg, expected);
+    }
+
+    #[test]
+    fn test_doc_expr_parser() {
+        assert_parse_result("#![doc(hidden)]", DocAtom::Flag("hidden".into()).into());
+
+        assert_parse_result(
+            r#"#![doc(alias = "foo")]"#,
+            DocAtom::KeyValue { key: "alias".into(), value: "foo".into() }.into(),
+        );
+
+        assert_parse_result(r#"#![doc(alias("foo"))]"#, DocExpr::Alias(["foo".into()].into()));
+        assert_parse_result(
+            r#"#![doc(alias("foo", "bar", "baz"))]"#,
+            DocExpr::Alias(["foo".into(), "bar".into(), "baz".into()].into()),
+        );
+
+        assert_parse_result(
+            r#"
+        #[doc(alias("Bar", "Qux"))]
+        struct Foo;"#,
+            DocExpr::Alias(["Bar".into(), "Qux".into()].into()),
+        );
+    }
 }

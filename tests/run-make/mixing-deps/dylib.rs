@@ -3,4 +3,6 @@ extern crate both;
 
 use std::mem;
 
-pub fn addr() -> usize { unsafe { mem::transmute(&both::foo) } }
+pub fn addr() -> usize {
+    unsafe { mem::transmute(&both::foo) }
+}

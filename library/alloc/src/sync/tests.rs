@@ -1,5 +1,3 @@
-use super::*;
-
 use std::clone::Clone;
 use std::mem::MaybeUninit;
 use std::option::Option::None;
@@ -8,6 +6,8 @@ use std::sync::atomic::Ordering::SeqCst;
 use std::sync::mpsc::channel;
 use std::sync::Mutex;
 use std::thread;
+
+use super::*;
 
 struct Canary(*mut AtomicUsize);
 
@@ -396,7 +396,7 @@ fn show_arc() {
 
 // Make sure deriving works with Arc<T>
 #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Debug, Default)]
-struct Foo {
+struct _Foo {
     inner: Arc<i32>,
 }
 

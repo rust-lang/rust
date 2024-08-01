@@ -1,4 +1,4 @@
-//@ normalize-stderr-test "\d+ bits" -> "N bits"
+//@ normalize-stderr-test: "\d+ bits" -> "N bits"
 
 // Tests that `transmute` cannot be called on types of different size.
 
@@ -25,6 +25,26 @@ impl<T> Specializable for T {
 
 unsafe fn specializable<T>(x: u16) -> <T as Specializable>::Output {
     transmute(x)
+    //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
+}
+
+#[repr(align(32))]
+struct OverAlignZST;
+pub struct PtrAndOverAlignZST<T: ?Sized> {
+    _inner: *mut T,
+    _other: OverAlignZST,
+}
+pub unsafe fn shouldnt_work<T: ?Sized>(from: *mut T) -> PtrAndOverAlignZST<T> {
+    transmute(from)
+    //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
+}
+
+pub struct PtrAndEmptyArray<T: ?Sized> {
+    _inner: *mut T,
+    _other: [*mut T; 0],
+}
+pub unsafe fn shouldnt_work2<T: ?Sized>(from: *mut T) -> PtrAndEmptyArray<T> {
+    std::mem::transmute(from)
     //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
 }
 

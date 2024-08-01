@@ -1,11 +1,12 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
+use rustc_middle::ty::fold::FnMutDelegate;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+
+use super::RelateResult;
 use crate::infer::snapshot::CombinedSnapshot;
 use crate::infer::InferCtxt;
-use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::relate::RelateResult;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Replaces all bound variables (lifetimes, types, and constants) bound by
@@ -43,11 +44,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     ty::PlaceholderType { universe: next_universe, bound: bound_ty },
                 )
             },
-            consts: &mut |bound_var: ty::BoundVar, ty| {
+            consts: &mut |bound_var: ty::BoundVar| {
                 ty::Const::new_placeholder(
                     self.tcx,
                     ty::PlaceholderConst { universe: next_universe, bound: bound_var },
-                    ty,
                 )
             },
         };

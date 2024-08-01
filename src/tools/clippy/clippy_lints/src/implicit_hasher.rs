@@ -14,7 +14,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::{snippet, IntoSpan, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 
 declare_clippy_lint! {
@@ -59,10 +59,8 @@ declare_clippy_lint! {
 declare_lint_pass!(ImplicitHasher => [IMPLICIT_HASHER]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
-    #[expect(clippy::cast_possible_truncation, clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        use rustc_span::BytePos;
-
         fn suggestion(
             cx: &LateContext<'_>,
             diag: &mut Diag<'_, ()>,
@@ -123,10 +121,11 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     }
 
                     let generics_suggestion_span = impl_.generics.span.substitute_dummy({
-                        let pos = snippet_opt(cx, item.span.until(target.span()))
-                            .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
-                        if let Some(pos) = pos {
-                            Span::new(pos, pos, item.span.ctxt(), item.span.parent())
+                        let range = (item.span.lo()..target.span().lo()).map_range(cx, |src, range| {
+                            Some(src.get(range.clone())?.find("impl")? + 4..range.end)
+                        });
+                        if let Some(range) = range {
+                            range.with_ctxt(item.span.ctxt())
                         } else {
                             return;
                         }
@@ -163,21 +162,16 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
-                            let pos = snippet_opt(
-                                cx,
-                                Span::new(
-                                    item.span.lo(),
-                                    body.params[0].pat.span.lo(),
-                                    item.span.ctxt(),
-                                    item.span.parent(),
-                                ),
-                            )
-                            .and_then(|snip| {
-                                let i = snip.find("fn")?;
-                                Some(item.span.lo() + BytePos((i + snip[i..].find('(')?) as u32))
-                            })
-                            .expect("failed to create span for type parameters");
-                            Span::new(pos, pos, item.span.ctxt(), item.span.parent())
+                            let range = (item.span.lo()..body.params[0].pat.span.lo()).map_range(cx, |src, range| {
+                                let (pre, post) = src.get(range.clone())?.split_once("fn")?;
+                                let pos = post.find('(')? + pre.len() + 2;
+                                Some(pos..pos)
+                            });
+                            if let Some(range) = range {
+                                range.with_ctxt(item.span.ctxt())
+                            } else {
+                                return;
+                            }
                         });
 
                         let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
@@ -328,7 +322,7 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_body(&mut self, body: &'tcx Body<'_>) {
+    fn visit_body(&mut self, body: &Body<'tcx>) {
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body.id()));
         walk_body(self, body);
         self.maybe_typeck_results = old_maybe_typeck_results;

@@ -181,6 +181,7 @@ impl Spanned for ast::GenericBound {
         match *self {
             ast::GenericBound::Trait(ref ptr, _) => ptr.span,
             ast::GenericBound::Outlives(ref l) => l.ident.span,
+            ast::GenericBound::Use(_, span) => span,
         }
     }
 }
@@ -200,5 +201,14 @@ impl Spanned for MacroArg {
 impl Spanned for ast::NestedMetaItem {
     fn span(&self) -> Span {
         self.span()
+    }
+}
+
+impl Spanned for ast::PreciseCapturingArg {
+    fn span(&self) -> Span {
+        match self {
+            ast::PreciseCapturingArg::Lifetime(lt) => lt.ident.span,
+            ast::PreciseCapturingArg::Arg(path, _) => path.span,
+        }
     }
 }

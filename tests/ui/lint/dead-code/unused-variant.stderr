@@ -13,5 +13,25 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: variant `Variant1` is never constructed
+  --> $DIR/unused-variant.rs:11:5
+   |
+LL | enum TupleVariant {
+   |      ------------ variant in this enum
+LL |     Variant1(i32),
+   |     ^^^^^^^^
+   |
+   = note: `TupleVariant` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+error: variant `Variant1` is never constructed
+  --> $DIR/unused-variant.rs:17:5
+   |
+LL | enum StructVariant {
+   |      ------------- variant in this enum
+LL |     Variant1 { id: i32 },
+   |     ^^^^^^^^
+   |
+   = note: `StructVariant` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+error: aborting due to 3 previous errors
 

@@ -1,0 +1,61 @@
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:18:13
+   |
+LL |     if !set.contains(&value) {
+   |             ^^^^^^^^^^^^^^^^
+LL |         set.insert(value);
+   |             ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::set-contains-or-insert` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::set_contains_or_insert)]`
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:23:12
+   |
+LL |     if set.contains(&value) {
+   |            ^^^^^^^^^^^^^^^^
+LL |         set.insert(value);
+   |             ^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:28:13
+   |
+LL |     if !set.contains(&value) {
+   |             ^^^^^^^^^^^^^^^^
+LL |         set.insert(value);
+   |             ^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:32:14
+   |
+LL |     if !!set.contains(&value) {
+   |              ^^^^^^^^^^^^^^^^
+LL |         set.insert(value);
+   |             ^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:37:15
+   |
+LL |     if (&set).contains(&value) {
+   |               ^^^^^^^^^^^^^^^^
+LL |         set.insert(value);
+   |             ^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:42:13
+   |
+LL |     if !set.contains(borrow_value) {
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+LL |         set.insert(*borrow_value);
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of `HashSet::insert` after `HashSet::contains`
+  --> tests/ui/set_contains_or_insert.rs:47:20
+   |
+LL |     if !borrow_set.contains(&value) {
+   |                    ^^^^^^^^^^^^^^^^
+LL |         borrow_set.insert(value);
+   |                    ^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

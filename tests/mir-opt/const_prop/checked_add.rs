@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ test-mir-pass: GVN
-//@ compile-flags: -C overflow-checks=on
+//@ compile-flags: -C overflow-checks=on -Zdump-mir-exclude-alloc-bytes
 
 // EMIT_MIR checked_add.main.GVN.diff
 fn main() {

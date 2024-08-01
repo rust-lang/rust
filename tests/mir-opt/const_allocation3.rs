@@ -7,7 +7,7 @@ fn main() {
     FOO;
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct Packed {
     a: [u8; 28],
     b: &'static i32,

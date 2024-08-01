@@ -119,17 +119,17 @@ LL | #[cfg(FALSE)] fn e() { let _ = move || #![attr] {foo}; }
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
    = note: outer attributes, like `#[test]`, annotate the item following them
 
-error: expected expression, found `..`
+error: attributes are not allowed on range expressions starting with `..`
   --> $DIR/attr-stmt-expr-attr-bad.rs:30:40
    |
 LL | #[cfg(FALSE)] fn e() { let _ = #[attr] ..#[attr] 0; }
-   |                                        ^^ expected expression
+   |                                        ^^
 
-error: expected expression, found `..`
+error: attributes are not allowed on range expressions starting with `..`
   --> $DIR/attr-stmt-expr-attr-bad.rs:32:40
    |
 LL | #[cfg(FALSE)] fn e() { let _ = #[attr] ..; }
-   |                                        ^^ expected expression
+   |                                        ^^
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:34:41
@@ -154,9 +154,14 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 #[attr] {}; }
    |                                --   ^^^^^^^ -- the attributes are attached to this branch
-   |                                |    |
-   |                                |    help: remove the attributes
+   |                                |
    |                                the branch belongs to this `if`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if 0 #[attr] {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if 0 {}; }
+   |
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:40:38
@@ -178,9 +183,14 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] {}; }
    |                                        ---- ^^^^^^^ -- the attributes are attached to this branch
-   |                                        |    |
-   |                                        |    help: remove the attributes
+   |                                        |
    |                                        the branch belongs to this `else`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if 0 {} else {}; }
+   |
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:46:46
@@ -196,18 +206,28 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] if 0 {}; }
    |                                        ---- ^^^^^^^ ------- the attributes are attached to this branch
-   |                                        |    |
-   |                                        |    help: remove the attributes
+   |                                        |
    |                                        the branch belongs to this `else`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] if 0 {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 {}; }
+   |
 
 error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:50:50
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 #[attr] {}; }
    |                                             --   ^^^^^^^ -- the attributes are attached to this branch
-   |                                             |    |
-   |                                             |    help: remove the attributes
+   |                                             |
    |                                             the branch belongs to this `if`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 #[attr] {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 {}; }
+   |
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:52:51
@@ -223,9 +243,14 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 #[attr] {}; }
    |                                --           ^^^^^^^ -- the attributes are attached to this branch
-   |                                |            |
-   |                                |            help: remove the attributes
+   |                                |
    |                                the branch belongs to this `if`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if let _ = 0 #[attr] {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {}; }
+   |
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:56:46
@@ -247,9 +272,14 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] {}; }
    |                                                ---- ^^^^^^^ -- the attributes are attached to this branch
-   |                                                |    |
-   |                                                |    help: remove the attributes
+   |                                                |
    |                                                the branch belongs to this `else`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else {}; }
+   |
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:62:54
@@ -265,18 +295,28 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] if let _ = 0 {}; }
    |                                                ---- ^^^^^^^ --------------- the attributes are attached to this branch
-   |                                                |    |
-   |                                                |    help: remove the attributes
+   |                                                |
    |                                                the branch belongs to this `else`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] if let _ = 0 {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 {}; }
+   |
 
 error: outer attributes are not allowed on `if` and `else` branches
   --> $DIR/attr-stmt-expr-attr-bad.rs:66:66
    |
 LL | #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 #[attr] {}; }
    |                                                     --           ^^^^^^^ -- the attributes are attached to this branch
-   |                                                     |            |
-   |                                                     |            help: remove the attributes
+   |                                                     |
    |                                                     the branch belongs to this `if`
+   |
+help: remove the attributes
+   |
+LL - #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 #[attr] {}; }
+LL + #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 {}; }
+   |
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:68:67
@@ -361,9 +401,14 @@ error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:85:35
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] 10 => () } }
-   |                                   ^^^ help: use `..` instead
+   |                                   ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL - #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] 10 => () } }
+LL + #[cfg(FALSE)] fn e() { match 0 { 0..#[attr] 10 => () } }
+   |
 
 error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:85:38
@@ -375,9 +420,14 @@ error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:88:35
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] -10 => () } }
-   |                                   ^^^ help: use `..` instead
+   |                                   ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL - #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] -10 => () } }
+LL + #[cfg(FALSE)] fn e() { match 0 { 0..#[attr] -10 => () } }
+   |
 
 error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:88:38
@@ -395,9 +445,14 @@ error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:93:35
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
-   |                                   ^^^ help: use `..` instead
+   |                                   ^^^
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL - #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
+LL + #[cfg(FALSE)] fn e() { match 0 { 0..#[attr] FOO => () } }
+   |
 
 error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:93:38

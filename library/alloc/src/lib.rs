@@ -86,13 +86,13 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![allow(rustdoc::redundant_explicit_links)]
+#![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
 //
 // Library features:
 // tidy-alphabetical-start
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
-#![cfg_attr(test, feature(is_sorted))]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -101,8 +101,10 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(assert_matches)]
+#![feature(async_closure)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
+#![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_align_of_val)]
 #![feature(const_box)]
@@ -115,19 +117,17 @@
 #![feature(const_pin)]
 #![feature(const_refs_to_cell)]
 #![feature(const_size_of_val)]
-#![feature(const_waker)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
 #![feature(error_generic_member_access)]
-#![feature(error_in_core)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
+#![feature(extend_one_unchecked)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(hasher_prefixfree_extras)]
-#![feature(hint_assert_unchecked)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
@@ -135,7 +135,6 @@
 #![feature(layout_for_ptr)]
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(panic_internals)]
 #![feature(pattern)]
@@ -160,23 +159,21 @@
 #![feature(tuple_trait)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(unwrap_infallible)]
 #![feature(vec_pop_if)]
 // tidy-alphabetical-end
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(exclusive_range_pattern))]
 #![cfg_attr(not(test), feature(coroutine_trait))]
 #![cfg_attr(test, feature(panic_update_hook))]
 #![cfg_attr(test, feature(test))]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
-#![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_write)]
-#![feature(const_trait_impl)]
 #![feature(const_try)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
@@ -259,6 +256,7 @@ pub mod vec;
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
+    pub use core::hint::must_use;
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-//@ compile-flags: --target riscv64gc-unknown-linux-gnu -O -C no-prepopulate-passes
+//@ compile-flags: --target riscv64gc-unknown-linux-gnu -O -C no-prepopulate-passes -C panic=abort
 //@ needs-llvm-components: riscv
 
 #![crate_type = "lib"]
@@ -18,6 +18,7 @@ impl Copy for i64 {}
 impl Copy for u64 {}
 impl Copy for f32 {}
 impl Copy for f64 {}
+impl<T> Copy for *mut T {}
 
 // CHECK: define void @f_void()
 #[no_mangle]
@@ -83,8 +84,7 @@ pub struct Tiny {
 
 // CHECK: define void @f_agg_tiny(i64 %0)
 #[no_mangle]
-pub extern "C" fn f_agg_tiny(mut e: Tiny) {
-}
+pub extern "C" fn f_agg_tiny(mut e: Tiny) {}
 
 // CHECK: define i64 @f_agg_tiny_ret()
 #[no_mangle]
@@ -100,8 +100,7 @@ pub struct Small {
 
 // CHECK: define void @f_agg_small([2 x i64] %0)
 #[no_mangle]
-pub extern "C" fn f_agg_small(mut x: Small) {
-}
+pub extern "C" fn f_agg_small(mut x: Small) {}
 
 // CHECK: define [2 x i64] @f_agg_small_ret()
 #[no_mangle]
@@ -116,8 +115,7 @@ pub struct SmallAligned {
 
 // CHECK: define void @f_agg_small_aligned(i128 %0)
 #[no_mangle]
-pub extern "C" fn f_agg_small_aligned(mut x: SmallAligned) {
-}
+pub extern "C" fn f_agg_small_aligned(mut x: SmallAligned) {}
 
 #[repr(C)]
 pub struct Large {
@@ -129,8 +127,7 @@ pub struct Large {
 
 // CHECK: define void @f_agg_large(ptr {{.*}}%x)
 #[no_mangle]
-pub extern "C" fn f_agg_large(mut x: Large) {
-}
+pub extern "C" fn f_agg_large(mut x: Large) {}
 
 // CHECK: define void @f_agg_large_ret(ptr {{.*}}sret{{.*}}, i32 noundef signext %i, i8 noundef signext %j)
 #[no_mangle]

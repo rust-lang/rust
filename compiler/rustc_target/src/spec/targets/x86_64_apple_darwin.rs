@@ -1,10 +1,9 @@
-use crate::spec::base::apple::{macos_llvm_target, opts, Arch};
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::X86_64;
-    let mut base = opts("macos", arch);
+    let mut base = opts("macos", arch, TargetAbi::Normal);
     base.max_atomic_width = Some(128); // penryn+ supports cmpxchg16b
     base.frame_pointer = FramePointer::Always;
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
@@ -17,10 +16,10 @@ pub fn target() -> Target {
         // correctly, we do too.
         llvm_target: macos_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit macOS (10.12+, Sierra+)".into()),
+            tier: Some(1),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

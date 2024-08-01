@@ -59,24 +59,25 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
-use crate::infer::outlives::components::{push_outlives_components, Component};
+use rustc_data_structures::undo_log::UndoLogs;
+use rustc_middle::bug;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::{
+    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
+    TypeFoldable as _, TypeVisitableExt,
+};
+use rustc_span::DUMMY_SP;
+use rustc_type_ir::outlives::{push_outlives_components, Component};
+use smallvec::smallvec;
+
+use super::env::OutlivesEnvironment;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::resolve::OpportunisticRegionResolver;
 use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{
-    self, GenericArgsRef, Region, Ty, TyCtxt, TypeFoldable as _, TypeVisitableExt,
-};
-use rustc_middle::ty::{GenericArgKind, PolyTypeOutlivesPredicate};
-use rustc_span::DUMMY_SP;
-use smallvec::smallvec;
-
-use super::env::OutlivesEnvironment;
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -103,8 +104,12 @@ impl<'tcx> InferCtxt<'tcx> {
                 cause.span,
                 sup_type,
                 match cause.code().peel_derives() {
-                    ObligationCauseCode::BindingObligation(_, span)
-                    | ObligationCauseCode::ExprBindingObligation(_, span, ..) => Some(*span),
+                    ObligationCauseCode::WhereClause(_, span)
+                    | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
+                        if !span.is_dummy() =>
+                    {
+                        Some(*span)
+                    }
                     _ => None,
                 },
             )
@@ -286,7 +291,7 @@ where
     fn components_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
-        components: &[Component<'tcx>],
+        components: &[Component<TyCtxt<'tcx>>],
         region: ty::Region<'tcx>,
         category: ConstraintCategory<'tcx>,
     ) {
@@ -466,7 +471,7 @@ where
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let verify_bound = self.verify_bound.alias_bound(alias_ty, &mut Default::default());
+        let verify_bound = self.verify_bound.alias_bound(alias_ty);
         debug!("alias_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
     }

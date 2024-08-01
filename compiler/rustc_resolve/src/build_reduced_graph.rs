@@ -5,20 +5,16 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use crate::def_collector::collect_definitions;
-use crate::imports::{ImportData, ImportKind};
-use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
-use crate::Namespace::{MacroNS, TypeNS, ValueNS};
-use crate::{errors, BindingKey, MacroData, NameBindingData};
-use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError};
-use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError};
+use std::cell::Cell;
 
-use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::{Block, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
+use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
+use rustc_ast::{
+    self as ast, AssocItem, AssocItemKind, Block, ForeignItem, ForeignItemKind, Impl, Item,
+    ItemKind, MetaItemKind, NodeId, StmtKind,
+};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
+use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -29,8 +25,17 @@ use rustc_middle::{bug, ty};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use tracing::debug;
 
-use std::cell::Cell;
+use crate::def_collector::collect_definitions;
+use crate::imports::{ImportData, ImportKind};
+use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use crate::Namespace::{MacroNS, TypeNS, ValueNS};
+use crate::{
+    errors, BindingKey, Determinacy, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
+    ResolutionError, Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError,
+};
 
 type Res = def::Res<NodeId>;
 
@@ -313,13 +318,19 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    fn insert_field_def_ids(&mut self, def_id: LocalDefId, fields: &[ast::FieldDef]) {
+    fn insert_field_idents(&mut self, def_id: LocalDefId, fields: &[ast::FieldDef]) {
         if fields.iter().any(|field| field.is_placeholder) {
             // The fields are not expanded yet.
             return;
         }
-        let def_ids = fields.iter().map(|field| self.r.local_def_id(field.id).to_def_id());
-        self.r.field_def_ids.insert(def_id, self.r.tcx.arena.alloc_from_iter(def_ids));
+        let fields = fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                field.ident.unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span))
+            })
+            .collect();
+        self.r.field_names.insert(def_id, fields);
     }
 
     fn insert_field_visibilities_local(&mut self, def_id: DefId, fields: &[ast::FieldDef]) {
@@ -643,7 +654,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let def_id = feed.key();
 
         // Record field names for error reporting.
-        self.insert_field_def_ids(def_id, fields);
+        self.insert_field_idents(def_id, fields);
         self.insert_field_visibilities_local(def_id.to_def_id(), fields);
 
         for field in fields {
@@ -825,7 +836,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
             ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
 
-            ItemKind::MacroDef(..) | ItemKind::MacCall(_) => unreachable!(),
+            ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
+                unreachable!()
+            }
         }
     }
 
@@ -1308,7 +1321,17 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             _ => {
                 let orig_macro_rules_scope = self.parent_scope.macro_rules;
                 self.build_reduced_graph_for_item(item);
-                visit::walk_item(self, item);
+                match item.kind {
+                    ItemKind::Mod(..) => {
+                        // Visit attributes after items for backward compatibility.
+                        // This way they can use `macro_rules` defined later.
+                        self.visit_vis(&item.vis);
+                        self.visit_ident(item.ident);
+                        item.kind.walk(item, AssocCtxt::Trait, self);
+                        visit::walk_list!(self, visit_attribute, &item.attrs);
+                    }
+                    _ => visit::walk_item(self, item),
+                }
                 match item.kind {
                     ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
                         self.parent_scope.macro_rules
@@ -1354,6 +1377,14 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     self.visit_invoc_in_module(item.id);
                 }
                 AssocCtxt::Impl => {
+                    let invoc_id = item.id.placeholder_to_expn_id();
+                    if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
+                        self.r
+                            .impl_unexpanded_invocations
+                            .entry(self.r.invocation_parent(invoc_id))
+                            .or_default()
+                            .insert(invoc_id);
+                    }
                     self.visit_invoc(item.id);
                 }
             }
@@ -1375,18 +1406,21 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             self.r.feed_visibility(feed, vis);
         }
 
+        let ns = match item.kind {
+            AssocItemKind::Const(..) | AssocItemKind::Delegation(..) | AssocItemKind::Fn(..) => {
+                ValueNS
+            }
+            AssocItemKind::Type(..) => TypeNS,
+            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => bug!(), // handled above
+        };
         if ctxt == AssocCtxt::Trait {
-            let ns = match item.kind {
-                AssocItemKind::Const(..)
-                | AssocItemKind::Delegation(..)
-                | AssocItemKind::Fn(..) => ValueNS,
-                AssocItemKind::Type(..) => TypeNS,
-                AssocItemKind::MacCall(_) => bug!(), // handled above
-            };
-
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             self.r.define(parent, item.ident, ns, (self.res(def_id), vis, item.span, expansion));
+        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob) {
+            let impl_def_id = self.r.tcx.local_parent(local_def_id);
+            let key = BindingKey::new(item.ident.normalize_to_macros_2_0(), ns);
+            self.r.impl_binding_keys.entry(impl_def_id).or_default().insert(key);
         }
 
         visit::walk_assoc_item(self, item, ctxt);
@@ -1488,7 +1522,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
 
         // Record field names for error reporting.
-        self.insert_field_def_ids(def_id, variant.data.fields());
+        self.insert_field_idents(def_id, variant.data.fields());
         self.insert_field_visibilities_local(def_id.to_def_id(), variant.data.fields());
 
         visit::walk_variant(self, variant);
@@ -1498,7 +1532,10 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         if krate.is_placeholder {
             self.visit_invoc_in_module(krate.id);
         } else {
-            visit::walk_crate(self, krate);
+            // Visit attributes after items for backward compatibility.
+            // This way they can use `macro_rules` defined later.
+            visit::walk_list!(self, visit_item, &krate.items);
+            visit::walk_list!(self, visit_attribute, &krate.attrs);
             self.contains_macro_use(&krate.attrs);
         }
     }

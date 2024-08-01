@@ -1,6 +1,6 @@
+#![forbid(unsafe_op_in_unsafe_fn)]
 use crate::alloc::{GlobalAlloc, Layout, System};
-use crate::cmp;
-use crate::ptr;
+use crate::{cmp, ptr};
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
@@ -46,14 +46,16 @@ pub unsafe fn realloc_fallback(
     old_layout: Layout,
     new_size: usize,
 ) -> *mut u8 {
-    // Docs for GlobalAlloc::realloc require this to be valid:
-    let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
+    // SAFETY: Docs for GlobalAlloc::realloc require this to be valid
+    unsafe {
+        let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
 
-    let new_ptr = GlobalAlloc::alloc(alloc, new_layout);
-    if !new_ptr.is_null() {
-        let size = cmp::min(old_layout.size(), new_size);
-        ptr::copy_nonoverlapping(ptr, new_ptr, size);
-        GlobalAlloc::dealloc(alloc, ptr, old_layout);
+        let new_ptr = GlobalAlloc::alloc(alloc, new_layout);
+        if !new_ptr.is_null() {
+            let size = cmp::min(old_layout.size(), new_size);
+            ptr::copy_nonoverlapping(ptr, new_ptr, size);
+            GlobalAlloc::dealloc(alloc, ptr, old_layout);
+        }
+        new_ptr
     }
-    new_ptr
 }

@@ -156,6 +156,18 @@
                 Object.entries(versionFilterKeyMap).map(([key, value]) => [value, key])
             );
 
+            const APPLICABILITIES_FILTER_DEFAULT = {
+                Unspecified: true,
+                Unresolved: true,
+                MachineApplicable: true,
+                MaybeIncorrect: true,
+                HasPlaceholders: true
+            };
+
+            $scope.applicabilities = {
+                ...APPLICABILITIES_FILTER_DEFAULT
+            }
+
             // loadFromURLParameters retrieves filter settings from the URL parameters and assigns them
             // to corresponding $scope variables.
             function loadFromURLParameters() {
@@ -182,6 +194,7 @@
 
                 handleParameter('levels', $scope.levels, LEVEL_FILTERS_DEFAULT);
                 handleParameter('groups', $scope.groups, GROUPS_FILTER_DEFAULT);
+                handleParameter('applicabilities', $scope.applicabilities, APPLICABILITIES_FILTER_DEFAULT);
 
                 // Handle 'versions' parameter separately because it needs additional processing
                 if (urlParameters.versions) {
@@ -249,6 +262,7 @@
                 updateURLParameter($scope.levels, 'levels', LEVEL_FILTERS_DEFAULT);
                 updateURLParameter($scope.groups, 'groups', GROUPS_FILTER_DEFAULT);
                 updateVersionURLParameter($scope.versionFilters);
+                updateURLParameter($scope.applicabilities, 'applicabilities', APPLICABILITIES_FILTER_DEFAULT);
             }
 
             // Add $watches to automatically update URL parameters when the data changes
@@ -267,6 +281,12 @@
             $scope.$watch('versionFilters', function (newVal, oldVal) {
                 if (newVal !== oldVal) {
                     updateVersionURLParameter(newVal);
+                }
+            }, true);
+
+            $scope.$watch('applicabilities', function (newVal, oldVal) {
+                if (newVal !== oldVal) {
+                    updateURLParameter(newVal, 'applicabilities', APPLICABILITIES_FILTER_DEFAULT)
                 }
             }, true);
 
@@ -326,6 +346,15 @@
                     }
                 }
             };
+
+            $scope.toggleApplicabilities = function (value) {
+                const applicabilities = $scope.applicabilities;
+                for (const key in applicabilities) {
+                    if (applicabilities.hasOwnProperty(key)) {
+                        applicabilities[key] = value;
+                    }
+                }
+            }
 
             $scope.resetGroupsToDefault = function () {
                 $scope.groups = {
@@ -397,7 +426,7 @@
             $scope.bySearch = function (lint, index, array) {
                 let searchStr = $scope.search;
                 // It can be `null` I haven't missed this value
-                if (searchStr == null || searchStr.length < 3) {
+                if (searchStr == null) {
                     return true;
                 }
                 searchStr = searchStr.toLowerCase();
@@ -406,7 +435,7 @@
                 }
 
                 // Search by id
-                if (lint.id.indexOf(searchStr.replace("-", "_")) !== -1) {
+                if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
                     return true;
                 }
 
@@ -430,11 +459,21 @@
                 return true;
             }
 
+            $scope.byApplicabilities = function (lint) {
+                return $scope.applicabilities[lint.applicability.applicability];
+            };
+
             // Show details for one lint
             $scope.openLint = function (lint) {
                 $scope.open[lint.id] = true;
                 $location.path(lint.id);
             };
+
+            $scope.toggleExpansion = function(lints, isExpanded) {
+                lints.forEach(lint => {
+                    $scope.open[lint.id] = isExpanded;
+                });
+            }
 
             $scope.copyToClipboard = function (lint) {
                 const clipboard = document.getElementById("clipboard-" + lint.id);

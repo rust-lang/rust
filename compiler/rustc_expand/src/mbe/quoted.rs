@@ -1,21 +1,25 @@
-use crate::errors;
-use crate::mbe::macro_parser::count_metavar_decls;
-use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
-
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token};
+use rustc_ast::token::NtExprKind::*;
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, sym, Ident};
-
 use rustc_span::edition::Edition;
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+
+use crate::errors;
+use crate::mbe::macro_parser::count_metavar_decls;
+use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
                                         `literal`, `path`, `meta`, `tt`, `item` and `vis`";
+pub const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
+                                             `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, \
+                                             `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
+                                             `item` and `vis`";
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
@@ -58,49 +62,75 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 let span = match trees.next() {
-                    Some(&tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
+                    Some(&tokenstream::TokenTree::Token(
+                        Token { kind: token::Colon, span: colon_span },
+                        _,
+                    )) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((fragment, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
-
-                                    let kind =
-                                        token::NonterminalKind::from_symbol(fragment.name, || {
-                                            // FIXME(#85708) - once we properly decode a foreign
-                                            // crate's `SyntaxContext::root`, then we can replace
-                                            // this with just `span.edition()`. A
-                                            // `SyntaxContext::root()` from the current crate will
-                                            // have the edition of the current crate, and a
-                                            // `SyntaxContext::root()` from a foreign crate will
-                                            // have the edition of that crate (which we manually
-                                            // retrieve via the `edition` parameter).
-                                            if !span.from_expansion() {
-                                                edition
-                                            } else {
-                                                span.edition()
-                                            }
-                                        })
-                                        .unwrap_or_else(
-                                            || {
-                                                sess.dcx().emit_err(
-                                                    errors::InvalidFragmentSpecifier {
-                                                        span,
-                                                        fragment,
-                                                        help: VALID_FRAGMENT_NAMES_MSG.into(),
-                                                    },
-                                                );
-                                                token::NonterminalKind::Ident
-                                            },
-                                        );
+                                    let edition = || {
+                                        // FIXME(#85708) - once we properly decode a foreign
+                                        // crate's `SyntaxContext::root`, then we can replace
+                                        // this with just `span.edition()`. A
+                                        // `SyntaxContext::root()` from the current crate will
+                                        // have the edition of the current crate, and a
+                                        // `SyntaxContext::root()` from a foreign crate will
+                                        // have the edition of that crate (which we manually
+                                        // retrieve via the `edition` parameter).
+                                        if !span.from_expansion() {
+                                            edition
+                                        } else {
+                                            span.edition()
+                                        }
+                                    };
+                                    let kind = NonterminalKind::from_symbol(fragment.name, edition)
+                                        .unwrap_or_else(|| {
+                                            let help = match fragment.name {
+                                                sym::expr_2021 => {
+                                                    format!(
+                                                        "fragment specifier `expr_2021` \
+                                                         requires Rust 2021 or later\n\
+                                                         {VALID_FRAGMENT_NAMES_MSG}"
+                                                    )
+                                                }
+                                                _ if edition().at_least_rust_2021()
+                                                    && features.expr_fragment_specifier_2024 =>
+                                                {
+                                                    VALID_FRAGMENT_NAMES_MSG_2021.into()
+                                                }
+                                                _ => VALID_FRAGMENT_NAMES_MSG.into(),
+                                            };
+                                            sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
+                                                span,
+                                                fragment,
+                                                help,
+                                            });
+                                            NonterminalKind::Ident
+                                        });
+                                    if kind == NonterminalKind::Expr(Expr2021 { inferred: false })
+                                        && !features.expr_fragment_specifier_2024
+                                    {
+                                        rustc_session::parse::feature_err(
+                                            sess,
+                                            sym::expr_fragment_specifier_2024,
+                                            span,
+                                            "fragment specifier `expr_2021` is unstable",
+                                        )
+                                        .emit();
+                                    }
                                     result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
                                     continue;
                                 }
                                 _ => token.span,
                             },
-                            tree => tree.map_or(span, tokenstream::TokenTree::span),
+                            Some(tree) => tree.span(),
+                            None => colon_span,
                         }
                     }
-                    tree => tree.map_or(start_sp, tokenstream::TokenTree::span),
+                    Some(tree) => tree.span(),
+                    None => start_sp,
                 };
 
                 result.push(TokenTree::MetaVarDecl(span, ident, None));
@@ -118,6 +148,13 @@ fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, sp
     if !features.macro_metavar_expr {
         let msg = "meta-variable expressions are unstable";
         feature_err(sess, sym::macro_metavar_expr, span, msg).emit();
+    }
+}
+
+fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Session, span: Span) {
+    if !features.macro_metavar_expr_concat {
+        let msg = "the `concat` meta-variable expression is unstable";
+        feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
     }
 }
 
@@ -147,7 +184,7 @@ fn parse_tree<'a>(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _) => {
+        &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span: dollar_span }, _) => {
             // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
@@ -180,14 +217,22 @@ fn parse_tree<'a>(
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
                                         // unrelated diagnostics that could be performed afterwards
-                                        return TokenTree::token(token::Dollar, span);
+                                        return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
-                                        maybe_emit_macro_metavar_expr_feature(
-                                            features,
-                                            sess,
-                                            delim_span.entire(),
-                                        );
+                                        if let MetaVarExpr::Concat(_) = elem {
+                                            maybe_emit_macro_metavar_expr_concat_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                            );
+                                        } else {
+                                            maybe_emit_macro_metavar_expr_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                            );
+                                        }
                                         return TokenTree::MetaVarExpr(delim_span, elem);
                                     }
                                 }
@@ -222,7 +267,7 @@ fn parse_tree<'a>(
                 // special metavariable that names the crate of the invocation.
                 Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
-                    let span = ident.span.with_lo(span.lo());
+                    let span = ident.span.with_lo(dollar_span.lo());
                     if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
@@ -231,16 +276,19 @@ fn parse_tree<'a>(
                 }
 
                 // `tree` is followed by another `$`. This is an escaped `$`.
-                Some(&tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _)) => {
+                Some(&tokenstream::TokenTree::Token(
+                    Token { kind: token::Dollar, span: dollar_span2 },
+                    _,
+                )) => {
                     if parsing_patterns {
                         span_dollar_dollar_or_metavar_in_the_lhs_err(
                             sess,
-                            &Token { kind: token::Dollar, span },
+                            &Token { kind: token::Dollar, span: dollar_span2 },
                         );
                     } else {
-                        maybe_emit_macro_metavar_expr_feature(features, sess, span);
+                        maybe_emit_macro_metavar_expr_feature(features, sess, dollar_span2);
                     }
-                    TokenTree::token(token::Dollar, span)
+                    TokenTree::token(token::Dollar, dollar_span2)
                 }
 
                 // `tree` is followed by some other token. This is an error.
@@ -252,7 +300,7 @@ fn parse_tree<'a>(
                 }
 
                 // There are no more tokens. Just return the `$` we already have.
-                None => TokenTree::token(token::Dollar, span),
+                None => TokenTree::token(token::Dollar, dollar_span),
             }
         }
 
@@ -357,7 +405,7 @@ fn parse_sep_and_kleene_op<'a>(
 
 // `$$` or a meta-variable is the lhs of a macro but shouldn't.
 //
-// For example, `macro_rules! foo { ( ${length()} ) => {} }`
+// For example, `macro_rules! foo { ( ${len()} ) => {} }`
 fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &Session, token: &Token) {
     sess.dcx()
         .span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));

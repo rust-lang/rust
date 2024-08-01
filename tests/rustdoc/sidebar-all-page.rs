@@ -1,17 +1,17 @@
 #![crate_name = "foo"]
 #![feature(rustc_attrs)]
 
-// @has 'foo/all.html'
-// @has - '//*[@class="sidebar-elems"]//li' 'Structs'
-// @has - '//*[@class="sidebar-elems"]//li' 'Enums'
-// @has - '//*[@class="sidebar-elems"]//li' 'Unions'
-// @has - '//*[@class="sidebar-elems"]//li' 'Functions'
-// @has - '//*[@class="sidebar-elems"]//li' 'Traits'
-// @has - '//*[@class="sidebar-elems"]//li' 'Macros'
-// @has - '//*[@class="sidebar-elems"]//li' 'Type Aliases'
-// @has - '//*[@class="sidebar-elems"]//li' 'Constants'
-// @has - '//*[@class="sidebar-elems"]//li' 'Statics'
-// @has - '//*[@class="sidebar-elems"]//li' 'Primitive Types'
+//@ has 'foo/all.html'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Structs'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Enums'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Unions'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Functions'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Traits'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Macros'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Type Aliases'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Constants'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Statics'
+//@ has - '//*[@class="sidebar-elems"]//li' 'Primitive Types'
 
 pub struct Foo;
 pub enum Enum {

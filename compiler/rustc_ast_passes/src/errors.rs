@@ -1,28 +1,13 @@
 //! Errors emitted by ast_passes.
 
 use rustc_ast::ParamKindOrd;
-use rustc_errors::{
-    codes::*, Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic,
-};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_keyword_lifetime)]
-pub struct KeywordLifetime {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_invalid_label)]
-pub struct InvalidLabel {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_visibility_not_permitted, code = E0449)]
@@ -85,18 +70,18 @@ pub struct ForbiddenBound {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_forbidden_const_param)]
+pub struct ForbiddenConstParam {
+    #[primary_span]
+    pub const_param_spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_fn_param_too_many)]
 pub struct FnParamTooMany {
     #[primary_span]
     pub span: Span,
     pub max_num_args: usize,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_fn_param_c_var_args_only)]
-pub struct FnParamCVarArgsOnly {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -221,6 +206,36 @@ pub enum ExternBlockSuggestion {
         end_span: Span,
         abi: Symbol,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_extern_invalid_safety)]
+pub struct InvalidSafetyOnExtern {
+    #[primary_span]
+    pub item_span: Span,
+    #[suggestion(code = "unsafe ", applicability = "machine-applicable", style = "verbose")]
+    pub block: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_item_invalid_safety)]
+pub struct InvalidSafetyOnItem {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_bare_fn_invalid_safety)]
+pub struct InvalidSafetyOnBareFn {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_unsafe_static)]
+pub struct UnsafeStatic {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -493,6 +508,13 @@ pub struct UnsafeItem {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_missing_unsafe_on_extern)]
+pub struct MissingUnsafeOnExtern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_fieldless_union)]
 pub struct FieldlessUnion {
     #[primary_span]
@@ -589,7 +611,7 @@ pub struct TildeConstDisallowed {
     pub reason: TildeConstReason,
 }
 
-#[derive(Subdiagnostic)]
+#[derive(Subdiagnostic, Copy, Clone)]
 pub enum TildeConstReason {
     #[note(ast_passes_closure)]
     Closure,
@@ -635,15 +657,6 @@ pub enum TildeConstReason {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_incompatible_trait_bound_modifiers)]
-pub struct IncompatibleTraitBoundModifiers {
-    #[primary_span]
-    pub span: Span,
-    pub left: &'static str,
-    pub right: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_const_and_async)]
 pub struct ConstAndAsync {
     #[primary_span]
@@ -669,6 +682,7 @@ pub struct ConstAndCVariadic {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_foreign, code = E0130)]
+// FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::PatternsInFnsWithoutBody`)
 pub struct PatternInForeign {
     #[primary_span]
     #[label]
@@ -677,6 +691,7 @@ pub struct PatternInForeign {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_bodiless, code = E0642)]
+// FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::PatternsInFnsWithoutBody`)
 pub struct PatternInBodiless {
     #[primary_span]
     #[label]
@@ -832,4 +847,21 @@ pub struct MatchArmWithNoBody {
     pub span: Span,
     #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
     pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_precise_capturing_not_allowed_here)]
+pub struct PreciseCapturingNotAllowedHere {
+    #[primary_span]
+    pub span: Span,
+    pub loc: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_precise_capturing_duplicated)]
+pub struct DuplicatePreciseCapturing {
+    #[primary_span]
+    pub bound1: Span,
+    #[label]
+    pub bound2: Span,
 }

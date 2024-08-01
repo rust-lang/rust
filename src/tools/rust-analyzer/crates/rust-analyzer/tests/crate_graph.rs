@@ -1,24 +1,31 @@
 use std::path::PathBuf;
 
-use project_model::{CargoWorkspace, ProjectWorkspace, Sysroot, WorkspaceBuildScripts};
+use project_model::{
+    CargoWorkspace, ManifestPath, Metadata, ProjectWorkspace, ProjectWorkspaceKind, Sysroot,
+    WorkspaceBuildScripts,
+};
 use rust_analyzer::ws_to_crate_graph;
 use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
 use vfs::{AbsPathBuf, FileId};
 
 fn load_cargo_with_fake_sysroot(file: &str) -> ProjectWorkspace {
-    let meta = get_test_json_file(file);
-    let cargo_workspace = CargoWorkspace::new(meta);
-    ProjectWorkspace::Cargo {
-        cargo: cargo_workspace,
-        build_scripts: WorkspaceBuildScripts::default(),
-        sysroot: Ok(get_fake_sysroot()),
-        rustc: Err(None),
+    let meta: Metadata = get_test_json_file(file);
+    let manifest_path =
+        ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
+    let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
+    ProjectWorkspace {
+        kind: ProjectWorkspaceKind::Cargo {
+            cargo: cargo_workspace,
+            build_scripts: WorkspaceBuildScripts::default(),
+            rustc: Err(None),
+            cargo_config_extra_env: Default::default(),
+        },
+        sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),
         cfg_overrides: Default::default(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
-        cargo_config_extra_env: Default::default(),
     }
 }
 
@@ -62,7 +69,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert_utf8(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(sysroot_dir, Some(Ok(sysroot_src_dir)), false)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), false)
 }
 
 #[test]

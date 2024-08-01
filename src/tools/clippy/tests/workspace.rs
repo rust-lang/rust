@@ -1,5 +1,3 @@
-#![feature(lazy_cell)]
-
 use std::path::PathBuf;
 use std::process::Command;
 use test_utils::{CARGO_CLIPPY_PATH, IS_RUSTC_TEST_SUITE};

@@ -1,0 +1,21 @@
+error[E0401]: can't reference `Self` constructor from outer item
+  --> $DIR/self-ctor.rs:5:28
+   |
+LL | impl<T> S0<T> {
+   | ------------- the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
+LL |     fn foo() {
+LL |         const C: S0<i32> = Self(0);
+   |                            ^^^^ help: replace `Self` with the actual type: `S0`
+
+error[E0401]: can't reference `Self` constructor from outer item
+  --> $DIR/self-ctor.rs:8:13
+   |
+LL | impl<T> S0<T> {
+   | ------------- the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
+...
+LL |             Self(0)
+   |             ^^^^ help: replace `Self` with the actual type: `S0`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

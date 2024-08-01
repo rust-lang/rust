@@ -1,27 +1,14 @@
 use rustc_errors::StashKey;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, def, Expr, ImplItem, Item, Node, TraitItem};
+use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 
-use crate::errors::{TaitForwardCompat, TypeOf, UnconstrainedOpaqueType};
-
-pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
-    let mut res = Ok(());
-    if tcx.has_attr(CRATE_DEF_ID, sym::rustc_hidden_type_of_opaques) {
-        for id in tcx.hir().items() {
-            if matches!(tcx.def_kind(id.owner_id), DefKind::OpaqueTy) {
-                let type_of = tcx.type_of(id.owner_id).instantiate_identity();
-
-                res = Err(tcx.dcx().emit_err(TypeOf { span: tcx.def_span(id.owner_id), type_of }));
-            }
-        }
-    }
-    res
-}
+use crate::errors::{TaitForwardCompat, TaitForwardCompat2, UnconstrainedOpaqueType};
 
 /// Checks "defining uses" of opaque `impl Trait` in associated types.
 /// These can only be defined by associated items of the same trait.
@@ -228,13 +215,14 @@ impl TaitConstraintLocator<'_> {
             return;
         }
 
+        let opaque_types_defined_by = self.tcx.opaque_types_defined_by(item_def_id);
+
         let mut constrained = false;
         for (&opaque_type_key, &hidden_type) in &tables.concrete_opaque_types {
             if opaque_type_key.def_id != self.def_id {
                 continue;
             }
             constrained = true;
-            let opaque_types_defined_by = self.tcx.opaque_types_defined_by(item_def_id);
 
             if !opaque_types_defined_by.contains(&self.def_id) {
                 self.tcx.dcx().emit_err(TaitForwardCompat {
@@ -258,6 +246,16 @@ impl TaitConstraintLocator<'_> {
 
         if !constrained {
             debug!("no constraints in typeck results");
+            if opaque_types_defined_by.contains(&self.def_id) {
+                self.tcx.dcx().emit_err(TaitForwardCompat2 {
+                    span: self
+                        .tcx
+                        .def_ident_span(item_def_id)
+                        .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
+                    opaque_type_span: self.tcx.def_span(self.def_id),
+                    opaque_type: self.tcx.def_path_str(self.def_id),
+                });
+            }
             return;
         };
 

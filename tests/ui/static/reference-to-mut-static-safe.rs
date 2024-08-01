@@ -8,6 +8,6 @@ fn main() {
 
     let _x = &X;
     //[e2024]~^ creating a shared reference to a mutable static [E0796]
-    //[e2021]~^^ use of mutable static is unsafe and requires unsafe function or block [E0133]
+    //~^^ use of mutable static is unsafe and requires unsafe
     //[e2021]~^^^ shared reference to mutable static is discouraged [static_mut_refs]
 }

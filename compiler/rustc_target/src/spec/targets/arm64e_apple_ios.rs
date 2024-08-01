@@ -1,9 +1,9 @@
-use crate::spec::base::apple::{ios_llvm_target, opts, Arch};
+use crate::spec::base::apple::{ios_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64e;
-    let mut base = opts("ios", arch);
+    let mut base = opts("ios", arch, TargetAbi::Normal);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
 
     Target {
@@ -13,10 +13,10 @@ pub fn target() -> Target {
         // MACH-O commands, so we do too.
         llvm_target: ios_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("ARM64e Apple iOS".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128-Fn32".into(),

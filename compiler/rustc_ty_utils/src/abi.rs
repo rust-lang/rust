@@ -1,10 +1,13 @@
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
 };
-use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
@@ -13,8 +16,7 @@ use rustc_target::abi::call::{
 };
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
-
-use std::iter;
+use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
@@ -31,12 +33,12 @@ fn fn_sig_for_fn_abi<'tcx>(
     instance: ty::Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> ty::PolyFnSig<'tcx> {
-    if let InstanceDef::ThreadLocalShim(..) = instance.def {
+    if let InstanceKind::ThreadLocalShim(..) = instance.def {
         return ty::Binder::dummy(tcx.mk_fn_sig(
             [],
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
-            hir::Unsafety::Normal,
+            hir::Safety::Safe,
             rustc_target::spec::abi::Abi::Unadjusted,
         ));
     }
@@ -61,7 +63,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 _ => unreachable!(),
             };
 
-            if let ty::InstanceDef::VTableShim(..) = instance.def {
+            if let ty::InstanceKind::VTableShim(..) = instance.def {
                 // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                 sig = sig.map_bound(|mut sig| {
                     let mut inputs_and_output = sig.inputs_and_output.to_vec();
@@ -95,7 +97,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     iter::once(env_ty).chain(sig.inputs().iter().cloned()),
                     sig.output(),
                     sig.c_variadic,
-                    sig.unsafety,
+                    sig.safety,
                     sig.abi,
                 ),
                 bound_vars,
@@ -119,15 +121,15 @@ fn fn_sig_for_fn_abi<'tcx>(
             let mut coroutine_kind = args.as_coroutine_closure().kind();
 
             let env_ty =
-                if let InstanceDef::ConstructCoroutineInClosureShim { receiver_by_ref, .. } =
+                if let InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref, .. } =
                     instance.def
                 {
                     coroutine_kind = ty::ClosureKind::FnOnce;
 
                     // Implementations of `FnMut` and `Fn` for coroutine-closures
-                    // still take their receiver by (mut) ref.
+                    // still take their receiver by ref.
                     if receiver_by_ref {
-                        Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty)
+                        Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty)
                     } else {
                         coroutine_ty
                     }
@@ -149,7 +151,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
                     ),
                     sig.c_variadic,
-                    sig.unsafety,
+                    sig.safety,
                     sig.abi,
                 ),
                 bound_vars,
@@ -172,7 +174,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // make sure we respect the `target_kind` in that shim.
             // FIXME(async_closures): This shouldn't be needed, and we should be populating
             // a separate def-id for these bodies.
-            if let InstanceDef::CoroutineKindShim { .. } = instance.def {
+            if let InstanceKind::CoroutineKindShim { .. } = instance.def {
                 // Grab the parent coroutine-closure. It has the same args for the purposes
                 // of instantiation, so this will be okay to do.
                 let ty::CoroutineClosure(_, coroutine_closure_args) = *tcx
@@ -300,7 +302,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     [env_ty, resume_ty],
                     ret_ty,
                     false,
-                    hir::Unsafety::Normal,
+                    hir::Safety::Safe,
                     rustc_target::spec::abi::Abi::Rust,
                 )
             } else {
@@ -309,7 +311,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     [env_ty],
                     ret_ty,
                     false,
-                    hir::Unsafety::Normal,
+                    hir::Safety::Safe,
                     rustc_target::spec::abi::Abi::Rust,
                 )
             };
@@ -322,7 +324,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 #[inline]
 fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
     use rustc_target::spec::abi::Abi::*;
-    match tcx.sess.target.adjust_abi(&tcx, abi, c_variadic) {
+    match tcx.sess.target.adjust_abi(abi, c_variadic) {
         RustIntrinsic | Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
@@ -350,7 +352,6 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
         AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
         RiscvInterruptM => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine },
         RiscvInterruptS => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor },
-        Wasm => Conv::C,
 
         // These API constants ought to be more specific...
         Cdecl { .. } => Conv::C,
@@ -384,7 +385,7 @@ fn fn_abi_of_instance<'tcx>(
         extra_args,
         caller_location,
         Some(instance.def_id()),
-        matches!(instance.def, ty::InstanceDef::Virtual(..)),
+        matches!(instance.def, ty::InstanceKind::Virtual(..)),
     )
 }
 
@@ -518,7 +519,8 @@ fn fn_abi_sanity_check<'tcx>(
                     assert!(
                         matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
                             || matches!(spec_abi, SpecAbi::PtxKernel | SpecAbi::Unadjusted),
-                        r#"`PassMode::Direct` for aggregates only allowed for "unadjusted" and "ptx-kernel" functions and on wasm\nProblematic type: {:#?}"#,
+                        "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" and \"ptx-kernel\" functions and on wasm\n\
+                          Problematic type: {:#?}",
                         arg.layout,
                     );
                 }
@@ -739,6 +741,40 @@ fn fn_abi_adjust_for_abi<'tcx>(
         let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, arg_idx: Option<usize>| {
             if arg.is_ignore() {
                 return;
+            }
+
+            // Avoid returning floats in x87 registers on x86 as loading and storing from x87
+            // registers will quiet signalling NaNs.
+            if cx.tcx.sess.target.arch == "x86"
+                && arg_idx.is_none()
+                // Intrinsics themselves are not actual "real" functions, so theres no need to
+                // change their ABIs.
+                && abi != SpecAbi::RustIntrinsic
+            {
+                match arg.layout.abi {
+                    // Handle similar to the way arguments with an `Abi::Aggregate` abi are handled
+                    // below, by returning arguments up to the size of a pointer (32 bits on x86)
+                    // cast to an appropriately sized integer.
+                    Abi::Scalar(s) if s.primitive() == Float(F32) => {
+                        // Same size as a pointer, return in a register.
+                        arg.cast_to(Reg::i32());
+                        return;
+                    }
+                    Abi::Scalar(s) if s.primitive() == Float(F64) => {
+                        // Larger than a pointer, return indirectly.
+                        arg.make_indirect();
+                        return;
+                    }
+                    Abi::ScalarPair(s1, s2)
+                        if matches!(s1.primitive(), Float(F32 | F64))
+                            || matches!(s2.primitive(), Float(F32 | F64)) =>
+                    {
+                        // Larger than a pointer, return indirectly.
+                        arg.make_indirect();
+                        return;
+                    }
+                    _ => {}
+                };
             }
 
             match arg.layout.abi {

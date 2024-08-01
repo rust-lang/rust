@@ -1,9 +1,10 @@
+use std::iter;
+
 use rustc_index::IndexSlice;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 use rustc_target::abi::Size;
-use std::iter;
 
 use super::simplify::simplify_cfg;
 
@@ -372,7 +373,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         }
 
         fn int_equal(l: ScalarInt, r: impl Into<u128>, size: Size) -> bool {
-            l.assert_int(l.size()) == ScalarInt::try_from_uint(r, size).unwrap().assert_int(size)
+            l.to_bits_unchecked() == ScalarInt::try_from_uint(r, size).unwrap().to_bits_unchecked()
         }
 
         // We first compare the two branches, and then the other branches need to fulfill the same conditions.

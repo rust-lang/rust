@@ -1,10 +1,10 @@
-use crate::spec::base::apple::{macos_llvm_target, opts, Arch};
+use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     // ld64 only understands i386 and not i686
     let arch = Arch::I386;
-    let mut base = opts("macos", arch);
+    let mut base = opts("macos", arch, TargetAbi::Normal);
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
     base.frame_pointer = FramePointer::Always;
@@ -17,10 +17,10 @@ pub fn target() -> Target {
         // While ld64 doesn't understand i686, LLVM does.
         llvm_target: macos_llvm_target(Arch::I686).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("32-bit macOS (10.12+, Sierra+)".into()),
+            tier: Some(3),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-p270:32:32-p271:32:32-p272:64:64-\

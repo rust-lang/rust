@@ -1,0 +1,14 @@
+error: expected item, found `;`
+  --> $DIR/missing-main-issue-124935-semi-after-item.rs:5:1
+   |
+LL | ;
+   | ^
+   |
+   = help: function declarations are not followed by a semicolon
+help: remove this semicolon
+   |
+LL - ;
+   |
+
+error: aborting due to 1 previous error
+

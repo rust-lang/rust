@@ -34,7 +34,7 @@
 
 fn main() {
     // See the comment at the top of this file for an explanation of this.
-    #[cfg(feature = "jemalloc-sys")]
+    #[cfg(feature = "jemalloc")]
     {
         use std::os::raw::{c_int, c_void};
 

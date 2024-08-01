@@ -1,13 +1,11 @@
-use crate::traits::*;
+use std::ops::Range;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Instance, Ty};
+use rustc_middle::{bug, mir, ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{hygiene, BytePos, Span};
@@ -16,8 +14,7 @@ use rustc_target::abi::{Abi, FieldIdx, FieldsShape, Size, VariantIdx};
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef};
-
-use std::ops::Range;
+use crate::traits::*;
 
 pub struct FunctionDebugContext<'tcx, S, L> {
     /// Maps from source code to the corresponding debug info scope.
@@ -120,7 +117,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
 {
     fn deref(&self, bx: &mut Bx) -> Self {
         bx.cx().layout_of(
-            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)).ty,
+            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)),
         )
     }
 
@@ -194,7 +191,7 @@ fn calculate_debuginfo_offset<
             }
             _ => {
                 // Sanity check for `can_use_in_debuginfo`.
-                debug_assert!(!elem.can_use_in_debuginfo());
+                assert!(!elem.can_use_in_debuginfo());
                 bug!("unsupported var debuginfo projection `{:?}`", projection)
             }
         }
@@ -502,7 +499,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let DebugInfoOffset { direct_offset, indirect_offsets, result: fragment_layout } =
                     calculate_debuginfo_offset(bx, &fragment.projection, var_layout);
-                debug_assert!(indirect_offsets.is_empty());
+                assert!(indirect_offsets.is_empty());
 
                 if fragment_layout.size == Size::ZERO {
                     // Fragment is a ZST, so does not represent anything. Avoid generating anything

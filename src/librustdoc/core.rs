@@ -1,9 +1,16 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, LazyLock};
+use std::{io, mem};
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
+use rustc_errors::codes::*;
 use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{codes::*, ErrorGuaranteed, TerminalUrl};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -14,25 +21,17 @@ use rustc_lint::{late_lint_mod, MissingDoc};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
-use rustc_session::lint;
-use rustc_session::Session;
+pub(crate) use rustc_session::config::{Options, UnstableOptions};
+use rustc_session::{lint, Session};
 use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
-
-use std::cell::RefCell;
-use std::io;
-use std::mem;
-use std::rc::Rc;
-use std::sync::LazyLock;
-use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
-use crate::passes::{self, Condition::*};
-
-pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
+use crate::passes::Condition::*;
+use crate::passes::{self};
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -204,8 +203,6 @@ pub(crate) fn create_config(
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
 
-    let input = Input::File(input);
-
     // By default, rustdoc ignores all lints.
     // Specifically unblock lints relevant to documentation or the lint machinery itself.
     let mut lints_to_show = vec![
@@ -286,9 +283,9 @@ pub(crate) fn create_config(
                 }
 
                 let hir = tcx.hir();
-                let body = hir.body(hir.body_owned_by(def_id));
+                let body = hir.body_owned_by(def_id);
                 debug!("visiting body for {def_id:?}");
-                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(&body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
@@ -374,14 +371,14 @@ pub(crate) fn run_global_ctxt(
         tcx.node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            "no documentation found for this crate's top-level module",
             |lint| {
+                lint.primary_message("no documentation found for this crate's top-level module");
                 lint.help(help);
             },
         );
     }
 
-    fn report_deprecated_attr(name: &str, dcx: &rustc_errors::DiagCtxt, sp: Span) {
+    fn report_deprecated_attr(name: &str, dcx: DiagCtxtHandle<'_>, sp: Span) {
         let mut msg =
             dcx.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
         msg.note(

@@ -2,16 +2,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fs;
-use crate::io;
-use crate::net;
 #[cfg(doc)]
 use crate::os::windows::io::{AsHandle, AsSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
-use crate::ptr;
-use crate::sys;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::{fs, io, net, ptr, sys};
 
 /// Raw HANDLEs.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -44,7 +40,7 @@ pub trait AsRawHandle {
     fn as_raw_handle(&self) -> RawHandle;
 }
 
-/// Construct I/O objects from raw handles.
+/// Constructs I/O objects from raw handles.
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawHandle {
     /// Constructs a new I/O object from the specified raw handle.
@@ -159,10 +155,12 @@ fn stdio_handle(raw: RawHandle) -> RawHandle {
 impl FromRawHandle for fs::File {
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
-        let handle = handle as sys::c::HANDLE;
-        fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
-            OwnedHandle::from_raw_handle(handle),
-        )))
+        unsafe {
+            let handle = handle as sys::c::HANDLE;
+            fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
+                OwnedHandle::from_raw_handle(handle),
+            )))
+        }
     }
 }
 
@@ -260,24 +258,30 @@ impl AsRawSocket for net::UdpSocket {
 impl FromRawSocket for net::TcpStream {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
-        let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-        net::TcpStream::from_inner(sys_common::net::TcpStream::from_inner(sock))
+        unsafe {
+            let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
+            net::TcpStream::from_inner(sys_common::net::TcpStream::from_inner(sock))
+        }
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::TcpListener {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
-        let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-        net::TcpListener::from_inner(sys_common::net::TcpListener::from_inner(sock))
+        unsafe {
+            let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
+            net::TcpListener::from_inner(sys_common::net::TcpListener::from_inner(sock))
+        }
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::UdpSocket {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
-        let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-        net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(sock))
+        unsafe {
+            let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
+            net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(sock))
+        }
     }
 }
 

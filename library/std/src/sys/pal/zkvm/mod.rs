@@ -6,6 +6,7 @@
 //! This is all super highly experimental and not actually intended for
 //! wide/production use yet, it's still all in the experimental category. This
 //! will likely change over time.
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 const WORD_SIZE: usize = core::mem::size_of::<u32>();
 
@@ -25,7 +26,6 @@ pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod stdio;
-pub mod thread_local_key;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 

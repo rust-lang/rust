@@ -11,7 +11,7 @@ use std::path::Path;
 
 use crate::core::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
 use crate::utils::helpers::t;
-use crate::{Build, Compiler, Mode, Subcommand};
+use crate::{Build, Compiler, Kind, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}
@@ -66,7 +66,7 @@ macro_rules! clean_crate_tree {
             fn run(self, builder: &Builder<'_>) -> Self::Output {
                 let compiler = self.compiler;
                 let target = compiler.host;
-                let mut cargo = builder.bare_cargo(compiler, $mode, target, "clean");
+                let mut cargo = builder.bare_cargo(compiler, $mode, target, Kind::Clean);
 
                 // Since https://github.com/rust-lang/rust/pull/111076 enables
                 // unstable cargo feature (`public-dependency`), we need to ensure
@@ -85,7 +85,7 @@ macro_rules! clean_crate_tree {
 
                 // NOTE: doesn't use `run_cargo` because we don't want to save a stamp file,
                 // and doesn't use `stream_cargo` to avoid passing `--message-format` which `clean` doesn't accept.
-                builder.run(&mut cargo);
+                cargo.run(builder);
             }
         }
     )+ }

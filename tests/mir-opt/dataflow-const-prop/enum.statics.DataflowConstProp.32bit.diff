@@ -43,7 +43,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = const {ALLOC1: &E};
+          _2 = const {ALLOC0: &E};
 -         _1 = (*_2);
 +         _1 = const E::V1(0_i32);
           StorageDead(_2);
@@ -79,7 +79,7 @@
       bb4: {
           StorageLive(_7);
           StorageLive(_8);
-          _8 = const {ALLOC2: &&E};
+          _8 = const {ALLOC1: &&E};
           _7 = (*_8);
           StorageDead(_8);
           StorageLive(_9);
@@ -111,21 +111,14 @@
           StorageDead(_1);
           return;
       }
-+ }
+  }
+  
++ ALLOC2 (size: 8, align: 4) { .. }
 + 
-+ ALLOC3 (size: 8, align: 4) {
-+     00 00 00 00 00 00 00 00                         │ ........
-  }
+  ALLOC1 (static: RC, size: 4, align: 4) { .. }
   
-  ALLOC2 (static: RC, size: 4, align: 4) {
-      ╾ALLOC0<imm>╼                                     │ ╾──╼
-  }
+- ALLOC2 (size: 8, align: 4) { .. }
++ ALLOC3 (size: 8, align: 4) { .. }
   
-  ALLOC0 (size: 8, align: 4) {
-      01 00 00 00 04 00 00 00                         │ ........
-  }
-  
-  ALLOC1 (static: statics::C, size: 8, align: 4) {
-      00 00 00 00 00 00 00 00                         │ ........
-  }
+  ALLOC0 (static: statics::C, size: 8, align: 4) { .. }
   

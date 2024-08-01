@@ -247,7 +247,7 @@ fn allow_single_line_let_else_block(result: &str, block: &ast::Block) -> bool {
 #[allow(dead_code)]
 #[derive(Debug)]
 struct Item<'a> {
-    unsafety: ast::Unsafe,
+    safety: ast::Safety,
     abi: Cow<'static, str>,
     vis: Option<&'a ast::Visibility>,
     body: Vec<BodyElement<'a>>,
@@ -257,7 +257,7 @@ struct Item<'a> {
 impl<'a> Item<'a> {
     fn from_foreign_mod(fm: &'a ast::ForeignMod, span: Span, config: &Config) -> Item<'a> {
         Item {
-            unsafety: fm.unsafety,
+            safety: fm.safety,
             abi: format_extern(
                 ast::Extern::from_abi(fm.abi, DUMMY_SP),
                 config.force_explicit_abi(),
@@ -290,7 +290,7 @@ pub(crate) struct FnSig<'a> {
     coroutine_kind: Cow<'a, Option<ast::CoroutineKind>>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
-    unsafety: ast::Unsafe,
+    safety: ast::Safety,
     visibility: &'a ast::Visibility,
 }
 
@@ -301,7 +301,7 @@ impl<'a> FnSig<'a> {
         visibility: &'a ast::Visibility,
     ) -> FnSig<'a> {
         FnSig {
-            unsafety: method_sig.header.unsafety,
+            safety: method_sig.header.safety,
             coroutine_kind: Cow::Borrowed(&method_sig.header.coroutine_kind),
             constness: method_sig.header.constness,
             defaultness: ast::Defaultness::Final,
@@ -330,7 +330,7 @@ impl<'a> FnSig<'a> {
                 constness: fn_sig.header.constness,
                 coroutine_kind: Cow::Borrowed(&fn_sig.header.coroutine_kind),
                 defaultness,
-                unsafety: fn_sig.header.unsafety,
+                safety: fn_sig.header.safety,
                 visibility: vis,
             },
             _ => unreachable!(),
@@ -345,7 +345,7 @@ impl<'a> FnSig<'a> {
         result.push_str(format_constness(self.constness));
         self.coroutine_kind
             .map(|coroutine_kind| result.push_str(format_coro(&coroutine_kind)));
-        result.push_str(format_unsafety(self.unsafety));
+        result.push_str(format_safety(self.safety));
         result.push_str(&format_extern(
             self.ext,
             context.config.force_explicit_abi(),
@@ -356,7 +356,7 @@ impl<'a> FnSig<'a> {
 
 impl<'a> FmtVisitor<'a> {
     fn format_item(&mut self, item: &Item<'_>) {
-        self.buffer.push_str(format_unsafety(item.unsafety));
+        self.buffer.push_str(format_safety(item.safety));
         self.buffer.push_str(&item.abi);
 
         let snippet = self.snippet(item.span);
@@ -656,9 +656,16 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let context = self.get_context();
-        // 1 = ','
-        let shape = self.shape().sub_width(1)?;
-        let attrs_str = field.attrs.rewrite(&context, shape)?;
+        let shape = self.shape();
+        let attrs_str = if context.config.version() == Version::Two {
+            field.attrs.rewrite(&context, shape)?
+        } else {
+            // Version::One formatting that was off by 1. See issue #5801
+            field.attrs.rewrite(&context, shape.sub_width(1)?)?
+        };
+        // sub_width(1) to take the trailing comma into account
+        let shape = shape.sub_width(1)?;
+
         let lo = field
             .attrs
             .last()
@@ -739,8 +746,8 @@ impl<'a> FmtVisitor<'a> {
                 (_, Const(..)) => Ordering::Greater,
                 (MacCall(..), _) => Ordering::Less,
                 (_, MacCall(..)) => Ordering::Greater,
-                (Delegation(..), _) => Ordering::Less,
-                (_, Delegation(..)) => Ordering::Greater,
+                (Delegation(..), _) | (DelegationMac(..), _) => Ordering::Less,
+                (_, Delegation(..)) | (_, DelegationMac(..)) => Ordering::Greater,
             });
             let mut prev_kind = None;
             for (buf, item) in buffer {
@@ -836,13 +843,15 @@ pub(crate) fn format_impl(
 
     if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, item)? {
         result.push_str(&where_clause_str);
-        if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
-            // if the where_clause contains extra comments AND
-            // there is only one where-clause predicate
-            // recover the suppressed comma in single line where_clause formatting
+        if where_clause_str.contains('\n') {
+            // If there is only one where-clause predicate
+            // and the where-clause spans multiple lines,
+            // then recover the suppressed comma in single line where-clause formatting
             if generics.where_clause.predicates.len() == 1 {
                 result.push(',');
             }
+        }
+        if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
             result.push_str(&format!("{sep}{{{sep}}}"));
         } else {
             result.push_str(" {}");
@@ -924,7 +933,7 @@ fn format_impl_ref_and_type(
     offset: Indent,
 ) -> Option<String> {
     let ast::Impl {
-        unsafety,
+        safety,
         polarity,
         defaultness,
         constness,
@@ -937,7 +946,7 @@ fn format_impl_ref_and_type(
 
     result.push_str(&format_visibility(context, &item.vis));
     result.push_str(format_defaultness(defaultness));
-    result.push_str(format_unsafety(unsafety));
+    result.push_str(format_safety(safety));
 
     let shape = if context.config.version() == Version::Two {
         Shape::indented(offset + last_line_width(&result), context.config)
@@ -1137,7 +1146,7 @@ pub(crate) fn format_trait(
     };
     let ast::Trait {
         is_auto,
-        unsafety,
+        safety,
         ref generics,
         ref bounds,
         ref items,
@@ -1147,7 +1156,7 @@ pub(crate) fn format_trait(
     let header = format!(
         "{}{}{}trait ",
         format_visibility(context, &item.vis),
-        format_unsafety(unsafety),
+        format_safety(safety),
         format_auto(is_auto),
     );
     result.push_str(&header);
@@ -1161,9 +1170,9 @@ pub(crate) fn format_trait(
 
     // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
     if !bounds.is_empty() {
-        let ident_hi = context
-            .snippet_provider
-            .span_after(item.span, item.ident.as_str());
+        // Retrieve *unnormalized* ident (See #6069)
+        let source_ident = context.snippet(item.ident.span);
+        let ident_hi = context.snippet_provider.span_after(item.span, source_ident);
         let bound_hi = bounds.last().unwrap().span().hi();
         let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
         if contains_comment(snippet) {
@@ -1906,6 +1915,7 @@ pub(crate) fn rewrite_struct_field(
 
 pub(crate) struct StaticParts<'a> {
     prefix: &'a str,
+    safety: ast::Safety,
     vis: &'a ast::Visibility,
     ident: symbol::Ident,
     ty: &'a ast::Ty,
@@ -1917,11 +1927,12 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (defaultness, prefix, ty, mutability, expr) = match &item.kind {
-            ast::ItemKind::Static(s) => (None, "static", &s.ty, s.mutability, &s.expr),
+        let (defaultness, prefix, safety, ty, mutability, expr) = match &item.kind {
+            ast::ItemKind::Static(s) => (None, "static", s.safety, &s.ty, s.mutability, &s.expr),
             ast::ItemKind::Const(c) => (
                 Some(c.defaultness),
                 "const",
+                ast::Safety::Default,
                 &c.ty,
                 ast::Mutability::Not,
                 &c.expr,
@@ -1930,6 +1941,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix,
+            safety,
             vis: &item.vis,
             ident: item.ident,
             ty,
@@ -1947,6 +1959,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix: "const",
+            safety: ast::Safety::Default,
             vis: &ti.vis,
             ident: ti.ident,
             ty,
@@ -1964,6 +1977,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix: "const",
+            safety: ast::Safety::Default,
             vis: &ii.vis,
             ident: ii.ident,
             ty,
@@ -1982,9 +1996,10 @@ fn rewrite_static(
 ) -> Option<String> {
     let colon = colon_spaces(context.config);
     let mut prefix = format!(
-        "{}{}{} {}{}{}",
+        "{}{}{}{} {}{}{}",
         format_visibility(context, static_parts.vis),
         static_parts.defaultness.map_or("", format_defaultness),
+        format_safety(static_parts.safety),
         static_parts.prefix,
         format_mutability(static_parts.mutability),
         rewrite_ident(context, static_parts.ident),
@@ -2483,7 +2498,7 @@ fn rewrite_fn_base(
                 || context.config.indent_style() == IndentStyle::Visual
             {
                 let indent = if param_str.is_empty() {
-                    // Aligning with non-existent params looks silly.
+                    // Aligning with nonexistent params looks silly.
                     force_new_line_for_brace = true;
                     indent + 4
                 } else {
@@ -2498,7 +2513,7 @@ fn rewrite_fn_base(
             } else {
                 let mut ret_shape = Shape::indented(indent, context.config);
                 if param_str.is_empty() {
-                    // Aligning with non-existent params looks silly.
+                    // Aligning with nonexistent params looks silly.
                     force_new_line_for_brace = true;
                     ret_shape = if context.use_block_indent() {
                         ret_shape.offset_left(4).unwrap_or(ret_shape)
@@ -3329,10 +3344,12 @@ impl Rewrite for ast::ForeignItem {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
                 let vis = format_visibility(context, &self.vis);
+                let safety = format_safety(static_foreign_item.safety);
                 let mut_str = format_mutability(static_foreign_item.mutability);
                 let prefix = format!(
-                    "{}static {}{}:",
+                    "{}{}static {}{}:",
                     vis,
+                    safety,
                     mut_str,
                     rewrite_ident(context, self.ident)
                 );

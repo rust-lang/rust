@@ -10,14 +10,16 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_middle::mir;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::Size;
-use rustc_target::abi::{self, VariantIdx};
+use rustc_middle::{bug, mir, span_bug, ty};
+use rustc_target::abi::{self, Size, VariantIdx};
+use tracing::{debug, instrument};
 
-use super::{InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Provenance, Scalar};
+use super::{
+    throw_ub, throw_unsup, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
+    Provenance, Scalar,
+};
 
 /// Describes the constraints placed on offset-projections.
 #[derive(Copy, Clone, Debug)]
@@ -37,9 +39,9 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     fn meta(&self) -> MemPlaceMeta<Prov>;
 
     /// Get the length of a slice/string/array stored here.
-    fn len<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn len<M: Machine<'tcx, Provenance = Prov>>(
         &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, u64> {
         let layout = self.layout();
         if layout.is_unsized() {
@@ -59,29 +61,31 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     }
 
     /// Offset the value by the given amount, replacing the layout and metadata.
-    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn offset_with_meta<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self>;
 
-    fn offset<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn offset<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         layout: TyAndLayout<'tcx>,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert!(layout.is_sized());
+        // We sometimes do pointer arithmetic with this function, disregarding the source type.
+        // So we don't check the sizes here.
         self.offset_with_meta(offset, OffsetMode::Inbounds, MemPlaceMeta::None, layout, ecx)
     }
 
-    fn transmute<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn transmute<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         layout: TyAndLayout<'tcx>,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert!(self.layout().is_sized() && layout.is_sized());
         assert_eq!(self.layout().size, layout.size);
@@ -90,9 +94,9 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
 
     /// Convert this to an `OpTy`. This might be an irreversible transformation, but is useful for
     /// reading from this thing.
-    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
 }
 
@@ -107,9 +111,9 @@ pub struct ArrayIterator<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>>
 
 impl<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'tcx, 'a, Prov, P> {
     /// Should be the same `ecx` on each call, and match the one used to create the iterator.
-    pub fn next<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    pub fn next<M: Machine<'tcx, Provenance = Prov>>(
         &mut self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Option<(u64, P)>> {
         let Some(idx) = self.range.next() else { return Ok(None) };
         // We use `Wrapping` here since the offset has already been checked when the iterator was created.
@@ -127,10 +131,10 @@ impl<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'tcx,
 }
 
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
-impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
+impl<'tcx, Prov, M> InterpCx<'tcx, M>
 where
     Prov: Provenance,
-    M: Machine<'mir, 'tcx, Provenance = Prov>,
+    M: Machine<'tcx, Provenance = Prov>,
 {
     /// Offset a pointer to project to a field of a struct/union. Unlike `place_field`, this is
     /// always possible without allocating, so it can take `&self`. Also return the field's layout.
@@ -178,8 +182,8 @@ where
                     (base_meta, offset)
                 }
                 None => {
-                    // We don't know the alignment of this field, so we cannot adjust.
-                    throw_unsup_format!("`extern type` does not have a known offset")
+                    // We cannot know the alignment of this field, so we cannot adjust.
+                    throw_unsup!(ExternTypeField)
                 }
             }
         } else {
@@ -292,7 +296,7 @@ where
     ) -> InterpResult<'tcx, P> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let actual_to = if from_end {
-            if from.checked_add(to).map_or(true, |to| to > len) {
+            if from.checked_add(to).is_none_or(|to| to > len) {
                 // This can only be reached in ConstProp and non-rustc-MIR.
                 throw_ub!(BoundsCheckFailed { len: len, index: from.saturating_add(to) });
             }

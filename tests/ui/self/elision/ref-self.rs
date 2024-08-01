@@ -1,17 +1,22 @@
+//@ run-rustfix
+//@ edition:2018
+
 #![feature(arbitrary_self_types)]
-#![allow(non_snake_case)]
+#![allow(non_snake_case, dead_code)]
 
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::pin::Pin;
 
-struct Struct { }
+struct Struct {}
 
 struct Wrap<T, P>(T, PhantomData<P>);
 
 impl<T, P> Deref for Wrap<T, P> {
     type Target = T;
-    fn deref(&self) -> &T { &self.0 }
+    fn deref(&self) -> &T {
+        &self.0
+    }
 }
 
 impl Struct {
@@ -53,6 +58,11 @@ impl Struct {
         f
         //~^ ERROR lifetime may not live long enough
     }
+
+    fn ref_box_Self(self: &Box<Self>, f: &u32) -> &u32 {
+        f
+        //~^ ERROR lifetime may not live long enough
+    }
 }
 
-fn main() { }
+fn main() {}

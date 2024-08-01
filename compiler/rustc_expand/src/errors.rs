@@ -1,10 +1,11 @@
+use std::borrow::Cow;
+
 use rustc_ast::ast;
 use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol};
-use std::borrow::Cow;
 
 #[derive(Diagnostic)]
 #[diag(expand_expr_repeat_no_syntax_vars)]
@@ -417,6 +418,23 @@ pub struct DuplicateMatcherBinding {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_missing_fragment_specifier)]
+#[note]
+#[help(expand_valid)]
+pub struct MissingFragmentSpecifier {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        expand_suggestion_add_fragspec,
+        style = "verbose",
+        code = ":spec",
+        applicability = "maybe-incorrect"
+    )]
+    pub add_span: Span,
+    pub valid: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_invalid_fragment_specifier)]
 #[help]
 pub struct InvalidFragmentSpecifier {
@@ -432,4 +450,36 @@ pub struct ExpectedParenOrBrace<'a> {
     #[primary_span]
     pub span: Span,
     pub token: Cow<'a, str>,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_empty_delegation_mac)]
+pub(crate) struct EmptyDelegationMac {
+    #[primary_span]
+    pub span: Span,
+    pub kind: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_glob_delegation_outside_impls)]
+pub(crate) struct GlobDelegationOutsideImpls {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_glob_delegation_traitless_qpath)]
+pub(crate) struct GlobDelegationTraitlessQpath {
+    #[primary_span]
+    pub span: Span,
+}
+
+// This used to be the `proc_macro_back_compat` lint (#83125). It was later
+// turned into a hard error.
+#[derive(Diagnostic)]
+#[diag(expand_proc_macro_back_compat)]
+#[note]
+pub struct ProcMacroBackCompat {
+    pub crate_name: String,
+    pub fixed_version: String,
 }

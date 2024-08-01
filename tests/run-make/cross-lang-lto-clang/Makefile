@@ -1,4 +1,4 @@
-# needs-matching-clang
+# needs-force-clang-based-tests
 
 # This test makes sure that cross-language inlining actually works by checking
 # the generated machine code.

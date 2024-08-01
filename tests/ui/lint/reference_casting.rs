@@ -261,6 +261,13 @@ unsafe fn bigger_layout() {
         let ptr = r as *mut i32 as *mut Vec3<i32>;
         unsafe { *ptr = Vec3(0, 0, 0) }
     }
+
+    unsafe fn deref(v: &mut Vec3<i32>) {
+        let r = &mut v.0;
+        let r = &mut *r;
+        let ptr = &mut *(r as *mut i32 as *mut Vec3<i32>);
+        unsafe { *ptr = Vec3(0, 0, 0) }
+    }
 }
 
 const RAW_PTR: *mut u8 = 1 as *mut u8;

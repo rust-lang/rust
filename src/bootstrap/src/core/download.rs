@@ -1,19 +1,16 @@
-use std::{
-    env,
-    ffi::OsString,
-    fs::{self, File},
-    io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-    sync::OnceLock,
-};
+use std::env;
+use std::ffi::OsString;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
-use crate::core::config::RustfmtMetadata;
-use crate::utils::helpers::{check_run, exe, program_out_of_date};
-use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
+use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
 use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -57,7 +54,7 @@ impl Config {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Returns false if do not execute at all, otherwise returns its
     /// `status.success()`.
-    pub(crate) fn check_run(&self, cmd: &mut Command) -> bool {
+    pub(crate) fn check_run(&self, cmd: &mut BootstrapCommand) -> bool {
         if self.dry_run() {
             return true;
         }
@@ -174,15 +171,10 @@ impl Config {
         }
 
         let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
-        let rpath_entries = {
-            // ORIGIN is a relative default, all binary and dynamic libraries we ship
-            // appear to have this (even when `../lib` is redundant).
-            // NOTE: there are only two paths here, delimited by a `:`
-            let mut entries = OsString::from("$ORIGIN/../lib:");
-            entries.push(t!(fs::canonicalize(nix_deps_dir)).join("lib"));
-            entries
-        };
-        patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
+        patchelf.args(&[
+            OsString::from("--add-rpath"),
+            OsString::from(t!(fs::canonicalize(nix_deps_dir)).join("lib")),
+        ]);
         if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
@@ -209,7 +201,7 @@ impl Config {
             None => panic!("no protocol in {url}"),
         }
         t!(
-            std::fs::rename(&tempfile, dest_path),
+            move_file(&tempfile, dest_path),
             format!("failed to rename {tempfile:?} to {dest_path:?}")
         );
     }
@@ -217,7 +209,7 @@ impl Config {
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
-        let mut curl = Command::new("curl");
+        let mut curl = command("curl");
         curl.args([
             "-y",
             "30",
@@ -313,7 +305,7 @@ impl Config {
             if src_path.is_dir() && dst_path.exists() {
                 continue;
             }
-            t!(fs::rename(src_path, dst_path));
+            t!(move_file(src_path, dst_path));
         }
         let dst_dir = dst.join(directory_prefix);
         if dst_dir.exists() {
@@ -405,10 +397,18 @@ impl Config {
         cargo_clippy
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
+        None
+    }
+
     /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
     /// reuse target directories or artifacts
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
-        let RustfmtMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
+        use build_helper::stage0_parser::VersionMetadata;
+
+        let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
 
         let host = self.build;
@@ -487,6 +487,10 @@ impl Config {
         );
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn download_beta_toolchain(&self) {}
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn download_beta_toolchain(&self) {
         self.verbose(|| println!("downloading stage0 beta artifacts"));
 
@@ -606,7 +610,7 @@ impl Config {
             DownloadSource::Dist => {
                 let dist_server = env::var("RUSTUP_DIST_SERVER")
                     .unwrap_or(self.stage0_metadata.config.dist_server.to_string());
-                // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+                // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0
                 (dist_server, format!("dist/{key}/{filename}"), true)
             }
         };
@@ -616,7 +620,7 @@ impl Config {
         // this on each and every nightly ...
         let checksum = if should_verify {
             let error = format!(
-                "src/stage0.json doesn't contain a checksum for {url}. \
+                "src/stage0 doesn't contain a checksum for {url}. \
                 Pre-built artifacts might not be available for this \
                 target at this time, see https://doc.rust-lang.org/nightly\
                 /rustc/platform-support.html for more information."
@@ -665,7 +669,13 @@ download-rustc = false
         self.unpack(&tarball, &bin_root, prefix);
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn maybe_download_ci_llvm(&self) {}
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
+        use crate::core::build_steps::llvm::detect_llvm_sha;
+
         if !self.llvm_from_ci {
             return;
         }
@@ -689,9 +699,13 @@ download-rustc = false
             // time `rustc_llvm` build script ran. However, the timestamps of the
             // files in the tarball are in the past, so it doesn't trigger a
             // rebuild.
-            let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
+            let now = std::time::SystemTime::now();
+            let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
+
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            t!(filetime::set_file_times(llvm_config, now, now));
+            let llvm_config_file = t!(File::options().write(true).open(llvm_config));
+
+            t!(llvm_config_file.set_times(file_times));
 
             if self.should_fix_bins_and_dylibs() {
                 let llvm_lib = llvm_root.join("lib");
@@ -707,6 +721,7 @@ download-rustc = false
         }
     }
 
+    #[cfg(not(feature = "bootstrap-self-test"))]
     fn download_ci_llvm(&self, llvm_sha: &str) {
         let llvm_assertions = self.llvm_assertions;
 

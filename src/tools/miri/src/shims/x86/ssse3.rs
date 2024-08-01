@@ -5,16 +5,14 @@ use rustc_target::spec::abi::Abi;
 use super::{horizontal_bin_op, int_abs, pmulhrsw, psign};
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
-    crate::MiriInterpCxExt<'mir, 'tcx>
-{
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_ssse3_intrinsic(
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "ssse3")?;
@@ -91,22 +89,22 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.checked_mul(2).unwrap(), left_len);
+                assert_eq!(dest_len.strict_mul(2), left_len);
 
                 for i in 0..dest_len {
-                    let j1 = i.checked_mul(2).unwrap();
+                    let j1 = i.strict_mul(2);
                     let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_u8()?;
                     let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i8()?;
 
-                    let j2 = j1.checked_add(1).unwrap();
+                    let j2 = j1.strict_add(1);
                     let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_u8()?;
                     let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i8()?;
 
                     let dest = this.project_index(&dest, i)?;
 
                     // Multiplication of a u8 and an i8 into an i16 cannot overflow.
-                    let mul1 = i16::from(left1).checked_mul(right1.into()).unwrap();
-                    let mul2 = i16::from(left2).checked_mul(right2.into()).unwrap();
+                    let mul1 = i16::from(left1).strict_mul(right1.into());
+                    let mul2 = i16::from(left2).strict_mul(right2.into());
                     let res = mul1.saturating_add(mul2);
 
                     this.write_scalar(Scalar::from_i16(res), &dest)?;
@@ -137,6 +135,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

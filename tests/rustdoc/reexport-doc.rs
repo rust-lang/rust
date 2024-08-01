@@ -2,7 +2,7 @@
 
 extern crate reexport_doc_aux as dep;
 
-// @has 'reexport_doc/struct.Foo.html'
-// @count - '//p' 'These are the docs for Foo.' 1
+//@ has 'reexport_doc/struct.Foo.html'
+//@ count - '//p' 'These are the docs for Foo.' 1
 /// These are the docs for Foo.
 pub use dep::Foo;

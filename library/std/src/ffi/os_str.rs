@@ -4,18 +4,15 @@
 mod tests;
 
 use crate::borrow::{Borrow, Cow};
-use crate::cmp;
 use crate::collections::TryReserveError;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
 use crate::rc::Rc;
-use crate::slice;
 use crate::str::FromStr;
 use crate::sync::Arc;
-
 use crate::sys::os_str::{Buf, Slice};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{cmp, fmt, slice};
 
 /// A type that can represent owned, mutable platform-native strings, but is
 /// cheaply inter-convertible with Rust strings.
@@ -115,10 +112,8 @@ impl crate::sealed::Sealed for OsString {}
 #[stable(feature = "rust1", since = "1.0.0")]
 // `OsStr::from_inner` current implementation relies
 // on `OsStr` being layout-compatible with `Slice`.
-// However, `OsStr` layout is considered an implementation detail and must not be relied upon. We
-// want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
-// `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
-#[cfg_attr(not(doc), repr(transparent))]
+// However, `OsStr` layout is considered an implementation detail and must not be relied upon.
+#[repr(transparent)]
 pub struct OsStr {
     inner: Slice,
 }
@@ -184,7 +179,7 @@ impl OsString {
     #[inline]
     #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: Vec<u8>) -> Self {
-        OsString { inner: Buf::from_encoded_bytes_unchecked(bytes) }
+        OsString { inner: unsafe { Buf::from_encoded_bytes_unchecked(bytes) } }
     }
 
     /// Converts to an [`OsStr`] slice.
@@ -533,10 +528,39 @@ impl OsString {
         unsafe { Box::from_raw(rw) }
     }
 
-    /// Part of a hack to make PathBuf::push/pop more efficient.
+    /// Consumes and leaks the `OsString`, returning a mutable reference to the contents,
+    /// `&'a mut OsStr`.
+    ///
+    /// The caller has free choice over the returned lifetime, including 'static.
+    /// Indeed, this function is ideally used for data that lives for the remainder of
+    /// the program’s life, as dropping the returned reference will cause a memory leak.
+    ///
+    /// It does not reallocate or shrink the `OsString`, so the leaked allocation may include
+    /// unused capacity that is not part of the returned slice. If you want to discard excess
+    /// capacity, call [`into_boxed_os_str`], and then [`Box::leak`] instead.
+    /// However, keep in mind that trimming the capacity may result in a reallocation and copy.
+    ///
+    /// [`into_boxed_os_str`]: Self::into_boxed_os_str
+    #[unstable(feature = "os_string_pathbuf_leak", issue = "125965")]
     #[inline]
-    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
-        self.inner.as_mut_vec_for_path_buf()
+    pub fn leak<'a>(self) -> &'a mut OsStr {
+        OsStr::from_inner_mut(self.inner.leak())
+    }
+
+    /// Provides plumbing to core `Vec::truncate`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
+    #[inline]
+    pub(crate) fn truncate(&mut self, len: usize) {
+        self.inner.truncate(len);
+    }
+
+    /// Provides plumbing to core `Vec::extend_from_slice`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
+    #[inline]
+    pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
+        self.inner.extend_from_slice(other);
     }
 }
 
@@ -784,7 +808,7 @@ impl OsStr {
     #[inline]
     #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: &[u8]) -> &Self {
-        Self::from_inner(Slice::from_encoded_bytes_unchecked(bytes))
+        Self::from_inner(unsafe { Slice::from_encoded_bytes_unchecked(bytes) })
     }
 
     #[inline]

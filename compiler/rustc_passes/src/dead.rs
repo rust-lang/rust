@@ -3,6 +3,8 @@
 // expectations such as `#[expect(unused)]` and `#[expect(dead_code)]` is live, and everything else
 // is dead.
 
+use std::mem;
+
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use hir::ItemKind;
 use rustc_data_structures::unord::UnordSet;
@@ -15,17 +17,15 @@ use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::FieldIdx;
-use std::mem;
 
 use crate::errors::{
-    ChangeFieldsToBeOfUnitType, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
-    UselessAssignment,
+    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
 };
 
 // Any local node that may call something in its body block should be
@@ -44,19 +44,82 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     )
 }
 
-fn ty_ref_to_pub_struct(tcx: TyCtxt<'_>, ty: &hir::Ty<'_>) -> bool {
-    if let TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
-        && let Res::Def(def_kind, def_id) = path.res
-        && def_id.is_local()
-        && matches!(def_kind, DefKind::Struct | DefKind::Enum | DefKind::Union)
-    {
-        tcx.visibility(def_id).is_public()
-    } else {
-        true
+struct Publicness {
+    ty_is_public: bool,
+    ty_and_all_fields_are_public: bool,
+}
+
+impl Publicness {
+    fn new(ty_is_public: bool, ty_and_all_fields_are_public: bool) -> Self {
+        Self { ty_is_public, ty_and_all_fields_are_public }
     }
 }
 
-/// Determine if a work from the worklist is coming from the a `#[allow]`
+fn adt_of<'tcx>(ty: &hir::Ty<'tcx>) -> Option<(LocalDefId, DefKind)> {
+    match ty.kind {
+        TyKind::Path(hir::QPath::Resolved(_, path)) => {
+            if let Res::Def(def_kind, def_id) = path.res
+                && let Some(local_def_id) = def_id.as_local()
+            {
+                Some((local_def_id, def_kind))
+            } else {
+                None
+            }
+        }
+        TyKind::Slice(ty) | TyKind::Array(ty, _) => adt_of(ty),
+        TyKind::Ptr(ty) | TyKind::Ref(_, ty) => adt_of(ty.ty),
+        _ => None,
+    }
+}
+
+fn struct_all_fields_are_public(tcx: TyCtxt<'_>, id: LocalDefId) -> bool {
+    let adt_def = tcx.adt_def(id);
+
+    // skip types contain fields of unit and never type,
+    // it's usually intentional to make the type not constructible
+    let not_require_constructor = adt_def.all_fields().any(|field| {
+        let field_type = tcx.type_of(field.did).instantiate_identity();
+        field_type.is_unit() || field_type.is_never()
+    });
+
+    not_require_constructor
+        || adt_def.all_fields().all(|field| {
+            let field_type = tcx.type_of(field.did).instantiate_identity();
+            // skip fields of PhantomData,
+            // cause it's a common way to check things like well-formedness
+            if field_type.is_phantom_data() {
+                return true;
+            }
+
+            field.vis.is_public()
+        })
+}
+
+/// check struct and its fields are public or not,
+/// for enum and union, just check they are public,
+/// and doesn't solve types like &T for now, just skip them
+fn ty_ref_to_pub_struct(tcx: TyCtxt<'_>, ty: &hir::Ty<'_>) -> Publicness {
+    if let Some((def_id, def_kind)) = adt_of(ty) {
+        return match def_kind {
+            DefKind::Enum | DefKind::Union => {
+                let ty_is_public = tcx.visibility(def_id).is_public();
+                Publicness::new(ty_is_public, ty_is_public)
+            }
+            DefKind::Struct => {
+                let ty_is_public = tcx.visibility(def_id).is_public();
+                Publicness::new(
+                    ty_is_public,
+                    ty_is_public && struct_all_fields_are_public(tcx, def_id),
+                )
+            }
+            _ => Publicness::new(true, true),
+        };
+    }
+
+    Publicness::new(true, true)
+}
+
+/// Determine if a work from the worklist is coming from a `#[allow]`
 /// or a `#[expect]` of `dead_code`
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 enum ComesFromAllowExpect {
@@ -109,7 +172,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_res(&mut self, res: Res) {
         match res {
-            Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::TyAlias, def_id) => {
+            Res::Def(
+                DefKind::Const | DefKind::AssocConst | DefKind::AssocTy | DefKind::TyAlias,
+                def_id,
+            ) => {
                 self.check_def_id(def_id);
             }
             _ if self.in_pat => {}
@@ -228,7 +294,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         pats: &[hir::PatField<'_>],
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
-            ty::Adt(adt, _) => adt.variant_of_res(res),
+            ty::Adt(adt, _) => {
+                self.check_def_id(adt.did());
+                adt.variant_of_res(res)
+            }
             _ => span_bug!(lhs.span, "non-ADT in struct pattern"),
         };
         for pat in pats {
@@ -248,7 +317,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         dotdot: hir::DotDotPos,
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
-            ty::Adt(adt, _) => adt.variant_of_res(res),
+            ty::Adt(adt, _) => {
+                self.check_def_id(adt.did());
+                adt.variant_of_res(res)
+            }
             _ => {
                 self.tcx.dcx().span_delayed_bug(lhs.span, "non-ADT in tuple struct pattern");
                 return;
@@ -395,7 +467,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
-                hir::ItemKind::Trait(..) => {
+                hir::ItemKind::Trait(_, _, _, _, trait_item_refs) => {
                     for impl_def_id in self.tcx.all_impls(item.owner_id.to_def_id()) {
                         if let Some(local_def_id) = impl_def_id.as_local()
                             && let ItemKind::Impl(impl_ref) =
@@ -408,7 +480,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             intravisit::walk_path(self, impl_ref.of_trait.unwrap().path);
                         }
                     }
-
+                    // mark assoc ty live if the trait is live
+                    for trait_item in trait_item_refs {
+                        if let hir::AssocItemKind::Type = trait_item.kind {
+                            self.check_def_id(trait_item.id.owner_id.to_def_id());
+                        }
+                    }
                     intravisit::walk_item(self, item)
                 }
                 _ => intravisit::walk_item(self, item),
@@ -425,10 +502,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             && let ItemKind::Impl(impl_ref) =
                                 self.tcx.hir().expect_item(local_impl_id).kind
                         {
-                            if self.tcx.visibility(trait_id).is_public()
-                                && matches!(trait_item.kind, hir::TraitItemKind::Fn(..))
-                                && !ty_ref_to_pub_struct(self.tcx, impl_ref.self_ty)
+                            if !ty_ref_to_pub_struct(self.tcx, impl_ref.self_ty)
+                                .ty_and_all_fields_are_public
                             {
+                                // skip impl-items of non pure pub ty,
+                                // cause we don't know the ty is constructed or not,
+                                // check these later in `solve_rest_impl_items`
                                 continue;
                             }
 
@@ -485,29 +564,40 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn solve_rest_impl_items(&mut self, mut unsolved_impl_items: Vec<(hir::ItemId, LocalDefId)>) {
         let mut ready;
-        (ready, unsolved_impl_items) = unsolved_impl_items
-            .into_iter()
-            .partition(|&(impl_id, _)| self.impl_item_with_used_self(impl_id));
+        (ready, unsolved_impl_items) =
+            unsolved_impl_items.into_iter().partition(|&(impl_id, impl_item_id)| {
+                self.impl_item_with_used_self(impl_id, impl_item_id)
+            });
 
         while !ready.is_empty() {
             self.worklist =
                 ready.into_iter().map(|(_, id)| (id, ComesFromAllowExpect::No)).collect();
             self.mark_live_symbols();
 
-            (ready, unsolved_impl_items) = unsolved_impl_items
-                .into_iter()
-                .partition(|&(impl_id, _)| self.impl_item_with_used_self(impl_id));
+            (ready, unsolved_impl_items) =
+                unsolved_impl_items.into_iter().partition(|&(impl_id, impl_item_id)| {
+                    self.impl_item_with_used_self(impl_id, impl_item_id)
+                });
         }
     }
 
-    fn impl_item_with_used_self(&mut self, impl_id: hir::ItemId) -> bool {
-        if let TyKind::Path(hir::QPath::Resolved(_, path)) =
-            self.tcx.hir().item(impl_id).expect_impl().self_ty.kind
-            && let Res::Def(def_kind, def_id) = path.res
-            && let Some(local_def_id) = def_id.as_local()
+    fn impl_item_with_used_self(&mut self, impl_id: hir::ItemId, impl_item_id: LocalDefId) -> bool {
+        if let Some((local_def_id, def_kind)) =
+            adt_of(self.tcx.hir().item(impl_id).expect_impl().self_ty)
             && matches!(def_kind, DefKind::Struct | DefKind::Enum | DefKind::Union)
         {
-            self.live_symbols.contains(&local_def_id)
+            if let Some(trait_item_id) = self.tcx.associated_item(impl_item_id).trait_item_def_id
+                && let Some(local_id) = trait_item_id.as_local()
+            {
+                // for the local impl item, we can know the trait item is used or not,
+                // so we mark the method live if the self is used and the trait item is used
+                self.live_symbols.contains(&local_id) && self.live_symbols.contains(&local_def_id)
+            } else {
+                // for the foreign method and inherent pub method,
+                // we don't know the trait item or the method is used or not,
+                // so we mark the method live if the self is used
+                self.live_symbols.contains(&local_def_id)
+            }
         } else {
             false
         }
@@ -596,6 +686,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 self.handle_field_pattern_match(pat, res, fields);
             }
             PatKind::Path(ref qpath) => {
+                if let ty::Adt(adt, _) = self.typeck_results().node_type(pat.hir_id).kind() {
+                    self.check_def_id(adt.did());
+                }
                 let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
                 self.handle_res(res);
             }
@@ -732,12 +825,14 @@ fn check_item<'tcx>(
                 .iter()
                 .filter_map(|def_id| def_id.as_local());
 
-            let ty_is_pub = ty_ref_to_pub_struct(tcx, tcx.hir().item(id).expect_impl().self_ty);
+            let self_ty = tcx.hir().item(id).expect_impl().self_ty;
+            let Publicness { ty_is_public, ty_and_all_fields_are_public } =
+                ty_ref_to_pub_struct(tcx, self_ty);
 
             // And we access the Map here to get HirId from LocalDefId
             for local_def_id in local_def_ids {
                 // check the function may construct Self
-                let mut may_construct_self = true;
+                let mut may_construct_self = false;
                 if let Some(fn_sig) =
                     tcx.hir().fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
                 {
@@ -745,20 +840,23 @@ fn check_item<'tcx>(
                         matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None);
                 }
 
-                // for impl trait blocks, mark associate functions live if the trait is public
-                if of_trait
-                    && (!matches!(tcx.def_kind(local_def_id), DefKind::AssocFn)
-                        || tcx.visibility(local_def_id).is_public()
-                            && (ty_is_pub || may_construct_self))
+                // for trait impl blocks,
+                // mark the method live if the self_ty is public,
+                // or the method is public and may construct self
+                if tcx.visibility(local_def_id).is_public()
+                    && (ty_and_all_fields_are_public || (ty_is_public && may_construct_self))
                 {
+                    // if the impl item is public,
+                    // and the ty may be constructed or can be constructed in foreign crates,
+                    // mark the impl item live
                     worklist.push((local_def_id, ComesFromAllowExpect::No));
-                } else if of_trait && tcx.visibility(local_def_id).is_public() {
-                    // pub method && private ty & methods not construct self
-                    unsolved_impl_items.push((id, local_def_id));
                 } else if let Some(comes_from_allow) =
                     has_allow_dead_code_or_lang_attr(tcx, local_def_id)
                 {
                     worklist.push((local_def_id, comes_from_allow));
+                } else if of_trait || tcx.visibility(local_def_id).is_public() && ty_is_public {
+                    // private impl items of traits || public impl items not constructs self
+                    unsolved_impl_items.push((id, local_def_id));
                 }
             }
         }
@@ -783,10 +881,13 @@ fn check_trait_item(
     worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
     id: hir::TraitItemId,
 ) {
-    use hir::TraitItemKind::{Const, Fn};
-    if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
+    use hir::TraitItemKind::{Const, Fn, Type};
+    if matches!(
+        tcx.def_kind(id.owner_id),
+        DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn
+    ) {
         let trait_item = tcx.hir().trait_item(id);
-        if matches!(trait_item.kind, Const(_, Some(_)) | Fn(..))
+        if matches!(trait_item.kind, Const(_, Some(_)) | Type(_, Some(_)) | Fn(..))
             && let Some(comes_from_allow) =
                 has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
         {
@@ -824,6 +925,14 @@ fn create_and_seed_worklist(
             effective_vis
                 .is_public_at_level(Level::Reachable)
                 .then_some(id)
+                .filter(|&id|
+                    // checks impls, impl-items and pub structs with all public fields later
+                    match tcx.def_kind(id) {
+                        DefKind::Impl { .. } => false,
+                        DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => !matches!(tcx.associated_item(id).container, AssocItemContainer::ImplContainer),
+                        DefKind::Struct => struct_all_fields_are_public(tcx, id) || has_allow_dead_code_or_lang_attr(tcx, id).is_some(),
+                        _ => true
+                    })
                 .map(|id| (id, ComesFromAllowExpect::No))
         })
         // Seed entry point
@@ -934,6 +1043,22 @@ impl<'tcx> DeadVisitor<'tcx> {
         parent_item: Option<LocalDefId>,
         report_on: ReportOn,
     ) {
+        fn get_parent_if_enum_variant<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            may_variant: LocalDefId,
+        ) -> LocalDefId {
+            if let Node::Variant(_) = tcx.hir_node_by_def_id(may_variant)
+                && let Some(enum_did) = tcx.opt_parent(may_variant.to_def_id())
+                && let Some(enum_local_id) = enum_did.as_local()
+                && let Node::Item(item) = tcx.hir_node_by_def_id(enum_local_id)
+                && let ItemKind::Enum(_, _) = item.kind
+            {
+                enum_local_id
+            } else {
+                may_variant
+            }
+        }
+
         let Some(&first_item) = dead_codes.first() else {
             return;
         };
@@ -977,6 +1102,9 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let encl_def_id = parent_item.unwrap_or(first_item.def_id);
+        // If parent of encl_def_id is an enum, use the parent ID intead.
+        let encl_def_id = get_parent_if_enum_variant(tcx, encl_def_id);
+
         let ignored_derived_impls =
             if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
                 let trait_list = ign_traits
@@ -994,17 +1122,50 @@ impl<'tcx> DeadVisitor<'tcx> {
             };
 
         let diag = match report_on {
-            ReportOn::TupleField => MultipleDeadCodes::UnusedTupleStructFields {
-                multiple,
-                num,
-                descr,
-                participle,
-                name_list,
-                change_fields_suggestion: ChangeFieldsToBeOfUnitType { num, spans: spans.clone() },
-                parent_info,
-                ignored_derived_impls,
-            },
+            ReportOn::TupleField => {
+                let tuple_fields = if let Some(parent_id) = parent_item
+                    && let node = tcx.hir_node_by_def_id(parent_id)
+                    && let hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::Struct(hir::VariantData::Tuple(fields, _, _), _),
+                        ..
+                    }) = node
+                {
+                    *fields
+                } else {
+                    &[]
+                };
 
+                let trailing_tuple_fields = if tuple_fields.len() >= dead_codes.len() {
+                    LocalDefIdSet::from_iter(
+                        tuple_fields
+                            .iter()
+                            .skip(tuple_fields.len() - dead_codes.len())
+                            .map(|f| f.def_id),
+                    )
+                } else {
+                    LocalDefIdSet::default()
+                };
+
+                let fields_suggestion =
+                    // Suggest removal if all tuple fields are at the end.
+                    // Otherwise suggest removal or changing to unit type
+                    if dead_codes.iter().all(|dc| trailing_tuple_fields.contains(&dc.def_id)) {
+                        ChangeFields::Remove { num }
+                    } else {
+                        ChangeFields::ChangeToUnitTypeOrRemove { num, spans: spans.clone() }
+                    };
+
+                MultipleDeadCodes::UnusedTupleStructFields {
+                    multiple,
+                    num,
+                    descr,
+                    participle,
+                    name_list,
+                    change_fields_suggestion: fields_suggestion,
+                    parent_info,
+                    ignored_derived_impls,
+                }
+            }
             ReportOn::NamedField => MultipleDeadCodes::DeadCodes {
                 multiple,
                 num,
@@ -1055,6 +1216,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         }
         match self.tcx.def_kind(def_id) {
             DefKind::AssocConst
+            | DefKind::AssocTy
             | DefKind::AssocFn
             | DefKind::Fn
             | DefKind::Static { .. }
@@ -1096,10 +1258,14 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
             || (def_kind == DefKind::Trait && live_symbols.contains(&item.owner_id.def_id))
         {
             for &def_id in tcx.associated_item_def_ids(item.owner_id.def_id) {
-                // We have diagnosed unused methods in traits
+                // We have diagnosed unused assocs in traits
                 if matches!(def_kind, DefKind::Impl { of_trait: true })
-                    && tcx.def_kind(def_id) == DefKind::AssocFn
-                    || def_kind == DefKind::Trait && tcx.def_kind(def_id) != DefKind::AssocFn
+                    && matches!(tcx.def_kind(def_id), DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn)
+                    // skip unused public inherent methods,
+                    // cause we have diagnosed unconstructed struct
+                    || matches!(def_kind, DefKind::Impl { of_trait: false })
+                        && tcx.visibility(def_id).is_public()
+                        && ty_ref_to_pub_struct(tcx, tcx.hir().item(item).expect_impl().self_ty).ty_is_public
                 {
                     continue;
                 }

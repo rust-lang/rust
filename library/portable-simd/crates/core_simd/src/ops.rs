@@ -122,7 +122,7 @@ macro_rules! for_base_types {
                     #[inline]
                     #[must_use = "operator returns a new vector without mutating the inputs"]
                     // TODO: only useful for int Div::div, but we hope that this
-                    // will essentially always always get inlined anyway.
+                    // will essentially always get inlined anyway.
                     #[track_caller]
                     fn $call(self, rhs: Self) -> Self::Output {
                         $macro_impl!(self, rhs, $inner, $scalar)

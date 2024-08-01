@@ -1,4 +1,5 @@
 //@ test-mir-pass: GVN
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ only-64bit
 
@@ -7,7 +8,9 @@
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
 #![feature(freeze)]
+#![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(unconditional_panic)]
+#![allow(unused)]
 
 use std::intrinsics::mir::*;
 use std::marker::Freeze;
@@ -539,7 +542,7 @@ fn slices() {
 #[custom_mir(dialect = "analysis")]
 fn duplicate_slice() -> (bool, bool) {
     // CHECK-LABEL: fn duplicate_slice(
-    mir!(
+    mir! {
         let au: u128;
         let bu: u128;
         let cu: u128;
@@ -585,7 +588,7 @@ fn duplicate_slice() -> (bool, bool) {
             RET = (direct, indirect);
             Return()
         }
-    )
+    }
 }
 
 fn repeat() {
@@ -623,11 +626,13 @@ fn fn_pointers() {
 fn indirect_static() {
     static A: Option<u8> = None;
 
-    mir!({
-        let ptr = Static(A);
-        let out = Field::<u8>(Variant(*ptr, 1), 0);
-        Return()
-    })
+    mir! {
+        {
+            let ptr = Static(A);
+            let out = Field::<u8>(Variant(*ptr, 1), 0);
+            Return()
+        }
+    }
 }
 
 /// Verify that having constant index `u64::MAX` does not yield to an overflow in rustc.
@@ -733,7 +738,7 @@ fn borrowed<T: Copy + Freeze>(x: T) {
     // CHECK-NEXT: _0 = opaque::<T>(_1)
     // CHECK: bb2: {
     // CHECK-NEXT: _0 = opaque::<T>(_1)
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -748,7 +753,7 @@ fn borrowed<T: Copy + Freeze>(x: T) {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is not known to be `Freeze`, so shared borrows may be mutable.
@@ -763,7 +768,7 @@ fn non_freeze<T: Copy>(x: T) {
     // CHECK-NEXT: _0 = opaque::<T>(_2)
     // CHECK: bb2: {
     // CHECK-NEXT: _0 = opaque::<T>((*_3))
-    mir!(
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -778,7 +783,167 @@ fn non_freeze<T: Copy>(x: T) {
         ret = {
             Return()
         }
-    )
+    }
+}
+
+// Check that we can const-prop into `from_raw_parts`
+fn slice_const_length(x: &[i32]) -> *const [i32] {
+    // CHECK-LABEL: fn slice_const_length(
+    // CHECK: _0 = *const [i32] from ({{_[0-9]+}}, const 123_usize);
+    let ptr = x.as_ptr();
+    let len = 123;
+    std::intrinsics::aggregate_raw_ptr(ptr, len)
+}
+
+fn meta_of_ref_to_slice(x: *const i32) -> usize {
+    // CHECK-LABEL: fn meta_of_ref_to_slice
+    // CHECK: _0 = const 1_usize
+    let ptr: *const [i32] = std::intrinsics::aggregate_raw_ptr(x, 1);
+    std::intrinsics::ptr_metadata(ptr)
+}
+
+fn slice_from_raw_parts_as_ptr(x: *const u16, n: usize) -> (*const u16, *const f32) {
+    // CHECK-LABEL: fn slice_from_raw_parts_as_ptr
+    // CHECK: _8 = _1 as *const f32 (PtrToPtr);
+    // CHECK: _0 = (_1, move _8);
+    let ptr: *const [u16] = std::intrinsics::aggregate_raw_ptr(x, n);
+    (ptr as *const u16, ptr as *const f32)
+}
+
+fn casts_before_aggregate_raw_ptr(x: *const u32) -> *const [u8] {
+    // CHECK-LABEL: fn casts_before_aggregate_raw_ptr
+    // CHECK: _0 = *const [u8] from (_1, const 4_usize);
+    let x = x as *const [u8; 4];
+    let x = x as *const u8;
+    let x = x as *const ();
+    std::intrinsics::aggregate_raw_ptr(x, 4)
+}
+
+fn manual_slice_mut_len(x: &mut [i32]) -> usize {
+    // CHECK-LABEL: fn manual_slice_mut_len
+    // CHECK: _0 = PtrMetadata(_1);
+    let x: *mut [i32] = x;
+    let x: *const [i32] = x;
+    std::intrinsics::ptr_metadata(x)
+}
+
+// `.len()` on arrays ends up being something like this
+fn array_len(x: &mut [i32; 42]) -> usize {
+    // CHECK-LABEL: fn array_len
+    // CHECK: _0 = const 42_usize;
+    let x: &[i32] = x;
+    std::intrinsics::ptr_metadata(x)
+}
+
+#[custom_mir(dialect = "runtime")]
+fn generic_cast_metadata<T, A: ?Sized, B: ?Sized>(ps: *const [T], pa: *const A, pb: *const B) {
+    // CHECK-LABEL: fn generic_cast_metadata
+    mir! {
+        {
+            // These tests check that we correctly do or don't elide casts
+            // when the pointee metadata do or don't match, respectively.
+
+            // Metadata usize -> (), do not optimize.
+            // CHECK: [[T:_.+]] = _1 as
+            // CHECK-NEXT: PtrMetadata([[T]])
+            let t1 = CastPtrToPtr::<_, *const T>(ps);
+            let m1 = PtrMetadata(t1);
+
+            // `(&A, [T])` has `usize` metadata, same as `[T]`, yes optimize.
+            // CHECK: [[T:_.+]] = _1 as
+            // CHECK-NEXT: PtrMetadata(_1)
+            let t2 = CastPtrToPtr::<_, *const (&A, [T])>(ps);
+            let m2 = PtrMetadata(t2);
+
+            // Tail `A` and tail `B`, do not optimize.
+            // CHECK: [[T:_.+]] = _2 as
+            // CHECK-NEXT: PtrMetadata([[T]])
+            let t3 = CastPtrToPtr::<_, *const (T, B)>(pa);
+            let m3 = PtrMetadata(t3);
+
+            // Both have tail `A`, yes optimize.
+            // CHECK: [[T:_.+]] = _2 as
+            // CHECK-NEXT: PtrMetadata(_2)
+            let t4 = CastPtrToPtr::<_, *const (T, A)>(pa);
+            let m4 = PtrMetadata(t4);
+
+            // Tail `B` and tail `A`, do not optimize.
+            // CHECK: [[T:_.+]] = _3 as
+            // CHECK-NEXT: PtrMetadata([[T]])
+            let t5 = CastPtrToPtr::<_, *mut A>(pb);
+            let m5 = PtrMetadata(t5);
+
+            // Both have tail `B`, yes optimize.
+            // CHECK: [[T:_.+]] = _3 as
+            // CHECK-NEXT: PtrMetadata(_3)
+            let t6 = CastPtrToPtr::<_, *mut B>(pb);
+            let m6 = PtrMetadata(t6);
+
+            Return()
+        }
+    }
+}
+
+fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
+    // CHECK-LABEL: fn cast_pointer_eq
+    // CHECK: debug p1 => [[P1:_1]];
+    // CHECK: debug p2 => [[P2:_2]];
+    // CHECK: debug p3 => [[P3:_3]];
+    // CHECK: debug p4 => [[P4:_4]];
+
+    // CHECK: [[M1:_.+]] = [[P1]] as *const u32 (PtrToPtr);
+    // CHECK: [[M2:_.+]] = [[P2]] as *const u32 (PtrToPtr);
+    // CHECK: [[M3:_.+]] = [[P3]] as *const u32 (PtrToPtr);
+    // CHECK: [[M4:_.+]] = [[P4]] as *const u32 (PtrToPtr);
+    let m1 = p1 as *const u32;
+    let m2 = p2 as *const u32;
+    let m3 = p3 as *const u32;
+    let m4 = p4 as *const u32;
+
+    // CHECK-NOT: Eq
+    // CHECK: Eq([[M1]], [[M2]])
+    // CHECK-NOT: Eq
+    // CHECK: Eq([[P2]], [[P3]])
+    // CHECK-NOT: Eq
+    // CHECK: Eq([[M3]], [[M4]])
+    // CHECK-NOT: Eq
+    let eq_different_thing = m1 == m2;
+    let eq_optimize = m2 == m3;
+    let eq_thin_fat = m3 == m4;
+
+    // CHECK: _0 = const ();
+}
+
+// Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
+unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
+    // CHECK-LABEL: fn cast_pointer_then_transmute
+
+    // CHECK: [[UNUSED:_.+]] = _1 as *const () (PtrToPtr);
+    // CHECK: = _1 as usize (Transmute);
+    let thin_addr: usize = std::intrinsics::transmute(thin as *const ());
+
+    // CHECK: [[TEMP2:_.+]] = _2 as *const () (PtrToPtr);
+    // CHECK: = move [[TEMP2]] as usize (Transmute);
+    let fat_addr: usize = std::intrinsics::transmute(fat as *const ());
+}
+
+#[custom_mir(dialect = "analysis")]
+fn remove_casts_must_change_both_sides(mut_a: &*mut u8, mut_b: *mut u8) -> bool {
+    // CHECK-LABEL: fn remove_casts_must_change_both_sides(
+    mir! {
+        // We'd like to remove these casts, but we can't change *both* of them
+        // to be locals, so make sure we don't change one without the other, as
+        // that would be a type error.
+        {
+            // CHECK: [[A:_.+]] = (*_1) as *const u8 (PtrToPtr);
+            let a = *mut_a as *const u8;
+            // CHECK: [[B:_.+]] = _2 as *const u8 (PtrToPtr);
+            let b = mut_b as *const u8;
+            // CHECK: _0 = Eq([[A]], [[B]]);
+            RET = a == b;
+            Return()
+        }
+    }
 }
 
 fn main() {
@@ -805,6 +970,9 @@ fn main() {
     wide_ptr_integer();
     borrowed(5);
     non_freeze(5);
+    slice_const_length(&[1]);
+    meta_of_ref_to_slice(&42);
+    slice_from_raw_parts_as_ptr(&123, 456);
 }
 
 #[inline(never)]
@@ -838,3 +1006,13 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.wide_ptr_integer.GVN.diff
 // EMIT_MIR gvn.borrowed.GVN.diff
 // EMIT_MIR gvn.non_freeze.GVN.diff
+// EMIT_MIR gvn.slice_const_length.GVN.diff
+// EMIT_MIR gvn.meta_of_ref_to_slice.GVN.diff
+// EMIT_MIR gvn.slice_from_raw_parts_as_ptr.GVN.diff
+// EMIT_MIR gvn.casts_before_aggregate_raw_ptr.GVN.diff
+// EMIT_MIR gvn.manual_slice_mut_len.GVN.diff
+// EMIT_MIR gvn.array_len.GVN.diff
+// EMIT_MIR gvn.generic_cast_metadata.GVN.diff
+// EMIT_MIR gvn.cast_pointer_eq.GVN.diff
+// EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
+// EMIT_MIR gvn.remove_casts_must_change_both_sides.GVN.diff

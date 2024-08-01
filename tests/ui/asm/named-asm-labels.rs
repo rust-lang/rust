@@ -28,11 +28,13 @@ fn main() {
         // Multiple labels on one line
         asm!("foo: bar1: nop");
         //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
 
         // Multiple lines
         asm!("foo1: nop", "nop"); //~ ERROR avoid using named labels
         asm!("foo2: foo3: nop", "nop");
         //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
         asm!("nop", "foo4: nop"); //~ ERROR avoid using named labels
         asm!("foo5: nop", "foo6: nop");
         //~^ ERROR avoid using named labels
@@ -41,16 +43,19 @@ fn main() {
         // Statement separator
         asm!("foo7: nop; foo8: nop");
         //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
         asm!("foo9: nop; nop"); //~ ERROR avoid using named labels
         asm!("nop; foo10: nop"); //~ ERROR avoid using named labels
 
         // Escaped newline
         asm!("bar2: nop\n bar3: nop");
         //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
         asm!("bar4: nop\n nop"); //~ ERROR avoid using named labels
         asm!("nop\n bar5: nop"); //~ ERROR avoid using named labels
         asm!("nop\n bar6: bar7: nop");
         //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
 
         // Raw strings
         asm!(
@@ -59,6 +64,7 @@ fn main() {
             blah3: nop
             "
         );
+        //~^^^^ ERROR avoid using named labels
         //~^^^^ ERROR avoid using named labels
 
         asm!(
@@ -81,9 +87,15 @@ fn main() {
         asm!("blah1: 2bar: nop"); //~ ERROR avoid using named labels
 
         // Duplicate labels
-        asm!("def: def: nop"); //~ ERROR avoid using named labels
-        asm!("def: nop\ndef: nop"); //~ ERROR avoid using named labels
-        asm!("def: nop; def: nop"); //~ ERROR avoid using named labels
+        asm!("def: def: nop");
+        //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
+        asm!("def: nop\ndef: nop");
+        //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
+        asm!("def: nop; def: nop");
+        //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
 
         // Trying to break parsing
         asm!(":");
@@ -141,7 +153,11 @@ fn main() {
         asm!("{1}: nop", "/* {0} */", const 10, const 20); //~ ERROR avoid using named labels
 
         // Test include_str in asm
-        asm!(include_str!("named-asm-labels.s")); //~ ERROR avoid using named labels
+        asm!(include_str!("named-asm-labels.s"));
+        //~^ ERROR avoid using named labels
+        //~^^ ERROR avoid using named labels
+        //~^^^ ERROR avoid using named labels
+        //~^^^^ ERROR avoid using named labels
 
         // Test allowing or warning on the lint instead
         #[allow(named_asm_labels)]

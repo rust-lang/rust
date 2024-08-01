@@ -15,8 +15,8 @@ use crate::num::Wrapping;
     label = "value of type `{Self}` cannot be made by summing a `std::iter::Iterator<Item={A}>`"
 )]
 pub trait Sum<A = Self>: Sized {
-    /// Method which takes an iterator and generates `Self` from the elements by
-    /// "summing up" the items.
+    /// Takes an iterator and generates `Self` from the elements by "summing up"
+    /// the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]
     fn sum<I: Iterator<Item = A>>(iter: I) -> Self;
 }
@@ -36,8 +36,8 @@ pub trait Sum<A = Self>: Sized {
     label = "value of type `{Self}` cannot be made by multiplying all elements from a `std::iter::Iterator<Item={A}>`"
 )]
 pub trait Product<A = Self>: Sized {
-    /// Method which takes an iterator and generates `Self` from the elements by
-    /// multiplying the items.
+    /// Takes an iterator and generates `Self` from the elements by multiplying
+    /// the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]
     fn product<I: Iterator<Item = A>>(iter: I) -> Self;
 }

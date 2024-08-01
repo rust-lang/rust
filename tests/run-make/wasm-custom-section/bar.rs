@@ -10,4 +10,4 @@ pub static A: [u8; 2] = [5, 6];
 pub static B: [u8; 2] = [7, 8];
 
 #[no_mangle]
-pub extern fn foo() {}
+pub extern "C" fn foo() {}

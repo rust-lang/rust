@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// Checks for usage of if expressions with an `else if` branch,
     /// but without a final `else` branch.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Some coding guidelines require this (e.g., MISRA-C:2004 Rule 14.10).
     ///
     /// ### Example
@@ -50,12 +50,9 @@ declare_lint_pass!(ElseIfWithoutElse => [ELSE_IF_WITHOUT_ELSE]);
 
 impl EarlyLintPass for ElseIfWithoutElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
-        if in_external_macro(cx.sess(), item.span) {
-            return;
-        }
-
         if let ExprKind::If(_, _, Some(ref els)) = item.kind
             && let ExprKind::If(_, _, None) = els.kind
+            && !in_external_macro(cx.sess(), item.span)
         {
             span_lint_and_help(
                 cx,

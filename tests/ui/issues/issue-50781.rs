@@ -1,10 +1,7 @@
-#![deny(where_clauses_object_safety)]
-
 trait Trait {}
 
 trait X {
-    fn foo(&self) where Self: Trait; //~ ERROR the trait `X` cannot be made into an object
-    //~^ WARN this was previously accepted by the compiler but is being phased out
+    fn foo(&self) where Self: Trait;
 }
 
 impl X for () {
@@ -12,8 +9,11 @@ impl X for () {
 }
 
 impl Trait for dyn X {}
+//~^ ERROR the trait `X` cannot be made into an object
 
 pub fn main() {
     // Check that this does not segfault.
     <dyn X as X>::foo(&());
+    //~^ ERROR the trait `X` cannot be made into an object
+    //~| ERROR the trait `X` cannot be made into an object
 }

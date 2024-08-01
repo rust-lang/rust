@@ -60,7 +60,7 @@ impl AtomicRevision {
     /// Increment by 1, returning previous value.
     pub(crate) fn fetch_then_increment(&self) -> Revision {
         let v = self.data.fetch_add(1, Ordering::SeqCst);
-        assert!(v != u32::max_value(), "revision overflow");
+        assert!(v != u32::MAX, "revision overflow");
         Revision::from(v)
     }
 }

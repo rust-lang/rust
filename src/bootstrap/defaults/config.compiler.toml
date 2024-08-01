@@ -8,6 +8,8 @@ compiler-docs = true
 # where adding `debug!()` appears to do nothing.
 # However, it makes running the compiler slightly slower.
 debug-logging = true
+# Get actually-useful information from backtraces, profiling, etc. with minimal added bytes
+debuginfo-level = "line-tables-only"
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
 incremental = true
 # Print backtrace on internal compiler errors during bootstrap
@@ -17,8 +19,6 @@ lto = "off"
 # Forces frame pointers to be used with `-Cforce-frame-pointers`.
 # This can be helpful for profiling at a small performance cost.
 frame-pointers = true
-# Build the llvm-bitcode-linker as it is required for running nvptx tests
-llvm-bitcode-linker = true
 
 [llvm]
 # Having this set to true disrupts compiler development workflows for people who use `llvm.download-ci-llvm = true`

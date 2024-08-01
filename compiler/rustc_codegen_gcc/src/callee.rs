@@ -28,7 +28,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
-    let func = if let Some(_func) = cx.get_declared_value(&sym) {
+    let func = if let Some(_func) = cx.get_declared_value(sym) {
         // FIXME(antoyo): we never reach this because get_declared_value only returns global variables
         // and here we try to get a function.
         unreachable!();
@@ -68,7 +68,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
         }*/
     } else {
         cx.linkage.set(FunctionType::Extern);
-        let func = cx.declare_fn(&sym, &fn_abi);
+        let func = cx.declare_fn(sym, fn_abi);
 
         attributes::from_fn_attrs(cx, func, instance);
 

@@ -1,15 +1,13 @@
 #![allow(dead_code)]
 
-use super::abi;
-use super::thread_local_dtor::run_dtors;
+use super::hermit_abi;
 use crate::ffi::CStr;
-use crate::io;
-use crate::mem;
+use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
-use crate::ptr;
 use crate::time::Duration;
+use crate::{io, ptr};
 
-pub type Tid = abi::Tid;
+pub type Tid = hermit_abi::Tid;
 
 pub struct Thread {
     tid: Tid,
@@ -27,10 +25,10 @@ impl Thread {
         core_id: isize,
     ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
-        let tid = abi::spawn2(
+        let tid = hermit_abi::spawn2(
             thread_start,
             p.expose_provenance(),
-            abi::Priority::into(abi::NORMAL_PRIO),
+            hermit_abi::Priority::into(hermit_abi::NORMAL_PRIO),
             stack,
             core_id,
         );
@@ -50,7 +48,7 @@ impl Thread {
                 Box::from_raw(ptr::with_exposed_provenance::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
-                run_dtors();
+                crate::sys::thread_local::destructors::run();
             }
         }
     }
@@ -62,7 +60,7 @@ impl Thread {
     #[inline]
     pub fn yield_now() {
         unsafe {
-            abi::yield_now();
+            hermit_abi::yield_now();
         }
     }
 
@@ -74,13 +72,13 @@ impl Thread {
     #[inline]
     pub fn sleep(dur: Duration) {
         unsafe {
-            abi::usleep(dur.as_micros() as u64);
+            hermit_abi::usleep(dur.as_micros() as u64);
         }
     }
 
     pub fn join(self) {
         unsafe {
-            let _ = abi::join(self.tid);
+            let _ = hermit_abi::join(self.tid);
         }
     }
 
@@ -91,12 +89,10 @@ impl Thread {
 
     #[inline]
     pub fn into_id(self) -> Tid {
-        let id = self.tid;
-        mem::forget(self);
-        id
+        ManuallyDrop::new(self).tid
     }
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    unsafe { Ok(NonZero::new_unchecked(abi::get_processor_count())) }
+    unsafe { Ok(NonZero::new_unchecked(hermit_abi::available_parallelism())) }
 }

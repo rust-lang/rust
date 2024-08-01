@@ -4,11 +4,9 @@
 // collections, resulting in having to optimize down excess IR multiple times.
 // Your performance intuition is useless. Run perf.
 
-use crate::cmp;
 use crate::error::Error;
-use crate::fmt;
-use crate::mem;
 use crate::ptr::{Alignment, NonNull};
+use crate::{cmp, fmt, mem};
 
 // While this function is used in one place and its implementation
 // could be inlined, the previous attempts to do so made rustc
@@ -26,7 +24,7 @@ const fn size_align<T>() -> (usize, usize) {
 /// You build a `Layout` up as an input to give to an allocator.
 ///
 /// All layouts have an associated size and a power-of-two alignment. The size, when rounded up to
-/// the nearest multiple of `align`, does not overflow isize (i.e., the rounded value will always be
+/// the nearest multiple of `align`, does not overflow `isize` (i.e., the rounded value will always be
 /// less than or equal to `isize::MAX`).
 ///
 /// (Note that layouts are *not* required to have non-zero size,
@@ -61,7 +59,7 @@ impl Layout {
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow isize (i.e., the rounded value must be
+    ///    must not overflow `isize` (i.e., the rounded value must be
     ///    less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
@@ -183,6 +181,8 @@ impl Layout {
     ///     - a [slice], then the length of the slice tail must be an initialized
     ///       integer, and the size of the *entire value*
     ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///       For the special case where the dynamic tail length is 0, this function
+    ///       is safe to call.
     ///     - a [trait object], then the vtable part of the pointer must point
     ///       to a valid vtable for the type `T` acquired by an unsizing coercion,
     ///       and the size of the *entire value*

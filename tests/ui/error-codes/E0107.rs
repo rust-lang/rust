@@ -16,35 +16,35 @@ struct Baz<'a, 'b, 'c> {
 
     bar: Bar<'a>,
     //~^ ERROR enum takes 0 lifetime arguments
-    //~| HELP remove these generics
+    //~| HELP remove the unnecessary generics
 
     foo2: Foo<'a, 'b, 'c>,
     //~^ ERROR struct takes 1 lifetime argument
-    //~| HELP remove these lifetime arguments
+    //~| HELP remove the lifetime arguments
 
     qux1: Qux<'a, 'b, i32>,
     //~^ ERROR struct takes 1 lifetime argument
-    //~| HELP remove this lifetime argument
+    //~| HELP remove the lifetime argument
 
     qux2: Qux<'a, i32, 'b>,
     //~^ ERROR struct takes 1 lifetime argument
-    //~| HELP remove this lifetime argument
+    //~| HELP remove the lifetime argument
 
     qux3: Qux<'a, 'b, 'c, i32>,
     //~^ ERROR struct takes 1 lifetime argument
-    //~| HELP remove these lifetime arguments
+    //~| HELP remove the lifetime arguments
 
     qux4: Qux<'a, i32, 'b, 'c>,
     //~^ ERROR struct takes 1 lifetime argument
-    //~| HELP remove these lifetime arguments
+    //~| HELP remove the lifetime arguments
 
     qux5: Qux<'a, 'b, i32, 'c>,
     //~^ ERROR struct takes 1 lifetime argument
-    //~| HELP remove this lifetime argument
+    //~| HELP remove the lifetime argument
 
     quux: Quux<'a, i32, 'b>,
     //~^ ERROR struct takes 0 lifetime arguments
-    //~| HELP remove this lifetime argument
+    //~| HELP remove the lifetime argument
 }
 
 pub trait T {

@@ -490,6 +490,25 @@ use foo::bar;
     }
 
     #[test]
+    fn test_merge_nested_empty_and_self_with_other() {
+        check_assist(
+            merge_imports,
+            r"
+use foo::$0{bar};
+use foo::{bar::{self, other}};
+",
+            r"
+use foo::bar::{self, other};
+",
+        );
+        check_assist_import_one_variations!(
+            "foo::$0{bar}",
+            "foo::{bar::{self, other}}",
+            "use {foo::bar::{self, other}};"
+        );
+    }
+
+    #[test]
     fn test_merge_nested_list_self_and_glob() {
         check_assist(
             merge_imports,

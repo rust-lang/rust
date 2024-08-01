@@ -40,7 +40,7 @@ use std::panic::{self, UnwindSafe};
 
 pub use crate::durability::Durability;
 pub use crate::intern_id::InternId;
-pub use crate::interned::{InternKey, InternValue};
+pub use crate::interned::{InternKey, InternValue, InternValueTrivial};
 pub use crate::runtime::Runtime;
 pub use crate::runtime::RuntimeId;
 pub use crate::storage::Storage;
@@ -284,7 +284,7 @@ pub trait ParallelDatabase: Database + Send {
     /// series of queries in parallel and arranging the results. Using
     /// this method for that purpose ensures that those queries will
     /// see a consistent view of the database (it is also advisable
-    /// for those queries to use the [`Runtime::unwind_if_cancelled`]
+    /// for those queries to use the [`Database::unwind_if_cancelled`]
     /// method to check for cancellation).
     ///
     /// # Panics
@@ -443,7 +443,7 @@ pub trait QueryDb<'d>: Sized {
 /// Trait implements by all of the "special types" associated with
 /// each of your queries.
 pub trait Query: Debug + Default + Sized + for<'d> QueryDb<'d> {
-    /// Type that you you give as a parameter -- for queries with zero
+    /// Type that you give as a parameter -- for queries with zero
     /// or more than one input, this will be a tuple.
     type Key: Clone + Debug + Hash + Eq;
 
@@ -512,6 +512,10 @@ where
         Q::Storage: plumbing::QueryStorageMassOps,
     {
         self.storage.purge();
+    }
+
+    pub fn storage(&self) -> &<Q as Query>::Storage {
+        self.storage
     }
 }
 

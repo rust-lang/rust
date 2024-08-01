@@ -1,37 +1,33 @@
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![feature(lazy_cell)]
-#![feature(rustc_attrs)]
-#![feature(type_alias_impl_trait)]
+// tidy-alphabetical-start
 #![allow(internal_features)]
+#![doc(rust_logo)]
+#![feature(rustc_attrs)]
+#![feature(rustdoc_internals)]
+#![feature(type_alias_impl_trait)]
+// tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
-use fluent_bundle::FluentResource;
-use fluent_syntax::parser::ParserError;
-use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
-use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
-use rustc_macros::{Decodable, Encodable};
-use rustc_span::Span;
 use std::borrow::Cow;
-use std::error::Error;
-use std::fmt;
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
-
 #[cfg(not(parallel_compiler))]
 use std::cell::LazyCell as Lazy;
+use std::error::Error;
+use std::path::{Path, PathBuf};
 #[cfg(parallel_compiler)]
 use std::sync::LazyLock as Lazy;
+use std::{fmt, fs, io};
 
+pub use fluent_bundle::types::FluentType;
+use fluent_bundle::FluentResource;
+pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
+use fluent_syntax::parser::ParserError;
+use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 #[cfg(parallel_compiler)]
 use intl_memoizer::concurrent::IntlLangMemoizer;
 #[cfg(not(parallel_compiler))]
 use intl_memoizer::IntlLangMemoizer;
-
-pub use fluent_bundle::{self, types::FluentType, FluentArgs, FluentError, FluentValue};
+use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
+use rustc_macros::{Decodable, Encodable};
+use rustc_span::Span;
+use tracing::{instrument, trace};
 pub use unic_langid::{langid, LanguageIdentifier};
 
 pub type FluentBundle =
@@ -364,17 +360,6 @@ impl From<&'static str> for DiagMessage {
 impl From<Cow<'static, str>> for DiagMessage {
     fn from(s: Cow<'static, str>) -> Self {
         DiagMessage::Str(s)
-    }
-}
-
-/// A workaround for must_produce_diag ICEs when formatting types in disabled lints.
-///
-/// Delays formatting until `.into(): DiagMessage` is used.
-pub struct DelayDm<F>(pub F);
-
-impl<F: FnOnce() -> String> From<DelayDm<F>> for DiagMessage {
-    fn from(DelayDm(f): DelayDm<F>) -> Self {
-        DiagMessage::from(f())
     }
 }
 

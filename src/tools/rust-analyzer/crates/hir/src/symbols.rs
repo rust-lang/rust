@@ -231,7 +231,7 @@ impl<'a> SymbolCollector<'a> {
         let impl_data = self.db.impl_data(impl_id);
         let impl_name = Some(SmolStr::new(impl_data.self_ty.display(self.db).to_string()));
         self.with_container_name(impl_name, |s| {
-            for &assoc_item_id in &impl_data.items {
+            for &assoc_item_id in impl_data.items.iter() {
                 s.push_assoc_item(assoc_item_id)
             }
         })

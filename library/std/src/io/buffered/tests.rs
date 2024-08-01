@@ -3,9 +3,8 @@ use crate::io::{
     self, BorrowedBuf, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom,
 };
 use crate::mem::MaybeUninit;
-use crate::panic;
 use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::thread;
+use crate::{panic, thread};
 
 /// A dummy reader intended at testing short-reads propagation.
 pub struct ShortReader {
@@ -1066,4 +1065,14 @@ fn bufreader_full_initialize() {
     assert_eq!(buf.len(), 1);
     // But we initialized the whole buffer!
     assert_eq!(reader.initialized(), reader.capacity());
+}
+
+/// This is a regression test for https://github.com/rust-lang/rust/issues/127584.
+#[test]
+fn bufwriter_aliasing() {
+    use crate::io::{BufWriter, Cursor};
+    let mut v = vec![0; 1024];
+    let c = Cursor::new(&mut v);
+    let w = BufWriter::new(Box::new(c));
+    let _ = w.into_parts();
 }

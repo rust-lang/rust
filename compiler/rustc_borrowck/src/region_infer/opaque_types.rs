@@ -3,22 +3,20 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
-use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
-use rustc_middle::ty::{GenericArgKind, GenericArgs};
+use rustc_middle::ty::{
+    self, GenericArgKind, GenericArgs, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
-use crate::session_diagnostics::NonGenericOpaqueTypeParam;
-use crate::universal_regions::RegionClassification;
-
 use super::RegionInferenceContext;
+use crate::session_diagnostics::{LifetimeMismatchOpaqueParam, NonGenericOpaqueTypeParam};
+use crate::universal_regions::RegionClassification;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Resolve any opaque types that were encountered while borrow checking
@@ -85,7 +83,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // Use the SCC representative instead of directly using `region`.
                     // See [rustc-dev-guide chapter] § "Strict lifetime equality".
                     let scc = self.constraint_sccs.scc(region.as_var());
-                    let vid = self.scc_representatives[scc];
+                    let vid = self.scc_representative(scc);
                     let named = match self.definitions[vid].origin {
                         // Iterate over all universal regions in a consistent order and find the
                         // *first* equal region. This makes sure that equal lifetimes will have
@@ -213,7 +211,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let scc = self.constraint_sccs.scc(vid);
 
                 // Special handling of higher-ranked regions.
-                if !self.scc_universes[scc].is_root() {
+                if !self.scc_universe(scc).is_root() {
                     match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
                         // If the region contains a single placeholder then they're equal.
                         Some((0, placeholder)) => {
@@ -285,7 +283,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         if let Err(guar) =
-            check_opaque_type_parameter_valid(self.tcx, opaque_type_key, instantiated_ty.span)
+            check_opaque_type_parameter_valid(self, opaque_type_key, instantiated_ty.span)
         {
             return Ty::new_error(self.tcx, guar);
         }
@@ -293,6 +291,10 @@ impl<'tcx> InferCtxt<'tcx> {
         let definition_ty = instantiated_ty
             .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
             .ty;
+
+        if let Err(e) = definition_ty.error_reported() {
+            return Ty::new_error(self.tcx, e);
+        }
 
         // `definition_ty` does not live in of the current inference context,
         // so lets make sure that we don't accidentally misuse our current `infcx`.
@@ -340,7 +342,7 @@ fn check_opaque_type_well_formed<'tcx>(
         .with_next_trait_solver(next_trait_solver)
         .with_opaque_type_inference(parent_def_id)
         .build();
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);
 
     // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
@@ -387,10 +389,11 @@ fn check_opaque_type_well_formed<'tcx>(
 /// [rustc-dev-guide chapter]:
 /// https://rustc-dev-guide.rust-lang.org/opaque-types-region-infer-restrictions.html
 fn check_opaque_type_parameter_valid<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     opaque_type_key: OpaqueTypeKey<'tcx>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
+    let tcx = infcx.tcx;
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
@@ -418,11 +421,9 @@ fn check_opaque_type_parameter_valid<'tcx>(
             let opaque_param = opaque_generics.param_at(i, tcx);
             let kind = opaque_param.kind.descr();
 
-            if let Err(guar) = opaque_env.param_is_error(i) {
-                return Err(guar);
-            }
+            opaque_env.param_is_error(i)?;
 
-            return Err(tcx.dcx().emit_err(NonGenericOpaqueTypeParam {
+            return Err(infcx.dcx().emit_err(NonGenericOpaqueTypeParam {
                 ty: arg,
                 kind,
                 span,
@@ -440,7 +441,7 @@ fn check_opaque_type_parameter_valid<'tcx>(
                 .collect();
             #[allow(rustc::diagnostic_outside_of_impl)]
             #[allow(rustc::untranslatable_diagnostic)]
-            return Err(tcx
+            return Err(infcx
                 .dcx()
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
                 .with_span_note(spans, format!("{descr} used multiple times"))

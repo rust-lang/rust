@@ -3,7 +3,7 @@
 // the error points to the start of the file, not the line with the
 // transmute
 
-//@ normalize-stderr-test "\d+ bits" -> "N bits"
+//@ normalize-stderr-test: "\d+ bits" -> "N bits"
 //@ error-pattern: cannot transmute between types of different sizes, or dependently-sized types
 
 use std::mem;

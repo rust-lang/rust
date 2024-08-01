@@ -31,8 +31,8 @@ LL |     f() + f()
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider further restricting this bound
    |
-LL | const fn answer<F: ~const Fn() -> u8 + ~const std::ops::Fn<()>>(f: &F) -> u8 {
-   |                                      +++++++++++++++++++++++++
+LL | const fn answer<F: ~const Fn() -> u8 + ~const Fn()>(f: &F) -> u8 {
+   |                                      +++++++++++++
 help: add `#![feature(effects)]` to the crate attributes to enable
    |
 LL + #![feature(effects)]
@@ -47,8 +47,8 @@ LL |     f() + f()
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider further restricting this bound
    |
-LL | const fn answer<F: ~const Fn() -> u8 + ~const std::ops::Fn<()>>(f: &F) -> u8 {
-   |                                      +++++++++++++++++++++++++
+LL | const fn answer<F: ~const Fn() -> u8 + ~const Fn()>(f: &F) -> u8 {
+   |                                      +++++++++++++
 help: add `#![feature(effects)]` to the crate attributes to enable
    |
 LL + #![feature(effects)]
@@ -63,8 +63,8 @@ LL |     f() * 7
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider further restricting this bound
    |
-LL |         F: ~const FnOnce() -> u8 + ~const std::ops::Fn<()>,
-   |                                  +++++++++++++++++++++++++
+LL |         F: ~const FnOnce() -> u8 + ~const Fn(),
+   |                                  +++++++++++++
 help: add `#![feature(effects)]` to the crate attributes to enable
    |
 LL + #![feature(effects)]

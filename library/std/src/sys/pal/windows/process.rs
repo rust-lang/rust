@@ -3,33 +3,28 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
+use core::ffi::c_void;
+
+use super::api::{self, WinError};
 use crate::collections::BTreeMap;
-use crate::env;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
-use crate::mem;
 use crate::mem::MaybeUninit;
 use crate::num::NonZero;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
-use crate::ptr;
 use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
-use crate::sys::c::{self, NonZeroDWORD, EXIT_FAILURE, EXIT_SUCCESS};
-use crate::sys::cvt;
+use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys::stdio;
+use crate::sys::{cvt, path, stdio};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
-
-use core::ffi::c_void;
+use crate::{cmp, env, fmt, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -161,6 +156,7 @@ pub struct Command {
     env: CommandEnv,
     cwd: Option<OsString>,
     flags: u32,
+    show_window: Option<u16>,
     detach: bool, // not currently exposed in std::process
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
@@ -171,7 +167,7 @@ pub struct Command {
 
 pub enum Stdio {
     Inherit,
-    InheritSpecific { from_stdio_id: c::DWORD },
+    InheritSpecific { from_stdio_id: u32 },
     Null,
     MakePipe,
     Pipe(AnonPipe),
@@ -192,6 +188,7 @@ impl Command {
             env: Default::default(),
             cwd: None,
             flags: 0,
+            show_window: None,
             detach: false,
             stdin: None,
             stdout: None,
@@ -221,6 +218,9 @@ impl Command {
     }
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
+    }
+    pub fn show_window(&mut self, cmd_show: Option<u16>) {
+        self.show_window = cmd_show;
     }
 
     pub fn force_quotes(&mut self, enabled: bool) {
@@ -335,6 +335,11 @@ impl Command {
             si.hStdError = stderr.as_raw_handle();
         }
 
+        if let Some(cmd_show) = self.show_window {
+            si.dwFlags |= c::STARTF_USESHOWWINDOW;
+            si.wShowWindow = cmd_show;
+        }
+
         let si_ptr: *mut c::STARTUPINFOW;
 
         let mut proc_thread_attribute_list;
@@ -352,7 +357,7 @@ impl Command {
             };
             si_ptr = core::ptr::addr_of_mut!(si_ex) as _;
         } else {
-            si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
+            si.cb = mem::size_of::<c::STARTUPINFOW>() as u32;
             si_ptr = core::ptr::addr_of_mut!(si) as _;
         }
 
@@ -537,7 +542,7 @@ where
     None
 }
 
-/// Check if a file exists without following symlinks.
+/// Checks if a file exists without following symlinks.
 fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
         let path = args::to_user_path(path).ok()?;
@@ -554,7 +559,7 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 }
 
 impl Stdio {
-    fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
+    fn to_handle(&self, stdio_id: u32, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
         let use_stdio_id = |stdio_id| match stdio::get_handle(stdio_id) {
             Ok(io) => unsafe {
                 let io = Handle::from_raw_handle(io);
@@ -589,7 +594,7 @@ impl Stdio {
             Stdio::Null => {
                 let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
                 let mut sa = c::SECURITY_ATTRIBUTES {
-                    nLength: size as c::DWORD,
+                    nLength: size as u32,
                     lpSecurityDescriptor: ptr::null_mut(),
                     bInheritHandle: 1,
                 };
@@ -645,12 +650,12 @@ impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
         let result = unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) };
         if result == c::FALSE {
-            let error = unsafe { c::GetLastError() };
+            let error = api::get_last_error();
             // TerminateProcess returns ERROR_ACCESS_DENIED if the process has already been
             // terminated (by us, or for any other reason). So check if the process was actually
             // terminated, and if so, do not return an error.
-            if error != c::ERROR_ACCESS_DENIED || self.try_wait().is_err() {
-                return Err(crate::io::Error::from_raw_os_error(error as i32));
+            if error != WinError::ACCESS_DENIED || self.try_wait().is_err() {
+                return Err(crate::io::Error::from_raw_os_error(error.code as i32));
             }
         }
         Ok(())
@@ -701,11 +706,11 @@ impl Process {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
-pub struct ExitStatus(c::DWORD);
+pub struct ExitStatus(u32);
 
 impl ExitStatus {
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
-        match NonZeroDWORD::try_from(self.0) {
+        match NonZero::<u32>::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }
@@ -715,9 +720,9 @@ impl ExitStatus {
     }
 }
 
-/// Converts a raw `c::DWORD` to a type-safe `ExitStatus` by wrapping it without copying.
-impl From<c::DWORD> for ExitStatus {
-    fn from(u: c::DWORD) -> ExitStatus {
+/// Converts a raw `u32` to a type-safe `ExitStatus` by wrapping it without copying.
+impl From<u32> for ExitStatus {
+    fn from(u: u32) -> ExitStatus {
         ExitStatus(u)
     }
 }
@@ -738,7 +743,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(c::NonZeroDWORD);
+pub struct ExitStatusError(NonZero<u32>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
@@ -753,7 +758,7 @@ impl ExitStatusError {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitCode(c::DWORD);
+pub struct ExitCode(u32);
 
 impl ExitCode {
     pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
@@ -767,13 +772,13 @@ impl ExitCode {
 
 impl From<u8> for ExitCode {
     fn from(code: u8) -> Self {
-        ExitCode(c::DWORD::from(code))
+        ExitCode(u32::from(code))
     }
 }
 
 impl From<u32> for ExitCode {
     fn from(code: u32) -> Self {
-        ExitCode(c::DWORD::from(code))
+        ExitCode(u32::from(code))
     }
 }
 

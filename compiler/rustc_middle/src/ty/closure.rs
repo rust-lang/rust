@@ -1,11 +1,5 @@
-use crate::hir::place::{
-    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
-};
-use crate::{mir, ty};
-
 use std::fmt::Write;
 
-use crate::query::Providers;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
@@ -16,9 +10,13 @@ use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
-use super::TyCtxt;
-
 use self::BorrowKind::*;
+use super::TyCtxt;
+use crate::hir::place::{
+    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
+};
+use crate::query::Providers;
+use crate::{mir, ty};
 
 /// Captures are represented using fields inside a structure.
 /// This represents accessing self in the closure structure
@@ -237,7 +235,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Eg: 1. `foo.x` which is represented using `projections=[Field(x)]` is an ancestor of
 ///        `foo.x.y` which is represented using `projections=[Field(x), Field(y)]`.
 ///        Note both `foo.x` and `foo.x.y` start off of the same root variable `foo`.
-///     2. Since we only look at the projections here function will return `bar.x` as an a valid
+///     2. Since we only look at the projections here function will return `bar.x` as a valid
 ///        ancestor of `foo.x.y`. It's the caller's responsibility to ensure that both projections
 ///        list are being applied to the same root variable.
 pub fn is_ancestor_or_same_capture(

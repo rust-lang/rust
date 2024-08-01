@@ -11,3 +11,6 @@ path = "main.rs"
 unstable-features = [] # for rust-analyzer
 
 # Do not add any dependencies
+
+[profile.dev]
+debug = 1

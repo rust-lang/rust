@@ -7,7 +7,7 @@
 
 //~ MONO_ITEM fn std::ptr::drop_in_place::<StructWithDrop> - shim(Some(StructWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
 struct StructWithDrop {
-    x: i32
+    x: i32,
 }
 
 impl Drop for StructWithDrop {
@@ -16,12 +16,12 @@ impl Drop for StructWithDrop {
 }
 
 struct StructNoDrop {
-    x: i32
+    x: i32,
 }
 
 //~ MONO_ITEM fn std::ptr::drop_in_place::<EnumWithDrop> - shim(Some(EnumWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
 enum EnumWithDrop {
-    A(i32)
+    A(i32),
 }
 
 impl Drop for EnumWithDrop {
@@ -30,7 +30,7 @@ impl Drop for EnumWithDrop {
 }
 
 enum EnumNoDrop {
-    A(i32)
+    A(i32),
 }
 
 //~ MONO_ITEM fn start
@@ -39,10 +39,10 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _ = StructWithDrop { x: 0 }.x;
     let _ = StructNoDrop { x: 0 }.x;
     let _ = match EnumWithDrop::A(0) {
-        EnumWithDrop::A(x) => x
+        EnumWithDrop::A(x) => x,
     };
     let _ = match EnumNoDrop::A(0) {
-        EnumNoDrop::A(x) => x
+        EnumNoDrop::A(x) => x,
     };
 
     0

@@ -19,7 +19,7 @@ index 0000000..4c63700
 +members = [
 +  "crates/core_arch",
 +  "crates/std_detect",
-+  "crates/stdarch-gen",
++  "crates/stdarch-gen-arm",
 +  #"examples/"
 +]
 +exclude = [

@@ -1,5 +1,3 @@
-#![feature(lint_reasons)]
-
 // If you turn off deduplicate diagnostics (which rustc turns on by default but
 // compiletest turns off when it runs ui tests), then the errors are
 // (unfortunately) repeated here because the checking is done as we read in the

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `!: Test` is not satisfied
-  --> $DIR/diverging-fallback-no-leak.rs:17:23
+  --> $DIR/diverging-fallback-no-leak.rs:20:23
    |
 LL |     unconstrained_arg(return);
    |     ----------------- ^^^^^^ the trait `Test` is not implemented for `!`

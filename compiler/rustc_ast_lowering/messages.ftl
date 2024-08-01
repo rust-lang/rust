@@ -36,9 +36,14 @@ ast_lowering_bad_return_type_notation_inputs =
     argument types not allowed with return type notation
     .suggestion = remove the input types
 
+ast_lowering_bad_return_type_notation_needs_dots = return type notation arguments must be elided with `..`
+    .suggestion = add `..`
+
 ast_lowering_bad_return_type_notation_output =
     return type not allowed with return type notation
     .suggestion = remove the return type
+
+ast_lowering_bad_return_type_notation_position = return type notation not allowed in this position yet
 
 ast_lowering_base_expression_double_dot =
     base expression required after `..`
@@ -78,7 +83,7 @@ ast_lowering_inline_asm_unsupported_target =
 ast_lowering_invalid_abi =
     invalid ABI: found `{$abi}`
     .label = invalid ABI
-    .note = invoke `{$command}` for a full list of supported calling conventions.
+    .note = invoke `{$command}` for a full list of supported calling conventions
 
 ast_lowering_invalid_abi_clobber_abi =
     invalid ABI for `clobber_abi`
@@ -128,7 +133,10 @@ ast_lowering_never_pattern_with_guard =
     a guard on a never pattern will never be run
     .suggestion = remove this guard
 
-ast_lowering_no_precise_captures_on_apit = `use<...>` precise capturing syntax not allowed on argument-position `impl Trait`
+ast_lowering_no_precise_captures_on_apit = `use<...>` precise capturing syntax not allowed in argument-position `impl Trait`
+
+ast_lowering_no_precise_captures_on_rpitit = `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
+    .note = currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
 
 ast_lowering_previously_used_here = previously used here
 

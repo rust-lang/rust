@@ -75,15 +75,14 @@
     issue = "none"
 )]
 
-use crate::error::Error;
-use crate::fmt;
-use crate::str::FromStr;
-
 use self::common::BiasedFp;
 use self::float::RawFloat;
 use self::lemire::compute_float;
 use self::parse::{parse_inf_nan, parse_number};
 use self::slow::parse_long_mantissa;
+use crate::error::Error;
+use crate::fmt;
+use crate::str::FromStr;
 
 mod common;
 mod decimal;
@@ -250,8 +249,10 @@ pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
         None => return Err(pfe_invalid()),
     };
     num.negative = negative;
-    if let Some(value) = num.try_fast_path::<F>() {
-        return Ok(value);
+    if !cfg!(feature = "optimize_for_size") {
+        if let Some(value) = num.try_fast_path::<F>() {
+            return Ok(value);
+        }
     }
 
     // If significant digits were truncated, then we can have rounding error

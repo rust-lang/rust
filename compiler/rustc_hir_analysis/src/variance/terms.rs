@@ -9,11 +9,12 @@
 // `InferredIndex` is a newtype'd int representing the index of such
 // a variable.
 
+use std::fmt;
+
 use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
 use rustc_middle::ty::{self, TyCtxt};
-use std::fmt;
 
 use self::VarianceTerm::*;
 

@@ -12,7 +12,7 @@ use rustc_target::{
     spec::abi::Abi,
 };
 
-use super::alloc::{check_alloc_request, EvalContextExt as _};
+use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
 use crate::*;
 use helpers::{ToHost, ToSoft};
@@ -28,8 +28,8 @@ impl DynSym {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Emulates calling a foreign item, failing if the item is not supported.
     /// This function will handle `goto_block` if needed.
     /// Returns Ok(None) if the foreign item was completely handled
@@ -40,30 +40,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-        let tcx = this.tcx.tcx;
 
         // Some shims forward to other MIR bodies.
         match link_name.as_str() {
-            // This matches calls to the foreign item `panic_impl`.
-            // The implementation is provided by the function with the `#[panic_handler]` attribute.
-            "panic_impl" => {
-                // We don't use `check_shim` here because we are just forwarding to the lang
-                // item. Argument count checking will be performed when the returned `Body` is
-                // called.
-                this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
-                let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
-                let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                return Ok(Some((
-                    this.load_mir(panic_impl_instance.def, None)?,
-                    panic_impl_instance,
-                )));
-            }
             "__rust_alloc_error_handler" => {
                 // Forward to the right symbol that implements this function.
                 let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
@@ -82,10 +67,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        match this.emulate_foreign_item_inner(link_name, abi, args, dest, unwind)? {
-            EmulateItemResult::NeedsJumping => {
+        match this.emulate_foreign_item_inner(link_name, abi, args, dest)? {
+            EmulateItemResult::NeedsReturn => {
                 trace!("{:?}", this.dump_place(&dest.clone().into()));
                 this.return_to_block(ret)?;
+            }
+            EmulateItemResult::NeedsUnwind => {
+                // Jump to the unwind block to begin unwinding.
+                this.unwind_to_block(unwind)?;
             }
             EmulateItemResult::AlreadyJumped => (),
             EmulateItemResult::NotSupported => {
@@ -108,6 +97,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         match this.tcx.sess.target.os.as_ref() {
             os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
+            "wasi" => shims::wasi::foreign_items::is_dyn_sym(name),
             "windows" => shims::windows::foreign_items::is_dyn_sym(name),
             _ => false,
         }
@@ -118,8 +108,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         sym: DynSym,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
@@ -132,7 +122,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn lookup_exported_symbol(
         &mut self,
         link_name: Symbol,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -197,27 +187,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Check some basic requirements for this allocation request:
+    /// non-zero size, power-of-two alignment.
+    fn check_rustc_alloc_request(&self, size: u64, align: u64) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        if size == 0 {
+            throw_ub_format!("creating allocation with size 0");
+        }
+        if i128::from(size) > this.tcx.data_layout.pointer_size.signed_int_max() {
+            throw_ub_format!("creating an allocation larger than half the address space");
+        }
+        if !align.is_power_of_two() {
+            throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
+        }
+        Ok(())
+    }
+
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
-        unwind: mir::UnwindAction,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         // First deal with any external C functions in linked .so file.
         #[cfg(target_os = "linux")]
-        if this.machine.external_so_lib.as_ref().is_some() {
-            use crate::shims::ffi_support::EvalContextExt as _;
+        if this.machine.native_lib.as_ref().is_some() {
+            use crate::shims::native_lib::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
-            if this.call_external_c_fct(link_name, dest, args)? {
-                return Ok(EmulateItemResult::NeedsJumping);
+            if this.call_native_fn(link_name, dest, args)? {
+                return Ok(EmulateItemResult::NeedsReturn);
             }
         }
 
@@ -234,11 +239,11 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // ```
         // fn shim_name(
         //     &mut self,
-        //     arg1: &OpTy<'tcx, Provenance>,
-        //     arg2: &OpTy<'tcx, Provenance>,
-        //     arg3: &OpTy<'tcx, Provenance>,
-        //     arg4: &OpTy<'tcx, Provenance>)
-        // -> InterpResult<'tcx, Scalar<Provenance>> {
+        //     arg1: &OpTy<'tcx>,
+        //     arg2: &OpTy<'tcx>,
+        //     arg3: &OpTy<'tcx>,
+        //     arg4: &OpTy<'tcx>)
+        // -> InterpResult<'tcx, Scalar> {
         //     let this = self.eval_context_mut();
         //
         //     // First thing: load all the arguments. Details depend on the shim.
@@ -262,9 +267,9 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match link_name.as_str() {
             // Miri-specific extern functions
             "miri_start_unwind" => {
-                // `check_shim` happens inside `handle_miri_start_unwind`.
-                this.handle_miri_start_unwind(abi, link_name, args, unwind)?;
-                return Ok(EmulateItemResult::AlreadyJumped);
+                let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                this.handle_miri_start_unwind(payload)?;
+                return Ok(EmulateItemResult::NeedsUnwind);
             }
             "miri_run_provenance_gc" => {
                 let [] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -382,7 +387,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 });
                 let (_, addr) = ptr.into_parts(); // we know the offset is absolute
                 // Cannot panic since `align` is a power of 2 and hence non-zero.
-                if addr.bytes().checked_rem(align.bytes()).unwrap() != 0 {
+                if addr.bytes().strict_rem(align.bytes()) != 0 {
                     throw_unsup_format!(
                         "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
                     );
@@ -392,12 +397,12 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     // If the newly promised alignment is bigger than the native alignment of this
                     // allocation, and bigger than the previously promised alignment, then set it.
                     if align > alloc_align
-                        && !this
+                        && this
                             .machine
                             .symbolic_alignment
                             .get_mut()
                             .get(&alloc_id)
-                            .is_some_and(|&(_, old_align)| align <= old_align)
+                            .is_none_or(|&(_, old_align)| align > old_align)
                     {
                         this.machine.symbolic_alignment.get_mut().insert(alloc_id, (offset, align));
                     }
@@ -421,7 +426,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "malloc" => {
                 let [size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let size = this.read_target_usize(size)?;
-                let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C)?;
+                let res = this.malloc(size, /*zero_init:*/ false)?;
                 this.write_pointer(res, dest)?;
             }
             "calloc" => {
@@ -432,33 +437,33 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let size = items
                     .checked_mul(len)
                     .ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
-                let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C)?;
+                let res = this.malloc(size, /*zero_init:*/ true)?;
                 this.write_pointer(res, dest)?;
             }
             "free" => {
                 let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                this.free(ptr, MiriMemoryKind::C)?;
+                this.free(ptr)?;
             }
             "realloc" => {
                 let [old_ptr, new_size] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let old_ptr = this.read_pointer(old_ptr)?;
                 let new_size = this.read_target_usize(new_size)?;
-                let res = this.realloc(old_ptr, new_size, MiriMemoryKind::C)?;
+                let res = this.realloc(old_ptr, new_size)?;
                 this.write_pointer(res, dest)?;
             }
 
             // Rust allocation
             "__rust_alloc" | "miri_alloc" => {
-                let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
+                let default = |this: &mut MiriInterpCx<'tcx>| {
                     // Only call `check_shim` when `#[global_allocator]` isn't used. When that
                     // macro is used, we act like no shim exists, so that the exported function can run.
                     let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                     let size = this.read_target_usize(size)?;
                     let align = this.read_target_usize(align)?;
 
-                    check_alloc_request(size, align)?;
+                    this.check_rustc_alloc_request(size, align)?;
 
                     let memory_kind = match link_name.as_str() {
                         "__rust_alloc" => MiriMemoryKind::Rust,
@@ -479,7 +484,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
-                        return Ok(EmulateItemResult::NeedsJumping);
+                        return Ok(EmulateItemResult::NeedsReturn);
                     }
                     _ => unreachable!(),
                 }
@@ -492,7 +497,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let size = this.read_target_usize(size)?;
                     let align = this.read_target_usize(align)?;
 
-                    check_alloc_request(size, align)?;
+                    this.check_rustc_alloc_request(size, align)?;
 
                     let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
@@ -510,7 +515,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 });
             }
             "__rust_dealloc" | "miri_dealloc" => {
-                let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
+                let default = |this: &mut MiriInterpCx<'tcx>| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
                     let [ptr, old_size, align] =
@@ -539,7 +544,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                     "miri_dealloc" => {
                         default(this)?;
-                        return Ok(EmulateItemResult::NeedsJumping);
+                        return Ok(EmulateItemResult::NeedsReturn);
                     }
                     _ => unreachable!(),
                 }
@@ -556,7 +561,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let new_size = this.read_target_usize(new_size)?;
                     // No need to check old_size; we anyway check that they match the allocation.
 
-                    check_alloc_request(new_size, align)?;
+                    this.check_rustc_alloc_request(new_size, align)?;
 
                     let align = Align::from_bytes(align).unwrap();
                     let new_ptr = this.reallocate_ptr(
@@ -657,6 +662,16 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     dest,
                 )?;
             }
+            "wcslen" => {
+                let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
+                let n = this.read_wchar_t_str(ptr)?.len();
+                this.write_scalar(
+                    Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
+                    dest,
+                )?;
+            }
             "memcpy" => {
                 let [ptr_dest, ptr_src, n] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -684,7 +699,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // That is probably overly cautious, but there also is no fundamental
                 // reason to have `strcpy` destroy pointer provenance.
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
-                let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
+                let n = this.read_c_str(ptr_src)?.len().strict_add(1);
                 this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
                 this.write_pointer(ptr_dest, dest)?;
             }
@@ -937,6 +952,10 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
+                    "wasi" =>
+                        shims::wasi::foreign_items::EvalContextExt::emulate_foreign_item_inner(
+                            this, link_name, abi, args, dest,
+                        ),
                     "windows" =>
                         shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
@@ -946,6 +965,6 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

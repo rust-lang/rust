@@ -11,6 +11,7 @@
 
 use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -33,7 +34,7 @@ pub fn is_const_evaluatable<'tcx>(
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
-        | ty::ConstKind::Value(_)
+        | ty::ConstKind::Value(_, _)
         | ty::ConstKind::Error(_) => return Ok(()),
         ty::ConstKind::Infer(_) => return Err(NotConstEvaluatable::MentionsInfer),
     };
@@ -172,8 +173,7 @@ fn satisfied_from_param_env<'tcx>(
             debug!("is_const_evaluatable: candidate={:?}", c);
             if self.infcx.probe(|_| {
                 let ocx = ObligationCtxt::new(self.infcx);
-                ocx.eq(&ObligationCause::dummy(), self.param_env, c.ty(), self.ct.ty()).is_ok()
-                    && ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
+                ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
                     && ocx.select_all_or_error().is_empty()
             }) {
                 self.single_match = match self.single_match {
@@ -214,7 +214,6 @@ fn satisfied_from_param_env<'tcx>(
 
     if let Some(Ok(c)) = single_match {
         let ocx = ObligationCtxt::new(infcx);
-        assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
         assert!(ocx.select_all_or_error().is_empty());
         return true;

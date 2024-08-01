@@ -8,7 +8,7 @@ error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were sup
   --> $DIR/vs-lifetime.rs:11:12
    |
 LL |     let _: S<'static, 'static>;
-   |            ^          ------- help: remove this lifetime argument
+   |            ^        --------- help: remove the lifetime argument
    |            |
    |            expected 1 lifetime argument
    |

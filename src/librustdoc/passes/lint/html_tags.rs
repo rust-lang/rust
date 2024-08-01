@@ -1,14 +1,15 @@
 //! Detects invalid HTML (like an unclosed `<span>`) in doc comments.
-use crate::clean::*;
-use crate::core::DocContext;
-use crate::html::markdown::main_body_opts;
-
-use pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag};
-use rustc_resolve::rustdoc::source_span_for_markdown_range;
 
 use std::iter::Peekable;
 use std::ops::Range;
 use std::str::CharIndices;
+
+use pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag, TagEnd};
+use rustc_resolve::rustdoc::source_span_for_markdown_range;
+
+use crate::clean::*;
+use crate::core::DocContext;
+use crate::html::markdown::main_body_opts;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     let tcx = cx.tcx;
@@ -25,8 +26,11 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 Some(sp) => sp,
                 None => item.attr_span(tcx),
             };
-            tcx.node_span_lint(crate::lint::INVALID_HTML_TAGS, hir_id, sp, msg, |lint| {
+            tcx.node_span_lint(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
                 use rustc_lint_defs::Applicability;
+
+                lint.primary_message(msg);
+
                 // If a tag looks like `<this>`, it might actually be a generic.
                 // We don't try to detect stuff `<like, this>` because that's not valid HTML,
                 // and we don't try to detect stuff `<like this>` because that's not valid Rust.
@@ -136,10 +140,10 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
         for (event, range) in p {
             match event {
                 Event::Start(Tag::CodeBlock(_)) => in_code_block = true,
-                Event::Html(text) if !in_code_block => {
+                Event::Html(text) | Event::InlineHtml(text) if !in_code_block => {
                     extract_tags(&mut tags, &text, range, &mut is_in_comment, &report_diag)
                 }
-                Event::End(Tag::CodeBlock(_)) => in_code_block = false,
+                Event::End(TagEnd::CodeBlock) => in_code_block = false,
                 _ => {}
             }
         }

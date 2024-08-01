@@ -4,7 +4,7 @@
 
 //@ compile-flags: -O
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 // CHECK-LABEL: @simple_size_of_nowrap
 #[no_mangle]

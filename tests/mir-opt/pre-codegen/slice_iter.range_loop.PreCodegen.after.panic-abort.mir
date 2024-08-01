@@ -40,7 +40,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb0: {
-        _3 = Len((*_1));
+        _3 = PtrMetadata(_1);
         StorageLive(_4);
         _4 = const 0_usize;
         goto -> bb1;

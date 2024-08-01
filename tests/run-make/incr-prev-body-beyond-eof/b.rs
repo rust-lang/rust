@@ -8,5 +8,5 @@ fn main() {
 // a.rs, the body must end on a line number which does not exist in b.rs.
 // Basically, avoid modifying this file, including adding or removing whitespace!
 fn foo() {
-    assert_eq!(1, 1);////
+    assert_eq!(1, 1); ////
 }

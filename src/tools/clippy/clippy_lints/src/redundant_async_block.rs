@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_errors::Applicability;
 use rustc_hir::{
     Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, MatchSource,
@@ -107,7 +107,7 @@ fn desugar_await<'tcx>(expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Match(match_value, _, MatchSource::AwaitDesugar) = expr.kind
         && let ExprKind::Call(_, [into_future_arg]) = match_value.kind
         && let ctxt = expr.span.ctxt()
-        && for_each_expr(into_future_arg, |e| {
+        && for_each_expr_without_closures(into_future_arg, |e| {
             walk_span_to_context(e.span, ctxt).map_or(ControlFlow::Break(()), |_| ControlFlow::Continue(()))
         })
         .is_none()

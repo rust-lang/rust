@@ -45,6 +45,10 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
    |
 LL + #![feature(adt_const_params)]
    |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
 
 error: `!` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:17:21

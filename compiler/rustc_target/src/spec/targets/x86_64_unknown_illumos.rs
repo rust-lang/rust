@@ -13,10 +13,10 @@ pub fn target() -> Target {
         // so we still pass Solaris to it
         llvm_target: "x86_64-pc-solaris".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("illumos".into()),
+            tier: Some(2),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

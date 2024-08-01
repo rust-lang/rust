@@ -1,10 +1,8 @@
-use crate::error;
-use crate::fmt;
 use crate::io::{
     self, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
-use crate::mem;
-use crate::ptr;
+use crate::mem::{self, ManuallyDrop};
+use crate::{error, fmt, ptr};
 
 /// Wraps a writer and buffers its output.
 ///
@@ -164,13 +162,13 @@ impl<W: Write> BufWriter<W> {
     /// assert_eq!(&buffered_data.unwrap(), b"ata");
     /// ```
     #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
-    pub fn into_parts(mut self) -> (W, Result<Vec<u8>, WriterPanicked>) {
-        let buf = mem::take(&mut self.buf);
-        let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
+    pub fn into_parts(self) -> (W, Result<Vec<u8>, WriterPanicked>) {
+        let mut this = ManuallyDrop::new(self);
+        let buf = mem::take(&mut this.buf);
+        let buf = if !this.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
 
-        // SAFETY: forget(self) prevents double dropping inner
-        let inner = unsafe { ptr::read(&self.inner) };
-        mem::forget(self);
+        // SAFETY: double-drops are prevented by putting `this` in a ManuallyDrop that is never dropped
+        let inner = unsafe { ptr::read(&this.inner) };
 
         (inner, buf)
     }
@@ -433,9 +431,11 @@ impl<W: ?Sized + Write> BufWriter<W> {
         let old_len = self.buf.len();
         let buf_len = buf.len();
         let src = buf.as_ptr();
-        let dst = self.buf.as_mut_ptr().add(old_len);
-        ptr::copy_nonoverlapping(src, dst, buf_len);
-        self.buf.set_len(old_len + buf_len);
+        unsafe {
+            let dst = self.buf.as_mut_ptr().add(old_len);
+            ptr::copy_nonoverlapping(src, dst, buf_len);
+            self.buf.set_len(old_len + buf_len);
+        }
     }
 
     #[inline]

@@ -131,6 +131,11 @@ impl StaticIndex<'_> {
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
                     parameter_hints: true,
+                    generic_parameter_hints: crate::GenericParameterHints {
+                        type_hints: false,
+                        lifetime_hints: false,
+                        const_hints: true,
+                    },
                     chaining_hints: true,
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
@@ -167,7 +172,8 @@ impl StaticIndex<'_> {
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
             max_trait_assoc_items_count: None,
-            max_struct_field_count: None,
+            max_fields_count: Some(5),
+            max_enum_variants_count: Some(5),
         };
         let tokens = tokens.filter(|token| {
             matches!(

@@ -8,7 +8,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/extern-fn-arg-names.rs:7:5
    |
 LL |     dstfn(1);
-   |     ^^^^^--- an argument is missing
+   |     ^^^^^--- argument #2 is missing
    |
 note: function defined here
   --> $DIR/extern-fn-arg-names.rs:2:8

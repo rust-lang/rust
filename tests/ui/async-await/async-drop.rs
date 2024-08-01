@@ -1,6 +1,10 @@
 //@ run-pass
 //@ check-run-results
 
+// WARNING: If you would ever want to modify this test,
+// please consider modifying miri's async drop test at
+// `src/tools/miri/tests/pass/async-drop.rs`.
+
 #![feature(async_drop, impl_trait_in_assoc_type, noop_waker, async_closure)]
 #![allow(incomplete_features, dead_code)]
 
@@ -13,9 +17,21 @@ use core::mem::{self, ManuallyDrop};
 use core::pin::{pin, Pin};
 use core::task::{Context, Poll, Waker};
 
-async fn test_async_drop<T>(x: T) {
+async fn test_async_drop<T>(x: T, _size: usize) {
     let mut x = mem::MaybeUninit::new(x);
     let dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
+
+    // FIXME(zetanumbers): This check fully depends on the layout of
+    // the coroutine state, since async destructor combinators are just
+    // async functions.
+    #[cfg(target_pointer_width = "64")]
+    assert_eq!(
+        mem::size_of_val(&*dtor),
+        _size,
+        "sizes did not match for async destructor of type {}",
+        core::any::type_name::<T>(),
+    );
+
     test_idempotency(dtor).await;
 }
 
@@ -36,51 +52,58 @@ fn main() {
 
     let i = 13;
     let fut = pin!(async {
-        test_async_drop(Int(0)).await;
-        test_async_drop(AsyncInt(0)).await;
-        test_async_drop([AsyncInt(1), AsyncInt(2)]).await;
-        test_async_drop((AsyncInt(3), AsyncInt(4))).await;
-        test_async_drop(5).await;
+        test_async_drop(Int(0), 0).await;
+        test_async_drop(AsyncInt(0), 104).await;
+        test_async_drop([AsyncInt(1), AsyncInt(2)], 152).await;
+        test_async_drop((AsyncInt(3), AsyncInt(4)), 488).await;
+        test_async_drop(5, 0).await;
         let j = 42;
-        test_async_drop(&i).await;
-        test_async_drop(&j).await;
-        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }).await;
-        test_async_drop(ManuallyDrop::new(AsyncInt(9))).await;
+        test_async_drop(&i, 0).await;
+        test_async_drop(&j, 0).await;
+        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 1688).await;
+        test_async_drop(ManuallyDrop::new(AsyncInt(9)), 0).await;
 
         let foo = AsyncInt(10);
-        test_async_drop(AsyncReference { foo: &foo }).await;
+        test_async_drop(AsyncReference { foo: &foo }, 104).await;
 
         let foo = AsyncInt(11);
-        test_async_drop(|| {
-            black_box(foo);
-            let foo = AsyncInt(10);
-            foo
-        }).await;
+        test_async_drop(
+            || {
+                black_box(foo);
+                let foo = AsyncInt(10);
+                foo
+            },
+            120,
+        )
+        .await;
 
-        test_async_drop(AsyncEnum::A(AsyncInt(12))).await;
-        test_async_drop(AsyncEnum::B(SyncInt(13))).await;
+        test_async_drop(AsyncEnum::A(AsyncInt(12)), 680).await;
+        test_async_drop(AsyncEnum::B(SyncInt(13)), 680).await;
 
-        test_async_drop(SyncInt(14)).await;
-        test_async_drop(SyncThenAsync {
-            i: 15,
-            a: AsyncInt(16),
-            b: SyncInt(17),
-            c: AsyncInt(18),
-        }).await;
+        test_async_drop(SyncInt(14), 16).await;
+        test_async_drop(
+            SyncThenAsync { i: 15, a: AsyncInt(16), b: SyncInt(17), c: AsyncInt(18) },
+            3064,
+        )
+        .await;
 
         let async_drop_fut = pin!(core::future::async_drop(AsyncInt(19)));
         test_idempotency(async_drop_fut).await;
 
         let foo = AsyncInt(20);
-        test_async_drop(async || {
-            black_box(foo);
-            let foo = AsyncInt(19);
-            // Await point there, but this is async closure so it's fine
-            black_box(core::future::ready(())).await;
-            foo
-        }).await;
+        test_async_drop(
+            async || {
+                black_box(foo);
+                let foo = AsyncInt(19);
+                // Await point there, but this is async closure so it's fine
+                black_box(core::future::ready(())).await;
+                foo
+            },
+            120,
+        )
+        .await;
 
-        test_async_drop(AsyncUnion { signed: 21 }).await;
+        test_async_drop(AsyncUnion { signed: 21 }, 32).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));

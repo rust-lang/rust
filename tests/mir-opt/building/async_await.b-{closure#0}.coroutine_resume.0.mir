@@ -5,12 +5,15 @@
             ty: Coroutine(
                 DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
                 [
-                (),
-                std::future::ResumeTy,
-                (),
-                (),
-                CoroutineWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
-                (),
+                    (),
+                    std::future::ResumeTy,
+                    (),
+                    (),
+                    CoroutineWitness(
+                        DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
+                        [],
+                    ),
+                    (),
                 ],
             ),
             source_info: SourceInfo {
@@ -23,12 +26,15 @@
             ty: Coroutine(
                 DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
                 [
-                (),
-                std::future::ResumeTy,
-                (),
-                (),
-                CoroutineWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
-                (),
+                    (),
+                    std::future::ResumeTy,
+                    (),
+                    (),
+                    CoroutineWitness(
+                        DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
+                        [],
+                    ),
+                    (),
                 ],
             ),
             source_info: SourceInfo {

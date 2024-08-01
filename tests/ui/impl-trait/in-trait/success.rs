@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
-
 use std::fmt::Display;
 
 pub trait Foo {

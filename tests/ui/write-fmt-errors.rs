@@ -1,9 +1,11 @@
 //@ run-pass
+//@ needs-unwind
 
 #![feature(io_error_uncategorized)]
 
 use std::fmt;
 use std::io::{self, Error, Write, sink};
+use std::panic::catch_unwind;
 
 struct ErrorDisplay;
 
@@ -15,7 +17,6 @@ impl fmt::Display for ErrorDisplay {
 
 struct ErrorWriter;
 
-const FORMAT_ERROR: io::ErrorKind = io::ErrorKind::Uncategorized;
 const WRITER_ERROR: io::ErrorKind = io::ErrorKind::NotConnected;
 
 impl Write for ErrorWriter {
@@ -27,22 +28,28 @@ impl Write for ErrorWriter {
 }
 
 fn main() {
-    // Test that the error from the formatter is propagated.
-    let res = write!(sink(), "{} {} {}", 1, ErrorDisplay, "bar");
-    assert!(res.is_err(), "formatter error did not propagate");
-    assert_eq!(res.unwrap_err().kind(), FORMAT_ERROR);
-
     // Test that an underlying error is propagated
     let res = write!(ErrorWriter, "abc");
     assert!(res.is_err(), "writer error did not propagate");
 
-    // Writer error
+    // Test that the error from the formatter is detected.
+    let res = catch_unwind(|| write!(sink(), "{} {} {}", 1, ErrorDisplay, "bar"));
+    let err = res.expect_err("formatter error did not lead to panic").downcast::<&str>().unwrap();
+    assert!(
+        err.contains("formatting trait implementation returned an error"),
+        "unexpected panic: {}", err
+    );
+
+    // Writer error when there's some string before the first `{}`
     let res = write!(ErrorWriter, "abc {}", ErrorDisplay);
     assert!(res.is_err(), "writer error did not propagate");
     assert_eq!(res.unwrap_err().kind(), WRITER_ERROR);
 
-    // Formatter error
-    let res = write!(ErrorWriter, "{} abc", ErrorDisplay);
-    assert!(res.is_err(), "formatter error did not propagate");
-    assert_eq!(res.unwrap_err().kind(), FORMAT_ERROR);
+    // Formatter error when the `{}` comes first
+    let res = catch_unwind(|| write!(ErrorWriter, "{} abc", ErrorDisplay));
+    let err = res.expect_err("formatter error did not lead to panic").downcast::<&str>().unwrap();
+    assert!(
+        err.contains("formatting trait implementation returned an error"),
+        "unexpected panic: {}", err
+    );
 }

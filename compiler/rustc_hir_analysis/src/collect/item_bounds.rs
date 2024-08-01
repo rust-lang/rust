@@ -1,12 +1,16 @@
-use super::ItemCtxt;
-use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::traits::util;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
+use rustc_type_ir::Upcast;
+
+use super::ItemCtxt;
+use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 
 /// For associated types we include both bounds written on the type
 /// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
@@ -22,7 +26,7 @@ fn associated_type_bounds<'tcx>(
     span: Span,
     filter: PredicateFilter,
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
-    let item_ty = Ty::new_projection(
+    let item_ty = Ty::new_projection_from_args(
         tcx,
         assoc_item_def_id.to_def_id(),
         GenericArgs::identity_for_item(tcx, assoc_item_def_id),
@@ -39,13 +43,13 @@ fn associated_type_bounds<'tcx>(
     let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
         match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(tr) => tr.self_ty() == item_ty,
-            ty::ClauseKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
+            ty::ClauseKind::Projection(proj) => proj.projection_term.self_ty() == item_ty,
             ty::ClauseKind::TypeOutlives(outlives) => outlives.0 == item_ty,
             _ => false,
         }
     });
 
-    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
+    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(bounds_from_parent));
     debug!(
         "associated_type_bounds({}) = {:?}",
         tcx.def_path_str(assoc_item_def_id.to_def_id()),
@@ -58,7 +62,7 @@ fn associated_type_bounds<'tcx>(
 /// impl trait it isn't possible to write a suitable predicate on the
 /// containing function and for type-alias impl trait we don't have a backwards
 /// compatibility issue.
-#[instrument(level = "trace", skip(tcx), ret)]
+#[instrument(level = "trace", skip(tcx, item_ty))]
 fn opaque_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     opaque_def_id: LocalDefId,
@@ -74,21 +78,21 @@ fn opaque_type_bounds<'tcx>(
         icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
         debug!(?bounds);
 
-        tcx.arena.alloc_from_iter(bounds.clauses())
+        tcx.arena.alloc_from_iter(bounds.clauses(tcx))
     })
 }
 
 pub(super) fn explicit_item_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> ty::EarlyBinder<&'_ [(ty::Clause<'_>, Span)]> {
+) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
     explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::All)
 }
 
 pub(super) fn explicit_item_super_predicates(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> ty::EarlyBinder<&'_ [(ty::Clause<'_>, Span)]> {
+) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
     explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::SelfOnly)
 }
 
@@ -96,7 +100,7 @@ pub(super) fn explicit_item_bounds_with_filter(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
     filter: PredicateFilter,
-) -> ty::EarlyBinder<&'_ [(ty::Clause<'_>, Span)]> {
+) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
@@ -107,7 +111,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                 tcx,
                 opaque_def_id.expect_local(),
                 opaque_ty.bounds,
-                Ty::new_projection(
+                Ty::new_projection_from_args(
                     tcx,
                     def_id.to_def_id(),
                     ty::GenericArgs::identity_for_item(tcx, def_id),
@@ -121,6 +125,32 @@ pub(super) fn explicit_item_bounds_with_filter(
             "item bounds for RPITIT in impl to be fed on def-id creation"
         ),
         None => {}
+    }
+
+    if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) {
+        let mut predicates = Vec::new();
+
+        let parent = tcx.local_parent(def_id);
+
+        let preds = tcx.explicit_predicates_of(parent);
+
+        if let ty::AssocItemContainer::TraitContainer = tcx.associated_item(def_id).container {
+            // for traits, emit `type Effects: TyCompat<<(T1::Effects, ..) as Min>::Output>`
+            let tup = Ty::new(tcx, ty::Tuple(preds.effects_min_tys));
+            // FIXME(effects) span
+            let span = tcx.def_span(def_id);
+            let assoc = tcx.require_lang_item(hir::LangItem::EffectsIntersectionOutput, Some(span));
+            let proj = Ty::new_projection(tcx, assoc, [tup]);
+            let self_proj = Ty::new_projection(
+                tcx,
+                def_id.to_def_id(),
+                ty::GenericArgs::identity_for_item(tcx, def_id),
+            );
+            let trait_ = tcx.require_lang_item(hir::LangItem::EffectsTyCompat, Some(span));
+            let trait_ref = ty::TraitRef::new(tcx, trait_, [self_proj, proj]);
+            predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
+        }
+        return ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(predicates));
     }
 
     let bounds = match tcx.hir_node_by_def_id(def_id) {
@@ -165,7 +195,7 @@ pub(super) fn explicit_item_bounds_with_filter(
     ty::EarlyBinder::bind(bounds)
 }
 
-pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::Clauses<'_>> {
+pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
     tcx.explicit_item_bounds(def_id).map_bound(|bounds| {
         tcx.mk_clauses_from_iter(util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)))
     })
@@ -174,7 +204,7 @@ pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty:
 pub(super) fn item_super_predicates(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> ty::EarlyBinder<ty::Clauses<'_>> {
+) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
     tcx.explicit_item_super_predicates(def_id).map_bound(|bounds| {
         tcx.mk_clauses_from_iter(
             util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)).filter_only_self(),
@@ -185,7 +215,7 @@ pub(super) fn item_super_predicates(
 pub(super) fn item_non_self_assumptions(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> ty::EarlyBinder<ty::Clauses<'_>> {
+) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
     let all_bounds: FxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
     let own_bounds: FxIndexSet<_> =
         tcx.item_super_predicates(def_id).skip_binder().iter().collect();
@@ -202,7 +232,7 @@ struct AssocTyToOpaque<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

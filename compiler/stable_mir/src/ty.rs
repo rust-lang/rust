@@ -1,17 +1,18 @@
-use super::{
-    mir::Safety,
-    mir::{Body, Mutability},
-    with, DefId, Error, Symbol,
-};
-use crate::abi::Layout;
-use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
-use crate::target::MachineInfo;
-use crate::{crate_def::CrateDef, mir::mono::StaticDef};
-use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+use serde::Serialize;
+
+use super::mir::{Body, Mutability, Safety};
+use super::{with, DefId, Error, Symbol};
+use crate::abi::{FnAbi, Layout};
+use crate::crate_def::{CrateDef, CrateDefType};
+use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
+use crate::mir::mono::StaticDef;
+use crate::target::MachineInfo;
+use crate::{Filename, Opaque};
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Ty(usize);
 
 impl Debug for Ty {
@@ -29,11 +30,11 @@ impl Ty {
 
     /// Create a new array type.
     pub fn try_new_array(elem_ty: Ty, size: u64) -> Result<Ty, Error> {
-        Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, Const::try_from_target_usize(size)?)))
+        Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, TyConst::try_from_target_usize(size)?)))
     }
 
     /// Create a new array type from Const length.
-    pub fn new_array_with_const_len(elem_ty: Ty, len: Const) -> Ty {
+    pub fn new_array_with_const_len(elem_ty: Ty, len: TyConst) -> Ty {
         Ty::from_rigid_kind(RigidTy::Array(elem_ty, len))
     }
 
@@ -100,26 +101,68 @@ impl Ty {
 }
 
 /// Represents a pattern in the type system
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Pattern {
-    Range { start: Option<Const>, end: Option<Const>, include_end: bool },
+    Range { start: Option<TyConst>, end: Option<TyConst>, include_end: bool },
 }
 
-/// Represents a constant in MIR or from the Type system.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Const {
+/// Represents a constant in the type system
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct TyConst {
+    pub(crate) kind: TyConstKind,
+    pub id: TyConstId,
+}
+
+impl TyConst {
+    pub fn new(kind: TyConstKind, id: TyConstId) -> TyConst {
+        Self { kind, id }
+    }
+
+    /// Retrieve the constant kind.
+    pub fn kind(&self) -> &TyConstKind {
+        &self.kind
+    }
+
+    /// Creates an interned usize constant.
+    pub fn try_from_target_usize(val: u64) -> Result<Self, Error> {
+        with(|cx| cx.try_new_ty_const_uint(val.into(), UintTy::Usize))
+    }
+
+    /// Try to evaluate to a target `usize`.
+    pub fn eval_target_usize(&self) -> Result<u64, Error> {
+        with(|cx| cx.eval_target_usize_ty(self))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum TyConstKind {
+    Param(ParamConst),
+    Bound(DebruijnIndex, BoundVar),
+    Unevaluated(ConstDef, GenericArgs),
+
+    // FIXME: These should be a valtree
+    Value(Ty, Allocation),
+    ZSTValue(Ty),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct TyConstId(usize);
+
+/// Represents a constant in MIR
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct MirConst {
     /// The constant kind.
     pub(crate) kind: ConstantKind,
     /// The constant type.
     pub(crate) ty: Ty,
     /// Used for internal tracking of the internal constant.
-    pub id: ConstId,
+    pub id: MirConstId,
 }
 
-impl Const {
+impl MirConst {
     /// Build a constant. Note that this should only be used by the compiler.
-    pub fn new(kind: ConstantKind, ty: Ty, id: ConstId) -> Const {
-        Const { kind, ty, id }
+    pub fn new(kind: ConstantKind, ty: Ty, id: MirConstId) -> MirConst {
+        MirConst { kind, ty, id }
     }
 
     /// Retrieve the constant kind.
@@ -132,11 +175,6 @@ impl Const {
         self.ty
     }
 
-    /// Creates an interned usize constant.
-    fn try_from_target_usize(val: u64) -> Result<Self, Error> {
-        with(|cx| cx.try_new_const_uint(val.into(), UintTy::Usize))
-    }
-
     /// Try to evaluate to a target `usize`.
     pub fn eval_target_usize(&self) -> Result<u64, Error> {
         with(|cx| cx.eval_target_usize(self))
@@ -144,7 +182,7 @@ impl Const {
 
     /// Create a constant that represents a new zero-sized constant of type T.
     /// Fails if the type is not a ZST or if it doesn't have a known size.
-    pub fn try_new_zero_sized(ty: Ty) -> Result<Const, Error> {
+    pub fn try_new_zero_sized(ty: Ty) -> Result<MirConst, Error> {
         with(|cx| cx.try_new_const_zst(ty))
     }
 
@@ -153,32 +191,32 @@ impl Const {
     /// Note that there is no guarantee today about duplication of the same constant.
     /// I.e.: Calling this function multiple times with the same argument may or may not return
     /// the same allocation.
-    pub fn from_str(value: &str) -> Const {
+    pub fn from_str(value: &str) -> MirConst {
         with(|cx| cx.new_const_str(value))
     }
 
     /// Build a new constant that represents the given boolean value.
-    pub fn from_bool(value: bool) -> Const {
+    pub fn from_bool(value: bool) -> MirConst {
         with(|cx| cx.new_const_bool(value))
     }
 
     /// Build a new constant that represents the given unsigned integer.
-    pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<Const, Error> {
+    pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<MirConst, Error> {
         with(|cx| cx.try_new_const_uint(value, uint_ty))
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ConstId(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub struct MirConstId(usize);
 
 type Ident = Opaque;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Region {
     pub kind: RegionKind,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum RegionKind {
     ReEarlyParam(EarlyParamRegion),
     ReBound(DebruijnIndex, BoundRegion),
@@ -189,16 +227,15 @@ pub enum RegionKind {
 
 pub(crate) type DebruijnIndex = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct EarlyParamRegion {
-    pub def_id: RegionDef,
     pub index: u32,
     pub name: Symbol,
 }
 
 pub(crate) type BoundVar = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
@@ -206,13 +243,13 @@ pub struct BoundRegion {
 
 pub(crate) type UniverseIndex = u32;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Span(usize);
 
 impl Debug for Span {
@@ -236,7 +273,7 @@ impl Span {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 /// Information you get from `Span` in a struct form.
 /// Line and col start from 1.
 pub struct LineInfo {
@@ -246,7 +283,7 @@ pub struct LineInfo {
     pub end_col: usize,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum TyKind {
     RigidTy(RigidTy),
     Alias(AliasKind, AliasTy),
@@ -469,6 +506,15 @@ impl TyKind {
     pub fn discriminant_ty(&self) -> Option<Ty> {
         self.rigid().map(|ty| with(|cx| cx.rigid_ty_discriminant_ty(ty)))
     }
+
+    /// Deconstruct a function type if this is one.
+    pub fn fn_def(&self) -> Option<(FnDef, &GenericArgs)> {
+        if let TyKind::RigidTy(RigidTy::FnDef(def, args)) = self {
+            Some((*def, args))
+        } else {
+            None
+        }
+    }
 }
 
 pub struct TypeAndMut {
@@ -476,7 +522,7 @@ pub struct TypeAndMut {
     pub mutability: Mutability,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum RigidTy {
     Bool,
     Char,
@@ -486,7 +532,7 @@ pub enum RigidTy {
     Adt(AdtDef, GenericArgs),
     Foreign(ForeignDef),
     Str,
-    Array(Ty, Const),
+    Array(Ty, TyConst),
     Pat(Ty, Pattern),
     Slice(Ty),
     RawPtr(Ty, Mutability),
@@ -515,7 +561,7 @@ impl From<RigidTy> for TyKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum IntTy {
     Isize,
     I8,
@@ -528,7 +574,7 @@ pub enum IntTy {
 impl IntTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes(),
             IntTy::I8 => 1,
             IntTy::I16 => 2,
             IntTy::I32 => 4,
@@ -538,7 +584,7 @@ impl IntTy {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum UintTy {
     Usize,
     U8,
@@ -551,7 +597,7 @@ pub enum UintTy {
 impl UintTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes(),
             UintTy::U8 => 1,
             UintTy::U16 => 2,
             UintTy::U32 => 4,
@@ -561,19 +607,22 @@ impl UintTy {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum FloatTy {
+    F16,
     F32,
     F64,
+    F128,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum Movability {
     Static,
     Movable,
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub ForeignModuleDef;
 }
 
@@ -594,8 +643,9 @@ impl ForeignModule {
     }
 }
 
-crate_def! {
+crate_def_with_ty! {
     /// Hold information about a ForeignItem in a crate.
+    #[derive(Serialize)]
     pub ForeignDef;
 }
 
@@ -605,15 +655,16 @@ impl ForeignDef {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
 pub enum ForeignItemKind {
     Fn(FnDef),
     Static(StaticDef),
     Type(Ty),
 }
 
-crate_def! {
+crate_def_with_ty! {
     /// Hold information about a function definition in a crate.
+    #[derive(Serialize)]
     pub FnDef;
 }
 
@@ -622,29 +673,81 @@ impl FnDef {
     pub fn body(&self) -> Option<Body> {
         with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
     }
+
+    // Check if the function body is available.
+    pub fn has_body(&self) -> bool {
+        with(|ctx| ctx.has_body(self.0))
+    }
+
+    /// Get the information of the intrinsic if this function is a definition of one.
+    pub fn as_intrinsic(&self) -> Option<IntrinsicDef> {
+        with(|cx| cx.intrinsic(self.def_id()))
+    }
+
+    /// Check if the function is an intrinsic.
+    #[inline]
+    pub fn is_intrinsic(&self) -> bool {
+        self.as_intrinsic().is_some()
+    }
+
+    /// Get the function signature for this function definition.
+    pub fn fn_sig(&self) -> PolyFnSig {
+        let kind = self.ty().kind();
+        kind.fn_sig().unwrap()
+    }
+}
+
+crate_def_with_ty! {
+    #[derive(Serialize)]
+    pub IntrinsicDef;
+}
+
+impl IntrinsicDef {
+    /// Returns the plain name of the intrinsic.
+    /// e.g., `transmute` for `core::intrinsics::transmute`.
+    pub fn fn_name(&self) -> Symbol {
+        with(|cx| cx.intrinsic_name(*self))
+    }
+
+    /// Returns whether the intrinsic has no meaningful body and all backends
+    /// need to shim all calls to it.
+    pub fn must_be_overridden(&self) -> bool {
+        with(|cx| !cx.has_body(self.0))
+    }
+}
+
+impl From<IntrinsicDef> for FnDef {
+    fn from(def: IntrinsicDef) -> Self {
+        FnDef(def.0)
+    }
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub ClosureDef;
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub CoroutineDef;
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub ParamDef;
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub BrNamedDef;
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub AdtDef;
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
 pub enum AdtKind {
     Enum,
     Union,
@@ -698,7 +801,7 @@ impl AdtDef {
 }
 
 /// Definition of a variant, which can be either a struct / union field or an enum variant.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct VariantDef {
     /// The variant index.
     ///
@@ -727,7 +830,7 @@ impl VariantDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct FieldDef {
     /// The field definition.
     ///
@@ -778,11 +881,13 @@ impl AdtKind {
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub AliasDef;
 }
 
 crate_def! {
     /// A trait's definition.
+    #[derive(Serialize)]
     pub TraitDef;
 }
 
@@ -793,15 +898,18 @@ impl TraitDef {
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub GenericDef;
 }
 
-crate_def! {
+crate_def_with_ty! {
+    #[derive(Serialize)]
     pub ConstDef;
 }
 
 crate_def! {
     /// A trait impl definition.
+    #[derive(Serialize)]
     pub ImplDef;
 }
 
@@ -813,15 +921,17 @@ impl ImplDef {
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub RegionDef;
 }
 
 crate_def! {
+    #[derive(Serialize)]
     pub CoroutineWitnessDef;
 }
 
 /// A list of generic arguments.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
 impl std::ops::Index<ParamTy> for GenericArgs {
@@ -833,18 +943,18 @@ impl std::ops::Index<ParamTy> for GenericArgs {
 }
 
 impl std::ops::Index<ParamConst> for GenericArgs {
-    type Output = Const;
+    type Output = TyConst;
 
     fn index(&self, index: ParamConst) -> &Self::Output {
         self.0[index.index as usize].expect_const()
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum GenericArgKind {
     Lifetime(Region),
     Type(Ty),
-    Const(Const),
+    Const(TyConst),
 }
 
 impl GenericArgKind {
@@ -861,7 +971,7 @@ impl GenericArgKind {
     /// Panic if this generic argument is not a const, otherwise
     /// return the const.
     #[track_caller]
-    pub fn expect_const(&self) -> &Const {
+    pub fn expect_const(&self) -> &TyConst {
         match self {
             GenericArgKind::Const(c) => c,
             _ => panic!("{self:?}"),
@@ -877,13 +987,13 @@ impl GenericArgKind {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum TermKind {
     Type(Ty),
-    Const(Const),
+    Const(TyConst),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum AliasKind {
     Projection,
     Inherent,
@@ -891,19 +1001,35 @@ pub enum AliasKind {
     Weak,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct AliasTy {
+    pub def_id: AliasDef,
+    pub args: GenericArgs,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct AliasTerm {
     pub def_id: AliasDef,
     pub args: GenericArgs,
 }
 
 pub type PolyFnSig = Binder<FnSig>;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+impl PolyFnSig {
+    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
+    ///
+    /// NB: this doesn't handle virtual calls - those should use `Instance::fn_abi`
+    /// instead, where the instance is an `InstanceKind::Virtual`.
+    pub fn fn_ptr_abi(self) -> Result<FnAbi, Error> {
+        with(|cx| cx.fn_ptr_abi(self))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
     pub c_variadic: bool,
-    pub unsafety: Safety,
+    pub safety: Safety,
     pub abi: Abi,
 }
 
@@ -917,7 +1043,7 @@ impl FnSig {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
 pub enum Abi {
     Rust,
     C { unwind: bool },
@@ -936,7 +1062,6 @@ pub enum Abi {
     AvrInterrupt,
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
-    Wasm,
     System { unwind: bool },
     RustIntrinsic,
     RustCall,
@@ -947,7 +1072,7 @@ pub enum Abi {
 }
 
 /// A binder represents a possibly generic type and its bound vars.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Binder<T> {
     pub value: T,
     pub bound_vars: Vec<BoundVariableKind>,
@@ -987,38 +1112,38 @@ impl<T> Binder<T> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct EarlyBinder<T> {
     pub value: T,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum BoundVariableKind {
     Ty(BoundTyKind),
     Region(BoundRegionKind),
     Const,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
 pub enum BoundTyKind {
     Anon,
     Param(ParamDef, String),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum BoundRegionKind {
     BrAnon,
     BrNamed(BrNamedDef, String),
     BrEnv,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum DynKind {
     Dyn,
     DynStar,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ExistentialPredicate {
     Trait(ExistentialTraitRef),
     Projection(ExistentialProjection),
@@ -1028,7 +1153,7 @@ pub enum ExistentialPredicate {
 /// An existential reference to a trait where `Self` is not included.
 ///
 /// The `generic_args` will include any other known argument.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ExistentialTraitRef {
     pub def_id: TraitDef,
     pub generic_args: GenericArgs,
@@ -1046,20 +1171,20 @@ impl ExistentialTraitRef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ExistentialProjection {
     pub def_id: TraitDef,
     pub generic_args: GenericArgs,
     pub term: TermKind,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ParamTy {
     pub index: u32,
     pub name: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BoundTy {
     pub var: usize,
     pub kind: BoundTyKind,
@@ -1070,7 +1195,7 @@ pub type Bytes = Vec<Option<u8>>;
 /// Size in bytes.
 pub type Size = usize;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
 pub struct Prov(pub AllocId);
 
 pub type Align = u64;
@@ -1078,14 +1203,14 @@ pub type Promoted = u32;
 pub type InitMaskMaterialized = Vec<u64>;
 
 /// Stores the provenance information of pointers stored in memory.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct ProvenanceMap {
     /// Provenance in this map applies from the given offset for an entire pointer-size worth of
     /// bytes. Two entries in this map are always at least a pointer size apart.
     pub ptrs: Vec<(Size, Prov)>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct Allocation {
     pub bytes: Bytes,
     pub provenance: ProvenanceMap,
@@ -1146,7 +1271,7 @@ impl Allocation {
         match self.read_int()? {
             0 => Ok(false),
             1 => Ok(true),
-            val @ _ => Err(error!("Unexpected value for bool: `{val}`")),
+            val => Err(error!("Unexpected value for bool: `{val}`")),
         }
     }
 
@@ -1161,8 +1286,9 @@ impl Allocation {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ConstantKind {
+    Ty(TyConst),
     Allocated(Allocation),
     Unevaluated(UnevaluatedConst),
     Param(ParamConst),
@@ -1171,35 +1297,36 @@ pub enum ConstantKind {
     ZeroSized,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ParamConst {
     pub index: u32,
     pub name: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct UnevaluatedConst {
     pub def: ConstDef,
     pub args: GenericArgs,
     pub promoted: Option<Promoted>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum TraitSpecializationKind {
     None,
     Marker,
     AlwaysApplicable,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct TraitDecl {
     pub def_id: TraitDef,
-    pub unsafety: Safety,
+    pub safety: Safety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
     pub is_marker: bool,
     pub is_coinductive: bool,
     pub skip_array_during_method_dispatch: bool,
+    pub skip_boxed_slice_during_method_dispatch: bool,
     pub specialization_kind: TraitSpecializationKind,
     pub must_implement_one_of: Option<Vec<Ident>>,
     pub implement_via_object: bool,
@@ -1223,7 +1350,7 @@ impl TraitDecl {
 pub type ImplTrait = EarlyBinder<TraitRef>;
 
 /// A complete reference to a trait, i.e., one where `Self` is known.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct TraitRef {
     pub def_id: TraitDef,
     /// The generic arguments for this definition.
@@ -1257,7 +1384,7 @@ impl TraitRef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Generics {
     pub parent: Option<GenericDef>,
     pub parent_count: usize,
@@ -1268,14 +1395,14 @@ pub struct Generics {
     pub host_effect_index: Option<usize>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
     Const { has_default: bool },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct GenericParamDef {
     pub name: super::Symbol,
     pub def_id: GenericDef,
@@ -1289,79 +1416,79 @@ pub struct GenericPredicates {
     pub predicates: Vec<(PredicateKind, Span)>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum PredicateKind {
     Clause(ClauseKind),
     ObjectSafe(TraitDef),
     SubType(SubtypePredicate),
     Coerce(CoercePredicate),
-    ConstEquate(Const, Const),
+    ConstEquate(TyConst, TyConst),
     Ambiguous,
     AliasRelate(TermKind, TermKind, AliasRelationDirection),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ClauseKind {
     Trait(TraitPredicate),
     RegionOutlives(RegionOutlivesPredicate),
     TypeOutlives(TypeOutlivesPredicate),
     Projection(ProjectionPredicate),
-    ConstArgHasType(Const, Ty),
+    ConstArgHasType(TyConst, Ty),
     WellFormed(GenericArgKind),
-    ConstEvaluatable(Const),
+    ConstEvaluatable(TyConst),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ClosureKind {
     Fn,
     FnMut,
     FnOnce,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct SubtypePredicate {
     pub a: Ty,
     pub b: Ty,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct CoercePredicate {
     pub a: Ty,
     pub b: Ty,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum AliasRelationDirection {
     Equate,
     Subtype,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
     pub polarity: PredicatePolarity,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct OutlivesPredicate<A, B>(pub A, pub B);
 
 pub type RegionOutlivesPredicate = OutlivesPredicate<Region, Region>;
 pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ProjectionPredicate {
-    pub projection_ty: AliasTy,
+    pub projection_term: AliasTerm,
     pub term: TermKind,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ImplPolarity {
     Positive,
     Negative,
     Reservation,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum PredicatePolarity {
     Positive,
     Negative,
@@ -1386,7 +1513,8 @@ macro_rules! index_impl {
     };
 }
 
-index_impl!(ConstId);
+index_impl!(TyConstId);
+index_impl!(MirConstId);
 index_impl!(Ty);
 index_impl!(Span);
 
@@ -1403,7 +1531,7 @@ index_impl!(Span);
 /// `a` is in the variant with the `VariantIdx` of `0`,
 /// `c` is in the variant with the `VariantIdx` of `1`, and
 /// `g` is in the variant with the `VariantIdx` of `0`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct VariantIdx(usize);
 
 index_impl!(VariantIdx);

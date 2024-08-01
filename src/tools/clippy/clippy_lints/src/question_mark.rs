@@ -2,6 +2,7 @@ use crate::manual_let_else::MANUAL_LET_ELSE;
 use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::msrvs::Msrv;
 use clippy_config::types::MatchLintBehaviour;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
@@ -62,11 +63,10 @@ pub struct QuestionMark {
 impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
 
 impl QuestionMark {
-    #[must_use]
-    pub fn new(msrv: Msrv, matches_behaviour: MatchLintBehaviour) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv,
-            matches_behaviour,
+            msrv: conf.msrv.clone(),
+            matches_behaviour: conf.matches_for_let_else,
             try_block_depth_stack: Vec::new(),
         }
     }
@@ -370,11 +370,11 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_body(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
+    fn check_body(&mut self, _: &LateContext<'tcx>, _: &Body<'tcx>) {
         self.try_block_depth_stack.push(0);
     }
 
-    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &'tcx Body<'tcx>) {
+    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &Body<'tcx>) {
         self.try_block_depth_stack.pop();
     }
 

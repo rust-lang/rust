@@ -18,10 +18,10 @@ pub fn target() -> Target {
         // LLVM 15 doesn't support OpenHarmony yet, use a linux target instead.
         llvm_target: "x86_64-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("x86_64 OpenHarmony".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

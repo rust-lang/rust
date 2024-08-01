@@ -10,10 +10,10 @@ use crate::{cfg::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
 pub(crate) enum RustcCfgConfig<'a> {
     /// Use `rustc --print cfg`, either from with the binary from the sysroot or by discovering via
     /// [`toolchain::rustc`].
-    Rustc(Option<&'a Sysroot>),
+    Rustc(&'a Sysroot),
     /// Use `cargo --print cfg`, either from with the binary from the sysroot or by discovering via
     /// [`toolchain::cargo`].
-    Cargo(Option<&'a Sysroot>, &'a ManifestPath),
+    Cargo(&'a Sysroot, &'a ManifestPath),
 }
 
 pub(crate) fn get(
@@ -21,7 +21,7 @@ pub(crate) fn get(
     extra_env: &FxHashMap<String, String>,
     config: RustcCfgConfig<'_>,
 ) -> Vec<CfgFlag> {
-    let _p = tracing::span!(tracing::Level::INFO, "rustc_cfg::get").entered();
+    let _p = tracing::info_span!("rustc_cfg::get").entered();
     let mut res = Vec::with_capacity(6 * 2 + 1);
 
     // Some nightly-only cfgs, which are required for stdlib
@@ -65,7 +65,7 @@ fn get_rust_cfgs(
 ) -> anyhow::Result<String> {
     let sysroot = match config {
         RustcCfgConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = Sysroot::tool(sysroot, Tool::Cargo);
+            let mut cmd = sysroot.tool(Tool::Cargo);
 
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
@@ -86,7 +86,7 @@ fn get_rust_cfgs(
         RustcCfgConfig::Rustc(sysroot) => sysroot,
     };
 
-    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc);
+    let mut cmd = sysroot.tool(Tool::Rustc);
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {

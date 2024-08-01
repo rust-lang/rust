@@ -2,6 +2,7 @@
 
 use std::iter;
 
+use intern::Interned;
 use la_arena::ArenaMap;
 use span::SyntaxContextId;
 use syntax::ast;
@@ -20,15 +21,15 @@ use crate::{
 pub enum RawVisibility {
     /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
     /// equivalent to `pub(self)`.
-    Module(ModPath, VisibilityExplicitness),
+    Module(Interned<ModPath>, VisibilityExplicitness),
     /// `pub`.
     Public,
 }
 
 impl RawVisibility {
-    pub(crate) const fn private() -> RawVisibility {
+    pub(crate) fn private() -> RawVisibility {
         RawVisibility::Module(
-            ModPath::from_kind(PathKind::Super(0)),
+            Interned::new(ModPath::from_kind(PathKind::SELF)),
             VisibilityExplicitness::Implicit,
         )
     }
@@ -60,10 +61,10 @@ impl RawVisibility {
             }
             ast::VisibilityKind::PubCrate => ModPath::from_kind(PathKind::Crate),
             ast::VisibilityKind::PubSuper => ModPath::from_kind(PathKind::Super(1)),
-            ast::VisibilityKind::PubSelf => ModPath::from_kind(PathKind::Super(0)),
+            ast::VisibilityKind::PubSelf => ModPath::from_kind(PathKind::SELF),
             ast::VisibilityKind::Pub => return RawVisibility::Public,
         };
-        RawVisibility::Module(path, VisibilityExplicitness::Explicit)
+        RawVisibility::Module(Interned::new(path), VisibilityExplicitness::Explicit)
     }
 
     pub fn resolve(

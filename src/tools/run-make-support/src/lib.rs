@@ -3,272 +3,91 @@
 //! notably is built via cargo: this means that if your test wants some non-trivial utility, such
 //! as `object` or `wasmparser`, they can be re-exported and be made available through this library.
 
-pub mod cc;
-pub mod clang;
+// We want to control use declaration ordering and spacing (and preserve use group comments), so
+// skip rustfmt on this file.
+#![cfg_attr(rustfmt, rustfmt::skip)]
+
+mod command;
+mod macros;
+mod util;
+
+pub mod artifact_names;
+pub mod assertion_helpers;
 pub mod diff;
-pub mod llvm_readobj;
+pub mod env;
+pub mod external_deps;
+pub mod path_helpers;
 pub mod run;
-pub mod rustc;
-pub mod rustdoc;
+pub mod scoped_run;
+pub mod string;
+pub mod targets;
 
-use std::env;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+// Internally we call our fs-related support module as `fs`, but re-export its content as `rfs`
+// to tests to avoid colliding with commonly used `use std::fs;`.
+mod fs;
 
+/// [`std::fs`] wrappers and assorted filesystem-related helpers. Public to tests as `rfs` to not be
+/// confused with [`std::fs`].
+pub mod rfs {
+    pub use crate::fs::*;
+}
+
+// Re-exports of third-party library crates.
+pub use bstr;
 pub use gimli;
 pub use object;
 pub use regex;
 pub use wasmparser;
 
-pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
+// Re-exports of external dependencies.
+pub use external_deps::{c_build, cc, clang, htmldocck, llvm, python, rustc, rustdoc};
+
+// These rely on external dependencies.
+pub use c_build::{build_native_dynamic_lib, build_native_static_lib};
+pub use cc::{cc, cxx, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
-pub use diff::{diff, Diff};
-pub use llvm_readobj::{llvm_readobj, LlvmReadobj};
-pub use run::{run, run_fail};
-pub use rustc::{aux_build, rustc, Rustc};
+pub use htmldocck::htmldocck;
+pub use llvm::{
+    llvm_ar, llvm_filecheck, llvm_nm, llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr,
+    LlvmFilecheck, LlvmNm, LlvmObjdump, LlvmProfdata, LlvmReadobj,
+};
+pub use python::python_command;
+pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
-/// Path of `TMPDIR` (a temporary build directory, not under `/tmp`).
-pub fn tmp_dir() -> PathBuf {
-    env::var_os("TMPDIR").unwrap().into()
-}
-
-/// `TARGET`
-pub fn target() -> String {
-    env::var("TARGET").unwrap()
-}
-
-/// Check if target is windows-like.
-pub fn is_windows() -> bool {
-    env::var_os("IS_WINDOWS").is_some()
-}
-
-/// Check if target uses msvc.
-pub fn is_msvc() -> bool {
-    env::var_os("IS_MSVC").is_some()
-}
-
-/// Construct a path to a static library under `$TMPDIR` given the library name. This will return a
-/// path with `$TMPDIR` joined with platform-and-compiler-specific library name.
-pub fn static_lib(name: &str) -> PathBuf {
-    tmp_dir().join(static_lib_name(name))
-}
-
-/// Construct the static library name based on the platform.
-pub fn static_lib_name(name: &str) -> String {
-    // See tools.mk (irrelevant lines omitted):
-    //
-    // ```makefile
-    // ifeq ($(UNAME),Darwin)
-    //     STATICLIB = $(TMPDIR)/lib$(1).a
-    // else
-    //     ifdef IS_WINDOWS
-    //         ifdef IS_MSVC
-    //             STATICLIB = $(TMPDIR)/$(1).lib
-    //         else
-    //             STATICLIB = $(TMPDIR)/lib$(1).a
-    //         endif
-    //     else
-    //         STATICLIB = $(TMPDIR)/lib$(1).a
-    //     endif
-    // endif
-    // ```
-    assert!(!name.contains(char::is_whitespace), "name cannot contain whitespace");
-
-    if target().contains("msvc") { format!("{name}.lib") } else { format!("lib{name}.a") }
-}
-
-/// Construct the binary name based on platform.
-pub fn bin_name(name: &str) -> String {
-    if is_windows() { format!("{name}.exe") } else { name.to_string() }
-}
-
-/// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
-/// available on the platform!
-#[track_caller]
-pub fn cygpath_windows<P: AsRef<Path>>(path: P) -> String {
-    let caller_location = std::panic::Location::caller();
-    let caller_line_number = caller_location.line();
-
-    let mut cygpath = Command::new("cygpath");
-    cygpath.arg("-w");
-    cygpath.arg(path.as_ref());
-    let output = cygpath.output().unwrap();
-    if !output.status.success() {
-        handle_failed_output(&cygpath, output, caller_line_number);
-    }
-    let s = String::from_utf8(output.stdout).unwrap();
-    // cygpath -w can attach a newline
-    s.trim().to_string()
-}
-
-/// Run `uname`. This assumes that `uname` is available on the platform!
-#[track_caller]
-pub fn uname() -> String {
-    let caller_location = std::panic::Location::caller();
-    let caller_line_number = caller_location.line();
-
-    let mut uname = Command::new("uname");
-    let output = uname.output().unwrap();
-    if !output.status.success() {
-        handle_failed_output(&uname, output, caller_line_number);
-    }
-    String::from_utf8(output.stdout).unwrap()
-}
-
-fn handle_failed_output(cmd: &Command, output: Output, caller_line_number: u32) -> ! {
-    if output.status.success() {
-        eprintln!("command unexpectedly succeeded at line {caller_line_number}");
-    } else {
-        eprintln!("command failed at line {caller_line_number}");
-    }
-    eprintln!("{cmd:?}");
-    eprintln!("output status: `{}`", output.status);
-    eprintln!("=== STDOUT ===\n{}\n\n", String::from_utf8(output.stdout).unwrap());
-    eprintln!("=== STDERR ===\n{}\n\n", String::from_utf8(output.stderr).unwrap());
-    std::process::exit(1)
-}
-
-/// Set the runtime library path as needed for running the host rustc/rustdoc/etc.
-pub fn set_host_rpath(cmd: &mut Command) {
-    let ld_lib_path_envvar = env::var("LD_LIB_PATH_ENVVAR").unwrap();
-    cmd.env(&ld_lib_path_envvar, {
-        let mut paths = vec![];
-        paths.push(PathBuf::from(env::var("TMPDIR").unwrap()));
-        paths.push(PathBuf::from(env::var("HOST_RPATH_DIR").unwrap()));
-        for p in env::split_paths(&env::var(&ld_lib_path_envvar).unwrap()) {
-            paths.push(p.to_path_buf());
-        }
-        env::join_paths(paths.iter()).unwrap()
-    });
-}
-
-/// Implement common helpers for command wrappers. This assumes that the command wrapper is a struct
-/// containing a `cmd: Command` field and a `output` function. The provided helpers are:
+/// [`diff`][mod@diff] is implemented in terms of the [similar] library.
 ///
-/// 1. Generic argument acceptors: `arg` and `args` (delegated to [`Command`]). These are intended
-///    to be *fallback* argument acceptors, when specific helpers don't make sense. Prefer to add
-///    new specific helper methods over relying on these generic argument providers.
-/// 2. Environment manipulation methods: `env`, `env_remove` and `env_clear`: these delegate to
-///    methods of the same name on [`Command`].
-/// 3. Output and execution: `output`, `run` and `run_fail` are provided. `output` waits for the
-///    command to finish running and returns the process's [`Output`]. `run` and `run_fail` are
-///    higher-level convenience methods which waits for the command to finish running and assert
-///    that the command successfully ran or failed as expected. Prefer `run` and `run_fail` when
-///    possible.
-///
-/// Example usage:
-///
-/// ```ignore (illustrative)
-/// struct CommandWrapper { cmd: Command } // <- required `cmd` field
-///
-/// impl CommandWrapper {
-///     /// Get the [`Output`][::std::process::Output] of the finished process.
-///     pub fn command_output(&mut self) -> Output { /* ... */ } // <- required `command_output()` method
-/// }
-///
-/// crate::impl_common_helpers!(CommandWrapper);
-///
-/// impl CommandWrapper {
-///     // ... additional specific helper methods
-/// }
-/// ```
-///
-/// [`Command`]: ::std::process::Command
-/// [`Output`]: ::std::process::Output
-macro_rules! impl_common_helpers {
-    ($wrapper: ident) => {
-        impl $wrapper {
-            /// Specify an environment variable.
-            pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
-            where
-                K: AsRef<::std::ffi::OsStr>,
-                V: AsRef<::std::ffi::OsStr>,
-            {
-                self.cmd.env(key, value);
-                self
-            }
+/// [similar]: https://github.com/mitsuhiko/similar
+pub use diff::{diff, Diff};
 
-            /// Remove an environmental variable.
-            pub fn env_remove<K>(&mut self, key: K) -> &mut Self
-            where
-                K: AsRef<::std::ffi::OsStr>,
-            {
-                self.cmd.env_remove(key);
-                self
-            }
+/// Panic-on-fail [`std::env::var`] and [`std::env::var_os`] wrappers.
+pub use env::{env_var, env_var_os};
 
-            /// Clear all environmental variables.
-            pub fn env_var(&mut self) -> &mut Self {
-                self.cmd.env_clear();
-                self
-            }
+/// Convenience helpers for running binaries and other commands.
+pub use run::{cmd, run, run_fail, run_with_args};
 
-            /// Generic command argument provider. Prefer specific helper methods if possible.
-            /// Note that for some executables, arguments might be platform specific. For C/C++
-            /// compilers, arguments might be platform *and* compiler specific.
-            pub fn arg<S>(&mut self, arg: S) -> &mut Self
-            where
-                S: AsRef<::std::ffi::OsStr>,
-            {
-                self.cmd.arg(arg);
-                self
-            }
+/// Helpers for checking target information.
+pub use targets::{is_darwin, is_msvc, is_windows, llvm_components_contain, target, uname};
 
-            /// Generic command arguments provider. Prefer specific helper methods if possible.
-            /// Note that for some executables, arguments might be platform specific. For C/C++
-            /// compilers, arguments might be platform *and* compiler specific.
-            pub fn args<S>(&mut self, args: &[S]) -> &mut Self
-            where
-                S: AsRef<::std::ffi::OsStr>,
-            {
-                self.cmd.args(args);
-                self
-            }
+/// Helpers for building names of output artifacts that are potentially target-specific.
+pub use artifact_names::{
+    bin_name, dynamic_lib_extension, dynamic_lib_name, rust_lib_name, static_lib_name,
+};
 
-            /// Inspect what the underlying [`Command`][::std::process::Command] is up to the
-            /// current construction.
-            pub fn inspect<I>(&mut self, inspector: I) -> &mut Self
-            where
-                I: FnOnce(&::std::process::Command),
-            {
-                inspector(&self.cmd);
-                self
-            }
+/// Path-related helpers.
+pub use path_helpers::{
+    cwd, filename_not_in_denylist, has_extension, has_prefix, has_suffix, not_contains, path,
+    shallow_find_files, source_root,
+};
 
-            /// Run the constructed command and assert that it is successfully run.
-            #[track_caller]
-            pub fn run(&mut self) -> ::std::process::Output {
-                let caller_location = ::std::panic::Location::caller();
-                let caller_line_number = caller_location.line();
+/// Helpers for scoped test execution where certain properties are attempted to be maintained.
+pub use scoped_run::{run_in_tmpdir, test_while_readonly};
 
-                let output = self.command_output();
-                if !output.status.success() {
-                    handle_failed_output(&self.cmd, output, caller_line_number);
-                }
-                output
-            }
+pub use assertion_helpers::{
+    assert_contains, assert_contains_regex, assert_dirs_are_equal, assert_equals,
+    assert_not_contains, assert_not_contains_regex,
+};
 
-            /// Run the constructed command and assert that it does not successfully run.
-            #[track_caller]
-            pub fn run_fail(&mut self) -> ::std::process::Output {
-                let caller_location = ::std::panic::Location::caller();
-                let caller_line_number = caller_location.line();
-
-                let output = self.command_output();
-                if output.status.success() {
-                    handle_failed_output(&self.cmd, output, caller_line_number);
-                }
-                output
-            }
-
-            /// Set the path where the command will be run.
-            pub fn current_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
-                self.cmd.current_dir(path);
-                self
-            }
-        }
-    };
-}
-
-pub(crate) use impl_common_helpers;
+pub use string::{
+    count_regex_matches_in_files_with_extension, invalid_utf8_contains, invalid_utf8_not_contains,
+};

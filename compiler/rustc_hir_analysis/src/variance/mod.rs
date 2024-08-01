@@ -8,8 +8,10 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt};
-use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
+use rustc_middle::span_bug;
+use rustc_middle::ty::{
+    self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+};
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
@@ -21,8 +23,7 @@ mod constraints;
 /// Code to solve constraints and write out the results.
 mod solve;
 
-/// Code to write unit tests of variance.
-pub mod test;
+pub(crate) mod dump;
 
 /// Code for transforming variances.
 mod xform;
@@ -40,7 +41,7 @@ fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
 
 fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
     // Skip items with no generics - there's nothing to infer in them.
-    if tcx.generics_of(item_def_id).count() == 0 {
+    if tcx.generics_of(item_def_id).is_empty() {
         return &[];
     }
 
@@ -166,7 +167,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                 }
             }
             ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                projection_ty: ty::AliasTy { args, .. },
+                projection_term: ty::AliasTerm { args, .. },
                 term,
             }) => {
                 for arg in &args[1..] {

@@ -6,9 +6,9 @@
 // Most simple case
 macro num {
     (one) => { 1 },
-    (two) => { 2 }, //~ ERROR: 2nd rule of macro
+    (two) => { 2 }, //~ ERROR: rule #2 of macro
     (three) => { 3 },
-    (four) => { 4 }, //~ ERROR: 4th rule of macro
+    (four) => { 4 }, //~ ERROR: rule #4 of macro
 }
 const _NUM: u8 = num!(one) + num!(three);
 
@@ -28,7 +28,7 @@ macro num_rec {
     (two) => {
         num_rec!(one) + num_rec!(one)
     },
-    (three) => { //~ ERROR: 3rd rule of macro
+    (three) => { //~ ERROR: rule #3 of macro
         num_rec!(one) + num_rec!(two)
     },
     (four) => {

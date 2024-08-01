@@ -108,7 +108,7 @@ pub fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
 pub fn eq_angle_arg(l: &AngleBracketedArg, r: &AngleBracketedArg) -> bool {
     match (l, r) {
         (AngleBracketedArg::Arg(l), AngleBracketedArg::Arg(r)) => eq_generic_arg(l, r),
-        (AngleBracketedArg::Constraint(l), AngleBracketedArg::Constraint(r)) => eq_assoc_constraint(l, r),
+        (AngleBracketedArg::Constraint(l), AngleBracketedArg::Constraint(r)) => eq_assoc_item_constraint(l, r),
         _ => false,
     }
 }
@@ -226,7 +226,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
         },
-        (Gen(lc, lb, lk), Gen(rc, rb, rk)) => lc == rc && eq_block(lb, rb) && lk == rk,
+        (Gen(lc, lb, lk, _), Gen(rc, rb, rk, _)) => lc == rc && eq_block(lb, rb) && lk == rk,
         (Range(lf, lt, ll), Range(rf, rt, rl)) => ll == rl && eq_expr_opt(lf, rf) && eq_expr_opt(lt, rt),
         (AddrOf(lbk, lm, le), AddrOf(rbk, rm, re)) => lbk == rbk && lm == rm && eq_expr(le, re),
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, eq_qself) && eq_path(lp, rp),
@@ -308,13 +308,15 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ty: lt,
                 mutability: lm,
                 expr: le,
+                safety: ls,
             }),
             Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
+                safety: rs,
             }),
-        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Const(box ConstItem {
                 defaultness: ld,
@@ -386,21 +388,21 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (
             Trait(box ast::Trait {
                 is_auto: la,
-                unsafety: lu,
+                safety: lu,
                 generics: lg,
                 bounds: lb,
                 items: li,
             }),
             Trait(box ast::Trait {
                 is_auto: ra,
-                unsafety: ru,
+                safety: ru,
                 generics: rg,
                 bounds: rb,
                 items: ri,
             }),
         ) => {
             la == ra
-                && matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
+                && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
@@ -408,7 +410,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (TraitAlias(lg, lb), TraitAlias(rg, rb)) => eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
         (
             Impl(box ast::Impl {
-                unsafety: lu,
+                safety: lu,
                 polarity: lp,
                 defaultness: ld,
                 constness: lc,
@@ -418,7 +420,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: li,
             }),
             Impl(box ast::Impl {
-                unsafety: ru,
+                safety: ru,
                 polarity: rp,
                 defaultness: rd,
                 constness: rc,
@@ -428,7 +430,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: ri,
             }),
         ) => {
-            matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
+            matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && matches!(lp, ImplPolarity::Positive) == matches!(rp, ImplPolarity::Positive)
                 && eq_defaultness(*ld, *rd)
                 && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
@@ -447,17 +449,19 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     use ForeignItemKind::*;
     match (l, r) {
         (
-            Static(box StaticForeignItem {
+            Static(box StaticItem {
                 ty: lt,
                 mutability: lm,
                 expr: le,
+                safety: ls,
             }),
-            Static(box StaticForeignItem {
+            Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
+                safety: rs,
             }),
-        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re) && ls == rs,
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -605,7 +609,7 @@ fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> 
 }
 
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
-    matches!(l.unsafety, Unsafe::No) == matches!(r.unsafety, Unsafe::No)
+    matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
         && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
@@ -712,7 +716,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
             both(ll, rl, |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
         (BareFn(l), BareFn(r)) => {
-            l.unsafety == r.unsafety
+            l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
                 && over(&l.generic_params, &r.generic_params, eq_generic_param)
                 && eq_fn_decl(&l.decl, &r.decl)
@@ -720,12 +724,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Tup(l), Tup(r)) => over(l, r, |l, r| eq_ty(l, r)),
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, eq_qself) && eq_path(lp, rp),
         (TraitObject(lg, ls), TraitObject(rg, rs)) => ls == rs && over(lg, rg, eq_generic_bound),
-        (ImplTrait(_, lg, lc), ImplTrait(_, rg, rc)) => {
-            over(lg, rg, eq_generic_bound)
-                && both(lc, rc, |lc, rc| {
-                    over(lc.0.as_slice(), rc.0.as_slice(), eq_precise_capture)
-                })
-        },
+        (ImplTrait(_, lg), ImplTrait(_, rg)) => over(lg, rg, eq_generic_bound),
         (Typeof(l), Typeof(r)) => eq_expr(&l.value, &r.value),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         _ => false,
@@ -802,8 +801,8 @@ fn eq_term(l: &Term, r: &Term) -> bool {
     }
 }
 
-pub fn eq_assoc_constraint(l: &AssocConstraint, r: &AssocConstraint) -> bool {
-    use AssocConstraintKind::*;
+pub fn eq_assoc_item_constraint(l: &AssocItemConstraint, r: &AssocItemConstraint) -> bool {
+    use AssocItemConstraintKind::*;
     eq_id(l.ident, r.ident)
         && match (&l.kind, &r.kind) {
             (Equality { term: l }, Equality { term: r }) => eq_term(l, r),

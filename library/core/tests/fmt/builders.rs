@@ -441,7 +441,7 @@ mod debug_map {
             }
         }
 
-        format!("{Foo:?}");
+        let _ = format!("{Foo:?}");
     }
 
     #[test]
@@ -455,7 +455,7 @@ mod debug_map {
             }
         }
 
-        format!("{Foo:?}");
+        let _ = format!("{Foo:?}");
     }
 
     #[test]
@@ -469,7 +469,7 @@ mod debug_map {
             }
         }
 
-        format!("{Foo:?}");
+        let _ = format!("{Foo:?}");
     }
 }
 

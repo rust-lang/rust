@@ -15,17 +15,17 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(test))]
-use crate::intrinsics;
-#[cfg(not(test))]
-use crate::sys::cmath;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f64::{
     consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
     MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
 };
+
+#[cfg(not(test))]
+use crate::intrinsics;
+#[cfg(not(test))]
+use crate::sys::cmath;
 
 #[cfg(not(test))]
 impl f64 {
@@ -520,7 +520,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
-        crate::sys::log_wrapper(self, |n| unsafe { intrinsics::logf64(n) })
+        unsafe { intrinsics::logf64(self) }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -574,7 +574,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        crate::sys::log_wrapper(self, crate::sys::log2f64)
+        crate::sys::log2f64(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -599,7 +599,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
-        crate::sys::log_wrapper(self, |n| unsafe { intrinsics::log10f64(n) })
+        unsafe { intrinsics::log10f64(self) }
     }
 
     /// The positive difference of two numbers.

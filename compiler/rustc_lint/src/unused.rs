@@ -1,27 +1,27 @@
+use std::iter;
+use std::ops::ControlFlow;
+
+use rustc_ast as ast;
+use rustc_ast::util::{classify, parser};
+use rustc_ast::{ExprKind, StmtKind};
+use rustc_errors::{pluralize, MultiSpan};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
+use rustc_infer::traits::util::elaborate;
+use rustc_middle::ty::{self, adjustment, Ty};
+use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{BytePos, Span};
+use tracing::instrument;
+
 use crate::lints::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
     UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion,
     UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
     UnusedResult,
 };
-use crate::Lint;
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast as ast;
-use rustc_ast::util::{classify, parser};
-use rustc_ast::{ExprKind, StmtKind};
-use rustc_errors::{pluralize, MultiSpan};
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_infer::traits::util::elaborate;
-use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::symbol::Symbol;
-use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, Span};
-use std::iter;
-use std::ops::ControlFlow;
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Lint, LintContext};
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -288,7 +288,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     is_ty_must_use(cx, boxed_ty, expr, span)
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
                 }
-                ty::Adt(def, args) if cx.tcx.lang_items().pin_type() == Some(def.did()) => {
+                ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::Pin) => {
                     let pinned_ty = args.type_at(0);
                     is_ty_must_use(cx, pinned_ty, expr, span)
                         .map(|inner| MustUsePath::Pinned(Box::new(inner)))
@@ -297,9 +297,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
                     elaborate(
                         cx.tcx,
-                        cx.tcx
-                            .explicit_item_super_predicates(def)
-                            .instantiate_identity_iter_copied(),
+                        cx.tcx.explicit_item_super_predicates(def).iter_identity_copied(),
                     )
                     // We only care about self bounds for the impl-trait
                     .filter_only_self()
@@ -386,7 +384,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             }
         }
 
-        // Returns whether further errors should be suppressed because either a lint has been emitted or the type should be ignored.
+        // Returns whether further errors should be suppressed because either a lint has been
+        // emitted or the type should be ignored.
         fn check_must_use_def(
             cx: &LateContext<'_>,
             def_id: DefId,
@@ -676,7 +675,35 @@ trait UnusedDelimLint {
             return true;
         }
 
-        // Check if LHS needs parens to prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`.
+        // Check if LHS needs parens to prevent false-positives in cases like
+        // `fn x() -> u8 { ({ 0 } + 1) }`.
+        //
+        // FIXME: https://github.com/rust-lang/rust/issues/119426
+        // The syntax tree in this code is from after macro expansion, so the
+        // current implementation has both false negatives and false positives
+        // related to expressions containing macros.
+        //
+        //     macro_rules! m1 {
+        //         () => {
+        //             1
+        //         };
+        //     }
+        //
+        //     fn f1() -> u8 {
+        //         // Lint says parens are not needed, but they are.
+        //         (m1! {} + 1)
+        //     }
+        //
+        //     macro_rules! m2 {
+        //         () => {
+        //             loop { break 1; }
+        //         };
+        //     }
+        //
+        //     fn f2() -> u8 {
+        //         // Lint says parens are needed, but they are not.
+        //         (m2!() + 1)
+        //     }
         {
             let mut innermost = inner;
             loop {
@@ -694,7 +721,8 @@ trait UnusedDelimLint {
             }
         }
 
-        // Check if RHS needs parens to prevent false-positives in cases like `if (() == return) {}`.
+        // Check if RHS needs parens to prevent false-positives in cases like `if (() == return)
+        // {}`.
         if !followed_by_block {
             return false;
         }
@@ -1176,7 +1204,8 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
-        use ast::{Mutability, PatKind::*};
+        use ast::Mutability;
+        use ast::PatKind::*;
         let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
@@ -1237,7 +1266,7 @@ impl EarlyLintPass for UnusedParens {
                     ast::TyKind::TraitObject(..) => {}
                     ast::TyKind::BareFn(b)
                         if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
-                    ast::TyKind::ImplTrait(_, bounds, _) if bounds.len() > 1 => {}
+                    ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
                     _ => {
                         let spans = if !ty.span.from_expansion() {
                             r.span

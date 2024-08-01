@@ -8,7 +8,7 @@
 //!
 //! !
 
-// @has 'foo/index.html'
-// @has - '//h2/a[@href="https://a.com"]' 'a link'
-// @has - '//h3/a[@href="https://b.com"]' 'multiple'
-// @has - '//h3/a[@href="https://c.com"]' 'links'
+//@ has 'foo/index.html'
+//@ has - '//h2/a[@href="https://a.com"]' 'a link'
+//@ has - '//h3/a[@href="https://b.com"]' 'multiple'
+//@ has - '//h3/a[@href="https://c.com"]' 'links'

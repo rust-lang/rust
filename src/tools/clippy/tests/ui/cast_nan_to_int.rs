@@ -1,3 +1,5 @@
+// FIXME(f16_f128): add tests when constants are available
+
 #![warn(clippy::cast_nan_to_int)]
 #![allow(clippy::eq_op)]
 

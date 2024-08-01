@@ -65,9 +65,6 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::errors::GenericArgsOnOverriddenImpl;
-use crate::{constrained_generic_params as cgp, errors};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -75,12 +72,14 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{self, GenericArg, GenericArgs, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_args_with_cause, wf, ObligationCtxt};
+
+use crate::errors::GenericArgsOnOverriddenImpl;
+use crate::{constrained_generic_params as cgp, errors};
 
 pub(super) fn check_min_specialization(
     tcx: TyCtxt<'_>,
@@ -196,7 +195,7 @@ fn get_impl_args(
     impl2_node: Node,
 ) -> Result<(GenericArgsRef<'_>, GenericArgsRef<'_>), ErrorGuaranteed> {
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let param_env = tcx.param_env(impl1_def_id);
     let impl1_span = tcx.def_span(impl1_def_id);
     let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl1_def_id)?;
@@ -212,7 +211,7 @@ fn get_impl_args(
             traits::ObligationCause::new(
                 impl1_span,
                 impl1_def_id,
-                traits::ObligationCauseCode::BindingObligation(impl2_node.def_id(), span),
+                traits::ObligationCauseCode::WhereClause(impl2_node.def_id(), span),
             )
         },
     );
@@ -258,23 +257,20 @@ fn unconstrained_parent_impl_args<'tcx>(
     // unconstrained parameters.
     for (clause, _) in impl_generic_predicates.predicates.iter() {
         if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder() {
-            let projection_ty = proj.projection_ty;
-            let projected_ty = proj.term;
-
-            let unbound_trait_ref = projection_ty.trait_ref(tcx);
+            let unbound_trait_ref = proj.projection_term.trait_ref(tcx);
             if Some(unbound_trait_ref) == impl_trait_ref {
                 continue;
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, projection_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, proj.projection_term, true));
 
-            for param in cgp::parameters_for(tcx, projected_ty, false) {
+            for param in cgp::parameters_for(tcx, proj.term, false) {
                 if !unconstrained_parameters.contains(&param) {
                     constrained_params.insert(param.0);
                 }
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, projected_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, proj.term, true));
         }
     }
 
@@ -495,11 +491,11 @@ fn check_specialization_on<'tcx>(
                     .emit())
             }
         }
-        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => Err(tcx
+        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_term, term }) => Err(tcx
             .dcx()
             .struct_span_err(
                 span,
-                format!("cannot specialize on associated type `{projection_ty} == {term}`",),
+                format!("cannot specialize on associated type `{projection_term} == {term}`",),
             )
             .emit()),
         ty::ClauseKind::ConstArgHasType(..) => {

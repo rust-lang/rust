@@ -10,8 +10,9 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
 #![feature(trait_upcasting)]
+#![feature(strict_overflow_ops)]
+#![feature(is_none_or)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -34,6 +35,7 @@
     clippy::bool_to_int_with_if,
     clippy::box_default,
     clippy::needless_question_mark,
+    clippy::needless_lifetimes,
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
@@ -51,7 +53,6 @@
 
 // Some "regular" crates we want to share with rustc
 extern crate either;
-#[macro_use]
 extern crate tracing;
 
 // The rustc crates we need
@@ -62,7 +63,6 @@ extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
-#[macro_use]
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -73,6 +73,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 mod alloc_addresses;
+mod alloc_bytes;
 mod borrow_tracker;
 mod clock;
 mod concurrency;
@@ -88,13 +89,24 @@ mod range_map;
 mod shims;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
+use rustc_middle::{bug, span_bug};
+use tracing::{info, trace};
 
 // Make all those symbols available in the same place as our own.
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
-pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy, Provenance as _};
+pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
+
+// Type aliases that set the provenance parameter.
+pub type Pointer = interpret::Pointer<Option<machine::Provenance>>;
+pub type StrictPointer = interpret::Pointer<machine::Provenance>;
+pub type Scalar = interpret::Scalar<machine::Provenance>;
+pub type ImmTy<'tcx> = interpret::ImmTy<'tcx, machine::Provenance>;
+pub type OpTy<'tcx> = interpret::OpTy<'tcx, machine::Provenance>;
+pub type PlaceTy<'tcx> = interpret::PlaceTy<'tcx, machine::Provenance>;
+pub type MPlaceTy<'tcx> = interpret::MPlaceTy<'tcx, machine::Provenance>;
 
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
@@ -106,6 +118,7 @@ pub use crate::shims::tls::TlsData;
 pub use crate::shims::EmulateItemResult;
 
 pub use crate::alloc_addresses::{EvalContextExt as _, ProvenanceMode};
+pub use crate::alloc_bytes::MiriAllocBytes;
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
@@ -115,11 +128,13 @@ pub use crate::borrow_tracker::{
 };
 pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
+    cpu_affinity::MAX_CPUS,
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
     init_once::{EvalContextExt as _, InitOnceId},
-    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SyncId},
+    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects},
     thread::{
-        BlockReason, CallbackTime, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
+        BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
+        TimeoutAnchor, TimeoutClock, UnblockCallback,
     },
 };
 pub use crate::diagnostics::{

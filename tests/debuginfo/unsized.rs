@@ -46,13 +46,13 @@
 // cdb-command:dx c
 // cdb-check:c                [Type: ref$<unsized::Foo<dyn$<core::fmt::Debug> > >]
 // cdb-check:    [+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
-// cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[3]]
+// cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
 
 // cdb-command:dx _box
 // cdb-check:
 // cdb-check:_box             [Type: alloc::boxed::Box<unsized::Foo<dyn$<core::fmt::Debug> >,alloc::alloc::Global>]
 // cdb-check:[+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
-// cdb-check:[...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[3]]
+// cdb-check:[...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
 
 // cdb-command:dx tuple_slice
 // cdb-check:tuple_slice      [Type: ref$<tuple$<i32,i32,slice2$<i32> > >]
@@ -62,7 +62,7 @@
 // cdb-command:dx tuple_dyn
 // cdb-check:tuple_dyn        [Type: ref$<tuple$<i32,i32,dyn$<core::fmt::Debug> > >]
 // cdb-check:    [+0x000] pointer          : 0x[...] [Type: tuple$<i32,i32,dyn$<core::fmt::Debug> > *]
-// cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[3]]
+// cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
 
 #![feature(unsized_tuple_coercion)]
 #![feature(omit_gdb_pretty_printer_section)]

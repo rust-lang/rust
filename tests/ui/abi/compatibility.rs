@@ -52,17 +52,12 @@
 //@ revisions: m68k
 //@[m68k] compile-flags: --target m68k-unknown-linux-gnu
 //@[m68k] needs-llvm-components: m68k
-// FIXME: disabled on nvptx64 since the target ABI fails the sanity check
-// see https://github.com/rust-lang/rust/issues/117480
-/* revisions: nvptx64
-  [nvptx64] compile-flags: --target nvptx64-nvidia-cuda
-  [nvptx64] needs-llvm-components: nvptx
-*/
-// FIXME: disabled since it fails on CI saying the csky component is missing
-/* revisions: csky
-  [csky] compile-flags: --target csky-unknown-linux-gnuabiv2
-  [csky] needs-llvm-components: csky
-*/
+//@ revisions: csky
+//@[csky] compile-flags: --target csky-unknown-linux-gnuabiv2
+//@[csky] needs-llvm-components: csky
+//@ revisions: nvptx64
+//@[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
+//@[nvptx64] needs-llvm-components: nvptx
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
 #![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
@@ -74,8 +69,7 @@
 
 #[cfg(host)]
 use std::{
-    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZero, ptr::NonNull, rc::Rc,
-    sync::Arc,
+    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZero, ptr::NonNull, rc::Rc, sync::Arc,
 };
 
 /// To work cross-target this test must be no_core.
@@ -276,6 +270,11 @@ test_abi_compatible!(zst_unit, Zst, ());
 #[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
+
+// `#[repr(C)]` enums should not change ABI based on individual variant inhabitedness.
+// (However, this is *not* a guarantee. We only guarantee same layout, not same ABI.)
+enum Void {}
+test_abi_compatible!(repr_c_enum_void, ReprCEnum<Void>, ReprCEnum<ReprCUnion<Void>>);
 
 // `DispatchFromDyn` relies on ABI compatibility.
 // This is interesting since these types are not `repr(transparent)`. So this is not part of our

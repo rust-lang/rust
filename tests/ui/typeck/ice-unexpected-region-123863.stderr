@@ -9,6 +9,10 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
    |
 LL + #![feature(adt_const_params)]
    |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
 
 error: `&'static str` is forbidden as the type of a const generic parameter
   --> $DIR/ice-unexpected-region-123863.rs:3:27
@@ -20,6 +24,10 @@ LL |     struct Inner<const A: &'static str>;
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
    |
 
 error[E0223]: ambiguous associated type

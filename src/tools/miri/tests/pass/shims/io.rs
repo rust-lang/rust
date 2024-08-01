@@ -15,5 +15,5 @@ fn main() {
         panic!("unsupported OS")
     };
     let err = io::Error::from_raw_os_error(raw_os_error);
-    format!("{err}: {err:?}");
+    let _ = format!("{err}: {err:?}");
 }

@@ -1,6 +1,8 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
+use std::mem;
+
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -14,10 +16,9 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use std::mem;
-
+use crate::clean::cfg::Cfg;
 use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
-use crate::clean::{cfg::Cfg, reexport_chain, AttributesExt, NestedAttributesExt};
+use crate::clean::{reexport_chain, AttributesExt, NestedAttributesExt};
 use crate::core;
 
 /// This module is used to store stuff from Rust's AST in a more convenient
@@ -614,7 +615,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
         // Unneeded.
     }
 
-    fn visit_body(&mut self, b: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, b: &hir::Body<'tcx>) {
         let prev = mem::replace(&mut self.inside_body, true);
         walk_body(self, b);
         self.inside_body = prev;

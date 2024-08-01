@@ -65,8 +65,7 @@ impl BodyValidationDiagnostic {
         owner: DefWithBodyId,
         validate_lints: bool,
     ) -> Vec<BodyValidationDiagnostic> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "BodyValidationDiagnostic::collect").entered();
+        let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
         let body = db.body(owner);
         let mut validator =
@@ -197,6 +196,9 @@ impl ExprValidator {
             let Some(pat_ty) = self.infer.type_of_pat.get(arm.pat) else {
                 return;
             };
+            if pat_ty.contains_unknown() {
+                return;
+            }
 
             // We only include patterns whose type matches the type
             // of the scrutinee expression. If we had an InvalidMatchArmPattern

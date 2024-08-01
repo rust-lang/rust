@@ -1,11 +1,13 @@
+use std::iter;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
-use std::iter;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -78,11 +80,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                                 orig_lt,
                                 ty::Region::new_early_param(
                                     tcx,
-                                    ty::EarlyParamRegion {
-                                        def_id: param.def_id,
-                                        index: param.index,
-                                        name: param.name,
-                                    },
+                                    ty::EarlyParamRegion { index: param.index, name: param.name },
                                 ),
                             );
                         }

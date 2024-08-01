@@ -1,8 +1,6 @@
 //@ check-pass
 //@ aux-build: rpitit.rs
 
-#![feature(lint_reasons)]
-
 extern crate rpitit;
 
 use rpitit::{Foo, Foreign};

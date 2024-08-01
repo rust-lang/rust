@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -11,7 +11,6 @@ use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, Pl
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::BorrowKind;
-use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use super::ASSIGN_OP_PATTERN;
 
@@ -63,7 +62,7 @@ pub(super) fn check<'tcx>(
         };
 
         let mut found = false;
-        let found_multiple = for_each_expr(e, |e| {
+        let found_multiple = for_each_expr_without_closures(e, |e| {
             if eq_expr_value(cx, assignee, e) {
                 if found {
                     return ControlFlow::Break(());
@@ -119,15 +118,8 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     }
 
     let mut s = S(HirIdSet::default());
-    let infcx = cx.tcx.infer_ctxt().build();
-    let mut v = ExprUseVisitor::new(
-        &mut s,
-        &infcx,
-        cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-        cx.param_env,
-        cx.typeck_results(),
-    );
-    v.consume_expr(e);
+    let v = ExprUseVisitor::for_clippy(cx, e.hir_id.owner.def_id, &mut s);
+    v.consume_expr(e).into_ok();
     s.0
 }
 
@@ -151,14 +143,7 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
     }
 
     let mut s = S(HirIdSet::default());
-    let infcx = cx.tcx.infer_ctxt().build();
-    let mut v = ExprUseVisitor::new(
-        &mut s,
-        &infcx,
-        cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-        cx.param_env,
-        cx.typeck_results(),
-    );
-    v.consume_expr(e);
+    let v = ExprUseVisitor::for_clippy(cx, e.hir_id.owner.def_id, &mut s);
+    v.consume_expr(e).into_ok();
     s.0
 }

@@ -17,7 +17,13 @@ error: unexpected lifetime `'static` in pattern
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:13
    |
 LL |     fn bar(&'static mur Self) {}
-   |             ^^^^^^^ help: remove the lifetime
+   |             ^^^^^^^
+   |
+help: remove the lifetime
+   |
+LL -     fn bar(&'static mur Self) {}
+LL +     fn bar(&mur Self) {}
+   |
 
 error: expected identifier, found keyword `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:25

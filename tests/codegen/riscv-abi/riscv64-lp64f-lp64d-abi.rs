@@ -1,10 +1,19 @@
-//
-//@ compile-flags: -C no-prepopulate-passes
-//@ only-riscv64
-//@ only-linux
-#![crate_type = "lib"]
+//@ compile-flags: -O -C no-prepopulate-passes --target riscv64gc-unknown-linux-gnu
+//@ needs-llvm-components: riscv
 
-// CHECK: define void @f_fpr_tracking(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, i8 zeroext %i)
+#![feature(no_core, lang_items)]
+#![crate_type = "lib"]
+#![no_std]
+#![no_core]
+
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
+
+// CHECK: define void @f_fpr_tracking(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, i8 noundef zeroext %i)
 #[no_mangle]
 pub extern "C" fn f_fpr_tracking(
     a: f32,
@@ -128,7 +137,7 @@ pub extern "C" fn f_ret_float_int64_s() -> FloatInt64 {
     FloatInt64 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_float_int8_s_arg_insufficient_gprs(i32 signext %a, i32 signext %b, i32 signext %c, i32 signext %d, i32 signext %e, i32 signext %f, i32 signext %g, i32 signext %h, i64 %0)
+// CHECK: define void @f_float_int8_s_arg_insufficient_gprs(i32 noundef signext %a, i32 noundef signext %b, i32 noundef signext %c, i32 noundef signext %d, i32 noundef signext %e, i32 noundef signext %f, i32 noundef signext %g, i32 noundef signext %h, i64 %0)
 #[no_mangle]
 pub extern "C" fn f_float_int8_s_arg_insufficient_gprs(
     a: i32,

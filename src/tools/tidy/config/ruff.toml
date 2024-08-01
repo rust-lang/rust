@@ -1,17 +1,7 @@
 # Configuration for ruff python linter, run as part of tidy external tools
 
-# B (bugbear), E (pycodestyle, standard), EXE (executables) F (flakes, standard)
-# ERM for error messages would be beneficial at some point
-select = ["B", "E", "EXE", "F"]
-
-ignore = [
-    "E501", # line-too-long
-    "F403", # undefined-local-with-import-star
-    "F405", # undefined-local-with-import-star-usage
-]
-
 # lowest possible for ruff
-target-version = "py37"
+target-version = "py39"
 
 # Ignore all submodules
 extend-exclude = [
@@ -26,6 +16,7 @@ extend-exclude = [
     "src/llvm-project/",
     "src/doc/embedded-book/",
     "library/backtrace/",
+    "src/tools/rustc-perf/",
     # Hack: CI runs from a subdirectory under the main checkout
     "../src/doc/nomicon/",
     "../src/tools/cargo/",
@@ -38,4 +29,16 @@ extend-exclude = [
     "../src/llvm-project/",
     "../src/doc/embedded-book/",
     "../library/backtrace/",
+    "../src/tools/rustc-perf/",
+]
+
+[lint]
+# B (bugbear), E (pycodestyle, standard), EXE (executables) F (flakes, standard)
+# ERM for error messages would be beneficial at some point
+select = ["B", "E", "EXE", "F"]
+
+ignore = [
+    "E501", # line-too-long
+    "F403", # undefined-local-with-import-star
+    "F405", # undefined-local-with-import-star-usage
 ]

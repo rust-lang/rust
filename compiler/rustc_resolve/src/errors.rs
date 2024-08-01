@@ -1,11 +1,11 @@
-use rustc_errors::{codes::*, Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{
-    symbol::{Ident, Symbol},
-    Span,
-};
+use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::Span;
 
-use crate::{late::PatternSource, Res};
+use crate::late::PatternSource;
+use crate::Res;
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
@@ -240,16 +240,18 @@ pub(crate) struct AttemptToUseNonConstantValueInConstant<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
+#[multipart_suggestion(
     resolve_attempt_to_use_non_constant_value_in_constant_with_suggestion,
-    code = "{suggestion} {ident}",
-    applicability = "maybe-incorrect"
+    style = "verbose",
+    applicability = "has-placeholders"
 )]
 pub(crate) struct AttemptToUseNonConstantValueInConstantWithSuggestion<'a> {
-    #[primary_span]
+    // #[primary_span]
+    #[suggestion_part(code = "{suggestion} ")]
     pub(crate) span: Span,
-    pub(crate) ident: Ident,
     pub(crate) suggestion: &'a str,
+    #[suggestion_part(code = ": /* Type */")]
+    pub(crate) type_span: Option<Span>,
     pub(crate) current: &'a str,
 }
 
@@ -667,7 +669,7 @@ pub(crate) struct MacroSuggMovePosition {
 #[note(resolve_missing_macro_rules_name)]
 pub(crate) struct MaybeMissingMacroRulesName {
     #[primary_span]
-    pub(crate) span: Span,
+    pub(crate) spans: MultiSpan,
 }
 
 #[derive(Subdiagnostic)]
@@ -882,6 +884,23 @@ pub(crate) struct ElidedAnonymousLivetimeReportError {
     pub(crate) suggestion: Option<ElidedAnonymousLivetimeReportErrorSuggestion>,
 }
 
+#[derive(Diagnostic)]
+#[diag(resolve_lending_iterator_report_error)]
+pub(crate) struct LendingIteratorReportError {
+    #[primary_span]
+    pub(crate) lifetime: Span,
+    #[note]
+    pub(crate) ty: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_anonymous_livetime_non_gat_report_error)]
+pub(crate) struct AnonymousLivetimeNonGatReportError {
+    #[primary_span]
+    #[label]
+    pub(crate) lifetime: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     resolve_elided_anonymous_lifetime_report_error_suggestion,
@@ -1072,8 +1091,8 @@ pub(crate) struct ToolWasAlreadyRegistered {
 #[derive(Diagnostic)]
 #[diag(resolve_tool_only_accepts_identifiers)]
 pub(crate) struct ToolOnlyAcceptsIdentifiers {
-    #[label]
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) tool: Symbol,
 }
@@ -1209,6 +1228,15 @@ pub(crate) struct FoundItemConfigureOut {
 #[note(resolve_item_was_behind_feature)]
 pub(crate) struct ItemWasBehindFeature {
     pub(crate) feature: Symbol,
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_item_was_cfg_out)]
+pub(crate) struct ItemWasCfgOut {
+    #[primary_span]
+    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -15,6 +15,9 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::cell::Cell;
+use std::iter;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -25,12 +28,12 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{
+    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym};
-use rustc_span::Symbol;
-use std::iter;
+use rustc_span::{ErrorGuaranteed, Symbol};
 
 use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;
@@ -186,6 +189,10 @@ struct UniversalRegionIndices<'tcx> {
 
     /// The vid assigned to `'static`. Used only for diagnostics.
     pub fr_static: RegionVid,
+
+    /// Whether we've encountered an error region. If we have, cancel all
+    /// outlives errors, as they are likely bogus.
+    pub tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -407,6 +414,10 @@ impl<'tcx> UniversalRegions<'tcx> {
                 ));
             }
         }
+    }
+
+    pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
+        self.indices.tainted_by_errors.get()
     }
 }
 
@@ -663,7 +674,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
         let arg_mapping = iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
 
-        UniversalRegionIndices { indices: global_mapping.chain(arg_mapping).collect(), fr_static }
+        UniversalRegionIndices {
+            indices: global_mapping.chain(arg_mapping).collect(),
+            fr_static,
+            tainted_by_errors: Cell::new(None),
+        }
     }
 
     fn compute_inputs_and_output(
@@ -868,7 +883,8 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::ReVar(..) = *r {
             r.as_var()
-        } else if r.is_error() {
+        } else if let ty::ReError(guar) = *r {
+            self.tainted_by_errors.set(Some(guar));
             // We use the `'static` `RegionVid` because `ReError` doesn't actually exist in the
             // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if
             // errors are being emitted and 2) it leaves the happy path unaffected.

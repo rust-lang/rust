@@ -18,6 +18,10 @@ use hir_expand::{mod_path::ModPath, HirFileIdExt, InFile};
 use intern::Interned;
 use la_arena::ArenaMap;
 use rustc_abi::TargetDataLayout;
+use rustc_apfloat::{
+    ieee::{Half as f16, Quad as f128},
+    Float,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
@@ -54,6 +58,13 @@ macro_rules! from_bytes {
             Ok(it) => it,
             Err(_) => return Err(MirEvalError::InternalError(stringify!(mismatched size in constructing $ty).into())),
         }))
+    };
+    ($apfloat:tt, $bits:tt, $value:expr) => {
+        // FIXME(#17451): Switch to builtin `f16` and `f128` once they are stable.
+        $apfloat::from_bits($bits::from_le_bytes(match ($value).try_into() {
+            Ok(it) => it,
+            Err(_) => return Err(MirEvalError::InternalError(stringify!(mismatched size in constructing $apfloat).into())),
+        }).into())
     };
 }
 
@@ -363,7 +374,7 @@ impl MirEvalError {
                         )?;
                     }
                     Either::Right(closure) => {
-                        writeln!(f, "In {:?}", closure)?;
+                        writeln!(f, "In {closure:?}")?;
                     }
                 }
                 let source_map = db.body_with_source_map(*def).1;
@@ -424,9 +435,20 @@ impl MirEvalError {
             | MirEvalError::StackOverflow
             | MirEvalError::CoerceUnsizedError(_)
             | MirEvalError::InternalError(_)
-            | MirEvalError::InvalidVTableId(_) => writeln!(f, "{:?}", err)?,
+            | MirEvalError::InvalidVTableId(_) => writeln!(f, "{err:?}")?,
         }
         Ok(())
+    }
+
+    pub fn is_panic(&self) -> Option<&str> {
+        let mut err = self;
+        while let MirEvalError::InFunction(e, _) = err {
+            err = e;
+        }
+        match err {
+            MirEvalError::Panic(msg) => Some(msg),
+            _ => None,
+        }
     }
 }
 
@@ -1099,6 +1121,10 @@ impl Evaluator<'_> {
                 }
                 if let TyKind::Scalar(chalk_ir::Scalar::Float(f)) = ty.kind(Interner) {
                     match f {
+                        chalk_ir::FloatTy::F16 => {
+                            let c = -from_bytes!(f16, u16, c);
+                            Owned(u16::try_from(c.to_bits()).unwrap().to_le_bytes().into())
+                        }
                         chalk_ir::FloatTy::F32 => {
                             let c = -from_bytes!(f32, c);
                             Owned(c.to_le_bytes().into())
@@ -1106,6 +1132,10 @@ impl Evaluator<'_> {
                         chalk_ir::FloatTy::F64 => {
                             let c = -from_bytes!(f64, c);
                             Owned(c.to_le_bytes().into())
+                        }
+                        chalk_ir::FloatTy::F128 => {
+                            let c = -from_bytes!(f128, u128, c);
+                            Owned(c.to_bits().to_le_bytes().into())
                         }
                     }
                 } else {
@@ -1138,7 +1168,7 @@ impl Evaluator<'_> {
                 let mut ty = self.operand_ty(lhs, locals)?;
                 while let TyKind::Ref(_, _, z) = ty.kind(Interner) {
                     ty = z.clone();
-                    let size = if ty.kind(Interner) == &TyKind::Str {
+                    let size = if ty.is_str() {
                         if *op != BinOp::Eq {
                             never!("Only eq is builtin for `str`");
                         }
@@ -1158,6 +1188,39 @@ impl Evaluator<'_> {
                 }
                 if let TyKind::Scalar(chalk_ir::Scalar::Float(f)) = ty.kind(Interner) {
                     match f {
+                        chalk_ir::FloatTy::F16 => {
+                            let l = from_bytes!(f16, u16, lc);
+                            let r = from_bytes!(f16, u16, rc);
+                            match op {
+                                BinOp::Ge
+                                | BinOp::Gt
+                                | BinOp::Le
+                                | BinOp::Lt
+                                | BinOp::Eq
+                                | BinOp::Ne => {
+                                    let r = op.run_compare(l, r) as u8;
+                                    Owned(vec![r])
+                                }
+                                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => {
+                                    let r = match op {
+                                        BinOp::Add => l + r,
+                                        BinOp::Sub => l - r,
+                                        BinOp::Mul => l * r,
+                                        BinOp::Div => l / r,
+                                        _ => unreachable!(),
+                                    };
+                                    Owned(
+                                        u16::try_from(r.value.to_bits())
+                                            .unwrap()
+                                            .to_le_bytes()
+                                            .into(),
+                                    )
+                                }
+                                it => not_supported!(
+                                    "invalid binop {it:?} on floating point operators"
+                                ),
+                            }
+                        }
                         chalk_ir::FloatTy::F32 => {
                             let l = from_bytes!(f32, lc);
                             let r = from_bytes!(f32, rc);
@@ -1208,6 +1271,34 @@ impl Evaluator<'_> {
                                         _ => unreachable!(),
                                     };
                                     Owned(r.to_le_bytes().into())
+                                }
+                                it => not_supported!(
+                                    "invalid binop {it:?} on floating point operators"
+                                ),
+                            }
+                        }
+                        chalk_ir::FloatTy::F128 => {
+                            let l = from_bytes!(f128, u128, lc);
+                            let r = from_bytes!(f128, u128, rc);
+                            match op {
+                                BinOp::Ge
+                                | BinOp::Gt
+                                | BinOp::Le
+                                | BinOp::Lt
+                                | BinOp::Eq
+                                | BinOp::Ne => {
+                                    let r = op.run_compare(l, r) as u8;
+                                    Owned(vec![r])
+                                }
+                                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => {
+                                    let r = match op {
+                                        BinOp::Add => l + r,
+                                        BinOp::Sub => l - r,
+                                        BinOp::Mul => l * r,
+                                        BinOp::Div => l / r,
+                                        _ => unreachable!(),
+                                    };
+                                    Owned(r.value.to_bits().to_le_bytes().into())
                                 }
                                 it => not_supported!(
                                     "invalid binop {it:?} on floating point operators"

@@ -48,21 +48,30 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
     let mut p = Printer { db, body, buf: header, indent_level: 0, needs_indent: false };
     if let DefWithBodyId::FunctionId(it) = owner {
         p.buf.push('(');
-        let params = &db.function_data(it).params;
-        let mut params = params.iter();
+        let function_data = &db.function_data(it);
+        let (mut params, ret_type) = (function_data.params.iter(), &function_data.ret_type);
         if let Some(self_param) = body.self_param {
             p.print_binding(self_param);
-            p.buf.push(':');
+            p.buf.push_str(": ");
             if let Some(ty) = params.next() {
                 p.print_type_ref(ty);
+                p.buf.push_str(", ");
             }
         }
         body.params.iter().zip(params).for_each(|(&param, ty)| {
             p.print_pat(param);
-            p.buf.push(':');
+            p.buf.push_str(": ");
             p.print_type_ref(ty);
+            p.buf.push_str(", ");
         });
+        // remove the last ", " in param list
+        if body.params.len() > 0 {
+            p.buf.truncate(p.buf.len() - 2);
+        }
         p.buf.push(')');
+        // return type
+        p.buf.push_str(" -> ");
+        p.print_type_ref(ret_type);
         p.buf.push(' ');
     }
     p.print_expr(body.body_expr);

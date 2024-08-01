@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::find_all_ret_expressions;
@@ -63,9 +64,9 @@ pub struct UnnecessaryWraps {
 impl_lint_pass!(UnnecessaryWraps => [UNNECESSARY_WRAPS]);
 
 impl UnnecessaryWraps {
-    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
         }
     }
 }

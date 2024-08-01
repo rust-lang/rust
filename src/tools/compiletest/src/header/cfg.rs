@@ -1,6 +1,7 @@
+use std::collections::HashSet;
+
 use crate::common::{CompareMode, Config, Debugger, Mode};
 use crate::header::IgnoreDecision;
-use std::collections::HashSet;
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
 
@@ -58,7 +59,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
 
     // Some of the matchers might be "" depending on what the target information is. To avoid
     // problems we outright reject empty directives.
-    if name == "" {
+    if name.is_empty() {
         return ParsedNameDirective::not_a_directive();
     }
 
@@ -157,6 +158,12 @@ pub(super) fn parse_cfg_name_directive<'a>(
         name: "thumb",
         condition: config.target.starts_with("thumb"),
         message: "when the architecture is part of the Thumb family"
+    }
+
+    condition! {
+        name: "apple",
+        condition: config.target.contains("apple"),
+        message: "when the target vendor is Apple"
     }
 
     // Technically the locally built compiler uses the "dev" channel rather than the "nightly"

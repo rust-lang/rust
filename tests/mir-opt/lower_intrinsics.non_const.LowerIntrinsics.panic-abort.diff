@@ -3,8 +3,8 @@
   
   fn non_const() -> usize {
       let mut _0: usize;
-      let _1: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>};
-      let mut _2: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>};
+      let _1: fn() -> usize {std::intrinsics::size_of::<T>};
+      let mut _2: fn() -> usize {std::intrinsics::size_of::<T>};
       scope 1 {
           debug size_of_t => _1;
       }

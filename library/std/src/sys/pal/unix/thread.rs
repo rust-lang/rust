@@ -1,16 +1,13 @@
-use crate::cmp;
 use crate::ffi::CStr;
-use crate::io;
-use crate::mem;
+use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
-use crate::ptr;
-use crate::sys::{os, stack_overflow};
-use crate::time::Duration;
-
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
 use crate::sys::weak::weak;
+use crate::sys::{os, stack_overflow};
+use crate::time::Duration;
+use crate::{cmp, io, ptr};
 #[cfg(not(any(target_os = "l4re", target_os = "vxworks", target_os = "espidf")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 #[cfg(target_os = "l4re")]
@@ -268,11 +265,9 @@ impl Thread {
     }
 
     pub fn join(self) {
-        unsafe {
-            let ret = libc::pthread_join(self.id, ptr::null_mut());
-            mem::forget(self);
-            assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
-        }
+        let id = self.into_id();
+        let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
+        assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
     }
 
     pub fn id(&self) -> libc::pthread_t {
@@ -280,9 +275,7 @@ impl Thread {
     }
 
     pub fn into_id(self) -> libc::pthread_t {
-        let id = self.id;
-        mem::forget(self);
-        id
+        ManuallyDrop::new(self).id
     }
 }
 
@@ -475,14 +468,13 @@ mod cgroups {
     //! * cgroup v2 in non-standard mountpoints
     //! * paths containing control characters or spaces, since those would be escaped in procfs
     //!   output and we don't unescape
+
     use crate::borrow::Cow;
     use crate::ffi::OsString;
-    use crate::fs::{try_exists, File};
-    use crate::io::Read;
-    use crate::io::{BufRead, BufReader};
+    use crate::fs::{exists, File};
+    use crate::io::{BufRead, BufReader, Read};
     use crate::os::unix::ffi::OsStringExt;
-    use crate::path::Path;
-    use crate::path::PathBuf;
+    use crate::path::{Path, PathBuf};
     use crate::str::from_utf8;
 
     #[derive(PartialEq)]
@@ -555,7 +547,7 @@ mod cgroups {
         path.push("cgroup.controllers");
 
         // skip if we're not looking at cgroup2
-        if matches!(try_exists(&path), Err(_) | Ok(false)) {
+        if matches!(exists(&path), Err(_) | Ok(false)) {
             return usize::MAX;
         };
 
@@ -612,7 +604,7 @@ mod cgroups {
             path.push(&group_path);
 
             // skip if we guessed the mount incorrectly
-            if matches!(try_exists(&path), Err(_) | Ok(false)) {
+            if matches!(exists(&path), Err(_) | Ok(false)) {
                 continue;
             }
 
@@ -717,5 +709,14 @@ unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
 
 #[cfg(target_os = "netbsd")]
 unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    2048 // just a guess
+    static STACK: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
+
+    *STACK.get_or_init(|| {
+        let mut stack = unsafe { libc::sysconf(libc::_SC_THREAD_STACK_MIN) };
+        if stack < 0 {
+            stack = 2048; // just a guess
+        }
+
+        stack as usize
+    })
 }

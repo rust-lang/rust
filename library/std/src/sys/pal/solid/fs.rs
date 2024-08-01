@@ -1,18 +1,15 @@
 use super::{abi, error};
-use crate::{
-    ffi::{CStr, CString, OsStr, OsString},
-    fmt,
-    io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom},
-    mem::MaybeUninit,
-    os::raw::{c_int, c_short},
-    os::solid::ffi::OsStrExt,
-    path::{Path, PathBuf},
-    sync::Arc,
-    sys::time::SystemTime,
-    sys::unsupported,
-};
-
-pub use crate::sys_common::fs::try_exists;
+use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::fmt;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
+use crate::mem::MaybeUninit;
+use crate::os::raw::{c_int, c_short};
+use crate::os::solid::ffi::OsStrExt;
+use crate::path::{Path, PathBuf};
+use crate::sync::Arc;
+use crate::sys::time::SystemTime;
+use crate::sys::unsupported;
+pub use crate::sys_common::fs::exists;
 
 /// A file descriptor.
 #[derive(Clone, Copy)]

@@ -1,16 +1,16 @@
 #[link(name = "extern_1.dll", kind = "raw-dylib", modifiers = "+verbatim")]
-extern {
+extern "C" {
     fn extern_fn_1();
 }
 
 #[link(name = "extern_2", kind = "raw-dylib")]
-extern {
+extern "C" {
     fn extern_fn_3();
 }
 
 pub fn library_function() {
     #[link(name = "extern_1", kind = "raw-dylib")]
-    extern {
+    extern "C" {
         fn extern_fn_2();
         fn print_extern_variable();
         static mut extern_variable: i32;

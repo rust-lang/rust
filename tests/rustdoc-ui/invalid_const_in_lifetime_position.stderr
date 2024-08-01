@@ -18,7 +18,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
    |
 LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
-   |                          ^--- help: remove these generics
+   |                          ^--- help: remove the unnecessary generics
    |                          |
    |                          expected 0 generic arguments
    |
@@ -49,7 +49,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
    |
 LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
-   |                          ^--- help: remove these generics
+   |                          ^--- help: remove the unnecessary generics
    |                          |
    |                          expected 0 generic arguments
    |
@@ -81,7 +81,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
    |
 LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
-   |                          ^--- help: remove these generics
+   |                          ^--- help: remove the unnecessary generics
    |                          |
    |                          expected 0 generic arguments
    |

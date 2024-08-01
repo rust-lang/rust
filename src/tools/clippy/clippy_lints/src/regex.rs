@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
         // `def_path_def_ids` will resolve through re-exports but is relatively heavy, so we only perform
         // the operation once and store the results
         let mut resolve = |path, kind| {
-            for id in def_path_def_ids(cx, path) {
+            for id in def_path_def_ids(cx.tcx, path) {
                 self.definitions.insert(id, kind);
             }
         };

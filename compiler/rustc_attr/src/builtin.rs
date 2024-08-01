@@ -1,8 +1,12 @@
 //! Parsing and validation of builtin attributes
 
+use std::num::NonZero;
+
 use rustc_abi::Align;
-use rustc_ast::{self as ast, attr};
-use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
+use rustc_ast::{
+    self as ast, attr, Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem,
+    NodeId,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
@@ -13,8 +17,8 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
-use rustc_span::{symbol::sym, symbol::Symbol, Span};
-use std::num::NonZero;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
@@ -528,15 +532,10 @@ pub fn cfg_matches(
         try_gate_cfg(cfg.name, cfg.span, sess, features);
         match sess.psess.check_config.expecteds.get(&cfg.name) {
             Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.psess.buffer_lint_with_diagnostic(
+                sess.psess.buffer_lint(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
-                    if let Some(value) = cfg.value {
-                        format!("unexpected `cfg` condition value: `{value}`")
-                    } else {
-                        format!("unexpected `cfg` condition value: (none)")
-                    },
                     BuiltinLintDiag::UnexpectedCfgValue(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
@@ -544,11 +543,10 @@ pub fn cfg_matches(
                 );
             }
             None if sess.psess.check_config.exhaustive_names => {
-                sess.psess.buffer_lint_with_diagnostic(
+                sess.psess.buffer_lint(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
-                    format!("unexpected `cfg` condition name: `{}`", cfg.name),
                     BuiltinLintDiag::UnexpectedCfgName(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
@@ -580,7 +578,7 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Fea
 /// Parse a rustc version number written inside string literal in an attribute,
 /// like appears in `since = "1.0.0"`. Suffixes like "-dev" and "-nightly" are
 /// not accepted in this position, unlike when parsing CFG_RELEASE.
-fn parse_version(s: Symbol) -> Option<RustcVersion> {
+pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
     let mut components = s.as_str().split('-');
     let d = components.next()?;
     if components.next().is_some() {
@@ -602,7 +600,7 @@ pub fn eval_condition(
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
-    let dcx = &sess.psess.dcx;
+    let dcx = sess.dcx();
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);

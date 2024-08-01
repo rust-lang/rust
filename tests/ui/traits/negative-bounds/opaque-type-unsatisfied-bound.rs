@@ -18,3 +18,4 @@ fn weird1() -> impl !Sized + Sized {}
 //~^ ERROR type mismatch resolving `impl !Sized + Sized == ()`
 fn weird2() -> impl !Sized {}
 //~^ ERROR type mismatch resolving `impl !Sized == ()`
+//~| ERROR the size for values of type `impl !Sized` cannot be known at compilation time

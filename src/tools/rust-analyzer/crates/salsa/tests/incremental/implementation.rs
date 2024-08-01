@@ -26,7 +26,7 @@ pub(crate) struct TestContextImpl {
 impl TestContextImpl {
     #[track_caller]
     pub(crate) fn assert_log(&self, expected_log: &[&str]) {
-        let expected_text = &format!("{:#?}", expected_log);
+        let expected_text = &format!("{expected_log:#?}");
         let actual_text = &format!("{:#?}", self.log().take());
 
         if expected_text == actual_text {
@@ -36,9 +36,9 @@ impl TestContextImpl {
         #[allow(clippy::print_stdout)]
         for diff in dissimilar::diff(expected_text, actual_text) {
             match diff {
-                dissimilar::Chunk::Delete(l) => println!("-{}", l),
-                dissimilar::Chunk::Equal(l) => println!(" {}", l),
-                dissimilar::Chunk::Insert(r) => println!("+{}", r),
+                dissimilar::Chunk::Delete(l) => println!("-{l}"),
+                dissimilar::Chunk::Equal(l) => println!(" {l}"),
+                dissimilar::Chunk::Insert(r) => println!("+{r}"),
             }
         }
 

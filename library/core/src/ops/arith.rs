@@ -73,7 +73,6 @@
     append_const_msg
 )]
 #[doc(alias = "+")]
-#[const_trait]
 pub trait Add<Rhs = Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -95,8 +94,7 @@ pub trait Add<Rhs = Self> {
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const Add for $t {
+        impl Add for $t {
             type Output = $t;
 
             #[inline]

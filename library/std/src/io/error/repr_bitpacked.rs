@@ -28,7 +28,7 @@
 //!
 //! # Layout
 //! Tagged values are 64 bits, with the 2 least significant bits used for the
-//! tag. This means there are there are 4 "variants":
+//! tag. This means there are 4 "variants":
 //!
 //! - **Tag 0b00**: The first variant is equivalent to
 //!   `ErrorData::SimpleMessage`, and holds a `&'static SimpleMessage` directly.
@@ -102,10 +102,10 @@
 //! to use a pointer type to store something that may hold an integer, some of
 //! the time.
 
-use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 use core::marker::PhantomData;
-use core::mem::{align_of, size_of};
 use core::ptr::{self, NonNull};
+
+use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 
 // The 2 least-significant bits are used as tag.
 const TAG_MASK: usize = 0b11;
@@ -268,11 +268,14 @@ where
                 // Using this rather than unwrap meaningfully improves the code
                 // for callers which only care about one variant (usually
                 // `Custom`)
-                core::hint::unreachable_unchecked();
+                unsafe { core::hint::unreachable_unchecked() };
             });
             ErrorData::Simple(kind)
         }
-        TAG_SIMPLE_MESSAGE => ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()),
+        TAG_SIMPLE_MESSAGE => {
+            // SAFETY: per tag
+            unsafe { ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()) }
+        }
         TAG_CUSTOM => {
             // It would be correct for us to use `ptr::byte_sub` here (see the
             // comment above the `wrapping_add` call in `new_custom` for why),

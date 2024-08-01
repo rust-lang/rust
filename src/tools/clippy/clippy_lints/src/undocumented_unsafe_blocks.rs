@@ -1,9 +1,10 @@
 use std::ops::ControlFlow;
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
+use clippy_utils::visitors::{for_each_expr, Descend};
 use hir::HirId;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -38,10 +39,9 @@ declare_clippy_lint! {
     /// );
     /// ```
     ///
-    /// ### Why is this bad?
-    /// Undocumented unsafe blocks and impls can make it difficult to
-    /// read and maintain code, as well as uncover unsoundness
-    /// and bugs.
+    /// ### Why restrict this?
+    /// Undocumented unsafe blocks and impls can make it difficult to read and maintain code.
+    /// Writing out the safety justification may help in discovering unsoundness or bugs.
     ///
     /// ### Example
     /// ```no_run
@@ -67,7 +67,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `// SAFETY: ` comments on safe code.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Safe code has no safety requirements, so there is no need to
     /// describe safety invariants.
     ///
@@ -92,17 +92,16 @@ declare_clippy_lint! {
     "annotating safe code with a safety comment"
 }
 
-#[derive(Copy, Clone)]
 pub struct UndocumentedUnsafeBlocks {
     accept_comment_above_statement: bool,
     accept_comment_above_attributes: bool,
 }
 
 impl UndocumentedUnsafeBlocks {
-    pub fn new(accept_comment_above_statement: bool, accept_comment_above_attributes: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            accept_comment_above_statement,
-            accept_comment_above_attributes,
+            accept_comment_above_statement: conf.accept_comment_above_statement,
+            accept_comment_above_attributes: conf.accept_comment_above_attributes,
         }
     }
 }
@@ -200,7 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         let item_has_safety_comment = item_has_safety_comment(cx, item);
         match (&item.kind, item_has_safety_comment) {
             // lint unsafe impl without safety comment
-            (ItemKind::Impl(impl_), HasSafetyComment::No) if impl_.unsafety == hir::Unsafety::Unsafe => {
+            (ItemKind::Impl(impl_), HasSafetyComment::No) if impl_.safety == hir::Safety::Unsafe => {
                 if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, item.hir_id())
                     && !is_unsafe_from_proc_macro(cx, item.span)
                 {
@@ -222,7 +221,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                 }
             },
             // lint safe impl with unnecessary safety comment
-            (ItemKind::Impl(impl_), HasSafetyComment::Yes(pos)) if impl_.unsafety == hir::Unsafety::Normal => {
+            (ItemKind::Impl(impl_), HasSafetyComment::Yes(pos)) if impl_.safety == hir::Safety::Safe => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
                     let (span, help_span) = mk_spans(pos);
 
@@ -297,7 +296,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     }
 
     // this should roughly be the reverse of `block_parents_have_safety_comment`
-    if for_each_expr_with_closures(cx, expr, |expr| match expr.kind {
+    if for_each_expr(cx, expr, |expr| match expr.kind {
         hir::ExprKind::Block(
             Block {
                 rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),

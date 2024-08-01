@@ -35,7 +35,7 @@ LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&u8>, y: &u8) { x.push(y); }
    |                                               |        let's call the lifetime of this reference `'1`
    |                                               let's call the lifetime of this reference `'2`
    |
-help: consider introducing a named lifetime parameter
+help: consider reusing a named lifetime parameter
    |
 LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |                                                ++          ++

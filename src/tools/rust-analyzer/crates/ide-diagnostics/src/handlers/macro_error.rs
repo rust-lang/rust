@@ -11,10 +11,9 @@ pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
         d.message.clone(),
         display_range,
     )
-    .experimental()
 }
 
-// Diagnostic: macro-error
+// Diagnostic: macro-def-error
 //
 // This diagnostic is shown for macro expansion errors.
 pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefError) -> Diagnostic {
@@ -26,7 +25,6 @@ pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefErr
         d.message.clone(),
         display_range,
     )
-    .experimental()
 }
 
 #[cfg(test)]

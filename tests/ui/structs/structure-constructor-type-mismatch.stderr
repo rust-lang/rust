@@ -2,61 +2,73 @@ error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:17:12
    |
 LL |         x: 1,
-   |            ^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `1.0`
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 1.0,
+   |             ++
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:20:12
    |
 LL |         y: 2,
-   |            ^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `2.0`
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         y: 2.0,
+   |             ++
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:26:12
    |
 LL |         x: 3,
-   |            ^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `3.0`
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 3.0,
+   |             ++
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:29:12
    |
 LL |         y: 4,
-   |            ^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `4.0`
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         y: 4.0,
+   |             ++
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:35:12
    |
 LL |         x: 5,
-   |            ^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `5.0`
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 5.0,
+   |             ++
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:42:12
    |
 LL |         x: 7,
-   |            ^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `7.0`
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 7.0,
+   |             ++
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/structure-constructor-type-mismatch.rs:48:15
    |
 LL |     let pt3 = PointF::<i32> {
-   |               ^^^^^^------- help: remove these generics
+   |               ^^^^^^------- help: remove the unnecessary generics
    |               |
    |               expected 0 generic arguments
    |
@@ -70,25 +82,29 @@ error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:49:12
    |
 LL |         x: 9,
-   |            ^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `9.0`
+   |            ^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         x: 9.0,
+   |             ++
 
 error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:50:12
    |
 LL |         y: 10,
-   |            ^^
-   |            |
-   |            expected `f32`, found integer
-   |            help: use a float literal: `10.0`
+   |            ^^ expected `f32`, found integer
+   |
+help: use a float literal
+   |
+LL |         y: 10.0,
+   |              ++
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/structure-constructor-type-mismatch.rs:54:9
    |
 LL |         PointF::<u32> { .. } => {}
-   |         ^^^^^^------- help: remove these generics
+   |         ^^^^^^------- help: remove the unnecessary generics
    |         |
    |         expected 0 generic arguments
    |

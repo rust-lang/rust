@@ -3,14 +3,16 @@ use std::collections::BTreeSet;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind};
+use rustc_middle::mir::coverage::{
+    BlockMarkerId, BranchSpan, ConditionInfo, CoverageInfoHi, CoverageKind,
+};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
-use crate::coverage::spans::{
-    extract_refined_covspans, unexpand_into_body_span_with_visible_macro,
-};
+use crate::coverage::spans::extract_refined_covspans;
+use crate::coverage::unexpand::unexpand_into_body_span;
 use crate::coverage::ExtractedHirInfo;
 
 /// Associates an ordinary executable code span with its corresponding BCB.
@@ -48,117 +50,133 @@ pub(super) struct MCDCDecision {
     pub(super) span: Span,
     pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
     pub(super) bitmap_idx: u32,
-    pub(super) conditions_num: u16,
+    pub(super) num_conditions: u16,
     pub(super) decision_depth: u16,
 }
 
-pub(super) struct CoverageSpans {
-    bcb_has_mappings: BitSet<BasicCoverageBlock>,
+#[derive(Default)]
+pub(super) struct ExtractedMappings {
+    /// Store our own copy of [`CoverageGraph::num_nodes`], so that we don't
+    /// need access to the whole graph when allocating per-BCB data. This is
+    /// only public so that other code can still use exhaustive destructuring.
+    pub(super) num_bcbs: usize,
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
-    test_vector_bitmap_bytes: u32,
+    pub(super) mcdc_bitmap_bytes: u32,
     pub(super) mcdc_branches: Vec<MCDCBranch>,
     pub(super) mcdc_decisions: Vec<MCDCDecision>,
 }
 
-impl CoverageSpans {
-    pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
-        self.bcb_has_mappings.contains(bcb)
-    }
-
-    pub(super) fn test_vector_bitmap_bytes(&self) -> u32 {
-        self.test_vector_bitmap_bytes
-    }
-}
-
 /// Extracts coverage-relevant spans from MIR, and associates them with
 /// their corresponding BCBs.
-///
-/// Returns `None` if no coverage-relevant spans could be extracted.
-pub(super) fn generate_coverage_spans(
-    mir_body: &mir::Body<'_>,
+pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Option<CoverageSpans> {
+) -> ExtractedMappings {
     let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
+    let mut mcdc_bitmap_bytes = 0;
     let mut mcdc_branches = vec![];
     let mut mcdc_decisions = vec![];
 
-    if hir_info.is_async_fn {
+    if hir_info.is_async_fn || tcx.sess.coverage_no_mir_spans() {
         // An async function desugars into a function that returns a future,
         // with the user code wrapped in a closure. Any spans in the desugared
         // outer function will be unhelpful, so just keep the signature span
         // and ignore all of the spans in the MIR body.
+        //
+        // When debugging flag `-Zcoverage-options=no-mir-spans` is set, we need
+        // to give the same treatment to _all_ functions, because `llvm-cov`
+        // seems to ignore functions that don't have any ordinary code spans.
         if let Some(span) = hir_info.fn_sig_span_extended {
             code_mappings.push(CodeMapping { span, bcb: START_BCB });
         }
     } else {
+        // Extract coverage spans from MIR statements/terminators as normal.
         extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
-
-        branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
-
-        extract_mcdc_mappings(
-            mir_body,
-            hir_info.body_span,
-            basic_coverage_blocks,
-            &mut mcdc_branches,
-            &mut mcdc_decisions,
-        );
     }
 
-    if code_mappings.is_empty()
-        && branch_pairs.is_empty()
-        && mcdc_branches.is_empty()
-        && mcdc_decisions.is_empty()
-    {
-        return None;
-    }
+    branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
 
-    // Identify which BCBs have one or more mappings.
-    let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-    let mut insert = |bcb| {
-        bcb_has_mappings.insert(bcb);
-    };
+    extract_mcdc_mappings(
+        mir_body,
+        hir_info.body_span,
+        basic_coverage_blocks,
+        &mut mcdc_bitmap_bytes,
+        &mut mcdc_branches,
+        &mut mcdc_decisions,
+    );
 
-    for &CodeMapping { span: _, bcb } in &code_mappings {
-        insert(bcb);
-    }
-    for &BranchPair { true_bcb, false_bcb, .. } in &branch_pairs {
-        insert(true_bcb);
-        insert(false_bcb);
-    }
-    for &MCDCBranch { true_bcb, false_bcb, .. } in &mcdc_branches {
-        insert(true_bcb);
-        insert(false_bcb);
-    }
-
-    // Determine the length of the test vector bitmap.
-    let test_vector_bitmap_bytes = mcdc_decisions
-        .iter()
-        .map(|&MCDCDecision { bitmap_idx, conditions_num, .. }| {
-            bitmap_idx + (1_u32 << u32::from(conditions_num)).div_ceil(8)
-        })
-        .max()
-        .unwrap_or(0);
-
-    Some(CoverageSpans {
-        bcb_has_mappings,
+    ExtractedMappings {
+        num_bcbs: basic_coverage_blocks.num_nodes(),
         code_mappings,
         branch_pairs,
-        test_vector_bitmap_bytes,
+        mcdc_bitmap_bytes,
         mcdc_branches,
         mcdc_decisions,
-    })
+    }
+}
+
+impl ExtractedMappings {
+    pub(super) fn all_bcbs_with_counter_mappings(&self) -> BitSet<BasicCoverageBlock> {
+        // Fully destructure self to make sure we don't miss any fields that have mappings.
+        let Self {
+            num_bcbs,
+            code_mappings,
+            branch_pairs,
+            mcdc_bitmap_bytes: _,
+            mcdc_branches,
+            mcdc_decisions,
+        } = self;
+
+        // Identify which BCBs have one or more mappings.
+        let mut bcbs_with_counter_mappings = BitSet::new_empty(*num_bcbs);
+        let mut insert = |bcb| {
+            bcbs_with_counter_mappings.insert(bcb);
+        };
+
+        for &CodeMapping { span: _, bcb } in code_mappings {
+            insert(bcb);
+        }
+        for &BranchPair { true_bcb, false_bcb, .. } in branch_pairs {
+            insert(true_bcb);
+            insert(false_bcb);
+        }
+        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_branches {
+            insert(true_bcb);
+            insert(false_bcb);
+        }
+
+        // MC/DC decisions refer to BCBs, but don't require those BCBs to have counters.
+        if bcbs_with_counter_mappings.is_empty() {
+            debug_assert!(
+                mcdc_decisions.is_empty(),
+                "A function with no counter mappings shouldn't have any decisions: {mcdc_decisions:?}",
+            );
+        }
+
+        bcbs_with_counter_mappings
+    }
+
+    /// Returns the set of BCBs that have one or more `Code` mappings.
+    pub(super) fn bcbs_with_ordinary_code_mappings(&self) -> BitSet<BasicCoverageBlock> {
+        let mut bcbs = BitSet::new_empty(self.num_bcbs);
+        for &CodeMapping { span: _, bcb } in &self.code_mappings {
+            bcbs.insert(bcb);
+        }
+        bcbs
+    }
 }
 
 fn resolve_block_markers(
-    branch_info: &mir::coverage::BranchInfo,
+    coverage_info_hi: &CoverageInfoHi,
     mir_body: &mir::Body<'_>,
 ) -> IndexVec<BlockMarkerId, Option<BasicBlock>> {
     let mut block_markers = IndexVec::<BlockMarkerId, Option<BasicBlock>>::from_elem_n(
         None,
-        branch_info.num_block_markers,
+        coverage_info_hi.num_block_markers,
     );
 
     // Fill out the mapping from block marker IDs to their enclosing blocks.
@@ -184,11 +202,11 @@ pub(super) fn extract_branch_pairs(
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<BranchPair> {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return vec![] };
+    let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return vec![] };
 
-    let block_markers = resolve_block_markers(branch_info, mir_body);
+    let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
 
-    branch_info
+    coverage_info_hi
         .branch_spans
         .iter()
         .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
@@ -197,8 +215,7 @@ pub(super) fn extract_branch_pairs(
             if !raw_span.ctxt().outer_expn_data().is_root() {
                 return None;
             }
-            let (span, _) =
-                unexpand_into_body_span_with_visible_macro(raw_span, hir_info.body_span)?;
+            let span = unexpand_into_body_span(raw_span, hir_info.body_span)?;
 
             let bcb_from_marker =
                 |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
@@ -215,12 +232,13 @@ pub(super) fn extract_mcdc_mappings(
     mir_body: &mir::Body<'_>,
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
+    mcdc_bitmap_bytes: &mut u32,
     mcdc_branches: &mut impl Extend<MCDCBranch>,
     mcdc_decisions: &mut impl Extend<MCDCDecision>,
 ) {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return };
+    let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return };
 
-    let block_markers = resolve_block_markers(branch_info, mir_body);
+    let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
 
     let bcb_from_marker =
         |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
@@ -232,14 +250,14 @@ pub(super) fn extract_mcdc_mappings(
             if !raw_span.ctxt().outer_expn_data().is_root() {
                 return None;
             }
-            let (span, _) = unexpand_into_body_span_with_visible_macro(raw_span, body_span)?;
+            let span = unexpand_into_body_span(raw_span, body_span)?;
 
             let true_bcb = bcb_from_marker(true_marker)?;
             let false_bcb = bcb_from_marker(false_marker)?;
             Some((span, true_bcb, false_bcb))
         };
 
-    mcdc_branches.extend(branch_info.mcdc_branch_spans.iter().filter_map(
+    mcdc_branches.extend(coverage_info_hi.mcdc_branch_spans.iter().filter_map(
         |&mir::coverage::MCDCBranchSpan {
              span: raw_span,
              condition_info,
@@ -253,11 +271,9 @@ pub(super) fn extract_mcdc_mappings(
         },
     ));
 
-    let mut next_bitmap_idx = 0;
-
-    mcdc_decisions.extend(branch_info.mcdc_decision_spans.iter().filter_map(
+    mcdc_decisions.extend(coverage_info_hi.mcdc_decision_spans.iter().filter_map(
         |decision: &mir::coverage::MCDCDecisionSpan| {
-            let (span, _) = unexpand_into_body_span_with_visible_macro(decision.span, body_span)?;
+            let span = unexpand_into_body_span(decision.span, body_span)?;
 
             let end_bcbs = decision
                 .end_markers
@@ -265,14 +281,17 @@ pub(super) fn extract_mcdc_mappings(
                 .map(|&marker| bcb_from_marker(marker))
                 .collect::<Option<_>>()?;
 
-            let bitmap_idx = next_bitmap_idx;
-            next_bitmap_idx += (1_u32 << decision.conditions_num).div_ceil(8);
+            // Each decision containing N conditions needs 2^N bits of space in
+            // the bitmap, rounded up to a whole number of bytes.
+            // The decision's "bitmap index" points to its first byte in the bitmap.
+            let bitmap_idx = *mcdc_bitmap_bytes;
+            *mcdc_bitmap_bytes += (1_u32 << decision.num_conditions).div_ceil(8);
 
             Some(MCDCDecision {
                 span,
                 end_bcbs,
                 bitmap_idx,
-                conditions_num: decision.conditions_num as u16,
+                num_conditions: decision.num_conditions as u16,
                 decision_depth: decision.decision_depth,
             })
         },

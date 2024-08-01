@@ -1,11 +1,12 @@
-use crate::infer::free_regions::FreeRegionMap;
-use crate::infer::GenericKind;
-use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, Region};
 
 use super::explicit_outlives_bounds;
+use crate::infer::free_regions::FreeRegionMap;
+use crate::infer::GenericKind;
+use crate::traits::query::OutlivesBound;
 
 /// The `OutlivesEnvironment` collects information about what outlives
 /// what in a given type-checking setting. For example, if we have a
@@ -63,8 +64,7 @@ struct OutlivesEnvironmentBuilder<'tcx> {
 /// "Region-bound pairs" tracks outlives relations that are known to
 /// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
-pub type RegionBoundPairs<'tcx> =
-    FxIndexSet<ty::OutlivesPredicate<GenericKind<'tcx>, Region<'tcx>>>;
+pub type RegionBoundPairs<'tcx> = FxIndexSet<ty::OutlivesPredicate<'tcx, GenericKind<'tcx>>>;
 
 impl<'tcx> OutlivesEnvironment<'tcx> {
     /// Create a builder using `ParamEnv` and add explicit outlives bounds into it.

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{is_from_proc_macro, last_path_segment};
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// `Arc<T>` is a thread-safe `Rc<T>` and guarantees that updates to the reference counter
     /// use atomic operations. To send an `Arc<T>` across thread boundaries and
     /// share ownership between multiple threads, `T` must be [both `Send` and `Sync`](https://doc.rust-lang.org/std/sync/struct.Arc.html#thread-safety),
-    /// so either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`
+    /// so either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`.
     ///
     /// ### Example
     /// ```no_run
@@ -42,12 +42,11 @@ declare_lint_pass!(ArcWithNonSendSync => [ARC_WITH_NON_SEND_SYNC]);
 
 impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !expr.span.from_expansion()
-            && let ty = cx.typeck_results().expr_ty(expr)
-            && is_type_diagnostic_item(cx, ty, sym::Arc)
-            && let ExprKind::Call(func, [arg]) = expr.kind
-            && let ExprKind::Path(func_path) = func.kind
-            && last_path_segment(&func_path).ident.name == sym::new
+        if let ExprKind::Call(func, [arg]) = expr.kind
+            && let ExprKind::Path(QPath::TypeRelative(func_ty, func_name)) = func.kind
+            && func_name.ident.name == sym::new
+            && !expr.span.from_expansion()
+            && is_type_diagnostic_item(cx, cx.typeck_results().node_type(func_ty.hir_id), sym::Arc)
             && let arg_ty = cx.typeck_results().expr_ty(arg)
             // make sure that the type is not and does not contain any type parameters
             && arg_ty.walk().all(|arg| {

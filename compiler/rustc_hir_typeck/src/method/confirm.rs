@@ -1,25 +1,30 @@
-use super::{probe, MethodCallee};
+use std::ops::Deref;
 
-use crate::{callee, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
-use rustc_hir_analysis::hir_ty_lowering::{GenericArgsLowerer, HirTyLowerer, IsMethodCall};
+use rustc_hir_analysis::hir_ty_lowering::{
+    GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
+};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
-use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, UserArgs, UserType,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, UserArgs,
+    UserType,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
-use std::ops::Deref;
+use super::{probe, MethodCallee};
+use crate::{callee, FnCtxt};
 
 struct ConfirmContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -265,6 +270,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             probe::ObjectPick => {
                 let trait_def_id = pick.item.container_id(self.tcx);
+
+                // This shouldn't happen for non-region error kinds, but may occur
+                // when we have error regions. Specifically, since we canonicalize
+                // during method steps, we may successfully deref when we assemble
+                // the pick, but fail to deref when we try to extract the object
+                // type from the pick during confirmation. This is fine, we're basically
+                // already doomed by this point.
+                if self_ty.references_error() {
+                    return ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[]);
+                }
+
                 self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
@@ -351,7 +367,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let generics = self.tcx.generics_of(pick.item.def_id);
 
         let arg_count_correct = check_generic_arg_count_for_call(
-            self.tcx,
+            self.fcx,
             pick.item.def_id,
             generics,
             seg,
@@ -382,33 +398,28 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
+                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        self.cfcx.fcx.lowerer().lower_lifetime(lt, Some(param)).into()
-                    }
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => self
+                        .cfcx
+                        .fcx
+                        .lowerer()
+                        .lower_lifetime(lt, RegionInferReason::Param(param))
+                        .into(),
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.cfcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.cfcx.lower_const_arg(&ct.value, param.def_id).into()
+                        self.cfcx.lower_const_arg(ct, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ty_infer(Some(param), inf.span).into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
-                        let tcx = self.cfcx.tcx();
-                        self.cfcx
-                            .ct_infer(
-                                tcx.type_of(param.def_id)
-                                    .no_bound_vars()
-                                    .expect("const parameter types cannot be generic"),
-                                Some(param),
-                                inf.span,
-                            )
-                            .into()
+                        self.cfcx.ct_infer(Some(param), inf.span).into()
                     }
                     (kind, arg) => {
                         bug!("mismatched method arg kind {kind:?} in turbofish: {arg:?}")
@@ -418,7 +429,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                _args: Option<&[ty::GenericArg<'tcx>]>,
+                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
@@ -427,7 +438,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         }
 
         let args = lower_generic_args(
-            self.tcx,
+            self.fcx,
             pick.item.def_id,
             parent_args,
             false,
@@ -450,7 +461,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // `foo.bar::<u32>(...)` -- the `Self` type here will be the
         // type of `foo` (possibly adjusted), but we don't want to
         // include that. We want just the `[_, u32]` part.
-        if !args.is_empty() && !generics.own_params.is_empty() {
+        if !args.is_empty() && !generics.is_own_empty() {
             let user_type_annotation = self.probe(|_| {
                 let user_args = UserArgs {
                     args: GenericArgs::for_item(self.tcx, pick.item.def_id, |param, _| {
@@ -499,7 +510,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 args,
             })),
         );
-        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::No, method_self_ty, self_ty) {
+        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }
@@ -512,9 +523,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         .report_mismatched_types(&cause, method_self_ty, self_ty, terr)
                         .emit();
                 } else {
-                    error!("{self_ty} was a subtype of {method_self_ty} but now is not?");
-                    // This must already have errored elsewhere.
-                    self.dcx().has_errors().unwrap();
+                    // This has/will have errored in wfcheck, which we cannot depend on from here, as typeck on functions
+                    // may run before wfcheck if the function is used in const eval.
+                    self.dcx().span_delayed_bug(
+                        cause.span(),
+                        format!("{self_ty} was a subtype of {method_self_ty} but now is not?"),
+                    );
                 }
             }
         }
@@ -564,16 +578,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // `self.add_required_obligations(self.span, def_id, &all_args);`
         for obligation in traits::predicates_for_generics(
             |idx, span| {
-                let code = if span.is_dummy() {
-                    ObligationCauseCode::ExprItemObligation(def_id, self.call_expr.hir_id, idx)
-                } else {
-                    ObligationCauseCode::ExprBindingObligation(
-                        def_id,
-                        span,
-                        self.call_expr.hir_id,
-                        idx,
-                    )
-                };
+                let code = ObligationCauseCode::WhereClauseInExpr(
+                    def_id,
+                    span,
+                    self.call_expr.hir_id,
+                    idx,
+                );
                 traits::ObligationCause::new(self.span, self.body_id, code)
             },
             self.param_env,
@@ -589,7 +599,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // the function type must also be well-formed (this is not
         // implied by the args being well-formed because of inherent
         // impls and late-bound regions - see issue #28609).
-        self.register_wf_obligation(fty.into(), self.span, traits::WellFormed(None));
+        self.register_wf_obligation(fty.into(), self.span, ObligationCauseCode::WellFormed(None));
     }
 
     ///////////////////////////////////////////////////////////////////////////

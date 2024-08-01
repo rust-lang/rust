@@ -27,8 +27,8 @@ impl MyTrait2 for MyStruct<u16> {
     fn method_trait_2() {}
 }
 
-// @hasraw 'type.impl/foo/struct.MyStruct.js' 'method_u16'
-// @!hasraw 'type.impl/foo/struct.MyStruct.js' 'method_u32'
-// @!hasraw 'type.impl/foo/struct.MyStruct.js' 'method_trait_1'
-// @hasraw 'type.impl/foo/struct.MyStruct.js' 'method_trait_2'
+//@ hasraw 'type.impl/foo/struct.MyStruct.js' 'method_u16'
+//@ !hasraw 'type.impl/foo/struct.MyStruct.js' 'method_u32'
+//@ !hasraw 'type.impl/foo/struct.MyStruct.js' 'method_trait_1'
+//@ hasraw 'type.impl/foo/struct.MyStruct.js' 'method_trait_2'
 pub type MyType = MyStruct<u16>;

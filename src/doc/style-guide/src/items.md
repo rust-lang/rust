@@ -295,8 +295,18 @@ Prefer to use single-letter names for generic parameters.
 
 These rules apply for `where` clauses on any item.
 
-If immediately following a closing bracket of any kind, write the keyword
-`where` on the same line, with a space before it.
+If a where clause is short, and appears on a short one-line function
+declaration with no body or on a short type with no `=`, format it on
+the same line as the declaration:
+
+```rust
+fn new(&self) -> Self where Self: Sized;
+
+type Item<'a>: SomeTrait where Self: 'a;
+```
+
+Otherwise, if immediately following a closing bracket of any kind, write the
+keyword `where` on the same line, with a space before it.
 
 Otherwise, put `where` on a new line at the same indentation level. Put each
 component of a `where` clause on its own line, block-indented. Use a trailing
@@ -347,7 +357,7 @@ where
 ```
 
 If a `where` clause is very short, prefer using an inline bound on the type
-parameter.
+parameter if possible.
 
 If a component of a `where` clause does not fit and contains `+`, break it
 before each `+` and block-indent the continuation lines. Put each bound on its
@@ -421,8 +431,20 @@ Format associated types like type aliases. Where an associated type has a
 bound, put a space after the colon but not before:
 
 ```rust
-pub type Foo: Bar;
+type Foo: Bar;
 ```
+
+If an associated type is short, has no `=`, and has a `where` clause with only
+one entry, format the entire type declaration including the `where` clause on
+the same line if it fits:
+
+```rust
+type Item<'a> where Self: 'a;
+type Item<'a>: PartialEq + Send where Self: 'a;
+```
+
+If the associated type has a `=`, or if the `where` clause contains multiple
+entries, format it across multiple lines as with a type alias.
 
 ## extern items
 
@@ -467,10 +489,8 @@ foo::{
 A *group* of imports is a set of imports on the same or sequential lines. One or
 more blank lines or other items (e.g., a function) separate groups of imports.
 
-Within a group of imports, imports must be version-sorted, except that
-non-lowercase characters (characters that can start an `UpperCamelCase`
-identifier) must be sorted before lowercase characters. Groups of imports must
-not be merged or re-ordered.
+Within a group of imports, imports must be version-sorted. Groups of imports
+must not be merged or re-ordered.
 
 E.g., input:
 
@@ -498,9 +518,7 @@ re-ordering.
 ### Ordering list import
 
 Names in a list import must be version-sorted, except that:
-- `self` and `super` always come first if present,
-- non-lowercase characters (characters that can start an `UpperCamelCase`
-  identifier) must be sorted before lowercase characters, and
+- `self` and `super` always come first if present, and
 - groups and glob imports always come last if present.
 
 This applies recursively. For example, `a::*` comes before `b::a` but `a::b`

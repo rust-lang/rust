@@ -20,7 +20,7 @@ error[E0107]: struct takes 2 lifetime arguments but 3 lifetime arguments were su
   --> $DIR/constructor-lifetime-args.rs:19:5
    |
 LL |     S::<'static, 'static, 'static>(&0, &0);
-   |     ^                     ------- help: remove this lifetime argument
+   |     ^                   --------- help: remove the lifetime argument
    |     |
    |     expected 2 lifetime arguments
    |
@@ -52,7 +52,7 @@ error[E0107]: enum takes 2 lifetime arguments but 3 lifetime arguments were supp
   --> $DIR/constructor-lifetime-args.rs:24:8
    |
 LL |     E::V::<'static, 'static, 'static>(&0);
-   |        ^                     ------- help: remove this lifetime argument
+   |        ^                   --------- help: remove the lifetime argument
    |        |
    |        expected 2 lifetime arguments
    |

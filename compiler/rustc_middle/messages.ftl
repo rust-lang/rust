@@ -41,6 +41,9 @@ middle_cannot_be_normalized =
 middle_conflict_types =
     this expression supplies two conflicting concrete types for the same opaque type
 
+middle_consider_type_length_limit =
+    consider adding a `#![type_length_limit="{$type_length}"]` attribute to your crate
+
 middle_const_eval_non_int =
     constant evaluation of enum discriminant resulted in non-integer
 
@@ -49,6 +52,20 @@ middle_const_not_used_in_type_alias =
 
 middle_cycle =
     a cycle occurred during layout computation
+
+middle_deprecated = use of deprecated {$kind} `{$path}`{$has_note ->
+        [true] : {$note}
+        *[other] {""}
+    }
+middle_deprecated_in_future = use of {$kind} `{$path}` that will be deprecated in a future Rust version{$has_note ->
+        [true] : {$note}
+        *[other] {""}
+    }
+middle_deprecated_in_version = use of {$kind} `{$path}` that will be deprecated in future version {$version}{$has_note ->
+        [true] : {$note}
+        *[other] {""}
+    }
+middle_deprecated_suggestion = replace the use of the deprecated {$kind}
 
 middle_drop_check_overflow =
     overflow while adding drop-check rules for {$ty}
@@ -80,8 +97,11 @@ middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute
 
+middle_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
+
 middle_unknown_layout =
     the type `{$ty}` has an unknown layout
 
 middle_values_too_big =
     values of the type `{$ty}` are too big for the current architecture
+middle_written_to_path = the full type name has been written to '{$path}'

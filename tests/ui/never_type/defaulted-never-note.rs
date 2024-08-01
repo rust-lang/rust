@@ -26,6 +26,8 @@ fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
 //[fallback]~^ NOTE required by this bound in `foo`
 //[fallback]~| NOTE required by a bound in `foo`
 fn smeg() {
+    //[nofallback]~^ warn: this function depends on never type fallback being `()`
+    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     let _x = return;
     foo(_x);
     //[fallback]~^ ERROR the trait bound

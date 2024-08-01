@@ -1,4 +1,4 @@
-//@ignore-target-windows: No libc on Windows
+//@ignore-target-windows: No pthreads on Windows
 
 // Joining the main thread is undefined behavior.
 

@@ -2,8 +2,8 @@
 #![feature(start)]
 #![no_std]
 
-extern crate alloc;
 extern crate a;
+extern crate alloc;
 extern crate b;
 
 use alloc::vec::Vec;

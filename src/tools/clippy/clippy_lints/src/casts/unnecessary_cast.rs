@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::visitors::{for_each_expr, Visitable};
+use clippy_utils::visitors::{for_each_expr_without_closures, Visitable};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -245,7 +245,7 @@ fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
 /// TODO: Maybe we should move this to `clippy_utils` so others won't need to go down this dark,
 /// dark path reimplementing this (or something similar).
 fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx>, cast_from: Ty<'tcx>) -> bool {
-    for_each_expr(expr, |expr| {
+    for_each_expr_without_closures(expr, |expr| {
         // Calls are a `Path`, and usage of locals are a `Path`. So, this checks
         // - call() as i32
         // - local as i32

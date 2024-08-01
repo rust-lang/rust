@@ -24,7 +24,6 @@ fn via_associated_const() {
     trait Trait {
         const FALSE: bool = assert::is_transmutable::<Src, Dst, Context, {}>();
         //~^ ERROR mismatched types
-        //~| ERROR `Src` cannot be safely transmuted into `Dst`
         //~| ERROR mismatched types
     }
 }

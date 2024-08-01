@@ -30,8 +30,9 @@
 //! platform-specific cfgs are allowed. Not sure yet how to deal with
 //! this in the long term.
 
-use crate::walk::{filter_dirs, walk};
 use std::path::Path;
+
+use crate::walk::{filter_dirs, walk};
 
 // Paths that may contain platform-specific code.
 const EXCEPTION_PATHS: &[&str] = &[
@@ -45,6 +46,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     // pointer regardless of the target architecture. As a result,
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
+    "library/core/src/ffi/va_list.rs",
+    // We placed a linkage against Windows libraries here
     "library/core/src/ffi/mod.rs",
     "library/std/src/sys", // Platform-specific code for std lives here.
     "library/std/src/os",  // Platform-specific public interfaces

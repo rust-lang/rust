@@ -1,35 +1,27 @@
 //@ run-pass
-#![allow(unused_must_use)]
+//@ needs-threads
 // This time we're testing repeatedly going up and down both stacks to
 // make sure the stack pointers are maintained properly in both
 // directions
 
-//@ needs-threads
-#![feature(rustc_private)]
-
-extern crate libc;
 use std::thread;
 
-mod rustrt {
-    extern crate libc;
-
-    #[link(name = "rust_test_helpers", kind = "static")]
-    extern "C" {
-        pub fn rust_dbg_call(
-            cb: extern "C" fn(libc::uintptr_t) -> libc::uintptr_t,
-            data: libc::uintptr_t,
-        ) -> libc::uintptr_t;
-    }
+#[link(name = "rust_test_helpers", kind = "static")]
+extern "C" {
+    pub fn rust_dbg_call(
+        cb: extern "C" fn(u64) -> u64,
+        data: u64,
+    ) -> u64;
 }
 
-extern "C" fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
+extern "C" fn cb(data: u64) -> u64 {
     if data == 1 { data } else { count(data - 1) + count(data - 1) }
 }
 
-fn count(n: libc::uintptr_t) -> libc::uintptr_t {
+fn count(n: u64) -> u64 {
     unsafe {
         println!("n = {}", n);
-        rustrt::rust_dbg_call(cb, n)
+        rust_dbg_call(cb, n)
     }
 }
 
@@ -41,5 +33,5 @@ pub fn main() {
         println!("result = {}", result);
         assert_eq!(result, 2048);
     })
-    .join();
+    .join().unwrap();
 }

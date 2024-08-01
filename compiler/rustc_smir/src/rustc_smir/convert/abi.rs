@@ -2,7 +2,6 @@
 
 #![allow(rustc::usage_of_qualified_ty)]
 
-use crate::rustc_smir::{Stable, Tables};
 use rustc_middle::ty;
 use rustc_target::abi::call::Conv;
 use stable_mir::abi::{
@@ -13,6 +12,8 @@ use stable_mir::abi::{
 use stable_mir::opaque;
 use stable_mir::target::MachineSize as Size;
 use stable_mir::ty::{Align, IndexedVal, VariantIdx};
+
+use crate::rustc_smir::{Stable, Tables};
 
 impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
     type T = VariantIdx;
@@ -256,10 +257,9 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Primitive {
             rustc_abi::Primitive::Int(length, signed) => {
                 Primitive::Int { length: length.stable(tables), signed: *signed }
             }
-            rustc_abi::Primitive::F16 => Primitive::Float { length: FloatLength::F16 },
-            rustc_abi::Primitive::F32 => Primitive::Float { length: FloatLength::F32 },
-            rustc_abi::Primitive::F64 => Primitive::Float { length: FloatLength::F64 },
-            rustc_abi::Primitive::F128 => Primitive::Float { length: FloatLength::F128 },
+            rustc_abi::Primitive::Float(length) => {
+                Primitive::Float { length: length.stable(tables) }
+            }
             rustc_abi::Primitive::Pointer(space) => Primitive::Pointer(space.stable(tables)),
         }
     }
@@ -283,6 +283,19 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Integer {
             rustc_abi::Integer::I32 => IntegerLength::I32,
             rustc_abi::Integer::I64 => IntegerLength::I64,
             rustc_abi::Integer::I128 => IntegerLength::I128,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::Float {
+    type T = FloatLength;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        match self {
+            rustc_abi::Float::F16 => FloatLength::F16,
+            rustc_abi::Float::F32 => FloatLength::F32,
+            rustc_abi::Float::F64 => FloatLength::F64,
+            rustc_abi::Float::F128 => FloatLength::F128,
         }
     }
 }

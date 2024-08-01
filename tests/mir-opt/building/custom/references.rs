@@ -8,31 +8,29 @@ use core::ptr::{addr_of, addr_of_mut};
 // EMIT_MIR references.mut_ref.built.after.mir
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn mut_ref(x: &mut i32) -> &mut i32 {
-    mir!(
+    mir! {
         let t: *mut i32;
-
         {
             t = addr_of_mut!(*x);
             RET = &mut *t;
             Retag(RET);
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR references.immut_ref.built.after.mir
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn immut_ref(x: &i32) -> &i32 {
-    mir!(
+    mir! {
         let t: *const i32;
-
         {
             t = addr_of!(*x);
             RET = & *t;
             Retag(RET);
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR references.raw_pointer.built.after.mir
@@ -40,19 +38,23 @@ pub fn immut_ref(x: &i32) -> &i32 {
 pub fn raw_pointer(x: *const i32) -> *const i32 {
     // Regression test for a bug in which unsafetyck was not correctly turned off for
     // `dialect = "built"`
-    mir!({
-        RET = addr_of!(*x);
-        Return()
-    })
+    mir! {
+        {
+            RET = addr_of!(*x);
+            Return()
+        }
+    }
 }
 
 // EMIT_MIR references.raw_pointer_offset.built.after.mir
 #[custom_mir(dialect = "built")]
 pub fn raw_pointer_offset(x: *const i32) -> *const i32 {
-    mir!({
-        RET = Offset(x, 1_isize);
-        Return()
-    })
+    mir! {
+        {
+            RET = Offset(x, 1_isize);
+            Return()
+        }
+    }
 }
 
 fn main() {

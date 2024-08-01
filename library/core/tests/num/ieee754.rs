@@ -27,6 +27,7 @@
 //! standard. That is why they accept wildly diverse inputs or may seem to duplicate other tests.
 //! Please consider this carefully when adding, removing, or reorganizing these tests. They are
 //! here so that it is clear what tests are required by the standard and what can be changed.
+
 use ::core::str::FromStr;
 
 // IEEE 754 for many tests is applied to specific bit patterns.

@@ -14,6 +14,6 @@ struct W<T>(T);
 // `usize: Foo` doesn't hold. Therefore we ICE, because we don't expect to still
 // encounter weak types in `assemble_alias_bound_candidates_recur`.
 fn hello(_: W<A<usize>>) {}
-//~^ ERROR the type `W<A<usize>>` is not well-formed
+//~^ ERROR the size for values of type `A<usize>` cannot be known at compilation time
 
 fn main() {}

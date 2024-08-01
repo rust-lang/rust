@@ -9,7 +9,7 @@ use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn main() {
-    mir!(
+    mir! {
         let a: [u8; 1024];
         {
             Call(a = f(Move(a)), ReturnTo(bb1), UnwindUnreachable())
@@ -17,7 +17,7 @@ pub fn main() {
         bb1 = {
             Return()
         }
-    )
+    }
 }
 
 pub fn f<T: Copy>(a: T) -> T { a }

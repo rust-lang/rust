@@ -105,7 +105,7 @@ fn add_missing_impl_members_inner(
     assist_id: &'static str,
     label: &'static str,
 ) -> Option<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "add_missing_impl_members_inner").entered();
+    let _p = tracing::info_span!("add_missing_impl_members_inner").entered();
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
     let impl_ = ctx.sema.to_def(&impl_def)?;
 

@@ -1,6 +1,13 @@
 #![feature(type_alias_impl_trait, rustc_attrs)]
 
-type Debuggable = impl core::fmt::Debug;
+mod bar {
+    pub type Debuggable = impl core::fmt::Debug;
+
+    pub fn foo() -> Debuggable {
+        0u32
+    }
+}
+use bar::*;
 
 static mut TEST: Option<Debuggable> = None;
 
@@ -8,8 +15,4 @@ static mut TEST: Option<Debuggable> = None;
 fn main() {
     //~^ ERROR
     unsafe { TEST = Some(foo()) }
-}
-
-fn foo() -> Debuggable {
-    0u32
 }

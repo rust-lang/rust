@@ -1,16 +1,13 @@
+use std::ops::Range;
+
+use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_middle::infer::unify_key::{ConstVariableValue, ConstVidKey};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
-
-use crate::infer::type_variable::TypeVariableOrigin;
-use crate::infer::InferCtxt;
-use crate::infer::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
-
-use rustc_data_structures::snapshot_vec as sv;
-use rustc_data_structures::unify as ut;
 use ut::UnifyKey;
 
-use std::ops::Range;
+use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::{ConstVariableOrigin, InferCtxt, RegionVariableOrigin, UnificationTable};
 
 fn vars_since_snapshot<'tcx, T>(
     table: &UnificationTable<'_, 'tcx, T>,
@@ -183,7 +180,7 @@ pub struct InferenceFudger<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -244,7 +241,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                 // Recreate it with a fresh variable here.
                 let idx = vid.index() - self.const_vars.0.start.index();
                 let origin = self.const_vars.1[idx];
-                self.infcx.next_const_var_with_origin(ct.ty(), origin)
+                self.infcx.next_const_var_with_origin(origin)
             } else {
                 ct
             }

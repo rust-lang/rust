@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::snippet;
@@ -54,15 +55,14 @@ declare_clippy_lint! {
     "there is a field that is not safe to be sent to another thread in a `Send` struct"
 }
 
-#[derive(Copy, Clone)]
 pub struct NonSendFieldInSendTy {
     enable_raw_pointer_heuristic: bool,
 }
 
 impl NonSendFieldInSendTy {
-    pub fn new(enable_raw_pointer_heuristic: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            enable_raw_pointer_heuristic,
+            enable_raw_pointer_heuristic: conf.enable_raw_pointer_heuristic_for_send,
         }
     }
 }

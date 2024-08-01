@@ -11,7 +11,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::{FakeReadCause, Mutability};
@@ -53,7 +52,8 @@ impl Display for Sugg<'_> {
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
-        let get_snippet = |span| snippet(cx, span, "");
+        let ctxt = expr.span.ctxt();
+        let get_snippet = |span| snippet_with_context(cx, span, ctxt, "", &mut Applicability::Unspecified).0;
         snippet_opt(cx, expr.span).map(|_| Self::hir_from_snippet(expr, get_snippet))
     }
 
@@ -68,8 +68,7 @@ impl<'a> Sugg<'a> {
     /// - Applicability level `Unspecified` will never be changed.
     /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
     /// - If the default value is used and the applicability level is `MachineApplicable`, change it
-    ///   to
-    /// `HasPlaceholders`
+    ///   to `HasPlaceholders`
     pub fn hir_with_applicability(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
@@ -102,7 +101,9 @@ impl<'a> Sugg<'a> {
         applicability: &mut Applicability,
     ) -> Self {
         if expr.span.ctxt() == ctxt {
-            Self::hir_from_snippet(expr, |span| snippet(cx, span, default))
+            Self::hir_from_snippet(expr, |span| {
+                snippet_with_context(cx, span, ctxt, default, applicability).0
+            })
         } else {
             let (snip, _) = snippet_with_context(cx, expr.span, ctxt, default, applicability);
             Sugg::NonParen(snip)
@@ -111,7 +112,7 @@ impl<'a> Sugg<'a> {
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(expr: &hir::Expr<'_>, get_snippet: impl Fn(Span) -> Cow<'a, str>) -> Self {
+    fn hir_from_snippet(expr: &hir::Expr<'_>, mut get_snippet: impl FnMut(Span) -> Cow<'a, str>) -> Self {
         if let Some(range) = higher::Range::hir(expr) {
             let op = match range.limits {
                 ast::RangeLimits::HalfOpen => AssocOp::DotDot,
@@ -831,8 +832,9 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
             applicability: Applicability::MachineApplicable,
         };
 
-        let infcx = cx.tcx.infer_ctxt().build();
-        ExprUseVisitor::new(&mut visitor, &infcx, def_id, cx.param_env, cx.typeck_results()).consume_body(closure_body);
+        ExprUseVisitor::for_clippy(cx, def_id, &mut visitor)
+            .consume_body(closure_body)
+            .into_ok();
 
         if !visitor.suggestion_start.is_empty() {
             return Some(DerefClosure {

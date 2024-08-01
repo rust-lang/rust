@@ -10,9 +10,10 @@ use std::ops::Index;
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::{name::Name, HirFileId, InFile};
+use hir_expand::{name::Name, InFile};
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
+use span::MacroFileId;
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
 
@@ -98,7 +99,7 @@ pub struct BodySourceMap {
 
     format_args_template_map: FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
 
-    expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
+    expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, MacroFileId>,
 
     /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
@@ -123,7 +124,7 @@ impl Body {
         db: &dyn DefDatabase,
         def: DefWithBodyId,
     ) -> (Arc<Body>, Arc<BodySourceMap>) {
-        let _p = tracing::span!(tracing::Level::INFO, "body_with_source_map_query").entered();
+        let _p = tracing::info_span!("body_with_source_map_query").entered();
         let mut params = None;
 
         let mut is_async_fn = false;
@@ -349,9 +350,15 @@ impl BodySourceMap {
         self.expr_map.get(&src).cloned()
     }
 
-    pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<HirFileId> {
+    pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<MacroFileId> {
         let src = node.map(AstPtr::new);
         self.expansions.get(&src).cloned()
+    }
+
+    pub fn macro_calls(
+        &self,
+    ) -> impl Iterator<Item = (InFile<AstPtr<ast::MacroCall>>, MacroFileId)> + '_ {
+        self.expansions.iter().map(|(&a, &b)| (a, b))
     }
 
     pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
@@ -386,6 +393,12 @@ impl BodySourceMap {
     pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprId> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::MacroExpr>).map(AstPtr::upcast);
         self.expr_map.get(&src).copied()
+    }
+
+    pub fn expansions(
+        &self,
+    ) -> impl Iterator<Item = (&InFile<AstPtr<ast::MacroCall>>, &MacroFileId)> {
+        self.expansions.iter()
     }
 
     pub fn implicit_format_args(

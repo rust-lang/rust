@@ -1,8 +1,5 @@
 use std::cell::RefCell;
 
-use crate::coercion::CoerceMany;
-use crate::gather_locals::GatherLocalsVisitor;
-use crate::{CoroutineTypes, Diverges, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -14,8 +11,11 @@ use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+
+use crate::coercion::CoerceMany;
+use crate::gather_locals::GatherLocalsVisitor;
+use crate::{CoroutineTypes, Diverges, FnCtxt};
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item
@@ -76,7 +76,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.register_wf_obligation(
                 param_ty.into(),
                 param.span,
-                traits::WellFormed(Some(WellFormedLoc::Param {
+                ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
                     function: fn_def_id,
                     param_idx: idx,
                 })),
@@ -101,7 +101,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                 param.pat.span,
                 // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
-                traits::SizedArgumentType(
+                ObligationCauseCode::SizedArgumentType(
                     if ty_span == Some(param.span) && tcx.is_closure_like(fn_def_id.into()) {
                         None
                     } else {
@@ -121,10 +121,18 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::Return(ty) => ty.span,
     };
 
-    fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    fcx.require_type_is_sized(
+        declared_ret_ty,
+        return_or_body_span,
+        ObligationCauseCode::SizedReturnType,
+    );
     // We checked the root's signature during wfcheck, but not the child.
     if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
-        fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::WellFormed(None));
+        fcx.require_type_is_sized(
+            declared_ret_ty,
+            return_or_body_span,
+            ObligationCauseCode::WellFormed(None),
+        );
     }
 
     fcx.is_whole_body.set(true);
@@ -209,7 +217,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         ty::BoundVariableKind::Region(ty::BrAnon),
     ]);
     let expected_sig = ty::Binder::bind_with_vars(
-        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.unsafety, Abi::Rust),
+        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.safety, Abi::Rust),
         bounds,
     );
 
@@ -232,7 +240,7 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
     let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
     let main_fn_ty = Ty::new_fn_ptr(
         tcx,
-        Binder::dummy(tcx.mk_fn_sig([], generic_ty, false, hir::Unsafety::Normal, Abi::Rust)),
+        Binder::dummy(tcx.mk_fn_sig([], generic_ty, false, hir::Safety::Safe, Abi::Rust)),
     );
 
     let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
@@ -244,7 +252,7 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
         ],
         tcx.types.isize,
         false,
-        fn_sig.unsafety,
+        fn_sig.safety,
         Abi::Rust,
     ));
 

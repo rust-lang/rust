@@ -2,7 +2,7 @@ error[E0061]: this method takes 2 arguments but 1 argument was supplied
   --> $DIR/point-at-inference-4.rs:12:7
    |
 LL |     s.infer(0i32);
-   |       ^^^^^------ an argument is missing
+   |       ^^^^^------ argument #2 is missing
    |
 note: method defined here
   --> $DIR/point-at-inference-4.rs:4:8

@@ -3,16 +3,12 @@ use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
 use crate::collections::HashMap;
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
-use crate::str;
 use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::Mutex;
-use crate::sync::Once;
+use crate::sync::{Mutex, Once};
 use crate::sys::{decode_error_kind, sgx_ineffective, unsupported};
-use crate::vec;
+use crate::{fmt, io, str, vec};
 
 pub fn errno() -> i32 {
     RESULT_SUCCESS
@@ -157,13 +153,13 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     get_env_store().and_then(|s| s.lock().unwrap().get(k).cloned())
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let (k, v) = (k.to_owned(), v.to_owned());
     create_env_store().lock().unwrap().insert(k, v);
     Ok(())
 }
 
-pub fn unsetenv(k: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
     if let Some(env) = get_env_store() {
         env.lock().unwrap().remove(k);
     }

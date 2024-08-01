@@ -1,8 +1,8 @@
-use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
-
 use smallvec::SmallVec;
+
+use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(super) fn lower_block(
@@ -76,7 +76,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 StmtKind::Empty => {}
                 StmtKind::MacCall(..) => panic!("shouldn't exist here"),
             }
-            ast_stmts = &ast_stmts[1..];
+            ast_stmts = tail;
         }
         (self.arena.alloc_from_iter(stmts), expr)
     }

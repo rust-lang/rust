@@ -1,3 +1,4 @@
+//@ revisions: with without
 //@ compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
@@ -56,6 +57,7 @@ where
     X: IncompleteGuidance<u32, i8>,
     X: IncompleteGuidance<u32, i16>,
 {
+    #[cfg(with)]
     impls_trait::<B<X>, _, _, _>(); // entering the cycle from `B` works
 
     // entering the cycle from `A` fails, but would work if we were to use the cache

@@ -2,40 +2,40 @@ error[E0277]: `NotParam` can't be used as a const parameter type
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:10:13
    |
 LL |     check::<&NotParam>();
-   |             ^^^^^^^^^ the trait `ConstParamTy` is not implemented for `NotParam`, which is required by `&NotParam: ConstParamTy`
+   |             ^^^^^^^^^ the trait `UnsizedConstParamTy` is not implemented for `NotParam`, which is required by `&NotParam: UnsizedConstParamTy`
    |
-   = note: required for `&NotParam` to implement `ConstParamTy`
+   = note: required for `&NotParam` to implement `UnsizedConstParamTy`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:7:13
    |
-LL | fn check<T: std::marker::ConstParamTy + ?Sized>() {}
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check<T: std::marker::UnsizedConstParamTy + ?Sized>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error[E0277]: `NotParam` can't be used as a const parameter type
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:11:13
    |
 LL |     check::<[NotParam]>();
-   |             ^^^^^^^^^^ the trait `ConstParamTy` is not implemented for `NotParam`, which is required by `[NotParam]: ConstParamTy`
+   |             ^^^^^^^^^^ the trait `UnsizedConstParamTy` is not implemented for `NotParam`, which is required by `[NotParam]: UnsizedConstParamTy`
    |
-   = note: required for `[NotParam]` to implement `ConstParamTy`
+   = note: required for `[NotParam]` to implement `UnsizedConstParamTy`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:7:13
    |
-LL | fn check<T: std::marker::ConstParamTy + ?Sized>() {}
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check<T: std::marker::UnsizedConstParamTy + ?Sized>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error[E0277]: `NotParam` can't be used as a const parameter type
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:12:13
    |
 LL |     check::<[NotParam; 17]>();
-   |             ^^^^^^^^^^^^^^ the trait `ConstParamTy` is not implemented for `NotParam`, which is required by `[NotParam; 17]: ConstParamTy`
+   |             ^^^^^^^^^^^^^^ the trait `UnsizedConstParamTy` is not implemented for `NotParam`, which is required by `[NotParam; 17]: UnsizedConstParamTy`
    |
-   = note: required for `[NotParam; 17]` to implement `ConstParamTy`
+   = note: required for `[NotParam; 17]` to implement `UnsizedConstParamTy`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_generic_bounds_do_not_hold.rs:7:13
    |
-LL | fn check<T: std::marker::ConstParamTy + ?Sized>() {}
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check<T: std::marker::UnsizedConstParamTy + ?Sized>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error: aborting due to 3 previous errors
 

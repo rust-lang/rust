@@ -5,15 +5,20 @@ use std::marker::PhantomData;
 
 const LEN: usize = 4;
 
-struct SingleUnused(i32, [u8; LEN], String);
-//~^ ERROR: field `1` is never read
-//~| NOTE: field in this struct
-//~| HELP: consider changing the field to be of unit type
-
-struct MultipleUnused(i32, f32, String, u8);
-//~^ ERROR: fields `0`, `1`, `2`, and `3` are never read
+struct UnusedAtTheEnd(i32, f32, [u8; LEN], String, u8);
+//~^ ERROR:fields `1`, `2`, `3`, and `4` are never read
 //~| NOTE: fields in this struct
-//~| HELP: consider changing the fields to be of unit type
+//~| HELP: consider removing these fields
+
+struct UnusedJustOneField(i32);
+//~^ ERROR: field `0` is never read
+//~| NOTE: field in this struct
+//~| HELP: consider removing this field
+
+struct UnusedInTheMiddle(i32, f32, String, u8, u32);
+//~^ ERROR: fields `1`, `2`, and `4` are never read
+//~| NOTE: fields in this struct
+//~| HELP: consider changing the fields to be of unit type to suppress this warning while preserving the field numbering, or remove the fields
 
 struct GoodUnit(());
 
@@ -23,15 +28,19 @@ struct Void;
 struct GoodVoid(Void);
 
 fn main() {
-    let w = SingleUnused(42, [0, 1, 2, 3], "abc".to_string());
-    let _ = w.0;
-    let _ = w.2;
+    let u1 = UnusedAtTheEnd(42, 3.14, [0, 1, 2, 3], "def".to_string(), 4u8);
+    let _ = u1.0;
 
-    let m = MultipleUnused(42, 3.14, "def".to_string(), 4u8);
+    let _ = UnusedJustOneField(42);
+
+    let u2 = UnusedInTheMiddle(42, 3.14, "def".to_string(), 4u8, 5);
+    let _ = u2.0;
+    let _ = u2.3;
+
 
     let gu = GoodUnit(());
     let gp = GoodPhantom(PhantomData);
     let gv = GoodVoid(Void);
 
-    let _ = (gu, gp, gv, m);
+    let _ = (gu, gp, gv);
 }

@@ -1,6 +1,8 @@
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use std::path::PathBuf;
-use std::process::Command;
+
+use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::utils::exec::command;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
@@ -27,11 +29,16 @@ impl Step for Vendor {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let mut cmd = Command::new(&builder.initial_cargo);
+        let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");
 
         if self.versioned_dirs {
             cmd.arg("--versioned-dirs");
+        }
+
+        // These submodules must be present for `x vendor` to work.
+        for submodule in SUBMODULES_FOR_RUSTBOOK.iter().chain(["src/tools/cargo"].iter()) {
+            builder.build.require_submodule(submodule, None);
         }
 
         // Sync these paths by default.
@@ -41,6 +48,7 @@ impl Step for Vendor {
             "compiler/rustc_codegen_cranelift/Cargo.toml",
             "compiler/rustc_codegen_gcc/Cargo.toml",
             "src/bootstrap/Cargo.toml",
+            "src/tools/rustbook/Cargo.toml",
         ] {
             cmd.arg("--sync").arg(builder.src.join(p));
         }
@@ -56,6 +64,6 @@ impl Step for Vendor {
 
         cmd.current_dir(self.root_dir);
 
-        builder.run(&mut cmd);
+        cmd.run(builder);
     }
 }

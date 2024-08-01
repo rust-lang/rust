@@ -1,4 +1,4 @@
-//! Command-line interface of the rustbuild build system.
+//! Command-line interface of the bootstrap build system.
 //!
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
@@ -284,8 +284,8 @@ pub enum Subcommand {
         name = "fmt",
         long_about = "\n
     Arguments:
-        This subcommand optionally accepts a `--check` flag which succeeds if formatting is correct and
-        fails if it is not. For example:
+        This subcommand optionally accepts a `--check` flag which succeeds if
+        formatting is correct and fails if it is not. For example:
             ./x.py fmt
             ./x.py fmt --check"
     )]
@@ -294,6 +294,10 @@ pub enum Subcommand {
         /// check formatting instead of applying
         #[arg(long)]
         check: bool,
+
+        /// apply to all appropriate files, not just those that have been modified
+        #[arg(long)]
+        all: bool,
     },
     #[command(aliases = ["d"], long_about = "\n
     Arguments:
@@ -465,6 +469,11 @@ Arguments:
         #[arg(long)]
         versioned_dirs: bool,
     },
+    /// Perform profiling and benchmarking of the compiler using the
+    /// `rustc-perf-wrapper` tool.
+    ///
+    /// You need to pass arguments after `--`, e.g.`x perf -- cachegrind`.
+    Perf {},
 }
 
 impl Subcommand {
@@ -486,6 +495,7 @@ impl Subcommand {
             Subcommand::Setup { .. } => Kind::Setup,
             Subcommand::Suggest { .. } => Kind::Suggest,
             Subcommand::Vendor { .. } => Kind::Vendor,
+            Subcommand::Perf { .. } => Kind::Perf,
         }
     }
 

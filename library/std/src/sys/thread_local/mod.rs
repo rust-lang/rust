@@ -1,105 +1,158 @@
-#![unstable(feature = "thread_local_internals", reason = "should not be necessary", issue = "none")]
+//! Implementation of the `thread_local` macro.
+//!
+//! There are three different thread-local implementations:
+//! * Some targets lack threading support, and hence have only one thread, so
+//!   the TLS data is stored in a normal `static`.
+//! * Some targets support TLS natively via the dynamic linker and C runtime.
+//! * On some targets, the OS provides a library-based TLS implementation. The
+//!   TLS data is heap-allocated and referenced using a TLS key.
+//!
+//! Each implementation provides a macro which generates the `LocalKey` `const`
+//! used to reference the TLS variable, along with the necessary helper structs
+//! to track the initialization/destruction state of the variable.
+//!
+//! Additionally, this module contains abstractions for the OS interfaces used
+//! for these implementations.
 
-// There are three thread-local implementations: "static", "fast", "OS".
-// The "OS" thread local key type is accessed via platform-specific API calls and is slow, while the
-// "fast" key type is accessed via code generated via LLVM, where TLS keys are set up by the linker.
-// "static" is for single-threaded platforms where a global static is sufficient.
+#![cfg_attr(test, allow(unused))]
+#![doc(hidden)]
+#![forbid(unsafe_op_in_unsafe_fn)]
+#![unstable(
+    feature = "thread_local_internals",
+    reason = "internal details of the thread_local macro",
+    issue = "none"
+)]
 
 cfg_if::cfg_if! {
-    if #[cfg(any(all(target_family = "wasm", not(target_feature = "atomics")), target_os = "uefi"))] {
-        #[doc(hidden)]
-        mod static_local;
-        #[doc(hidden)]
-        pub use static_local::{Key, thread_local_inner};
+    if #[cfg(any(
+        all(target_family = "wasm", not(target_feature = "atomics")),
+        target_os = "uefi",
+        target_os = "zkvm",
+    ))] {
+        mod statik;
+        pub use statik::{EagerStorage, LazyStorage, thread_local_inner};
     } else if #[cfg(target_thread_local)] {
-        #[doc(hidden)]
-        mod fast_local;
-        #[doc(hidden)]
-        pub use fast_local::{Key, thread_local_inner};
+        mod native;
+        pub use native::{EagerStorage, LazyStorage, thread_local_inner};
     } else {
-        #[doc(hidden)]
-        mod os_local;
-        #[doc(hidden)]
-        pub use os_local::{Key, thread_local_inner};
+        mod os;
+        pub use os::{Storage, thread_local_inner};
     }
 }
 
-mod lazy {
-    use crate::cell::UnsafeCell;
-    use crate::hint;
-    use crate::mem;
-
-    pub struct LazyKeyInner<T> {
-        inner: UnsafeCell<Option<T>>,
+/// The native TLS implementation needs a way to register destructors for its data.
+/// This module contains platform-specific implementations of that register.
+///
+/// It turns out however that most platforms don't have a way to register a
+/// destructor for each variable. On these platforms, we keep track of the
+/// destructors ourselves and register (through the [`guard`] module) only a
+/// single callback that runs all of the destructors in the list.
+#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics")))))]
+pub(crate) mod destructors {
+    cfg_if::cfg_if! {
+        if #[cfg(any(
+            target_os = "linux",
+            target_os = "android",
+            target_os = "fuchsia",
+            target_os = "redox",
+            target_os = "hurd",
+            target_os = "netbsd",
+            target_os = "dragonfly"
+        ))] {
+            mod linux_like;
+            mod list;
+            pub(super) use linux_like::register;
+            pub(super) use list::run;
+        } else {
+            mod list;
+            pub(super) use list::register;
+            pub(crate) use list::run;
+        }
     }
+}
 
-    impl<T> LazyKeyInner<T> {
-        pub const fn new() -> LazyKeyInner<T> {
-            LazyKeyInner { inner: UnsafeCell::new(None) }
-        }
-
-        pub unsafe fn get(&self) -> Option<&'static T> {
-            // SAFETY: The caller must ensure no reference is ever handed out to
-            // the inner cell nor mutable reference to the Option<T> inside said
-            // cell. This make it safe to hand a reference, though the lifetime
-            // of 'static is itself unsafe, making the get method unsafe.
-            unsafe { (*self.inner.get()).as_ref() }
-        }
-
-        /// The caller must ensure that no reference is active: this method
-        /// needs unique access.
-        pub unsafe fn initialize<F: FnOnce() -> T>(&self, init: F) -> &'static T {
-            // Execute the initialization up front, *then* move it into our slot,
-            // just in case initialization fails.
-            let value = init();
-            let ptr = self.inner.get();
-
-            // SAFETY:
-            //
-            // note that this can in theory just be `*ptr = Some(value)`, but due to
-            // the compiler will currently codegen that pattern with something like:
-            //
-            //      ptr::drop_in_place(ptr)
-            //      ptr::write(ptr, Some(value))
-            //
-            // Due to this pattern it's possible for the destructor of the value in
-            // `ptr` (e.g., if this is being recursively initialized) to re-access
-            // TLS, in which case there will be a `&` and `&mut` pointer to the same
-            // value (an aliasing violation). To avoid setting the "I'm running a
-            // destructor" flag we just use `mem::replace` which should sequence the
-            // operations a little differently and make this safe to call.
-            //
-            // The precondition also ensures that we are the only one accessing
-            // `self` at the moment so replacing is fine.
-            unsafe {
-                let _ = mem::replace(&mut *ptr, Some(value));
+/// This module provides a way to schedule the execution of the destructor list
+/// on systems without a per-variable destructor system.
+mod guard {
+    cfg_if::cfg_if! {
+        if #[cfg(all(target_thread_local, target_vendor = "apple"))] {
+            mod apple;
+            pub(super) use apple::enable;
+        } else if #[cfg(target_os = "windows")] {
+            mod windows;
+            pub(super) use windows::enable;
+        } else if #[cfg(any(
+            all(target_family = "wasm", target_feature = "atomics"),
+        ))] {
+            pub(super) fn enable() {
+                // FIXME: Right now there is no concept of "thread exit", but
+                // this is likely going to show up at some point in the form of
+                // an exported symbol that the wasm runtime is going to be
+                // expected to call. For now we just leak everything, but if
+                // such a function starts to exist it will probably need to
+                // iterate the destructor list with this function:
+                #[allow(unused)]
+                use super::destructors::run;
             }
-
-            // SAFETY: With the call to `mem::replace` it is guaranteed there is
-            // a `Some` behind `ptr`, not a `None` so `unreachable_unchecked`
-            // will never be reached.
-            unsafe {
-                // After storing `Some` we want to get a reference to the contents of
-                // what we just stored. While we could use `unwrap` here and it should
-                // always work it empirically doesn't seem to always get optimized away,
-                // which means that using something like `try_with` can pull in
-                // panicking code and cause a large size bloat.
-                match *ptr {
-                    Some(ref x) => x,
-                    None => hint::unreachable_unchecked(),
-                }
-            }
+        } else if #[cfg(target_os = "hermit")] {
+            pub(super) fn enable() {}
+        } else if #[cfg(target_os = "solid_asp3")] {
+            mod solid;
+            pub(super) use solid::enable;
+        } else if #[cfg(all(target_thread_local, not(target_family = "wasm")))] {
+            mod key;
+            pub(super) use key::enable;
         }
+    }
+}
 
-        /// Watch out: unsynchronized internal mutability!
-        ///
-        /// # Safety
-        /// Causes UB if any reference to the value is used after this.
-        #[allow(unused)]
-        pub(crate) unsafe fn take(&self) -> Option<T> {
-            let mutable: *mut _ = UnsafeCell::get(&self.inner);
-            // SAFETY: That's the caller's problem.
-            unsafe { mutable.replace(None) }
+/// `const`-creatable TLS keys.
+///
+/// Most OSs without native TLS will provide a library-based way to create TLS
+/// storage. For each TLS variable, we create a key, which can then be used to
+/// reference an entry in a thread-local table. This then associates each key
+/// with a pointer which we can get and set to store our data.
+pub(crate) mod key {
+    cfg_if::cfg_if! {
+        if #[cfg(any(
+            all(
+                not(target_vendor = "apple"),
+                not(target_family = "wasm"),
+                target_family = "unix",
+            ),
+            target_os = "teeos",
+        ))] {
+            mod racy;
+            mod unix;
+            #[cfg(test)]
+            mod tests;
+            pub(super) use racy::LazyKey;
+            pub(super) use unix::{Key, set};
+            #[cfg(any(not(target_thread_local), test))]
+            pub(super) use unix::get;
+            use unix::{create, destroy};
+        } else if #[cfg(all(not(target_thread_local), target_os = "windows"))] {
+            #[cfg(test)]
+            mod tests;
+            mod windows;
+            pub(super) use windows::{Key, LazyKey, get, run_dtors, set};
+        } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+            mod racy;
+            mod sgx;
+            #[cfg(test)]
+            mod tests;
+            pub(super) use racy::LazyKey;
+            pub(super) use sgx::{Key, get, set};
+            use sgx::{create, destroy};
+        } else if #[cfg(target_os = "xous")] {
+            mod racy;
+            #[cfg(test)]
+            mod tests;
+            mod xous;
+            pub(super) use racy::LazyKey;
+            pub(crate) use xous::destroy_tls;
+            pub(super) use xous::{Key, get, set};
+            use xous::{create, destroy};
         }
     }
 }
@@ -108,7 +161,8 @@ mod lazy {
 /// fn` declared in a user crate). If the callback unwinds anyway, then
 /// `rtabort` with a message about thread local panicking on drop.
 #[inline]
-pub fn abort_on_dtor_unwind(f: impl FnOnce()) {
+#[allow(dead_code)]
+fn abort_on_dtor_unwind(f: impl FnOnce()) {
     // Using a guard like this is lower cost.
     let guard = DtorUnwindGuard;
     f();

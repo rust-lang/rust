@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![allow(
     unused,
     non_local_definitions,

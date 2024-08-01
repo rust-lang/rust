@@ -4,5 +4,7 @@ extern "C" {
 }
 
 fn main() {
-    unsafe {foo();}
+    unsafe {
+        foo();
+    }
 }

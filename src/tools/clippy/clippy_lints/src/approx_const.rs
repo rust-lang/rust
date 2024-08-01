@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
@@ -67,9 +68,10 @@ pub struct ApproxConstant {
 }
 
 impl ApproxConstant {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 
     fn check_lit(&self, cx: &LateContext<'_>, lit: &LitKind, e: &Expr<'_>) {

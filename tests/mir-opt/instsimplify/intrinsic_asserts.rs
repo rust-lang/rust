@@ -1,10 +1,10 @@
-//@ test-mir-pass: InstSimplify
+//@ test-mir-pass: InstSimplify-after-simplifycfg
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 
 // All these assertions pass, so all the intrinsic calls should be deleted.
-// EMIT_MIR intrinsic_asserts.removable.InstSimplify.diff
+// EMIT_MIR intrinsic_asserts.removable.InstSimplify-after-simplifycfg.diff
 pub fn removable() {
     // CHECK-LABEL: fn removable(
     // CHECK-NOT: assert_inhabited
@@ -18,7 +18,7 @@ pub fn removable() {
 enum Never {}
 
 // These assertions all diverge, so their target blocks should become None.
-// EMIT_MIR intrinsic_asserts.panics.InstSimplify.diff
+// EMIT_MIR intrinsic_asserts.panics.InstSimplify-after-simplifycfg.diff
 pub fn panics() {
     // CHECK-LABEL: fn panics(
     // CHECK: assert_inhabited::<Never>() -> unwind
@@ -30,7 +30,7 @@ pub fn panics() {
 }
 
 // Whether or not these asserts pass isn't known, so they shouldn't be modified.
-// EMIT_MIR intrinsic_asserts.generic.InstSimplify.diff
+// EMIT_MIR intrinsic_asserts.generic.InstSimplify-after-simplifycfg.diff
 pub fn generic<T>() {
     // CHECK-LABEL: fn generic(
     // CHECK: assert_inhabited::<T>() -> [return:
@@ -42,7 +42,7 @@ pub fn generic<T>() {
 }
 
 // Whether or not these asserts pass isn't known, so they shouldn't be modified.
-// EMIT_MIR intrinsic_asserts.generic_ref.InstSimplify.diff
+// EMIT_MIR intrinsic_asserts.generic_ref.InstSimplify-after-simplifycfg.diff
 pub fn generic_ref<T>() {
     // CHECK-LABEL: fn generic_ref(
     // CHECK: assert_mem_uninitialized_valid::<&T>() -> [return:

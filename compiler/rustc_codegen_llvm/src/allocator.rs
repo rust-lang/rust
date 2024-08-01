@@ -1,4 +1,3 @@
-use crate::attributes;
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
     alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
@@ -8,9 +7,8 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 
-use crate::debuginfo;
 use crate::llvm::{self, Context, False, Module, True, Type};
-use crate::ModuleLlvm;
+use crate::{attributes, debuginfo, ModuleLlvm};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -21,14 +19,16 @@ pub(crate) unsafe fn codegen(
 ) {
     let llcx = &*module_llvm.llcx;
     let llmod = module_llvm.llmod();
-    let usize = match tcx.sess.target.pointer_width {
-        16 => llvm::LLVMInt16TypeInContext(llcx),
-        32 => llvm::LLVMInt32TypeInContext(llcx),
-        64 => llvm::LLVMInt64TypeInContext(llcx),
-        tws => bug!("Unsupported target word size for int: {}", tws),
+    let usize = unsafe {
+        match tcx.sess.target.pointer_width {
+            16 => llvm::LLVMInt16TypeInContext(llcx),
+            32 => llvm::LLVMInt32TypeInContext(llcx),
+            64 => llvm::LLVMInt64TypeInContext(llcx),
+            tws => bug!("Unsupported target word size for int: {}", tws),
+        }
     };
-    let i8 = llvm::LLVMInt8TypeInContext(llcx);
-    let i8p = llvm::LLVMPointerTypeInContext(llcx, 0);
+    let i8 = unsafe { llvm::LLVMInt8TypeInContext(llcx) };
+    let i8p = unsafe { llvm::LLVMPointerTypeInContext(llcx, 0) };
 
     if kind == AllocatorKind::Default {
         for method in ALLOCATOR_METHODS {
@@ -73,23 +73,25 @@ pub(crate) unsafe fn codegen(
         true,
     );
 
-    // __rust_alloc_error_handler_should_panic
-    let name = OomStrategy::SYMBOL;
-    let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-    if tcx.sess.default_hidden_visibility() {
-        llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
-    }
-    let val = tcx.sess.opts.unstable_opts.oom.should_panic();
-    let llval = llvm::LLVMConstInt(i8, val as u64, False);
-    llvm::LLVMSetInitializer(ll_g, llval);
+    unsafe {
+        // __rust_alloc_error_handler_should_panic
+        let name = OomStrategy::SYMBOL;
+        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
+        if tcx.sess.default_hidden_visibility() {
+            llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
+        }
+        let val = tcx.sess.opts.unstable_opts.oom.should_panic();
+        let llval = llvm::LLVMConstInt(i8, val as u64, False);
+        llvm::LLVMSetInitializer(ll_g, llval);
 
-    let name = NO_ALLOC_SHIM_IS_UNSTABLE;
-    let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-    if tcx.sess.default_hidden_visibility() {
-        llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
+        let name = NO_ALLOC_SHIM_IS_UNSTABLE;
+        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
+        if tcx.sess.default_hidden_visibility() {
+            llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
+        }
+        let llval = llvm::LLVMConstInt(i8, 0, False);
+        llvm::LLVMSetInitializer(ll_g, llval);
     }
-    let llval = llvm::LLVMConstInt(i8, 0, False);
-    llvm::LLVMSetInitializer(ll_g, llval);
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
         let dbg_cx = debuginfo::CodegenUnitDebugContext::new(llmod);

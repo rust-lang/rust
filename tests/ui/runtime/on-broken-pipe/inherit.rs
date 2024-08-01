@@ -4,6 +4,7 @@
 //@ aux-bin: assert-inherit-sig_ign.rs
 //@ run-pass
 //@ compile-flags: -Zon-broken-pipe=kill
+//@ only-unix because SIGPIPE is a unix thing
 
 #![feature(rustc_private)]
 

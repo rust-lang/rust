@@ -60,7 +60,7 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
-    /// Use the pointer value in a new pointer of another type.
+    /// Uses the pointer value in a new pointer of another type.
     ///
     /// In case `meta` is a (fat) pointer to an unsized type, this operation
     /// will ignore the pointer part, whereas for (thin) pointers to sized
@@ -117,77 +117,11 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
-    /// Casts a pointer to its raw bits.
-    ///
-    /// This is equivalent to `as usize`, but is more specific to enhance readability.
-    /// The inverse method is [`from_bits`](pointer#method.from_bits-1).
-    ///
-    /// In particular, `*p as usize` and `p as usize` will both compile for
-    /// pointers to numeric types but do very different things, so using this
-    /// helps emphasize that reading the bits was intentional.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ptr_to_from_bits)]
-    /// # #[cfg(not(miri))] { // doctest does not work with strict provenance
-    /// let mut array = [13, 42];
-    /// let mut it = array.iter_mut();
-    /// let p0: *mut i32 = it.next().unwrap();
-    /// assert_eq!(<*mut _>::from_bits(p0.to_bits()), p0);
-    /// let p1: *mut i32 = it.next().unwrap();
-    /// assert_eq!(p1.to_bits() - p0.to_bits(), 4);
-    /// }
-    /// ```
-    #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
-    #[deprecated(
-        since = "1.67.0",
-        note = "replaced by the `expose_provenance` method, or update your code \
-            to follow the strict provenance rules using its APIs"
-    )]
-    #[inline(always)]
-    pub fn to_bits(self) -> usize
-    where
-        T: Sized,
-    {
-        self as usize
-    }
-
-    /// Creates a pointer from its raw bits.
-    ///
-    /// This is equivalent to `as *mut T`, but is more specific to enhance readability.
-    /// The inverse method is [`to_bits`](pointer#method.to_bits-1).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ptr_to_from_bits)]
-    /// # #[cfg(not(miri))] { // doctest does not work with strict provenance
-    /// use std::ptr::NonNull;
-    /// let dangling: *mut u8 = NonNull::dangling().as_ptr();
-    /// assert_eq!(<*mut u8>::from_bits(1), dangling);
-    /// }
-    /// ```
-    #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
-    #[deprecated(
-        since = "1.67.0",
-        note = "replaced by the `ptr::with_exposed_provenance_mut` function, or \
-            update your code to follow the strict provenance rules using its APIs"
-    )]
-    #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
-    #[inline(always)]
-    pub fn from_bits(bits: usize) -> Self
-    where
-        T: Sized,
-    {
-        bits as Self
-    }
-
     /// Gets the "address" portion of the pointer.
     ///
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
-    /// back to a pointer yields yields a [pointer without provenance][without_provenance_mut], which is undefined
+    /// back to a pointer yields a [pointer without provenance][without_provenance_mut], which is undefined
     /// behavior to dereference. To properly restore the lost information and obtain a
     /// dereferenceable pointer, use [`with_addr`][pointer::with_addr] or
     /// [`map_addr`][pointer::map_addr].
@@ -470,36 +404,26 @@ impl<T: ?Sized> *mut T {
         if self.is_null() { None } else { Some(unsafe { &*(self as *const MaybeUninit<T>) }) }
     }
 
-    /// Calculates the offset from a pointer.
+    /// Adds an offset to a pointer.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
-    /// If any of the following conditions are violated, the result is Undefined
-    /// Behavior:
+    /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
+    ///   [allocated object], and the entire memory range between `self` and the result must be in
+    ///   bounds of that allocated object. In particular, this range must not "wrap around" the edge
+    ///   of the address space.
     ///
-    /// * The offset being in bounds cannot rely on "wrapping around" the address
-    ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
-    ///
-    /// The compiler and standard library generally tries to ensure allocations
-    /// never reach a size where an offset is a concern. For instance, `Vec`
-    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `vec.as_ptr().add(vec.len())` is always safe.
-    ///
-    /// Most platforms fundamentally can't even construct such an allocation.
-    /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
-    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
-    /// more than `isize::MAX` bytes with things like Physical Address
-    /// Extension. As such, memory acquired directly from allocators or memory
-    /// mapped files *may* be too large to handle with this function.
+    /// Allocated objects can never be larger than `isize::MAX` bytes, so if the computed offset
+    /// stays in bounds of the allocated object, it is guaranteed to satisfy the first requirement.
+    /// This implies, for instance, that `vec.as_ptr().add(vec.len())` (for `vec: Vec<T>`) is always
+    /// safe.
     ///
     /// Consider using [`wrapping_offset`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
@@ -901,38 +825,21 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// If any of the following conditions are violated, the result is Undefined
-    /// Behavior:
+    /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * Both `self` and `origin` must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * `self` and `origin` must either
     ///
-    /// * Both pointers must be *derived from* a pointer to the same object.
-    ///   (See below for an example.)
+    ///   * point to the same address, or
+    ///   * both be *derived from* a pointer to the same [allocated object], and the memory range between
+    ///     the two pointers must be in bounds of that object. (See below for an example.)
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
     ///
-    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
-    ///
-    /// * The distance being in bounds cannot rely on "wrapping around" the address space.
-    ///
-    /// Rust types are never larger than `isize::MAX` and Rust allocations never wrap around the
-    /// address space, so two pointers within some value of any Rust type `T` will always satisfy
-    /// the last two conditions. The standard library also generally ensures that allocations
-    /// never reach a size where an offset is a concern. For instance, `Vec` and `Box` ensure they
-    /// never allocate more than `isize::MAX` bytes, so `ptr_into_vec.offset_from(vec.as_ptr())`
-    /// always satisfies the last two conditions.
-    ///
-    /// Most platforms fundamentally can't even construct such a large allocation.
-    /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
-    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
-    /// more than `isize::MAX` bytes with things like Physical Address
-    /// Extension. As such, memory acquired directly from allocators or memory
-    /// mapped files *may* be too large to handle with this function.
-    /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
-    /// such large allocations either.)
+    /// As a consequence, the absolute distance between the pointers, in bytes, computed on
+    /// mathematical integers (without "wrapping around"), cannot overflow an `isize`. This is
+    /// implied by the in-bounds requirement, and the fact that no allocated object can be larger
+    /// than `isize::MAX` bytes.
     ///
     /// The requirement for pointers to be derived from the same allocated object is primarily
     /// needed for `const`-compatibility: the distance between pointers into *different* allocated
@@ -971,14 +878,14 @@ impl<T: ?Sized> *mut T {
     /// let ptr1 = Box::into_raw(Box::new(0u8));
     /// let ptr2 = Box::into_raw(Box::new(1u8));
     /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);
-    /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
-    /// let ptr2_other = (ptr1 as *mut u8).wrapping_offset(diff);
+    /// // Make ptr2_other an "alias" of ptr2.add(1), but derived from ptr1.
+    /// let ptr2_other = (ptr1 as *mut u8).wrapping_offset(diff).wrapping_offset(1);
     /// assert_eq!(ptr2 as usize, ptr2_other as usize);
     /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
     /// // computing their offset is undefined behavior, even though
-    /// // they point to the same address!
+    /// // they point to addresses that are in-bounds of the same object!
     /// unsafe {
-    ///     let zero = ptr2_other.offset_from(ptr2); // Undefined Behavior
+    ///     let one = ptr2_other.offset_from(ptr2); // Undefined Behavior! ⚠️
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
@@ -1085,36 +992,26 @@ impl<T: ?Sized> *mut T {
         unsafe { (self as *const T).sub_ptr(origin) }
     }
 
-    /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
+    /// Adds an offset to a pointer (convenience for `.offset(count as isize)`).
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
-    /// If any of the following conditions are violated, the result is Undefined
-    /// Behavior:
+    /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
+    ///   [allocated object], and the entire memory range between `self` and the result must be in
+    ///   bounds of that allocated object. In particular, this range must not "wrap around" the edge
+    ///   of the address space.
     ///
-    /// * The offset being in bounds cannot rely on "wrapping around" the address
-    ///   space. That is, the infinite-precision sum must fit in a `usize`.
-    ///
-    /// The compiler and standard library generally tries to ensure allocations
-    /// never reach a size where an offset is a concern. For instance, `Vec`
-    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `vec.as_ptr().add(vec.len())` is always safe.
-    ///
-    /// Most platforms fundamentally can't even construct such an allocation.
-    /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
-    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
-    /// more than `isize::MAX` bytes with things like Physical Address
-    /// Extension. As such, memory acquired directly from allocators or memory
-    /// mapped files *may* be too large to handle with this function.
+    /// Allocated objects can never be larger than `isize::MAX` bytes, so if the computed offset
+    /// stays in bounds of the allocated object, it is guaranteed to satisfy the first requirement.
+    /// This implies, for instance, that `vec.as_ptr().add(vec.len())` (for `vec: Vec<T>`) is always
+    /// safe.
     ///
     /// Consider using [`wrapping_add`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
@@ -1168,7 +1065,7 @@ impl<T: ?Sized> *mut T {
         unsafe { self.cast::<u8>().add(count).with_metadata_of(self) }
     }
 
-    /// Calculates the offset from a pointer (convenience for
+    /// Subtracts an offset from a pointer (convenience for
     /// `.offset((count as isize).wrapping_neg())`).
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
@@ -1176,29 +1073,19 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// If any of the following conditions are violated, the result is Undefined
-    /// Behavior:
+    /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
     ///
-    /// * The computed offset cannot exceed `isize::MAX` **bytes**.
+    /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
+    ///   [allocated object], and the entire memory range between `self` and the result must be in
+    ///   bounds of that allocated object. In particular, this range must not "wrap around" the edge
+    ///   of the address space.
     ///
-    /// * The offset being in bounds cannot rely on "wrapping around" the address
-    ///   space. That is, the infinite-precision sum must fit in a usize.
-    ///
-    /// The compiler and standard library generally tries to ensure allocations
-    /// never reach a size where an offset is a concern. For instance, `Vec`
-    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `vec.as_ptr().add(vec.len()).sub(vec.len())` is always safe.
-    ///
-    /// Most platforms fundamentally can't even construct such an allocation.
-    /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
-    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
-    /// more than `isize::MAX` bytes with things like Physical Address
-    /// Extension. As such, memory acquired directly from allocators or memory
-    /// mapped files *may* be too large to handle with this function.
+    /// Allocated objects can never be larger than `isize::MAX` bytes, so if the computed offset
+    /// stays in bounds of the allocated object, it is guaranteed to satisfy the first requirement.
+    /// This implies, for instance, that `vec.as_ptr().add(vec.len())` (for `vec: Vec<T>`) is always
+    /// safe.
     ///
     /// Consider using [`wrapping_sub`] instead if these constraints are
     /// difficult to satisfy. The only advantage of this method is that it
@@ -1221,6 +1108,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_allow_const_fn_unstable(unchecked_neg)]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
@@ -1234,7 +1122,7 @@ impl<T: ?Sized> *mut T {
             // SAFETY: the caller must uphold the safety contract for `offset`.
             // Because the pointee is *not* a ZST, that means that `count` is
             // at most `isize::MAX`, and thus the negation cannot overflow.
-            unsafe { self.offset(intrinsics::unchecked_sub(0, count as isize)) }
+            unsafe { self.offset((count as isize).unchecked_neg()) }
         }
     }
 

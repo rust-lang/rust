@@ -1,37 +1,36 @@
+use std::borrow::Cow;
+use std::mem;
+
+use ast::Label;
+use rustc_ast as ast;
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::util::classify::{self, TrailingBrace};
+use rustc_ast::{
+    AttrStyle, AttrVec, Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, LocalKind, MacCall,
+    MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind, DUMMY_NODE_ID,
+};
+use rustc_errors::{Applicability, Diag, PResult};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{BytePos, ErrorGuaranteed, Span};
+use thin_vec::{thin_vec, ThinVec};
+
 use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
 use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
-use super::TrailingToken;
 use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
 };
-use crate::errors;
-use crate::maybe_whole;
-
 use crate::errors::MalformedLoopLabel;
-use ast::Label;
-use rustc_ast as ast;
-use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
-use rustc_ast::util::classify;
-use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
-use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Recovered, Stmt};
-use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, ErrorGuaranteed, Span};
-
-use std::borrow::Cow;
-use std::mem;
-use thin_vec::{thin_vec, ThinVec};
+use crate::{errors, maybe_whole};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     // Public for rustfmt usage.
-    pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
+    pub(super) fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
         Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
@@ -73,6 +72,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::MissingLet,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(kw::Auto) && self.may_recover() {
             self.bump(); // `auto`
@@ -80,6 +80,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotAuto,
+                force_collect,
             )?
         } else if self.is_kw_followed_by_ident(sym::var) && self.may_recover() {
             self.bump(); // `var`
@@ -87,6 +88,7 @@ impl<'a> Parser<'a> {
                 lo,
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotVar,
+                force_collect,
             )?
         } else if self.check_path()
             && !self.token.is_qpath_start()
@@ -97,17 +99,17 @@ impl<'a> Parser<'a> {
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
-            match force_collect {
-                ForceCollect::Yes => {
-                    self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))?
+            let stmt = self.collect_tokens_trailing_token(
+                AttrWrapper::empty(),
+                force_collect,
+                |this, _empty_attrs| Ok((this.parse_stmt_path_start(lo, attrs)?, false)),
+            );
+            match stmt {
+                Ok(stmt) => stmt,
+                Err(mut err) => {
+                    self.suggest_add_missing_let_for_stmt(&mut err);
+                    return Err(err);
                 }
-                ForceCollect::No => match self.parse_stmt_path_start(lo, attrs) {
-                    Ok(stmt) => stmt,
-                    Err(mut err) => {
-                        self.suggest_add_missing_let_for_stmt(&mut err);
-                        return Err(err);
-                    }
-                },
             }
         } else if let Some(item) = self.parse_item_common(
             attrs.clone(),
@@ -124,12 +126,13 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
-            let e = match force_collect {
-                ForceCollect::Yes => self.collect_tokens_no_attrs(|this| {
-                    this.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
-                })?,
-                ForceCollect::No => self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))?,
-            };
+            let e = self.collect_tokens_trailing_token(
+                AttrWrapper::empty(),
+                force_collect,
+                |this, _empty_attrs| {
+                    Ok((this.parse_expr_res(Restrictions::STMT_EXPR, attrs)?, false))
+                },
+            )?;
             if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
@@ -149,11 +152,7 @@ impl<'a> Parser<'a> {
 
             if this.eat(&token::Not) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
-                if this.token == token::Semi {
-                    return Ok((stmt_mac, TrailingToken::Semi));
-                } else {
-                    return Ok((stmt_mac, TrailingToken::None));
-                }
+                return Ok((stmt_mac, this.token == token::Semi));
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
@@ -164,20 +163,17 @@ impl<'a> Parser<'a> {
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_dot_or_call_with(expr, lo, attrs)
+                this.parse_expr_dot_or_call_with(attrs, expr, lo)
             })?;
             // `DUMMY_SP` will get overwritten later in this function
-            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), TrailingToken::None))
+            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), false))
         })?;
 
         if let StmtKind::Expr(expr) = stmt.kind {
             // Perform this outside of the `collect_tokens_trailing_token` closure,
             // since our outer attributes do not apply to this part of the expression
             let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc_with(
-                    0,
-                    LhsExpr::AlreadyParsed { expr, starts_statement: true },
-                )
+                this.parse_expr_assoc_with(0, LhsExpr::Parsed { expr, starts_statement: true })
             })?;
             Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
         } else {
@@ -209,11 +205,9 @@ impl<'a> Parser<'a> {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
-            let e = self.parse_expr_dot_or_call_with(e, lo, attrs)?;
-            let e = self.parse_expr_assoc_with(
-                0,
-                LhsExpr::AlreadyParsed { expr: e, starts_statement: false },
-            )?;
+            let e = self.parse_expr_dot_or_call_with(attrs, e, lo)?;
+            let e = self
+                .parse_expr_assoc_with(0, LhsExpr::Parsed { expr: e, starts_statement: false })?;
             StmtKind::Expr(e)
         };
         Ok(self.mk_stmt(lo.to(hi), kind))
@@ -241,16 +235,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         attrs: AttrWrapper,
         subdiagnostic: fn(Span) -> errors::InvalidVariableDeclarationSub,
+        force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
-        let stmt =
-            self.collect_tokens_trailing_token(attrs, ForceCollect::Yes, |this, attrs| {
-                let local = this.parse_local(attrs)?;
-                // FIXME - maybe capture semicolon in recovery?
-                Ok((
-                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
-                    TrailingToken::None,
-                ))
-            })?;
+        let stmt = self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+            let local = this.parse_local(attrs)?;
+            // FIXME - maybe capture semicolon in recovery?
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
+        })?;
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
@@ -266,11 +257,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             this.expect_keyword(kw::Let)?;
             let local = this.parse_local(attrs)?;
-            let trailing = if capture_semi && this.token.kind == token::Semi {
-                TrailingToken::Semi
-            } else {
-                TrailingToken::None
-            };
+            let trailing = capture_semi && this.token.kind == token::Semi;
             Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
         })
     }
@@ -407,18 +394,24 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
-            let sugg = match &trailing.kind {
-                ExprKind::MacCall(mac) => errors::WrapInParentheses::MacroArgs {
-                    left: mac.args.dspan.open,
-                    right: mac.args.dspan.close,
-                },
-                _ => errors::WrapInParentheses::Expression {
-                    left: trailing.span.shrink_to_lo(),
-                    right: trailing.span.shrink_to_hi(),
-                },
+            let (span, sugg) = match trailing {
+                TrailingBrace::MacCall(mac) => (
+                    mac.span(),
+                    errors::WrapInParentheses::MacroArgs {
+                        left: mac.args.dspan.open,
+                        right: mac.args.dspan.close,
+                    },
+                ),
+                TrailingBrace::Expr(expr) => (
+                    expr.span,
+                    errors::WrapInParentheses::Expression {
+                        left: expr.span.shrink_to_lo(),
+                        right: expr.span.shrink_to_hi(),
+                    },
+                ),
             };
             self.dcx().emit_err(errors::InvalidCurlyInLetElse {
-                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
+                span: span.with_lo(span.hi() - BytePos(1)),
                 sugg,
             });
         }
@@ -429,8 +422,10 @@ impl<'a> Parser<'a> {
         let eq_consumed = match self.token.kind {
             token::BinOpEq(..) => {
                 // Recover `let x <op>= 1` as `let x = 1`
-                self.dcx()
-                    .emit_err(errors::CompoundAssignmentExpressionInLet { span: self.token.span });
+                self.dcx().emit_err(errors::CompoundAssignmentExpressionInLet {
+                    span: self.token.span,
+                    suggestion: self.token.span.with_hi(self.token.span.lo() + BytePos(1)),
+                });
                 self.bump();
                 true
             }
@@ -567,7 +562,7 @@ impl<'a> Parser<'a> {
             if self.token == token::Eof {
                 break;
             }
-            if self.is_diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+            if self.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
                 // Account for `<<<<<<<` diff markers. We can't proactively error here because
                 // that can be a valid path start, so we snapshot and reparse only we've
                 // encountered another parse error.
@@ -576,7 +571,7 @@ impl<'a> Parser<'a> {
             let stmt = match self.parse_full_stmt(recover) {
                 Err(mut err) if recover.yes() => {
                     if let Some(ref mut snapshot) = snapshot {
-                        snapshot.recover_diff_marker();
+                        snapshot.recover_vcs_conflict_marker();
                     }
                     if self.token == token::Colon {
                         // if a previous and next token of the current one is
@@ -716,7 +711,7 @@ impl<'a> Parser<'a> {
                                                 e.cancel();
                                                 self.dcx().emit_err(MalformedLoopLabel {
                                                     span: label.ident.span,
-                                                    correct_label: label.ident,
+                                                    suggestion: label.ident.span.shrink_to_lo(),
                                                 });
                                                 *expr = labeled_expr;
                                                 break 'break_recover None;

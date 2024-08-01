@@ -1,9 +1,3 @@
-use crate::attributes;
-use crate::base;
-use crate::context::CodegenCx;
-use crate::errors::SymbolAlreadyDefined;
-use crate::llvm;
-use crate::type_of::LayoutLlvmExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -13,6 +7,12 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::RelocModel;
+use tracing::debug;
+
+use crate::context::CodegenCx;
+use crate::errors::SymbolAlreadyDefined;
+use crate::type_of::LayoutLlvmExt;
+use crate::{attributes, base, llvm};
 
 impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
@@ -107,8 +107,8 @@ impl CodegenCx<'_, '_> {
         llval: &llvm::Value,
         is_declaration: bool,
     ) -> bool {
-        let linkage = llvm::LLVMRustGetLinkage(llval);
-        let visibility = llvm::LLVMRustGetVisibility(llval);
+        let linkage = unsafe { llvm::LLVMRustGetLinkage(llval) };
+        let visibility = unsafe { llvm::LLVMRustGetVisibility(llval) };
 
         if matches!(linkage, llvm::Linkage::InternalLinkage | llvm::Linkage::PrivateLinkage) {
             return true;
@@ -144,8 +144,8 @@ impl CodegenCx<'_, '_> {
         }
 
         // Thread-local variables generally don't support copy relocations.
-        let is_thread_local_var = llvm::LLVMIsAGlobalVariable(llval)
-            .is_some_and(|v| llvm::LLVMIsThreadLocal(v) == llvm::True);
+        let is_thread_local_var = unsafe { llvm::LLVMIsAGlobalVariable(llval) }
+            .is_some_and(|v| unsafe { llvm::LLVMIsThreadLocal(v) } == llvm::True);
         if is_thread_local_var {
             return false;
         }

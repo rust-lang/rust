@@ -1,12 +1,15 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::creader::CStore;
-use crate::rmeta::table::IsDefault;
-use crate::rmeta::*;
+use std::iter::TrustedLen;
+use std::path::Path;
+use std::{io, iter, mem};
 
+pub(super) use cstore_impl::provide;
+use proc_macro::bridge::client::ProcMacro;
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::{Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
@@ -21,28 +24,26 @@ use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::Visibility;
+use rustc_middle::{bug, implement_ty_decoder};
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
+use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::symbol::kw;
 use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
+use tracing::debug;
 
-use proc_macro::bridge::client::ProcMacro;
-use std::iter::TrustedLen;
-use std::path::Path;
-use std::{io, iter, mem};
-
-pub(super) use cstore_impl::provide;
-use rustc_span::hygiene::HygieneDecodeContext;
+use crate::creader::CStore;
+use crate::rmeta::table::IsDefault;
+use crate::rmeta::*;
 
 mod cstore_impl;
 
 /// A reference to the raw binary version of crate metadata.
-/// A `MetadataBlob` internally is just a reference counted pointer to
-/// the actual data, so cloning it is cheap.
-#[derive(Clone)]
-pub(crate) struct MetadataBlob(pub(crate) OwnedSlice);
+/// This struct applies [`MemDecoder`]'s validation when constructed
+/// so that later constructions are guaranteed to succeed.
+pub(crate) struct MetadataBlob(OwnedSlice);
 
 impl std::ops::Deref for MetadataBlob {
     type Target = [u8];
@@ -50,6 +51,19 @@ impl std::ops::Deref for MetadataBlob {
     #[inline]
     fn deref(&self) -> &[u8] {
         &self.0[..]
+    }
+}
+
+impl MetadataBlob {
+    /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`MetadataBlob`].
+    pub fn new(slice: OwnedSlice) -> Result<Self, ()> {
+        if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
+    }
+
+    /// Since this has passed the validation of [`MetadataBlob::new`], this returns bytes which are
+    /// known to pass the [`MemDecoder`] validation.
+    pub fn bytes(&self) -> &OwnedSlice {
+        &self.0
     }
 }
 
@@ -69,12 +83,12 @@ pub(crate) struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxHashMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
+    trait_impls: FxIndexMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
     /// or `#[rustc_allow_incoherent_impl]`.
-    incoherent_impls: FxHashMap<SimplifiedType, LazyArray<DefIndex>>,
+    incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<DefIndex>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -164,7 +178,14 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
         let tcx = self.tcx();
         DecodeContext {
-            opaque: MemDecoder::new(self.blob(), pos),
+            // FIXME: This unwrap should never panic because we check that it won't when creating
+            // `MetadataBlob`. Ideally we'd just have a `MetadataDecoder` and hand out subslices of
+            // it as we do elsewhere in the compiler using `MetadataDecoder::split_at`. But we own
+            // the data for the decoder so holding onto the `MemDecoder` too would make us a
+            // self-referential struct which is downright goofy because `MetadataBlob` is already
+            // self-referential. Probably `MemDecoder` should contain an `OwnedSlice`, but that
+            // demands a significant refactoring due to our crate graph.
+            opaque: MemDecoder::new(self.blob(), pos).unwrap(),
             cdata: self.cdata(),
             blob: self.blob(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
@@ -392,7 +413,7 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let new_opaque = MemDecoder::new(self.opaque.data(), pos);
+        let new_opaque = self.opaque.split_at(pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
         let r = f(self);
@@ -518,7 +539,7 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
         } else {
             SpanData::decode(self)
         };
-        Span::new(data.lo, data.hi, data.ctxt, data.parent)
+        data.span()
     }
 
     fn decode_symbol(&mut self) -> Symbol {
@@ -648,7 +669,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
         let lo = lo + source_file.translated_source_file.start_pos;
         let hi = hi + source_file.translated_source_file.start_pos;
 
-        // Do not try to decode parent for foreign spans.
+        // Do not try to decode parent for foreign spans (it wasn't encoded in the first place).
         SpanData { lo, hi, ctxt, parent: None }
     }
 }
@@ -1053,7 +1074,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self,
         index: DefIndex,
         tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let lazy = self.root.tables.explicit_item_bounds.get(self, index);
         let output = if lazy.is_default() {
             &mut []
@@ -1067,7 +1088,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self,
         index: DefIndex,
         tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let lazy = self.root.tables.explicit_item_super_predicates.get(self, index);
         let output = if lazy.is_default() {
             &mut []
@@ -1112,7 +1133,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     .collect(),
                 adt_kind,
                 parent_did,
-                false,
+                None,
                 data.is_non_exhaustive,
                 // FIXME: unnamed fields in crate metadata is unimplemented yet.
                 false,
@@ -1327,7 +1348,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_associated_item(self, id: DefIndex, sess: &'a Session) -> ty::AssocItem {
-        let name = if self.root.tables.opt_rpitit_info.get(self, id).is_some() {
+        let name = if self.root.tables.opt_rpitit_info.get(self, id).is_some()
+            || self.root.tables.is_effects_desugaring.get(self, id)
+        {
             kw::Empty
         } else {
             self.item_name(id)
@@ -1350,6 +1373,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             container,
             fn_has_self_parameter: has_self,
             opt_rpitit_info,
+            is_effects_desugaring: self.root.tables.is_effects_desugaring.get(self, id),
         }
     }
 
@@ -1703,7 +1727,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     source_len,
                     lines,
                     multibyte_chars,
-                    non_narrow_chars,
                     normalized_pos,
                     stable_id,
                     ..
@@ -1755,7 +1778,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     self.cnum,
                     lines,
                     multibyte_chars,
-                    non_narrow_chars,
                     normalized_pos,
                     source_file_index,
                 );

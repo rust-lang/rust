@@ -4,6 +4,7 @@ use std::fmt::Write;
 
 use cranelift_codegen::isa::CallConv;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_hir::LangItem;
 use rustc_span::sym;
 use rustc_target::asm::*;
 use target_lexicon::BinaryFormat;
@@ -45,9 +46,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     // Used by panic_abort on Windows, but uses a syntax which only happens to work with
     // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
     // the LLVM backend.
-    if template.len() == 1
-        && template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string())
-    {
+    if template.len() == 1 && template[0] == InlineAsmTemplatePiece::String("int $$0x29".into()) {
         fx.bcx.ins().trap(TrapCode::User(1));
         return;
     }
@@ -112,13 +111,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     );
                     let sig =
                         get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
-                    create_wrapper_function(
-                        fx.module,
-                        &mut fx.cx.unwind_context,
-                        sig,
-                        &wrapper_name,
-                        symbol.name,
-                    );
+                    create_wrapper_function(fx.module, sig, &wrapper_name, symbol.name);
 
                     CInlineAsmOperand::Symbol { symbol: wrapper_name }
                 } else {
@@ -127,7 +120,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             }
             InlineAsmOperand::SymStatic { def_id } => {
                 assert!(fx.tcx.is_static(def_id));
-                let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+                let instance = Instance::mono(fx.tcx, def_id);
                 CInlineAsmOperand::Symbol { symbol: fx.tcx.symbol_name(instance).name.to_owned() }
             }
             InlineAsmOperand::Label { .. } => {
@@ -169,6 +162,7 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
         stack_slots_input: Vec::new(),
         stack_slots_output: Vec::new(),
         stack_slot_size: Size::from_bytes(0),
+        is_naked: false,
     };
     asm_gen.allocate_registers();
     asm_gen.allocate_stack_slots();
@@ -209,6 +203,115 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
     call_inline_asm(fx, &asm_name, asm_gen.stack_slot_size, inputs, outputs);
 }
 
+pub(crate) fn codegen_naked_asm<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cx: &mut crate::CodegenCx,
+    module: &mut dyn Module,
+    instance: Instance<'tcx>,
+    span: Span,
+    symbol_name: &str,
+    template: &[InlineAsmTemplatePiece],
+    operands: &[InlineAsmOperand<'tcx>],
+    options: InlineAsmOptions,
+) {
+    // FIXME add .eh_frame unwind info directives
+
+    let operands = operands
+        .iter()
+        .map(|operand| match *operand {
+            InlineAsmOperand::In { .. }
+            | InlineAsmOperand::Out { .. }
+            | InlineAsmOperand::InOut { .. } => {
+                span_bug!(span, "invalid operand type for naked asm")
+            }
+            InlineAsmOperand::Const { ref value } => {
+                let cv = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    ty::ParamEnv::reveal_all(),
+                    ty::EarlyBinder::bind(value.const_),
+                );
+                let const_value = cv
+                    .eval(tcx, ty::ParamEnv::reveal_all(), value.span)
+                    .expect("erroneous constant missed by mono item collection");
+
+                let value = rustc_codegen_ssa::common::asm_const_to_str(
+                    tcx,
+                    span,
+                    const_value,
+                    RevealAllLayoutCx(tcx).layout_of(cv.ty()),
+                );
+                CInlineAsmOperand::Const { value }
+            }
+            InlineAsmOperand::SymFn { ref value } => {
+                if cfg!(not(feature = "inline_asm_sym")) {
+                    tcx.dcx()
+                        .span_err(span, "asm! and global_asm! sym operands are not yet supported");
+                }
+
+                let const_ = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    ty::ParamEnv::reveal_all(),
+                    ty::EarlyBinder::bind(value.const_),
+                );
+                if let ty::FnDef(def_id, args) = *const_.ty().kind() {
+                    let instance = ty::Instance::resolve_for_fn_ptr(
+                        tcx,
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        args,
+                    )
+                    .unwrap();
+                    let symbol = tcx.symbol_name(instance);
+
+                    // Pass a wrapper rather than the function itself as the function itself may not
+                    // be exported from the main codegen unit and may thus be unreachable from the
+                    // object file created by an external assembler.
+                    let inline_asm_index = cx.inline_asm_index.get();
+                    cx.inline_asm_index.set(inline_asm_index + 1);
+                    let wrapper_name = format!(
+                        "__inline_asm_{}_wrapper_n{}",
+                        cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+                        inline_asm_index
+                    );
+                    let sig =
+                        get_function_sig(tcx, module.target_config().default_call_conv, instance);
+                    create_wrapper_function(module, sig, &wrapper_name, symbol.name);
+
+                    CInlineAsmOperand::Symbol { symbol: wrapper_name }
+                } else {
+                    span_bug!(span, "invalid type for asm sym (fn)");
+                }
+            }
+            InlineAsmOperand::SymStatic { def_id } => {
+                assert!(tcx.is_static(def_id));
+                let instance = Instance::mono(tcx, def_id);
+                CInlineAsmOperand::Symbol { symbol: tcx.symbol_name(instance).name.to_owned() }
+            }
+            InlineAsmOperand::Label { .. } => {
+                span_bug!(span, "asm! label operands are not yet supported");
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let asm_gen = InlineAssemblyGenerator {
+        tcx,
+        arch: tcx.sess.asm_arch.unwrap(),
+        enclosing_def_id: instance.def_id(),
+        template,
+        operands: &operands,
+        options,
+        registers: Vec::new(),
+        stack_slots_clobber: Vec::new(),
+        stack_slots_input: Vec::new(),
+        stack_slots_output: Vec::new(),
+        stack_slot_size: Size::from_bytes(0),
+        is_naked: true,
+    };
+
+    let generated_asm = asm_gen.generate_asm_wrapper(symbol_name);
+    cx.global_asm.push_str(&generated_asm);
+}
+
 struct InlineAssemblyGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     arch: InlineAsmArch,
@@ -221,10 +324,13 @@ struct InlineAssemblyGenerator<'a, 'tcx> {
     stack_slots_input: Vec<Option<Size>>,
     stack_slots_output: Vec<Option<Size>>,
     stack_slot_size: Size,
+    is_naked: bool,
 }
 
 impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     fn allocate_registers(&mut self) {
+        assert!(!self.is_naked);
+
         let sess = self.tcx.sess;
         let map = allocatable_registers(
             self.arch,
@@ -348,6 +454,8 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     }
 
     fn allocate_stack_slots(&mut self) {
+        assert!(!self.is_naked);
+
         let mut slot_size = Size::from_bytes(0);
         let mut slots_clobber = vec![None; self.operands.len()];
         let mut slots_input = vec![None; self.operands.len()];
@@ -468,28 +576,30 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         if is_x86 {
             generated_asm.push_str(".intel_syntax noprefix\n");
         }
-        Self::prologue(&mut generated_asm, self.arch);
+        if !self.is_naked {
+            Self::prologue(&mut generated_asm, self.arch);
 
-        // Save clobbered registers
-        if !self.options.contains(InlineAsmOptions::NORETURN) {
+            // Save clobbered registers
+            if !self.options.contains(InlineAsmOptions::NORETURN) {
+                for (reg, slot) in self
+                    .registers
+                    .iter()
+                    .zip(self.stack_slots_clobber.iter().copied())
+                    .filter_map(|(r, s)| r.zip(s))
+                {
+                    Self::save_register(&mut generated_asm, self.arch, reg, slot);
+                }
+            }
+
+            // Write input registers
             for (reg, slot) in self
                 .registers
                 .iter()
-                .zip(self.stack_slots_clobber.iter().copied())
+                .zip(self.stack_slots_input.iter().copied())
                 .filter_map(|(r, s)| r.zip(s))
             {
-                Self::save_register(&mut generated_asm, self.arch, reg, slot);
+                Self::restore_register(&mut generated_asm, self.arch, reg, slot);
             }
-        }
-
-        // Write input registers
-        for (reg, slot) in self
-            .registers
-            .iter()
-            .zip(self.stack_slots_input.iter().copied())
-            .filter_map(|(r, s)| r.zip(s))
-        {
-            Self::restore_register(&mut generated_asm, self.arch, reg, slot);
         }
 
         if is_x86 && self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
@@ -553,30 +663,32 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             generated_asm.push_str(".intel_syntax noprefix\n");
         }
 
-        if !self.options.contains(InlineAsmOptions::NORETURN) {
-            // Read output registers
-            for (reg, slot) in self
-                .registers
-                .iter()
-                .zip(self.stack_slots_output.iter().copied())
-                .filter_map(|(r, s)| r.zip(s))
-            {
-                Self::save_register(&mut generated_asm, self.arch, reg, slot);
-            }
+        if !self.is_naked {
+            if !self.options.contains(InlineAsmOptions::NORETURN) {
+                // Read output registers
+                for (reg, slot) in self
+                    .registers
+                    .iter()
+                    .zip(self.stack_slots_output.iter().copied())
+                    .filter_map(|(r, s)| r.zip(s))
+                {
+                    Self::save_register(&mut generated_asm, self.arch, reg, slot);
+                }
 
-            // Restore clobbered registers
-            for (reg, slot) in self
-                .registers
-                .iter()
-                .zip(self.stack_slots_clobber.iter().copied())
-                .filter_map(|(r, s)| r.zip(s))
-            {
-                Self::restore_register(&mut generated_asm, self.arch, reg, slot);
-            }
+                // Restore clobbered registers
+                for (reg, slot) in self
+                    .registers
+                    .iter()
+                    .zip(self.stack_slots_clobber.iter().copied())
+                    .filter_map(|(r, s)| r.zip(s))
+                {
+                    Self::restore_register(&mut generated_asm, self.arch, reg, slot);
+                }
 
-            Self::epilogue(&mut generated_asm, self.arch);
-        } else {
-            Self::epilogue_noreturn(&mut generated_asm, self.arch);
+                Self::epilogue(&mut generated_asm, self.arch);
+            } else {
+                Self::epilogue_noreturn(&mut generated_asm, self.arch);
+            }
         }
 
         if is_x86 {
@@ -802,7 +914,7 @@ fn call_inline_asm<'tcx>(
 fn asm_clif_type<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
     match ty.kind() {
         // Adapted from https://github.com/rust-lang/rust/blob/f3c66088610c1b80110297c2d9a8b5f9265b013f/compiler/rustc_hir_analysis/src/check/intrinsicck.rs#L136-L151
-        ty::Adt(adt, args) if Some(adt.did()) == fx.tcx.lang_items().maybe_uninit() => {
+        ty::Adt(adt, args) if fx.tcx.is_lang_item(adt.did(), LangItem::MaybeUninit) => {
             let fields = &adt.non_enum_variant().fields;
             let ty = fields[FieldIdx::from_u32(1)].ty(fx.tcx, args);
             let ty::Adt(ty, args) = ty.kind() else {

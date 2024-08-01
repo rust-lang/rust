@@ -1,29 +1,35 @@
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
   --> $DIR/unboxed-closures-mutate-upvar.rs:15:9
    |
-LL |     let n = 0;
-   |         - help: consider changing this to be mutable: `mut n`
-LL |     let mut f = to_fn_mut(|| {
 LL |         n += 1;
    |         ^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut n = 0;
+   |         +++
 
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
   --> $DIR/unboxed-closures-mutate-upvar.rs:32:9
    |
-LL |     let n = 0;
-   |         - help: consider changing this to be mutable: `mut n`
-...
 LL |         n += 1;
    |         ^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut n = 0;
+   |         +++
 
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
   --> $DIR/unboxed-closures-mutate-upvar.rs:46:9
    |
-LL |     let n = 0;
-   |         - help: consider changing this to be mutable: `mut n`
-LL |     let mut f = to_fn(move || {
 LL |         n += 1;
    |         ^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut n = 0;
+   |         +++
 
 error[E0594]: cannot assign to `n`, as it is a captured variable in a `Fn` closure
   --> $DIR/unboxed-closures-mutate-upvar.rs:53:9

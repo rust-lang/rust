@@ -5,7 +5,7 @@ impl dyn A {
 struct S;
 
 trait X {
-    X() {} //~ ERROR expected one of `!` or `::`, found `(`
+    X() {} //~ ERROR missing `fn` for function definition
     fn xxx() { ### }
     L = M;
     Z = { 2 + 3 };
@@ -13,7 +13,7 @@ trait X {
 }
 
 trait A {
-    X() {} //~ ERROR expected one of `!` or `::`, found `(`
+    X() {} //~ ERROR missing `fn` for function definition
 }
 trait B {
     fn xxx() { ### } //~ ERROR expected

@@ -25,30 +25,6 @@ help: add missing lifetime argument
 LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output<'a> = &'a mut f32>)
    |                                                     ++++
 
-error[E0499]: cannot borrow `*dst` as mutable more than once at a time
-  --> $DIR/issue-80433.rs:25:10
-   |
-LL |         *dst.test_mut() = n.into();
-   |          ^^^-----------
-   |          |
-   |          `*dst` was mutably borrowed here in the previous iteration of the loop
-   |          argument requires that `*dst` is borrowed for `'static`
+error: aborting due to 2 previous errors
 
-error[E0521]: borrowed data escapes outside of function
-  --> $DIR/issue-80433.rs:25:10
-   |
-LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
-   |                 --  --- `dst` is a reference that is only valid in the function body
-   |                 |
-   |                 lifetime `'a` defined here
-...
-LL |         *dst.test_mut() = n.into();
-   |          ^^^^^^^^^^^^^^
-   |          |
-   |          `dst` escapes the function body here
-   |          argument requires that `'a` must outlive `'static`
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0107, E0499, E0521.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0107`.

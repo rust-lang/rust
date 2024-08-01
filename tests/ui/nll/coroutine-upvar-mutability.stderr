@@ -1,11 +1,13 @@
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/coroutine-upvar-mutability.rs:10:9
    |
-LL |     let x = 0;
-   |         - help: consider changing this to be mutable: `mut x`
-...
 LL |         x = 1;
    |         ^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x = 0;
+   |         +++
 
 error: aborting due to 1 previous error
 

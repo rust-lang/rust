@@ -8,6 +8,7 @@ use ide_db::FxHashMap;
 use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
 use rustc_hash::FxHashSet;
+use stdx::iter_eq_by;
 use triomphe::Arc;
 
 use crate::{global_state::GlobalStateSnapshot, lsp, lsp_ext};
@@ -22,14 +23,21 @@ pub struct DiagnosticsMapConfig {
     pub check_ignore: FxHashSet<String>,
 }
 
+pub(crate) type DiagnosticsGeneration = usize;
+
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
     // FIXME: should be IntMap<FileId, Vec<ra_id::Diagnostic>>
-    pub(crate) native: IntMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) native: IntMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
     // FIXME: should be Vec<flycheck::Diagnostic>
     pub(crate) check: IntMap<usize, IntMap<FileId, Vec<lsp_types::Diagnostic>>>,
     pub(crate) check_fixes: CheckFixes,
     changes: IntSet<FileId>,
+    /// Counter for supplying a new generation number for diagnostics.
+    /// This is used to keep track of when to clear the diagnostics for a given file as we compute
+    /// diagnostics on multiple worker threads simultaneously which may result in multiple diagnostics
+    /// updates for the same file in a single generation update (due to macros affecting multiple files).
+    generation: DiagnosticsGeneration,
 }
 
 #[derive(Debug, Clone)]
@@ -82,21 +90,31 @@ impl DiagnosticCollection {
 
     pub(crate) fn set_native_diagnostics(
         &mut self,
+        generation: DiagnosticsGeneration,
         file_id: FileId,
-        diagnostics: Vec<lsp_types::Diagnostic>,
+        mut diagnostics: Vec<lsp_types::Diagnostic>,
     ) {
-        if let Some(existing_diagnostics) = self.native.get(&file_id) {
+        diagnostics.sort_by_key(|it| (it.range.start, it.range.end));
+        if let Some((old_gen, existing_diagnostics)) = self.native.get_mut(&file_id) {
             if existing_diagnostics.len() == diagnostics.len()
-                && diagnostics
-                    .iter()
-                    .zip(existing_diagnostics)
-                    .all(|(new, existing)| are_diagnostics_equal(new, existing))
+                && iter_eq_by(&diagnostics, &*existing_diagnostics, |new, existing| {
+                    are_diagnostics_equal(new, existing)
+                })
             {
+                // don't signal an update if the diagnostics are the same
                 return;
             }
+            if *old_gen < generation || generation == 0 {
+                self.native.insert(file_id, (generation, diagnostics));
+            } else {
+                existing_diagnostics.extend(diagnostics);
+                // FIXME: Doing the merge step of a merge sort here would be a bit more performant
+                // but eh
+                existing_diagnostics.sort_by_key(|it| (it.range.start, it.range.end))
+            }
+        } else {
+            self.native.insert(file_id, (generation, diagnostics));
         }
-
-        self.native.insert(file_id, diagnostics);
         self.changes.insert(file_id);
     }
 
@@ -104,7 +122,7 @@ impl DiagnosticCollection {
         &self,
         file_id: FileId,
     ) -> impl Iterator<Item = &lsp_types::Diagnostic> {
-        let native = self.native.get(&file_id).into_iter().flatten();
+        let native = self.native.get(&file_id).into_iter().flat_map(|(_, d)| d);
         let check = self.check.values().filter_map(move |it| it.get(&file_id)).flatten();
         native.chain(check)
     }
@@ -114,6 +132,11 @@ impl DiagnosticCollection {
             return None;
         }
         Some(mem::take(&mut self.changes))
+    }
+
+    pub(crate) fn next_generation(&mut self) -> usize {
+        self.generation += 1;
+        self.generation
     }
 }
 
@@ -126,9 +149,10 @@ fn are_diagnostics_equal(left: &lsp_types::Diagnostic, right: &lsp_types::Diagno
 
 pub(crate) fn fetch_native_diagnostics(
     snapshot: GlobalStateSnapshot,
-    subscriptions: Vec<FileId>,
+    subscriptions: std::sync::Arc<[FileId]>,
+    slice: std::ops::Range<usize>,
 ) -> Vec<(FileId, Vec<lsp_types::Diagnostic>)> {
-    let _p = tracing::span!(tracing::Level::INFO, "fetch_native_diagnostics").entered();
+    let _p = tracing::info_span!("fetch_native_diagnostics").entered();
     let _ctx = stdx::panic_context::enter("fetch_native_diagnostics".to_owned());
 
     let convert_diagnostic =
@@ -149,12 +173,12 @@ pub(crate) fn fetch_native_diagnostics(
     // the diagnostics produced may point to different files not requested by the concrete request,
     // put those into here and filter later
     let mut odd_ones = Vec::new();
-    let mut diagnostics = subscriptions
+    let mut diagnostics = subscriptions[slice]
         .iter()
         .copied()
         .filter_map(|file_id| {
             let line_index = snapshot.file_line_index(file_id).ok()?;
-            let source_root = snapshot.analysis.source_root(file_id).ok()?;
+            let source_root = snapshot.analysis.source_root_id(file_id).ok()?;
 
             let diagnostics = snapshot
                 .analysis

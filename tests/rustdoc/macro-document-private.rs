@@ -8,12 +8,12 @@
 #![feature(decl_macro)]
 
 
-// @has macro_document_private/macro.some_macro.html
+//@ has macro_document_private/macro.some_macro.html
 macro some_macro {
     (a: tt) => {}
 }
 
-// @has macro_document_private/macro.another_macro.html
+//@ has macro_document_private/macro.another_macro.html
 macro_rules! another_macro {
     (a: tt) => {}
 }

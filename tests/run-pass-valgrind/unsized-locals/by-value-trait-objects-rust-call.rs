@@ -43,7 +43,6 @@ impl FnOnce<()> for D {
     }
 }
 
-
 fn main() {
     let x = *(Box::new(A) as Box<dyn FnOnce<(), Output = String>>);
     assert_eq!(x.call_once(()), format!("hello"));

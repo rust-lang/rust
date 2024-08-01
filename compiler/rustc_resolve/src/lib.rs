@@ -6,9 +6,13 @@
 //!
 //! Type-relative name resolution (methods, fields, associated items) happens in `rustc_hir_analysis`.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::potential_query_instability)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(extract_if)]
@@ -16,35 +20,40 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(rustc_attrs)]
-#![allow(rustdoc::private_intra_doc_links)]
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::potential_query_instability)]
-#![allow(rustc::untranslatable_diagnostic)]
-#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
+use std::cell::{Cell, RefCell};
+use std::collections::BTreeSet;
+use std::fmt;
 
+use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
+use effective_visibilities::EffectiveVisibilitiesVisitor;
 use errors::{
     ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst, ParamKindInTyOfConstParam,
 };
+use imports::{Import, ImportData, ImportKind, NameResolution};
+use late::{HasGenericParams, PathSource, PatternSource, UnnecessaryQualification};
+use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
-use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
+use rustc_ast::{
+    self as ast, attr, AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind,
+    NodeId, Path, CRATE_NODE_ID,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, Diag, ErrCode};
+use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::NonMacroAttrKind;
-use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def::{
+    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,
+};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
@@ -52,26 +61,18 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, DelegationFnSig, Feed, MainDefinition, RegisteredTools};
-use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs, TyCtxt, TyCtxtFeed};
+use rustc_middle::ty::{
+    self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverGlobalCtxt,
+    ResolverOutputs, TyCtxt, TyCtxtFeed,
+};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
-use rustc_session::lint::LintBuffer;
+use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-
 use smallvec::{smallvec, SmallVec};
-use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
-use std::fmt;
-
-use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
-use imports::{Import, ImportData, ImportKind, NameResolution};
-use late::{HasGenericParams, PathSource, PatternSource, UnnecessaryQualification};
-use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
-
-use crate::effective_visibilities::EffectiveVisibilitiesVisitor;
+use tracing::debug;
 
 type Res = def::Res<NodeId>;
 
@@ -239,11 +240,12 @@ enum ResolutionError<'a> {
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
-    AttemptToUseNonConstantValueInConstant(
-        Ident,
-        /* suggestion */ &'static str,
-        /* current */ &'static str,
-    ),
+    AttemptToUseNonConstantValueInConstant {
+        ident: Ident,
+        suggestion: &'static str,
+        current: &'static str,
+        type_span: Option<Span>,
+    },
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {
         shadowing_binding: PatternSource,
@@ -353,6 +355,7 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
                     (args.span, found_lifetimes)
                 }
                 GenericArgs::Parenthesized(args) => (args.span, true),
+                GenericArgs::ParenthesizedElided(span) => (*span, true),
             }
         } else {
             (DUMMY_SP, false)
@@ -697,10 +700,12 @@ impl<'a> fmt::Debug for Module<'a> {
 }
 
 /// Records a possibly-private value, type, or module definition.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 struct NameBindingData<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(NameBinding<'a>, AmbiguityKind)>,
+    /// Produce a warning instead of an error when reporting ambiguities inside this binding.
+    /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
     warn_ambiguity: bool,
     expansion: LocalExpnId,
     span: Span,
@@ -721,7 +726,7 @@ impl<'a> ToNameBinding<'a> for NameBinding<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 enum NameBindingKind<'a> {
     Res(Res),
     Module(Module<'a>),
@@ -833,18 +838,18 @@ impl<'a> NameBindingData<'a> {
         }
     }
 
-    fn is_ambiguity(&self) -> bool {
+    fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.is_ambiguity(),
+                NameBindingKind::Import { binding, .. } => binding.is_ambiguity_recursive(),
                 _ => false,
             }
     }
 
-    fn is_warn_ambiguity(&self) -> bool {
+    fn warn_ambiguity_recursive(&self) -> bool {
         self.warn_ambiguity
             || match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.is_warn_ambiguity(),
+                NameBindingKind::Import { binding, .. } => binding.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -964,7 +969,6 @@ struct DeriveData {
     has_derive_copy: bool,
 }
 
-#[derive(Clone)]
 struct MacroData {
     ext: Lrc<SyntaxExtension>,
     rule_spans: Vec<(usize, Span)>,
@@ -992,7 +996,7 @@ pub struct Resolver<'a, 'tcx> {
     extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
-    field_def_ids: LocalDefIdMap<&'tcx [DefId]>,
+    field_names: LocalDefIdMap<Vec<Ident>>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -1052,6 +1056,7 @@ pub struct Resolver<'a, 'tcx> {
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    glob_error: Option<ErrorGuaranteed>,
     visibilities_for_hashing: Vec<(LocalDefId, ty::Visibility)>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
@@ -1092,7 +1097,7 @@ pub struct Resolver<'a, 'tcx> {
     single_segment_macro_resolutions:
         Vec<(Ident, MacroKind, ParentScope<'a>, Option<NameBinding<'a>>)>,
     multi_segment_macro_resolutions:
-        Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>)>,
+        Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>, Namespace)>,
     builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
@@ -1139,7 +1144,7 @@ pub struct Resolver<'a, 'tcx> {
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table,
     /// and how the `impl Trait` fragments were introduced.
-    invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext)>,
+    invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext, bool /*in_attr*/)>,
 
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
@@ -1166,6 +1171,19 @@ pub struct Resolver<'a, 'tcx> {
     doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
     all_macro_rules: FxHashMap<Symbol, Res>,
+
+    /// Invocation ids of all glob delegations.
+    glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,
+    /// Analogue of module `unexpanded_invocations` but in trait impls, excluding glob delegations.
+    /// Needed because glob delegations wait for all other neighboring macros to expand.
+    impl_unexpanded_invocations: FxHashMap<LocalDefId, FxHashSet<LocalExpnId>>,
+    /// Simplified analogue of module `resolutions` but in trait impls, excluding glob delegations.
+    /// Needed because glob delegations exclude explicitly defined names.
+    impl_binding_keys: FxHashMap<LocalDefId, FxHashSet<BindingKey>>,
+
+    /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
+    /// could be a crate that wasn't imported. For diagnostics use only.
+    current_crate_outer_attr_insert_span: Span,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1328,6 +1346,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         attrs: &[ast::Attribute],
         crate_span: Span,
+        current_crate_outer_attr_insert_span: Span,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
@@ -1362,7 +1381,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         node_id_to_def_id.insert(CRATE_NODE_ID, crate_feed);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents.insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential));
+        invocation_parents
+            .insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential, false));
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
             .sess
@@ -1397,7 +1417,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            field_def_ids: Default::default(),
+            field_names: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
             determined_imports: Vec::new(),
@@ -1421,6 +1441,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ast_transform_scopes: FxHashMap::default(),
 
             glob_map: Default::default(),
+            glob_error: None,
             visibilities_for_hashing: Default::default(),
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
@@ -1506,6 +1527,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_traits_in_scope: Default::default(),
             all_macro_rules: Default::default(),
             delegation_fn_sigs: Default::default(),
+            glob_delegation_invoc_ids: Default::default(),
+            impl_unexpanded_invocations: Default::default(),
+            impl_binding_keys: Default::default(),
+            current_crate_outer_attr_insert_span,
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1864,8 +1889,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
         if let NameBindingKind::Import { import, binding } = used_binding.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
-                let msg = format!("macro `{ident}` is private");
-                self.lint_buffer().buffer_lint(PRIVATE_MACRO_USE, import.root_id, ident.span, msg);
+                self.lint_buffer().buffer_lint(
+                    PRIVATE_MACRO_USE,
+                    import.root_id,
+                    ident.span,
+                    BuiltinLintDiag::MacroIsPrivate(ident),
+                );
             }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
@@ -2110,10 +2139,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn field_def_ids(&self, def_id: DefId) -> Option<&'tcx [DefId]> {
+    fn field_idents(&self, def_id: DefId) -> Option<Vec<Ident>> {
         match def_id.as_local() {
-            Some(def_id) => self.field_def_ids.get(&def_id).copied(),
-            None => Some(self.tcx.associated_item_def_ids(def_id)),
+            Some(def_id) => self.field_names.get(&def_id).cloned(),
+            None => Some(
+                self.tcx
+                    .associated_item_def_ids(def_id)
+                    .iter()
+                    .map(|&def_id| {
+                        Ident::new(self.tcx.item_name(def_id), self.tcx.def_span(def_id))
+                    })
+                    .collect(),
+            ),
         }
     }
 

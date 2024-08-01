@@ -84,7 +84,7 @@
   
       bb5: {
           StorageDead(_8);
--         _11 = _6 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
+-         _11 = _6 as *const [bool; 0] (PtrToPtr);
 -         _5 = NonNull::<[bool; 0]> { pointer: _11 };
 +         _11 = const {0x1 as *const [bool; 0]};
 +         _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
@@ -106,17 +106,11 @@
           _0 = const ();
           drop(_1) -> [return: bb1, unwind: bb2];
       }
-+ }
-+ 
-+ ALLOC2 (size: 8, align: 4) {
-+     01 00 00 00 00 00 00 00                         │ ........
-+ }
-+ 
-+ ALLOC1 (size: 8, align: 4) {
-+     01 00 00 00 00 00 00 00                         │ ........
-+ }
-+ 
-+ ALLOC0 (size: 8, align: 4) {
-+     01 00 00 00 00 00 00 00                         │ ........
   }
++ 
++ ALLOC2 (size: 8, align: 4) { .. }
++ 
++ ALLOC1 (size: 8, align: 4) { .. }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
   

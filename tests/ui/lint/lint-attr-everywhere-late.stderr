@@ -154,7 +154,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     fn assoc_fn() { discriminant::<i32>(&123); }
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:96:41
    |
 LL |     fn assoc_fn() { discriminant::<i32>(&123); }
@@ -208,7 +208,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     let _ = discriminant::<i32>(&123);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:139:33
    |
 LL |     let _ = discriminant::<i32>(&123);
@@ -237,7 +237,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |             discriminant::<i32>(&123);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:155:33
    |
 LL |             discriminant::<i32>(&123);
@@ -254,7 +254,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |             discriminant::<i32>(&123);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:161:33
    |
 LL |             discriminant::<i32>(&123);
@@ -283,7 +283,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |         discriminant::<i32>(&123);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:173:29
    |
 LL |         discriminant::<i32>(&123);
@@ -300,7 +300,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |         discriminant::<i32>(&123);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:177:29
    |
 LL |         discriminant::<i32>(&123);
@@ -317,7 +317,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     discriminant::<i32>(&123);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:182:25
    |
 LL |     discriminant::<i32>(&123);
@@ -334,7 +334,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:184:61
    |
 LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
@@ -351,7 +351,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:185:61
    |
 LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
@@ -368,7 +368,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:187:65
    |
 LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
@@ -385,7 +385,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum
   --> $DIR/lint-attr-everywhere-late.rs:189:72
    |
 LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));

@@ -8,8 +8,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, make, AstNode, Expr::BinExpr, HasArgList},
-    ted::{self, Position},
-    SyntaxKind,
+    ted, SyntaxKind, T,
 };
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
@@ -62,7 +61,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let demorganed = bin_expr.clone_subtree().clone_for_update();
 
     ted::replace(demorganed.op_token()?, ast::make::token(inv_token));
-    let mut exprs = VecDeque::from(vec![
+    let mut exprs = VecDeque::from([
         (bin_expr.lhs()?, demorganed.lhs()?),
         (bin_expr.rhs()?, demorganed.rhs()?),
     ]);
@@ -93,58 +92,38 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         }
     }
 
-    let dm_lhs = demorganed.lhs()?;
-
     acc.add_group(
         &GroupLabel("Apply De Morgan's law".to_owned()),
         AssistId("apply_demorgan", AssistKind::RefactorRewrite),
         "Apply De Morgan's law",
         op_range,
         |edit| {
+            let demorganed = ast::Expr::BinExpr(demorganed);
             let paren_expr = bin_expr.syntax().parent().and_then(ast::ParenExpr::cast);
             let neg_expr = paren_expr
                 .clone()
                 .and_then(|paren_expr| paren_expr.syntax().parent())
                 .and_then(ast::PrefixExpr::cast)
-                .and_then(|prefix_expr| {
-                    if prefix_expr.op_kind()? == ast::UnaryOp::Not {
-                        Some(prefix_expr)
-                    } else {
-                        None
-                    }
-                });
+                .filter(|prefix_expr| matches!(prefix_expr.op_kind(), Some(ast::UnaryOp::Not)))
+                .map(ast::Expr::PrefixExpr);
 
             if let Some(paren_expr) = paren_expr {
                 if let Some(neg_expr) = neg_expr {
                     cov_mark::hit!(demorgan_double_negation);
-                    edit.replace_ast(ast::Expr::PrefixExpr(neg_expr), demorganed.into());
+                    let parent = neg_expr.syntax().parent();
+
+                    if parent.is_some_and(|parent| demorganed.needs_parens_in(parent)) {
+                        cov_mark::hit!(demorgan_keep_parens_for_op_precedence2);
+                        edit.replace_ast(neg_expr, make::expr_paren(demorganed));
+                    } else {
+                        edit.replace_ast(neg_expr, demorganed);
+                    };
                 } else {
                     cov_mark::hit!(demorgan_double_parens);
-                    ted::insert_all_raw(
-                        Position::before(dm_lhs.syntax()),
-                        vec![
-                            syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::BANG)),
-                            syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::L_PAREN)),
-                        ],
-                    );
-
-                    ted::append_child_raw(
-                        demorganed.syntax(),
-                        syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::R_PAREN)),
-                    );
-
-                    edit.replace_ast(ast::Expr::ParenExpr(paren_expr), demorganed.into());
+                    edit.replace_ast(paren_expr.into(), add_bang_paren(demorganed));
                 }
             } else {
-                ted::insert_all_raw(
-                    Position::before(dm_lhs.syntax()),
-                    vec![
-                        syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::BANG)),
-                        syntax::NodeOrToken::Token(ast::make::token(SyntaxKind::L_PAREN)),
-                    ],
-                );
-                ted::append_child_raw(demorganed.syntax(), ast::make::token(SyntaxKind::R_PAREN));
-                edit.replace_ast(bin_expr, demorganed);
+                edit.replace_ast(bin_expr.into(), add_bang_paren(demorganed));
             }
         },
     )
@@ -271,6 +250,11 @@ fn tail_cb_impl(edit: &mut SourceChangeBuilder, e: &ast::Expr) {
     }
 }
 
+/// Add bang and parentheses to the expression.
+fn add_bang_paren(expr: ast::Expr) -> ast::Expr {
+    make::expr_prefix(T![!], make::expr_paren(expr))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -349,16 +333,14 @@ fn f() { !(S <= S || S < S) }
         check_assist(apply_demorgan, "fn f() { (x ||$0 x) }", "fn f() { !(!x && !x) }")
     }
 
-    // FIXME : This needs to go.
-    // // https://github.com/rust-lang/rust-analyzer/issues/10963
-    // #[test]
-    // fn demorgan_doesnt_hang() {
-    //     check_assist(
-    //         apply_demorgan,
-    //         "fn f() { 1 || 3 &&$0 4 || 5 }",
-    //         "fn f() { !(!1 || !3 || !4) || 5 }",
-    //     )
-    // }
+    #[test]
+    fn demorgan_doesnt_hang() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { 1 || 3 &&$0 4 || 5 }",
+            "fn f() { 1 || !(!3 || !4) || 5 }",
+        )
+    }
 
     #[test]
     fn demorgan_keep_pars_for_op_precedence() {
@@ -376,12 +358,32 @@ fn f() { !(S <= S || S < S) }
     }
 
     #[test]
+    fn demorgan_keep_pars_for_op_precedence2() {
+        cov_mark::check!(demorgan_keep_parens_for_op_precedence2);
+        check_assist(
+            apply_demorgan,
+            "fn f() { (a && !(b &&$0 c); }",
+            "fn f() { (a && (!b || !c); }",
+        );
+    }
+
+    #[test]
+    fn demorgan_keep_pars_for_op_precedence3() {
+        check_assist(apply_demorgan, "fn f() { (a || !(b &&$0 c); }", "fn f() { (a || !b || !c; }");
+    }
+
+    #[test]
     fn demorgan_removes_pars_in_eq_precedence() {
         check_assist(
             apply_demorgan,
             "fn() { let x = a && !(!b |$0| !c); }",
             "fn() { let x = a && b && c; }",
         )
+    }
+
+    #[test]
+    fn demorgan_removes_pars_for_op_precedence2() {
+        check_assist(apply_demorgan, "fn f() { (a || !(b ||$0 c); }", "fn f() { (a || !b && !c; }");
     }
 
     #[test]

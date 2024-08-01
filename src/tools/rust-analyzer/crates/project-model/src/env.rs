@@ -60,16 +60,19 @@ pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: Targe
 }
 
 pub(crate) fn cargo_config_env(
-    cargo_toml: &ManifestPath,
+    manifest: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
-    sysroot: Option<&Sysroot>,
+    sysroot: &Sysroot,
 ) -> FxHashMap<String, String> {
-    let mut cargo_config = Sysroot::tool(sysroot, Tool::Cargo);
+    let mut cargo_config = sysroot.tool(Tool::Cargo);
     cargo_config.envs(extra_env);
     cargo_config
-        .current_dir(cargo_toml.parent())
+        .current_dir(manifest.parent())
         .args(["-Z", "unstable-options", "config", "get", "env"])
         .env("RUSTC_BOOTSTRAP", "1");
+    if manifest.is_rust_manifest() {
+        cargo_config.arg("-Zscript");
+    }
     // if successful we receive `env.key.value = "value" per entry
     tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
     utf8_stdout(cargo_config).map(parse_output_cargo_config_env).unwrap_or_default()

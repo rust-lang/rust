@@ -4,7 +4,7 @@ error[E0277]: `&'static (dyn Dummy + 'static)` cannot be sent between threads sa
 LL |     assert_send::<&'static (dyn Dummy + 'static)>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
    |
-   = help: the trait `Sync` is not implemented for `&'static (dyn Dummy + 'static)`, which is required by `&'static (dyn Dummy + 'static): Send`
+   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'static)`, which is required by `&'static (dyn Dummy + 'static): Send`
    = note: required for `&'static (dyn Dummy + 'static)` to implement `Send`
 note: required by a bound in `assert_send`
   --> $DIR/kindck-send-object.rs:5:18

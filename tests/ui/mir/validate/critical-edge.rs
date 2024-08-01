@@ -12,7 +12,7 @@ use core::intrinsics::mir::*;
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 #[inline(always)]
 pub fn f(a: u32) -> u32 {
-    mir!(
+    mir! {
         {
             match a {
                 0 => bb1,
@@ -27,5 +27,5 @@ pub fn f(a: u32) -> u32 {
             RET = 2;
             Return()
         }
-    )
+    }
 }

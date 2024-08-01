@@ -18,7 +18,8 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     format: HoverDocFormat::Markdown,
     keywords: true,
     max_trait_assoc_items_count: None,
-    max_struct_field_count: None,
+    max_fields_count: Some(5),
+    max_enum_variants_count: Some(5),
 };
 
 fn check_hover_no_result(ra_fixture: &str) {
@@ -51,13 +52,43 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[track_caller]
-fn check_hover_struct_limit(count: usize, ra_fixture: &str, expect: Expect) {
+fn check_hover_fields_limit(
+    fields_count: impl Into<Option<usize>>,
+    ra_fixture: &str,
+    expect: Expect,
+) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                max_struct_field_count: Some(count),
+                max_fields_count: fields_count.into(),
+                ..HOVER_BASE_CONFIG
+            },
+            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
+        )
+        .unwrap()
+        .unwrap();
+
+    let content = analysis.db.file_text(position.file_id);
+    let hovered_element = &content[hover.range];
+
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
+    expect.assert_eq(&actual)
+}
+
+#[track_caller]
+fn check_hover_enum_variants_limit(
+    variants_count: impl Into<Option<usize>>,
+    ra_fixture: &str,
+    expect: Expect,
+) {
+    let (analysis, position) = fixture::position(ra_fixture);
+    let hover = analysis
+        .hover(
+            &HoverConfig {
+                links_in_hover: true,
+                max_enum_variants_count: variants_count.into(),
                 ..HOVER_BASE_CONFIG
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
@@ -876,7 +907,9 @@ struct Foo$0 { field: u32 }
 
             ```rust
             // size = 4, align = 4
-            struct Foo
+            struct Foo {
+                field: u32,
+            }
             ```
         "#]],
     );
@@ -896,6 +929,9 @@ struct Foo$0 where u32: Copy { field: u32 }
             struct Foo
             where
                 u32: Copy,
+            {
+                field: u32,
+            }
             ```
         "#]],
     );
@@ -903,7 +939,7 @@ struct Foo$0 where u32: Copy { field: u32 }
 
 #[test]
 fn hover_record_struct_limit() {
-    check_hover_struct_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32 }
@@ -917,7 +953,7 @@ fn hover_record_struct_limit() {
 
             ```rust
             // size = 12 (0xC), align = 4
-            struct Foo  {
+            struct Foo {
                 a: u32,
                 b: i32,
                 c: i32,
@@ -925,7 +961,7 @@ fn hover_record_struct_limit() {
             ```
         "#]],
     );
-    check_hover_struct_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32 }
@@ -939,13 +975,13 @@ fn hover_record_struct_limit() {
 
             ```rust
             // size = 4, align = 4
-            struct Foo  {
+            struct Foo {
                 a: u32,
             }
             ```
         "#]],
     );
-    check_hover_struct_limit(
+    check_hover_fields_limit(
         3,
         r#"
     struct Foo$0 { a: u32, b: i32, c: i32, d: u32 }
@@ -959,12 +995,344 @@ fn hover_record_struct_limit() {
 
             ```rust
             // size = 16 (0x10), align = 4
-            struct Foo  {
+            struct Foo {
                 a: u32,
                 b: i32,
                 c: i32,
                 /* … */
             }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        None,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            struct Foo
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        0,
+        r#"
+    struct Foo$0 { a: u32, b: i32, c: i32 }
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            struct Foo { /* … */ }
+            ```
+        "#]],
+    );
+
+    // No extra spaces within `{}` when there are no fields
+    check_hover_fields_limit(
+        5,
+        r#"
+    struct Foo$0 {}
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            struct Foo {}
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_record_variant_limit() {
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A { a: u32, b: i32, c: i32, }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            A { a: u32, }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        3,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32, d: u32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 16 (0x10), align = 4
+            A { a: u32, b: i32, c: i32, /* … */ }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        None,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        0,
+        r#"
+    enum Foo { A$0 { a: u32, b: i32, c: i32 } }
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4
+            A { /* … */ }
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_enum_limit() {
+    check_hover_enum_variants_limit(
+        5,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo {
+                A,
+                B,
+            }
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        1,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo {
+                A,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        0,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo { /* … */ }
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        None,
+        r#"enum Foo$0 { A, B }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 1, align = 1, niches = 254
+            enum Foo
+            ```
+        "#]],
+    );
+    check_hover_enum_variants_limit(
+        7,
+        r#"enum Enum$0 {
+               Variant {},
+               Variant2 { field: i32 },
+               Variant3 { field: i32, field2: i32 },
+               Variant4(),
+               Variant5(i32),
+               Variant6(i32, i32),
+               Variant7,
+               Variant8,
+           }"#,
+        expect![[r#"
+            *Enum*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 12 (0xC), align = 4, niches = 4294967288
+            enum Enum {
+                Variant {},
+                Variant2 { /* … */ },
+                Variant3 { /* … */ },
+                Variant4(),
+                Variant5( /* … */ ),
+                Variant6( /* … */ ),
+                Variant7,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_union_limit() {
+    check_hover_fields_limit(
+        5,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo {
+                a: u32,
+                b: i32,
+            }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        1,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo {
+                a: u32,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        0,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo { /* … */ }
+            ```
+        "#]],
+    );
+    check_hover_fields_limit(
+        None,
+        r#"union Foo$0 { a: u32, b: i32 }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 4, align = 4
+            union Foo
             ```
         "#]],
     );
@@ -1431,11 +1799,14 @@ impl Thing {
                 ```
 
                 ```rust
-                struct Thing
+                struct Thing {
+                    x: u32,
+                }
                 ```
             "#]],
     );
-    check(
+    check_hover_fields_limit(
+        None,
         r#"
 struct Thing { x: u32 }
 impl Thing {
@@ -1456,9 +1827,9 @@ impl Thing {
     );
     check(
         r#"
-enum Thing { A }
+struct Thing { x: u32 }
 impl Thing {
-    pub fn new() -> Self$0 { Thing::A }
+    fn new() -> Self$0 { Self { x: 0 } }
 }
 "#,
         expect![[r#"
@@ -1469,11 +1840,32 @@ impl Thing {
                 ```
 
                 ```rust
-                enum Thing {
-                    A,
+                struct Thing {
+                    x: u32,
                 }
                 ```
             "#]],
+    );
+    check(
+        r#"
+enum Thing { A }
+impl Thing {
+    pub fn new() -> Self$0 { Thing::A }
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            enum Thing {
+                A,
+            }
+            ```
+        "#]],
     );
     check(
         r#"
@@ -1483,18 +1875,18 @@ impl Thing {
 }
 "#,
         expect![[r#"
-                *Self*
+            *Self*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                enum Thing {
-                    A,
-                }
-                ```
-            "#]],
+            ```rust
+            enum Thing {
+                A,
+            }
+            ```
+        "#]],
     );
     check(
         r#"
@@ -2382,8 +2774,8 @@ fn test_hover_layout_of_enum() {
             ```rust
             // size = 16 (0x10), align = 8, niches = 254
             enum Foo {
-                Variant1(u8, u16),
-                Variant2(i32, u8, i64),
+                Variant1( /* … */ ),
+                Variant2( /* … */ ),
             }
             ```
         "#]],
@@ -4049,7 +4441,7 @@ fn foo() {
             ```rust
             'label
             ```
-            "#]],
+        "#]],
     );
 }
 
@@ -4063,7 +4455,17 @@ fn hover_lifetime() {
             ```rust
             'lifetime
             ```
-            "#]],
+        "#]],
+    );
+    check(
+        r#"fn foo(_: &'static$0 ()) {}"#,
+        expect![[r#"
+            *'static*
+
+            ```rust
+            'static
+            ```
+        "#]],
     );
 }
 
@@ -4908,6 +5310,71 @@ const FOO$0: f64 = expf64(1.2);
             ```
         "#]],
     );
+    // check `f32` isn't double rounded via `f64`
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f32 = 1.9999999403953552_f32;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f32 = 1.9999999
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // Check `f16` and `f128`
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f16 = -1.0f16;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f16 = -1.0
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f128 = -1.0f128;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f128 = -1.0
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
 }
 
 #[test]
@@ -5736,7 +6203,7 @@ fn hover_feature() {
             by the codegen backend, but not the MIR inliner.
 
             ```rust
-            #![feature(rustc_attrs, effects)]
+            #![feature(rustc_attrs)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -5746,7 +6213,7 @@ fn hover_feature() {
             Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
             ```rust
-            #![feature(rustc_attrs, effects)]
+            #![feature(rustc_attrs)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -5770,11 +6237,22 @@ fn hover_feature() {
             Various intrinsics have native MIR operations that they correspond to. Instead of requiring
             backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
             will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
-            at all.
+            at all. These intrinsics only make sense without a body, and can either be declared as a "rust-intrinsic"
+            or as a `#[rustc_intrinsic]`. The body is never used, as calls to the intrinsic do not exist
+            anymore after MIR analyses.
 
             ## Intrinsics without fallback logic
 
             These must be implemented by all backends.
+
+            ### `#[rustc_intrinsic]` declarations
+
+            These are written like intrinsics with fallback bodies, but the body is irrelevant.
+            Use `loop {}` for the body or call the intrinsic recursively and add
+            `#[rustc_intrinsic_must_be_overridden]` to the function to ensure that backends don't
+            invoke the body.
+
+            ### Legacy extern ABI based intrinsics
 
             These are imported as if they were FFI functions, with the special
             `rust-intrinsic` ABI. For example, if one was in a freestanding
@@ -6554,7 +7032,7 @@ enum Enum {
 
             ```rust
             // size = 4, align = 4
-            RecordV { field: u32 }
+            RecordV { field: u32, }
             ```
         "#]],
     );
@@ -7398,9 +7876,12 @@ fn main() {
 "#,
         expect![[r#"
             *"🦀\u{1f980}\\\x41"*
-            ```text
-            🦀🦀\A
+            ```rust
+            &str
             ```
+            ___
+
+            value of literal: 🦀🦀\A
         "#]],
     );
     check(
@@ -7411,9 +7892,34 @@ fn main() {
 "#,
         expect![[r#"
             *r"🦀\u{1f980}\\\x41"*
-            ```text
-            🦀\u{1f980}\\\x41
+            ```rust
+            &str
             ```
+            ___
+
+            value of literal: 🦀\u{1f980}\\\x41
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r"🦀\u{1f980}\\\x41
+
+
+fsdghs";
+}
+"#,
+        expect![[r#"
+            *r"🦀\u{1f980}\\\x41
+
+
+            fsdghs"*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal (truncated up to newline): 🦀\u{1f980}\\\x41
         "#]],
     );
 }
@@ -7428,9 +7934,12 @@ fn main() {
 "#,
         expect![[r#"
             *c"🦀\u{1f980}\\\x41"*
-            ```text
-            🦀🦀\A
+            ```rust
+            &{unknown}
             ```
+            ___
+
+            value of literal: 🦀🦀\A
         "#]],
     );
 }
@@ -7445,9 +7954,12 @@ fn main() {
 "#,
         expect![[r#"
             *b"\xF0\x9F\xA6\x80\\"*
-            ```text
-            [240, 159, 166, 128, 92]
+            ```rust
+            &[u8; 5]
             ```
+            ___
+
+            value of literal: [240, 159, 166, 128, 92]
         "#]],
     );
     check(
@@ -7458,9 +7970,12 @@ fn main() {
 "#,
         expect![[r#"
             *br"\xF0\x9F\xA6\x80\\"*
-            ```text
-            [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
+            ```rust
+            &[u8; 18]
             ```
+            ___
+
+            value of literal: [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
         "#]],
     );
 }
@@ -7475,9 +7990,12 @@ fn main() {
 "#,
         expect![[r#"
             *b'\xF0'*
-            ```text
-            0xF0
+            ```rust
+            u8
             ```
+            ___
+
+            value of literal: 0xF0
         "#]],
     );
     check(
@@ -7488,9 +8006,12 @@ fn main() {
 "#,
         expect![[r#"
             *b'\\'*
-            ```text
-            0x5C
+            ```rust
+            u8
             ```
+            ___
+
+            value of literal: 0x5C
         "#]],
     );
 }
@@ -7505,7 +8026,12 @@ fn main() {
 "#,
         expect![[r#"
             *'\x41'*
+            ```rust
+            char
+            ```
+            ___
 
+            value of literal: A
         "#]],
     );
     check(
@@ -7516,7 +8042,12 @@ fn main() {
 "#,
         expect![[r#"
             *'\\'*
+            ```rust
+            char
+            ```
+            ___
 
+            value of literal: \
         "#]],
     );
     check(
@@ -7527,7 +8058,12 @@ fn main() {
 "#,
         expect![[r#"
             *'\u{1f980}'*
+            ```rust
+            char
+            ```
+            ___
 
+            value of literal: 🦀
         "#]],
     );
 }
@@ -7542,9 +8078,28 @@ fn main() {
 "#,
         expect![[r#"
             *1.0*
-            ```text
-            1 (bits: 0x3FF0000000000000)
+            ```rust
+            f64
             ```
+            ___
+
+            value of literal: 1 (bits: 0x3FF0000000000000)
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01.0f16;
+}
+"#,
+        expect![[r#"
+            *1.0f16*
+            ```rust
+            f16
+            ```
+            ___
+
+            value of literal: 1 (bits: 0x3C00)
         "#]],
     );
     check(
@@ -7555,9 +8110,28 @@ fn main() {
 "#,
         expect![[r#"
             *1.0f32*
-            ```text
-            1 (bits: 0x3F800000)
+            ```rust
+            f32
             ```
+            ___
+
+            value of literal: 1 (bits: 0x3F800000)
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01.0f128;
+}
+"#,
+        expect![[r#"
+            *1.0f128*
+            ```rust
+            f128
+            ```
+            ___
+
+            value of literal: 1 (bits: 0x3FFF0000000000000000000000000000)
         "#]],
     );
     check(
@@ -7568,9 +8142,12 @@ fn main() {
 "#,
         expect![[r#"
             *134e12*
-            ```text
-            134000000000000 (bits: 0x42DE77D399980000)
+            ```rust
+            f64
             ```
+            ___
+
+            value of literal: 134000000000000 (bits: 0x42DE77D399980000)
         "#]],
     );
     check(
@@ -7581,9 +8158,12 @@ fn main() {
 "#,
         expect![[r#"
             *1523527134274733643531312.0*
-            ```text
-            1523527134274733600000000 (bits: 0x44F429E9249F629B)
+            ```rust
+            f64
             ```
+            ___
+
+            value of literal: 1523527134274733600000000 (bits: 0x44F429E9249F629B)
         "#]],
     );
     check(
@@ -7594,9 +8174,12 @@ fn main() {
 "#,
         expect![[r#"
             *0.1ea123*
-            ```text
-            invalid float literal
+            ```rust
+            f64
             ```
+            ___
+
+            invalid literal: invalid float literal
         "#]],
     );
 }
@@ -7611,9 +8194,12 @@ fn main() {
 "#,
         expect![[r#"
             *34325236457856836345234*
-            ```text
-            34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
         "#]],
     );
     check(
@@ -7624,9 +8210,12 @@ fn main() {
 "#,
         expect![[r#"
             *134_123424_21*
-            ```text
-            13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
         "#]],
     );
     check(
@@ -7637,9 +8226,12 @@ fn main() {
 "#,
         expect![[r#"
             *0x12423423*
-            ```text
-            306328611 (0x12423423|0b10010010000100011010000100011)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 306328611 (0x12423423|0b10010010000100011010000100011)
         "#]],
     );
     check(
@@ -7650,9 +8242,12 @@ fn main() {
 "#,
         expect![[r#"
             *0b1111_1111*
-            ```text
-            255 (0xFF|0b11111111)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 255 (0xFF|0b11111111)
         "#]],
     );
     check(
@@ -7663,9 +8258,12 @@ fn main() {
 "#,
         expect![[r#"
             *0o12345*
-            ```text
-            5349 (0x14E5|0b1010011100101)
+            ```rust
+            i32
             ```
+            ___
+
+            value of literal: 5349 (0x14E5|0b1010011100101)
         "#]],
     );
     check(
@@ -7676,9 +8274,12 @@ fn main() {
 "#,
         expect![[r#"
             *0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_F*
-            ```text
-            number too large to fit in target type
+            ```rust
+            i32
             ```
+            ___
+
+            invalid literal: number too large to fit in target type
         "#]],
     );
 }
@@ -7864,8 +8465,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 6290..6498,
-                                focus_range: 6355..6361,
+                                full_range: 7800..8008,
+                                focus_range: 7865..7871,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -7878,8 +8479,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7128..7594,
-                                focus_range: 7172..7180,
+                                full_range: 8638..9104,
+                                focus_range: 8682..8690,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
@@ -7936,7 +8537,9 @@ struct Pedro$0<'a> {
 
             ```rust
             // size = 16 (0x10), align = 8, niches = 1
-            struct Pedro<'a>
+            struct Pedro<'a> {
+                hola: &str,
+            }
             ```
         "#]],
     )

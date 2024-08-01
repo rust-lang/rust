@@ -36,22 +36,16 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-pub fn create(
-    pass: &String,
-    lint_name: Option<&String>,
-    category: Option<&str>,
-    mut ty: Option<&str>,
-    msrv: bool,
-) -> io::Result<()> {
-    if category == Some("cargo") && ty.is_none() {
+pub fn create(pass: &str, name: &str, category: &str, mut ty: Option<&str>, msrv: bool) -> io::Result<()> {
+    if category == "cargo" && ty.is_none() {
         // `cargo` is a special category, these lints should always be in `clippy_lints/src/cargo`
         ty = Some("cargo");
     }
 
     let lint = LintData {
         pass,
-        name: lint_name.expect("`name` argument is validated by clap"),
-        category: category.expect("`category` argument is validated by clap"),
+        name,
+        category,
         ty,
         project_root: clippy_project_root(),
     };
@@ -146,7 +140,7 @@ fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
 
     let new_lint = if enable_msrv {
         format!(
-            "store.register_{lint_pass}_pass(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(msrv())));\n    ",
+            "store.register_{lint_pass}_pass(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(conf)));\n    ",
             lint_pass = lint.pass,
             ctor_arg = if lint.pass == "late" { "_" } else { "" },
             module_name = lint.name,
@@ -279,7 +273,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     result.push_str(&if enable_msrv {
         formatdoc!(
             r#"
-            use clippy_utils::msrvs::{{self, Msrv}};
+            use clippy_config::msrvs::{{self, Msrv}};
+            use clippy_config::Conf;
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
             use rustc_session::impl_lint_pass;
@@ -307,9 +302,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
             }}
 
             impl {name_camel} {{
-                #[must_use]
-                pub fn new(msrv: Msrv) -> Self {{
-                    Self {{ msrv }}
+                pub fn new(conf: &'static Conf) -> Self {{
+                    Self {{ msrv: conf.msrv.clone() }}
                 }}
             }}
 
@@ -337,12 +331,17 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 }
 
 fn get_lint_declaration(name_upper: &str, category: &str) -> String {
+    let justification_heading = if category == "restriction" {
+        "Why restrict this?"
+    } else {
+        "Why is this bad?"
+    };
     formatdoc!(
         r#"
             declare_clippy_lint! {{
                 /// ### What it does
                 ///
-                /// ### Why is this bad?
+                /// ### {justification_heading}
                 ///
                 /// ### Example
                 /// ```no_run
@@ -400,7 +399,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
         let _: fmt::Result = writedoc!(
             lint_file_contents,
             r#"
-                use clippy_utils::msrvs::{{self, Msrv}};
+                use clippy_config::msrvs::{{self, Msrv}};
                 use rustc_lint::{{{context_import}, LintContext}};
 
                 use super::{name_upper};

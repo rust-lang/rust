@@ -6,7 +6,6 @@
 //@ ignore-avr
 //@ ignore-wasi wasi codegens the main symbol differently
 
-fn main() {
-}
+fn main() {}
 
 // CHECK: define{{( hidden| noundef)*}} i32 @main(i32{{( %0)?}}, ptr{{( %1)?}})

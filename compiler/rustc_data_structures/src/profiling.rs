@@ -81,25 +81,24 @@
 //!
 //! [mm]: https://github.com/rust-lang/measureme/
 
-use crate::fx::FxHashMap;
-use crate::outline;
-
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::error::Error;
 use std::fmt::Display;
-use std::fs;
 use std::intrinsics::unlikely;
 use std::path::Path;
-use std::process;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::{fs, process};
 
 pub use measureme::EventId;
 use measureme::{EventIdBuilder, Profiler, SerializableString, StringId};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
 use tracing::warn;
+
+use crate::fx::FxHashMap;
+use crate::outline;
 
 bitflags::bitflags! {
     #[derive(Clone, Copy)]
@@ -562,7 +561,7 @@ impl SelfProfiler {
         // ASLR is disabled and the heap is otherwise deterministic.
         let pid: u32 = process::id();
         let filename = format!("{crate_name}-{pid:07}.rustc_profile");
-        let path = output_directory.join(&filename);
+        let path = output_directory.join(filename);
         let profiler =
             Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
 

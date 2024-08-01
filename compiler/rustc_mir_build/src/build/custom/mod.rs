@@ -22,11 +22,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::{
-    mir::*,
-    thir::*,
-    ty::{ParamEnv, Ty, TyCtxt},
-};
+use rustc_middle::mir::*;
+use rustc_middle::span_bug;
+use rustc_middle::thir::*;
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
 
 mod parse;
@@ -61,7 +60,7 @@ pub(super) fn build_custom_mir<'tcx>(
         tainted_by_errors: None,
         injection_phase: None,
         pass_count: 0,
-        coverage_branch_info: None,
+        coverage_info_hi: None,
         function_coverage_info: None,
     };
 

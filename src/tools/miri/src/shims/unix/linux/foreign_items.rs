@@ -14,14 +14,14 @@ pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "statx")
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
@@ -94,6 +94,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 )?;
                 this.write_scalar(res, dest)?;
             }
+            "gettid" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.linux_gettid()?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Dynamically invoked syscalls
             "syscall" => {
@@ -117,6 +122,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                     // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
+                        // Used by getrandom 0.1
                         // The first argument is the syscall id, so skip over it.
                         if args.len() < 4 {
                             throw_ub_format!(
@@ -124,7 +130,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 args.len()
                             );
                         }
-                        getrandom(this, &args[1], &args[2], &args[3], dest)?;
+
+                        let ptr = this.read_pointer(&args[1])?;
+                        let len = this.read_target_usize(&args[2])?;
+                        // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
+                        // neither of which have any effect on our current PRNG.
+                        // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
+                        let _flags = this.read_scalar(&args[3])?.to_i32();
+
+                        this.gen_random(ptr, len)?;
+                        this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
                     }
                     // `futex` is used by some synchronization primitives.
                     id if id == sys_futex => {
@@ -168,19 +183,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.write_scalar(Scalar::from_i32(SIGRTMAX), dest)?;
             }
-            "sched_getaffinity" => {
-                // This shim isn't useful, aside from the fact that it makes `num_cpus`
-                // fall back to `sysconf` where it will successfully determine the number of CPUs.
-                let [pid, cpusetsize, mask] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_scalar(pid)?.to_i32()?;
-                this.read_target_usize(cpusetsize)?;
-                this.deref_pointer_as(mask, this.libc_ty_layout("cpu_set_t"))?;
-                // FIXME: we just return an error.
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                this.write_scalar(Scalar::from_i32(-1), dest)?;
-            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
@@ -193,27 +195,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ => return Ok(EmulateItemResult::NotSupported),
         };
 
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
-}
-
-// Shims the linux `getrandom` syscall.
-fn getrandom<'tcx>(
-    this: &mut MiriInterpCx<'_, 'tcx>,
-    ptr: &OpTy<'tcx, Provenance>,
-    len: &OpTy<'tcx, Provenance>,
-    flags: &OpTy<'tcx, Provenance>,
-    dest: &MPlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx> {
-    let ptr = this.read_pointer(ptr)?;
-    let len = this.read_target_usize(len)?;
-
-    // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
-    // neither of which have any effect on our current PRNG.
-    // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-    let _flags = this.read_scalar(flags)?.to_i32();
-
-    this.gen_random(ptr, len)?;
-    this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
-    Ok(())
 }

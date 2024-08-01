@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 // We use packed structs to get around alignment restrictions
-#[repr(packed)]
+#[repr(C, packed)]
 struct Data {
     pad: u8,
     ptr: &'static i32,

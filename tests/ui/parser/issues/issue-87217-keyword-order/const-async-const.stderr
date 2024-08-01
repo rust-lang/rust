@@ -1,10 +1,10 @@
-error: expected one of `extern`, `fn`, or `unsafe`, found keyword `const`
+error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const`
   --> $DIR/const-async-const.rs:5:13
    |
 LL | const async const fn test() {}
    |             ^^^^^
    |             |
-   |             expected one of `extern`, `fn`, or `unsafe`
+   |             expected one of `extern`, `fn`, `safe`, or `unsafe`
    |             help: `const` already used earlier, remove this one
    |
 note: `const` first seen here

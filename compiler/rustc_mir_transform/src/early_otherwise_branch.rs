@@ -1,7 +1,8 @@
+use std::fmt::Debug;
+
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use std::fmt::Debug;
 
 use super::simplify::simplify_cfg;
 
@@ -106,11 +107,11 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             let parent = BasicBlock::from_usize(i);
             let Some(opt_data) = evaluate_candidate(tcx, body, parent) else { continue };
 
-            if !tcx.consider_optimizing(|| format!("EarlyOtherwiseBranch {:?}", &opt_data)) {
+            if !tcx.consider_optimizing(|| format!("EarlyOtherwiseBranch {opt_data:?}")) {
                 break;
             }
 
-            trace!("SUCCESS: found optimization possibility to apply: {:?}", &opt_data);
+            trace!("SUCCESS: found optimization possibility to apply: {opt_data:?}");
 
             should_cleanup = true;
 

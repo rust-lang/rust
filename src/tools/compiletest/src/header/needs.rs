@@ -100,9 +100,9 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when profiler support is disabled",
         },
         Need {
-            name: "needs-matching-clang",
+            name: "needs-force-clang-based-tests",
             condition: config.run_clang_based_tests_with.is_some(),
-            ignore_reason: "ignored when the used clang does not match the built LLVM",
+            ignore_reason: "ignored when RUSTBUILD_FORCE_CLANG_BASED_TESTS is not set",
         },
         Need {
             name: "needs-xray",
@@ -143,6 +143,11 @@ pub(super) fn handle_needs(
             name: "needs-wasmtime",
             condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
             ignore_reason: "ignored when wasmtime runner is not available",
+        },
+        Need {
+            name: "needs-symlink",
+            condition: cache.symlinks,
+            ignore_reason: "ignored if symlinks are unavailable",
         },
     ];
 
@@ -209,6 +214,7 @@ pub(super) struct CachedNeedsConditions {
     xray: bool,
     rust_lld: bool,
     dlltool: bool,
+    symlinks: bool,
 }
 
 impl CachedNeedsConditions {
@@ -253,6 +259,7 @@ impl CachedNeedsConditions {
                 .exists(),
 
             dlltool: find_dlltool(&config),
+            symlinks: has_symlinks(),
         }
     }
 }
@@ -278,4 +285,23 @@ fn find_dlltool(config: &Config) -> bool {
         false
     };
     dlltool_found
+}
+
+#[cfg(windows)]
+fn has_symlinks() -> bool {
+    if std::env::var_os("CI").is_some() {
+        return true;
+    }
+    let link = std::env::temp_dir().join("RUST_COMPILETEST_SYMLINK_CHECK");
+    if std::os::windows::fs::symlink_file("DOES NOT EXIST", &link).is_ok() {
+        std::fs::remove_file(&link).unwrap();
+        true
+    } else {
+        false
+    }
+}
+
+#[cfg(not(windows))]
+fn has_symlinks() -> bool {
+    true
 }

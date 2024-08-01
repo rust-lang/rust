@@ -1,4 +1,4 @@
-error: constant pattern depends on a generic parameter
+error[E0158]: constant pattern depends on a generic parameter
   --> $DIR/issue-79137-toogeneric.rs:12:43
    |
 LL |     matches!(GetVariantCount::<T>::VALUE, GetVariantCount::<T>::VALUE)
@@ -6,3 +6,4 @@ LL |     matches!(GetVariantCount::<T>::VALUE, GetVariantCount::<T>::VALUE)
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0158`.

@@ -5,7 +5,6 @@
     clippy::ptr_arg
 )]
 #![warn(clippy::needless_pass_by_ref_mut)]
-#![feature(lint_reasons)]
 //@no-rustfix
 use std::ptr::NonNull;
 
@@ -233,41 +232,46 @@ async fn async_vec2(b: &mut Vec<bool>) {
 }
 fn non_mut(n: &str) {}
 //Should warn
-pub async fn call_in_closure1(n: &mut str) {
+async fn call_in_closure1(n: &mut str) {
     (|| non_mut(n))()
 }
 fn str_mut(str: &mut String) -> bool {
     str.pop().is_some()
 }
 //Should not warn
-pub async fn call_in_closure2(str: &mut String) {
+async fn call_in_closure2(str: &mut String) {
     (|| str_mut(str))();
 }
 
 // Should not warn.
-pub async fn closure(n: &mut usize) -> impl '_ + FnMut() {
+async fn closure(n: &mut usize) -> impl '_ + FnMut() {
     || {
         *n += 1;
     }
 }
 
 // Should warn.
-pub fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
+fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
     //~^ ERROR: this argument is a mutable reference, but not used mutably
     || *n + 1
 }
 
 // Should not warn.
-pub async fn closure3(n: &mut usize) {
+async fn closure3(n: &mut usize) {
     (|| *n += 1)();
 }
 
 // Should warn.
-pub async fn closure4(n: &mut usize) {
+async fn closure4(n: &mut usize) {
     //~^ ERROR: this argument is a mutable reference, but not used mutably
     (|| {
         let _x = *n + 1;
     })();
+}
+
+// Should not warn: pub
+pub fn pub_foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
+    *x += *b + s.len() as u32;
 }
 
 // Should not warn.
@@ -366,4 +370,5 @@ fn main() {
     used_as_path;
     let _: fn(&mut u32) = passed_as_local;
     let _ = if v[0] == 0 { ty_unify_1 } else { ty_unify_2 };
+    pub_foo(&mut v, &0, &mut u);
 }

@@ -1,14 +1,11 @@
-use crate::{
-    utils::helpers::{
-        check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, symlink_dir,
-    },
-    Config,
+use std::fs::{self, remove_file, File};
+use std::io::Write;
+use std::path::PathBuf;
+
+use crate::utils::helpers::{
+    check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, symlink_dir,
 };
-use std::{
-    fs::{self, remove_file, File},
-    io::Write,
-    path::PathBuf,
-};
+use crate::Config;
 
 #[test]
 fn test_make() {
@@ -23,27 +20,6 @@ fn test_make() {
     ] {
         assert_eq!(make(host), make_path);
     }
-}
-
-#[cfg(unix)]
-#[test]
-fn test_absolute_unix() {
-    use crate::utils::helpers::absolute_unix;
-
-    // Test an absolute path
-    let path = PathBuf::from("/home/user/file.txt");
-    assert_eq!(absolute_unix(&path).unwrap(), PathBuf::from("/home/user/file.txt"));
-
-    // Test an absolute path with double leading slashes
-    let path = PathBuf::from("//root//file.txt");
-    assert_eq!(absolute_unix(&path).unwrap(), PathBuf::from("//root/file.txt"));
-
-    // Test a relative path
-    let path = PathBuf::from("relative/path");
-    assert_eq!(
-        absolute_unix(&path).unwrap(),
-        std::env::current_dir().unwrap().join("relative/path")
-    );
 }
 
 #[test]

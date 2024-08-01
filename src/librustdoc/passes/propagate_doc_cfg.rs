@@ -1,5 +1,8 @@
 //! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
+
 use std::sync::Arc;
+
+use rustc_hir::def_id::LocalDefId;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::inline::{load_attrs, merge_attrs};
@@ -7,8 +10,6 @@ use crate::clean::{Crate, Item, ItemKind};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
-
-use rustc_hir::def_id::LocalDefId;
 
 pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
     name: "propagate-doc-cfg",

@@ -50,6 +50,7 @@ macro_rules! tidy_error_ext {
 
 fn tidy_error(args: &str) -> std::io::Result<()> {
     use std::io::Write;
+
     use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
 
     let mut stderr = StandardStream::stdout(ColorChoice::Auto);
@@ -72,6 +73,7 @@ pub mod ext_tool_checks;
 pub mod extdeps;
 pub mod features;
 pub mod fluent_alphabetical;
+pub mod fluent_period;
 mod fluent_used;
 pub(crate) mod iter_header;
 pub mod known_bug;

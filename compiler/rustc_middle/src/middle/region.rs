@@ -6,16 +6,18 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use crate::ty::TyCtxt;
+use std::fmt;
+use std::ops::Deref;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::debug;
 
-use std::fmt;
-use std::ops::Deref;
+use crate::ty::TyCtxt;
 
 /// Represents a statically-describable scope that can be used to
 /// bound the lifetime/region for values.

@@ -241,25 +241,17 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(not(test))]
-use crate::boxed::Box;
-#[cfg(test)]
-use std::boxed::Box;
-
 use core::any::Any;
-use core::borrow;
 use core::cell::Cell;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::CloneToUninit;
 use core::cmp::Ordering;
-use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::hint;
 use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-#[cfg(not(no_global_oom_handling))]
-use core::mem::size_of_val;
-use core::mem::{self, align_of_val_raw, forget, ManuallyDrop};
+use core::mem::{self, align_of_val_raw, ManuallyDrop};
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
@@ -267,13 +259,16 @@ use core::pin::Pin;
 use core::ptr::{self, drop_in_place, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
+use core::{borrow, fmt, hint};
+#[cfg(test)]
+use std::boxed::Box;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::WriteCloneIntoRaw;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
+#[cfg(not(test))]
+use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -366,6 +361,12 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     }
 
     #[inline]
+    fn into_inner_with_allocator(this: Self) -> (NonNull<RcBox<T>>, A) {
+        let this = mem::ManuallyDrop::new(this);
+        (this.ptr, unsafe { ptr::read(&this.alloc) })
+    }
+
+    #[inline]
     unsafe fn from_inner_in(ptr: NonNull<RcBox<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
@@ -435,7 +436,7 @@ impl<T> Rc<T> {
     /// }
     ///
     /// impl Gadget {
-    ///     /// Construct a reference counted Gadget.
+    ///     /// Constructs a reference counted Gadget.
     ///     fn new() -> Rc<Self> {
     ///         // `me` is a `Weak<Gadget>` pointing at the new allocation of the
     ///         // `Rc` we're constructing.
@@ -445,7 +446,7 @@ impl<T> Rc<T> {
     ///         })
     ///     }
     ///
-    ///     /// Return a reference counted pointer to Self.
+    ///     /// Returns a reference counted pointer to Self.
     ///     fn me(&self) -> Rc<Self> {
     ///         self.me.upgrade().unwrap()
     ///     }
@@ -661,16 +662,6 @@ impl<T> Rc<T> {
 }
 
 impl<T, A: Allocator> Rc<T, A> {
-    /// Returns a reference to the underlying allocator.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Rc::allocator(&r)` instead of `r.allocator()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn allocator(this: &Self) -> &A {
-        &this.alloc
-    }
     /// Constructs a new `Rc` in the provided allocator.
     ///
     /// # Examples
@@ -914,19 +905,18 @@ impl<T, A: Allocator> Rc<T, A> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         if Rc::strong_count(&this) == 1 {
-            unsafe {
-                let val = ptr::read(&*this); // copy the contained object
-                let alloc = ptr::read(&this.alloc); // copy the allocator
+            let this = ManuallyDrop::new(this);
 
-                // Indicate to Weaks that they can't be promoted by decrementing
-                // the strong count, and then remove the implicit "strong weak"
-                // pointer while also handling drop logic by just crafting a
-                // fake Weak.
-                this.inner().dec_strong();
-                let _weak = Weak { ptr: this.ptr, alloc };
-                forget(this);
-                Ok(val)
-            }
+            let val: T = unsafe { ptr::read(&**this) }; // copy the contained object
+            let alloc: A = unsafe { ptr::read(&this.alloc) }; // copy the allocator
+
+            // Indicate to Weaks that they can't be promoted by decrementing
+            // the strong count, and then remove the implicit "strong weak"
+            // pointer while also handling drop logic by just crafting a
+            // fake Weak.
+            this.inner().dec_strong();
+            let _weak = Weak { ptr: this.ptr, alloc };
+            Ok(val)
         } else {
             Err(this)
         }
@@ -1145,12 +1135,9 @@ impl<T, A: Allocator> Rc<mem::MaybeUninit<T>, A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<T, A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Rc::from_inner_in(md_self.ptr.cast(), md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Rc<T, A> {
+        let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+        unsafe { Rc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 
@@ -1189,12 +1176,9 @@ impl<T, A: Allocator> Rc<[mem::MaybeUninit<T>], A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<[T], A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Rc::from_ptr_in(md_self.ptr.as_ptr() as _, md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Rc<[T], A> {
+        let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+        unsafe { Rc::from_ptr_in(ptr.as_ptr() as _, alloc) }
     }
 }
 
@@ -1289,6 +1273,8 @@ impl<T: ?Sized> Rc<T> {
     ///
     ///     let five = Rc::from_raw(ptr);
     ///     assert_eq!(2, Rc::strong_count(&five));
+    /// #   // Prevent leaks for Miri.
+    /// #   Rc::decrement_strong_count(ptr);
     /// }
     /// ```
     #[inline]
@@ -1333,6 +1319,17 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
+    /// Returns a reference to the underlying allocator.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Rc::allocator(&r)` instead of `r.allocator()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(this: &Self) -> &A {
+        &this.alloc
+    }
+
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
@@ -1346,14 +1343,42 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// let x = Rc::new("hello".to_owned());
     /// let x_ptr = Rc::into_raw(x);
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// # // Prevent leaks for Miri.
+    /// # drop(unsafe { Rc::from_raw(x_ptr) });
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     #[rustc_never_returns_null_ptr]
     pub fn into_raw(this: Self) -> *const T {
+        let this = ManuallyDrop::new(this);
+        Self::as_ptr(&*this)
+    }
+
+    /// Consumes the `Rc`, returning the wrapped pointer and allocator.
+    ///
+    /// To avoid a memory leak the pointer must be converted back to an `Rc` using
+    /// [`Rc::from_raw_in`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    /// use std::alloc::System;
+    ///
+    /// let x = Rc::new_in("hello".to_owned(), System);
+    /// let (ptr, alloc) = Rc::into_raw_with_allocator(x);
+    /// assert_eq!(unsafe { &*ptr }, "hello");
+    /// let x = unsafe { Rc::from_raw_in(ptr, alloc) };
+    /// assert_eq!(&*x, "hello");
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn into_raw_with_allocator(this: Self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(this);
         let ptr = Self::as_ptr(&this);
-        mem::forget(this);
-        ptr
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(&this.alloc) };
+        (ptr, alloc)
     }
 
     /// Provides a raw pointer to the data.
@@ -1546,6 +1571,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     ///     let five = Rc::from_raw_in(ptr, System);
     ///     assert_eq!(2, Rc::strong_count(&five));
+    /// #   // Prevent leaks for Miri.
+    /// #   Rc::decrement_strong_count_in(ptr, System);
     /// }
     /// ```
     #[inline]
@@ -1724,7 +1751,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     }
 }
 
-impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
     /// Makes a mutable reference into the given `Rc`.
     ///
     /// If there are other `Rc` pointers to the same allocation, then `make_mut` will
@@ -1775,31 +1803,52 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     /// assert!(76 == *data);
     /// assert!(weak.upgrade().is_none());
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
+        let size_of_val = size_of_val::<T>(&**this);
+
         if Rc::strong_count(this) != 1 {
             // Gotta clone the data, there are other Rcs.
-            // Pre-allocate memory to allow writing the cloned value directly.
-            let mut rc = Self::new_uninit_in(this.alloc.clone());
-            unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
-                *this = rc.assume_init();
-            }
+
+            let this_data_ref: &T = &**this;
+            // `in_progress` drops the allocation if we panic before finishing initializing it.
+            let mut in_progress: UniqueRcUninit<T, A> =
+                UniqueRcUninit::new(this_data_ref, this.alloc.clone());
+
+            // Initialize with clone of this.
+            let initialized_clone = unsafe {
+                // Clone. If the clone panics, `in_progress` will be dropped and clean up.
+                this_data_ref.clone_to_uninit(in_progress.data_ptr());
+                // Cast type of pointer, now that it is initialized.
+                in_progress.into_rc()
+            };
+
+            // Replace `this` with newly constructed Rc.
+            *this = initialized_clone;
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
-            let mut rc = Self::new_uninit_in(this.alloc.clone());
+
+            // We don't need panic-protection like the above branch does, but we might as well
+            // use the same mechanism.
+            let mut in_progress: UniqueRcUninit<T, A> =
+                UniqueRcUninit::new(&**this, this.alloc.clone());
             unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
+                // Initialize `in_progress` with move of **this.
+                // We have to express this in terms of bytes because `T: ?Sized`; there is no
+                // operation that just copies a value based on its `size_of_val()`.
+                ptr::copy_nonoverlapping(
+                    ptr::from_ref(&**this).cast::<u8>(),
+                    in_progress.data_ptr().cast::<u8>(),
+                    size_of_val,
+                );
 
                 this.inner().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
                 this.inner().dec_weak();
-                ptr::write(this, rc.assume_init());
+                // Replace `this` with newly constructed Rc that has the moved data.
+                ptr::write(this, in_progress.into_rc());
             }
         }
         // This unsafety is ok because we're guaranteed that the pointer
@@ -1809,7 +1858,9 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
         // reference to the allocation.
         unsafe { &mut this.ptr.as_mut().value }
     }
+}
 
+impl<T: Clone, A: Allocator> Rc<T, A> {
     /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
     /// clone.
     ///
@@ -1845,8 +1896,8 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     }
 }
 
-impl<A: Allocator + Clone> Rc<dyn Any, A> {
-    /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
+impl<A: Allocator> Rc<dyn Any, A> {
+    /// Attempts to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
     ///
@@ -1869,10 +1920,8 @@ impl<A: Allocator + Clone> Rc<dyn Any, A> {
     pub fn downcast<T: Any>(self) -> Result<Rc<T, A>, Self> {
         if (*self).is::<T>() {
             unsafe {
-                let ptr = self.ptr.cast::<RcBox<T>>();
-                let alloc = self.alloc.clone();
-                forget(self);
-                Ok(Rc::from_inner_in(ptr, alloc))
+                let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+                Ok(Rc::from_inner_in(ptr.cast(), alloc))
             }
         } else {
             Err(self)
@@ -1909,10 +1958,8 @@ impl<A: Allocator + Clone> Rc<dyn Any, A> {
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T, A> {
         unsafe {
-            let ptr = self.ptr.cast::<RcBox<T>>();
-            let alloc = self.alloc.clone();
-            mem::forget(self);
-            Rc::from_inner_in(ptr, alloc)
+            let (ptr, alloc) = Rc::into_inner_with_allocator(self);
+            Rc::from_inner_in(ptr.cast(), alloc)
         }
     }
 }
@@ -2075,7 +2122,7 @@ impl<T> Rc<[T]> {
             }
 
             // All clear. Forget the guard so it doesn't free the new RcBox.
-            forget(guard);
+            mem::forget(guard);
 
             Self::from_ptr(ptr)
         }
@@ -2223,6 +2270,31 @@ impl<T: Default> Default for Rc<T> {
     #[inline]
     fn default() -> Rc<T> {
         Rc::new(Default::default())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
+impl Default for Rc<str> {
+    /// Creates an empty str inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        Rc::from("")
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
+impl<T> Default for Rc<[T]> {
+    /// Creates an empty `[T]` inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        let arr: [T; 0] = [];
+        Rc::from(arr)
     }
 }
 
@@ -2511,7 +2583,7 @@ impl<T, const N: usize> From<[T; N]> for Rc<[T]> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Rc<[T]> {
-    /// Allocate a reference-counted slice and fill it by cloning `v`'s items.
+    /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
     ///
     /// # Example
     ///
@@ -2530,7 +2602,7 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Rc<str> {
-    /// Allocate a reference-counted string slice and copy `v` into it.
+    /// Allocates a reference-counted string slice and copies `v` into it.
     ///
     /// # Example
     ///
@@ -2549,7 +2621,7 @@ impl From<&str> for Rc<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<String> for Rc<str> {
-    /// Allocate a reference-counted string slice and copy `v` into it.
+    /// Allocates a reference-counted string slice and copies `v` into it.
     ///
     /// # Example
     ///
@@ -2587,7 +2659,7 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
-    /// Allocate a reference-counted slice and move `v`'s items into it.
+    /// Allocates a reference-counted slice and moves `v`'s items into it.
     ///
     /// # Example
     ///
@@ -2620,8 +2692,8 @@ where
     B: ToOwned + ?Sized,
     Rc<B>: From<&'a B> + From<B::Owned>,
 {
-    /// Create a reference-counted pointer from
-    /// a clone-on-write pointer by copying its content.
+    /// Creates a reference-counted pointer from a clone-on-write pointer by
+    /// copying its content.
     ///
     /// # Example
     ///
@@ -2661,12 +2733,13 @@ impl From<Rc<str>> for Rc<[u8]> {
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
-    type Error = Rc<[T]>;
+impl<T, A: Allocator, const N: usize> TryFrom<Rc<[T], A>> for Rc<[T; N], A> {
+    type Error = Rc<[T], A>;
 
-    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {
+    fn try_from(boxed_slice: Rc<[T], A>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
-            Ok(unsafe { Rc::from_raw(Rc::into_raw(boxed_slice) as *mut [T; N]) })
+            let (ptr, alloc) = Rc::into_inner_with_allocator(boxed_slice);
+            Ok(unsafe { Rc::from_inner_in(ptr.cast(), alloc) })
         } else {
             Err(boxed_slice)
         }
@@ -2923,6 +2996,13 @@ impl<T: ?Sized> Weak<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Weak<T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        &self.alloc
+    }
+
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -2995,16 +3075,14 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
-        let result = self.as_ptr();
-        mem::forget(self);
-        result
+        mem::ManuallyDrop::new(self).as_ptr()
     }
 
-    /// Consumes the `Weak<T>` and turns it into a raw pointer.
+    /// Consumes the `Weak<T>`, returning the wrapped pointer and allocator.
     ///
     /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
     /// one weak reference (the weak count is not modified by this operation). It can be turned
-    /// back into the `Weak<T>` with [`from_raw`].
+    /// back into the `Weak<T>` with [`from_raw_in`].
     ///
     /// The same restrictions of accessing the target of the pointer as with
     /// [`as_ptr`] apply.
@@ -3012,27 +3090,30 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
     /// use std::rc::{Rc, Weak};
+    /// use std::alloc::System;
     ///
-    /// let strong = Rc::new("hello".to_owned());
+    /// let strong = Rc::new_in("hello".to_owned(), System);
     /// let weak = Rc::downgrade(&strong);
-    /// let raw = weak.into_raw();
+    /// let (raw, alloc) = weak.into_raw_with_allocator();
     ///
     /// assert_eq!(1, Rc::weak_count(&strong));
     /// assert_eq!("hello", unsafe { &*raw });
     ///
-    /// drop(unsafe { Weak::from_raw(raw) });
+    /// drop(unsafe { Weak::from_raw_in(raw, alloc) });
     /// assert_eq!(0, Rc::weak_count(&strong));
     /// ```
     ///
-    /// [`from_raw`]: Weak::from_raw
+    /// [`from_raw_in`]: Weak::from_raw_in
     /// [`as_ptr`]: Weak::as_ptr
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_raw_and_alloc(self) -> (*const T, A) {
-        let rc = mem::ManuallyDrop::new(self);
-        let result = rc.as_ptr();
-        let alloc = unsafe { ptr::read(&rc.alloc) };
+    pub fn into_raw_with_allocator(self) -> (*const T, A) {
+        let this = mem::ManuallyDrop::new(self);
+        let result = this.as_ptr();
+        // Safety: `this` is ManuallyDrop so the allocator will not be double-dropped
+        let alloc = unsafe { ptr::read(&this.alloc) };
         (result, alloc)
     }
 
@@ -3442,7 +3523,7 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized, A: Allocator> Unpin for Rc<T, A> {}
 
-/// Get the offset within an `RcBox` for the payload behind a pointer.
+/// Gets the offset within an `RcBox` for the payload behind a pointer.
 ///
 /// # Safety
 ///
@@ -3464,7 +3545,7 @@ fn data_offset_align(align: usize) -> usize {
     layout.size() + layout.padding_needed_for(align)
 }
 
-/// A uniquely owned `Rc`
+/// A uniquely owned [`Rc`].
 ///
 /// This represents an `Rc` that is known to be uniquely owned -- that is, have exactly one strong
 /// reference. Multiple weak pointers can be created, but attempts to upgrade those to strong
@@ -3502,13 +3583,24 @@ fn data_offset_align(align: usize) -> usize {
 /// including fallible or async constructors.
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[derive(Debug)]
-pub struct UniqueRc<T> {
+pub struct UniqueRc<
+    T: ?Sized,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
     ptr: NonNull<RcBox<T>>,
     phantom: PhantomData<RcBox<T>>,
+    alloc: A,
 }
 
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<UniqueRc<U, A>>
+    for UniqueRc<T, A>
+{
+}
+
+// Depends on A = Global
 impl<T> UniqueRc<T> {
-    /// Creates a new `UniqueRc`
+    /// Creates a new `UniqueRc`.
     ///
     /// Weak references to this `UniqueRc` can be created with [`UniqueRc::downgrade`]. Upgrading
     /// these weak references will fail before the `UniqueRc` has been converted into an [`Rc`].
@@ -3517,34 +3609,36 @@ impl<T> UniqueRc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
     pub fn new(value: T) -> Self {
-        Self {
-            ptr: Box::leak(Box::new(RcBox {
+        Self::new_in(value, Global)
+    }
+}
+
+impl<T, A: Allocator> UniqueRc<T, A> {
+    /// Creates a new `UniqueRc` in the provided allocator.
+    ///
+    /// Weak references to this `UniqueRc` can be created with [`UniqueRc::downgrade`]. Upgrading
+    /// these weak references will fail before the `UniqueRc` has been converted into an [`Rc`].
+    /// After converting the `UniqueRc` into an [`Rc`], any weak references created beforehand will
+    /// point to the new [`Rc`].
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn new_in(value: T, alloc: A) -> Self {
+        let (ptr, alloc) = Box::into_unique(Box::new_in(
+            RcBox {
                 strong: Cell::new(0),
                 // keep one weak reference so if all the weak pointers that are created are dropped
                 // the UniqueRc still stays valid.
                 weak: Cell::new(1),
                 value,
-            }))
-            .into(),
-            phantom: PhantomData,
-        }
+            },
+            alloc,
+        ));
+        Self { ptr: ptr.into(), phantom: PhantomData, alloc }
     }
+}
 
-    /// Creates a new weak reference to the `UniqueRc`
-    ///
-    /// Attempting to upgrade this weak reference will fail before the `UniqueRc` has been converted
-    /// to a [`Rc`] using [`UniqueRc::into_rc`].
-    #[unstable(feature = "unique_rc_arc", issue = "112566")]
-    pub fn downgrade(this: &Self) -> Weak<T> {
-        // SAFETY: This pointer was allocated at creation time and we guarantee that we only have
-        // one strong reference before converting to a regular Rc.
-        unsafe {
-            this.ptr.as_ref().inc_weak();
-        }
-        Weak { ptr: this.ptr, alloc: Global }
-    }
-
-    /// Converts the `UniqueRc` into a regular [`Rc`]
+impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
+    /// Converts the `UniqueRc` into a regular [`Rc`].
     ///
     /// This consumes the `UniqueRc` and returns a regular [`Rc`] that contains the `value` that
     /// is passed to `into_rc`.
@@ -3552,19 +3646,41 @@ impl<T> UniqueRc<T> {
     /// Any weak references created before this method is called can now be upgraded to strong
     /// references.
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
-    pub fn into_rc(this: Self) -> Rc<T> {
+    pub fn into_rc(this: Self) -> Rc<T, A> {
         let mut this = ManuallyDrop::new(this);
+
+        // Move the allocator out.
+        // SAFETY: `this.alloc` will not be accessed again, nor dropped because it is in
+        // a `ManuallyDrop`.
+        let alloc: A = unsafe { ptr::read(&this.alloc) };
+
         // SAFETY: This pointer was allocated at creation time so we know it is valid.
         unsafe {
             // Convert our weak reference into a strong reference
             this.ptr.as_mut().strong.set(1);
-            Rc::from_inner(this.ptr)
+            Rc::from_inner_in(this.ptr, alloc)
         }
     }
 }
 
+impl<T: ?Sized, A: Allocator + Clone> UniqueRc<T, A> {
+    /// Creates a new weak reference to the `UniqueRc`.
+    ///
+    /// Attempting to upgrade this weak reference will fail before the `UniqueRc` has been converted
+    /// to a [`Rc`] using [`UniqueRc::into_rc`].
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn downgrade(this: &Self) -> Weak<T, A> {
+        // SAFETY: This pointer was allocated at creation time and we guarantee that we only have
+        // one strong reference before converting to a regular Rc.
+        unsafe {
+            this.ptr.as_ref().inc_weak();
+        }
+        Weak { ptr: this.ptr, alloc: this.alloc.clone() }
+    }
+}
+
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T> Deref for UniqueRc<T> {
+impl<T: ?Sized, A: Allocator> Deref for UniqueRc<T, A> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -3574,7 +3690,7 @@ impl<T> Deref for UniqueRc<T> {
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-impl<T> DerefMut for UniqueRc<T> {
+impl<T: ?Sized, A: Allocator> DerefMut for UniqueRc<T, A> {
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: This pointer was allocated at creation time so we know it is valid. We know we
         // have unique ownership and therefore it's safe to make a mutable reference because
@@ -3584,7 +3700,7 @@ impl<T> DerefMut for UniqueRc<T> {
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-unsafe impl<#[may_dangle] T> Drop for UniqueRc<T> {
+unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
     fn drop(&mut self) {
         unsafe {
             // destroy the contained object
@@ -3594,8 +3710,73 @@ unsafe impl<#[may_dangle] T> Drop for UniqueRc<T> {
             self.ptr.as_ref().dec_weak();
 
             if self.ptr.as_ref().weak() == 0 {
-                Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
+                self.alloc.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
             }
+        }
+    }
+}
+
+/// A unique owning pointer to a [`RcBox`] **that does not imply the contents are initialized,**
+/// but will deallocate it (without dropping the value) when dropped.
+///
+/// This is a helper for [`Rc::make_mut()`] to ensure correct cleanup on panic.
+/// It is nearly a duplicate of `UniqueRc<MaybeUninit<T>, A>` except that it allows `T: !Sized`,
+/// which `MaybeUninit` does not.
+#[cfg(not(no_global_oom_handling))]
+struct UniqueRcUninit<T: ?Sized, A: Allocator> {
+    ptr: NonNull<RcBox<T>>,
+    layout_for_value: Layout,
+    alloc: Option<A>,
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
+    /// Allocates a RcBox with layout suitable to contain `for_value` or a clone of it.
+    fn new(for_value: &T, alloc: A) -> UniqueRcUninit<T, A> {
+        let layout = Layout::for_value(for_value);
+        let ptr = unsafe {
+            Rc::allocate_for_layout(
+                layout,
+                |layout_for_rcbox| alloc.allocate(layout_for_rcbox),
+                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcBox<T>),
+            )
+        };
+        Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) }
+    }
+
+    /// Returns the pointer to be written into to initialize the [`Rc`].
+    fn data_ptr(&mut self) -> *mut T {
+        let offset = data_offset_align(self.layout_for_value.align());
+        unsafe { self.ptr.as_ptr().byte_add(offset) as *mut T }
+    }
+
+    /// Upgrade this into a normal [`Rc`].
+    ///
+    /// # Safety
+    ///
+    /// The data must have been initialized (by writing to [`Self::data_ptr()`]).
+    unsafe fn into_rc(self) -> Rc<T, A> {
+        let mut this = ManuallyDrop::new(self);
+        let ptr = this.ptr;
+        let alloc = this.alloc.take().unwrap();
+
+        // SAFETY: The pointer is valid as per `UniqueRcUninit::new`, and the caller is responsible
+        // for having initialized the data.
+        unsafe { Rc::from_ptr_in(ptr.as_ptr(), alloc) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
+    fn drop(&mut self) {
+        // SAFETY:
+        // * new() produced a pointer safe to deallocate.
+        // * We own the pointer unless into_rc() was called, which forgets us.
+        unsafe {
+            self.alloc
+                .take()
+                .unwrap()
+                .deallocate(self.ptr.cast(), rcbox_layout_for_value_layout(self.layout_for_value));
         }
     }
 }

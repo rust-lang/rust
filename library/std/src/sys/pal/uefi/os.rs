@@ -1,14 +1,14 @@
+use r_efi::efi::protocols::{device_path, loaded_image_device_path};
+use r_efi::efi::Status;
+
 use super::{helpers, unsupported, RawOsError};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
 use crate::path::{self, PathBuf};
 use crate::ptr::NonNull;
-use r_efi::efi::protocols::{device_path, loaded_image_device_path};
-use r_efi::efi::Status;
+use crate::{fmt, io};
 
 pub fn errno() -> RawOsError {
     0
@@ -203,11 +203,11 @@ pub fn getenv(_: &OsStr) -> Option<OsString> {
     None
 }
 
-pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
     Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot set env vars on this platform"))
 }
 
-pub fn unsetenv(_: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(_: &OsStr) -> io::Result<()> {
     Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot unset env vars on this platform"))
 }
 

@@ -2,42 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
-use crate::mir::interpret::{AllocRange, Scalar};
-use crate::mir::visit::MirVisitable;
-use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
-use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::{AdtDef, Instance, InstanceDef, UserTypeAnnotationIndex};
-use crate::ty::{GenericArg, GenericArgsRef};
-
-use rustc_data_structures::captures::Captures;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
-use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::{
-    self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
-};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_session::Session;
-use rustc_span::source_map::Spanned;
-use rustc_target::abi::{FieldIdx, VariantIdx};
-
-use polonius_engine::Atom;
-pub use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::bit_set::BitSet;
-use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_serialize::{Decodable, Encodable};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
-
-use either::Either;
-
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -45,9 +9,42 @@ use std::fmt::{self, Debug, Formatter};
 use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
+pub use basic_blocks::BasicBlocks;
+use either::Either;
+use polonius_engine::Atom;
+pub use rustc_ast::Mutability;
+use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::graph::dominators::Dominators;
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
+use rustc_hir::def::{CtorKind, Namespace};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::{
+    self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
+};
+use rustc_index::bit_set::BitSet;
+use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_serialize::{Decodable, Encodable};
+use rustc_session::Session;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Symbol;
+use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::{FieldIdx, VariantIdx};
+use tracing::trace;
+
 pub use self::query::*;
 use self::visit::TyContext;
-pub use basic_blocks::BasicBlocks;
+use crate::mir::interpret::{AllocRange, Scalar};
+use crate::mir::visit::MirVisitable;
+use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::ty::print::{pretty_print_const, with_no_trimmed_paths, FmtPrinter, Printer};
+use crate::ty::visit::TypeVisitableExt;
+use crate::ty::{
+    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt,
+    UserTypeAnnotationIndex,
+};
 
 mod basic_blocks;
 mod consts;
@@ -69,16 +66,17 @@ pub mod traversal;
 mod type_foldable;
 pub mod visit;
 
-pub use self::generic_graph::graphviz_safe_def_name;
-pub use self::graphviz::write_mir_graphviz;
-pub use self::pretty::{
-    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
-};
 pub use consts::*;
 use pretty::pretty_print_const_value;
 pub use statement::*;
 pub use syntax::*;
 pub use terminator::*;
+
+pub use self::generic_graph::graphviz_safe_def_name;
+pub use self::graphviz::write_mir_graphviz;
+pub use self::pretty::{
+    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
+};
 
 /// Types for locals
 pub type LocalDecls<'tcx> = IndexSlice<Local, LocalDecl<'tcx>>;
@@ -232,7 +230,7 @@ impl RuntimePhase {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct MirSource<'tcx> {
-    pub instance: InstanceDef<'tcx>,
+    pub instance: InstanceKind<'tcx>,
 
     /// If `Some`, this is a promoted rvalue within the parent function.
     pub promoted: Option<Promoted>,
@@ -240,10 +238,10 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
+        MirSource { instance: InstanceKind::Item(def_id), promoted: None }
     }
 
-    pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
+    pub fn from_instance(instance: InstanceKind<'tcx>) -> Self {
         MirSource { instance, promoted: None }
     }
 
@@ -429,11 +427,12 @@ pub struct Body<'tcx> {
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 
-    /// Branch coverage information collected during MIR building, to be used by
-    /// the `InstrumentCoverage` pass.
+    /// Coverage information collected from THIR/MIR during MIR building,
+    /// to be used by the `InstrumentCoverage` pass.
     ///
-    /// Only present if branch coverage is enabled and this function is eligible.
-    pub coverage_branch_info: Option<Box<coverage::BranchInfo>>,
+    /// Only present if coverage is enabled and this function is eligible.
+    /// Boxed to limit space overhead in non-coverage builds.
+    pub coverage_info_hi: Option<Box<coverage::CoverageInfoHi>>,
 
     /// Per-function coverage information added by the `InstrumentCoverage`
     /// pass, to be used in conjunction with the coverage statements injected
@@ -483,7 +482,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
-            coverage_branch_info: None,
+            coverage_info_hi: None,
             function_coverage_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -514,7 +513,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors: None,
-            coverage_branch_info: None,
+            coverage_info_hi: None,
             function_coverage_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -623,7 +622,7 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
-    pub fn bound_return_ty(&self) -> ty::EarlyBinder<Ty<'tcx>> {
+    pub fn bound_return_ty(&self) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         ty::EarlyBinder::bind(self.local_decls[RETURN_PLACE].ty)
     }
 
@@ -1813,14 +1812,15 @@ impl DefLocation {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(BasicBlockData<'_>, 128);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 32);
-    static_assert_size!(Terminator<'_>, 112);
+    static_assert_size!(Terminator<'_>, 96);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

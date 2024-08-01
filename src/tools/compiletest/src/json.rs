@@ -1,11 +1,13 @@
 //! These structs are a subset of the ones found in `rustc_errors::json`.
 //! They are only used for deserialization of JSON output provided by libtest.
 
-use crate::errors::{Error, ErrorKind};
-use crate::runtest::ProcRes;
-use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+use serde::Deserialize;
+
+use crate::errors::{Error, ErrorKind};
+use crate::runtest::ProcRes;
 
 #[derive(Deserialize)]
 struct Diagnostic {
@@ -282,7 +284,7 @@ fn push_expected_errors(
 
     // Add notes for the backtrace
     for span in primary_spans {
-        for frame in &span.expansion {
+        if let Some(frame) = &span.expansion {
             push_backtrace(expected_errors, frame, file_name);
         }
     }
@@ -315,7 +317,7 @@ fn push_backtrace(
         });
     }
 
-    for previous_expansion in &expansion.span.expansion {
+    if let Some(previous_expansion) = &expansion.span.expansion {
         push_backtrace(expected_errors, previous_expansion, file_name);
     }
 }

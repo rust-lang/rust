@@ -66,6 +66,9 @@ jobs:
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
             apt_deps: gcc-aarch64-linux-gnu qemu-user
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
@@ -97,6 +100,10 @@ jobs:
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
+
+    - name: Use x86_64 compiler on macOS
+      if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
+      run: rustup set default-host x86_64-apple-darwin
 
     - name: Install toolchain and emulator
       if: matrix.apt_deps != null
@@ -206,6 +213,9 @@ jobs:
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
           # cross-compile from Linux to Windows using mingw
           - os: ubuntu-latest
             env:
@@ -229,6 +239,10 @@ jobs:
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
+
+    - name: Use x86_64 compiler on macOS
+      if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
+      run: rustup set default-host x86_64-apple-darwin
 
     - name: Install MinGW toolchain
       if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
@@ -266,7 +280,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/master' }}
-    needs: [rustfmt, test, bench, dist]
+    # FIXME add the bench job back to the dependency list once rust-lang/rust#125493 gets merged
+    needs: [rustfmt, test, dist]
 
     permissions:
       contents: write # for creating the dev tag and release

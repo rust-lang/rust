@@ -1,8 +1,14 @@
+use std::fmt;
+use std::io::{Read, Write};
+use std::path::Path;
+use std::str::FromStr;
+
 use anyhow::{Context, Error};
-use flate2::{read::GzDecoder, write::GzEncoder};
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
 use rayon::prelude::*;
-use std::{fmt, io::Read, io::Write, path::Path, str::FromStr};
-use xz2::{read::XzDecoder, write::XzEncoder};
+use xz2::read::XzDecoder;
+use xz2::write::XzEncoder;
 
 #[derive(Default, Debug, Copy, Clone)]
 pub enum CompressionProfile {
@@ -214,22 +220,16 @@ impl Write for CombinedEncoder {
     }
 
     fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
-        self.encoders
-            .par_iter_mut()
-            .map(|w| w.write_all(buf))
-            .collect::<std::io::Result<Vec<()>>>()?;
-        Ok(())
+        self.encoders.par_iter_mut().try_for_each(|w| w.write_all(buf))
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.encoders.par_iter_mut().map(|w| w.flush()).collect::<std::io::Result<Vec<()>>>()?;
-        Ok(())
+        self.encoders.par_iter_mut().try_for_each(Write::flush)
     }
 }
 
 impl Encoder for CombinedEncoder {
     fn finish(self: Box<Self>) -> Result<(), Error> {
-        self.encoders.into_par_iter().map(|e| e.finish()).collect::<Result<Vec<()>, Error>>()?;
-        Ok(())
+        self.encoders.into_par_iter().try_for_each(Encoder::finish)
     }
 }

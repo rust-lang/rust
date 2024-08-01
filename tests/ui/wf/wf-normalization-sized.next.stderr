@@ -1,30 +1,37 @@
-error: the type `<[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize` is not well-formed
-  --> $DIR/wf-normalization-sized.rs:19:10
+error[E0277]: the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
+  --> $DIR/wf-normalization-sized.rs:19:11
    |
 LL | const _: <[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize = ();
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[[[[[u8]]]]]`
 
-error: the type `<[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize` is not well-formed
-  --> $DIR/wf-normalization-sized.rs:19:10
+error[E0277]: the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
+  --> $DIR/wf-normalization-sized.rs:19:11
    |
 LL | const _: <[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize = ();
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: the trait `Sized` is not implemented for `[[[[[u8]]]]]`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: the type `<Vec<str> as WellUnformed>::RequestNormalize` is not well-formed
-  --> $DIR/wf-normalization-sized.rs:22:10
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/wf-normalization-sized.rs:22:11
    |
 LL | const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
 
-error: the type `<Vec<str> as WellUnformed>::RequestNormalize` is not well-formed
-  --> $DIR/wf-normalization-sized.rs:22:10
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/wf-normalization-sized.rs:22:11
    |
 LL | const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^ doesn't have a size known at compile-time
    |
+   = help: the trait `Sized` is not implemented for `str`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0277`.

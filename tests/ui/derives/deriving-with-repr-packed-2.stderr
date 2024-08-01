@@ -10,6 +10,14 @@ LL | struct NonCopy;
 LL |     _ = x.clone();
    |           ^^^^^ method cannot be called on `Foo<NonCopy>` due to unsatisfied trait bounds
    |
+note: there's an earlier shadowed binding `x` of type `Foo<u32>` that has method `clone` available
+  --> $DIR/deriving-with-repr-packed-2.rs:13:9
+   |
+LL |     let x: Foo<u32> = Foo(1, 2, 3);
+   |         ^ `x` of type `Foo<u32>` that has method `clone` defined earlier here
+...
+LL |     let x: Foo<NonCopy> = Foo(NonCopy, NonCopy, NonCopy);
+   |         - earlier `x` shadowed here with type `Foo<NonCopy>`
 note: the following trait bounds were not satisfied:
       `NonCopy: Clone`
       `NonCopy: Copy`

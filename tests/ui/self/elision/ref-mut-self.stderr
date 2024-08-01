@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ref-mut-self.rs:11:9
+  --> $DIR/ref-mut-self.rs:12:9
    |
 LL |     fn ref_self(&mut self, f: &u32) -> &u32 {
    |                 -             - let's call the lifetime of this reference `'1`
@@ -10,11 +10,11 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn ref_self<'a>(&'a mut self, f: &'a u32) -> &u32 {
-   |                ++++  ++               ++
+LL |     fn ref_self<'a>(&mut self, f: &'a u32) -> &'a u32 {
+   |                ++++                ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-mut-self.rs:18:9
+  --> $DIR/ref-mut-self.rs:19:9
    |
 LL |     fn ref_Self(self: &mut Self, f: &u32) -> &u32 {
    |                       -             - let's call the lifetime of this reference `'1`
@@ -25,11 +25,11 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn ref_Self<'a>(self: &'a mut Self, f: &'a u32) -> &u32 {
-   |                ++++        ++               ++
+LL |     fn ref_Self<'a>(self: &mut Self, f: &'a u32) -> &'a u32 {
+   |                ++++                      ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-mut-self.rs:23:9
+  --> $DIR/ref-mut-self.rs:24:9
    |
 LL |     fn box_ref_Self(self: Box<&mut Self>, f: &u32) -> &u32 {
    |                               -              - let's call the lifetime of this reference `'1`
@@ -40,11 +40,11 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn box_ref_Self<'a>(self: Box<&'a mut Self>, f: &'a u32) -> &u32 {
-   |                    ++++            ++                ++
+LL |     fn box_ref_Self<'a>(self: Box<&mut Self>, f: &'a u32) -> &'a u32 {
+   |                    ++++                           ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-mut-self.rs:28:9
+  --> $DIR/ref-mut-self.rs:29:9
    |
 LL |     fn pin_ref_Self(self: Pin<&mut Self>, f: &u32) -> &u32 {
    |                               -              - let's call the lifetime of this reference `'1`
@@ -55,11 +55,11 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn pin_ref_Self<'a>(self: Pin<&'a mut Self>, f: &'a u32) -> &u32 {
-   |                    ++++            ++                ++
+LL |     fn pin_ref_Self<'a>(self: Pin<&mut Self>, f: &'a u32) -> &'a u32 {
+   |                    ++++                           ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-mut-self.rs:33:9
+  --> $DIR/ref-mut-self.rs:34:9
    |
 LL |     fn box_box_ref_Self(self: Box<Box<&mut Self>>, f: &u32) -> &u32 {
    |                                       -               - let's call the lifetime of this reference `'1`
@@ -70,11 +70,11 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn box_box_ref_Self<'a>(self: Box<Box<&'a mut Self>>, f: &'a u32) -> &u32 {
-   |                        ++++                ++                 ++
+LL |     fn box_box_ref_Self<'a>(self: Box<Box<&mut Self>>, f: &'a u32) -> &'a u32 {
+   |                        ++++                                ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-mut-self.rs:38:9
+  --> $DIR/ref-mut-self.rs:39:9
    |
 LL |     fn box_pin_ref_Self(self: Box<Pin<&mut Self>>, f: &u32) -> &u32 {
    |                                       -               - let's call the lifetime of this reference `'1`
@@ -85,8 +85,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     fn box_pin_ref_Self<'a>(self: Box<Pin<&'a mut Self>>, f: &'a u32) -> &u32 {
-   |                        ++++                ++                 ++
+LL |     fn box_pin_ref_Self<'a>(self: Box<Pin<&mut Self>>, f: &'a u32) -> &'a u32 {
+   |                        ++++                                ++          ++
 
 error: aborting due to 6 previous errors
 

@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
@@ -50,9 +51,10 @@ pub struct ManualStrip {
 }
 
 impl ManualStrip {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -66,14 +68,11 @@ enum StripKind {
 
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !self.msrv.meets(msrvs::STR_STRIP_PREFIX) {
-            return;
-        }
-
         if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
             && let ExprKind::MethodCall(_, target_arg, [pattern], _) = cond.kind
-            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id)
             && let ExprKind::Path(target_path) = &target_arg.kind
+            && self.msrv.meets(msrvs::STR_STRIP_PREFIX)
+            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id)
         {
             let strip_kind = if match_def_path(cx, method_def_id, &paths::STR_STARTS_WITH) {
                 StripKind::Prefix

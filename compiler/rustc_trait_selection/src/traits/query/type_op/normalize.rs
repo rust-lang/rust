@@ -1,12 +1,13 @@
-use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::ObligationCtxt;
+use std::fmt;
+
+pub use rustc_middle::traits::query::type_op::Normalize;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
-use std::fmt;
 
-pub use rustc_middle::traits::query::type_op::Normalize;
+use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
+use crate::traits::ObligationCtxt;
 
 impl<'tcx, T> super::QueryTypeOp<'tcx> for Normalize<T>
 where
@@ -34,7 +35,9 @@ where
     }
 }
 
-pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tcx> + Copy {
+pub trait Normalizable<'tcx>:
+    fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<TyCtxt<'tcx>> + Copy
+{
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,

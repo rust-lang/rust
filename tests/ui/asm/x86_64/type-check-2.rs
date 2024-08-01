@@ -13,13 +13,16 @@ fn main() {
 
         let x: u64;
         asm!("{}", in(reg) x);
+        //~^ ERROR isn't initialized
         let mut y: u64;
         asm!("{}", inout(reg) y);
+        //~^ ERROR isn't initialized
         let _ = y;
 
         // Outputs require mutable places
 
         let v: Vec<u64> = vec![0, 1, 2];
+        //~^ ERROR is not declared as mutable
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
         asm!("{}", inout(reg) v[0]);

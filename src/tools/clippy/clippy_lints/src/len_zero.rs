@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
     AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
     ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatKind, PathSegment, PrimTy, QPath,
-    TraitItemRef, TyKind, TypeBindingKind,
+    TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -121,11 +121,9 @@ declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMP
 
 impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if item.span.from_expansion() {
-            return;
-        }
-
-        if let ItemKind::Trait(_, _, _, _, trait_items) = item.kind {
+        if let ItemKind::Trait(_, _, _, _, trait_items) = item.kind
+            && !item.span.from_expansion()
+        {
             check_trait_items(cx, item, trait_items);
         }
     }
@@ -162,17 +160,14 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
-            return;
-        }
-
         if let ExprKind::Let(lt) = expr.kind
-            && has_is_empty(cx, lt.init)
             && match lt.pat.kind {
                 PatKind::Slice([], None, []) => true,
                 PatKind::Lit(lit) if is_empty_string(lit) => true,
                 _ => false,
             }
+            && !expr.span.from_expansion()
+            && has_is_empty(cx, lt.init)
         {
             let mut applicability = Applicability::MachineApplicable;
 
@@ -190,7 +185,9 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             );
         }
 
-        if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind {
+        if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind
+            && !expr.span.from_expansion()
+        {
             // expr.span might contains parenthesis, see issue #10529
             let actual_span = span_without_enclosing_paren(cx, expr.span);
             match cmp {
@@ -253,7 +250,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut DefIdSet, cx: &LateContext<'_>) {
         if set.insert(traitt) {
-            for supertrait in rustc_trait_selection::traits::supertrait_def_ids(cx.tcx, traitt) {
+            for supertrait in cx.tcx.supertrait_def_ids(traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }
@@ -307,17 +304,12 @@ fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&
         && let [GenericBound::Trait(trait_ref, _)] = &opaque.bounds
         && let Some(segment) = trait_ref.trait_ref.path.segments.last()
         && let Some(generic_args) = segment.args
-        && generic_args.bindings.len() == 1
-        && let TypeBindingKind::Equality {
-            term:
-                rustc_hir::Term::Ty(rustc_hir::Ty {
-                    kind: TyKind::Path(QPath::Resolved(_, path)),
-                    ..
-                }),
-        } = &generic_args.bindings[0].kind
-        && path.segments.len() == 1
+        && let [constraint] = generic_args.constraints
+        && let Some(ty) = constraint.ty()
+        && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+        && let [segment] = path.segments
     {
-        return Some(&path.segments[0]);
+        return Some(segment);
     }
 
     None

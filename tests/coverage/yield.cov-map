@@ -1,5 +1,5 @@
 Function name: yield::main
-Raw bytes (106): 0x[01, 01, 0b, 05, 00, 0d, 11, 22, 15, 0d, 11, 11, 15, 22, 15, 0d, 11, 22, 15, 0d, 11, 19, 1d, 25, 29, 10, 01, 07, 01, 01, 16, 01, 06, 0b, 00, 2e, 0d, 01, 27, 00, 29, 03, 01, 0e, 00, 34, 0d, 02, 0b, 00, 2e, 22, 01, 22, 00, 27, 1e, 00, 2c, 00, 2e, 13, 01, 0e, 00, 34, 1e, 03, 09, 00, 16, 1e, 07, 0b, 00, 2e, 21, 01, 27, 00, 29, 27, 01, 0e, 00, 34, 21, 02, 0b, 00, 2e, 2d, 01, 27, 00, 29, 2b, 01, 0e, 00, 34, 2d, 02, 01, 00, 02]
+Raw bytes (106): 0x[01, 01, 0b, 05, 00, 0d, 11, 22, 15, 0d, 11, 11, 15, 22, 15, 0d, 11, 22, 15, 0d, 11, 19, 1d, 25, 29, 10, 01, 07, 01, 01, 16, 01, 07, 0b, 00, 2e, 0d, 01, 27, 00, 29, 03, 01, 0e, 00, 34, 0d, 02, 0b, 00, 2e, 22, 01, 22, 00, 27, 1e, 00, 2c, 00, 2e, 13, 01, 0e, 00, 34, 1e, 03, 09, 00, 16, 1e, 08, 0b, 00, 2e, 21, 01, 27, 00, 29, 27, 01, 0e, 00, 34, 21, 02, 0b, 00, 2e, 2d, 01, 27, 00, 29, 2b, 01, 0e, 00, 34, 2d, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 11
@@ -16,7 +16,7 @@ Number of expressions: 11
 - expression 10 operands: lhs = Counter(9), rhs = Counter(10)
 Number of file 0 mappings: 16
 - Code(Counter(0)) at (prev + 7, 1) to (start + 1, 22)
-- Code(Counter(0)) at (prev + 6, 11) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 7, 11) to (start + 0, 46)
 - Code(Counter(3)) at (prev + 1, 39) to (start + 0, 41)
 - Code(Expression(0, Add)) at (prev + 1, 14) to (start + 0, 52)
     = (c1 + Zero)
@@ -29,7 +29,7 @@ Number of file 0 mappings: 16
     = (c4 + c5)
 - Code(Expression(7, Sub)) at (prev + 3, 9) to (start + 0, 22)
     = ((c3 - c4) - c5)
-- Code(Expression(7, Sub)) at (prev + 7, 11) to (start + 0, 46)
+- Code(Expression(7, Sub)) at (prev + 8, 11) to (start + 0, 46)
     = ((c3 - c4) - c5)
 - Code(Counter(8)) at (prev + 1, 39) to (start + 0, 41)
 - Code(Expression(9, Add)) at (prev + 1, 14) to (start + 0, 52)
@@ -41,21 +41,21 @@ Number of file 0 mappings: 16
 - Code(Counter(11)) at (prev + 2, 1) to (start + 0, 2)
 
 Function name: yield::main::{closure#0}
-Raw bytes (14): 0x[01, 01, 00, 02, 01, 08, 29, 01, 10, 05, 02, 10, 01, 06]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 09, 08, 01, 10, 05, 02, 10, 01, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 2
-- Code(Counter(0)) at (prev + 8, 41) to (start + 1, 16)
+- Code(Counter(0)) at (prev + 9, 8) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 2, 16) to (start + 1, 6)
 
 Function name: yield::main::{closure#1}
-Raw bytes (24): 0x[01, 01, 00, 04, 01, 16, 29, 01, 10, 05, 02, 09, 00, 10, 09, 01, 09, 00, 10, 0d, 01, 10, 01, 06]
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 18, 08, 01, 10, 05, 02, 09, 00, 10, 09, 01, 09, 00, 10, 0d, 01, 10, 01, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 22, 41) to (start + 1, 16)
+- Code(Counter(0)) at (prev + 24, 8) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 2, 9) to (start + 0, 16)
 - Code(Counter(2)) at (prev + 1, 9) to (start + 0, 16)
 - Code(Counter(3)) at (prev + 1, 16) to (start + 1, 6)

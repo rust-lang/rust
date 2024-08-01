@@ -143,7 +143,7 @@ pub(crate) fn deref_by_trait(
     table @ &mut InferenceTable { db, .. }: &mut InferenceTable<'_>,
     ty: Ty,
 ) -> Option<Ty> {
-    let _p = tracing::span!(tracing::Level::INFO, "deref_by_trait").entered();
+    let _p = tracing::info_span!("deref_by_trait").entered();
     if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
         // don't try to deref unknown variables
         return None;

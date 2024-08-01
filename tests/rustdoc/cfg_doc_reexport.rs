@@ -4,14 +4,14 @@
 #![crate_name = "foo"]
 #![no_core]
 
-// @has 'foo/index.html'
-// @has - '//*[@class="item-name"]/*[@class="stab portability"]' 'foobar'
-// @has - '//*[@class="item-name"]/*[@class="stab portability"]' 'bar'
+//@ has 'foo/index.html'
+//@ has - '//*[@class="item-name"]/*[@class="stab portability"]' 'foobar'
+//@ has - '//*[@class="item-name"]/*[@class="stab portability"]' 'bar'
 
 #[doc(cfg(feature = "foobar"))]
 mod imp_priv {
-    // @has 'foo/struct.BarPriv.html'
-    // @has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
+    //@ has 'foo/struct.BarPriv.html'
+    //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
     //    'Available on crate feature foobar only.'
     pub struct BarPriv {}
     impl BarPriv {
@@ -22,8 +22,8 @@ mod imp_priv {
 pub use crate::imp_priv::*;
 
 pub mod bar {
-    // @has 'foo/bar/struct.Bar.html'
-    // @has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
+    //@ has 'foo/bar/struct.Bar.html'
+    //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
     //    'Available on crate feature bar only.'
     #[doc(cfg(feature = "bar"))]
     pub struct Bar;

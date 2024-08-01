@@ -1,4 +1,5 @@
 //@ test-mir-pass: DataflowConstProp
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 #[derive(Copy, Clone)]
@@ -45,7 +46,7 @@ fn main() {
     const SMALL_VAL: SmallStruct = SmallStruct(4., Some(S(1)), &[]);
 
     // CHECK: [[a1]] = const 4f32;
-    // CHECK: [[b1]] = const Option::<S>::Some(S(1_i32));
+    // CHECK: [[b1]] = ({{_.*}}.1: std::option::Option<S>);
     // CHECK: [[c1]] = ({{_.*}}.2: &[f32]);
     let SmallStruct(a1, b1, c1) = SMALL_VAL;
 
@@ -68,12 +69,12 @@ fn main() {
 
     static BIG_STAT: &BigStruct = &BigStruct(82., Some(S(35)), &[45., 72.]);
     // CHECK: [[a4]] = const 82f32;
-    // CHECK: [[b4]] = const Option::<S>::Some(S(35_i32));
+    // CHECK: [[b4]] = ((*{{_.*}}).1: std::option::Option<S>);
     // CHECK: [[c4]] = ((*{{_.*}}).2: &[f32]);
     let BigStruct(a4, b4, c4) = *BIG_STAT;
 
     // We arbitrarily limit the size of synthetized values to 4 pointers.
     // `BigStruct` can be read, but we will keep a MIR aggregate for this.
-    // CHECK: [[bs]] = BigStruct(const 82f32, const Option::<S>::Some(S(35_i32)), move {{_.*}});
+    // CHECK: [[bs]] = BigStruct(const 82f32, move {{.*}}, move {{_.*}});
     let bs = BigStruct(a4, b4, c4);
 }

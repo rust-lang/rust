@@ -3,13 +3,11 @@
 
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
-use crate::fmt;
 use crate::fmt::Write;
-use crate::mem;
 use crate::rc::Rc;
-use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::{AsInner, IntoInner};
+use crate::{fmt, mem, str};
 
 #[cfg(test)]
 mod tests;
@@ -177,6 +175,11 @@ impl Buf {
     }
 
     #[inline]
+    pub fn leak<'a>(self) -> &'a mut Slice {
+        unsafe { mem::transmute(self.inner.leak()) }
+    }
+
+    #[inline]
     pub fn into_box(self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_boxed_slice()) }
     }
@@ -197,10 +200,20 @@ impl Buf {
         self.as_slice().into_rc()
     }
 
-    /// Part of a hack to make PathBuf::push/pop more efficient.
+    /// Provides plumbing to core `Vec::truncate`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
     #[inline]
-    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
-        &mut self.inner
+    pub(crate) fn truncate(&mut self, len: usize) {
+        self.inner.truncate(len);
+    }
+
+    /// Provides plumbing to core `Vec::extend_from_slice`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
+    #[inline]
+    pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
+        self.inner.extend_from_slice(other);
     }
 }
 

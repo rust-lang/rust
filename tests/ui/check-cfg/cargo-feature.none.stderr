@@ -6,7 +6,7 @@ LL | #[cfg(feature = "serde")]
    |
    = note: no expected values for `feature`
    = help: consider adding `serde` as a feature in `Cargo.toml`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: (none)
@@ -17,7 +17,7 @@ LL | #[cfg(feature)]
    |
    = note: no expected values for `feature`
    = help: consider defining some features in `Cargo.toml`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `tokio_unstable`
   --> $DIR/cargo-feature.rs:22:7
@@ -25,9 +25,13 @@ warning: unexpected `cfg` condition name: `tokio_unstable`
 LL | #[cfg(tokio_unstable)]
    |       ^^^^^^^^^^^^^^
    |
-   = help: expected names are: `clippy`, `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `rustfmt`, `sanitize`, `sanitizer_cfi_generalize_pointers`, `sanitizer_cfi_normalize_integers`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `ub_checks`, `unix`, `windows`
-   = help: consider using a Cargo feature instead or adding `println!("cargo::rustc-check-cfg=cfg(tokio_unstable)");` to the top of the `build.rs`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = help: expected names are: `clippy`, `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `rustfmt`, `sanitize`, `sanitizer_cfi_generalize_pointers`, `sanitizer_cfi_normalize_integers`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `ub_checks`, `unix`, and `windows`
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(tokio_unstable)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `CONFIG_NVME`
   --> $DIR/cargo-feature.rs:26:7
@@ -35,8 +39,12 @@ warning: unexpected `cfg` condition name: `CONFIG_NVME`
 LL | #[cfg(CONFIG_NVME = "m")]
    |       ^^^^^^^^^^^^^^^^^
    |
-   = help: consider using a Cargo feature instead or adding `println!("cargo::rustc-check-cfg=cfg(CONFIG_NVME, values(\"m\"))");` to the top of the `build.rs`
-   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/build-scripts.html#rustc-check-cfg> for more information about checking conditional configuration
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CONFIG_NVME, values("m"))'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(CONFIG_NVME, values(\"m\"))");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: 4 warnings emitted
 

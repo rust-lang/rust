@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: dd51139b0530147e
+lsp/ext.rs hash: 39b47906286ad9c
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -372,16 +372,52 @@ interface Runnable {
 }
 ```
 
-rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look like this:
+rust-analyzer supports two `kind`s of runnables, `"cargo"` and `"shell"`. The `args` for `"cargo"` look like this:
 
 ```typescript
 {
+    /**
+     * Environment variables to set before running the command.
+     */
+    environment?: Record<string, string>;
+    /**
+     * The working directory to run the command in.
+     */
+    cwd: string;
+    /**
+     * The workspace root directory of the cargo project.
+     */
     workspaceRoot?: string;
+    /**
+     * The cargo command to run.
+     */
     cargoArgs: string[];
-    cargoExtraArgs: string[];
+    /**
+     * Arguments to pass to the executable, these will be passed to the command after a `--` argument.
+     */
     executableArgs: string[];
-    expectTest?: boolean;
+    /**
+     * Command to execute instead of `cargo`.
+     */
     overrideCargo?: string;
+}
+```
+
+The args for `"shell"` look like this:
+
+```typescript
+{
+    /**
+     * Environment variables to set before running the command.
+     */
+    environment?: Record<string, string>;
+    /**
+     * The working directory to run the command in.
+     */
+    cwd: string;
+    kind: string;
+    program: string;
+    args: string[];
 }
 ```
 

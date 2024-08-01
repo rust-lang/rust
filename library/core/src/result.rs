@@ -45,25 +45,29 @@
 //! that make working with it more succinct.
 //!
 //! ```
+//! // The `is_ok` and `is_err` methods do what they say.
 //! let good_result: Result<i32, i32> = Ok(10);
 //! let bad_result: Result<i32, i32> = Err(10);
-//!
-//! // The `is_ok` and `is_err` methods do what they say.
 //! assert!(good_result.is_ok() && !good_result.is_err());
 //! assert!(bad_result.is_err() && !bad_result.is_ok());
 //!
-//! // `map` consumes the `Result` and produces another.
+//! // `map` and `map_err` consume the `Result` and produce another.
 //! let good_result: Result<i32, i32> = good_result.map(|i| i + 1);
-//! let bad_result: Result<i32, i32> = bad_result.map(|i| i - 1);
+//! let bad_result: Result<i32, i32> = bad_result.map_err(|i| i - 1);
+//! assert_eq!(good_result, Ok(11));
+//! assert_eq!(bad_result, Err(9));
 //!
 //! // Use `and_then` to continue the computation.
 //! let good_result: Result<bool, i32> = good_result.and_then(|i| Ok(i == 11));
+//! assert_eq!(good_result, Ok(true));
 //!
 //! // Use `or_else` to handle the error.
 //! let bad_result: Result<i32, i32> = bad_result.or_else(|i| Ok(i + 20));
+//! assert_eq!(bad_result, Ok(29));
 //!
 //! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.unwrap();
+//! assert!(final_awesome_result)
 //! ```
 //!
 //! # Results must be used
@@ -223,6 +227,27 @@
 //! [`Ok(T)`]: Ok
 //! [`Err(E)`]: Err
 //! [io::Error]: ../../std/io/struct.Error.html "io::Error"
+//!
+//! # Representation
+//!
+//! In some cases, [`Result<T, E>`] will gain the same size, alignment, and ABI
+//! guarantees as [`Option<U>`] has. One of either the `T` or `E` type must be a
+//! type that qualifies for the `Option` [representation guarantees][opt-rep],
+//! and the *other* type must meet all of the following conditions:
+//! * Is a zero-sized type with alignment 1 (a "1-ZST").
+//! * Has no fields.
+//! * Does not have the `#[non_exhaustive]` attribute.
+//!
+//! For example, `NonZeroI32` qualifies for the `Option` representation
+//! guarantees, and `()` is a zero-sized type with alignment 1, no fields, and
+//! it isn't `non_exhaustive`. This means that both `Result<NonZeroI32, ()>` and
+//! `Result<(), NonZeroI32>` have the same size, alignment, and ABI guarantees
+//! as `Option<NonZeroI32>`. The only difference is the implied semantics:
+//! * `Option<NonZeroI32>` is "a non-zero i32 might be present"
+//! * `Result<NonZeroI32, ()>` is "a non-zero i32 success result, if any"
+//! * `Result<(), NonZeroI32>` is "a non-zero i32 error result, if any"
+//!
+//! [opt-rep]: ../option/index.html#representation "Option Representation"
 //!
 //! # Method overview
 //!
@@ -1965,7 +1990,7 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Res
         }
     }
 }
-
+#[diagnostic::do_not_recommend]
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
     #[inline]

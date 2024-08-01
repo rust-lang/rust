@@ -10,9 +10,9 @@ use std::path::{Component, Path};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks that module layout uses only self named module files, bans `mod.rs` files.
+    /// Checks that module layout uses only self named module files; bans `mod.rs` files.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Having multiple module layout styles in a project can be confusing.
     ///
     /// ### Example
@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks that module layout uses only `mod.rs` files.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Having multiple module layout styles in a project can be confusing.
     ///
     /// ### Example

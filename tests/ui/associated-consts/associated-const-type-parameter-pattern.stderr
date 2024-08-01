@@ -1,0 +1,27 @@
+error[E0158]: constant pattern depends on a generic parameter
+  --> $DIR/associated-const-type-parameter-pattern.rs:20:9
+   |
+LL |         A::X => println!("A::X"),
+   |         ^^^^
+
+error[E0158]: constant pattern depends on a generic parameter
+  --> $DIR/associated-const-type-parameter-pattern.rs:22:9
+   |
+LL |         B::X => println!("B::X"),
+   |         ^^^^
+
+error[E0158]: constant pattern depends on a generic parameter
+  --> $DIR/associated-const-type-parameter-pattern.rs:30:9
+   |
+LL |     let A::X = arg;
+   |         ^^^^
+
+error[E0158]: constant pattern depends on a generic parameter
+  --> $DIR/associated-const-type-parameter-pattern.rs:28:48
+   |
+LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
+   |                                                ^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0158`.

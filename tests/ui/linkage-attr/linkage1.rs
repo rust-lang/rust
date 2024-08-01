@@ -1,6 +1,6 @@
 //@ run-pass
 //@ ignore-windows
-//@ ignore-macos
+//@ ignore-apple
 //@ ignore-emscripten doesn't support this linkage
 //@ ignore-sgx weak linkage not permitted
 //@ aux-build:linkage1.rs

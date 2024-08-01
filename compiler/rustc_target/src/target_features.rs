@@ -1,8 +1,10 @@
-use rustc_span::symbol::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 
 /// Features that control behaviour of rustc, rather than the codegen.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
+
+/// Features that require special handling when passing to LLVM.
+pub const RUSTC_SPECIAL_FEATURES: &[&str] = &["backchain"];
 
 /// Stability information for target features.
 #[derive(Debug, Clone, Copy)]
@@ -192,6 +194,11 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-start
     ("adx", Stable),
     ("aes", Stable),
+    ("amx-bf16", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-complex", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-fp16", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-int8", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-tile", Unstable(sym::x86_amx_intrinsics)),
     ("avx", Stable),
     ("avx2", Stable),
     ("avx512bf16", Unstable(sym::avx512_target_feature)),
@@ -199,17 +206,20 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("avx512bw", Unstable(sym::avx512_target_feature)),
     ("avx512cd", Unstable(sym::avx512_target_feature)),
     ("avx512dq", Unstable(sym::avx512_target_feature)),
-    ("avx512er", Unstable(sym::avx512_target_feature)),
     ("avx512f", Unstable(sym::avx512_target_feature)),
     ("avx512fp16", Unstable(sym::avx512_target_feature)),
     ("avx512ifma", Unstable(sym::avx512_target_feature)),
-    ("avx512pf", Unstable(sym::avx512_target_feature)),
     ("avx512vbmi", Unstable(sym::avx512_target_feature)),
     ("avx512vbmi2", Unstable(sym::avx512_target_feature)),
     ("avx512vl", Unstable(sym::avx512_target_feature)),
     ("avx512vnni", Unstable(sym::avx512_target_feature)),
     ("avx512vp2intersect", Unstable(sym::avx512_target_feature)),
     ("avx512vpopcntdq", Unstable(sym::avx512_target_feature)),
+    ("avxifma", Unstable(sym::avx512_target_feature)),
+    ("avxneconvert", Unstable(sym::avx512_target_feature)),
+    ("avxvnni", Unstable(sym::avx512_target_feature)),
+    ("avxvnniint16", Unstable(sym::avx512_target_feature)),
+    ("avxvnniint8", Unstable(sym::avx512_target_feature)),
     ("bmi1", Stable),
     ("bmi2", Stable),
     ("cmpxchg16b", Stable),
@@ -238,6 +248,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("tbm", Unstable(sym::tbm_target_feature)),
     ("vaes", Unstable(sym::avx512_target_feature)),
     ("vpclmulqdq", Unstable(sym::avx512_target_feature)),
+    ("xop", Unstable(sym::xop_target_feature)),
     ("xsave", Stable),
     ("xsavec", Stable),
     ("xsaveopt", Stable),
@@ -388,6 +399,13 @@ const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-end
 ];
 
+const IBMZ_ALLOWED_FEATURES: &[(&str, Stability)] = &[
+    // tidy-alphabetical-start
+    ("backchain", Unstable(sym::s390x_target_feature)),
+    ("vector", Unstable(sym::s390x_target_feature)),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -405,6 +423,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(BPF_ALLOWED_FEATURES.iter())
         .chain(CSKY_ALLOWED_FEATURES)
         .chain(LOONGARCH_ALLOWED_FEATURES)
+        .chain(IBMZ_ALLOWED_FEATURES)
         .cloned()
 }
 
@@ -422,6 +441,7 @@ impl super::spec::Target {
             "bpf" => BPF_ALLOWED_FEATURES,
             "csky" => CSKY_ALLOWED_FEATURES,
             "loongarch64" => LOONGARCH_ALLOWED_FEATURES,
+            "s390x" => IBMZ_ALLOWED_FEATURES,
             _ => &[],
         }
     }

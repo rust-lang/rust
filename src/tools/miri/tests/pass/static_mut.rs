@@ -2,7 +2,7 @@ use std::ptr::addr_of;
 
 static mut FOO: i32 = 42;
 
-static BAR: Foo = Foo(unsafe { addr_of!(FOO) });
+static BAR: Foo = Foo(addr_of!(FOO));
 
 #[allow(dead_code)]
 struct Foo(*const i32);

@@ -1,9 +1,10 @@
-use crate::parser::tests::{matches_codepattern, string_to_crate};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast_pretty::pprust;
 use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::Ident;
+
+use crate::parser::tests::{matches_codepattern, string_to_crate};
 
 // This version doesn't care about getting comments or doc-strings in.
 fn print_crate_items(krate: &ast::Crate) -> String {
@@ -21,14 +22,12 @@ impl MutVisitor for ToZzIdentMutVisitor {
     }
 }
 
-// Maybe add to `expand.rs`.
-macro_rules! assert_pred {
-    ($pred:expr, $predname:expr, $a:expr , $b:expr) => {{
-        let pred_val = $pred;
+macro_rules! assert_matches_codepattern {
+    ($a:expr , $b:expr) => {{
         let a_val = $a;
         let b_val = $b;
-        if !(pred_val(&a_val, &b_val)) {
-            panic!("expected args satisfying {}, got {} and {}", $predname, a_val, b_val);
+        if !matches_codepattern(&a_val, &b_val) {
+            panic!("expected args satisfying `matches_codepattern`, got {} and {}", a_val, b_val);
         }
     }};
 }
@@ -41,9 +40,7 @@ fn ident_transformation() {
         let mut krate =
             string_to_crate("#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
         zz_visitor.visit_crate(&mut krate);
-        assert_pred!(
-            matches_codepattern,
-            "matches_codepattern",
+        assert_matches_codepattern!(
             print_crate_items(&krate),
             "#[zz]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string()
         );
@@ -61,9 +58,7 @@ fn ident_transformation_in_defs() {
                 .to_string(),
         );
         zz_visitor.visit_crate(&mut krate);
-        assert_pred!(
-            matches_codepattern,
-            "matches_codepattern",
+        assert_matches_codepattern!(
             print_crate_items(&krate),
             "macro_rules! zz{(zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+))}".to_string()
         );

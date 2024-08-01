@@ -3,6 +3,7 @@
 
 use std::{
     fmt,
+    ops::Div as _,
     time::{Duration, Instant},
 };
 
@@ -12,11 +13,12 @@ use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
+use tracing::{span, Level};
 use vfs::FileId;
 
 use crate::{
     config::Config,
-    diagnostics::fetch_native_diagnostics,
+    diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration},
     dispatch::{NotificationDispatcher, RequestDispatcher},
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
     hack_recover_crate_name,
@@ -44,7 +46,7 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
     // https://github.com/rust-lang/rust-analyzer/issues/2835
     #[cfg(windows)]
     unsafe {
-        use winapi::um::processthreadsapi::*;
+        use windows_sys::Win32::System::Threading::*;
         let thread = GetCurrentThread();
         let thread_priority_above_normal = 1;
         SetThreadPriority(thread, thread_priority_above_normal);
@@ -86,7 +88,7 @@ pub(crate) enum Task {
     Response(lsp_server::Response),
     ClientNotification(lsp_ext::UnindexedProjectParams),
     Retry(lsp_server::Request),
-    Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Diagnostics(DiagnosticsGeneration, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     DiscoverTest(lsp_ext::DiscoverTestResults),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
@@ -185,6 +187,11 @@ impl GlobalState {
                         scheme: None,
                         pattern: Some("**/Cargo.lock".into()),
                     },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/rust-analyzer.toml".into()),
+                    },
                 ]),
             },
         };
@@ -229,8 +236,7 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event", event = %event)
-            .entered();
+        let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!(?loop_start, ?event, "handle_event");
@@ -249,9 +255,7 @@ impl GlobalState {
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::QueuedTask(task) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/queued_task")
-                        .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/queued_task").entered();
                 self.handle_queued_task(task);
                 // Coalesce multiple task events into one loop turn
                 while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
@@ -259,8 +263,7 @@ impl GlobalState {
                 }
             }
             Event::Task(task) => {
-                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/task")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/task").entered();
                 let mut prime_caches_progress = Vec::new();
 
                 self.handle_task(&mut prime_caches_progress, task);
@@ -314,8 +317,7 @@ impl GlobalState {
                 }
             }
             Event::Vfs(message) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/vfs").entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/vfs").entered();
                 self.handle_vfs_msg(message);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
@@ -323,8 +325,7 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/flycheck")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/flycheck").entered();
                 self.handle_flycheck_msg(message);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
@@ -332,9 +333,7 @@ impl GlobalState {
                 }
             }
             Event::TestResult(message) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/test_result")
-                        .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/test_result").entered();
                 self.handle_cargo_test_msg(message);
                 // Coalesce many test result event into a single loop turn
                 while let Ok(message) = self.test_run_receiver.try_recv() {
@@ -481,6 +480,7 @@ impl GlobalState {
 
     fn update_diagnostics(&mut self) {
         let db = self.analysis_host.raw_database();
+        let generation = self.diagnostics.next_generation();
         let subscriptions = {
             let vfs = &self.vfs.read().0;
             self.mem_docs
@@ -495,16 +495,37 @@ impl GlobalState {
                     // forever if we emitted them here.
                     !db.source_root(source_root).is_library
                 })
-                .collect::<Vec<_>>()
+                .collect::<std::sync::Arc<_>>()
         };
         tracing::trace!("updating notifications for {:?}", subscriptions);
+        // Split up the work on multiple threads, but we don't wanna fill the entire task pool with
+        // diagnostic tasks, so we limit the number of tasks to a quarter of the total thread pool.
+        let max_tasks = self.config.main_loop_num_threads().div(4).max(1);
+        let chunk_length = subscriptions.len() / max_tasks;
+        let remainder = subscriptions.len() % max_tasks;
 
-        // Diagnostics are triggered by the user typing
-        // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
-            let snapshot = self.snapshot();
-            move || Task::Diagnostics(fetch_native_diagnostics(snapshot, subscriptions))
-        });
+        let mut start = 0;
+        for task_idx in 0..max_tasks {
+            let extra = if task_idx < remainder { 1 } else { 0 };
+            let end = start + chunk_length + extra;
+            let slice = start..end;
+            if slice.is_empty() {
+                break;
+            }
+            // Diagnostics are triggered by the user typing
+            // so we run them on a latency sensitive thread.
+            self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
+                let snapshot = self.snapshot();
+                let subscriptions = subscriptions.clone();
+                move || {
+                    Task::Diagnostics(
+                        generation,
+                        fetch_native_diagnostics(snapshot, subscriptions, slice),
+                    )
+                }
+            });
+            start = end;
+        }
     }
 
     fn update_tests(&mut self) {
@@ -591,9 +612,9 @@ impl GlobalState {
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
             Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
             Task::Retry(_) => (),
-            Task::Diagnostics(diagnostics_per_file) => {
+            Task::Diagnostics(generation, diagnostics_per_file) => {
                 for (file_id, diagnostics) in diagnostics_per_file {
-                    self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+                    self.diagnostics.set_native_diagnostics(generation, file_id, diagnostics)
                 }
             }
             Task::PrimeCaches(progress) => match progress {
@@ -669,9 +690,11 @@ impl GlobalState {
     }
 
     fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+        let _p = tracing::info_span!("GlobalState::handle_vfs_msg").entered();
         let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
             vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
+                let _p = tracing::info_span!("GlobalState::handle_vfs_msg{changed/load}").entered();
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
@@ -685,6 +708,7 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
+                let _p = tracing::info_span!("GlobalState::handle_vfs_mgs/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
                 let state = match n_done {
@@ -726,8 +750,7 @@ impl GlobalState {
                 let snap = self.snapshot();
 
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
-                    let _p = tracing::span!(tracing::Level::INFO, "GlobalState::check_if_indexed")
-                        .entered();
+                    let _p = tracing::info_span!("GlobalState::check_if_indexed").entered();
                     tracing::debug!(?uri, "handling uri");
                     let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
                     if let Ok(crates) = &snap.analysis.crates_for(id) {
@@ -824,12 +847,11 @@ impl GlobalState {
                 }
             }
 
+            flycheck::Message::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
+
             flycheck::Message::Progress { id, progress } => {
                 let (state, message) = match progress {
-                    flycheck::Progress::DidStart => {
-                        self.diagnostics.clear_check(id);
-                        (Progress::Begin, None)
-                    }
+                    flycheck::Progress::DidStart => (Progress::Begin, None),
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
@@ -867,6 +889,8 @@ impl GlobalState {
 
     /// Registers and handles a request. This should only be called once per incoming request.
     fn on_new_request(&mut self, request_received: Instant, req: Request) {
+        let _p =
+            span!(Level::INFO, "GlobalState::on_new_request", req.method = ?req.method).entered();
         self.register_request(&req, request_received);
         self.on_request(req);
     }
@@ -894,6 +918,10 @@ impl GlobalState {
         use crate::handlers::request as handlers;
         use lsp_types::request as lsp_request;
 
+        const RETRY: bool = true;
+        const NO_RETRY: bool = false;
+
+        #[rustfmt::skip]
         dispatcher
             // Request handlers that must run on the main thread
             // because they mutate GlobalState:
@@ -919,67 +947,67 @@ impl GlobalState {
             // analysis on the main thread because that would block other
             // requests. Instead, we run these request handlers on higher priority
             // threads in the threadpool.
-            .on_latency_sensitive::<lsp_request::Completion>(handlers::handle_completion)
-            .on_latency_sensitive::<lsp_request::ResolveCompletionItem>(
-                handlers::handle_completion_resolve,
-            )
-            .on_latency_sensitive::<lsp_request::SemanticTokensFullRequest>(
-                handlers::handle_semantic_tokens_full,
-            )
-            .on_latency_sensitive::<lsp_request::SemanticTokensFullDeltaRequest>(
-                handlers::handle_semantic_tokens_full_delta,
-            )
-            .on_latency_sensitive::<lsp_request::SemanticTokensRangeRequest>(
-                handlers::handle_semantic_tokens_range,
-            )
+            // FIXME: Retrying can make the result of this stale?
+            .on_latency_sensitive::<RETRY, lsp_request::Completion>(handlers::handle_completion)
+            // FIXME: Retrying can make the result of this stale
+            .on_latency_sensitive::<RETRY, lsp_request::ResolveCompletionItem>(handlers::handle_completion_resolve)
+            .on_latency_sensitive::<RETRY, lsp_request::SemanticTokensFullRequest>(handlers::handle_semantic_tokens_full)
+            .on_latency_sensitive::<RETRY, lsp_request::SemanticTokensFullDeltaRequest>(handlers::handle_semantic_tokens_full_delta)
+            .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
+            // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on::<lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
-            .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
-            .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
-            .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)
-            .on::<lsp_ext::ViewMir>(handlers::handle_view_mir)
-            .on::<lsp_ext::InterpretFunction>(handlers::handle_interpret_function)
-            .on::<lsp_ext::ViewFileText>(handlers::handle_view_file_text)
-            .on::<lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
-            .on::<lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)
-            .on::<lsp_ext::DiscoverTest>(handlers::handle_discover_test)
-            .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
-            .on::<lsp_ext::ParentModule>(handlers::handle_parent_module)
-            .on::<lsp_ext::Runnables>(handlers::handle_runnables)
-            .on::<lsp_ext::RelatedTests>(handlers::handle_related_tests)
-            .on::<lsp_ext::CodeActionRequest>(handlers::handle_code_action)
-            .on::<lsp_ext::CodeActionResolveRequest>(handlers::handle_code_action_resolve)
-            .on::<lsp_ext::HoverRequest>(handlers::handle_hover)
-            .on::<lsp_ext::ExternalDocs>(handlers::handle_open_docs)
-            .on::<lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
-            .on::<lsp_ext::MoveItem>(handlers::handle_move_item)
-            .on::<lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
-            .on::<lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
-            .on::<lsp_request::GotoDefinition>(handlers::handle_goto_definition)
-            .on::<lsp_request::GotoDeclaration>(handlers::handle_goto_declaration)
-            .on::<lsp_request::GotoImplementation>(handlers::handle_goto_implementation)
-            .on::<lsp_request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
-            .on_no_retry::<lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
-            .on::<lsp_request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
-            .on::<lsp_request::CodeLensRequest>(handlers::handle_code_lens)
-            .on::<lsp_request::CodeLensResolve>(handlers::handle_code_lens_resolve)
-            .on::<lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
-            .on::<lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
-            .on::<lsp_request::PrepareRenameRequest>(handlers::handle_prepare_rename)
-            .on::<lsp_request::Rename>(handlers::handle_rename)
-            .on::<lsp_request::References>(handlers::handle_references)
-            .on::<lsp_request::DocumentHighlightRequest>(handlers::handle_document_highlight)
-            .on::<lsp_request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
-            .on::<lsp_request::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)
-            .on::<lsp_request::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)
-            .on::<lsp_request::WillRenameFiles>(handlers::handle_will_rename_files)
-            .on::<lsp_ext::Ssr>(handlers::handle_ssr)
-            .on::<lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
+            .on::<RETRY, lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
+            .on::<RETRY, lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
+            .on::<NO_RETRY, lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
+            .on::<RETRY, lsp_request::WillRenameFiles>(handlers::handle_will_rename_files)
+            .on::<NO_RETRY, lsp_request::GotoDefinition>(handlers::handle_goto_definition)
+            .on::<NO_RETRY, lsp_request::GotoDeclaration>(handlers::handle_goto_declaration)
+            .on::<NO_RETRY, lsp_request::GotoImplementation>(handlers::handle_goto_implementation)
+            .on::<NO_RETRY, lsp_request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
+            .on::<RETRY, lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
+            .on::<RETRY, lsp_request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
+            .on::<NO_RETRY, lsp_request::CodeLensRequest>(handlers::handle_code_lens)
+            .on::<RETRY, lsp_request::CodeLensResolve>(handlers::handle_code_lens_resolve)
+            .on::<NO_RETRY, lsp_request::PrepareRenameRequest>(handlers::handle_prepare_rename)
+            .on::<NO_RETRY, lsp_request::Rename>(handlers::handle_rename)
+            .on::<NO_RETRY, lsp_request::References>(handlers::handle_references)
+            .on::<NO_RETRY, lsp_request::DocumentHighlightRequest>(handlers::handle_document_highlight)
+            .on::<NO_RETRY, lsp_request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
+            .on::<NO_RETRY, lsp_request::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)
+            .on::<NO_RETRY, lsp_request::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)
+            // All other request handlers (lsp extension)
+            .on::<RETRY, lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
+            .on::<RETRY, lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
+            .on::<RETRY, lsp_ext::ViewFileText>(handlers::handle_view_file_text)
+            .on::<RETRY, lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
+            .on::<RETRY, lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)
+            .on::<RETRY, lsp_ext::DiscoverTest>(handlers::handle_discover_test)
+            .on::<RETRY, lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
+            .on::<NO_RETRY, lsp_ext::Ssr>(handlers::handle_ssr)
+            .on::<NO_RETRY, lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
+            .on::<NO_RETRY, lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
+            .on::<NO_RETRY, lsp_ext::ViewHir>(handlers::handle_view_hir)
+            .on::<NO_RETRY, lsp_ext::ViewMir>(handlers::handle_view_mir)
+            .on::<NO_RETRY, lsp_ext::InterpretFunction>(handlers::handle_interpret_function)
+            .on::<NO_RETRY, lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
+            .on::<NO_RETRY, lsp_ext::ParentModule>(handlers::handle_parent_module)
+            .on::<NO_RETRY, lsp_ext::Runnables>(handlers::handle_runnables)
+            .on::<NO_RETRY, lsp_ext::RelatedTests>(handlers::handle_related_tests)
+            .on::<NO_RETRY, lsp_ext::CodeActionRequest>(handlers::handle_code_action)
+            .on::<RETRY, lsp_ext::CodeActionResolveRequest>(handlers::handle_code_action_resolve)
+            .on::<NO_RETRY, lsp_ext::HoverRequest>(handlers::handle_hover)
+            .on::<NO_RETRY, lsp_ext::ExternalDocs>(handlers::handle_open_docs)
+            .on::<NO_RETRY, lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
+            .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
+            //
+            .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
             .finish();
     }
 
     /// Handles an incoming notification.
     fn on_notification(&mut self, not: Notification) -> anyhow::Result<()> {
+        let _p =
+            span!(Level::INFO, "GlobalState::on_notification", not.method = ?not.method).entered();
         use crate::handlers::notification as handlers;
         use lsp_types::notification as notifs;
 

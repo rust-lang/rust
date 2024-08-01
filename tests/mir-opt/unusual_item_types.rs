@@ -3,7 +3,6 @@
 // that we don't create filenames containing `<` and `>`
 //@ compile-flags: -Zmir-opt-level=0
 
-
 struct A;
 
 // EMIT_MIR unusual_item_types.{impl#0}-ASSOCIATED_CONSTANT.built.after.mir
@@ -23,8 +22,8 @@ enum E {
     V = 5,
 }
 
+// EMIT_MIR core.ptr-drop_in_place.Vec_i32_.AddMovesForPackedDrops.before.mir
 pub fn main() {
     let f = Test::X as fn(usize) -> Test;
-// EMIT_MIR core.ptr-drop_in_place.Vec_i32_.AddMovesForPackedDrops.before.mir
     let v = Vec::<i32>::new();
 }

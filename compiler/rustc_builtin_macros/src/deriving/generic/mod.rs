@@ -174,10 +174,10 @@
 //! )
 //! ```
 
-pub(crate) use StaticFields::*;
-pub(crate) use SubstructureFields::*;
+use std::cell::RefCell;
+use std::ops::Not;
+use std::{iter, vec};
 
-use crate::{deriving, errors};
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
@@ -188,12 +188,12 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::lint::builtin::BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use std::cell::RefCell;
-use std::iter;
-use std::ops::Not;
-use std::vec;
 use thin_vec::{thin_vec, ThinVec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
+pub(crate) use StaticFields::*;
+pub(crate) use SubstructureFields::*;
+
+use crate::{deriving, errors};
 
 pub(crate) mod ty;
 
@@ -412,6 +412,15 @@ fn find_type_parameters(
 
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
+            let stack_len = self.bound_generic_params_stack.len();
+            if let ast::TyKind::BareFn(bare_fn) = &ty.kind
+                && !bare_fn.generic_params.is_empty()
+            {
+                // Given a field `x: for<'a> fn(T::SomeType<'a>)`, we wan't to account for `'a` so
+                // that we generate `where for<'a> T::SomeType<'a>: ::core::clone::Clone`. #122622
+                self.bound_generic_params_stack.extend(bare_fn.generic_params.iter().cloned());
+            }
+
             if let ast::TyKind::Path(_, path) = &ty.kind
                 && let Some(segment) = path.segments.first()
                 && self.ty_param_names.contains(&segment.ident.name)
@@ -422,7 +431,8 @@ fn find_type_parameters(
                 });
             }
 
-            visit::walk_ty(self, ty)
+            visit::walk_ty(self, ty);
+            self.bound_generic_params_stack.truncate(stack_len);
         }
 
         // Place bound generic params on a stack, to extract them when a type is encountered.
@@ -788,7 +798,7 @@ impl<'a> TraitDef<'a> {
             Ident::empty(),
             attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
-                unsafety: ast::Unsafe::No,
+                safety: ast::Safety::Default,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
@@ -1621,14 +1631,13 @@ impl<'a> TraitDef<'a> {
                         };
 
                         if let Some(ty) = exception {
-                            cx.sess.psess.buffer_lint_with_diagnostic(
+                            cx.sess.psess.buffer_lint(
                                 BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
                                 sp,
                                 ast::CRATE_NODE_ID,
-                                format!(
-                                    "{ty} slice in a packed struct that derives a built-in trait"
-                                ),
-                                rustc_lint_defs::BuiltinLintDiag::ByteSliceInPackedStructWithDerive,
+                                rustc_lint_defs::BuiltinLintDiag::ByteSliceInPackedStructWithDerive {
+                                    ty: ty.to_string(),
+                                },
                             );
                         } else {
                             // Wrap the expression in `{...}`, causing a copy.

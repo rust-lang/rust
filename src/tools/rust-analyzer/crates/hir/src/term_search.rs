@@ -93,12 +93,6 @@ struct LookupTable {
     data: FxHashMap<Type, AlternativeExprs>,
     /// New types reached since last query by the `NewTypesKey`
     new_types: FxHashMap<NewTypesKey, Vec<Type>>,
-    /// ScopeDefs that are not interesting any more
-    exhausted_scopedefs: FxHashSet<ScopeDef>,
-    /// ScopeDefs that were used in current round
-    round_scopedef_hits: FxHashSet<ScopeDef>,
-    /// Amount of rounds since scopedef was first used.
-    rounds_since_sopedef_hit: FxHashMap<ScopeDef, u32>,
     /// Types queried but not present
     types_wishlist: FxHashSet<Type>,
     /// Threshold to squash trees to `Many`
@@ -125,6 +119,13 @@ impl LookupTable {
 
         if res.is_none() {
             self.types_wishlist.insert(ty.clone());
+        }
+
+        // Collapse suggestions if there are many
+        if let Some(res) = &res {
+            if res.len() > self.many_threshold {
+                return Some(vec![Expr::Many(ty.clone())]);
+            }
         }
 
         res
@@ -156,6 +157,13 @@ impl LookupTable {
 
         if res.is_none() {
             self.types_wishlist.insert(ty.clone());
+        }
+
+        // Collapse suggestions if there are many
+        if let Some(res) = &res {
+            if res.len() > self.many_threshold {
+                return Some(vec![Expr::Many(ty.clone())]);
+            }
         }
 
         res
@@ -198,37 +206,6 @@ impl LookupTable {
         }
     }
 
-    /// Mark `ScopeDef` as exhausted meaning it is not interesting for us any more
-    fn mark_exhausted(&mut self, def: ScopeDef) {
-        self.exhausted_scopedefs.insert(def);
-    }
-
-    /// Mark `ScopeDef` as used meaning we managed to produce something useful from it
-    fn mark_fulfilled(&mut self, def: ScopeDef) {
-        self.round_scopedef_hits.insert(def);
-    }
-
-    /// Start new round (meant to be called at the beginning of iteration in `term_search`)
-    ///
-    /// This functions marks some `ScopeDef`s as exhausted if there have been
-    /// `MAX_ROUNDS_AFTER_HIT` rounds after first using a `ScopeDef`.
-    fn new_round(&mut self) {
-        for def in &self.round_scopedef_hits {
-            let hits =
-                self.rounds_since_sopedef_hit.entry(*def).and_modify(|n| *n += 1).or_insert(0);
-            const MAX_ROUNDS_AFTER_HIT: u32 = 2;
-            if *hits > MAX_ROUNDS_AFTER_HIT {
-                self.exhausted_scopedefs.insert(*def);
-            }
-        }
-        self.round_scopedef_hits.clear();
-    }
-
-    /// Get exhausted `ScopeDef`s
-    fn exhausted_scopedefs(&self) -> &FxHashSet<ScopeDef> {
-        &self.exhausted_scopedefs
-    }
-
     /// Types queried but not found
     fn types_wishlist(&mut self) -> &FxHashSet<Type> {
         &self.types_wishlist
@@ -255,13 +232,13 @@ pub struct TermSearchConfig {
     pub enable_borrowcheck: bool,
     /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
     pub many_alternatives_threshold: usize,
-    /// Depth of the search eg. number of cycles to run
-    pub depth: usize,
+    /// Fuel for term search in "units of work"
+    pub fuel: u64,
 }
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, depth: 6 }
+        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, fuel: 1200 }
     }
 }
 
@@ -280,8 +257,7 @@ impl Default for TermSearchConfig {
 ///    transformation tactics. For example functions take as from set of types (arguments) to some
 ///    type (return type). Other transformations include methods on type, type constructors and
 ///    projections to struct fields (field access).
-/// 3. Once we manage to find path to type we are interested in we continue for single round to see
-///    if we can find more paths that take us to the `goal` type.
+/// 3. If we run out of fuel (term search takes too long) we stop iterating.
 /// 4. Return all the paths (type trees) that take us to the `goal` type.
 ///
 /// Note that there are usually more ways we can get to the `goal` type but some are discarded to
@@ -297,26 +273,30 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     });
 
     let mut lookup = LookupTable::new(ctx.config.many_alternatives_threshold, ctx.goal.clone());
+    let fuel = std::cell::Cell::new(ctx.config.fuel);
+
+    let should_continue = &|| {
+        let remaining = fuel.get();
+        fuel.set(remaining.saturating_sub(1));
+        if remaining == 0 {
+            tracing::debug!("fuel exhausted");
+        }
+        remaining > 0
+    };
 
     // Try trivial tactic first, also populates lookup table
     let mut solutions: Vec<Expr> = tactics::trivial(ctx, &defs, &mut lookup).collect();
     // Use well known types tactic before iterations as it does not depend on other tactics
     solutions.extend(tactics::famous_types(ctx, &defs, &mut lookup));
+    solutions.extend(tactics::assoc_const(ctx, &defs, &mut lookup));
 
-    for _ in 0..ctx.config.depth {
-        lookup.new_round();
-
-        solutions.extend(tactics::type_constructor(ctx, &defs, &mut lookup));
-        solutions.extend(tactics::free_function(ctx, &defs, &mut lookup));
-        solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup));
-        solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup));
-        solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup));
-        solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup));
-
-        // Discard not interesting `ScopeDef`s for speedup
-        for def in lookup.exhausted_scopedefs() {
-            defs.remove(def);
-        }
+    while should_continue() {
+        solutions.extend(tactics::data_constructor(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::free_function(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup, should_continue));
+        solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup, should_continue));
     }
 
     solutions.into_iter().filter(|it| !it.is_many()).unique().collect()

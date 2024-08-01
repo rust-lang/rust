@@ -121,3 +121,14 @@ can be tested locally, for example, with:
 ```text
 ./x.py test --target wasm32-wasip1 tests/ui
 ```
+
+## Conditionally compiling code
+
+It's recommended to conditionally compile code for this target with:
+
+```text
+#[cfg(all(target_os = "wasi", target_env = "p1"))]
+```
+
+Note that the `target_env = "p1"` condition first appeared in Rust 1.80. Prior
+to Rust 1.80 the `target_env` condition was not set.

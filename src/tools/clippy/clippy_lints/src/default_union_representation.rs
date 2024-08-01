@@ -10,7 +10,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Displays a warning when a union is declared with the default representation (without a `#[repr(C)]` attribute).
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Unions in Rust have unspecified layout by default, despite many people thinking that they
     /// lay out each field at the start of the union (like C does). That is, there are no guarantees
     /// about the offset of the fields for unions with multiple non-ZST fields without an explicitly

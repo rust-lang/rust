@@ -1,22 +1,25 @@
+use std::borrow::Cow;
+use std::fmt;
+
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::Lrc;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::edition::Edition;
+use rustc_span::symbol::{kw, sym};
+#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
+#[allow(hidden_glob_reexports)]
+use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 pub use BinOpToken::*;
 pub use LitKind::*;
 pub use Nonterminal::*;
+pub use NtExprKind::*;
+pub use NtPatKind::*;
 pub use TokenKind::*;
 
 use crate::ast;
 use crate::ptr::P;
 use crate::util::case::Case;
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::symbol::{kw, sym};
-#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
-#[allow(hidden_glob_reexports)]
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{edition::Edition, ErrorGuaranteed, Span, DUMMY_SP};
-use std::borrow::Cow;
-use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CommentKind {
@@ -111,7 +114,7 @@ impl Lit {
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
             Interpolated(ref nt)
-                if let NtExpr(expr) | NtLiteral(expr) = &nt.0
+                if let NtExpr(expr) | NtLiteral(expr) = &**nt
                     && let ast::ExprKind::Lit(token_lit) = expr.kind =>
             {
                 Some(token_lit)
@@ -210,6 +213,7 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: IdentIsRaw) -> boo
             kw::Unsafe,
             kw::While,
             kw::Yield,
+            kw::Safe,
             kw::Static,
         ]
         .contains(&name)
@@ -318,11 +322,20 @@ pub enum TokenKind {
     /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated identifiers in the same way.
     Ident(Symbol, IdentIsRaw),
+    /// This identifier (and its span) is the identifier passed to the
+    /// declarative macro. The span in the surrounding `Token` is the span of
+    /// the `ident` metavariable in the macro's RHS.
+    NtIdent(Ident, IdentIsRaw),
+
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
     /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
+    /// This identifier (and its span) is the lifetime passed to the
+    /// declarative macro. The span in the surrounding `Token` is the span of
+    /// the `lifetime` metavariable in the macro's RHS.
+    NtLifetime(Ident),
 
     /// An embedded AST node, as produced by a macro. This only exists for
     /// historical reasons. We'd like to get rid of it, for multiple reasons.
@@ -333,7 +346,11 @@ pub enum TokenKind {
     /// - It prevents `Token` from implementing `Copy`.
     /// It adds complexity and likely slows things down. Please don't add new
     /// occurrences of this token kind!
-    Interpolated(Lrc<(Nonterminal, Span)>),
+    ///
+    /// The span in the surrounding `Token` is that of the metavariable in the
+    /// macro's RHS. The span within the Nonterminal is that of the fragment
+    /// passed to the macro at the call site.
+    Interpolated(Lrc<Nonterminal>),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -440,8 +457,9 @@ impl Token {
     /// Note that keywords are also identifiers, so they should use this
     /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
-        match &self.kind {
-            Interpolated(nt) => nt.0.use_span(),
+        match self.kind {
+            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
+            Interpolated(ref nt) => nt.use_span(),
             _ => self.span,
         }
     }
@@ -459,7 +477,7 @@ impl Token {
             }
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | Eof => false,
+            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Interpolated(..) | Eof => false,
         }
     }
 
@@ -486,7 +504,7 @@ impl Token {
             PathSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
+            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
                 NtExpr(..)    |
                 NtBlock(..)   |
                 NtPath(..)),
@@ -510,7 +528,7 @@ impl Token {
             | DotDot | DotDotDot | DotDotEq      // ranges
             | Lt | BinOp(Shl)                    // associated path
             | PathSep                    => true, // global path
-            Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
+            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
                 NtPat(..)     |
                 NtBlock(..)   |
                 NtPath(..)),
@@ -533,7 +551,7 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             PathSep                      => true, // global path
-            Interpolated(ref nt) => matches!(&nt.0, NtTy(..) | NtPath(..)),
+            Interpolated(ref nt) => matches!(&**nt, NtTy(..) | NtPath(..)),
             // For anonymous structs or unions, which only appear in specific positions
             // (type of struct fields or union fields), we don't consider them as regular types
             _ => false,
@@ -543,9 +561,10 @@ impl Token {
     /// Returns `true` if the token can appear at the start of a const param.
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
-            OpenDelim(Delimiter::Brace) => true,
-            Interpolated(ref nt) => matches!(&nt.0, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
-            _ => self.can_begin_literal_maybe_minus(),
+            OpenDelim(Delimiter::Brace) | Literal(..) | BinOp(Minus) => true,
+            Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
+            Interpolated(ref nt) => matches!(&**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
+            _ => false,
         }
     }
 
@@ -563,6 +582,7 @@ impl Token {
                 kw::Impl,
                 kw::Unsafe,
                 kw::Const,
+                kw::Safe,
                 kw::Static,
                 kw::Union,
                 kw::Macro,
@@ -589,7 +609,7 @@ impl Token {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match &nt.0 {
+            Interpolated(ref nt) => match &**nt {
                 NtLiteral(_) => true,
                 NtExpr(e) => match &e.kind {
                     ast::ExprKind::Lit(_) => true,
@@ -604,19 +624,29 @@ impl Token {
         }
     }
 
+    pub fn can_begin_string_literal(&self) -> bool {
+        match self.uninterpolate().kind {
+            Literal(..) => true,
+            Interpolated(ref nt) => match &**nt {
+                NtLiteral(_) => true,
+                NtExpr(e) => match &e.kind {
+                    ast::ExprKind::Lit(_) => true,
+                    _ => false,
+                },
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     /// A convenience function for matching on identifiers during parsing.
     /// Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
     /// into the regular identifier or lifetime token it refers to,
     /// otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
-        match &self.kind {
-            Interpolated(nt) => match &nt.0 {
-                NtIdent(ident, is_raw) => {
-                    Cow::Owned(Token::new(Ident(ident.name, *is_raw), ident.span))
-                }
-                NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
-                _ => Cow::Borrowed(self),
-            },
+        match self.kind {
+            NtIdent(ident, is_raw) => Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span)),
+            NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
             _ => Cow::Borrowed(self),
         }
     }
@@ -625,12 +655,9 @@ impl Token {
     #[inline]
     pub fn ident(&self) -> Option<(Ident, IdentIsRaw)> {
         // We avoid using `Token::uninterpolate` here because it's slow.
-        match &self.kind {
-            &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
-            Interpolated(nt) => match &nt.0 {
-                NtIdent(ident, is_raw) => Some((*ident, *is_raw)),
-                _ => None,
-            },
+        match self.kind {
+            Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
+            NtIdent(ident, is_raw) => Some((ident, is_raw)),
             _ => None,
         }
     }
@@ -639,12 +666,9 @@ impl Token {
     #[inline]
     pub fn lifetime(&self) -> Option<Ident> {
         // We avoid using `Token::uninterpolate` here because it's slow.
-        match &self.kind {
-            &Lifetime(name) => Some(Ident::new(name, self.span)),
-            Interpolated(nt) => match &nt.0 {
-                NtLifetime(ident) => Some(*ident),
-                _ => None,
-            },
+        match self.kind {
+            Lifetime(name) => Some(Ident::new(name, self.span)),
+            NtLifetime(ident) => Some(ident),
             _ => None,
         }
     }
@@ -668,7 +692,7 @@ impl Token {
     /// Returns `true` if the token is an interpolated path.
     fn is_whole_path(&self) -> bool {
         if let Interpolated(nt) = &self.kind
-            && let NtPath(..) = &nt.0
+            && let NtPath(..) = &**nt
         {
             return true;
         }
@@ -676,12 +700,11 @@ impl Token {
         false
     }
 
-    /// Would `maybe_whole_expr` in `parser.rs` return `Ok(..)`?
-    /// That is, is this a pre-parsed expression dropped into the token stream
+    /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(nt) = &self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &nt.0
+            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &**nt
         {
             return true;
         }
@@ -692,7 +715,7 @@ impl Token {
     /// Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
         if let Interpolated(nt) = &self.kind
-            && let NtBlock(..) = &nt.0
+            && let NtBlock(..) = &**nt
         {
             return true;
         }
@@ -833,8 +856,10 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | NtIdent(..)
+            | Lifetime(..) | NtLifetime(..) | Interpolated(..) | DocComment(..) | Eof => {
+                return None;
+            }
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))
@@ -848,6 +873,27 @@ impl PartialEq<TokenKind> for Token {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable)]
+pub enum NtPatKind {
+    // Matches or-patterns. Was written using `pat` in edition 2021 or later.
+    PatWithOr,
+    // Doesn't match or-patterns.
+    // - `inferred`: was written using `pat` in edition 2015 or 2018.
+    // - `!inferred`: was written using `pat_param`.
+    PatParam { inferred: bool },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable)]
+pub enum NtExprKind {
+    // Matches expressions using the post-edition 2024. Was written using
+    // `expr` in edition 2024 or later.
+    Expr,
+    // Matches expressions using the pre-edition 2024 rules.
+    // - `inferred`: was written using `expr` in edition 2021 or earlier.
+    // - `!inferred`: was written using `expr_2021`.
+    Expr2021 { inferred: bool },
+}
+
 #[derive(Clone, Encodable, Decodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
@@ -857,8 +903,6 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Ident, IdentIsRaw),
-    NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
@@ -871,13 +915,8 @@ pub enum NonterminalKind {
     Item,
     Block,
     Stmt,
-    PatParam {
-        /// Keep track of whether the user used `:pat_param` or `:pat` and we inferred it from the
-        /// edition of the span. This is used for diagnostics.
-        inferred: bool,
-    },
-    PatWithOr,
-    Expr,
+    Pat(NtPatKind),
+    Expr(NtExprKind),
     Ty,
     Ident,
     Lifetime,
@@ -899,14 +938,22 @@ impl NonterminalKind {
             sym::item => NonterminalKind::Item,
             sym::block => NonterminalKind::Block,
             sym::stmt => NonterminalKind::Stmt,
-            sym::pat => match edition() {
-                Edition::Edition2015 | Edition::Edition2018 => {
-                    NonterminalKind::PatParam { inferred: true }
+            sym::pat => {
+                if edition().at_least_rust_2021() {
+                    NonterminalKind::Pat(PatWithOr)
+                } else {
+                    NonterminalKind::Pat(PatParam { inferred: true })
                 }
-                Edition::Edition2021 | Edition::Edition2024 => NonterminalKind::PatWithOr,
-            },
-            sym::pat_param => NonterminalKind::PatParam { inferred: false },
-            sym::expr => NonterminalKind::Expr,
+            }
+            sym::pat_param => NonterminalKind::Pat(PatParam { inferred: false }),
+            sym::expr => {
+                if edition().at_least_rust_2024() {
+                    NonterminalKind::Expr(Expr)
+                } else {
+                    NonterminalKind::Expr(Expr2021 { inferred: true })
+                }
+            }
+            sym::expr_2021 => NonterminalKind::Expr(Expr2021 { inferred: false }),
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
             sym::lifetime => NonterminalKind::Lifetime,
@@ -918,14 +965,16 @@ impl NonterminalKind {
             _ => return None,
         })
     }
+
     fn symbol(self) -> Symbol {
         match self {
             NonterminalKind::Item => sym::item,
             NonterminalKind::Block => sym::block,
             NonterminalKind::Stmt => sym::stmt,
-            NonterminalKind::PatParam { inferred: false } => sym::pat_param,
-            NonterminalKind::PatParam { inferred: true } | NonterminalKind::PatWithOr => sym::pat,
-            NonterminalKind::Expr => sym::expr,
+            NonterminalKind::Pat(PatParam { inferred: true } | PatWithOr) => sym::pat,
+            NonterminalKind::Pat(PatParam { inferred: false }) => sym::pat_param,
+            NonterminalKind::Expr(Expr2021 { inferred: true } | Expr) => sym::expr,
+            NonterminalKind::Expr(Expr2021 { inferred: false }) => sym::expr_2021,
             NonterminalKind::Ty => sym::ty,
             NonterminalKind::Ident => sym::ident,
             NonterminalKind::Lifetime => sym::lifetime,
@@ -953,7 +1002,6 @@ impl Nonterminal {
             NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtTy(ty) => ty.span,
-            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
             NtVis(vis) => vis.span,
@@ -969,8 +1017,6 @@ impl Nonterminal {
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
             NtTy(..) => "type",
-            NtIdent(..) => "identifier",
-            NtLifetime(..) => "lifetime",
             NtMeta(..) => "attribute",
             NtPath(..) => "path",
             NtVis(..) => "visibility",
@@ -979,18 +1025,12 @@ impl Nonterminal {
 }
 
 impl PartialEq for Nonterminal {
-    fn eq(&self, rhs: &Self) -> bool {
-        match (self, rhs) {
-            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) => {
-                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
-            }
-            (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
-            // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
-            // correctly based on data from AST. This will prevent them from matching each other
-            // in macros. The comparison will become possible only when each nonterminal has an
-            // attached token stream from which it was parsed.
-            _ => false,
-        }
+    fn eq(&self, _rhs: &Self) -> bool {
+        // FIXME: Assume that all nonterminals are not equal, we can't compare them
+        // correctly based on data from AST. This will prevent them from matching each other
+        // in macros. The comparison will become possible only when each nonterminal has an
+        // attached token stream from which it was parsed.
+        false
     }
 }
 
@@ -1003,12 +1043,10 @@ impl fmt::Debug for Nonterminal {
             NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
-            NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
-            NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
 }
@@ -1025,8 +1063,9 @@ where
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);

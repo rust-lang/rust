@@ -127,29 +127,35 @@ error: `to_string` applied to a type that implements `Display` in `println!` arg
 LL |     println!("{foo}{bar}", bar = "bar", foo = "foo".to_string());
    |                                                    ^^^^^^^^^^^^ help: remove this
 
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> tests/ui/format_args.rs:107:37
+   |
+LL |     println!("{}", my_other_macro!().to_string());
+   |                                     ^^^^^^^^^^^^ help: remove this
+
 error: `to_string` applied to a type that implements `Display` in `print!` args
-  --> tests/ui/format_args.rs:118:37
+  --> tests/ui/format_args.rs:119:37
    |
 LL |     print!("{}", (Location::caller().to_string()));
    |                                     ^^^^^^^^^^^^ help: remove this
 
 error: `to_string` applied to a type that implements `Display` in `print!` args
-  --> tests/ui/format_args.rs:119:39
+  --> tests/ui/format_args.rs:120:39
    |
 LL |     print!("{}", ((Location::caller()).to_string()));
    |                                       ^^^^^^^^^^^^ help: remove this
 
 error: `to_string` applied to a type that implements `Display` in `format!` args
-  --> tests/ui/format_args.rs:147:38
+  --> tests/ui/format_args.rs:148:38
    |
 LL |         let x = format!("{} {}", a, b.to_string());
    |                                      ^^^^^^^^^^^^ help: remove this
 
 error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> tests/ui/format_args.rs:161:24
+  --> tests/ui/format_args.rs:162:24
    |
 LL |         println!("{}", original[..10].to_string());
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use this: `&original[..10]`
 
-error: aborting due to 25 previous errors
+error: aborting due to 26 previous errors
 

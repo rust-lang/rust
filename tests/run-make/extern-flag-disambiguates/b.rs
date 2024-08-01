@@ -5,5 +5,9 @@ extern crate a;
 
 static FOO: usize = 3;
 
-pub fn token() -> &'static usize { &FOO }
-pub fn a_token() -> &'static usize { a::token() }
+pub fn token() -> &'static usize {
+    &FOO
+}
+pub fn a_token() -> &'static usize {
+    a::token()
+}

@@ -66,7 +66,7 @@ impl ConfigType for IgnoreList {
 }
 
 macro_rules! create_config {
-    // Options passed in to the macro.
+    // Options passed into the macro.
     //
     // - $i: the ident name of the option
     // - $ty: the type of the option value
@@ -129,6 +129,7 @@ macro_rules! create_config {
                     | "chain_width" => self.0.set_heuristics(),
                     "merge_imports" => self.0.set_merge_imports(),
                     "fn_args_layout" => self.0.set_fn_args_layout(),
+                    "hide_parse_errors" => self.0.set_hide_parse_errors(),
                     &_ => (),
                 }
             }
@@ -184,6 +185,7 @@ macro_rules! create_config {
                 self.set_ignore(dir);
                 self.set_merge_imports();
                 self.set_fn_args_layout();
+                self.set_hide_parse_errors();
                 self
             }
 
@@ -278,19 +280,21 @@ macro_rules! create_config {
                     | "chain_width" => self.set_heuristics(),
                     "merge_imports" => self.set_merge_imports(),
                     "fn_args_layout" => self.set_fn_args_layout(),
+                    "hide_parse_errors" => self.set_hide_parse_errors(),
                     &_ => (),
                 }
             }
 
             #[allow(unreachable_pub)]
             pub fn is_hidden_option(name: &str) -> bool {
-                const HIDE_OPTIONS: [&str; 6] = [
+                const HIDE_OPTIONS: [&str; 7] = [
                     "verbose",
                     "verbose_diff",
                     "file_lines",
                     "width_heuristics",
                     "merge_imports",
-                    "fn_args_layout"
+                    "fn_args_layout",
+                    "hide_parse_errors"
                 ];
                 HIDE_OPTIONS.contains(&name)
             }
@@ -457,6 +461,18 @@ macro_rules! create_config {
                     );
                     if !self.was_set().fn_params_layout() {
                         self.fn_params_layout.2 = self.fn_args_layout();
+                    }
+                }
+            }
+
+            fn set_hide_parse_errors(&mut self) {
+                if self.was_set().hide_parse_errors() {
+                    eprintln!(
+                        "Warning: the `hide_parse_errors` option is deprecated. \
+                        Use `show_parse_errors` instead"
+                    );
+                    if !self.was_set().show_parse_errors() {
+                        self.show_parse_errors.2 = self.hide_parse_errors();
                     }
                 }
             }

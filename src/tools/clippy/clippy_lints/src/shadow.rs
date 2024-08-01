@@ -15,10 +15,10 @@ declare_clippy_lint! {
     /// Checks for bindings that shadow other bindings already in
     /// scope, while just changing reference level or mutability.
     ///
-    /// ### Why is this bad?
-    /// Not much, in fact it's a very common pattern in Rust
-    /// code. Still, some may opt to avoid it in their code base, they can set this
-    /// lint to `Warn`.
+    /// ### Why restrict this?
+    /// To require that what are formally distinct variables be given distinct names.
+    ///
+    /// See also `shadow_reuse` and `shadow_unrelated` for other restrictions on shadowing.
     ///
     /// ### Example
     /// ```no_run
@@ -42,11 +42,12 @@ declare_clippy_lint! {
     /// Checks for bindings that shadow other bindings already in
     /// scope, while reusing the original value.
     ///
-    /// ### Why is this bad?
-    /// Not too much, in fact it's a common pattern in Rust
-    /// code. Still, some argue that name shadowing like this hurts readability,
+    /// ### Why restrict this?
+    /// Some argue that name shadowing like this hurts readability,
     /// because a value may be bound to different things depending on position in
     /// the code.
+    ///
+    /// See also `shadow_same` and `shadow_unrelated` for other restrictions on shadowing.
     ///
     /// ### Example
     /// ```no_run
@@ -70,11 +71,14 @@ declare_clippy_lint! {
     /// scope, either without an initialization or with one that does not even use
     /// the original value.
     ///
-    /// ### Why is this bad?
-    /// Name shadowing can hurt readability, especially in
+    /// ### Why restrict this?
+    /// Shadowing a binding with a closely related one is part of idiomatic Rust,
+    /// but shadowing a binding by accident with an unrelated one may indicate a mistake.
+    ///
+    /// Additionally, name shadowing in general can hurt readability, especially in
     /// large code bases, because it is easy to lose track of the active binding at
-    /// any place in the code. This can be alleviated by either giving more specific
-    /// names to bindings or introducing more scopes to contain the bindings.
+    /// any place in the code. If linting against all shadowing is desired, you may wish
+    /// to use the `shadow_same` and `shadow_reuse` lints as well.
     ///
     /// ### Example
     /// ```no_run

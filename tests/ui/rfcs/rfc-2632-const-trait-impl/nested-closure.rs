@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(const_trait_impl, lazy_cell)]
+#![feature(const_trait_impl)]
 
 use std::sync::LazyLock;
 

@@ -11,9 +11,13 @@ fn test_closure() {
     closure(&opaque());
 }
 
-type Opaque2 = impl Sized;
-type Opaque<'a> = Opaque2;
-fn define<'a>() -> Opaque<'a> {}
+mod helper {
+    pub type Opaque2 = impl Sized;
+    pub type Opaque<'a> = Opaque2;
+    fn define<'a>() -> Opaque<'a> {}
+}
+
+use helper::*;
 
 fn test_tait(_: &Opaque<'_>) {
     None::<&'static Opaque<'_>>;

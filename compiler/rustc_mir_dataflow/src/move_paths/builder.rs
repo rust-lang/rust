@@ -1,16 +1,17 @@
+use std::mem;
+
 use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use smallvec::{smallvec, SmallVec};
-
-use std::mem;
+use tracing::debug;
 
 use super::abs_domain::Lift;
-use super::{Init, InitIndex, InitKind, InitLocation, LookupResult};
 use super::{
-    LocationMap, MoveData, MoveOut, MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
+    Init, InitIndex, InitKind, InitLocation, LocationMap, LookupResult, MoveData, MoveOut,
+    MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
 };
 
 struct MoveDataBuilder<'a, 'tcx, F> {
@@ -420,8 +421,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::ShallowInitBox(ref operand, _)
             | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),
-            Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs))
-            | Rvalue::CheckedBinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);
             }
@@ -487,6 +487,12 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                 if let Some(_bb) = target {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
+                }
+            }
+            TerminatorKind::TailCall { ref func, ref args, .. } => {
+                self.gather_operand(func);
+                for arg in args {
+                    self.gather_operand(&arg.node);
                 }
             }
             TerminatorKind::InlineAsm {

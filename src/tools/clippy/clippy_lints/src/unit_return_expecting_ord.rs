@@ -66,7 +66,7 @@ fn get_projection_pred<'tcx>(
             let projection_pred = cx
                 .tcx
                 .instantiate_bound_regions_with_erased(proj_pred.kind().rebind(pred));
-            if projection_pred.projection_ty.args == trait_pred.trait_ref.args {
+            if projection_pred.projection_term.args == trait_pred.trait_ref.args {
                 return Some(projection_pred);
             }
         }
@@ -100,12 +100,12 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
                     {
                         if ord_preds
                             .iter()
-                            .any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty())
+                            .any(|ord| Some(ord.self_ty()) == return_ty_pred.term.as_type())
                         {
                             args_to_check.push((i, "Ord".to_string()));
                         } else if partial_ord_preds
                             .iter()
-                            .any(|pord| pord.self_ty() == return_ty_pred.term.ty().unwrap())
+                            .any(|pord| pord.self_ty() == return_ty_pred.term.expect_type())
                         {
                             args_to_check.push((i, "PartialOrd".to_string()));
                         }

@@ -90,3 +90,25 @@ pub fn vec_iterator_cast_deaggregate_fold(vec: Vec<Baz>) -> Vec<[u64; 4]> {
     // correct.
     vec.into_iter().map(|e| unsafe { std::mem::transmute(e) }).collect()
 }
+
+// CHECK-LABEL: @vec_iterator_cast_unwrap_drop
+#[no_mangle]
+pub fn vec_iterator_cast_unwrap_drop(vec: Vec<Wrapper<String>>) -> Vec<String> {
+    // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
+    // CHECK-NOT: call
+    // CHECK-NOT: %{{.*}} = mul
+    // CHECK-NOT: %{{.*}} = udiv
+
+    vec.into_iter().map(|Wrapper(e)| e).collect()
+}
+
+// CHECK-LABEL: @vec_iterator_cast_wrap_drop
+#[no_mangle]
+pub fn vec_iterator_cast_wrap_drop(vec: Vec<String>) -> Vec<Wrapper<String>> {
+    // CHECK-NOT: br i1 %{{.*}}, label %{{.*}}, label %{{.*}}
+    // CHECK-NOT: call
+    // CHECK-NOT: %{{.*}} = mul
+    // CHECK-NOT: %{{.*}} = udiv
+
+    vec.into_iter().map(Wrapper).collect()
+}

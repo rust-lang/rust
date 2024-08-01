@@ -3,16 +3,12 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::sync::Mutex;
-
-// FIXME: replace with std::lazy after it gets stabilized and reaches beta
-use once_cell::sync::Lazy;
+use std::sync::{LazyLock, Mutex};
+use std::{fmt, mem};
 
 use crate::core::builder::Step;
 
@@ -196,7 +192,7 @@ impl Interner {
     }
 }
 
-pub static INTERNER: Lazy<Interner> = Lazy::new(Interner::default);
+pub static INTERNER: LazyLock<Interner> = LazyLock::new(Interner::default);
 
 /// This is essentially a `HashMap` which allows storing any type in its input and
 /// any type in its output. It is a write-once cache; values are never evicted,

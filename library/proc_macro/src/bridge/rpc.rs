@@ -264,9 +264,9 @@ impl From<Box<dyn Any + Send>> for PanicMessage {
     }
 }
 
-impl Into<Box<dyn Any + Send>> for PanicMessage {
-    fn into(self) -> Box<dyn Any + Send> {
-        match self {
+impl From<PanicMessage> for Box<dyn Any + Send> {
+    fn from(val: PanicMessage) -> Self {
+        match val {
             PanicMessage::StaticStr(s) => Box::new(s),
             PanicMessage::String(s) => Box::new(s),
             PanicMessage::Unknown => {

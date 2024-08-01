@@ -1,8 +1,6 @@
 //! Thin wrappers around `std::path`/`camino::path`, distinguishing between absolute and
 //! relative paths.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 use std::{
     borrow::Borrow,
     ffi::OsStr,
@@ -106,7 +104,7 @@ impl AbsPathBuf {
     /// Panics if `path` is not absolute.
     pub fn assert(path: Utf8PathBuf) -> AbsPathBuf {
         AbsPathBuf::try_from(path)
-            .unwrap_or_else(|path| panic!("expected absolute path, got {}", path))
+            .unwrap_or_else(|path| panic!("expected absolute path, got {path}"))
     }
 
     /// Wrap the given absolute path in `AbsPathBuf`
@@ -134,6 +132,24 @@ impl AbsPathBuf {
     /// absolute.
     pub fn pop(&mut self) -> bool {
         self.0.pop()
+    }
+
+    /// Equivalent of [`PathBuf::push`] for `AbsPathBuf`.
+    ///
+    /// Extends `self` with `path`.
+    ///
+    /// If `path` is absolute, it replaces the current path.
+    ///
+    /// On Windows:
+    ///
+    /// * if `path` has a root but no prefix (e.g., `\windows`), it
+    ///   replaces everything except for the prefix (if any) of `self`.
+    /// * if `path` has a prefix but no root, it replaces `self`.
+    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
+    ///   and `path` is not empty, the new path is normalized: all references
+    ///   to `.` and `..` are removed.
+    pub fn push<P: AsRef<Utf8Path>>(&mut self, suffix: P) {
+        self.0.push(suffix)
     }
 }
 
@@ -197,7 +213,7 @@ impl AbsPath {
     ///
     /// Panics if `path` is not absolute.
     pub fn assert(path: &Utf8Path) -> &AbsPath {
-        assert!(path.is_absolute());
+        assert!(path.is_absolute(), "{path} is not absolute");
         unsafe { &*(path as *const Utf8Path as *const AbsPath) }
     }
 

@@ -1,11 +1,13 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::scope::DropKind;
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use tracing::{debug, instrument};
+
+use crate::build::scope::DropKind;
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
@@ -111,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        unpack!(block = this.expr_into_dest(temp_place, block, expr_id));
+        block = this.expr_into_dest(temp_place, block, expr_id).into_block();
 
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);

@@ -1,6 +1,7 @@
+use core::sync::atomic::{AtomicU32, Ordering};
+
 use crate::os::xous::ffi::Connection;
 use crate::os::xous::services::connect;
-use core::sync::atomic::{AtomicU32, Ordering};
 
 pub(crate) enum NetBlockingScalar {
     StdGetTtlUdp(u16 /* fd */),                /* 36 */
@@ -80,7 +81,7 @@ impl<'a> Into<[usize; 5]> for NetBlockingScalar {
     }
 }
 
-/// Return a `Connection` to the Network server. This server provides all
+/// Returns a `Connection` to the Network server. This server provides all
 /// OS-level networking functions.
 pub(crate) fn net_server() -> Connection {
     static NET_CONNECTION: AtomicU32 = AtomicU32::new(0);

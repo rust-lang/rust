@@ -30,8 +30,10 @@ pub enum BuiltinUint {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BuiltinFloat {
+    F16,
     F32,
     F64,
+    F128,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -65,8 +67,10 @@ impl BuiltinType {
         (name![u64],   BuiltinType::Uint(BuiltinUint::U64)),
         (name![u128],  BuiltinType::Uint(BuiltinUint::U128)),
 
+        (name![f16], BuiltinType::Float(BuiltinFloat::F16)),
         (name![f32], BuiltinType::Float(BuiltinFloat::F32)),
         (name![f64], BuiltinType::Float(BuiltinFloat::F64)),
+        (name![f128], BuiltinType::Float(BuiltinFloat::F128)),
     ];
 
     pub fn by_name(name: &Name) -> Option<Self> {
@@ -97,8 +101,10 @@ impl AsName for BuiltinType {
                 BuiltinUint::U128 => name![u128],
             },
             BuiltinType::Float(it) => match it {
+                BuiltinFloat::F16 => name![f16],
                 BuiltinFloat::F32 => name![f32],
                 BuiltinFloat::F64 => name![f64],
+                BuiltinFloat::F128 => name![f128],
             },
         }
     }
@@ -155,8 +161,10 @@ impl BuiltinUint {
 impl BuiltinFloat {
     pub fn from_suffix(suffix: &str) -> Option<BuiltinFloat> {
         let res = match suffix {
+            "f16" => BuiltinFloat::F16,
             "f32" => BuiltinFloat::F32,
             "f64" => BuiltinFloat::F64,
+            "f128" => BuiltinFloat::F128,
             _ => return None,
         };
         Some(res)
@@ -192,8 +200,10 @@ impl fmt::Display for BuiltinUint {
 impl fmt::Display for BuiltinFloat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
+            BuiltinFloat::F16 => "f16",
             BuiltinFloat::F32 => "f32",
             BuiltinFloat::F64 => "f64",
+            BuiltinFloat::F128 => "f128",
         })
     }
 }

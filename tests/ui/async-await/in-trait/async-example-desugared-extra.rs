@@ -1,8 +1,6 @@
 //@ check-pass
 //@ edition: 2021
 
-#![feature(lint_reasons)]
-
 use std::future::Future;
 use std::pin::Pin;
 use std::task::Poll;

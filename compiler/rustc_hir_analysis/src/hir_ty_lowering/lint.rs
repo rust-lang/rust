@@ -1,10 +1,12 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{codes::*, Diag, EmissionGuarantee, StashKey};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, EmissionGuarantee, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
+use rustc_lint_defs::builtin::BARE_TRAIT_OBJECTS;
+use rustc_lint_defs::Applicability;
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
+use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 
 use super::HirTyLowerer;
 
@@ -34,7 +36,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .ok()
                 .is_some_and(|s| s.trim_end().ends_with('<'));
 
-        let is_global = poly_trait_ref.trait_ref.path.is_global();
+        let is_global = poly_trait_ref.0.trait_ref.path.is_global();
 
         let mut sugg = vec![(
             self_ty.span.shrink_to_lo(),
@@ -60,7 +62,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let msg = "trait objects must include the `dyn` keyword";
             let label = "add `dyn` keyword before this trait";
             let mut diag =
-                rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
+                rustc_errors::struct_span_code_err!(self.dcx(), self_ty.span, E0782, "{}", msg);
             if self_ty.span.can_be_used_for_suggestions()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
             {
@@ -72,8 +74,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
             diag.stash(self_ty.span, StashKey::TraitMissingMethod);
         } else {
-            let msg = "trait objects without an explicit `dyn` are deprecated";
-            tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
+            tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
+                lint.primary_message("trait objects without an explicit `dyn` are deprecated");
                 if self_ty.span.can_be_used_for_suggestions() {
                     lint.multipart_suggestion_verbose(
                         "if this is an object-safe trait, use `dyn`",
@@ -176,13 +178,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut is_downgradable = true;
         let is_object_safe = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
-                objects.iter().all(|o| match o.trait_ref.path.res {
+                objects.iter().all(|(o, _)| match o.trait_ref.path.res {
                     Res::Def(DefKind::Trait, id) => {
                         if Some(id) == owner {
                             // For recursive traits, don't downgrade the error. (#119652)
                             is_downgradable = false;
                         }
-                        tcx.check_is_object_safe(id)
+                        tcx.is_object_safe(id)
                     }
                     _ => false,
                 })
@@ -268,8 +270,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
         let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id);
 
-        if let Some((_, hir::Node::TypeBinding(binding))) = parents.next()
-            && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(obj_ty) } = binding.kind
+        if let Some((_, hir::Node::AssocItemConstraint(constraint))) = parents.next()
+            && let Some(obj_ty) = constraint.ty()
         {
             if let Some((_, hir::Node::TraitRef(..))) = parents.next()
                 && let Some((_, hir::Node::Ty(ty))) = parents.next()
@@ -279,10 +281,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 return;
             }
 
-            let lo = if binding.gen_args.span_ext.is_dummy() {
-                binding.ident.span
+            let lo = if constraint.gen_args.span_ext.is_dummy() {
+                constraint.ident.span
             } else {
-                binding.gen_args.span_ext
+                constraint.gen_args.span_ext
             };
             let hi = obj_ty.span;
 

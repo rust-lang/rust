@@ -46,7 +46,7 @@ error: unused import: `self::Professor::*`
 LL |     pub use self::Professor::*;
    |             ^^^^^^^^^^^^^^^^^^
 
-error: unused imports: `Full`, `JuniorGrade`
+error: unused imports: `Full` and `JuniorGrade`
   --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:32
    |
 LL |     pub use self::Lieutenant::{JuniorGrade, Full};

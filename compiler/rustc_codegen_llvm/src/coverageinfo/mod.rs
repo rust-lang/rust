@@ -1,9 +1,4 @@
-use crate::llvm;
-
-use crate::builder::Builder;
-use crate::common::CodegenCx;
-use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
-use crate::coverageinfo::map_data::FunctionCoverageCollector;
+use std::cell::RefCell;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
@@ -17,8 +12,13 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
 use rustc_target::abi::{Align, Size};
+use tracing::{debug, instrument};
 
-use std::cell::RefCell;
+use crate::builder::Builder;
+use crate::common::CodegenCx;
+use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
+use crate::coverageinfo::map_data::FunctionCoverageCollector;
+use crate::llvm;
 
 pub(crate) mod ffi;
 pub(crate) mod map_data;
@@ -207,13 +207,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 let cond_bitmap = coverage_context
                                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                                     .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
-                let bitmap_bytes = bx.tcx().coverage_ids_info(instance.def).mcdc_bitmap_bytes;
+                let bitmap_bytes = function_coverage_info.mcdc_bitmap_bytes;
                 assert!(bitmap_idx < bitmap_bytes, "bitmap index of the decision out of range");
-                assert!(
-                    bitmap_bytes <= function_coverage_info.mcdc_bitmap_bytes,
-                    "bitmap length disagreement: query says {bitmap_bytes} but function info only has {}",
-                    function_coverage_info.mcdc_bitmap_bytes
-                );
 
                 let fn_name = bx.get_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);

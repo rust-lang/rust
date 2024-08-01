@@ -52,6 +52,7 @@ build/
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`
 /obj/
+/rustc-ice*
 
 ## Temporary files
 *~

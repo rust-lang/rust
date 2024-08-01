@@ -1,7 +1,5 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
-#![feature(lint_reasons)]
-
 #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
 //~^ ERROR malformed lint attribute
 //~| NOTE reason must be a string literal
@@ -11,7 +9,7 @@
 #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
 //~^ ERROR malformed lint attribute
 //~| NOTE bad attribute argument
-#![warn(box_pointers, blerp = "or in league with robbers have reversed the signposts")]
+#![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
 //~^ ERROR malformed lint attribute
 //~| NOTE bad attribute argument
 #![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]

@@ -8,6 +8,12 @@
       let mut _3: i64;
       let mut _4: u32;
 +     scope 1 (inlined core::num::<impl i64>::unchecked_shr) {
++         let mut _5: bool;
++         let _6: ();
++         scope 2 (inlined core::ub_checks::check_language_ub) {
++             scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
++             }
++         }
 +     }
   
       bb0: {
@@ -16,10 +22,20 @@
           StorageLive(_4);
           _4 = _2;
 -         _0 = core::num::<impl i64>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind continue];
--     }
-- 
--     bb1: {
++         StorageLive(_6);
++         StorageLive(_5);
++         _5 = UbChecks();
++         switchInt(move _5) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
++         _6 = core::num::<impl i64>::unchecked_shr::precondition_check(_4) -> [return: bb2, unwind unreachable];
++     }
++ 
++     bb2: {
++         StorageDead(_5);
 +         _0 = ShrUnchecked(_3, _4);
++         StorageDead(_6);
           StorageDead(_4);
           StorageDead(_3);
           return;

@@ -1,12 +1,11 @@
 //! Name resolution façade.
-use std::{fmt, hash::BuildHasherDefault, mem};
+use std::{fmt, iter, mem};
 
 use base_db::CrateId;
 use hir_expand::{
     name::{name, Name},
     MacroDefId,
 };
-use indexmap::IndexMap;
 use intern::Interned;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -27,10 +26,10 @@ use crate::{
     type_ref::LifetimeRef,
     visibility::{RawVisibility, Visibility},
     AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
-    ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
-    ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId,
-    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId,
-    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
+    ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule,
+    ImplId, ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id,
+    MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId,
+    TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -591,13 +590,13 @@ impl Resolver {
 
     pub fn where_predicates_in_scope(
         &self,
-    ) -> impl Iterator<Item = &crate::generics::WherePredicate> {
+    ) -> impl Iterator<Item = (&crate::generics::WherePredicate, &GenericDefId)> {
         self.scopes()
             .filter_map(|scope| match scope {
-                Scope::GenericParams { params, .. } => Some(params),
+                Scope::GenericParams { params, def } => Some((params, def)),
                 _ => None,
             })
-            .flat_map(|params| params.where_predicates.iter())
+            .flat_map(|(params, def)| params.where_predicates().zip(iter::repeat(def)))
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {
@@ -759,10 +758,10 @@ impl Scope {
             }
             Scope::GenericParams { params, def: parent } => {
                 let parent = *parent;
-                for (local_id, param) in params.type_or_consts.iter() {
+                for (local_id, param) in params.iter_type_or_consts() {
                     if let Some(name) = &param.name() {
                         let id = TypeOrConstParamId { parent, local_id };
-                        let data = &db.generic_params(parent).type_or_consts[local_id];
+                        let data = &db.generic_params(parent)[local_id];
                         acc.add(
                             name,
                             ScopeDef::GenericParam(match data {
@@ -776,7 +775,7 @@ impl Scope {
                         );
                     }
                 }
-                for (local_id, param) in params.lifetimes.iter() {
+                for (local_id, param) in params.iter_lt() {
                     let id = LifetimeParamId { parent, local_id };
                     acc.add(&param.name, ScopeDef::GenericParam(id.into()))
                 }
@@ -957,7 +956,6 @@ fn to_type_ns(per_ns: PerNs) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {
     Some((res, import))
 }
 
-type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>;
 #[derive(Default)]
 struct ScopeNames {
     map: FxIndexMap<Name, SmallVec<[ScopeDef; 1]>>,
@@ -1166,7 +1164,6 @@ impl HasResolver for GenericDefId {
             GenericDefId::TraitAliasId(inner) => inner.resolver(db),
             GenericDefId::TypeAliasId(inner) => inner.resolver(db),
             GenericDefId::ImplId(inner) => inner.resolver(db),
-            GenericDefId::EnumVariantId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
         }
     }

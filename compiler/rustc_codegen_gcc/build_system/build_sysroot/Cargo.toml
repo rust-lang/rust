@@ -1,0 +1,24 @@
+[package]
+authors = ["rustc_codegen_gcc devs"]
+name = "sysroot"
+version = "0.0.0"
+resolver = "2"
+
+[dependencies]
+core = { path = "./sysroot_src/library/core" }
+# TODO: after the sync, revert to using version 0.1.
+# compiler_builtins = "0.1"
+compiler_builtins = "=0.1.109"
+alloc = { path = "./sysroot_src/library/alloc" }
+std = { path = "./sysroot_src/library/std", features = ["panic_unwind", "backtrace"] }
+test = { path = "./sysroot_src/library/test" }
+proc_macro = { path = "./sysroot_src/library/proc_macro" }
+
+[patch.crates-io]
+rustc-std-workspace-core = { path = "./sysroot_src/library/rustc-std-workspace-core" }
+rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-alloc" }
+rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-std" }
+
+[profile.release]
+debug = "limited"
+#lto = "fat" # TODO(antoyo): re-enable when the failing LTO tests regarding proc-macros are fixed.

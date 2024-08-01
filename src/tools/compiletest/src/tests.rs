@@ -58,11 +58,11 @@ fn test_extract_lldb_version() {
 
 #[test]
 fn is_test_test() {
-    assert_eq!(true, is_test(&OsString::from("a_test.rs")));
-    assert_eq!(false, is_test(&OsString::from(".a_test.rs")));
-    assert_eq!(false, is_test(&OsString::from("a_cat.gif")));
-    assert_eq!(false, is_test(&OsString::from("#a_dog_gif")));
-    assert_eq!(false, is_test(&OsString::from("~a_temp_file")));
+    assert!(is_test(&OsString::from("a_test.rs")));
+    assert!(!is_test(&OsString::from(".a_test.rs")));
+    assert!(!is_test(&OsString::from("a_cat.gif")));
+    assert!(!is_test(&OsString::from("#a_dog_gif")));
+    assert!(!is_test(&OsString::from("~a_temp_file")));
 }
 
 #[test]

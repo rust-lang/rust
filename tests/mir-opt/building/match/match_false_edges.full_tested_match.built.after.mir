@@ -62,7 +62,7 @@ fn full_tested_match() -> () {
         _6 = &((_2 as Some).0: i32);
         _3 = &fake shallow _2;
         StorageLive(_7);
-        _7 = guard() -> [return: bb8, unwind: bb16];
+        _7 = guard() -> [return: bb8, unwind: bb15];
     }
 
     bb8: {
@@ -118,11 +118,7 @@ fn full_tested_match() -> () {
         unreachable;
     }
 
-    bb15: {
-        goto -> bb14;
-    }
-
-    bb16 (cleanup): {
+    bb15 (cleanup): {
         resume;
     }
 }

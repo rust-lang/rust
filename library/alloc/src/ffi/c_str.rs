@@ -3,25 +3,21 @@
 #[cfg(test)]
 mod tests;
 
+use core::borrow::Borrow;
+use core::ffi::{c_char, CStr};
+use core::num::NonZero;
+use core::slice::memchr;
+use core::str::{self, Utf8Error};
+use core::{fmt, mem, ops, ptr, slice};
+
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::Rc;
 use crate::slice::hack::into_vec;
 use crate::string::String;
-use crate::vec::Vec;
-use core::borrow::Borrow;
-use core::ffi::{c_char, CStr};
-use core::fmt;
-use core::mem;
-use core::num::NonZero;
-use core::ops;
-use core::ptr;
-use core::slice;
-use core::slice::memchr;
-use core::str::{self, Utf8Error};
-
 #[cfg(target_has_atomic = "ptr")]
 use crate::sync::Arc;
+use crate::vec::Vec;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -907,6 +903,19 @@ impl From<&CStr> for Rc<CStr> {
     fn from(s: &CStr) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "more_rc_default_impls", since = "1.80.0")]
+impl Default for Rc<CStr> {
+    /// Creates an empty CStr inside an Rc
+    ///
+    /// This may or may not share an allocation with other Rcs on the same thread.
+    #[inline]
+    fn default() -> Self {
+        let c_str: &CStr = Default::default();
+        Rc::from(c_str)
     }
 }
 

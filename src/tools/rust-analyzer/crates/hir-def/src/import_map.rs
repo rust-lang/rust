@@ -1,13 +1,12 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{fmt, hash::BuildHasherDefault};
+use std::fmt;
 
 use base_db::CrateId;
 use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir_expand::name::Name;
-use indexmap::IndexMap;
 use itertools::Itertools;
-use rustc_hash::{FxHashSet, FxHasher};
+use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::{format_to, TupleExt};
 use triomphe::Arc;
@@ -17,7 +16,7 @@ use crate::{
     item_scope::{ImportOrExternCrate, ItemInNs},
     nameres::DefMap,
     visibility::Visibility,
-    AssocItemId, ModuleDefId, ModuleId, TraitId,
+    AssocItemId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Item import details stored in the `ImportMap`.
@@ -58,7 +57,6 @@ enum IsTraitAssocItem {
     No,
 }
 
-type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 type ImportMapIndex = FxIndexMap<ItemInNs, (SmallVec<[ImportInfo; 1]>, IsTraitAssocItem)>;
 
 impl ImportMap {
@@ -75,7 +73,7 @@ impl ImportMap {
     }
 
     pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = tracing::span!(tracing::Level::INFO, "import_map_query").entered();
+        let _p = tracing::info_span!("import_map_query").entered();
 
         let map = Self::collect_import_map(db, krate);
 
@@ -126,7 +124,7 @@ impl ImportMap {
     }
 
     fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
-        let _p = tracing::span!(tracing::Level::INFO, "collect_import_map").entered();
+        let _p = tracing::info_span!("collect_import_map").entered();
 
         let def_map = db.crate_def_map(krate);
         let mut map = FxIndexMap::default();
@@ -216,7 +214,7 @@ impl ImportMap {
         is_type_in_ns: bool,
         trait_import_info: &ImportInfo,
     ) {
-        let _p = tracing::span!(tracing::Level::INFO, "collect_trait_assoc_items").entered();
+        let _p = tracing::info_span!("collect_trait_assoc_items").entered();
         for &(ref assoc_item_name, item) in &db.trait_data(tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(f),
@@ -398,7 +396,7 @@ pub fn search_dependencies(
     krate: CrateId,
     query: &Query,
 ) -> FxHashSet<ItemInNs> {
-    let _p = tracing::span!(tracing::Level::INFO, "search_dependencies", ?query).entered();
+    let _p = tracing::info_span!("search_dependencies", ?query).entered();
 
     let graph = db.crate_graph();
 

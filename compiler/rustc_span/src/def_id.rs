@@ -1,4 +1,6 @@
-use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
+use std::fmt;
+use std::hash::{BuildHasherDefault, Hash, Hasher};
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{
     Hash64, HashStable, StableHasher, StableOrd, ToStableHashKey,
@@ -8,8 +10,8 @@ use rustc_data_structures::AtomicRef;
 use rustc_index::Idx;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
-use std::fmt;
-use std::hash::{BuildHasherDefault, Hash, Hasher};
+
+use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
 
 pub type StableCrateIdMap =
     indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;
@@ -120,9 +122,11 @@ impl Default for DefPathHash {
     }
 }
 
-// Safety: `DefPathHash` sort order is not affected (de)serialization.
-unsafe impl StableOrd for DefPathHash {
+impl StableOrd for DefPathHash {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // `DefPathHash` sort order is not affected by (de)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 /// A [`StableCrateId`] is a 64-bit hash of a crate name, together with all

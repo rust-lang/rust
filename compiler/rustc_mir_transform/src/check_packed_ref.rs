@@ -1,9 +1,9 @@
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::MirLint;
-use crate::{errors, util};
+use crate::{errors, util, MirLint};
 
 pub struct CheckPackedRef;
 

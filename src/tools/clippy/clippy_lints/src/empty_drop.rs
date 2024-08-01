@@ -9,7 +9,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for empty `Drop` implementations.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Empty `Drop` implementations have no effect when dropping an instance of the type. They are
     /// most likely useless. However, an empty `Drop` implementation prevents a type from being
     /// destructured, which might be the intention behind adding the implementation as a marker.

@@ -10,15 +10,15 @@ use rustc_session::declare_lint_pass;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks if a provided method is used implicitly by a trait
-    /// implementation. A usage example would be a wrapper where every method
-    /// should perform some operation before delegating to the inner type's
     /// implementation.
+    ///
+    /// ### Why restrict this?
+    /// To ensure that a certain implementation implements every method; for example,
+    /// a wrapper type where every method should delegate to the corresponding method of
+    /// the inner type's implementation.
     ///
     /// This lint should typically be enabled on a specific trait `impl` item
     /// rather than globally.
-    ///
-    /// ### Why is this bad?
-    /// Indicates that a method is missing.
     ///
     /// ### Example
     /// ```no_run

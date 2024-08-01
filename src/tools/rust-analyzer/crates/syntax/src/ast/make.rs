@@ -172,7 +172,7 @@ pub fn ty_alias(
     assignment: Option<(ast::Type, Option<ast::WhereClause>)>,
 ) -> ast::TypeAlias {
     let mut s = String::new();
-    s.push_str(&format!("type {}", ident));
+    s.push_str(&format!("type {ident}"));
 
     if let Some(list) = generic_param_list {
         s.push_str(&list.to_string());
@@ -297,7 +297,7 @@ pub fn impl_trait(
         };
 
     let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
-        .map_or_else(|| " ".to_owned(), |wc| format!("\n{}\n", wc));
+        .map_or_else(|| " ".to_owned(), |wc| format!("\n{wc}\n"));
 
     let body = match body {
         Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),
@@ -1159,7 +1159,7 @@ pub mod tokens {
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
         SourceFile::parse(
-            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let a @ [] })\n;\n\nimpl A for B where: {}", Edition::CURRENT,
+            "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let _ @ [] })\n;\n\nimpl A for B where: {}", Edition::CURRENT,
         )
     });
 

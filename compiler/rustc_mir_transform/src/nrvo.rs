@@ -2,6 +2,7 @@
 
 use rustc_hir::Mutability;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_middle::ty::TyCtxt;

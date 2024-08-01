@@ -1,0 +1,26 @@
+error: cannot determine resolution for the import
+  --> $DIR/shadow-glob-module-resolution-2.rs:15:5
+   |
+LL | use b::c::D as e;
+   |     ^^^^^^^^^^^^
+
+error: cannot determine resolution for the import
+  --> $DIR/shadow-glob-module-resolution-2.rs:15:5
+   |
+LL | use b::c::D as e;
+   |     ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0432]: unresolved import `e`
+  --> $DIR/shadow-glob-module-resolution-2.rs:13:5
+   |
+LL | use e as b;
+   |     -^^^^^
+   |     |
+   |     no `e` in the root
+   |     help: a similar name exists in the module: `a`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

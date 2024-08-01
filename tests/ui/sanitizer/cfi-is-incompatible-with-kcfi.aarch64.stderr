@@ -2,9 +2,5 @@ error: cfi sanitizer is not supported for this target
 
 error: `-Zsanitizer=cfi` is incompatible with `-Zsanitizer=kcfi`
 
-error: `-Zsanitizer=cfi` is incompatible with `-Zsanitizer=kcfi`
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

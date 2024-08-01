@@ -165,8 +165,9 @@ impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(u32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 // float -> float
-// FIXME(f16_f128): adding additional `From` impls for existing types breaks inference. See
-// <https://github.com/rust-lang/rust/issues/123824>
+// FIXME(f16_f128): adding additional `From<{float}>` impls to `f32` breaks inference. See
+// <https://github.com/rust-lang/rust/issues/123831>
+impl_from!(f16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
@@ -207,7 +208,7 @@ macro_rules! impl_try_from_unbounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
@@ -225,7 +226,7 @@ macro_rules! impl_try_from_lower_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
@@ -247,7 +248,7 @@ macro_rules! impl_try_from_upper_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]
@@ -269,7 +270,7 @@ macro_rules! impl_try_from_both_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target number type from a source
+            /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
             /// is outside of the range of the target type.
             #[inline]

@@ -1,14 +1,13 @@
-use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
-use crate::ty::{Const, IndexedVal, Ty};
-use crate::{with, Body, Mutability};
-use fmt::{Display, Formatter};
 use std::fmt::Debug;
 use std::io::Write;
 use std::{fmt, io, iter};
 
-use super::{AssertMessage, BinOp, TerminatorKind};
+use fmt::{Display, Formatter};
 
-use super::{BorrowKind, FakeBorrowKind};
+use super::{AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
+use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
+use crate::ty::{IndexedVal, MirConst, Ty, TyConst};
+use crate::{with, Body, Mutability};
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -46,7 +45,7 @@ pub(crate) fn function_body<W: Write>(writer: &mut W, body: &Body, name: &str) -
             VarDebugInfoContents::Place(place) => {
                 format!("{place:?}")
             }
-            VarDebugInfoContents::Const(constant) => pretty_const(&constant.const_),
+            VarDebugInfoContents::Const(constant) => pretty_mir_const(&constant.const_),
         };
         writeln!(writer, "    debug {} => {};", info.name, content)
     })?;
@@ -156,7 +155,7 @@ fn pretty_terminator<W: Write>(writer: &mut W, terminator: &TerminatorKind) -> i
 
 fn pretty_terminator_head<W: Write>(writer: &mut W, terminator: &TerminatorKind) -> io::Result<()> {
     use self::TerminatorKind::*;
-    const INDENT: &'static str = "        ";
+    const INDENT: &str = "        ";
     match terminator {
         Goto { .. } => write!(writer, "{INDENT}goto"),
         SwitchInt { discr, .. } => {
@@ -179,7 +178,7 @@ fn pretty_terminator_head<W: Write>(writer: &mut W, terminator: &TerminatorKind)
             if !expected {
                 write!(writer, "!")?;
             }
-            write!(writer, "{}, ", &pretty_operand(cond))?;
+            write!(writer, "{}, ", pretty_operand(cond))?;
             pretty_assert_message(writer, msg)?;
             write!(writer, ")")
         }
@@ -310,18 +309,22 @@ fn pretty_operand(operand: &Operand) -> String {
         Operand::Move(mv) => {
             format!("move {:?}", mv)
         }
-        Operand::Constant(cnst) => pretty_const(&cnst.literal),
+        Operand::Constant(cnst) => pretty_mir_const(&cnst.const_),
     }
 }
 
-fn pretty_const(literal: &Const) -> String {
-    with(|cx| cx.const_pretty(&literal))
+fn pretty_mir_const(literal: &MirConst) -> String {
+    with(|cx| cx.mir_const_pretty(literal))
+}
+
+fn pretty_ty_const(ct: &TyConst) -> String {
+    with(|cx| cx.ty_const_pretty(ct.id))
 }
 
 fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
     match rval {
         Rvalue::AddressOf(mutability, place) => {
-            write!(writer, "&raw {}(*{:?})", &pretty_mut(*mutability), place)
+            write!(writer, "&raw {}(*{:?})", pretty_mut(*mutability), place)
         }
         Rvalue::Aggregate(aggregate_kind, operands) => {
             // FIXME: Add pretty_aggregate function that returns a pretty string
@@ -332,13 +335,13 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             write!(writer, ")")
         }
         Rvalue::BinaryOp(bin, op1, op2) => {
-            write!(writer, "{:?}({}, {})", bin, &pretty_operand(op1), pretty_operand(op2))
+            write!(writer, "{:?}({}, {})", bin, pretty_operand(op1), pretty_operand(op2))
         }
         Rvalue::Cast(_, op, ty) => {
             write!(writer, "{} as {}", pretty_operand(op), ty)
         }
         Rvalue::CheckedBinaryOp(bin, op1, op2) => {
-            write!(writer, "Checked{:?}({}, {})", bin, &pretty_operand(op1), pretty_operand(op2))
+            write!(writer, "Checked{:?}({}, {})", bin, pretty_operand(op1), pretty_operand(op2))
         }
         Rvalue::CopyForDeref(deref) => {
             write!(writer, "CopyForDeref({:?})", deref)
@@ -359,7 +362,7 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             write!(writer, "{kind}{:?}", place)
         }
         Rvalue::Repeat(op, cnst) => {
-            write!(writer, "{} \" \" {}", &pretty_operand(op), cnst.ty())
+            write!(writer, "{} \" \" {}", pretty_operand(op), pretty_ty_const(cnst))
         }
         Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::ThreadLocalRef(item) => {

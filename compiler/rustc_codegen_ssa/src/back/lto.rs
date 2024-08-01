@@ -1,12 +1,12 @@
-use super::write::CodegenContext;
-use crate::traits::*;
-use crate::ModuleCodegen;
+use std::ffi::CString;
+use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
 
-use std::ffi::CString;
-use std::sync::Arc;
+use super::write::CodegenContext;
+use crate::traits::*;
+use crate::ModuleCodegen;
 
 pub struct ThinModule<B: WriteBackendMethods> {
     pub shared: Arc<ThinShared<B>>,
@@ -72,7 +72,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
                 B::optimize_fat(cgcx, &mut module)?;
                 Ok(module)
             }
-            LtoModuleCodegen::Thin(thin) => B::optimize_thin(cgcx, thin),
+            LtoModuleCodegen::Thin(thin) => unsafe { B::optimize_thin(cgcx, thin) },
         }
     }
 

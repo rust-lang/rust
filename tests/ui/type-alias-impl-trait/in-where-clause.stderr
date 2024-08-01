@@ -10,7 +10,7 @@ note: ...which requires computing type of opaque `Bar::{opaque#0}`...
 LL | type Bar = impl Sized;
    |            ^^^^^^^^^^
 note: ...which requires type-checking `foo`...
-  --> $DIR/in-where-clause.rs:9:1
+  --> $DIR/in-where-clause.rs:8:1
    |
 LL | / fn foo() -> Bar
 LL | | where
@@ -25,26 +25,23 @@ LL | type Bar = impl Sized;
    |            ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0391]: cycle detected when computing type of opaque `Bar::{opaque#0}`
-  --> $DIR/in-where-clause.rs:5:12
-   |
-LL | type Bar = impl Sized;
-   |            ^^^^^^^^^^
-   |
-note: ...which requires type-checking `foo`...
-  --> $DIR/in-where-clause.rs:13:9
+error[E0283]: type annotations needed: cannot satisfy `Bar: Send`
+  --> $DIR/in-where-clause.rs:12:9
    |
 LL |     [0; 1 + 2]
    |         ^^^^^
-   = note: ...which requires evaluating trait selection obligation `Bar: core::marker::Send`...
-   = note: ...which again requires computing type of opaque `Bar::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `Bar::{opaque#0}`
-  --> $DIR/in-where-clause.rs:5:12
    |
-LL | type Bar = impl Sized;
-   |            ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: cannot satisfy `Bar: Send`
+note: required by a bound in `foo`
+  --> $DIR/in-where-clause.rs:10:10
+   |
+LL | fn foo() -> Bar
+   |    --- required by a bound in this function
+LL | where
+LL |     Bar: Send,
+   |          ^^^^ required by this bound in `foo`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0391`.
+Some errors have detailed explanations: E0283, E0391.
+For more information about an error, try `rustc --explain E0283`.

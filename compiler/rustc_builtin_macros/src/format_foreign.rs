@@ -1,6 +1,7 @@
 pub(crate) mod printf {
-    use super::strcursor::StrCursor as Cur;
     use rustc_span::InnerSpan;
+
+    use super::strcursor::StrCursor as Cur;
 
     /// Represents a single `printf`-style substitution.
     #[derive(Clone, PartialEq, Debug)]
@@ -263,13 +264,13 @@ pub(crate) mod printf {
     }
 
     impl Num {
-        fn from_str(s: &str, arg: Option<&str>) -> Self {
+        fn from_str(s: &str, arg: Option<&str>) -> Option<Self> {
             if let Some(arg) = arg {
-                Num::Arg(arg.parse().unwrap_or_else(|_| panic!("invalid format arg `{arg:?}`")))
+                arg.parse().ok().map(|arg| Num::Arg(arg))
             } else if s == "*" {
-                Num::Next
+                Some(Num::Next)
             } else {
-                Num::Num(s.parse().unwrap_or_else(|_| panic!("invalid format num `{s:?}`")))
+                s.parse().ok().map(|num| Num::Num(num))
             }
         }
 
@@ -421,7 +422,10 @@ pub(crate) mod printf {
                             state = Prec;
                             parameter = None;
                             flags = "";
-                            width = Some(Num::from_str(at.slice_between(end).unwrap(), None));
+                            width = at.slice_between(end).and_then(|num| Num::from_str(num, None));
+                            if width.is_none() {
+                                return fallback();
+                            }
                             move_to!(end);
                         }
                         // It's invalid, is what it is.
@@ -452,7 +456,10 @@ pub(crate) mod printf {
                 '1'..='9' => {
                     let end = at_next_cp_while(next, char::is_ascii_digit);
                     state = Prec;
-                    width = Some(Num::from_str(at.slice_between(end).unwrap(), None));
+                    width = at.slice_between(end).and_then(|num| Num::from_str(num, None));
+                    if width.is_none() {
+                        return fallback();
+                    }
                     move_to!(end);
                 }
                 _ => {
@@ -468,7 +475,7 @@ pub(crate) mod printf {
             match end.next_cp() {
                 Some(('$', end2)) => {
                     state = Prec;
-                    width = Some(Num::from_str("", Some(at.slice_between(end).unwrap())));
+                    width = Num::from_str("", at.slice_between(end));
                     move_to!(end2);
                 }
                 _ => {
@@ -500,7 +507,7 @@ pub(crate) mod printf {
                     match end.next_cp() {
                         Some(('$', end2)) => {
                             state = Length;
-                            precision = Some(Num::from_str("*", next.slice_between(end)));
+                            precision = Num::from_str("*", next.slice_between(end));
                             move_to!(end2);
                         }
                         _ => {
@@ -513,7 +520,7 @@ pub(crate) mod printf {
                 '0'..='9' => {
                     let end = at_next_cp_while(next, char::is_ascii_digit);
                     state = Length;
-                    precision = Some(Num::from_str(at.slice_between(end).unwrap(), None));
+                    precision = at.slice_between(end).and_then(|num| Num::from_str(num, None));
                     move_to!(end);
                 }
                 _ => return fallback(),
@@ -609,8 +616,9 @@ pub(crate) mod printf {
 }
 
 pub mod shell {
-    use super::strcursor::StrCursor as Cur;
     use rustc_span::InnerSpan;
+
+    use super::strcursor::StrCursor as Cur;
 
     #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {

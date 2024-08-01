@@ -88,6 +88,7 @@ pub const SYMBOL_INTERN: [&str; 4] = ["rustc_span", "symbol", "Symbol", "intern"
 pub const SYMBOL_TO_IDENT_STRING: [&str; 4] = ["rustc_span", "symbol", "Symbol", "to_ident_string"];
 pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
+pub const STRING_FROM_UTF8: [&str; 4] = ["alloc", "string", "String", "from_utf8"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_FILE_OPTIONS: [&str; 5] = ["tokio", "fs", "file", "File", "options"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
@@ -110,5 +111,4 @@ pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
 pub const WAKER: [&str; 4] = ["core", "task", "wake", "Waker"];
 pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
 pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
-#[expect(clippy::invalid_paths)] // not sure why it thinks this, it works so
 pub const BOOL_THEN: [&str; 4] = ["core", "bool", "<impl bool>", "then"];

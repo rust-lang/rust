@@ -1,0 +1,29 @@
+error[E0586]: inclusive range with no end
+  --> $DIR/impossible_range.rs:11:5
+   |
+LL |     ..=;
+   |     ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     ..=;
+LL +     ..;
+   |
+
+error[E0586]: inclusive range with no end
+  --> $DIR/impossible_range.rs:18:6
+   |
+LL |     0..=;
+   |      ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -     0..=;
+LL +     0..;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0586`.

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/ranged-ctor-as-fn-ptr.rs:8:40
    |
 LL |     let x: fn(u8) -> NonZeroAndOneU8 = NonZeroAndOneU8;
-   |            -------------------------   ^^^^^^^^^^^^^^^ expected normal fn, found unsafe fn
+   |            -------------------------   ^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
    |            |
    |            expected due to this
    |

@@ -5,6 +5,6 @@
 
 fn transform_mut<F>(f: F) where F: for<'b> FnOnce(&'b mut u8) {
     <F as FnOnce(&mut u8)>::call_once(f, 1)
-    //~^ ERROR: associated type bindings are not allowed here [E0229]
+    //~^ ERROR: associated item constraints are not allowed here [E0229]
     //~| ERROR: mismatched types [E0308]
 }

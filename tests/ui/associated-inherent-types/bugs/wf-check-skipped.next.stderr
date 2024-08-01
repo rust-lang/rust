@@ -1,8 +1,11 @@
-error: the type `Foo::Bar<Vec<[u32]>>` is not well-formed
-  --> $DIR/wf-check-skipped.rs:17:14
+error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
+  --> $DIR/wf-check-skipped.rs:17:25
    |
 LL | fn main() -> Foo::Bar::<Vec<[u32]>> {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |                         ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u32]`
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0277`.

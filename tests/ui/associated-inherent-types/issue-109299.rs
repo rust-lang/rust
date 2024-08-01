@@ -8,6 +8,5 @@ impl Lexer<'d> { //~ ERROR use of undeclared lifetime name `'d`
 }
 
 fn test(_: Lexer::Cursor) {}
-//~^ ERROR: lifetime may not live long enough
 
 fn main() {}

@@ -1,20 +1,22 @@
-use crate::deref_separator::deref_finder;
+use std::fmt;
+
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir_dataflow::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
-use rustc_mir_dataflow::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
+use rustc_mir_dataflow::elaborate_drops::{
+    elaborate_drop, DropElaborator, DropFlagMode, DropFlagState, DropStyle, Unwind,
+};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
-use rustc_mir_dataflow::on_all_children_bits;
-use rustc_mir_dataflow::on_lookup_result_bits;
-use rustc_mir_dataflow::MoveDataParamEnv;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{
+    on_all_children_bits, on_lookup_result_bits, Analysis, MoveDataParamEnv, ResultsCursor,
+};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
-use std::fmt;
+
+use crate::deref_separator::deref_finder;
 
 /// During MIR building, Drop terminators are inserted in every place where a drop may occur.
 /// However, in this phase, the presence of these terminators does not guarantee that a destructor will run,
@@ -33,16 +35,16 @@ use std::fmt;
 /// as it would allow running a destructor on a place behind a reference:
 ///
 /// ```text
-// fn drop_term<T>(t: &mut T) {
-//     mir!(
-//         {
-//             Drop(*t, exit)
-//         }
-//         exit = {
-//             Return()
-//         }
-//     )
-// }
+/// fn drop_term<T>(t: &mut T) {
+///     mir! {
+///         {
+///             Drop(*t, exit)
+///         }
+///         exit = {
+///             Return()
+///         }
+///     }
+/// }
 /// ```
 pub struct ElaborateDrops;
 
@@ -60,7 +62,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
 
-            let mut inits = MaybeInitializedPlaces::new(tcx, body, &env)
+            let mut inits = MaybeInitializedPlaces::new(tcx, body, &env.move_data)
                 .skipping_unreachable_unwind()
                 .into_engine(tcx, body)
                 .pass_name("elaborate_drops")
@@ -68,7 +70,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 .into_results_cursor(body);
             let dead_unwinds = compute_dead_unwinds(body, &mut inits);
 
-            let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
+            let uninits = MaybeUninitializedPlaces::new(tcx, body, &env.move_data)
                 .mark_inactive_variants_as_uninit()
                 .skipping_unreachable_unwind(dead_unwinds)
                 .into_engine(tcx, body)
@@ -97,7 +99,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 #[instrument(level = "trace", skip(body, flow_inits), ret)]
 fn compute_dead_unwinds<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
 ) -> BitSet<BasicBlock> {
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
@@ -118,12 +120,12 @@ fn compute_dead_unwinds<'mir, 'tcx>(
     dead_unwinds
 }
 
-struct InitializationData<'mir, 'tcx> {
-    inits: ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
-    uninits: ResultsCursor<'mir, 'tcx, MaybeUninitializedPlaces<'mir, 'tcx>>,
+struct InitializationData<'a, 'mir, 'tcx> {
+    inits: ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'a, 'mir, 'tcx>>,
+    uninits: ResultsCursor<'mir, 'tcx, MaybeUninitializedPlaces<'a, 'mir, 'tcx>>,
 }
 
-impl InitializationData<'_, '_> {
+impl InitializationData<'_, '_, '_> {
     fn seek_before(&mut self, loc: Location) {
         self.inits.seek_before_primary_effect(loc);
         self.uninits.seek_before_primary_effect(loc);
@@ -134,17 +136,17 @@ impl InitializationData<'_, '_> {
     }
 }
 
-struct Elaborator<'a, 'b, 'tcx> {
-    ctxt: &'a mut ElaborateDropsCtxt<'b, 'tcx>,
+struct Elaborator<'a, 'b, 'mir, 'tcx> {
+    ctxt: &'a mut ElaborateDropsCtxt<'b, 'mir, 'tcx>,
 }
 
-impl fmt::Debug for Elaborator<'_, '_, '_> {
+impl fmt::Debug for Elaborator<'_, '_, '_, '_> {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Ok(())
     }
 }
 
-impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
+impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, '_, 'tcx> {
     type Path = MovePathIndex;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
@@ -238,16 +240,16 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
     }
 }
 
-struct ElaborateDropsCtxt<'a, 'tcx> {
+struct ElaborateDropsCtxt<'a, 'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &'mir Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx>,
-    init_data: InitializationData<'a, 'tcx>,
+    init_data: InitializationData<'a, 'mir, 'tcx>,
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
 }
 
-impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
+impl<'b, 'mir, 'tcx> ElaborateDropsCtxt<'b, 'mir, 'tcx> {
     fn move_data(&self) -> &'b MoveData<'tcx> {
         &self.env.move_data
     }
@@ -441,9 +443,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_for_args(&mut self) {
         let loc = Location::START;
-        rustc_mir_dataflow::drop_flag_effects_for_function_entry(self.body, self.env, |path, ds| {
-            self.set_drop_flag(loc, path, ds);
-        })
+        rustc_mir_dataflow::drop_flag_effects_for_function_entry(
+            self.body,
+            &self.env.move_data,
+            |path, ds| {
+                self.set_drop_flag(loc, path, ds);
+            },
+        )
     }
 
     fn drop_flags_for_locs(&mut self) {
@@ -476,7 +482,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 let loc = Location { block: bb, statement_index: i };
                 rustc_mir_dataflow::drop_flag_effects_for_location(
                     self.body,
-                    self.env,
+                    &self.env.move_data,
                     loc,
                     |path, ds| self.set_drop_flag(loc, path, ds),
                 )

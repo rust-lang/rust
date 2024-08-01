@@ -2,7 +2,7 @@ use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::visitors::{for_each_expr_without_closures, Descend};
 use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
 
         let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, body.value);
 
-        let _: Option<!> = for_each_expr(body.value, |e| {
+        let _: Option<!> = for_each_expr_without_closures(body.value, |e| {
             if let hir::ExprKind::Ret(Some(e)) = &e.kind {
                 let (found_mapping_res, found_filtering_res) = check_expression(cx, arg_id, e);
                 found_mapping |= found_mapping_res;

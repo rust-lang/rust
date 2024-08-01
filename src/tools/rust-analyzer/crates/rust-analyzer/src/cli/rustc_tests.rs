@@ -10,7 +10,10 @@ use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use itertools::Either;
 use profile::StopWatch;
 use project_model::target_data_layout::RustcDataLayoutConfig;
-use project_model::{target_data_layout, CargoConfig, ProjectWorkspace, RustLibSource, Sysroot};
+use project_model::{
+    target_data_layout, CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind,
+    RustLibSource, Sysroot,
+};
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use rustc_hash::FxHashMap;
@@ -66,23 +69,24 @@ impl Tester {
         let cargo_config =
             CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
 
-        let sysroot =
-            Ok(Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env, false)
-                .unwrap());
+        let sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env, false);
         let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(sysroot.as_ref().ok()),
+            RustcDataLayoutConfig::Rustc(&sysroot),
             None,
             &cargo_config.extra_env,
         );
 
-        let workspace = ProjectWorkspace::DetachedFile {
-            file: tmp_file,
+        let workspace = ProjectWorkspace {
+            kind: ProjectWorkspaceKind::DetachedFile {
+                file: ManifestPath::try_from(tmp_file).unwrap(),
+                cargo: None,
+                cargo_config_extra_env: Default::default(),
+            },
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: Default::default(),
-            cargo_script: None,
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
@@ -216,8 +220,8 @@ impl Tester {
             self.pass_count += 1;
         } else {
             println!("{p:?} FAIL");
-            println!("actual   (r-a)   = {:?}", actual);
-            println!("expected (rustc) = {:?}", expected);
+            println!("actual   (r-a)   = {actual:?}");
+            println!("expected (rustc) = {expected:?}");
             self.fail_count += 1;
         }
     }

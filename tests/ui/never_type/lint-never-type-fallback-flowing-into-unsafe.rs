@@ -1,4 +1,9 @@
-//@ check-pass
+//@ revisions: e2015 e2024
+//@[e2015] check-pass
+//@[e2024] check-fail
+//@[e2024] edition:2024
+//@[e2024] compile-flags: -Zunstable-options
+
 use std::{marker, mem, ptr};
 
 fn main() {}
@@ -6,7 +11,10 @@ fn main() {}
 fn _zero() {
     if false {
         unsafe { mem::zeroed() }
-        //~^ warn: never type fallback affects this call to an `unsafe` function
+        //[e2015]~^ warn: never type fallback affects this call to an `unsafe` function
+        //[e2024]~^^ error: never type fallback affects this call to an `unsafe` function
+        //~| warn: this will change its meaning in a future release!
+        //[e2024]~| warning: the type `!` does not permit zero-initialization
     } else {
         return;
     };
@@ -20,7 +28,9 @@ fn _trans() {
         unsafe {
             struct Zst;
             core::mem::transmute(Zst)
-            //~^ warn: never type fallback affects this call to an `unsafe` function
+            //[e2015]~^ warn: never type fallback affects this call to an `unsafe` function
+            //[e2024]~^^ error: never type fallback affects this call to an `unsafe` function
+            //~| warn: this will change its meaning in a future release!
         }
     } else {
         return;
@@ -35,7 +45,9 @@ fn _union() {
         }
 
         unsafe { Union { a: () }.b }
-        //~^ warn: never type fallback affects this union access
+        //[e2015]~^ warn: never type fallback affects this union access
+        //[e2024]~^^ error: never type fallback affects this union access
+        //~| warn: this will change its meaning in a future release!
     } else {
         return;
     };
@@ -44,7 +56,9 @@ fn _union() {
 fn _deref() {
     if false {
         unsafe { *ptr::from_ref(&()).cast() }
-        //~^ warn: never type fallback affects this raw pointer dereference
+        //[e2015]~^ warn: never type fallback affects this raw pointer dereference
+        //[e2024]~^^ error: never type fallback affects this raw pointer dereference
+        //~| warn: this will change its meaning in a future release!
     } else {
         return;
     };
@@ -53,7 +67,9 @@ fn _deref() {
 fn _only_generics() {
     if false {
         unsafe fn internally_create<T>(_: Option<T>) {
-            let _ = mem::zeroed::<T>();
+            unsafe {
+                let _ = mem::zeroed::<T>();
+            }
         }
 
         // We need the option (and unwrap later) to call a function in a way,
@@ -61,7 +77,9 @@ fn _only_generics() {
         let x = None;
 
         unsafe { internally_create(x) }
-        //~^ warn: never type fallback affects this call to an `unsafe` function
+        //[e2015]~^ warn: never type fallback affects this call to an `unsafe` function
+        //[e2024]~^^ error: never type fallback affects this call to an `unsafe` function
+        //~| warn: this will change its meaning in a future release!
 
         x.unwrap()
     } else {
@@ -72,10 +90,14 @@ fn _only_generics() {
 fn _stored_function() {
     if false {
         let zeroed = mem::zeroed;
-        //~^ warn: never type fallback affects this `unsafe` function
+        //[e2015]~^ warn: never type fallback affects this `unsafe` function
+        //[e2024]~^^ error: never type fallback affects this `unsafe` function
+        //~| warn: this will change its meaning in a future release!
 
         unsafe { zeroed() }
-        //~^ warn: never type fallback affects this call to an `unsafe` function
+        //[e2015]~^ warn: never type fallback affects this call to an `unsafe` function
+        //[e2024]~^^ error: never type fallback affects this call to an `unsafe` function
+        //~| warn: this will change its meaning in a future release!
     } else {
         return;
     };
@@ -84,12 +106,16 @@ fn _stored_function() {
 fn _only_generics_stored_function() {
     if false {
         unsafe fn internally_create<T>(_: Option<T>) {
-            let _ = mem::zeroed::<T>();
+            unsafe {
+                let _ = mem::zeroed::<T>();
+            }
         }
 
         let x = None;
         let f = internally_create;
-        //~^ warn: never type fallback affects this `unsafe` function
+        //[e2015]~^ warn: never type fallback affects this `unsafe` function
+        //[e2024]~^^ error: never type fallback affects this `unsafe` function
+        //~| warn: this will change its meaning in a future release!
 
         unsafe { f(x) }
 
@@ -112,7 +138,9 @@ fn _method() {
     if false {
         unsafe {
             S(marker::PhantomData).create_out_of_thin_air()
-            //~^ warn: never type fallback affects this call to an `unsafe` method
+            //[e2015]~^ warn: never type fallback affects this call to an `unsafe` method
+            //[e2024]~^^ error: never type fallback affects this call to an `unsafe` method
+            //~| warn: this will change its meaning in a future release!
         }
     } else {
         return;
@@ -128,7 +156,9 @@ fn _objc() {
     macro_rules! msg_send {
         () => {
             match send_message::<_ /* ?0 */>() {
-                //~^ warn: never type fallback affects this call to an `unsafe` function
+                //[e2015]~^ warn: never type fallback affects this call to an `unsafe` function
+                //[e2024]~^^ error: never type fallback affects this call to an `unsafe` function
+                //~| warn: this will change its meaning in a future release!
                 Ok(x) => x,
                 Err(_) => loop {},
             }

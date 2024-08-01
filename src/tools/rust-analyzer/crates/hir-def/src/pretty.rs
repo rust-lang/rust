@@ -57,7 +57,7 @@ pub(crate) fn print_path(db: &dyn DefDatabase, path: &Path, buf: &mut dyn Write)
         }
         None => match path.kind() {
             PathKind::Plain => {}
-            PathKind::Super(0) => write!(buf, "self")?,
+            &PathKind::SELF => write!(buf, "self")?,
             PathKind::Super(n) => {
                 for i in 0..*n {
                     if i == 0 {

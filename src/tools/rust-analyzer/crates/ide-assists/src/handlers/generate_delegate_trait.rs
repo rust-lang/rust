@@ -17,8 +17,9 @@ use syntax::{
         self,
         edit::{self, AstNodeEdit},
         edit_in_place::AttrsOwnerEdit,
-        make, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericParams, HasName,
-        HasTypeBounds, HasVisibility as astHasVisibility, Path, WherePred,
+        make, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
+        HasGenericParams, HasName, HasTypeBounds, HasVisibility as astHasVisibility, Path,
+        WherePred,
     },
     ted::{self, Position},
     AstNode, NodeOrToken, SmolStr, SyntaxKind,
@@ -758,7 +759,7 @@ fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<Ass
 }
 
 fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Path {
-    make::path_from_text(&format!("{}::{}", qual_path_ty, path_expr_seg))
+    make::path_from_text(&format!("{qual_path_ty}::{path_expr_seg}"))
 }
 
 #[cfg(test)]

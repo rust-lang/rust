@@ -1,15 +1,17 @@
+use std::ops::Not;
+
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
-
-use std::ops::Not;
 
 use super::check_function_signature;
 use crate::errors;
@@ -132,7 +134,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         );
-        let ocx = traits::ObligationCtxt::new(&infcx);
+        let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
         let norm_return_ty = ocx.normalize(&cause, param_env, return_ty);
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.select_all_or_error();
@@ -155,7 +157,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         [],
         expected_return_type,
         false,
-        hir::Unsafety::Normal,
+        hir::Safety::Safe,
         Abi::Rust,
     ));
 
@@ -251,7 +253,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
                 tcx.types.isize,
                 false,
-                hir::Unsafety::Normal,
+                hir::Safety::Safe,
                 Abi::Rust,
             ));
 

@@ -1,10 +1,8 @@
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::mir::{
-    interpret::Scalar,
-    visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor},
-};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
 
@@ -106,7 +104,7 @@ impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
         }
 
         let pointee_ty =
-            pointer_ty.builtin_deref(true).expect("no builtin_deref for an unsafe pointer").ty;
+            pointer_ty.builtin_deref(true).expect("no builtin_deref for an unsafe pointer");
         // Ideally we'd support this in the future, but for now we are limited to sized types.
         if !pointee_ty.is_sized(self.tcx, self.param_env) {
             debug!("Unsafe pointer, but pointee is not known to be sized: {:?}", pointer_ty);

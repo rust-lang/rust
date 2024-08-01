@@ -98,8 +98,10 @@ global_asm!("", options(FOO));
 //~^ ERROR expected one of
 global_asm!("", options(nomem FOO));
 //~^ ERROR expected one of
+//~| ERROR the `nomem` option cannot be used with `global_asm!`
 global_asm!("", options(nomem, FOO));
 //~^ ERROR expected one of
+//~| ERROR the `nomem` option cannot be used with `global_asm!`
 global_asm!("{}", options(), const FOO);
 global_asm!("", clobber_abi(FOO));
 //~^ ERROR expected string literal

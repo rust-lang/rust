@@ -4,7 +4,7 @@
  * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
  * For Thin LTO, this might be helpful:
  * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
- * Or the new incremental LTO?
+ * Or the new incremental LTO (https://www.phoronix.com/news/GCC-Incremental-LTO-Patches)?
  *
  * Maybe some missing optizations enabled by rustc's LTO is in there: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
  * Like -fipa-icf (should be already enabled) and maybe -fdevirtualize-at-ltrans.
@@ -16,18 +16,13 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(
-    rustc_private,
-    decl_macro,
-    never_type,
-    trusted_len,
-    hash_raw_entry
-)]
+#![feature(rustc_private, decl_macro, never_type, trusted_len, hash_raw_entry, let_chains)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
+#![allow(clippy::needless_lifetimes)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
@@ -79,17 +74,16 @@ mod type_of;
 
 use std::any::Any;
 use std::fmt::Debug;
+use std::ops::Deref;
 #[cfg(not(feature = "master"))]
 use std::sync::atomic::AtomicBool;
 #[cfg(not(feature = "master"))]
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
+use back::lto::{ThinBuffer, ThinData};
 use errors::LTONotSupported;
-#[cfg(not(feature = "master"))]
-use gccjit::CType;
-use gccjit::{Context, OptimizationLevel};
+use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -98,13 +92,11 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::codegen_crate;
-use rustc_codegen_ssa::traits::{
-    CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods,
-};
+use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::{DiagCtxt, ErrorGuaranteed};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -145,6 +137,10 @@ impl TargetInfo {
     fn supports_128bit_int(&self) -> bool {
         self.supports_128bit_integers.load(Ordering::SeqCst)
     }
+
+    fn supports_target_dependent_type(&self, _typ: CType) -> bool {
+        false
+    }
 }
 
 #[derive(Clone)]
@@ -165,6 +161,10 @@ impl LockedTargetInfo {
 
     fn supports_128bit_int(&self) -> bool {
         self.info.lock().expect("lock").supports_128bit_int()
+    }
+
+    fn supports_target_dependent_type(&self, typ: CType) -> bool {
+        self.info.lock().expect("lock").supports_target_dependent_type(typ)
     }
 }
 
@@ -194,6 +194,7 @@ impl CodegenBackend for GccCodegenBackend {
 
         #[cfg(feature = "master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+
         if sess.lto() == Lto::Thin {
             sess.dcx().emit_warn(LTONotSupported {});
         }
@@ -299,7 +300,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module {
         let mut mods = GccContext {
-            context: new_context(tcx),
+            context: Arc::new(SyncContext::new(new_context(tcx))),
             should_combine_object_files: false,
             temp_dir: None,
         };
@@ -329,31 +330,42 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 }
 
-pub struct ThinBuffer;
-
-impl ThinBufferMethods for ThinBuffer {
-    fn data(&self) -> &[u8] {
-        unimplemented!();
-    }
-}
-
 pub struct GccContext {
-    context: Context<'static>,
+    context: Arc<SyncContext>,
     should_combine_object_files: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }
 
-unsafe impl Send for GccContext {}
-// FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm". Try to disable it here.
-unsafe impl Sync for GccContext {}
+struct SyncContext {
+    context: Context<'static>,
+}
+
+impl SyncContext {
+    fn new(context: Context<'static>) -> Self {
+        Self { context }
+    }
+}
+
+impl Deref for SyncContext {
+    type Target = Context<'static>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.context
+    }
+}
+
+unsafe impl Send for SyncContext {}
+// FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm".
+// TODO: disable it here by returing false in CodegenBackend::supports_parallel().
+unsafe impl Sync for SyncContext {}
 
 impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
     type TargetMachineError = ();
     type ModuleBuffer = ModuleBuffer;
-    type ThinData = ();
+    type ThinData = ThinData;
     type ThinBuffer = ThinBuffer;
 
     fn run_fat_lto(
@@ -365,11 +377,11 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn run_thin_lto(
-        _cgcx: &CodegenContext<Self>,
-        _modules: Vec<(String, Self::ThinBuffer)>,
-        _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        cgcx: &CodegenContext<Self>,
+        modules: Vec<(String, Self::ThinBuffer)>,
+        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
-        unimplemented!();
+        back::lto::run_thin(cgcx, modules, cached_modules)
     }
 
     fn print_pass_timings(&self) {
@@ -382,7 +394,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     unsafe fn optimize(
         _cgcx: &CodegenContext<Self>,
-        _dcx: &DiagCtxt,
+        _dcx: DiagCtxtHandle<'_>,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
@@ -399,23 +411,26 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     unsafe fn optimize_thin(
-        _cgcx: &CodegenContext<Self>,
-        _thin: ThinModule<Self>,
+        cgcx: &CodegenContext<Self>,
+        thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        unimplemented!();
+        back::lto::optimize_thin_module(thin, cgcx)
     }
 
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, dcx, module, config)
     }
 
-    fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
-        unimplemented!();
+    fn prepare_thin(
+        module: ModuleCodegen<Self::Module>,
+        emit_summary: bool,
+    ) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(module, emit_summary)
     }
 
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
@@ -424,7 +439,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn run_link(
         cgcx: &CodegenContext<Self>,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
@@ -436,7 +451,8 @@ impl WriteBackendMethods for GccCodegenBackend {
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     #[cfg(feature = "master")]
     let info = {
-        // Check whether the target supports 128-bit integers.
+        // Check whether the target supports 128-bit integers, and sized floating point types (like
+        // Float16).
         let context = Context::default();
         Arc::new(Mutex::new(IntoDynSyncSend(context.get_target_info())))
     };
@@ -466,6 +482,7 @@ pub fn target_features(
     allow_unstable: bool,
     target_info: &LockedTargetInfo,
 ) -> Vec<Symbol> {
+    // TODO(antoyo): use global_gcc_features.
     sess.target
         .supported_target_features()
         .iter()
@@ -476,8 +493,12 @@ pub fn target_features(
                 None
             }
         })
-        .filter(|_feature| {
-            target_info.cpu_supports(_feature)
+        .filter(|feature| {
+            // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
+            if *feature == "neon" {
+                return false;
+            }
+            target_info.cpu_supports(feature)
             /*
               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
               avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,

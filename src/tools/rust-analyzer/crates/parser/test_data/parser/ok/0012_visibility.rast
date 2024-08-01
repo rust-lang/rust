@@ -39,16 +39,15 @@ SOURCE_FILE
     NAME
       IDENT "m"
     TOKEN_TREE
-      TOKEN_TREE
-        L_PAREN "("
-        DOLLAR "$"
-        COLON ":"
-        IDENT "ident"
-        R_PAREN ")"
-      WHITESPACE " "
-      TOKEN_TREE
-        L_CURLY "{"
-        R_CURLY "}"
+      L_PAREN "("
+      DOLLAR "$"
+      COLON ":"
+      IDENT "ident"
+      R_PAREN ")"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
   WHITESPACE "\n"
   FN
     VISIBILITY

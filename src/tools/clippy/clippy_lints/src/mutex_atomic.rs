@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `Mutex<X>` where an atomic will do.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Using a mutex just to make access to a plain bool or
     /// reference sequential is shooting flies with cannons.
     /// `std::sync::atomic::AtomicBool` and `std::sync::atomic::AtomicPtr` are leaner and

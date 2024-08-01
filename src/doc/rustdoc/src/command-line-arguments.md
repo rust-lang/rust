@@ -273,7 +273,7 @@ will be added.
 
 When rendering Rust files, this flag is ignored.
 
-## `--html-in-header`: include more HTML in <head>
+## `--html-in-header`: include more HTML in `<head>`
 
 Using this flag looks like this:
 
@@ -416,6 +416,12 @@ $ rustdoc src/lib.rs --crate-version 1.3.37
 When `rustdoc` receives this flag, it will print an extra "Version (version)" into the sidebar of
 the crate root's docs. You can use this flag to differentiate between different versions of your
 library's documentation.
+
+## `-`: load source code from the standard input
+
+If you specify `-` as the INPUT on the command line, then `rustdoc` will read the
+source code from stdin (standard input stream) until the EOF, instead of the file
+system with an otherwise specified path.
 
 ## `@path`: load command-line flags from a path
 

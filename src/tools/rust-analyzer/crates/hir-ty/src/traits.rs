@@ -1,5 +1,6 @@
 //! Trait solving using Chalk.
 
+use core::fmt;
 use std::env::var;
 
 use chalk_ir::{fold::TypeFoldable, DebruijnIndex, GoalData};
@@ -107,7 +108,7 @@ pub(crate) fn trait_solve_query(
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
         _ => "??".to_owned(),
     };
-    let _p = tracing::span!(tracing::Level::INFO, "trait_solve_query", ?detail).entered();
+    let _p = tracing::info_span!("trait_solve_query", ?detail).entered();
     tracing::info!("trait_solve_query({:?})", goal.value.goal);
 
     if let GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
@@ -139,7 +140,7 @@ fn solve(
     block: Option<BlockId>,
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
-    let _p = tracing::span!(tracing::Level::INFO, "solve", ?krate, ?block).entered();
+    let _p = tracing::info_span!("solve", ?krate, ?block).entered();
     let context = ChalkContext { db, krate, block };
     tracing::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
@@ -209,7 +210,25 @@ pub enum FnTrait {
     Fn,
 }
 
+impl fmt::Display for FnTrait {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FnTrait::FnOnce => write!(f, "FnOnce"),
+            FnTrait::FnMut => write!(f, "FnMut"),
+            FnTrait::Fn => write!(f, "Fn"),
+        }
+    }
+}
+
 impl FnTrait {
+    pub const fn function_name(&self) -> &'static str {
+        match self {
+            FnTrait::FnOnce => "call_once",
+            FnTrait::FnMut => "call_mut",
+            FnTrait::Fn => "call",
+        }
+    }
+
     const fn lang_item(self) -> LangItem {
         match self {
             FnTrait::FnOnce => LangItem::FnOnce,

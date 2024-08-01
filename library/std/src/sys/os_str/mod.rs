@@ -1,3 +1,5 @@
+#![forbid(unsafe_op_in_unsafe_fn)]
+
 cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "windows",

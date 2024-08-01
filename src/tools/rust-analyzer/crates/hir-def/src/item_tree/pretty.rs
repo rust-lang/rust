@@ -8,8 +8,8 @@ use crate::{
     generics::{TypeOrConstParamData, WherePredicate, WherePredicateTypeTarget},
     item_tree::{
         AttrOwner, Const, DefDatabase, Enum, ExternBlock, ExternCrate, Field, FieldAstId, Fields,
-        FileItemTreeId, FnFlags, Function, GenericParams, Impl, Interned, ItemTree, Macro2,
-        MacroCall, MacroRules, Mod, ModItem, ModKind, Param, ParamAstId, Path, RawAttrs,
+        FileItemTreeId, FnFlags, Function, GenericModItem, GenericParams, Impl, Interned, ItemTree,
+        Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, Param, ParamAstId, Path, RawAttrs,
         RawVisibilityId, Static, Struct, Trait, TraitAlias, TypeAlias, TypeBound, TypeRef, Union,
         Use, UseTree, UseTreeKind, Variant,
     },
@@ -276,7 +276,7 @@ impl Printer<'_> {
                     w!(self, "extern \"{}\" ", abi);
                 }
                 w!(self, "fn {}", name.display(self.db.upcast()));
-                self.print_generic_params(explicit_generic_params);
+                self.print_generic_params(explicit_generic_params, it.into());
                 w!(self, "(");
                 if !params.is_empty() {
                     self.indented(|this| {
@@ -316,7 +316,7 @@ impl Printer<'_> {
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "struct {}", name.display(self.db.upcast()));
-                self.print_generic_params(generic_params);
+                self.print_generic_params(generic_params, it.into());
                 self.print_fields_and_where_clause(fields, generic_params);
                 if matches!(fields, Fields::Record(_)) {
                     wln!(self);
@@ -329,7 +329,7 @@ impl Printer<'_> {
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "union {}", name.display(self.db.upcast()));
-                self.print_generic_params(generic_params);
+                self.print_generic_params(generic_params, it.into());
                 self.print_fields_and_where_clause(fields, generic_params);
                 if matches!(fields, Fields::Record(_)) {
                     wln!(self);
@@ -342,7 +342,7 @@ impl Printer<'_> {
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "enum {}", name.display(self.db.upcast()));
-                self.print_generic_params(generic_params);
+                self.print_generic_params(generic_params, it.into());
                 self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for variant in FileItemTreeId::range_iter(variants.clone()) {
@@ -394,7 +394,7 @@ impl Printer<'_> {
                     w!(self, "auto ");
                 }
                 w!(self, "trait {}", name.display(self.db.upcast()));
-                self.print_generic_params(generic_params);
+                self.print_generic_params(generic_params, it.into());
                 self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for item in &**items {
@@ -408,7 +408,7 @@ impl Printer<'_> {
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "trait {}", name.display(self.db.upcast()));
-                self.print_generic_params(generic_params);
+                self.print_generic_params(generic_params, it.into());
                 w!(self, " = ");
                 self.print_where_clause(generic_params);
                 w!(self, ";");
@@ -429,7 +429,7 @@ impl Printer<'_> {
                     w!(self, "unsafe");
                 }
                 w!(self, "impl");
-                self.print_generic_params(generic_params);
+                self.print_generic_params(generic_params, it.into());
                 w!(self, " ");
                 if *is_negative {
                     w!(self, "!");
@@ -453,7 +453,7 @@ impl Printer<'_> {
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "type {}", name.display(self.db.upcast()));
-                self.print_generic_params(generic_params);
+                self.print_generic_params(generic_params, it.into());
                 if !bounds.is_empty() {
                     w!(self, ": ");
                     self.print_type_bounds(bounds);
@@ -525,27 +525,27 @@ impl Printer<'_> {
         print_path(self.db, path, self).unwrap();
     }
 
-    fn print_generic_params(&mut self, params: &GenericParams) {
+    fn print_generic_params(&mut self, params: &GenericParams, parent: GenericModItem) {
         if params.is_empty() {
             return;
         }
 
         w!(self, "<");
         let mut first = true;
-        for (idx, lt) in params.lifetimes.iter() {
+        for (idx, lt) in params.iter_lt() {
             if !first {
                 w!(self, ", ");
             }
             first = false;
-            self.print_attrs_of(idx, " ");
+            self.print_attrs_of(AttrOwner::LifetimeParamData(parent, idx), " ");
             w!(self, "{}", lt.name.display(self.db.upcast()));
         }
-        for (idx, x) in params.type_or_consts.iter() {
+        for (idx, x) in params.iter_type_or_consts() {
             if !first {
                 w!(self, ", ");
             }
             first = false;
-            self.print_attrs_of(idx, " ");
+            self.print_attrs_of(AttrOwner::TypeOrConstParamData(parent, idx), " ");
             match x {
                 TypeOrConstParamData::TypeParamData(ty) => match &ty.name {
                     Some(name) => w!(self, "{}", name.display(self.db.upcast())),
@@ -570,13 +570,13 @@ impl Printer<'_> {
     }
 
     fn print_where_clause(&mut self, params: &GenericParams) -> bool {
-        if params.where_predicates.is_empty() {
+        if params.where_predicates().next().is_none() {
             return false;
         }
 
         w!(self, "\nwhere");
         self.indented(|this| {
-            for (i, pred) in params.where_predicates.iter().enumerate() {
+            for (i, pred) in params.where_predicates().enumerate() {
                 if i != 0 {
                     wln!(this, ",");
                 }
@@ -607,12 +607,10 @@ impl Printer<'_> {
 
                 match target {
                     WherePredicateTypeTarget::TypeRef(ty) => this.print_type_ref(ty),
-                    WherePredicateTypeTarget::TypeOrConstParam(id) => {
-                        match &params.type_or_consts[*id].name() {
-                            Some(name) => w!(this, "{}", name.display(self.db.upcast())),
-                            None => w!(this, "_anon_{}", id.into_raw()),
-                        }
-                    }
+                    WherePredicateTypeTarget::TypeOrConstParam(id) => match params[*id].name() {
+                        Some(name) => w!(this, "{}", name.display(self.db.upcast())),
+                        None => w!(this, "_anon_{}", id.into_raw()),
+                    },
                 }
                 w!(this, ": ");
                 this.print_type_bounds(std::slice::from_ref(bound));

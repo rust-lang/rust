@@ -61,7 +61,8 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 /// ```
 pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, msg.into(), |diag| {
+    cx.span_lint(lint, sp, |diag| {
+        diag.primary_message(msg);
         docs_link(diag, lint);
     });
 }
@@ -109,7 +110,8 @@ pub fn span_lint_and_help<T: LintContext>(
     help: impl Into<SubdiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, msg.into(), |diag| {
+    cx.span_lint(lint, span, |diag| {
+        diag.primary_message(msg);
         if let Some(help_span) = help_span {
             diag.span_help(help_span, help.into());
         } else {
@@ -165,7 +167,8 @@ pub fn span_lint_and_note<T: LintContext>(
     note: impl Into<SubdiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, msg.into(), |diag| {
+    cx.span_lint(lint, span, |diag| {
+        diag.primary_message(msg);
         if let Some(note_span) = note_span {
             diag.span_note(note_span, note.into());
         } else {
@@ -201,7 +204,8 @@ where
     F: FnOnce(&mut Diag<'_, ()>),
 {
     #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, msg, |diag| {
+    cx.span_lint(lint, sp, |diag| {
+        diag.primary_message(msg);
         f(diag);
         docs_link(diag, lint);
     });
@@ -233,7 +237,8 @@ where
 /// the `#[allow]` will work.
 pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: impl Into<DiagMessage>) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, msg.into(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, |diag| {
+        diag.primary_message(msg);
         docs_link(diag, lint);
     });
 }
@@ -271,7 +276,8 @@ pub fn span_lint_hir_and_then(
     f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, msg.into(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, |diag| {
+        diag.primary_message(msg);
         f(diag);
         docs_link(diag, lint);
     });

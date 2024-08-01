@@ -1,5 +1,8 @@
 //! Term search assist
-use hir::term_search::TermSearchCtx;
+use hir::{
+    term_search::{TermSearchConfig, TermSearchCtx},
+    ImportPathConfig,
+};
 use ide_db::{
     assists::{AssistId, AssistKind, GroupLabel},
     famous_defs::FamousDefs,
@@ -34,7 +37,11 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         sema: &ctx.sema,
         scope: &scope,
         goal: target_ty,
-        config: Default::default(),
+        config: TermSearchConfig {
+            fuel: ctx.config.term_search_fuel,
+            enable_borrowcheck: ctx.config.term_search_borrowck,
+            ..Default::default()
+        },
     };
     let paths = hir::term_search::term_search(&term_search_ctx);
 
@@ -50,8 +57,11 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
             path.gen_source_code(
                 &scope,
                 &mut formatter,
-                ctx.config.prefer_no_std,
-                ctx.config.prefer_prelude,
+                ImportPathConfig {
+                    prefer_no_std: ctx.config.prefer_no_std,
+                    prefer_prelude: ctx.config.prefer_prelude,
+                    prefer_absolute: ctx.config.prefer_absolute,
+                },
             )
             .ok()
         })
@@ -139,7 +149,7 @@ fn f() { let a = A { x: 1, y: true }; let b: i32 = a.x; }"#,
             term_search,
             r#"//- minicore: todo, unimplemented, option
 fn f() { let a: i32 = 1; let b: Option<i32> = todo$0!(); }"#,
-            r#"fn f() { let a: i32 = 1; let b: Option<i32> = None; }"#,
+            r#"fn f() { let a: i32 = 1; let b: Option<i32> = Some(a); }"#,
         )
     }
 
@@ -271,6 +281,48 @@ fn f() { let a = 1; let b = 0.0; let c: (i32, f64) = todo$0!(); }"#,
             r#"//- minicore: todo, unimplemented
 fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = todo$0!(); }"#,
             r#"fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = (a, (a, b)); }"#,
+        )
+    }
+
+    #[test]
+    fn test_tuple_struct_with_generics() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+struct Foo<T>(T);
+fn f() { let a = 1; let b: Foo<i32> = todo$0!(); }"#,
+            r#"struct Foo<T>(T);
+fn f() { let a = 1; let b: Foo<i32> = Foo(a); }"#,
+        )
+    }
+
+    #[test]
+    fn test_struct_assoc_item() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+struct Foo;
+impl Foo { const FOO: i32 = 0; }
+fn f() { let a: i32 = todo$0!(); }"#,
+            r#"struct Foo;
+impl Foo { const FOO: i32 = 0; }
+fn f() { let a: i32 = Foo::FOO; }"#,
+        )
+    }
+
+    #[test]
+    fn test_trait_assoc_item() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+struct Foo;
+trait Bar { const BAR: i32; }
+impl Bar for Foo { const BAR: i32 = 0; }
+fn f() { let a: i32 = todo$0!(); }"#,
+            r#"struct Foo;
+trait Bar { const BAR: i32; }
+impl Bar for Foo { const BAR: i32 = 0; }
+fn f() { let a: i32 = Foo::BAR; }"#,
         )
     }
 }

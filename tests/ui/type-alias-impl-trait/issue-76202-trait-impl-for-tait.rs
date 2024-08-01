@@ -7,10 +7,17 @@
 //@ check-pass
 #![feature(type_alias_impl_trait)]
 
+mod g {
+    pub trait Dummy {}
+    impl Dummy for () {}
+    pub type F = impl Dummy;
+    pub fn f() -> F {}
+}
+use g::*;
+
 trait Test {
     fn test(self);
 }
-
 
 impl Test for define::F {
     fn test(self) {}

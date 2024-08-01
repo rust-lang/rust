@@ -4,8 +4,7 @@ codegen_ssa_add_native_library = failed to add native library {$library_path}: {
 
 codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
 
-codegen_ssa_archive_build_failure =
-    failed to build archive: {$error}
+codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
@@ -26,8 +25,6 @@ codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$e
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
-
-codegen_ssa_expected_coverage_symbol = expected `coverage(off)` or `coverage(on)`
 
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
@@ -200,7 +197,7 @@ codegen_ssa_read_file = failed to read file: {$message}
 
 codegen_ssa_repair_vs_build_tools = the Visual Studio build tools may need to be repaired using the Visual Studio installer
 
-codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib: {$error}
+codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib at `{$path}`: {$error}
 
 codegen_ssa_rlib_incompatible_dependency_formats = `{$ty1}` and `{$ty2}` do not have equivalent dependency formats (`{$list1}` vs `{$list2}`)
 
@@ -211,6 +208,8 @@ codegen_ssa_rlib_not_found = could not find rlib for: `{$crate_name}`
 codegen_ssa_rlib_only_rmeta_found = could not find rlib for: `{$crate_name}`, found rmeta (metadata) file
 
 codegen_ssa_select_cpp_build_tool_workload = in the Visual Studio installer, ensure the "C++ build tools" workload is selected
+
+codegen_ssa_self_contained_linker_missing = the self-contained linker was requested, but it wasn't found in the target's sysroot, or in rustc's sysroot
 
 codegen_ssa_shuffle_indices_evaluation = could not evaluate shuffle_indices at compile time
 

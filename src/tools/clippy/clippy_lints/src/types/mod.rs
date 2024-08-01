@@ -9,6 +9,7 @@ mod type_complexity;
 mod utils;
 mod vec_box;
 
+use clippy_config::Conf;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -217,7 +218,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `Rc<T>` and `Arc<T>` when `T` is a mutable buffer type such as `String` or `Vec`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Expressions such as `Rc<String>` usually have no advantage over `Rc<str>`, since
     /// it is larger and involves an extra level of indirection, and doesn't implement `Borrow<str>`.
     ///
@@ -274,7 +275,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `Rc<Mutex<T>>`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// `Rc` is used in single thread and `Mutex` is used in multi thread.
     /// Consider using `Rc<RefCell<T>>` in single thread or `Arc<Mutex<T>>` in multi thread.
     ///
@@ -446,11 +447,11 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 }
 
 impl Types {
-    pub fn new(vec_box_size_threshold: u64, type_complexity_threshold: u64, avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            vec_box_size_threshold,
-            type_complexity_threshold,
-            avoid_breaking_exported_api,
+            vec_box_size_threshold: conf.vec_box_size_threshold,
+            type_complexity_threshold: conf.type_complexity_threshold,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
         }
     }
 

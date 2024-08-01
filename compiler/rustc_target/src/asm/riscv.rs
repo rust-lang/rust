@@ -1,8 +1,10 @@
-use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use crate::spec::{RelocModel, Target};
+use std::fmt;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::{sym, Symbol};
-use std::fmt;
+
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
+use crate::spec::{RelocModel, Target};
 
 def_reg_class! {
     RiscV RiscVInlineAsmRegClass {
@@ -40,12 +42,13 @@ impl RiscVInlineAsmRegClass {
         match self {
             Self::reg => {
                 if arch == InlineAsmArch::RiscV64 {
-                    types! { _: I8, I16, I32, I64, F32, F64; }
+                    types! { _: I8, I16, I32, I64, F16, F32, F64; }
                 } else {
-                    types! { _: I8, I16, I32, F32; }
+                    types! { _: I8, I16, I32, F16, F32; }
                 }
             }
-            Self::freg => types! { f: F32; d: F64; },
+            // FIXME(f16_f128): Add `q: F128;` once LLVM support the `Q` extension.
+            Self::freg => types! { f: F16, F32; d: F64; },
             Self::vreg => &[],
         }
     }

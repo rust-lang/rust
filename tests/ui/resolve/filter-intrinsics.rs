@@ -1,6 +1,6 @@
 fn main() {
-    // Should suggest only `std::mem::size_of`
-    let _ = size_of::<usize>();
+    // Should suggest only `std::mem::transmute`
+    let _ = transmute::<usize>();
     //~^ ERROR cannot find
 
     // Should suggest `std::intrinsics::fabsf64`,

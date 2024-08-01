@@ -6,8 +6,8 @@
 use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 
 use super::terms::VarianceTerm::*;
 use super::terms::*;
@@ -98,7 +98,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         debug!("build_constraints_for_item({})", tcx.def_path_str(def_id));
 
         // Skip items with no generics - there's nothing to infer in them.
-        if tcx.generics_of(def_id).count() == 0 {
+        if tcx.generics_of(def_id).is_empty() {
             return;
         }
 

@@ -3,6 +3,7 @@ use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
 use walkdir::WalkDir;
 
 mod groups;
@@ -84,8 +85,8 @@ impl Lint {
         for &expected in &["### Example", "### Explanation", "{{produces}}"] {
             if expected == "{{produces}}" && self.is_ignored() {
                 if self.doc_contains("{{produces}}") {
-                    return Err(format!(
-                        "the lint example has `ignore`, but also contains the {{{{produces}}}} marker\n\
+                    return Err(
+                        "the lint example has `ignore`, but also contains the {{produces}} marker\n\
                         \n\
                         The documentation generator cannot generate the example output when the \
                         example is ignored.\n\
@@ -111,7 +112,7 @@ impl Lint {
                         Replacing the output with the text of the example you \
                         compiled manually yourself.\n\
                         "
-                    ).into());
+                    .into());
                 }
                 continue;
             }
@@ -441,10 +442,19 @@ impl<'a> LintExtractor<'a> {
         fs::write(&tempfile, source)
             .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
         let mut cmd = Command::new(self.rustc_path);
-        if options.contains(&"edition2015") {
-            cmd.arg("--edition=2015");
-        } else {
+        if options.contains(&"edition2024") {
+            cmd.arg("--edition=2024");
+        } else if options.contains(&"edition2021") {
+            cmd.arg("--edition=2021");
+        } else if options.contains(&"edition2018") {
             cmd.arg("--edition=2018");
+        } else if options.contains(&"edition2015") {
+            cmd.arg("--edition=2015");
+        } else if options.contains(&"edition") {
+            panic!("lint-docs: unknown edition");
+        } else {
+            // defaults to latest edition
+            cmd.arg("--edition=2021");
         }
         cmd.arg("--error-format=json");
         cmd.arg("--target").arg(self.rustc_target);
@@ -510,11 +520,11 @@ impl<'a> LintExtractor<'a> {
         let mut these_lints: Vec<_> = lints.iter().filter(|lint| lint.level == level).collect();
         these_lints.sort_unstable_by_key(|lint| &lint.name);
         for lint in &these_lints {
-            write!(result, "* [`{}`](#{})\n", lint.name, lint.name.replace("_", "-")).unwrap();
+            writeln!(result, "* [`{}`](#{})", lint.name, lint.name.replace('_', "-")).unwrap();
         }
         result.push('\n');
         for lint in &these_lints {
-            write!(result, "## {}\n\n", lint.name.replace("_", "-")).unwrap();
+            write!(result, "## {}\n\n", lint.name.replace('_', "-")).unwrap();
             for line in &lint.doc {
                 result.push_str(line);
                 result.push('\n');
@@ -523,7 +533,7 @@ impl<'a> LintExtractor<'a> {
         }
         add_rename_redirect(level, &mut result);
         let out_path = self.out_path.join("listing").join(level.doc_filename());
-        // Delete the output because rustbuild uses hard links in its copies.
+        // Delete the output because bootstrap uses hard links in its copies.
         let _ = fs::remove_file(&out_path);
         fs::write(&out_path, result)
             .map_err(|e| format!("could not write to {}: {}", out_path.display(), e))?;
@@ -574,7 +584,7 @@ fn add_rename_redirect(level: Level, output: &mut String) {
             let filename = level.doc_filename().replace(".md", ".html");
             output.push_str(RENAME_START);
             for (from, to) in *names {
-                write!(output, "        \"#{from}\": \"{filename}#{to}\",\n").unwrap();
+                writeln!(output, "        \"#{from}\": \"{filename}#{to}\",").unwrap();
             }
             output.push_str(RENAME_END);
         }

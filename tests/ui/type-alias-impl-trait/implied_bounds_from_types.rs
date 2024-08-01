@@ -1,7 +1,11 @@
 #![feature(type_alias_impl_trait)]
 
-type WithLifetime<T> = impl Equals<SelfType = ()>;
-fn _defining_use<T>() -> WithLifetime<T> {}
+mod foo {
+    use super::Equals;
+    pub type WithLifetime<T> = impl Equals<SelfType = ()>;
+    fn _defining_use<T>() -> WithLifetime<T> {}
+}
+use foo::WithLifetime;
 
 trait Convert<'a> {
     type Witness;
@@ -12,7 +16,6 @@ impl<'a> Convert<'a> for () {
     type Witness = WithLifetime<&'a ()>;
 
     fn convert<'b, T: ?Sized>(_proof: &'b WithLifetime<&'a ()>, x: &'a T) -> &'b T {
-        //~^ ERROR non-defining opaque type use
         // compiler used to think it gets to assume 'a: 'b here because
         // of the `&'b WithLifetime<&'a ()>` argument
         x

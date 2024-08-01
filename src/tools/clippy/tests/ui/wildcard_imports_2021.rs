@@ -199,6 +199,7 @@ mod super_imports {
         }
     }
 
+    #[cfg(test)]
     mod test_should_pass {
         use super::*;
 
@@ -207,6 +208,7 @@ mod super_imports {
         }
     }
 
+    #[cfg(test)]
     mod test_should_pass_inside_function {
         fn with_super_inside_function() {
             use super::*;
@@ -214,6 +216,7 @@ mod super_imports {
         }
     }
 
+    #[cfg(test)]
     mod test_should_pass_further_inside {
         fn insidefoo() {}
         mod inner {

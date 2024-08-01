@@ -2,9 +2,12 @@ error[E0529]: expected an array or slice, found `Vec<Struct>`
   --> $DIR/suppress-consider-slicing-issue-120605.rs:7:16
    |
 LL |         if let [Struct { a: [] }] = &self.a {
-   |                ^^^^^^^^^^^^^^^^^^   ------- help: consider slicing here: `&self.a[..]`
-   |                |
-   |                pattern cannot match with input type `Vec<Struct>`
+   |                ^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Vec<Struct>`
+   |
+help: consider slicing here
+   |
+LL |         if let [Struct { a: [] }] = &self.a[..] {
+   |                                            ++++
 
 error[E0529]: expected an array or slice, found `Vec<Struct>`
   --> $DIR/suppress-consider-slicing-issue-120605.rs:7:29

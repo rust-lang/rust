@@ -213,9 +213,9 @@
 //! [array]: prim@array
 //! [slice]: prim@slice
 
-#![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
+#![cfg_attr(not(restricted_std), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(
-    feature = "restricted-std",
+    restricted_std,
     unstable(
         feature = "restricted_std",
         issue = "none",
@@ -252,7 +252,9 @@
 #![allow(internal_features)]
 #![deny(rustc::existing_doc_keyword)]
 #![deny(fuzzy_provenance_casts)]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![allow(rustdoc::redundant_explicit_links)]
+#![warn(rustdoc::unescaped_backticks)]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
@@ -266,6 +268,7 @@
 )]
 #![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
 #![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
+#![cfg_attr(target_arch = "wasm64", feature(simd_wasm64))]
 #![cfg_attr(
     all(any(target_arch = "x86_64", target_arch = "x86"), target_os = "uefi"),
     feature(stdarch_x86_has_cpuid)
@@ -278,13 +281,11 @@
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
-#![feature(c_unwind)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]
 #![feature(const_mut_refs)]
-#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -292,6 +293,7 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(extended_varargs_abi_support)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
@@ -324,7 +326,6 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
-#![feature(error_in_core)]
 #![feature(error_iter)]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
@@ -336,13 +337,10 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
-#![feature(hint_assert_unchecked)]
 #![feature(ip)]
 #![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]
-#![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
@@ -395,7 +393,6 @@
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
 #![feature(get_many_mut)]
-#![feature(lazy_cell)]
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]
@@ -410,8 +407,6 @@
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
-#![feature(const_maybe_uninit_uninit_array)]
-#![feature(const_waker)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
@@ -435,6 +430,7 @@ extern crate alloc as alloc_crate;
 // so include it here even if it's unused.
 #[doc(masked)]
 #[allow(unused_extern_crates)]
+#[cfg(not(all(windows, target_env = "msvc")))]
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
@@ -474,25 +470,6 @@ pub mod rt;
 // The Rust prelude
 pub mod prelude;
 
-// Public module declarations and re-exports
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::borrow;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::boxed;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::fmt;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::format;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::rc;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::slice;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::str;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::string;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "core_array", since = "1.36.0")]
@@ -570,6 +547,25 @@ pub use core::u8;
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;
 
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::borrow;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::boxed;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::fmt;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::format;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::rc;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::slice;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::str;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::string;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::vec;
+
 #[unstable(feature = "f128", issue = "116909")]
 pub mod f128;
 #[unstable(feature = "f16", issue = "116909")]
@@ -595,6 +591,8 @@ pub mod panic;
 #[unstable(feature = "core_pattern_types", issue = "none")]
 pub mod pat;
 pub mod path;
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+pub mod pipe;
 pub mod process;
 pub mod sync;
 pub mod time;
@@ -612,9 +610,10 @@ pub mod simd {
     #![doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 
     #[doc(inline)]
-    pub use crate::std_float::StdFloat;
-    #[doc(inline)]
     pub use core::simd::*;
+
+    #[doc(inline)]
+    pub use crate::std_float::StdFloat;
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -622,12 +621,11 @@ pub mod task {
     //! Types and Traits for working with asynchronous tasks.
 
     #[doc(inline)]
-    #[stable(feature = "futures_api", since = "1.36.0")]
-    pub use core::task::*;
-
-    #[doc(inline)]
     #[stable(feature = "wake_trait", since = "1.51.0")]
     pub use alloc::task::*;
+    #[doc(inline)]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub use core::task::*;
 }
 
 #[doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
@@ -669,17 +667,20 @@ pub mod alloc;
 mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
+#[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
 // Re-export macros defined in core.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
-pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, todo, r#try,
-    unimplemented, unreachable, write, writeln,
-};
-
+#[unstable(feature = "cfg_match", issue = "115585")]
+pub use core::cfg_match;
+#[unstable(
+    feature = "concat_bytes",
+    issue = "87555",
+    reason = "`concat_bytes` is not stable enough for use and is subject to change"
+)]
+pub use core::concat_bytes;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use core::primitive;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
@@ -688,19 +689,12 @@ pub use core::{
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
     module_path, option_env, stringify, trace_macros,
 };
-
-#[unstable(
-    feature = "concat_bytes",
-    issue = "87555",
-    reason = "`concat_bytes` is not stable enough for use and is subject to change"
-)]
-pub use core::concat_bytes;
-
-#[unstable(feature = "cfg_match", issue = "115585")]
-pub use core::cfg_match;
-
-#[stable(feature = "core_primitive", since = "1.43.0")]
-pub use core::primitive;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated, deprecated_in_future)]
+pub use core::{
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, todo, r#try,
+    unimplemented, unreachable, write, writeln,
+};
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

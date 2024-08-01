@@ -9,14 +9,14 @@ use core::intrinsics::mir::*;
 // CHECK-NEXT:  a() -> [return: bb1, unwind unreachable];
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn a() {
-    mir!(
+    mir! {
         {
             Call(RET = a(), ReturnTo(bb1), UnwindUnreachable())
         }
         bb1 = {
             Return()
         }
-    )
+    }
 }
 
 // CHECK-LABEL: fn b()
@@ -24,14 +24,14 @@ pub fn a() {
 // CHECK-NEXT:  b() -> [return: bb1, unwind continue];
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn b() {
-    mir!(
+    mir! {
         {
             Call(RET = b(), ReturnTo(bb1), UnwindContinue())
         }
         bb1 = {
             Return()
         }
-    )
+    }
 }
 
 // CHECK-LABEL: fn c()
@@ -39,14 +39,14 @@ pub fn b() {
 // CHECK-NEXT:  c() -> [return: bb1, unwind terminate(abi)];
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn c() {
-    mir!(
+    mir! {
         {
             Call(RET = c(), ReturnTo(bb1), UnwindTerminate(ReasonAbi))
         }
         bb1 = {
             Return()
         }
-    )
+    }
 }
 
 // CHECK-LABEL: fn d()
@@ -54,7 +54,7 @@ pub fn c() {
 // CHECK-NEXT:  d() -> [return: bb1, unwind: bb2];
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn d() {
-    mir!(
+    mir! {
         {
             Call(RET = d(), ReturnTo(bb1), UnwindCleanup(bb2))
         }
@@ -64,5 +64,5 @@ pub fn d() {
         bb2 (cleanup) = {
             UnwindResume()
         }
-    )
+    }
 }

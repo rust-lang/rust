@@ -5,10 +5,8 @@
 // The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
 // LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::{
-    abi::call::Conv,
-    spec::{base, Target},
-};
+use crate::abi::call::Conv;
+use crate::spec::{base, Target};
 
 pub fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -32,10 +30,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-windows".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit UEFI".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: None, // ?
         },
         pointer_width: 64,
         data_layout:

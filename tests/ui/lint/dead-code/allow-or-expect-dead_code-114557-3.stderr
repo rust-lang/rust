@@ -1,5 +1,5 @@
 warning: this lint expectation is unfulfilled
-  --> $DIR/allow-or-expect-dead_code-114557-3.rs:9:10
+  --> $DIR/allow-or-expect-dead_code-114557-3.rs:8:10
    |
 LL | #[expect(dead_code)]
    |          ^^^^^^^^^

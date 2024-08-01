@@ -4,7 +4,7 @@ error[E0741]: `(fn(),)` can't be used as a const parameter type
 LL |     pub struct Color<const WHITE: (fn(),)>;
    |                                   ^^^^^^^
    |
-   = note: `fn()` must implement `ConstParamTy`, but it does not
+   = note: `fn()` must implement `ConstParamTy_`, but it does not
 
 error[E0741]: `(fn(),)` can't be used as a const parameter type
   --> $DIR/issue-99641.rs:8:23
@@ -12,7 +12,7 @@ error[E0741]: `(fn(),)` can't be used as a const parameter type
 LL |     impl<const WHITE: (fn(),)> Color<WHITE> {
    |                       ^^^^^^^
    |
-   = note: `fn()` must implement `ConstParamTy`, but it does not
+   = note: `fn()` must implement `ConstParamTy_`, but it does not
 
 error: aborting due to 2 previous errors
 

@@ -8,12 +8,12 @@ impl F {
     fn call() {
         <Self as Fn(&TestResult)>::call
         //~^ ERROR: cannot find type `TestResult` in this scope [E0412]
-        //~| associated type bindings are not allowed here [E0229]
+        //~| associated item constraints are not allowed here [E0229]
     }
 }
 
 fn call() {
     <x as Fn(&usize)>::call
     //~^ ERROR: cannot find type `x` in this scope [E0412]
-    //~| ERROR: associated type bindings are not allowed here [E0229]
+    //~| ERROR: associated item constraints are not allowed here [E0229]
 }

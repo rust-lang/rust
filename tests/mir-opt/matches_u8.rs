@@ -1,7 +1,6 @@
 // skip-filecheck
 //@ test-mir-pass: MatchBranchSimplification
 
-
 // EMIT_MIR matches_u8.exhaustive_match.MatchBranchSimplification.diff
 // EMIT_MIR matches_u8.exhaustive_match_i8.MatchBranchSimplification.diff
 
@@ -27,9 +26,9 @@ pub fn exhaustive_match_i8(e: E) -> i8 {
 }
 
 fn main() {
-  assert_eq!(exhaustive_match(E::A), 0);
-  assert_eq!(exhaustive_match(E::B), 1);
+    assert_eq!(exhaustive_match(E::A), 0);
+    assert_eq!(exhaustive_match(E::B), 1);
 
-  assert_eq!(exhaustive_match_i8(E::A), 0);
-  assert_eq!(exhaustive_match_i8(E::B), 1);
+    assert_eq!(exhaustive_match_i8(E::A), 0);
+    assert_eq!(exhaustive_match_i8(E::B), 1);
 }

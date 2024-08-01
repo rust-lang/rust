@@ -1,7 +1,5 @@
-use crate::errors;
-use crate::util::expr_to_spanned_string;
 use ast::token::IdentIsRaw;
-use rustc_ast as ast;
+use lint::BuiltinLintDiag;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
@@ -10,13 +8,15 @@ use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
-use rustc_parse_format as parse;
 use rustc_session::lint;
-use rustc_span::symbol::Ident;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
+use {rustc_ast as ast, rustc_parse_format as parse};
+
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
@@ -45,7 +45,7 @@ pub fn parse_asm_args<'a>(
     sp: Span,
     is_global_asm: bool,
 ) -> PResult<'a, AsmArgs> {
-    let dcx = &p.psess.dcx;
+    let dcx = p.dcx();
 
     if p.token == token::Eof {
         return Err(dcx.create_err(errors::AsmRequiresTemplate { span: sp }));
@@ -306,7 +306,17 @@ pub fn parse_asm_args<'a>(
 fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
     // Tool-only output
     let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
-    p.psess.dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+    p.dcx().emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+}
+
+/// Report an invalid option error.
+///
+/// This function must be called immediately after the option token is parsed.
+/// Otherwise, the suggestion will be incorrect.
+fn err_unsupported_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
+    // Tool-only output
+    let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
+    p.dcx().emit_err(errors::GlobalAsmUnsupportedOption { span, symbol, full_span });
 }
 
 /// Try to set the provided option in the provided `AsmArgs`.
@@ -317,13 +327,16 @@ fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
 fn try_set_option<'a>(
     p: &Parser<'a>,
     args: &mut AsmArgs,
+    is_global_asm: bool,
     symbol: Symbol,
     option: ast::InlineAsmOptions,
 ) {
-    if !args.options.contains(option) {
-        args.options |= option;
-    } else {
+    if is_global_asm && !ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option) {
+        err_unsupported_option(p, symbol, p.prev_token.span);
+    } else if args.options.contains(option) {
         err_duplicate_option(p, symbol, p.prev_token.span);
+    } else {
+        args.options |= option;
     }
 }
 
@@ -337,25 +350,33 @@ fn parse_options<'a>(
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        if !is_global_asm && p.eat_keyword(sym::pure) {
-            try_set_option(p, args, sym::pure, ast::InlineAsmOptions::PURE);
-        } else if !is_global_asm && p.eat_keyword(sym::nomem) {
-            try_set_option(p, args, sym::nomem, ast::InlineAsmOptions::NOMEM);
-        } else if !is_global_asm && p.eat_keyword(sym::readonly) {
-            try_set_option(p, args, sym::readonly, ast::InlineAsmOptions::READONLY);
-        } else if !is_global_asm && p.eat_keyword(sym::preserves_flags) {
-            try_set_option(p, args, sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS);
-        } else if !is_global_asm && p.eat_keyword(sym::noreturn) {
-            try_set_option(p, args, sym::noreturn, ast::InlineAsmOptions::NORETURN);
-        } else if !is_global_asm && p.eat_keyword(sym::nostack) {
-            try_set_option(p, args, sym::nostack, ast::InlineAsmOptions::NOSTACK);
-        } else if !is_global_asm && p.eat_keyword(sym::may_unwind) {
-            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::MAY_UNWIND);
-        } else if p.eat_keyword(sym::att_syntax) {
-            try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
-        } else if p.eat_keyword(kw::Raw) {
-            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::RAW);
-        } else {
+        const OPTIONS: [(Symbol, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
+            (sym::pure, ast::InlineAsmOptions::PURE),
+            (sym::nomem, ast::InlineAsmOptions::NOMEM),
+            (sym::readonly, ast::InlineAsmOptions::READONLY),
+            (sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS),
+            (sym::noreturn, ast::InlineAsmOptions::NORETURN),
+            (sym::nostack, ast::InlineAsmOptions::NOSTACK),
+            (sym::may_unwind, ast::InlineAsmOptions::MAY_UNWIND),
+            (sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX),
+            (kw::Raw, ast::InlineAsmOptions::RAW),
+        ];
+
+        'blk: {
+            for (symbol, option) in OPTIONS {
+                let kw_matched =
+                    if !is_global_asm || ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option) {
+                        p.eat_keyword(symbol)
+                    } else {
+                        p.eat_keyword_noexpect(symbol)
+                    };
+
+                if kw_matched {
+                    try_set_option(p, args, is_global_asm, symbol, option);
+                    break 'blk;
+                }
+            }
+
             return p.unexpected();
         }
 
@@ -378,7 +399,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        return Err(p.psess.dcx.create_err(errors::NonABI { span: p.token.span }));
+        return Err(p.dcx().create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
@@ -389,9 +410,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
             }
             Err(opt_lit) => {
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-                let mut err = p.psess.dcx.struct_span_err(span, "expected string literal");
-                err.span_label(span, "not a string literal");
-                return Err(err);
+                return Err(p.dcx().create_err(errors::AsmExpectedStringLiteral { span }));
             }
         };
 
@@ -460,7 +479,7 @@ fn expand_preparsed_asm(
 
     for (i, template_expr) in args.templates.into_iter().enumerate() {
         if i != 0 {
-            template.push(ast::InlineAsmTemplatePiece::String("\n".to_string()));
+            template.push(ast::InlineAsmTemplatePiece::String("\n".into()));
         }
 
         let msg = "asm template must be a string literal";
@@ -513,7 +532,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    "avoid using `.intel_syntax`, Intel syntax is the default",
+                    BuiltinLintDiag::AvoidUsingIntelSyntax,
                 );
             }
             if template_str.contains(".att_syntax") {
@@ -521,14 +540,14 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead",
+                    BuiltinLintDiag::AvoidUsingAttSyntax,
                 );
             }
         }
 
         // Don't treat raw asm as a format string.
         if args.options.contains(ast::InlineAsmOptions::RAW) {
-            template.push(ast::InlineAsmTemplatePiece::String(template_str.to_string()));
+            template.push(ast::InlineAsmTemplatePiece::String(template_str.to_string().into()));
             let template_num_lines = 1 + template_str.matches('\n').count();
             line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
             continue;
@@ -578,7 +597,7 @@ fn expand_preparsed_asm(
         for piece in unverified_pieces {
             match piece {
                 parse::Piece::String(s) => {
-                    template.push(ast::InlineAsmTemplatePiece::String(s.to_string()))
+                    template.push(ast::InlineAsmTemplatePiece::String(s.to_string().into()))
                 }
                 parse::Piece::NextArgument(arg) => {
                     let span = arg_spans.next().unwrap_or(template_sp);
@@ -638,14 +657,13 @@ fn expand_preparsed_asm(
                             match args.named_args.get(&Symbol::intern(name)) {
                                 Some(&idx) => Some(idx),
                                 None => {
-                                    let msg = format!("there is no argument named `{name}`");
                                     let span = arg.position_span;
                                     ecx.dcx()
-                                        .struct_span_err(
-                                            template_span
+                                        .create_err(errors::AsmNoMatchedArgumentName {
+                                            name: name.to_owned(),
+                                            span: template_span
                                                 .from_inner(InnerSpan::new(span.start, span.end)),
-                                            msg,
-                                        )
+                                        })
                                         .emit();
                                     None
                                 }

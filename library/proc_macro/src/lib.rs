@@ -37,21 +37,25 @@
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
+#![warn(rustdoc::unescaped_backticks)]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 pub mod bridge;
 
 mod diagnostic;
-
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub use diagnostic::{Diagnostic, Level, MultiSpan};
+mod escape;
 
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt};
+
+#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+pub use diagnostic::{Diagnostic, Level, MultiSpan};
+
+use crate::escape::{escape_bytes, EscapeOptions};
 
 /// Determines whether proc_macro has been made accessible to the currently
 /// running program.
@@ -815,6 +819,18 @@ pub enum Delimiter {
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
     /// Invisible delimiters might not survive roundtrip of a token stream through a string.
+    ///
+    /// <div class="warning">
+    ///
+    /// Note: rustc currently can ignore the grouping of tokens delimited by `None` in the output
+    /// of a proc_macro. Only `None`-delimited groups created by a macro_rules macro in the input
+    /// of a proc_macro macro are preserved, and only in very specific circumstances.
+    /// Any `None`-delimited groups (re)created by a proc_macro will therefore not preserve
+    /// operator priorities as indicated above. The other `Delimiter` variants should be used
+    /// instead in this context. This is a rustc bug. For details, see
+    /// [rust-lang/rust#67062](https://github.com/rust-lang/rust/issues/67062).
+    ///
+    /// </div>
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     None,
 }
@@ -1344,40 +1360,61 @@ impl Literal {
     /// String literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn string(string: &str) -> Literal {
-        let quoted = format!("{:?}", string);
-        assert!(quoted.starts_with('"') && quoted.ends_with('"'));
-        let symbol = &quoted[1..quoted.len() - 1];
-        Literal::new(bridge::LitKind::Str, symbol, None)
+        let escape = EscapeOptions {
+            escape_single_quote: false,
+            escape_double_quote: true,
+            escape_nonascii: false,
+        };
+        let repr = escape_bytes(string.as_bytes(), escape);
+        Literal::new(bridge::LitKind::Str, &repr, None)
     }
 
     /// Character literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn character(ch: char) -> Literal {
-        let quoted = format!("{:?}", ch);
-        assert!(quoted.starts_with('\'') && quoted.ends_with('\''));
-        let symbol = &quoted[1..quoted.len() - 1];
-        Literal::new(bridge::LitKind::Char, symbol, None)
+        let escape = EscapeOptions {
+            escape_single_quote: true,
+            escape_double_quote: false,
+            escape_nonascii: false,
+        };
+        let repr = escape_bytes(ch.encode_utf8(&mut [0u8; 4]).as_bytes(), escape);
+        Literal::new(bridge::LitKind::Char, &repr, None)
     }
 
     /// Byte character literal.
     #[stable(feature = "proc_macro_byte_character", since = "1.79.0")]
     pub fn byte_character(byte: u8) -> Literal {
-        let string = [byte].escape_ascii().to_string();
-        Literal::new(bridge::LitKind::Byte, &string, None)
+        let escape = EscapeOptions {
+            escape_single_quote: true,
+            escape_double_quote: false,
+            escape_nonascii: true,
+        };
+        let repr = escape_bytes(&[byte], escape);
+        Literal::new(bridge::LitKind::Byte, &repr, None)
     }
 
     /// Byte string literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn byte_string(bytes: &[u8]) -> Literal {
-        let string = bytes.escape_ascii().to_string();
-        Literal::new(bridge::LitKind::ByteStr, &string, None)
+        let escape = EscapeOptions {
+            escape_single_quote: false,
+            escape_double_quote: true,
+            escape_nonascii: true,
+        };
+        let repr = escape_bytes(bytes, escape);
+        Literal::new(bridge::LitKind::ByteStr, &repr, None)
     }
 
     /// C string literal.
     #[stable(feature = "proc_macro_c_str_literals", since = "1.79.0")]
     pub fn c_string(string: &CStr) -> Literal {
-        let string = string.to_bytes().escape_ascii().to_string();
-        Literal::new(bridge::LitKind::CStr, &string, None)
+        let escape = EscapeOptions {
+            escape_single_quote: false,
+            escape_double_quote: true,
+            escape_nonascii: false,
+        };
+        let repr = escape_bytes(string.to_bytes(), escape);
+        Literal::new(bridge::LitKind::CStr, &repr, None)
     }
 
     /// Returns the span encompassing this literal.
@@ -1509,10 +1546,10 @@ impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Literal")
             // format the kind on one line even in {:#?} mode
-            .field("kind", &format_args!("{:?}", &self.0.kind))
+            .field("kind", &format_args!("{:?}", self.0.kind))
             .field("symbol", &self.0.symbol)
             // format `Some("...")` on one line even in {:#?} mode
-            .field("suffix", &format_args!("{:?}", &self.0.suffix))
+            .field("suffix", &format_args!("{:?}", self.0.suffix))
             .field("span", &self.0.span)
             .finish()
     }

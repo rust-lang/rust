@@ -1,41 +1,27 @@
 use std::borrow::Cow;
 
 use libc::c_uint;
-use rustc_codegen_ssa::{
-    debuginfo::{type_names::compute_debuginfo_type_name, wants_c_like_enum_debuginfo},
-    traits::ConstMethods,
-};
-
+use rustc_codegen_ssa::debuginfo::type_names::compute_debuginfo_type_name;
+use rustc_codegen_ssa::debuginfo::wants_c_like_enum_debuginfo;
+use rustc_codegen_ssa::traits::ConstMethods;
 use rustc_index::IndexVec;
-use rustc_middle::{
-    bug,
-    ty::{
-        self,
-        layout::{LayoutOf, TyAndLayout},
-        AdtDef, CoroutineArgs, Ty,
-    },
-};
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty};
 use rustc_target::abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
 use smallvec::smallvec;
 
-use crate::{
-    common::CodegenCx,
-    debuginfo::{
-        metadata::{
-            build_field_di_node,
-            enums::{tag_base_type, DiscrResult},
-            file_metadata, size_and_align_of, type_di_node,
-            type_map::{self, Stub, UniqueTypeId},
-            unknown_file_metadata, visibility_di_flags, DINodeCreationResult, SmallVec,
-            NO_GENERICS, NO_SCOPE_METADATA, UNKNOWN_LINE_NUMBER,
-        },
-        utils::DIB,
-    },
-    llvm::{
-        self,
-        debuginfo::{DIFile, DIFlags, DIType},
-    },
+use crate::common::CodegenCx;
+use crate::debuginfo::metadata::enums::{tag_base_type, DiscrResult};
+use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
+use crate::debuginfo::metadata::{
+    build_field_di_node, file_metadata, size_and_align_of, type_di_node, unknown_file_metadata,
+    visibility_di_flags, DINodeCreationResult, SmallVec, NO_GENERICS, NO_SCOPE_METADATA,
+    UNKNOWN_LINE_NUMBER,
 };
+use crate::debuginfo::utils::DIB;
+use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
+use crate::llvm::{self};
 
 // The names of the associated constants in each variant wrapper struct.
 // These have to match up with the names being used in `intrinsic.natvis`.
@@ -204,7 +190,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type_and_layout = cx.layout_of(enum_type);
     let enum_type_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -279,7 +265,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     let coroutine_type_and_layout = cx.layout_of(coroutine_type);
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -517,7 +503,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                     if is_128_bits {
                         DiscrKind::Exact128(discr_val)
                     } else {
-                        debug_assert_eq!(discr_val, discr_val as u64 as u128);
+                        assert_eq!(discr_val, discr_val as u64 as u128);
                         DiscrKind::Exact(discr_val as u64)
                     }
                 }
@@ -526,8 +512,8 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                     if is_128_bits {
                         DiscrKind::Range128(min, max)
                     } else {
-                        debug_assert_eq!(min, min as u64 as u128);
-                        debug_assert_eq!(max, max as u64 as u128);
+                        assert_eq!(min, min as u64 as u128);
+                        assert_eq!(max, max as u64 as u128);
                         DiscrKind::Range(min as u64, max as u64)
                     }
                 }
@@ -815,7 +801,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
         }
     }));
 
-    debug_assert_eq!(
+    assert_eq!(
         cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field).ty),
         cx.size_and_align_of(super::tag_base_type(cx, enum_type_and_layout))
     );

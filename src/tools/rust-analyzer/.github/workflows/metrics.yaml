@@ -11,34 +11,21 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  setup_cargo:
+  build_metrics:
     if: github.repository == 'rust-lang/rust-analyzer'
     runs-on: ubuntu-latest
+
     steps:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
-          rustup component add rustfmt rust-src
           rustup default stable
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ github.sha }}
+          rustup component add --toolchain stable rust-src
 
-  build_metrics:
-    runs-on: ubuntu-latest
-    needs: setup_cargo
-
-    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Restore cargo cache
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
           path: |
@@ -69,21 +56,17 @@ jobs:
       matrix:
         names: [self, ripgrep-13.0.0, webrender-2022, diesel-1.4.8, hyper-0.14.18]
     runs-on: ubuntu-latest
-    needs: [setup_cargo, build_metrics]
+    needs: build_metrics
 
     steps:
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add --toolchain stable rust-src
+
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Restore cargo cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ github.sha }}
 
       - name: Restore target cache
         uses: actions/cache@v4

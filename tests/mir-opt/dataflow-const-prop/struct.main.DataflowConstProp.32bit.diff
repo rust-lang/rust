@@ -106,13 +106,12 @@
 -         _7 = (_10.0: f32);
 +         _7 = const 4f32;
           StorageLive(_8);
--         _8 = (_10.1: std::option::Option<S>);
-+         _8 = const Option::<S>::Some(S(1_i32));
+          _8 = (_10.1: std::option::Option<S>);
           StorageLive(_9);
           _9 = (_10.2: &[f32]);
           StorageDead(_10);
           StorageLive(_14);
-          _14 = const {ALLOC4: &&SmallStruct};
+          _14 = const {ALLOC0: &&SmallStruct};
           _31 = deref_copy (*_14);
           StorageLive(_11);
           _32 = deref_copy (*_14);
@@ -149,7 +148,7 @@
           _21 = (_22.2: &[f32]);
           StorageDead(_22);
           StorageLive(_26);
-          _26 = const {ALLOC5: &&BigStruct};
+          _26 = const {ALLOC1: &&BigStruct};
           _35 = deref_copy (*_26);
           StorageLive(_23);
           _36 = deref_copy (*_26);
@@ -157,8 +156,7 @@
 +         _23 = const 82f32;
           StorageLive(_24);
           _37 = deref_copy (*_26);
--         _24 = ((*_37).1: std::option::Option<S>);
-+         _24 = const Option::<S>::Some(S(35_i32));
+          _24 = ((*_37).1: std::option::Option<S>);
           StorageLive(_25);
           _38 = deref_copy (*_26);
           _25 = ((*_38).2: &[f32]);
@@ -168,12 +166,11 @@
 -         _28 = _23;
 +         _28 = const 82f32;
           StorageLive(_29);
--         _29 = _24;
-+         _29 = const Option::<S>::Some(S(35_i32));
+          _29 = _24;
           StorageLive(_30);
           _30 = _25;
 -         _27 = BigStruct(move _28, move _29, move _30);
-+         _27 = BigStruct(const 82f32, const Option::<S>::Some(S(35_i32)), move _30);
++         _27 = BigStruct(const 82f32, move _29, move _30);
           StorageDead(_30);
           StorageDead(_29);
           StorageDead(_28);
@@ -197,51 +194,23 @@
           StorageDead(_1);
           return;
       }
-+ }
+  }
+  
++ ALLOC2 (size: 4, align: 4) { .. }
 + 
-+ ALLOC6 (size: 8, align: 4) {
-+     01 00 00 00 23 00 00 00                         │ ....#...
-+ }
-+ 
-+ ALLOC7 (size: 8, align: 4) {
-+     01 00 00 00 23 00 00 00                         │ ....#...
-+ }
-+ 
-+ ALLOC8 (size: 8, align: 4) {
-+     01 00 00 00 23 00 00 00                         │ ....#...
-+ }
-+ 
-+ ALLOC9 (size: 8, align: 4) {
-+     01 00 00 00 01 00 00 00                         │ ........
-+ }
-+ 
-+ ALLOC10 (size: 4, align: 4) {
-+     01 00 00 00                                     │ ....
-  }
+  ALLOC1 (static: BIG_STAT, size: 4, align: 4) { .. }
   
-  ALLOC5 (static: BIG_STAT, size: 4, align: 4) {
-      ╾ALLOC0<imm>╼                                     │ ╾──╼
-  }
+- ALLOC2 (size: 20, align: 4) { .. }
++ ALLOC3 (size: 20, align: 4) { .. }
   
-  ALLOC0 (size: 20, align: 4) {
-      0x00 │ 01 00 00 00 23 00 00 00 ╾ALLOC1<imm>╼ 02 00 00 00 │ ....#...╾──╼....
-      0x10 │ 00 00 a4 42                                     │ ...B
-  }
+- ALLOC3 (size: 8, align: 4) { .. }
++ ALLOC4 (size: 8, align: 4) { .. }
   
-  ALLOC1 (size: 8, align: 4) {
-      00 00 34 42 00 00 90 42                         │ ..4B...B
-  }
+  ALLOC0 (static: SMALL_STAT, size: 4, align: 4) { .. }
   
-  ALLOC4 (static: SMALL_STAT, size: 4, align: 4) {
-      ╾ALLOC2<imm>╼                                     │ ╾──╼
-  }
+- ALLOC4 (size: 20, align: 4) { .. }
++ ALLOC5 (size: 20, align: 4) { .. }
   
-  ALLOC2 (size: 20, align: 4) {
-      0x00 │ 00 00 00 00 __ __ __ __ ╾ALLOC3<imm>╼ 01 00 00 00 │ ....░░░░╾──╼....
-      0x10 │ 00 00 10 41                                     │ ...A
-  }
-  
-  ALLOC3 (size: 4, align: 4) {
-      00 00 50 41                                     │ ..PA
-  }
+- ALLOC5 (size: 4, align: 4) { .. }
++ ALLOC6 (size: 4, align: 4) { .. }
   

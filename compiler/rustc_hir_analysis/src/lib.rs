@@ -55,28 +55,26 @@ This API is completely unstable and subject to change.
 
 */
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
-#![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![feature(lazy_cell)]
+#![feature(rustdoc_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
+#![feature(unwrap_infallible)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;
-
-#[macro_use]
-extern crate rustc_middle;
 
 // These are used by Clippy.
 pub mod check;
@@ -85,6 +83,7 @@ pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
+mod delegation;
 pub mod hir_ty_lowering;
 // FIXME: This module shouldn't be public.
 pub mod collect;
@@ -93,7 +92,6 @@ mod errors;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
-pub mod structured_errors;
 mod variance;
 
 use rustc_hir as hir;
@@ -103,7 +101,8 @@ use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
@@ -148,13 +147,19 @@ pub fn provide(providers: &mut Providers) {
     variance::provide(providers);
     outlives::provide(providers);
     hir_wf_check::provide(providers);
+    *providers = Providers {
+        inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
+        ..*providers
+    };
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
-    if tcx.features().rustc_attrs {
-        let _ = tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
+    // FIXME(effects): remove once effects is implemented in old trait solver
+    // or if the next solver is stabilized.
+    if tcx.features().effects && !tcx.next_trait_solver_globally() {
+        tcx.dcx().emit_err(errors::EffectsWithoutNextSolver);
     }
 
     tcx.sess.time("coherence_checking", || {
@@ -171,11 +176,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     });
 
     if tcx.features().rustc_attrs {
-        let _ = tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
-    }
-
-    if tcx.features().rustc_attrs {
-        let _ = collect::test_opaque_hidden_types(tcx);
+        tcx.sess.time("outlives_dumping", || outlives::dump::inferred_outlives(tcx));
+        tcx.sess.time("variance_dumping", || variance::dump::variances(tcx));
+        collect::dump::opaque_hidden_types(tcx);
+        collect::dump::predicates_and_item_bounds(tcx);
+        collect::dump::def_parents(tcx);
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
@@ -184,7 +189,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
             DefKind::Static { .. } => tcx.ensure().eval_static_initializer(item_def_id),
-            DefKind::Const if tcx.generics_of(item_def_id).own_params.is_empty() => {
+            DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
                 let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
                 let param_env = ty::ParamEnv::reveal_all();

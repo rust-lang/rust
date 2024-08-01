@@ -10,7 +10,7 @@ LL |         async { () }
    |         ^^^^^^^^^^^^ expected future, found `async` block
    |
    = note: expected opaque type `Foo<'_>::Fut<'a>`
-            found `async` block `{async block@$DIR/issue-90014-tait.rs:18:9: 18:21}`
+            found `async` block `{async block@$DIR/issue-90014-tait.rs:18:9: 18:14}`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
   --> $DIR/issue-90014-tait.rs:17:8
    |

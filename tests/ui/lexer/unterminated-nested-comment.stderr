@@ -12,7 +12,7 @@ LL | | /*
    | | |
    | | ...as last nested comment starts here, maybe you want to close this instead?
 LL | | */
-   | |_--^
+   | |_-^
    |   |
    |   ...and last nested comment terminates here.
 

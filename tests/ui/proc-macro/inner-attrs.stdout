@@ -674,7 +674,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                                         span: $DIR/inner-attrs.rs:41:52: 41:59 (#0),
                                                     },
                                                 ],
-                                                span: $DIR/inner-attrs.rs:41:17: 41:18 (#0),
+                                                span: $DIR/inner-attrs.rs:41:19: 41:61 (#0),
                                             },
                                             Ident {
                                                 ident: "true",

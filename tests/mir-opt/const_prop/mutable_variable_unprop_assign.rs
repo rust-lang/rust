@@ -1,5 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ test-mir-pass: GVN
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 
 // EMIT_MIR mutable_variable_unprop_assign.main.GVN.diff
 fn main() {

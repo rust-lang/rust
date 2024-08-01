@@ -127,9 +127,11 @@ pub(crate) const ALL_INT_FPS: [TyFingerprint; 12] = [
     TyFingerprint::Scalar(Scalar::Uint(UintTy::Usize)),
 ];
 
-pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
+pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 4] = [
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F16)),
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F32)),
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F64)),
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F128)),
 ];
 
 type TraitFpMap = FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Box<[ImplId]>>>;
@@ -144,8 +146,7 @@ pub struct TraitImpls {
 
 impl TraitImpls {
     pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "trait_impls_in_crate_query", ?krate).entered();
+        let _p = tracing::info_span!("trait_impls_in_crate_query", ?krate).entered();
         let mut impls = FxHashMap::default();
 
         Self::collect_def_map(db, &mut impls, &db.crate_def_map(krate));
@@ -157,7 +158,7 @@ impl TraitImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
-        let _p = tracing::span!(tracing::Level::INFO, "trait_impls_in_block_query").entered();
+        let _p = tracing::info_span!("trait_impls_in_block_query").entered();
         let mut impls = FxHashMap::default();
 
         Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
@@ -173,8 +174,7 @@ impl TraitImpls {
         db: &dyn HirDatabase,
         krate: CrateId,
     ) -> Arc<[Arc<Self>]> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "trait_impls_in_deps_query", ?krate).entered();
+        let _p = tracing::info_span!("trait_impls_in_deps_query", ?krate).entered();
         let crate_graph = db.crate_graph();
 
         Arc::from_iter(
@@ -280,8 +280,7 @@ pub struct InherentImpls {
 
 impl InherentImpls {
     pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "inherent_impls_in_crate_query", ?krate).entered();
+        let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let crate_def_map = db.crate_def_map(krate);
@@ -295,7 +294,7 @@ impl InherentImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
-        let _p = tracing::span!(tracing::Level::INFO, "inherent_impls_in_block_query").entered();
+        let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let block_def_map = db.block_def_map(block);
@@ -368,7 +367,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
     krate: CrateId,
     fp: TyFingerprint,
 ) -> SmallVec<[CrateId; 2]> {
-    let _p = tracing::span!(tracing::Level::INFO, "inherent_impl_crates_query").entered();
+    let _p = tracing::info_span!("incoherent_inherent_impl_crates").entered();
     let mut res = SmallVec::new();
     let crate_graph = db.crate_graph();
 
@@ -937,8 +936,7 @@ pub fn iterate_method_candidates_dyn(
     mode: LookupMode,
     callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let _p = tracing::span!(
-        tracing::Level::INFO,
+    let _p = tracing::info_span!(
         "iterate_method_candidates_dyn",
         ?mode,
         ?name,
@@ -1326,7 +1324,7 @@ fn iterate_inherent_methods(
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         for &impl_id in impls.for_self_ty(self_ty) {
-            for &item in &table.db.impl_data(impl_id).items {
+            for &item in table.db.impl_data(impl_id).items.iter() {
                 let visible = match is_valid_impl_method_candidate(
                     table,
                     self_ty,
@@ -1504,7 +1502,7 @@ fn is_valid_impl_fn_candidate(
         }
     }
     table.run_in_snapshot(|table| {
-        let _p = tracing::span!(tracing::Level::INFO, "subst_for_def").entered();
+        let _p = tracing::info_span!("subst_for_def").entered();
         let impl_subst =
             TyBuilder::subst_for_def(db, impl_id, None).fill_with_inference_vars(table).build();
         let expect_self_ty = db.impl_self_ty(impl_id).substitute(Interner, &impl_subst);
@@ -1512,7 +1510,7 @@ fn is_valid_impl_fn_candidate(
         check_that!(table.unify(&expect_self_ty, self_ty));
 
         if let Some(receiver_ty) = receiver_ty {
-            let _p = tracing::span!(tracing::Level::INFO, "check_receiver_ty").entered();
+            let _p = tracing::info_span!("check_receiver_ty").entered();
             check_that!(data.has_self_param());
 
             let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))

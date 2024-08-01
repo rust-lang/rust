@@ -186,7 +186,7 @@ fn test() {
     let x = match 1 {
         1 => t as *mut i32,
         2 => t as &i32,
-           //^^^^^^^^^ expected *mut i32, got &i32
+           //^^^^^^^^^ expected *mut i32, got &'? i32
         _ => t as *const i32,
           // ^^^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
 
@@ -307,7 +307,7 @@ fn test() {
     let foo = Foo;
       //^^^ type: Foo<{unknown}>
     let _: &u32 = &Foo;
-                //^^^^ expected &u32, got &Foo<{unknown}>
+                //^^^^ expected &'? u32, got &'? Foo<{unknown}>
 }",
     );
 }
@@ -544,9 +544,9 @@ struct Bar<T>(Foo<T>);
 
 fn test() {
     let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
-                         //^^^^^^^^^^^^^^^^^^^^^ expected &Foo<[usize]>, got &Foo<[i32; 3]>
+                         //^^^^^^^^^^^^^^^^^^^^^ expected &'? Foo<[usize]>, got &'? Foo<[i32; 3]>
     let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
-                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &Bar<[usize]>, got &Bar<[i32; 3]>
+                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &'? Bar<[usize]>, got &'? Bar<[i32; 3]>
 }
 "#,
     );
@@ -562,7 +562,7 @@ trait Foo {}
 fn test(f: impl Foo, g: &(impl Foo + ?Sized)) {
     let _: &dyn Foo = &f;
     let _: &dyn Foo = g;
-                    //^ expected &dyn Foo, got &impl Foo + ?Sized
+                    //^ expected &'? dyn Foo, got &'? impl Foo + ?Sized
 }
         "#,
     );
@@ -828,11 +828,11 @@ struct V<T> { t: T }
 fn main() {
     let a: V<&dyn Tr>;
     (a,) = V { t: &S };
-  //^^^^expected V<&S>, got (V<&dyn Tr>,)
+  //^^^^expected V<&'? S>, got (V<&'? dyn Tr>,)
 
     let mut a: V<&dyn Tr> = V { t: &S };
     (a,) = V { t: &S };
-  //^^^^expected V<&S>, got (V<&dyn Tr>,)
+  //^^^^expected V<&'? S>, got (V<&'? dyn Tr>,)
 }
         "#,
     );

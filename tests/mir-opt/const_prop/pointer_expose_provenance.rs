@@ -2,7 +2,7 @@
 //@ test-mir-pass: GVN
 
 #[inline(never)]
-fn read(_: usize) { }
+fn read(_: usize) {}
 
 // EMIT_MIR pointer_expose_provenance.main.GVN.diff
 fn main() {

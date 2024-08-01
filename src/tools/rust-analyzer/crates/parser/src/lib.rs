@@ -17,7 +17,6 @@
 //!
 //! [`Parser`]: crate::parser::Parser
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(rustdoc::private_intra_doc_links)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
@@ -89,7 +88,7 @@ pub enum TopEntryPoint {
 
 impl TopEntryPoint {
     pub fn parse(&self, input: &Input, edition: Edition) -> Output {
-        let _p = tracing::span!(tracing::Level::INFO, "TopEntryPoint::parse", ?self).entered();
+        let _p = tracing::info_span!("TopEntryPoint::parse", ?self).entered();
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             TopEntryPoint::SourceFile => grammar::entry::top::source_file,
             TopEntryPoint::MacroStmts => grammar::entry::top::macro_stmts,

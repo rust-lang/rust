@@ -1,4 +1,5 @@
 //@ known-bug: #119924
+//@ compile-flags: -Znext-solver
 #![feature(const_trait_impl, effects)]
 
 struct S;

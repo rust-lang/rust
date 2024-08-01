@@ -1,4 +1,4 @@
-#![crate_type="dylib"]
+#![crate_type = "dylib"]
 
 extern crate an_rlib;
 
@@ -12,4 +12,6 @@ pub extern "C" fn public_c_function_from_rust_dylib() {
 }
 
 // This should be exported if -Zshare-generics=yes
-pub fn public_generic_function_from_rust_dylib<T>(x: T) -> T { x }
+pub fn public_generic_function_from_rust_dylib<T>(x: T) -> T {
+    x
+}

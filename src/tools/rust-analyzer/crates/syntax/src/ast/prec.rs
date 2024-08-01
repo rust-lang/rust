@@ -27,6 +27,14 @@ impl Expr {
     }
 
     fn needs_parens_in_expr(&self, parent: &Expr) -> bool {
+        // Parentheses are necessary when calling a function-like pointer that is a member of a struct or union
+        // (e.g. `(a.f)()`).
+        let is_parent_call_expr = matches!(parent, ast::Expr::CallExpr(_));
+        let is_field_expr = matches!(self, ast::Expr::FieldExpr(_));
+        if is_parent_call_expr && is_field_expr {
+            return true;
+        }
+
         // Special-case block weirdness
         if parent.child_is_followed_by_a_block() {
             use Expr::*;

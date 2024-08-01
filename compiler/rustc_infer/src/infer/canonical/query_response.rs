@@ -7,6 +7,17 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use std::fmt::Debug;
+use std::iter;
+
+use rustc_data_structures::captures::Captures;
+use rustc_index::{Idx, IndexVec};
+use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
+
 use crate::infer::canonical::instantiate::{instantiate_value, CanonicalExt};
 use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
@@ -15,18 +26,9 @@ use crate::infer::canonical::{
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
 use crate::traits::query::NoSolution;
-use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use crate::traits::{TraitEngine, TraitEngineExt};
-use rustc_data_structures::captures::Captures;
-use rustc_index::Idx;
-use rustc_index::IndexVec;
-use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArg, GenericArgKind};
-use std::fmt::Debug;
-use std::iter;
+use crate::traits::{
+    Obligation, ObligationCause, PredicateObligation, ScrubbedTraitError, TraitEngine,
+};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -53,7 +55,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx, ScrubbedTraitError<'tcx>>,
     ) -> Result<CanonicalQueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -100,7 +102,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx, ScrubbedTraitError<'tcx>>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -108,18 +110,12 @@ impl<'tcx> InferCtxt<'tcx> {
         let tcx = self.tcx;
 
         // Select everything, returning errors.
-        let true_errors = fulfill_cx.select_where_possible(self);
-        debug!("true_errors = {:#?}", true_errors);
+        let errors = fulfill_cx.select_all_or_error(self);
 
-        if !true_errors.is_empty() {
-            // FIXME -- we don't indicate *why* we failed to solve
-            debug!("make_query_response: true_errors={:#?}", true_errors);
+        // True error!
+        if errors.iter().any(|e| e.is_true_error()) {
             return Err(NoSolution);
         }
-
-        // Anything left unselected *now* must be an ambiguity.
-        let ambig_errors = fulfill_cx.select_all_or_error(self);
-        debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
         debug!(?region_obligations);
@@ -134,8 +130,7 @@ impl<'tcx> InferCtxt<'tcx> {
         });
         debug!(?region_constraints);
 
-        let certainty =
-            if ambig_errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
+        let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
         let opaque_types = self.take_opaque_types_for_query_response();
 

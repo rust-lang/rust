@@ -41,7 +41,7 @@ LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |                                    - missing open `[` for this delimiter
 ...
 LL | fn main() {}
-   |                                                                 ^
+   |                                                                ^
 
 error: aborting due to 4 previous errors
 

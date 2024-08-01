@@ -1,8 +1,9 @@
+use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
-use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeInterpreter};
+use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
 use crate::interpret::{InterpCx, MemoryKind, OpTy};
 
 /// Determines if this type permits "raw" initialization by just transmuting some memory into an
@@ -44,7 +45,7 @@ fn might_permit_raw_init_strict<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
-    let machine = CompileTimeInterpreter::new(CanAccessMutGlobal::No, CheckAlignment::Error);
+    let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
     let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
 
@@ -115,7 +116,7 @@ fn might_permit_raw_init_lax<'tcx>(
 
     // Special magic check for references and boxes (i.e., special pointer types).
     if let Some(pointee) = this.ty.builtin_deref(false) {
-        let pointee = cx.layout_of(pointee.ty)?;
+        let pointee = cx.layout_of(pointee)?;
         // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are satisfied.
         if pointee.align.abi.bytes() > 1 {
             // 0x01-filling is not aligned.

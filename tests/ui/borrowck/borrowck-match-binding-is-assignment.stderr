@@ -9,11 +9,11 @@ LL |             x += 1;
 help: consider making this binding mutable
    |
 LL |         mut x => {
-   |         ~~~~~
+   |         +++
 help: to modify the original value, take a borrow instead
    |
 LL |         ref mut x => {
-   |         ~~~~~~~~~
+   |         +++++++
 
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/borrowck-match-binding-is-assignment.rs:20:13
@@ -26,11 +26,11 @@ LL |             x += 1;
 help: consider making this binding mutable
    |
 LL |         E::Foo(mut x) => {
-   |                ~~~~~
+   |                +++
 help: to modify the original value, take a borrow instead
    |
 LL |         E::Foo(ref mut x) => {
-   |                ~~~~~~~~~
+   |                +++++++
 
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/borrowck-match-binding-is-assignment.rs:26:13
@@ -43,11 +43,11 @@ LL |             x += 1;
 help: consider making this binding mutable
    |
 LL |         S { bar: mut x } => {
-   |                  ~~~~~
+   |                  +++
 help: to modify the original value, take a borrow instead
    |
 LL |         S { bar: ref mut x } => {
-   |                  ~~~~~~~~~
+   |                  +++++++
 
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/borrowck-match-binding-is-assignment.rs:32:13
@@ -60,11 +60,11 @@ LL |             x += 1;
 help: consider making this binding mutable
    |
 LL |         (mut x,) => {
-   |          ~~~~~
+   |          +++
 help: to modify the original value, take a borrow instead
    |
 LL |         (ref mut x,) => {
-   |          ~~~~~~~~~
+   |          +++++++
 
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/borrowck-match-binding-is-assignment.rs:38:13
@@ -77,11 +77,11 @@ LL |             x += 1;
 help: consider making this binding mutable
    |
 LL |         [mut x,_,_] => {
-   |          ~~~~~
+   |          +++
 help: to modify the original value, take a borrow instead
    |
 LL |         [ref mut x,_,_] => {
-   |          ~~~~~~~~~
+   |          +++++++
 
 error: aborting due to 5 previous errors
 

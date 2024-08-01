@@ -8,7 +8,7 @@
 //@[ASAN] compile-flags: -Zsanitizer=address
 //@[LSAN] compile-flags: -Zsanitizer=leak
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![feature(no_sanitize)]
 
 // ASAN-LABEL: define void @test
@@ -16,7 +16,7 @@
 // ASAN:       }
 //
 // LSAN-LABEL: define void @test
-// LSAN-NO:      call
+// LSAN-NOT:     call
 // LSAN:       }
 #[no_mangle]
 pub fn test(n: &mut u32) {

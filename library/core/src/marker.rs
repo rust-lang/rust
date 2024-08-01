@@ -9,8 +9,7 @@
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;
-use crate::hash::Hash;
-use crate::hash::Hasher;
+use crate::hash::{Hash, Hasher};
 
 /// Implements a given marker trait for multiple types at the same time.
 ///
@@ -42,6 +41,8 @@ use crate::hash::Hasher;
 /// }
 /// ```
 #[unstable(feature = "internal_impls_macro", issue = "none")]
+// Allow implementations of `UnsizedConstParamTy` even though std cannot use that feature.
+#[allow_internal_unstable(unsized_const_params)]
 macro marker_impls {
     ( $(#[$($meta:tt)*])* $Trait:ident for $({$($bounds:tt)*})? $T:ty $(, $($rest:tt)*)? ) => {
         $(#[$($meta)*])* impl< $($($bounds)*)? > $Trait for $T {}
@@ -869,7 +870,7 @@ marker_impls! {
 ///
 /// *However*, you cannot use [`mem::replace`] on `!Unpin` data which is *pinned* by being wrapped
 /// inside a [`Pin<Ptr>`] pointing at it. This is because you cannot (safely) use a
-/// [`Pin<Ptr>`] to get an `&mut T` to its pointee value, which you would need to call
+/// [`Pin<Ptr>`] to get a `&mut T` to its pointee value, which you would need to call
 /// [`mem::replace`], and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
@@ -944,7 +945,6 @@ marker_impls! {
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
-#[const_trait]
 pub trait Destruct {}
 
 /// A marker for tuple types.
@@ -976,35 +976,74 @@ pub trait PointerLike {}
 /// that all fields are also `ConstParamTy`, which implies that recursively, all fields
 /// are `StructuralPartialEq`.
 #[lang = "const_param_ty"]
-#[unstable(feature = "adt_const_params", issue = "95174")]
+#[unstable(feature = "unsized_const_params", issue = "95174")]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
-pub trait ConstParamTy: StructuralPartialEq + Eq {}
+// We name this differently than the derive macro so that the `adt_const_params` can
+// be used independently of `unsized_const_params` without requiring a full path
+// to the derive macro every time it is used. This should be renamed on stabilization.
+pub trait ConstParamTy_: UnsizedConstParamTy + StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
+#[allow_internal_unstable(unsized_const_params)]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 pub macro ConstParamTy($item:item) {
+    /* compiler built-in */
+}
+
+#[cfg_attr(not(bootstrap), lang = "unsized_const_param_ty")]
+#[unstable(feature = "unsized_const_params", issue = "95174")]
+#[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+/// A marker for types which can be used as types of `const` generic parameters.
+///
+/// Equivalent to [`ConstParamTy_`] except that this is used by
+/// the `unsized_const_params` to allow for fake unstable impls.
+pub trait UnsizedConstParamTy: StructuralPartialEq + Eq {}
+
+/// Derive macro generating an impl of the trait `ConstParamTy`.
+#[cfg(not(bootstrap))]
+#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
+#[cfg_attr(not(bootstrap), allow_internal_unstable(unsized_const_params))]
+#[cfg_attr(not(bootstrap), unstable(feature = "unsized_const_params", issue = "95174"))]
+pub macro UnsizedConstParamTy($item:item) {
     /* compiler built-in */
 }
 
 // FIXME(adt_const_params): handle `ty::FnDef`/`ty::Closure`
 marker_impls! {
     #[unstable(feature = "adt_const_params", issue = "95174")]
-    ConstParamTy for
+    ConstParamTy_ for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,
         bool,
         char,
-        str /* Technically requires `[u8]: ConstParamTy` */,
-        {T: ConstParamTy, const N: usize} [T; N],
-        {T: ConstParamTy} [T],
-        {T: ?Sized + ConstParamTy} &T,
+        (),
+        {T: ConstParamTy_, const N: usize} [T; N],
+}
+#[cfg(bootstrap)]
+marker_impls! {
+    #[unstable(feature = "adt_const_params", issue = "95174")]
+    ConstParamTy_ for
+        str,
+        {T: ConstParamTy_} [T],
+        {T: ConstParamTy_ + ?Sized} &T,
 }
 
-// FIXME(adt_const_params): Add to marker_impls call above once not in bootstrap
-#[unstable(feature = "adt_const_params", issue = "95174")]
-impl ConstParamTy for () {}
+marker_impls! {
+    #[unstable(feature = "unsized_const_params", issue = "95174")]
+    UnsizedConstParamTy for
+        usize, u8, u16, u32, u64, u128,
+        isize, i8, i16, i32, i64, i128,
+        bool,
+        char,
+        (),
+        {T: UnsizedConstParamTy, const N: usize} [T; N],
+
+        str,
+        {T: UnsizedConstParamTy} [T],
+        {T: UnsizedConstParamTy + ?Sized} &T,
+}
 
 /// A common trait implemented by all function pointers.
 #[unstable(
@@ -1018,4 +1057,57 @@ pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> *const ();
+}
+
+/// Derive macro generating impls of traits related to smart pointers.
+#[rustc_builtin_macro]
+#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
+#[unstable(feature = "derive_smart_pointer", issue = "123430")]
+pub macro SmartPointer($item:item) {
+    /* compiler built-in */
+}
+
+// Support traits and types for the desugaring of const traits and
+// `~const` bounds. Not supposed to be used by anything other than
+// the compiler.
+#[doc(hidden)]
+#[unstable(
+    feature = "effect_types",
+    issue = "none",
+    reason = "internal module for implementing effects"
+)]
+#[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
+pub mod effects {
+    #[lang = "EffectsNoRuntime"]
+    pub struct NoRuntime;
+    #[lang = "EffectsMaybe"]
+    pub struct Maybe;
+    #[lang = "EffectsRuntime"]
+    pub struct Runtime;
+
+    #[lang = "EffectsCompat"]
+    pub trait Compat<#[rustc_runtime] const RUNTIME: bool> {}
+
+    impl Compat<false> for NoRuntime {}
+    impl Compat<true> for Runtime {}
+    impl<#[rustc_runtime] const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
+
+    #[lang = "EffectsTyCompat"]
+    #[marker]
+    pub trait TyCompat<T: ?Sized> {}
+
+    impl<T: ?Sized> TyCompat<T> for T {}
+    impl<T: ?Sized> TyCompat<T> for Maybe {}
+    impl<T: ?Sized> TyCompat<Maybe> for T {}
+
+    #[lang = "EffectsIntersection"]
+    pub trait Intersection {
+        #[lang = "EffectsIntersectionOutput"]
+        type Output: ?Sized;
+    }
+
+    // FIXME(effects): remove this after next trait solver lands
+    impl Intersection for () {
+        type Output = Maybe;
+    }
 }

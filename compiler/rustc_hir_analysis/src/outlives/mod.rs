@@ -1,14 +1,12 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::{self, CratePredicatesMap, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, CratePredicatesMap, GenericArgKind, TyCtxt, Upcast};
 use rustc_span::Span;
 
+pub(crate) mod dump;
 mod explicit;
 mod implicit_infer;
-/// Code to write unit test for outlives.
-pub mod test;
 mod utils;
 
 pub fn provide(providers: &mut Providers) {
@@ -75,14 +73,14 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                         match kind1.unpack() {
                             GenericArgKind::Type(ty1) => Some((
                                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty1, *region2))
-                                    .to_predicate(tcx),
+                                    .upcast(tcx),
                                 span,
                             )),
                             GenericArgKind::Lifetime(region1) => Some((
                                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
                                     region1, *region2,
                                 ))
-                                .to_predicate(tcx),
+                                .upcast(tcx),
                                 span,
                             )),
                             GenericArgKind::Const(_) => {

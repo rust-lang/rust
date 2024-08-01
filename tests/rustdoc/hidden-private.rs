@@ -6,10 +6,10 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html'
-// @count - '//*[@class="item-table"]//a[@class="struct"]' 2
-// @count - '//*[@class="item-table"]//a[@class="trait"]' 1
-// @count - '//*[@class="item-table"]//a[@class="macro"]' 0
+//@ has 'foo/index.html'
+//@ count - '//*[@class="item-table"]//a[@class="struct"]' 2
+//@ count - '//*[@class="item-table"]//a[@class="trait"]' 1
+//@ count - '//*[@class="item-table"]//a[@class="macro"]' 0
 #[doc(hidden)]
 const _: () = {
     macro_rules! stry {
@@ -18,8 +18,8 @@ const _: () = {
 
     struct ShouldBeHidden;
 
-    // @has 'foo/struct.Foo.html'
-    // @!has - '//*[@class="code-header"]' 'impl Bar for Foo'
+    //@ has 'foo/struct.Foo.html'
+    //@ !has - '//*[@class="code-header"]' 'impl Bar for Foo'
     #[doc(hidden)]
     impl Bar for Foo {
         fn bar(&self) {
@@ -27,15 +27,15 @@ const _: () = {
         }
     }
 
-    // @has 'foo/struct.Private.html'
-    // @has - '//*[@id="impl-Bar-for-Private"]/*[@class="code-header"]' 'impl Bar for Private'
-    // @has - '//*[@id="method.bar"]/*[@class="code-header"]' 'fn bar(&self)'
+    //@ has 'foo/struct.Private.html'
+    //@ has - '//*[@id="impl-Bar-for-Private"]/*[@class="code-header"]' 'impl Bar for Private'
+    //@ has - '//*[@id="method.bar"]/*[@class="code-header"]' 'fn bar(&self)'
     impl Bar for Private {
         fn bar(&self) {}
     }
 
-    // @has - '//*[@id="impl-Private"]/*[@class="code-header"]' 'impl Private'
-    // @has - '//*[@id="method.tralala"]/*[@class="code-header"]' 'fn tralala()'
+    //@ has - '//*[@id="impl-Private"]/*[@class="code-header"]' 'impl Private'
+    //@ has - '//*[@id="method.tralala"]/*[@class="code-header"]' 'fn tralala()'
     impl Private {
         fn tralala() {}
     }

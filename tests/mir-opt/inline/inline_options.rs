@@ -16,8 +16,16 @@ fn main() {
 
 // Cost is approximately 3 * 25 + 5 = 80.
 #[inline]
-pub fn not_inlined() { g(); g(); g(); }
-pub fn inlined<T>() { g(); g(); g(); }
+pub fn not_inlined() {
+    g();
+    g();
+    g();
+}
+pub fn inlined<T>() {
+    g();
+    g();
+    g();
+}
 
 #[inline(never)]
 fn g() {}

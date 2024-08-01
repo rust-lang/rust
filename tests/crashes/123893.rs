@@ -11,6 +11,7 @@ fn generic_impl<T>() {
     impl<T> MagicTrait for T {
         const IS_BIG: bool = true;
     }
+    more_cost();
     if T::IS_BIG {
         big_impl::<i32>();
     }
@@ -18,3 +19,6 @@ fn generic_impl<T>() {
 
 #[inline(never)]
 fn big_impl<T>() {}
+
+#[inline(never)]
+fn more_cost() {}

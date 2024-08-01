@@ -1,13 +1,14 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{rustc, tmp_dir, wasmparser};
 use std::collections::HashMap;
+
+use run_make_support::{rfs, rustc, wasmparser};
 
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
     rustc().input("bar.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
 
-    let file = std::fs::read(&tmp_dir().join("bar.wasm")).unwrap();
+    let file = rfs::read("bar.wasm");
 
     let mut custom = HashMap::new();
     for payload in wasmparser::Parser::new(0).parse_all(&file) {

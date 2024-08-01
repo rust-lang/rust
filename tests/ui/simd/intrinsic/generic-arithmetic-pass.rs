@@ -47,6 +47,7 @@ extern "rust-intrinsic" {
     fn simd_bswap<T>(x: T) -> T;
     fn simd_bitreverse<T>(x: T) -> T;
     fn simd_ctlz<T>(x: T) -> T;
+    fn simd_ctpop<T>(x: T) -> T;
     fn simd_cttz<T>(x: T) -> T;
 }
 
@@ -57,6 +58,8 @@ fn main() {
     let x2 = i32x4(2, 3, 4, 5);
     let y2 = U32::<4>([2, 3, 4, 5]);
     let z2 = f32x4(2.0, 3.0, 4.0, 5.0);
+    let x3 = i32x4(0, i32::MAX, i32::MIN, -1_i32);
+    let y3 = U32::<4>([0, i32::MAX as _, i32::MIN as _, -1_i32 as _]);
 
     unsafe {
         all_eq!(simd_add(x1, x2), i32x4(3, 5, 7, 9));
@@ -146,6 +149,13 @@ fn main() {
 
         all_eq!(simd_ctlz(x1), i32x4(31, 30, 30, 29));
         all_eq_!(simd_ctlz(y1), U32::<4>([31, 30, 30, 29]));
+
+        all_eq!(simd_ctpop(x1), i32x4(1, 1, 2, 1));
+        all_eq_!(simd_ctpop(y1), U32::<4>([1, 1, 2, 1]));
+        all_eq!(simd_ctpop(x2), i32x4(1, 2, 1, 2));
+        all_eq_!(simd_ctpop(y2), U32::<4>([1, 2, 1, 2]));
+        all_eq!(simd_ctpop(x3), i32x4(0, 31, 1, 32));
+        all_eq_!(simd_ctpop(y3), U32::<4>([0, 31, 1, 32]));
 
         all_eq!(simd_cttz(x1), i32x4(0, 1, 0, 2));
         all_eq_!(simd_cttz(y1), U32::<4>([0, 1, 0, 2]));

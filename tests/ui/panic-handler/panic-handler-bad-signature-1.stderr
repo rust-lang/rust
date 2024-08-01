@@ -5,7 +5,7 @@ LL | fn panic(info: PanicInfo) -> () {}
    |                ^^^^^^^^^ expected `&PanicInfo<'_>`, found `PanicInfo<'_>`
    |
    = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-              found signature `for<'a> fn(PanicInfo<'a>)`
+              found signature `for<'a> fn(PanicInfo<'a>) -> ()`
 
 error: aborting due to 1 previous error
 

@@ -2,15 +2,18 @@
 
 set -ex
 
-# Check sysroot handling
-sysroot=$(./target/debug/clippy-driver --print sysroot)
-test "$sysroot" = "$(rustc --print sysroot)"
+sysroot="$(rustc --print sysroot)"
+case $OS in
+    Linux) export LD_LIBRARY_PATH="$sysroot/lib" ;;
+    macOS) export DYLD_FALLBACK_LIBRARY_PATH="$sysroot/lib" ;;
+    Windows) export PATH="$(cygpath "$sysroot")/bin:$PATH" ;;
+    *) exit 1
+esac
 
-if [[ ${OS} == "Windows" ]]; then
-	desired_sysroot=C:/tmp
-else
-	desired_sysroot=/tmp
-fi
+# Check sysroot handling
+test "$(./target/debug/clippy-driver --print sysroot)" = "$sysroot"
+
+desired_sysroot="target/sysroot"
 # Set --sysroot in command line
 sysroot=$(./target/debug/clippy-driver --sysroot $desired_sysroot --print sysroot)
 test "$sysroot" = $desired_sysroot

@@ -8,7 +8,6 @@
 )]
 
 // Some "regular" crates we want to share with rustc
-#[macro_use]
 extern crate tracing;
 
 // The rustc crates we need
@@ -25,6 +24,8 @@ use std::env::{self, VarError};
 use std::num::NonZero;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use tracing::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
@@ -97,10 +98,9 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             }
 
             if tcx.sess.opts.optimize != OptLevel::No {
-                tcx.dcx().warn("Miri does not support optimizations. If you have enabled optimizations \
-                    by selecting a Cargo profile (such as --release) which changes other profile settings \
-                    such as whether debug assertions and overflow checks are enabled, those settings are \
-                    still applied.");
+                tcx.dcx().warn("Miri does not support optimizations: the opt-level is ignored. The only effect \
+                    of selecting a Cargo profile that enables optimizations (such as --release) is to apply \
+                    its remaining settings, such as whether debug assertions and overflow checks are enabled.");
             }
             if tcx.sess.mir_opt_level() > 0 {
                 tcx.dcx().warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
@@ -405,9 +405,12 @@ fn main() {
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
-
     // If user has explicitly enabled/disabled isolation
     let mut isolation_enabled: Option<bool> = None;
+
+    // Note that we require values to be given with `=`, not with a space.
+    // This matches how rustc parses `-Z`.
+    // However, unlike rustc we do not accept a space after `-Z`.
     for arg in args {
         if rustc_args.is_empty() {
             // Very first arg: binary name.
@@ -575,23 +578,23 @@ fn main() {
                 "full" => BacktraceStyle::Full,
                 _ => show_error!("-Zmiri-backtrace may only be 0, 1, or full"),
             };
-        } else if let Some(param) = arg.strip_prefix("-Zmiri-extern-so-file=") {
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-native-lib=") {
             let filename = param.to_string();
             if std::path::Path::new(&filename).exists() {
-                if let Some(other_filename) = miri_config.external_so_file {
-                    show_error!(
-                        "-Zmiri-extern-so-file is already set to {}",
-                        other_filename.display()
-                    );
+                if let Some(other_filename) = miri_config.native_lib {
+                    show_error!("-Zmiri-native-lib is already set to {}", other_filename.display());
                 }
-                miri_config.external_so_file = Some(filename.into());
+                miri_config.native_lib = Some(filename.into());
             } else {
-                show_error!("-Zmiri-extern-so-file `{}` does not exist", filename);
+                show_error!("-Zmiri-native-lib `{}` does not exist", filename);
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-num-cpus=") {
             let num_cpus = param
                 .parse::<u32>()
                 .unwrap_or_else(|err| show_error!("-Zmiri-num-cpus requires a `u32`: {}", err));
+            if !(1..=miri::MAX_CPUS).contains(&usize::try_from(num_cpus).unwrap()) {
+                show_error!("-Zmiri-num-cpus must be in the range 1..={}", miri::MAX_CPUS);
+            }
             miri_config.num_cpus = num_cpus;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-force-page-size=") {
             let page_size = param.parse::<u64>().unwrap_or_else(|err| {
@@ -615,6 +618,14 @@ fn main() {
     {
         show_error!(
             "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
+        );
+    }
+    // Tree Borrows + permissive provenance does not work.
+    if miri_config.provenance_mode == ProvenanceMode::Permissive
+        && matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
+    {
+        show_error!(
+            "Tree Borrows does not support integer-to-pointer casts, and is hence not compatible with permissive provenance"
         );
     }
 

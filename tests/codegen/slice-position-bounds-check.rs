@@ -3,9 +3,7 @@
 
 fn search<T: Ord + Eq>(arr: &mut [T], a: &T) -> Result<usize, ()> {
     match arr.iter().position(|x| x == a) {
-        Some(p) => {
-            Ok(p)
-        },
+        Some(p) => Ok(p),
         None => Err(()),
     }
 }
@@ -15,11 +13,7 @@ fn search<T: Ord + Eq>(arr: &mut [T], a: &T) -> Result<usize, ()> {
 pub fn position_no_bounds_check(y: &mut [u32], x: &u32, z: &u32) -> bool {
     // This contains "call assume" so we cannot just rule out all calls
     // CHECK-NOT: panic_bounds_check
-    if let Ok(p) = search(y, x) {
-      y[p] == *z
-    } else {
-      false
-    }
+    if let Ok(p) = search(y, x) { y[p] == *z } else { false }
 }
 
 // just to make sure that panicking really emits "panic_bounds_check" somewhere in the IR

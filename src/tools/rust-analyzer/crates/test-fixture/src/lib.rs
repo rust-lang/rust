@@ -196,7 +196,7 @@ impl ChangeFixture {
                     origin,
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
-                assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
+                assert!(prev.is_none(), "multiple crates with same name: {crate_name}");
                 for dep in meta.deps {
                     let prelude = match &meta.extern_prelude {
                         Some(v) => v.contains(&dep),
@@ -240,7 +240,12 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         from_id,
-                        Dependency::with_prelude(CrateName::new(&to).unwrap(), to_id, prelude),
+                        Dependency::with_prelude(
+                            CrateName::new(&to).unwrap(),
+                            to_id,
+                            prelude,
+                            false,
+                        ),
                     )
                     .unwrap();
             }
@@ -275,7 +280,15 @@ impl ChangeFixture {
 
             for krate in all_crates {
                 crate_graph
-                    .add_dep(krate, Dependency::new(CrateName::new("core").unwrap(), core_crate))
+                    .add_dep(
+                        krate,
+                        Dependency::with_prelude(
+                            CrateName::new("core").unwrap(),
+                            core_crate,
+                            true,
+                            true,
+                        ),
+                    )
                     .unwrap();
             }
         }

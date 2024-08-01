@@ -15,7 +15,9 @@ use ide_db::{
 };
 use itertools::{izip, Itertools};
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, HasArgList, Pat, PathExpr},
+    ast::{
+        self, edit::IndentLevel, edit_in_place::Indent, HasArgList, HasGenericArgs, Pat, PathExpr,
+    },
     ted, AstNode, NodeOrToken, SyntaxKind,
 };
 
@@ -368,7 +370,7 @@ fn inline(
                     _ => None,
                 })
                 .for_each(|usage| {
-                    ted::replace(usage, &this());
+                    ted::replace(usage, this());
                 });
         }
     }
@@ -483,7 +485,7 @@ fn inline(
                 cov_mark::hit!(inline_call_inline_direct_field);
                 field.replace_expr(replacement.clone_for_update());
             } else {
-                ted::replace(usage.syntax(), &replacement.syntax().clone_for_update());
+                ted::replace(usage.syntax(), replacement.syntax().clone_for_update());
             }
         };
 

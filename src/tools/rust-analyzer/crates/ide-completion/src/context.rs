@@ -46,13 +46,15 @@ pub(crate) enum Visible {
 /// Existing qualifiers for the thing we are currently completing.
 #[derive(Debug, Default)]
 pub(crate) struct QualifierCtx {
+    // TODO: Add try_tok and default_tok
+    pub(crate) async_tok: Option<SyntaxToken>,
     pub(crate) unsafe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
     pub(crate) fn none(&self) -> bool {
-        self.unsafe_tok.is_none() && self.vis_node.is_none()
+        self.async_tok.is_none() && self.unsafe_tok.is_none() && self.vis_node.is_none()
     }
 }
 
@@ -452,6 +454,7 @@ pub(crate) struct CompletionContext<'a> {
     /// - crate-root
     ///  - mod foo
     ///   - mod bar
+    ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
 }
@@ -466,7 +469,7 @@ impl CompletionContext<'_> {
                 cov_mark::hit!(completes_if_lifetime_without_idents);
                 TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
             }
-            IDENT | LIFETIME_IDENT | UNDERSCORE => self.original_token.text_range(),
+            IDENT | LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
             _ if kind.is_keyword() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
@@ -585,8 +588,7 @@ impl CompletionContext<'_> {
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
     /// passes all doc-aliases along, to funnel it into [`Completions::add_path_resolution`].
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<SmolStr>)) {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names").entered();
+        let _p = tracing::info_span!("CompletionContext::process_all_names").entered();
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
                 return;
@@ -597,8 +599,7 @@ impl CompletionContext<'_> {
     }
 
     pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
-        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names_raw")
-            .entered();
+        let _p = tracing::info_span!("CompletionContext::process_all_names_raw").entered();
         self.scope.process_all_names(f);
     }
 
@@ -656,7 +657,7 @@ impl<'a> CompletionContext<'a> {
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
-        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::new").entered();
+        let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
         let original_file = sema.parse(file_id);

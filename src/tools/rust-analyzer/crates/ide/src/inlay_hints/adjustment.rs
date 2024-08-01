@@ -709,4 +709,25 @@ fn main() {
             "#,
         )
     }
+
+    // regression test for a stackoverflow in hir display code
+    #[test]
+    fn adjustment_hints_method_call_on_impl_trait_self() {
+        check_with_config(
+            InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
+            r#"
+//- minicore: slice, coerce_unsized
+trait T<RHS = Self> {}
+
+fn hello(it: &&[impl T]) {
+    it.len();
+  //^^(
+  //^^&
+  //^^*
+  //^^*
+  //^^)
+}
+"#,
+        );
+    }
 }

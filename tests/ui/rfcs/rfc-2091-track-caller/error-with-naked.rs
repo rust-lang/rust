@@ -3,7 +3,7 @@
 
 use std::arch::asm;
 
-#[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
+#[track_caller] //~ ERROR [E0736]
 //~^ ERROR `#[track_caller]` requires Rust ABI
 #[naked]
 extern "C" fn f() {
@@ -15,7 +15,7 @@ extern "C" fn f() {
 struct S;
 
 impl S {
-    #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
+    #[track_caller] //~ ERROR [E0736]
     //~^ ERROR `#[track_caller]` requires Rust ABI
     #[naked]
     extern "C" fn g() {

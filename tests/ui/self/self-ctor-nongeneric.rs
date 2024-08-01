@@ -6,8 +6,12 @@ struct S0(usize);
 impl S0 {
     fn foo() {
         const C: S0 = Self(0);
+        //~^ WARN can't reference `Self` constructor from outer item
+        //~| WARN this was previously accepted by the compiler but is being phased out
         fn bar() -> S0 {
             Self(0)
+            //~^ WARN can't reference `Self` constructor from outer item
+            //~| WARN this was previously accepted by the compiler but is being phased out
         }
     }
 }

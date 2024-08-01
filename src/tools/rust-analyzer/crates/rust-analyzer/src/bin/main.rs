@@ -2,7 +2,6 @@
 //!
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
@@ -15,7 +14,11 @@ use std::{env, fs, path::PathBuf, process::ExitCode, sync::Arc};
 
 use anyhow::Context;
 use lsp_server::Connection;
-use rust_analyzer::{cli::flags, config::Config, from_json};
+use rust_analyzer::{
+    cli::flags,
+    config::{Config, ConfigChange, ConfigErrors},
+    from_json,
+};
 use semver::Version;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use vfs::AbsPathBuf;
@@ -220,16 +223,22 @@ fn run_server() -> anyhow::Result<()> {
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root_path.clone()]);
     let mut config =
-        Config::new(root_path, capabilities, workspace_roots, visual_studio_code_version);
+        Config::new(root_path, capabilities, workspace_roots, visual_studio_code_version, None);
     if let Some(json) = initialization_options {
-        if let Err(e) = config.update(json) {
+        let mut change = ConfigChange::default();
+        change.change_client_config(json);
+
+        let error_sink: ConfigErrors;
+        (config, error_sink, _) = config.apply_change(change);
+
+        if !error_sink.is_empty() {
             use lsp_types::{
                 notification::{Notification, ShowMessage},
                 MessageType, ShowMessageParams,
             };
             let not = lsp_server::Notification::new(
                 ShowMessage::METHOD.to_owned(),
-                ShowMessageParams { typ: MessageType::WARNING, message: e.to_string() },
+                ShowMessageParams { typ: MessageType::WARNING, message: error_sink.to_string() },
             );
             connection.sender.send(lsp_server::Message::Notification(not)).unwrap();
         }
@@ -259,9 +268,15 @@ fn run_server() -> anyhow::Result<()> {
         config.rediscover_workspaces();
     }
 
-    rust_analyzer::main_loop(config, connection)?;
+    // If the io_threads have an error, there's usually an error on the main
+    // loop too because the channels are closed. Ensure we report both errors.
+    match (rust_analyzer::main_loop(config, connection), io_threads.join()) {
+        (Err(loop_e), Err(join_e)) => anyhow::bail!("{loop_e}\n{join_e}"),
+        (Ok(_), Err(join_e)) => anyhow::bail!("{join_e}"),
+        (Err(loop_e), Ok(_)) => anyhow::bail!("{loop_e}"),
+        (Ok(_), Ok(_)) => {}
+    }
 
-    io_threads.join()?;
     tracing::info!("server did shut down");
     Ok(())
 }

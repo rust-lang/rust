@@ -11,7 +11,7 @@ LL | static n: &'static usize = unsafe { &n_mut };
 help: use `addr_of!` instead to create a raw pointer
    |
 LL | static n: &'static usize = unsafe { addr_of!(n_mut) };
-   |                                     ~~~~~~~~~~~~~~~
+   |                                     ~~~~~~~~~     +
 
 warning: 1 warning emitted
 

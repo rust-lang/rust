@@ -30,6 +30,7 @@
                     "core",
                 ),
                 prelude: true,
+                sysroot: false,
             },
         ],
         origin: Lang(
@@ -158,6 +159,7 @@
                     "std",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(1),
@@ -165,6 +167,7 @@
                     "core",
                 ),
                 prelude: true,
+                sysroot: false,
             },
         ],
         origin: Lang(
@@ -233,6 +236,7 @@
                     "alloc",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(3),
@@ -240,6 +244,7 @@
                     "panic_unwind",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(2),
@@ -247,6 +252,7 @@
                     "panic_abort",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(1),
@@ -254,6 +260,7 @@
                     "core",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(5),
@@ -261,6 +268,7 @@
                     "profiler_builtins",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(9),
@@ -268,6 +276,7 @@
                     "unwind",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(7),
@@ -275,6 +284,7 @@
                     "std_detect",
                 ),
                 prelude: true,
+                sysroot: false,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(8),
@@ -282,6 +292,7 @@
                     "test",
                 ),
                 prelude: true,
+                sysroot: false,
             },
         ],
         origin: Lang(
@@ -409,13 +420,15 @@
                     "core",
                 ),
                 prelude: true,
+                sysroot: true,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(0),
                 name: CrateName(
                     "alloc",
                 ),
-                prelude: true,
+                prelude: false,
+                sysroot: true,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(6),
@@ -423,6 +436,7 @@
                     "std",
                 ),
                 prelude: true,
+                sysroot: true,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(8),
@@ -430,6 +444,7 @@
                     "test",
                 ),
                 prelude: false,
+                sysroot: true,
             },
             Dependency {
                 crate_id: Idx::<CrateData>(4),
@@ -437,6 +452,7 @@
                     "proc_macro",
                 ),
                 prelude: false,
+                sysroot: true,
             },
         ],
         origin: Local {

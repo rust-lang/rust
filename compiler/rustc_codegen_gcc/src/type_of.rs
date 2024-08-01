@@ -5,11 +5,11 @@ use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeM
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{
-    self, Abi, Align, FieldsShape, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
-    Variants, F128, F16, F32, F64,
+    self, Abi, FieldsShape, Float, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
+    Variants,
 };
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
@@ -53,12 +53,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
-    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
-        self.layout_of(ty).align.abi
-    }
-}
-
 fn uncached_gcc_type<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     layout: TyAndLayout<'tcx>,
@@ -90,7 +84,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
         Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
-    let name = match layout.ty.kind() {
+    let name = match *layout.ty.kind() {
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
@@ -220,7 +214,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
                 // to fn_ptr_backend_type handle the on-stack attribute.
                 // TODO(antoyo): find a less hackish way to hande the on-stack attribute.
                 ty::FnPtr(sig) => {
-                    cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
+                    cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
                 _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
             };
@@ -283,10 +277,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
-            F16 => cx.type_f16(),
-            F32 => cx.type_f32(),
-            F64 => cx.type_f64(),
-            F128 => cx.type_f128(),
+            Float(f) => cx.type_from_float(f),
             Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {

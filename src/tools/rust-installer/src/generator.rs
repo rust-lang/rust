@@ -1,11 +1,12 @@
-use super::Scripter;
-use super::Tarballer;
-use crate::compression::{CompressionFormats, CompressionProfile};
-use crate::util::*;
-use anyhow::{bail, format_err, Context, Result};
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::path::Path;
+
+use anyhow::{bail, format_err, Context, Result};
+
+use super::{Scripter, Tarballer};
+use crate::compression::{CompressionFormats, CompressionProfile};
+use crate::util::*;
 
 actor! {
     #[derive(Debug)]
@@ -61,6 +62,12 @@ actor! {
         /// The formats used to compress the tarball
         #[arg(value_name = "FORMAT", default_value_t)]
         compression_formats: CompressionFormats,
+
+        /// Modification time that will be set for all files added to the archive.
+        /// The default is the date of the first Rust commit from 2006.
+        /// This serves for better reproducibility of the archives.
+        #[arg(value_name = "FILE_MTIME", default_value_t = 1153704088)]
+        override_file_mtime: u64,
     }
 }
 
@@ -114,7 +121,8 @@ impl Generator {
             .input(self.package_name)
             .output(path_to_str(&output)?.into())
             .compression_profile(self.compression_profile)
-            .compression_formats(self.compression_formats);
+            .compression_formats(self.compression_formats)
+            .override_file_mtime(self.override_file_mtime);
         tarballer.run()?;
 
         Ok(())

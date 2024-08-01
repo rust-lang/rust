@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:12:27: 16:6}: Copy` is not satisfied
+error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:12:27: 12:32}: Copy` is not satisfied
   --> $DIR/clone-impl-async.rs:17:16
    |
 LL |     check_copy(&inner_non_clone);
-   |     ---------- ^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/clone-impl-async.rs:12:27: 16:6}`
+   |     ---------- ^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/clone-impl-async.rs:12:27: 12:32}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -12,11 +12,11 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:12:27: 16:6}: Clone` is not satisfied
+error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:12:27: 12:32}: Clone` is not satisfied
   --> $DIR/clone-impl-async.rs:19:17
    |
 LL |     check_clone(&inner_non_clone);
-   |     ----------- ^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `{async block@$DIR/clone-impl-async.rs:12:27: 16:6}`
+   |     ----------- ^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `{async block@$DIR/clone-impl-async.rs:12:27: 12:32}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -26,11 +26,11 @@ note: required by a bound in `check_clone`
 LL | fn check_clone<T: Clone>(_x: &T) {}
    |                   ^^^^^ required by this bound in `check_clone`
 
-error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:23:27: 25:6}: Copy` is not satisfied
+error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:23:27: 23:37}: Copy` is not satisfied
   --> $DIR/clone-impl-async.rs:26:16
    |
 LL |     check_copy(&outer_non_clone);
-   |     ---------- ^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/clone-impl-async.rs:23:27: 25:6}`
+   |     ---------- ^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/clone-impl-async.rs:23:27: 23:37}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -40,11 +40,11 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:23:27: 25:6}: Clone` is not satisfied
+error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:23:27: 23:37}: Clone` is not satisfied
   --> $DIR/clone-impl-async.rs:28:17
    |
 LL |     check_clone(&outer_non_clone);
-   |     ----------- ^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `{async block@$DIR/clone-impl-async.rs:23:27: 25:6}`
+   |     ----------- ^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `{async block@$DIR/clone-impl-async.rs:23:27: 23:37}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -54,11 +54,11 @@ note: required by a bound in `check_clone`
 LL | fn check_clone<T: Clone>(_x: &T) {}
    |                   ^^^^^ required by this bound in `check_clone`
 
-error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:31:28: 31:41}: Copy` is not satisfied
+error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:31:28: 31:38}: Copy` is not satisfied
   --> $DIR/clone-impl-async.rs:32:16
    |
 LL |     check_copy(&maybe_copy_clone);
-   |     ---------- ^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/clone-impl-async.rs:31:28: 31:41}`
+   |     ---------- ^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/clone-impl-async.rs:31:28: 31:38}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -68,11 +68,11 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:31:28: 31:41}: Clone` is not satisfied
+error[E0277]: the trait bound `{async block@$DIR/clone-impl-async.rs:31:28: 31:38}: Clone` is not satisfied
   --> $DIR/clone-impl-async.rs:34:17
    |
 LL |     check_clone(&maybe_copy_clone);
-   |     ----------- ^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `{async block@$DIR/clone-impl-async.rs:31:28: 31:41}`
+   |     ----------- ^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `{async block@$DIR/clone-impl-async.rs:31:28: 31:38}`
    |     |
    |     required by a bound introduced by this call
    |

@@ -10,7 +10,7 @@ LL | }
    | - ...as it matches this but it has different indentation
 ...
 LL | }
-   |                                                      ^
+   |                                                     ^
 
 error: aborting due to 1 previous error
 

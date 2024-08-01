@@ -17,20 +17,19 @@
 //!
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
-use super::combine::ObligationEmittingRelation;
+use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::{self, Ty, TyVar};
+
+use super::combine::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt};
 use crate::traits::ObligationCause;
-
-use rustc_middle::ty::relate::RelateResult;
-use rustc_middle::ty::TyVar;
-use rustc_middle::ty::{self, Ty};
 
 /// Trait for returning data about a lattice, and for abstracting
 /// over the "direction" of the lattice operation (LUB/GLB).
 ///
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
-pub trait LatticeDir<'f, 'tcx>: ObligationEmittingRelation<'tcx> {
+pub trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>> {
     fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
@@ -56,16 +55,14 @@ pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
 where
     L: LatticeDir<'a, 'tcx>,
 {
-    debug!("{}", this.tag());
-
     if a == b {
         return Ok(a);
     }
 
     let infcx = this.infcx();
 
-    let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
-    let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+    let a = infcx.shallow_resolve(a);
+    let b = infcx.shallow_resolve(b);
 
     match (a.kind(), b.kind()) {
         // If one side is known to be a variable and one is not,
@@ -108,9 +105,7 @@ where
                 && def_id.is_local()
                 && !this.infcx().next_trait_solver() =>
         {
-            this.register_obligations(
-                infcx.handle_opaque_type(a, b, this.cause(), this.param_env())?.obligations,
-            );
+            this.register_goals(infcx.handle_opaque_type(a, b, this.span(), this.param_env())?);
             Ok(a)
         }
 

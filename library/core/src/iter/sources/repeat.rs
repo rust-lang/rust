@@ -8,11 +8,15 @@ use crate::num::NonZero;
 /// Infinite iterators like `repeat()` are often used with adapters like
 /// [`Iterator::take()`], in order to make them finite.
 ///
+/// Use [`str::repeat()`] instead of this function if you just want to repeat
+/// a char/string `n`th times.
+///
 /// If the element type of the iterator you need does not implement `Clone`,
 /// or if you do not want to keep the repeated element in memory, you can
 /// instead use the [`repeat_with()`] function.
 ///
 /// [`repeat_with()`]: crate::iter::repeat_with
+/// [`str::repeat()`]: ../../std/primitive.str.html#method.repeat
 ///
 /// # Examples
 ///

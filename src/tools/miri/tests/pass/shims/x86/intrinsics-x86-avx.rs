@@ -1342,6 +1342,11 @@ unsafe fn test_avx() {
         assert_eq!(r, 1);
     }
     test_mm_testnzc_ps();
+
+    // These intrinsics are functionally no-ops. The only thing
+    // that needs to be tested is that they can be executed.
+    _mm256_zeroupper();
+    _mm256_zeroall();
 }
 
 #[target_feature(enable = "sse2")]

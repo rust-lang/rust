@@ -2,6 +2,7 @@
 
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, nonstandard_style, missing_debug_implementations)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 pub mod raw;
 
@@ -14,7 +15,7 @@ pub mod raw;
 // documented don't compile (missing things in `libc` which is empty),
 // so just omit them with an empty module and add the "unstable" attribute.
 
-// Unix, linux, wasi and windows are handled a bit differently.
+// unix, linux, wasi and windows are handled a bit differently.
 #[cfg(all(
     doc,
     any(
@@ -104,6 +105,8 @@ pub mod windows;
 pub mod aix;
 #[cfg(target_os = "android")]
 pub mod android;
+#[cfg(target_vendor = "apple")]
+pub(crate) mod darwin;
 #[cfg(target_os = "dragonfly")]
 pub mod dragonfly;
 #[cfg(target_os = "emscripten")]
@@ -144,23 +147,16 @@ pub mod redox;
 pub mod solaris;
 #[cfg(target_os = "solid_asp3")]
 pub mod solid;
-#[cfg(target_os = "tvos")]
-#[path = "ios/mod.rs"]
-pub(crate) mod tvos;
 #[cfg(target_os = "uefi")]
 pub mod uefi;
-#[cfg(target_os = "visionos")]
-pub(crate) mod visionos;
 #[cfg(target_os = "vita")]
 pub mod vita;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
-#[cfg(target_os = "watchos")]
-pub(crate) mod watchos;
 #[cfg(target_os = "xous")]
 pub mod xous;
 
-#[cfg(any(unix, target_os = "wasi", doc))]
+#[cfg(any(unix, target_os = "hermit", target_os = "wasi", doc))]
 pub mod fd;
 
 #[cfg(any(target_os = "linux", target_os = "android", doc))]

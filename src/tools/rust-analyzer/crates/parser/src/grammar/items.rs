@@ -372,13 +372,11 @@ fn macro_def(p: &mut Parser<'_>, m: Marker) {
         // macro m { ($i:ident) => {} }
         token_tree(p);
     } else if p.at(T!['(']) {
-        let m = p.start();
         token_tree(p);
         match p.current() {
             T!['{'] | T!['['] | T!['('] => token_tree(p),
             _ => p.error("expected `{`, `[`, `(`"),
         }
-        m.complete(p, TOKEN_TREE);
     } else {
         p.error("unmatched `(`");
     }

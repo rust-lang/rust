@@ -19,9 +19,11 @@
 //!
 //! [`rustc_parse::lexer`]: ../rustc_parse/lexer/index.html
 
+// tidy-alphabetical-start
 // We want to be able to build this crate with a stable compiler,
 // so no `#![feature]` attributes should be added.
 #![deny(unstable_features)]
+// tidy-alphabetical-end
 
 mod cursor;
 pub mod unescape;
@@ -29,12 +31,12 @@ pub mod unescape;
 #[cfg(test)]
 mod tests;
 
-pub use crate::cursor::Cursor;
+use unicode_properties::UnicodeEmoji;
 
 use self::LiteralKind::*;
 use self::TokenKind::*;
+pub use crate::cursor::Cursor;
 use crate::cursor::EOF_CHAR;
-use unicode_properties::UnicodeEmoji;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,

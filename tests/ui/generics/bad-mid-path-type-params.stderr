@@ -2,7 +2,7 @@ error[E0107]: associated function takes 1 generic argument but 2 generic argumen
   --> $DIR/bad-mid-path-type-params.rs:30:16
    |
 LL |     let _ = S::new::<isize,f64>(1, 1.0);
-   |                ^^^         --- help: remove this generic argument
+   |                ^^^        ---- help: remove the unnecessary generic argument
    |                |
    |                expected 1 generic argument
    |
@@ -16,7 +16,7 @@ error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supp
   --> $DIR/bad-mid-path-type-params.rs:33:13
    |
 LL |     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
-   |             ^   -- help: remove this lifetime argument
+   |             ^   -- help: remove the lifetime argument
    |             |
    |             expected 0 lifetime arguments
    |
@@ -30,7 +30,7 @@ error[E0107]: associated function takes 1 generic argument but 2 generic argumen
   --> $DIR/bad-mid-path-type-params.rs:36:24
    |
 LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
-   |                        ^^^         --- help: remove this generic argument
+   |                        ^^^        ---- help: remove the unnecessary generic argument
    |                        |
    |                        expected 1 generic argument
    |
@@ -44,7 +44,7 @@ error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was suppl
   --> $DIR/bad-mid-path-type-params.rs:39:17
    |
 LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
-   |                 ^^^^^   -- help: remove this lifetime argument
+   |                 ^^^^^   -- help: remove the lifetime argument
    |                 |
    |                 expected 0 lifetime arguments
    |
@@ -58,7 +58,7 @@ error[E0107]: associated function takes 1 generic argument but 2 generic argumen
   --> $DIR/bad-mid-path-type-params.rs:39:36
    |
 LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
-   |                                    ^^^       --- help: remove this generic argument
+   |                                    ^^^      ---- help: remove the unnecessary generic argument
    |                                    |
    |                                    expected 1 generic argument
    |

@@ -1,6 +1,7 @@
-use super::BackendTypes;
 use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
 use rustc_target::abi;
+
+use super::BackendTypes;
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
@@ -37,6 +38,5 @@ pub trait ConstMethods<'tcx>: BackendTypes {
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
 
-    fn const_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn const_ptr_byte_offset(&self, val: Self::Value, offset: abi::Size) -> Self::Value;
 }

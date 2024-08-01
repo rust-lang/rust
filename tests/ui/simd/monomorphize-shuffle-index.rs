@@ -1,7 +1,7 @@
 //@[old]run-pass
 //@[generic_with_fn]run-pass
 //@ revisions: old generic generic_with_fn
-#![feature(repr_simd, intrinsics, adt_const_params, generic_const_exprs)]
+#![feature(repr_simd, intrinsics, adt_const_params, unsized_const_params, generic_const_exprs)]
 #![allow(incomplete_features)]
 
 extern "rust-intrinsic" {

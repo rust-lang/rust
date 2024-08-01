@@ -1,5 +1,3 @@
-use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
-
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
@@ -9,6 +7,9 @@ use rustc_middle::mir::coverage::{
 };
 use rustc_middle::ty::Instance;
 use rustc_span::Symbol;
+use tracing::{debug, instrument};
+
+use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.
@@ -65,8 +66,15 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
         // For each expression ID that is directly used by one or more mappings,
         // mark it as not-yet-seen. This indicates that we expect to see a
         // corresponding `ExpressionUsed` statement during MIR traversal.
-        for term in function_coverage_info.mappings.iter().flat_map(|m| m.kind.terms()) {
-            if let CovTerm::Expression(id) = term {
+        for mapping in function_coverage_info.mappings.iter() {
+            // Currently we only worry about ordinary code mappings.
+            // For branch and MC/DC mappings, expressions might not correspond
+            // to any particular point in the control-flow graph.
+            // (Keep this in sync with the injection of `ExpressionUsed`
+            // statements in the `InstrumentCoverage` MIR pass.)
+            if let MappingKind::Code(term) = mapping.kind
+                && let CovTerm::Expression(id) = term
+            {
                 expressions_seen.remove(id);
             }
         }

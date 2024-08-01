@@ -16,8 +16,8 @@ pub(crate) fn parse_lazy_static(
         ($method:ident $(,)* $($arg:expr),* $(,)*) => {
             match parser.$method($($arg,)*) {
                 Ok(val) => {
-                    if parser.psess.dcx.has_errors().is_some() {
-                        parser.psess.dcx.reset_err_count();
+                    if parser.psess.dcx().has_errors().is_some() {
+                        parser.psess.dcx().reset_err_count();
                         return None;
                     } else {
                         val
@@ -25,24 +25,25 @@ pub(crate) fn parse_lazy_static(
                 }
                 Err(err) => {
                     err.cancel();
-                    parser.psess.dcx.reset_err_count();
+                    parser.psess.dcx().reset_err_count();
                     return None;
                 }
             }
         }
     }
-
     while parser.token.kind != TokenKind::Eof {
         // Parse a `lazy_static!` item.
+        // FIXME: These `eat_*` calls should be converted to `parse_or` to avoid
+        // silently formatting malformed lazy-statics.
         let vis = parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No);
-        parser.eat_keyword(kw::Static);
-        parser.eat_keyword(kw::Ref);
+        let _ = parser.eat_keyword(kw::Static);
+        let _ = parser.eat_keyword(kw::Ref);
         let id = parse_or!(parse_ident);
-        parser.eat(&TokenKind::Colon);
+        let _ = parser.eat(&TokenKind::Colon);
         let ty = parse_or!(parse_ty);
-        parser.eat(&TokenKind::Eq);
+        let _ = parser.eat(&TokenKind::Eq);
         let expr = parse_or!(parse_expr);
-        parser.eat(&TokenKind::Semi);
+        let _ = parser.eat(&TokenKind::Semi);
         result.push((vis, id, ty, expr));
     }
 

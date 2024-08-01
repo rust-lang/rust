@@ -7,21 +7,20 @@
 //@ ignore-sgx no processes
 //@ ignore-fuchsia must translate zircon signal to SIGABRT, FIXME (#58590)
 //@ ignore-nto no stack overflow handler used (no alternate stack available)
+//@ ignore-ios stack overflow handlers aren't enabled
+//@ ignore-tvos stack overflow handlers aren't enabled
+//@ ignore-watchos stack overflow handlers aren't enabled
+//@ ignore-visionos stack overflow handlers aren't enabled
 
-#![feature(core_intrinsics)]
 #![feature(rustc_private)]
 
 #[cfg(unix)]
 extern crate libc;
 
 use std::env;
+use std::hint::black_box;
 use std::process::Command;
 use std::thread;
-
-// Inlining to avoid llvm turning the recursive functions into tail calls,
-// which doesn't consume stack.
-#[inline(always)]
-pub fn black_box<T>(dummy: T) { std::intrinsics::black_box(dummy); }
 
 fn silent_recurse() {
     let buf = [0u8; 1000];

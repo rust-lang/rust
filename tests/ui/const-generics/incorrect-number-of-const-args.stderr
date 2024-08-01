@@ -20,7 +20,7 @@ error[E0107]: function takes 2 generic arguments but 3 generic arguments were su
   --> $DIR/incorrect-number-of-const-args.rs:9:5
    |
 LL |     foo::<0, 0, 0>();
-   |     ^^^         - help: remove this generic argument
+   |     ^^^       --- help: remove the unnecessary generic argument
    |     |
    |     expected 2 generic arguments
    |

@@ -1,24 +1,22 @@
-//! Various utility functions used throughout rustbuild.
+//! Various utility functions used throughout bootstrap.
 //!
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
-use build_helper::util::fail;
-use std::env;
 use std::ffi::OsStr;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::str;
 use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::{env, fs, io, str};
+
+use build_helper::git::{get_git_merge_base, output_result, GitConfig};
+use build_helper::util::fail;
 
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
+pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 use crate::LldMode;
-
-pub use crate::utils::dylib::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
 mod tests;
@@ -49,8 +47,10 @@ macro_rules! t {
 }
 pub use t;
 
+use crate::utils::exec::{command, BootstrapCommand};
+
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    crate::utils::dylib::exe(name, &target.triple)
+    crate::utils::shared_helpers::exe(name, &target.triple)
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
@@ -72,7 +72,7 @@ pub fn libdir(target: TargetSelection) -> &'static str {
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
 /// If the dylib_path_var is already set for this cmd, the old value will be overwritten!
-pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = dylib_path();
     for path in path {
         list.insert(0, path);
@@ -81,7 +81,7 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
 }
 
 /// Adds a list of lookup paths to `cmd`'s link library lookup path.
-pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = link_lib_path();
     for path in path {
         list.insert(0, path);
@@ -135,7 +135,7 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     if config.dry_run() {
         return Ok(());
     }
-    let _ = fs::remove_dir(link);
+    let _ = fs::remove_dir_all(link);
     return symlink_dir_inner(original, link);
 
     #[cfg(not(windows))]
@@ -147,6 +147,21 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     #[cfg(windows)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
         junction::create(&target, &junction)
+    }
+}
+
+/// Rename a file if from and to are in the same filesystem or
+/// copy and remove the file otherwise
+pub fn move_file<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
+    match fs::rename(&from, &to) {
+        // FIXME: Once `ErrorKind::CrossesDevices` is stabilized use
+        // if e.kind() == io::ErrorKind::CrossesDevices {
+        #[cfg(unix)]
+        Err(e) if e.raw_os_error() == Some(libc::EXDEV) => {
+            std::fs::copy(&from, &to)?;
+            std::fs::remove_file(&from)
+        }
+        r => r,
     }
 }
 
@@ -186,7 +201,9 @@ pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
             || target.contains("aarch64")
             || target.contains("s390x")
             || target.contains("riscv64gc")
-    } else if target.contains("darwin") || target.is_windows() {
+    } else if target.contains("darwin") {
+        target.contains("x86_64") || target.contains("aarch64")
+    } else if target.is_windows() {
         target.contains("x86_64")
     } else {
         false
@@ -226,8 +243,9 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.status() {
+// FIXME: get rid of this function
+pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
+    let status = match cmd.as_command_mut().status() {
         Ok(status) => status,
         Err(e) => {
             println!("failed to execute command: {cmd:?}\nERROR: {e}");
@@ -316,127 +334,18 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
     })
 }
 
-/// Copied from `std::path::absolute` until it stabilizes.
-///
-/// FIXME: this shouldn't exist.
-pub(crate) fn absolute(path: &Path) -> PathBuf {
-    if path.as_os_str().is_empty() {
-        panic!("can't make empty path absolute");
-    }
-    #[cfg(unix)]
-    {
-        t!(absolute_unix(path), format!("could not make path absolute: {}", path.display()))
-    }
-    #[cfg(windows)]
-    {
-        t!(absolute_windows(path), format!("could not make path absolute: {}", path.display()))
-    }
-    #[cfg(not(any(unix, windows)))]
-    {
-        println!("WARNING: bootstrap is not supported on non-unix platforms");
-        t!(std::fs::canonicalize(t!(std::env::current_dir()))).join(path)
-    }
-}
-
-#[cfg(unix)]
-/// Make a POSIX path absolute without changing its semantics.
-fn absolute_unix(path: &Path) -> io::Result<PathBuf> {
-    // This is mostly a wrapper around collecting `Path::components`, with
-    // exceptions made where this conflicts with the POSIX specification.
-    // See 4.13 Pathname Resolution, IEEE Std 1003.1-2017
-    // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
-
-    use std::os::unix::prelude::OsStrExt;
-    let mut components = path.components();
-    let path_os = path.as_os_str().as_bytes();
-
-    let mut normalized = if path.is_absolute() {
-        // "If a pathname begins with two successive <slash> characters, the
-        // first component following the leading <slash> characters may be
-        // interpreted in an implementation-defined manner, although more than
-        // two leading <slash> characters shall be treated as a single <slash>
-        // character."
-        if path_os.starts_with(b"//") && !path_os.starts_with(b"///") {
-            components.next();
-            PathBuf::from("//")
-        } else {
-            PathBuf::new()
-        }
-    } else {
-        env::current_dir()?
-    };
-    normalized.extend(components);
-
-    // "Interfaces using pathname resolution may specify additional constraints
-    // when a pathname that does not name an existing directory contains at
-    // least one non- <slash> character and contains one or more trailing
-    // <slash> characters".
-    // A trailing <slash> is also meaningful if "a symbolic link is
-    // encountered during pathname resolution".
-
-    if path_os.ends_with(b"/") {
-        normalized.push("");
-    }
-
-    Ok(normalized)
-}
-
-#[cfg(windows)]
-fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    use std::ffi::OsString;
-    use std::io::Error;
-    use std::os::windows::ffi::{OsStrExt, OsStringExt};
-    use std::ptr::null_mut;
-    #[link(name = "kernel32")]
-    extern "system" {
-        fn GetFullPathNameW(
-            lpFileName: *const u16,
-            nBufferLength: u32,
-            lpBuffer: *mut u16,
-            lpFilePart: *mut *const u16,
-        ) -> u32;
-    }
-
-    unsafe {
-        // encode the path as UTF-16
-        let path: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
-        let mut buffer = Vec::new();
-        // Loop until either success or failure.
-        loop {
-            // Try to get the absolute path
-            let len = GetFullPathNameW(
-                path.as_ptr(),
-                buffer.len().try_into().unwrap(),
-                buffer.as_mut_ptr(),
-                null_mut(),
-            );
-            match len as usize {
-                // Failure
-                0 => return Err(Error::last_os_error()),
-                // Buffer is too small, resize.
-                len if len > buffer.len() => buffer.resize(len, 0),
-                // Success!
-                len => {
-                    buffer.truncate(len);
-                    return Ok(OsString::from_wide(&buffer).into());
-                }
-            }
-        }
-    }
-}
-
 /// Adapted from <https://github.com/llvm/llvm-project/blob/782e91224601e461c019e0a4573bbccc6094fbcd/llvm/cmake/modules/HandleLLVMOptions.cmake#L1058-L1079>
 ///
 /// When `clang-cl` is used with instrumentation, we need to add clang's runtime library resource
 /// directory to the linker flags, otherwise there will be linker errors about the profiler runtime
 /// missing. This function returns the path to that directory.
-pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
+pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> PathBuf {
     // Similar to how LLVM does it, to find clang's library runtime directory:
     // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
-    let mut builtins_locator = Command::new(clang_cl_path);
+    let mut builtins_locator = command(clang_cl_path);
     builtins_locator.args(["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
 
-    let clang_rt_builtins = output(&mut builtins_locator);
+    let clang_rt_builtins = builtins_locator.run_capture_stdout(builder).stdout();
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
     assert!(
         clang_rt_builtins.exists(),
@@ -452,7 +361,7 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
 /// Returns a flag that configures LLD to use only a single thread.
 /// If we use an external LLD, we need to find out which version is it to know which flag should we
 /// pass to it (LLD older than version 10 had a different flag).
-fn lld_flag_no_threads(lld_mode: LldMode, is_windows: bool) -> &'static str {
+fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: bool) -> &'static str {
     static LLD_NO_THREADS: OnceLock<(&'static str, &'static str)> = OnceLock::new();
 
     let new_flags = ("/threads:1", "--threads=1");
@@ -461,7 +370,9 @@ fn lld_flag_no_threads(lld_mode: LldMode, is_windows: bool) -> &'static str {
     let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
         let newer_version = match lld_mode {
             LldMode::External => {
-                let out = output(Command::new("lld").arg("-flavor").arg("ld").arg("--version"));
+                let mut cmd = command("lld");
+                cmd.arg("-flavor").arg("ld").arg("--version");
+                let out = cmd.run_capture_stdout(builder).stdout();
                 match (out.find(char::is_numeric), out.find('.')) {
                     (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
                     _ => true,
@@ -523,7 +434,7 @@ pub fn linker_flags(
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
                 "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(builder.config.lld_mode, target.is_windows())
+                lld_flag_no_threads(builder, builder.config.lld_mode, target.is_windows())
             ));
         }
     }
@@ -531,7 +442,7 @@ pub fn linker_flags(
 }
 
 pub fn add_rustdoc_cargo_linker_args(
-    cmd: &mut Command,
+    cmd: &mut BootstrapCommand,
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
@@ -582,4 +493,55 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
         None => "".to_string(),
     };
     format!("--check-cfg=cfg({name}{next})")
+}
+
+/// Prepares `BootstrapCommand` that runs git inside the source directory if given.
+///
+/// Whenever a git invocation is needed, this function should be preferred over
+/// manually building a git `BootstrapCommand`. This approach allows us to manage
+/// bootstrap-specific needs/hacks from a single source, rather than applying them on next to every
+/// git command creation, which is painful to ensure that the required change is applied
+/// on each one of them correctly.
+#[track_caller]
+pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
+    let mut git = command("git");
+
+    if let Some(source_dir) = source_dir {
+        git.current_dir(source_dir);
+        // If we are running inside git (e.g. via a hook), `GIT_DIR` is set and takes precedence
+        // over the current dir. Un-set it to make the current dir matter.
+        git.env_remove("GIT_DIR");
+        // Also un-set some other variables, to be on the safe side (based on cargo's
+        // `fetch_with_cli`). In particular un-setting `GIT_INDEX_FILE` is required to fix some odd
+        // misbehavior.
+        git.env_remove("GIT_WORK_TREE")
+            .env_remove("GIT_INDEX_FILE")
+            .env_remove("GIT_OBJECT_DIRECTORY")
+            .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES");
+    }
+
+    git
+}
+
+/// Returns the closest commit available from upstream for the given `author` and `target_paths`.
+///
+/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
+pub fn get_closest_merge_base_commit(
+    source_dir: Option<&Path>,
+    config: &GitConfig<'_>,
+    author: &str,
+    target_paths: &[PathBuf],
+) -> Result<String, String> {
+    let mut git = git(source_dir);
+
+    let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
+
+    git.arg(Path::new("rev-list"));
+    git.args([&format!("--author={author}"), "-n1", "--first-parent", &merge_base]);
+
+    if !target_paths.is_empty() {
+        git.arg("--").args(target_paths);
+    }
+
+    Ok(output_result(git.as_command_mut())?.trim().to_owned())
 }

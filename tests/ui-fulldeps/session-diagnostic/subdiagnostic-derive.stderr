@@ -451,53 +451,53 @@ error: suggestion without `#[primary_span]` field
 LL | #[suggestion(no_crate_example, code = "")]
    | ^
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:96:9
    |
 LL | #[label("...")]
-   |         ^^^^^ maybe a missing crate `core`?
+   |         ^^^^^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:312:1
    |
 LL | union AC {
-   | ^^^^^ maybe a missing crate `core`?
+   | ^^^^^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:582:27
    |
 LL |     #[suggestion_part(foo = "bar")]
-   |                           ^ maybe a missing crate `core`?
+   |                           ^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:675:28
    |
 LL |     #[suggestion_part(code("foo"))]
-   |                            ^^^^^ maybe a missing crate `core`?
+   |                            ^^^^^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:686:28
    |
 LL |     #[suggestion_part(code("foo", "bar"))]
-   |                            ^^^^^ maybe a missing crate `core`?
+   |                            ^^^^^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:697:28
    |
 LL |     #[suggestion_part(code(3))]
-   |                            ^ maybe a missing crate `core`?
+   |                            ^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:720:30
    |
 LL |     #[suggestion_part(code = 3)]
-   |                              ^ maybe a missing crate `core`?
+   |                              ^ you might be missing crate `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: failed to resolve: you might be missing crate `core`
   --> $DIR/subdiagnostic-derive.rs:812:48
    |
 LL | #[suggestion(no_crate_example, code = "", style("foo"))]
-   |                                                ^ maybe a missing crate `core`?
+   |                                                ^ you might be missing crate `core`
 
 error: cannot find attribute `foo` in this scope
   --> $DIR/subdiagnostic-derive.rs:67:3

@@ -5,15 +5,16 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks whether partial fields of a struct are public.
+    /// Checks whether some but not all fields of a `struct` are public.
     ///
     /// Either make all fields of a type public, or make none of them public
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Most types should either be:
     /// * Abstract data types: complex objects with opaque implementation which guard
-    /// interior invariants and expose intentionally limited API to the outside world.
-    /// * Data: relatively simple objects which group a bunch of related attributes together.
+    ///   interior invariants and expose intentionally limited API to the outside world.
+    /// * Data: relatively simple objects which group a bunch of related attributes together,
+    ///   but have no invariants.
     ///
     /// ### Example
     /// ```no_run

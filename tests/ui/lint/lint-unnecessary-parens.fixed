@@ -46,6 +46,28 @@ pub fn parens_with_keyword(e: &[()]) -> i32 {
 macro_rules! baz {
     ($($foo:expr),+) => {
         ($($foo),*)
+    };
+}
+
+macro_rules! unit {
+    () => {
+        ()
+    };
+}
+
+struct One;
+
+impl std::ops::Sub<One> for () {
+    type Output = i32;
+    fn sub(self, _: One) -> Self::Output {
+        -1
+    }
+}
+
+impl std::ops::Neg for One {
+    type Output = i32;
+    fn neg(self) -> Self::Output {
+        -1
     }
 }
 
@@ -94,4 +116,13 @@ fn main() {
 
     let _a = baz!(3, 4);
     let _b = baz!(3);
+
+    let _ = {
+        unit!() - One //~ ERROR unnecessary parentheses around block return value
+    } + {
+        unit![] - One //~ ERROR unnecessary parentheses around block return value
+    } + {
+        // FIXME: false positive. This parenthesis is required.
+        unit! {} - One //~ ERROR unnecessary parentheses around block return value
+    };
 }

@@ -82,29 +82,26 @@ impl Variant {
 
 impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !in_external_macro(cx.sess(), expr.span)
-            && (
-                matches!(cx.tcx.constness(cx.tcx.hir().enclosing_body_owner(expr.hir_id)), Constness::NotConst)
-                    || cx.tcx.features().declared(sym!(const_float_classify))
-            ) && let ExprKind::Binary(kind, lhs, rhs) = expr.kind
+        if let ExprKind::Binary(kind, lhs, rhs) = expr.kind
             && let ExprKind::Binary(lhs_kind, lhs_lhs, lhs_rhs) = lhs.kind
             && let ExprKind::Binary(rhs_kind, rhs_lhs, rhs_rhs) = rhs.kind
             // Checking all possible scenarios using a function would be a hopeless task, as we have
             // 16 possible alignments of constants/operands. For now, let's use `partition`.
-            && let (operands, constants) = [lhs_lhs, lhs_rhs, rhs_lhs, rhs_rhs]
-                .into_iter()
-                .partition::<Vec<&Expr<'_>>, _>(|i| path_to_local(i).is_some())
-            && let [first, second] = &*operands
-            && let Some([const_1, const_2]) = constants
-                .into_iter()
-                .map(|i| constant(cx, cx.typeck_results(), i))
-                .collect::<Option<Vec<_>>>()
-                .as_deref()
+            && let mut exprs = [lhs_lhs, lhs_rhs, rhs_lhs, rhs_rhs]
+            && exprs.iter_mut().partition_in_place(|i| path_to_local(i).is_some()) == 2
+            && !in_external_macro(cx.sess(), expr.span)
+            && (
+                matches!(cx.tcx.constness(cx.tcx.hir().enclosing_body_owner(expr.hir_id)), Constness::NotConst)
+                    || cx.tcx.features().declared(sym!(const_float_classify))
+            )
+            && let [first, second, const_1, const_2] = exprs
+            && let Some(const_1) = constant(cx, cx.typeck_results(), const_1)
+            && let Some(const_2) = constant(cx, cx.typeck_results(), const_2)
             && path_to_local(first).is_some_and(|f| path_to_local(second).is_some_and(|s| f == s))
             // The actual infinity check, we also allow `NEG_INFINITY` before` INFINITY` just in
             // case somebody does that for some reason
-            && (is_infinity(const_1) && is_neg_infinity(const_2)
-                || is_neg_infinity(const_1) && is_infinity(const_2))
+            && (is_infinity(&const_1) && is_neg_infinity(&const_2)
+                || is_neg_infinity(&const_1) && is_infinity(&const_2))
             && let Some(local_snippet) = snippet_opt(cx, first.span)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
@@ -156,6 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
 
 fn is_infinity(constant: &Constant<'_>) -> bool {
     match constant {
+        // FIXME(f16_f128): add f16 and f128 when constants are available
         Constant::F32(float) => *float == f32::INFINITY,
         Constant::F64(float) => *float == f64::INFINITY,
         _ => false,
@@ -164,6 +162,7 @@ fn is_infinity(constant: &Constant<'_>) -> bool {
 
 fn is_neg_infinity(constant: &Constant<'_>) -> bool {
     match constant {
+        // FIXME(f16_f128): add f16 and f128 when constants are available
         Constant::F32(float) => *float == f32::NEG_INFINITY,
         Constant::F64(float) => *float == f64::NEG_INFINITY,
         _ => false,

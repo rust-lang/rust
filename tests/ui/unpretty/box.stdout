@@ -8,7 +8,7 @@ use ::std::prelude::rust_2015::*;
 extern crate std;
 
 fn main() {
-        let _ =
-            #[rustc_box]
-            Box::new(1);
-    }
+    let _ =
+        #[rustc_box]
+        Box::new(1);
+}

@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { exec, type ExecOptions, spawnSync } from "child_process";
+import { exec, type ExecOptions } from "child_process";
 import { inspect } from "util";
-import type { Env } from "./client";
+import type { CargoRunnableArgs, ShellRunnableArgs } from "./lsp_ext";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
     try {
@@ -12,6 +12,10 @@ export function assert(condition: boolean, explanation: string): asserts conditi
         throw err;
     }
 }
+
+export type Env = {
+    [name: string]: string;
+};
 
 export const log = new (class {
     private enabled = true;
@@ -77,6 +81,12 @@ export function isCargoTomlDocument(document: vscode.TextDocument): document is 
     return document.uri.scheme === "file" && document.fileName.endsWith("Cargo.toml");
 }
 
+export function isCargoRunnableArgs(
+    args: CargoRunnableArgs | ShellRunnableArgs,
+): args is CargoRunnableArgs {
+    return (args as CargoRunnableArgs).executableArgs !== undefined;
+}
+
 export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
     return isRustDocument(editor.document);
 }
@@ -92,20 +102,6 @@ export function isDocumentInWorkspace(document: RustDocument): boolean {
         }
     }
     return false;
-}
-
-export function isValidExecutable(path: string, extraEnv: Env): boolean {
-    log.debug("Checking availability of a binary at", path);
-
-    const res = spawnSync(path, ["--version"], {
-        encoding: "utf8",
-        env: { ...process.env, ...extraEnv },
-    });
-
-    const printOutput = res.error ? log.warn : log.info;
-    printOutput(path, "--version:", res);
-
-    return res.status === 0;
 }
 
 /** Sets ['when'](https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts) clause contexts */
@@ -198,4 +194,43 @@ export class LazyOutputChannel implements vscode.OutputChannel {
             this._channel.dispose();
         }
     }
+}
+
+export type NotNull<T> = T extends null ? never : T;
+
+export type Nullable<T> = T | null;
+
+function isNotNull<T>(input: Nullable<T>): input is NotNull<T> {
+    return input !== null;
+}
+
+function expectNotNull<T>(input: Nullable<T>, msg: string): NotNull<T> {
+    if (isNotNull(input)) {
+        return input;
+    }
+
+    throw new TypeError(msg);
+}
+
+export function unwrapNullable<T>(input: Nullable<T>): NotNull<T> {
+    return expectNotNull(input, `unwrapping \`null\``);
+}
+export type NotUndefined<T> = T extends undefined ? never : T;
+
+export type Undefinable<T> = T | undefined;
+
+function isNotUndefined<T>(input: Undefinable<T>): input is NotUndefined<T> {
+    return input !== undefined;
+}
+
+export function expectNotUndefined<T>(input: Undefinable<T>, msg: string): NotUndefined<T> {
+    if (isNotUndefined(input)) {
+        return input;
+    }
+
+    throw new TypeError(msg);
+}
+
+export function unwrapUndefinable<T>(input: Undefinable<T>): NotUndefined<T> {
+    return expectNotUndefined(input, `unwrapping \`undefined\``);
 }

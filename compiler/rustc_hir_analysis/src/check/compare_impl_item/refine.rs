@@ -1,17 +1,18 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{outlives::env::OutlivesEnvironment, TyCtxtInferExt};
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
+use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::Span;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
-use rustc_trait_selection::traits::{
-    elaborate, normalize_param_env_or_error, outlives_bounds::InferCtxtExt, ObligationCtxt,
-};
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
+use rustc_trait_selection::traits::{elaborate, normalize_param_env_or_error, ObligationCtxt};
 
 /// Check that an implementation does not refine an RPITIT from a trait method signature.
 pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
@@ -170,10 +171,10 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     }
     // Resolve any lifetime variables that may have been introduced during normalization.
     let Ok((trait_bounds, impl_bounds)) = infcx.fully_resolve((trait_bounds, impl_bounds)) else {
-        // This code path is not reached in any tests, but may be reachable. If
-        // this is triggered, it should be converted to `delayed_bug` and the
-        // triggering case turned into a test.
-        tcx.dcx().bug("encountered errors when checking RPITIT refinement (resolution)");
+        // If resolution didn't fully complete, we cannot continue checking RPITIT refinement, and
+        // delay a bug as the original code contains load-bearing errors.
+        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (resolution)");
+        return;
     };
 
     // For quicker lookup, use an `IndexSet` (we don't use one earlier because
@@ -266,7 +267,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
             .explicit_item_bounds(future_ty.def_id)
             .iter_instantiated_copied(tcx, future_ty.args)
             .find_map(|(clause, _)| match clause.kind().no_bound_vars()? {
-                ty::ClauseKind::Projection(proj) => proj.term.ty(),
+                ty::ClauseKind::Projection(proj) => proj.term.as_type(),
                 _ => None,
             })
         else {
@@ -321,7 +322,7 @@ struct Anonymize<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Anonymize<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

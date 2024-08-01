@@ -1,7 +1,7 @@
+use std::path::{Path, PathBuf};
+
 use crate::config::ConfigInfo;
 use crate::utils::{git_clone, run_command_with_output};
-
-use std::path::{Path, PathBuf};
 
 fn show_usage() {
     println!(
@@ -34,7 +34,7 @@ impl Args {
                 "--out-path" => match args.next() {
                     Some(path) if !path.is_empty() => out_path = Some(path),
                     _ => {
-                        return Err("Expected an argument after `--out-path`, found nothing".into())
+                        return Err("Expected an argument after `--out-path`, found nothing".into());
                     }
                 },
                 "--help" => {

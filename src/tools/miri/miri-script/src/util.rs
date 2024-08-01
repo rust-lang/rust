@@ -109,7 +109,7 @@ impl MiriEnv {
     pub fn build(
         &self,
         manifest_path: impl AsRef<OsStr>,
-        args: &[OsString],
+        args: &[String],
         quiet: bool,
     ) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
@@ -125,21 +125,21 @@ impl MiriEnv {
         Ok(())
     }
 
-    pub fn check(&self, manifest_path: impl AsRef<OsStr>, args: &[OsString]) -> Result<()> {
+    pub fn check(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         cmd!(self.sh, "cargo +{toolchain} check {cargo_extra_flags...} --manifest-path {manifest_path} --all-targets {args...}")
             .run()?;
         Ok(())
     }
 
-    pub fn clippy(&self, manifest_path: impl AsRef<OsStr>, args: &[OsString]) -> Result<()> {
+    pub fn clippy(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         cmd!(self.sh, "cargo +{toolchain} clippy {cargo_extra_flags...} --manifest-path {manifest_path} --all-targets {args...}")
             .run()?;
         Ok(())
     }
 
-    pub fn test(&self, manifest_path: impl AsRef<OsStr>, args: &[OsString]) -> Result<()> {
+    pub fn test(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         cmd!(
             self.sh,
@@ -157,7 +157,7 @@ impl MiriEnv {
         files: impl Iterator<Item = Result<PathBuf, walkdir::Error>>,
         toolchain: &str,
         config_path: &Path,
-        flags: &[OsString],
+        flags: &[String],
     ) -> anyhow::Result<()> {
         use itertools::Itertools;
 
@@ -219,10 +219,9 @@ impl MiriEnv {
                             break;
                         }
                         // Run the command with this seed.
-                        run(&local_shell, cur).map_err(|err| {
+                        run(&local_shell, cur).inspect_err(|_| {
                             // If we failed, tell everyone about this.
                             failed.store(true, Ordering::Relaxed);
-                            err
                         })?;
                         // Check if some other command failed (in which case we'll stop as well).
                         if failed.load(Ordering::Relaxed) {

@@ -35,11 +35,11 @@
 //! If the number of edges in this node does not fit in the bits available in the header, we
 //! store it directly after the header with leb128.
 
-use super::query::DepGraphQuery;
-use super::{DepKind, DepNode, DepNodeIndex, Deps};
-use crate::dep_graph::edges::EdgesVec;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fingerprint::PackedFingerprint;
+use std::iter;
+use std::marker::PhantomData;
+use std::sync::Arc;
+
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -48,10 +48,11 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::iter;
-use std::marker::PhantomData;
-use std::sync::Arc;
 use tracing::{debug, instrument};
+
+use super::query::DepGraphQuery;
+use super::{DepKind, DepNode, DepNodeIndex, Deps};
+use crate::dep_graph::edges::EdgesVec;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
@@ -182,15 +183,13 @@ impl SerializedDepGraph {
     pub fn decode<D: Deps>(d: &mut MemDecoder<'_>) -> Arc<SerializedDepGraph> {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
-        let (node_count, edge_count, graph_size) =
-            d.with_position(d.len() - 3 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
+        let (node_count, edge_count) =
+            d.with_position(d.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
                 debug!("position: {:?}", d.position());
                 let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
                 let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
-                let graph_size = IntEncodedWithFixedSize::decode(d).0 as usize;
-                (node_count, edge_count, graph_size)
+                (node_count, edge_count)
             });
-        assert_eq!(d.len(), graph_size);
         debug!("position: {:?}", d.position());
 
         debug!(?node_count, ?edge_count);
@@ -606,8 +605,6 @@ impl<D: Deps> EncoderState<D> {
         debug!("position: {:?}", encoder.position());
         IntEncodedWithFixedSize(node_count).encode(&mut encoder);
         IntEncodedWithFixedSize(edge_count).encode(&mut encoder);
-        let graph_size = encoder.position() + IntEncodedWithFixedSize::ENCODED_SIZE;
-        IntEncodedWithFixedSize(graph_size as u64).encode(&mut encoder);
         debug!("position: {:?}", encoder.position());
         // Drop the encoder so that nothing is written after the counts.
         let result = encoder.finish();

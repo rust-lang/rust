@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for non-ASCII characters in string and char literals.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Yeah, we know, the 90's called and wanted their charset
     /// back. Even so, there still are editors and other programs out there that
     /// don't work well with Unicode. So if the code is meant to be used

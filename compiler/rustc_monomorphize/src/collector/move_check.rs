@@ -1,4 +1,5 @@
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
+use tracing::debug;
 
 use super::*;
 use crate::errors::LargeAssignmentsLint;

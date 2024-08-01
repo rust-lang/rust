@@ -34,6 +34,13 @@ impl Trait for S {
 
     reuse foo { &self.0 }
     //~^ ERROR cannot find function `foo` in this scope
+    reuse Trait::foo2 { self.0 }
+    //~^ ERROR cannot find function `foo2` in trait `Trait`
+    //~| ERROR method `foo2` is not a member of trait `Trait`
 }
+
+mod prefix {}
+reuse unresolved_prefix::{a, b, c}; //~ ERROR use of undeclared crate or module `unresolved_prefix`
+reuse prefix::{self, super, crate}; //~ ERROR `crate` in paths can only be used in start position
 
 fn main() {}

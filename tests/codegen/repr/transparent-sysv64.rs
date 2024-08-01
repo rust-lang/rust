@@ -13,19 +13,28 @@
 #![no_std]
 #![no_core]
 
-#[lang="sized"] trait Sized { }
-#[lang="freeze"] trait Freeze { }
-#[lang="copy"] trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
 
 #[repr(C)]
-pub struct Rgb8 { r: u8, g: u8, b: u8 }
+pub struct Rgb8 {
+    r: u8,
+    g: u8,
+    b: u8,
+}
 
 #[repr(transparent)]
 pub struct Rgb8Wrap(Rgb8);
 
 // CHECK: i24 @test_Rgb8Wrap(i24{{( %0)?}})
 #[no_mangle]
-pub extern "sysv64" fn test_Rgb8Wrap(_: Rgb8Wrap) -> Rgb8Wrap { loop {} }
+pub extern "sysv64" fn test_Rgb8Wrap(_: Rgb8Wrap) -> Rgb8Wrap {
+    loop {}
+}
 
 #[repr(C)]
 pub union FloatBits {
@@ -38,4 +47,6 @@ pub struct SmallUnion(FloatBits);
 
 // CHECK: i32 @test_SmallUnion(i32{{( %0)?}})
 #[no_mangle]
-pub extern "sysv64" fn test_SmallUnion(_: SmallUnion) -> SmallUnion { loop {} }
+pub extern "sysv64" fn test_SmallUnion(_: SmallUnion) -> SmallUnion {
+    loop {}
+}

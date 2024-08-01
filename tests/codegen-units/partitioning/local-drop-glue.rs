@@ -1,6 +1,4 @@
-//
-// We specify incremental here because we want to test the partitioning for
-//@ incremental compilation
+// We specify incremental here because we want to test the partitioning for incremental compilation
 // We specify opt-level=0 because `drop_in_place` is `Internal` when optimizing
 //@ incremental
 //@ compile-flags:-Zprint-mono-items=lazy

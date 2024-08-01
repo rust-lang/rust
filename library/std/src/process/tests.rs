@@ -1,6 +1,5 @@
-use crate::io::prelude::*;
-
 use super::{Command, Output, Stdio};
+use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind};
 use crate::mem::MaybeUninit;
 use crate::str;
@@ -137,7 +136,7 @@ fn child_stdout_read_buf() {
     let child = cmd.spawn().unwrap();
 
     let mut stdout = child.stdout.unwrap();
-    let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+    let mut buf: [MaybeUninit<u8>; 128] = [MaybeUninit::uninit(); 128];
     let mut buf = BorrowedBuf::from(buf.as_mut_slice());
     stdout.read_buf(buf.unfilled()).unwrap();
 
@@ -385,29 +384,25 @@ fn test_interior_nul_in_env_value_is_error() {
 #[cfg(windows)]
 fn test_creation_flags() {
     use crate::os::windows::process::CommandExt;
-    use crate::sys::c::{BOOL, DWORD, INFINITE};
-    #[repr(C, packed)]
+    use crate::sys::c::{BOOL, INFINITE};
+    #[repr(C)]
     struct DEBUG_EVENT {
-        pub event_code: DWORD,
-        pub process_id: DWORD,
-        pub thread_id: DWORD,
+        pub event_code: u32,
+        pub process_id: u32,
+        pub thread_id: u32,
         // This is a union in the real struct, but we don't
         // need this data for the purposes of this test.
         pub _junk: [u8; 164],
     }
 
     extern "system" {
-        fn WaitForDebugEvent(lpDebugEvent: *mut DEBUG_EVENT, dwMilliseconds: DWORD) -> BOOL;
-        fn ContinueDebugEvent(
-            dwProcessId: DWORD,
-            dwThreadId: DWORD,
-            dwContinueStatus: DWORD,
-        ) -> BOOL;
+        fn WaitForDebugEvent(lpDebugEvent: *mut DEBUG_EVENT, dwMilliseconds: u32) -> BOOL;
+        fn ContinueDebugEvent(dwProcessId: u32, dwThreadId: u32, dwContinueStatus: u32) -> BOOL;
     }
 
-    const DEBUG_PROCESS: DWORD = 1;
-    const EXIT_PROCESS_DEBUG_EVENT: DWORD = 5;
-    const DBG_EXCEPTION_NOT_HANDLED: DWORD = 0x80010001;
+    const DEBUG_PROCESS: u32 = 1;
+    const EXIT_PROCESS_DEBUG_EVENT: u32 = 5;
+    const DBG_EXCEPTION_NOT_HANDLED: u32 = 0x80010001;
 
     let mut child =
         Command::new("cmd").creation_flags(DEBUG_PROCESS).stdin(Stdio::piped()).spawn().unwrap();

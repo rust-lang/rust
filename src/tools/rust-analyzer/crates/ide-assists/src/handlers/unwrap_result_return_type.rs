@@ -4,7 +4,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, Expr},
+    ast::{self, Expr, HasGenericArgs},
     match_ast, AstNode, NodeOrToken, SyntaxKind, TextRange,
 };
 

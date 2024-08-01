@@ -9,12 +9,22 @@ for enum variants.
 --
 Placeholder expression to use for missing expressions in assists.
 --
+[[rust-analyzer.assist.termSearch.borrowcheck]]rust-analyzer.assist.termSearch.borrowcheck (default: `true`)::
++
+--
+Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+--
+[[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `1800`)::
++
+--
+Term search fuel in "units of work" for assists (Defaults to 1800).
+--
 [[rust-analyzer.cachePriming.enable]]rust-analyzer.cachePriming.enable (default: `true`)::
 +
 --
 Warm up caches on project load.
 --
-[[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `0`)::
+[[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `"physical"`)::
 +
 --
 How many worker threads to handle priming caches. The default `0` means to pick automatically.
@@ -256,7 +266,7 @@ by changing `#rust-analyzer.check.invocationStrategy#` and
 If `$saved_file` is part of the command, rust-analyzer will pass
 the absolute path of the saved file to the provided command. This is
 intended to be used with non-Cargo build systems.
-Note that `$saved_file` is experimental and may be removed in the futureg.
+Note that `$saved_file` is experimental and may be removed in the future.
 
 An example command would be:
 
@@ -345,12 +355,6 @@ Default:
     "description": "Put the expression into a pinned `Box`",
     "scope": "expr"
   },
-  "Ok": {
-    "postfix": "ok",
-    "body": "Ok(${receiver})",
-    "description": "Wrap the expression in a `Result::Ok`",
-    "scope": "expr"
-  },
   "Err": {
     "postfix": "err",
     "body": "Err(${receiver})",
@@ -362,6 +366,12 @@ Default:
     "body": "Some(${receiver})",
     "description": "Wrap the expression in an `Option::Some`",
     "scope": "expr"
+  },
+  "Ok": {
+    "postfix": "ok",
+    "body": "Ok(${receiver})",
+    "description": "Wrap the expression in a `Result::Ok`",
+    "scope": "expr"
   }
 }
 ----
@@ -372,6 +382,11 @@ Custom completion snippets.
 +
 --
 Whether to enable term search based snippets like `Some(foo.bar().baz())`.
+--
+[[rust-analyzer.completion.termSearch.fuel]]rust-analyzer.completion.termSearch.fuel (default: `1000`)::
++
+--
+Term search fuel in "units of work" for autocompletion (Defaults to 1000).
 --
 [[rust-analyzer.diagnostics.disabled]]rust-analyzer.diagnostics.disabled (default: `[]`)::
 +
@@ -529,10 +544,15 @@ How to render the offset information in a memory layout hover.
 --
 How to render the size information in a memory layout hover.
 --
-[[rust-analyzer.hover.show.structFields]]rust-analyzer.hover.show.structFields (default: `null`)::
+[[rust-analyzer.hover.show.enumVariants]]rust-analyzer.hover.show.enumVariants (default: `5`)::
 +
 --
-How many fields of a struct to display when hovering a struct.
+How many variants of an enum to display when hovering on. Show none if empty.
+--
+[[rust-analyzer.hover.show.fields]]rust-analyzer.hover.show.fields (default: `5`)::
++
+--
+How many fields of a struct, variant or union to display when hovering on. Show none if empty.
 --
 [[rust-analyzer.hover.show.traitAssocItems]]rust-analyzer.hover.show.traitAssocItems (default: `null`)::
 +
@@ -573,6 +593,11 @@ Whether to prefer import paths containing a `prelude` module.
 +
 --
 The path structure for newly inserted paths to use.
+--
+[[rust-analyzer.imports.prefixExternPrelude]]rust-analyzer.imports.prefixExternPrelude (default: `false`)::
++
+--
+Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
 --
 [[rust-analyzer.inlayHints.bindingModeHints.enable]]rust-analyzer.inlayHints.bindingModeHints.enable (default: `false`)::
 +
@@ -629,6 +654,21 @@ Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
 +
 --
 Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
+--
+[[rust-analyzer.inlayHints.genericParameterHints.const.enable]]rust-analyzer.inlayHints.genericParameterHints.const.enable (default: `false`)::
++
+--
+Whether to show const generic parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.lifetime.enable]]rust-analyzer.inlayHints.genericParameterHints.lifetime.enable (default: `true`)::
++
+--
+Whether to show generic lifetime parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.type.enable]]rust-analyzer.inlayHints.genericParameterHints.type.enable (default: `false`)::
++
+--
+Whether to show generic type parameter name inlay hints.
 --
 [[rust-analyzer.inlayHints.implicitDrops.enable]]rust-analyzer.inlayHints.implicitDrops.enable (default: `false`)::
 +
@@ -778,7 +818,8 @@ Disable project auto-discovery in favor of explicitly specified set
 of projects.
 
 Elements must be paths pointing to `Cargo.toml`,
-`rust-project.json`, or JSON objects in `rust-project.json` format.
+`rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
+objects in `rust-project.json` format.
 --
 [[rust-analyzer.lru.capacity]]rust-analyzer.lru.capacity (default: `null`)::
 +

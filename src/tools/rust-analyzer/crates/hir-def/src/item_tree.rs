@@ -29,6 +29,7 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
+#![allow(unexpected_cfgs)]
 
 mod lower;
 mod pretty;
@@ -47,6 +48,7 @@ use either::Either;
 use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
 use intern::Interned;
 use la_arena::{Arena, Idx, IdxRange, RawIdx};
+use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{AstIdNode, FileAstId, SyntaxContextId};
@@ -57,21 +59,21 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
+    generics::GenericParams,
     path::{GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::{RawVisibility, VisibilityExplicitness},
-    BlockId, Lookup,
+    BlockId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct RawVisibilityId(u32);
 
 impl RawVisibilityId {
-    pub const PUB: Self = RawVisibilityId(u32::max_value());
-    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::max_value() - 1);
-    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::max_value() - 2);
-    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 3);
+    pub const PUB: Self = RawVisibilityId(u32::MAX);
+    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::MAX - 1);
+    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::MAX - 2);
+    pub const PUB_CRATE: Self = RawVisibilityId(u32::MAX - 3);
 }
 
 impl fmt::Debug for RawVisibilityId {
@@ -98,7 +100,8 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = tracing::span!(tracing::Level::INFO, "file_item_tree_query", ?file_id).entered();
+        let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
+        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
 
         let syntax = db.parse_or_expand(file_id);
 
@@ -130,18 +133,47 @@ impl ItemTree {
         if let Some(attrs) = top_attrs {
             item_tree.attrs.insert(AttrOwner::TopLevel, attrs);
         }
-        item_tree.shrink_to_fit();
-        Arc::new(item_tree)
+        if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        {
+            EMPTY
+                .get_or_init(|| {
+                    Arc::new(ItemTree {
+                        top_level: SmallVec::new_const(),
+                        attrs: FxHashMap::default(),
+                        data: None,
+                    })
+                })
+                .clone()
+        } else {
+            item_tree.shrink_to_fit();
+            Arc::new(item_tree)
+        }
     }
 
     pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+        let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
+        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
+
         let loc = block.lookup(db);
         let block = loc.ast_id.to_node(db.upcast());
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
         let mut item_tree = ctx.lower_block(&block);
-        item_tree.shrink_to_fit();
-        Arc::new(item_tree)
+        if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        {
+            EMPTY
+                .get_or_init(|| {
+                    Arc::new(ItemTree {
+                        top_level: SmallVec::new_const(),
+                        attrs: FxHashMap::default(),
+                        data: None,
+                    })
+                })
+                .clone()
+        } else {
+            item_tree.shrink_to_fit();
+            Arc::new(item_tree)
+        }
     }
 
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
@@ -241,11 +273,11 @@ impl ItemVisibilities {
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
             RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
-                match (&path.kind, explicitiy) {
-                    (PathKind::Super(0), VisibilityExplicitness::Explicit) => {
+                match (path.kind, explicitiy) {
+                    (PathKind::SELF, VisibilityExplicitness::Explicit) => {
                         RawVisibilityId::PRIV_EXPLICIT
                     }
-                    (PathKind::Super(0), VisibilityExplicitness::Implicit) => {
+                    (PathKind::SELF, VisibilityExplicitness::Implicit) => {
                         RawVisibilityId::PRIV_IMPLICIT
                     }
                     (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
@@ -293,8 +325,8 @@ pub enum AttrOwner {
     Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
-    TypeOrConstParamData(Idx<TypeOrConstParamData>),
-    LifetimeParamData(Idx<LifetimeParamData>),
+    TypeOrConstParamData(GenericModItem, LocalTypeOrConstParamId),
+    LifetimeParamData(GenericModItem, LocalLifetimeParamId),
 }
 
 macro_rules! from_attrs {
@@ -314,8 +346,6 @@ from_attrs!(
     Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
-    TypeOrConstParamData(Idx<TypeOrConstParamData>),
-    LifetimeParamData(Idx<LifetimeParamData>),
 );
 
 /// Trait implemented by all nodes in the item tree.
@@ -465,12 +495,49 @@ macro_rules! mod_items {
             )+
         }
 
+        #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+        pub enum GenericModItem {
+            $(
+                $(
+                    #[cfg_attr(ignore_fragment, $generic_params)]
+                    $typ(FileItemTreeId<$typ>),
+                )?
+            )+
+        }
+
+        impl From<GenericModItem> for ModItem {
+            fn from(id: GenericModItem) -> ModItem {
+                match id {
+                    $(
+                        $(
+                            #[cfg_attr(ignore_fragment, $generic_params)]
+                            GenericModItem::$typ(id) => ModItem::$typ(id),
+                        )?
+                    )+
+                }
+            }
+        }
+
+        impl From<GenericModItem> for AttrOwner {
+            fn from(t: GenericModItem) -> AttrOwner {
+                AttrOwner::ModItem(t.into())
+            }
+        }
+
         $(
             impl From<FileItemTreeId<$typ>> for ModItem {
                 fn from(id: FileItemTreeId<$typ>) -> ModItem {
                     ModItem::$typ(id)
                 }
             }
+            $(
+                #[cfg_attr(ignore_fragment, $generic_params)]
+                impl From<FileItemTreeId<$typ>> for GenericModItem {
+                    fn from(id: FileItemTreeId<$typ>) -> GenericModItem {
+                        GenericModItem::$typ(id)
+                    }
+                }
+            )?
         )+
 
         $(
@@ -549,24 +616,30 @@ impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         static VIS_PUB: RawVisibility = RawVisibility::Public;
-        static VIS_PRIV_IMPLICIT: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::Super(0)),
-            VisibilityExplicitness::Implicit,
-        );
-        static VIS_PRIV_EXPLICIT: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::Super(0)),
-            VisibilityExplicitness::Explicit,
-        );
-        static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::Crate),
-            VisibilityExplicitness::Explicit,
-        );
+        static VIS_PRIV_IMPLICIT: OnceCell<RawVisibility> = OnceCell::new();
+        static VIS_PRIV_EXPLICIT: OnceCell<RawVisibility> = OnceCell::new();
+        static VIS_PUB_CRATE: OnceCell<RawVisibility> = OnceCell::new();
 
         match index {
-            RawVisibilityId::PRIV_IMPLICIT => &VIS_PRIV_IMPLICIT,
-            RawVisibilityId::PRIV_EXPLICIT => &VIS_PRIV_EXPLICIT,
+            RawVisibilityId::PRIV_IMPLICIT => VIS_PRIV_IMPLICIT.get_or_init(|| {
+                RawVisibility::Module(
+                    Interned::new(ModPath::from_kind(PathKind::SELF)),
+                    VisibilityExplicitness::Implicit,
+                )
+            }),
+            RawVisibilityId::PRIV_EXPLICIT => VIS_PRIV_EXPLICIT.get_or_init(|| {
+                RawVisibility::Module(
+                    Interned::new(ModPath::from_kind(PathKind::SELF)),
+                    VisibilityExplicitness::Explicit,
+                )
+            }),
             RawVisibilityId::PUB => &VIS_PUB,
-            RawVisibilityId::PUB_CRATE => &VIS_PUB_CRATE,
+            RawVisibilityId::PUB_CRATE => VIS_PUB_CRATE.get_or_init(|| {
+                RawVisibility::Module(
+                    Interned::new(ModPath::from_kind(PathKind::Crate)),
+                    VisibilityExplicitness::Explicit,
+                )
+            }),
             _ => &self.data().vis.arena[Idx::from_raw(index.0.into())],
         }
     }
@@ -892,7 +965,7 @@ impl UseTree {
                         _ => None,
                     }
                 }
-                (Some(prefix), PathKind::Super(0)) if path.segments().is_empty() => {
+                (Some(prefix), PathKind::SELF) if path.segments().is_empty() => {
                     // `some::path::self` == `some::path`
                     Some((prefix, ImportKind::TypeOnly))
                 }

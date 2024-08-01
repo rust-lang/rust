@@ -1,24 +1,29 @@
-use crate::traits::error_reporting::{OverflowCause, TypeErrCtxtExt};
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
+use std::fmt::Debug;
+use std::marker::PhantomData;
+
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::TraitEngineExt;
-use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
+use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
-use rustc_middle::ty::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, UniverseIndex,
+};
 
-use super::FulfillmentCtxt;
+use super::{FulfillmentCtxt, NextSolverError};
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::InferCtxtErrorExt;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
-pub fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
-    at: At<'_, 'tcx>,
-    value: T,
-) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+pub fn deeply_normalize<'tcx, T, E>(at: At<'_, 'tcx>, value: T) -> Result<T, Vec<E>>
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
     assert!(!value.has_escaping_bound_vars());
     deeply_normalize_with_skipped_universes(at, value, vec![])
 }
@@ -29,29 +34,35 @@ pub fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
 /// Additionally takes a list of universes which represents the binders which have been
 /// entered before passing `value` to the function. This is currently needed for
 /// `normalize_erasing_regions`, which skips binders as it walks through a type.
-pub fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+pub fn deeply_normalize_with_skipped_universes<'tcx, T, E>(
     at: At<'_, 'tcx>,
     value: T,
     universes: Vec<Option<UniverseIndex>>,
-) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+) -> Result<T, Vec<E>>
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
     let fulfill_cx = FulfillmentCtxt::new(at.infcx);
-    let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes };
+    let mut folder =
+        NormalizationFolder { at, fulfill_cx, depth: 0, universes, _errors: PhantomData };
 
     value.try_fold_with(&mut folder)
 }
 
-struct NormalizationFolder<'me, 'tcx> {
+struct NormalizationFolder<'me, 'tcx, E> {
     at: At<'me, 'tcx>,
-    fulfill_cx: FulfillmentCtxt<'tcx>,
+    fulfill_cx: FulfillmentCtxt<'tcx, E>,
     depth: usize,
     universes: Vec<Option<UniverseIndex>>,
+    _errors: PhantomData<E>,
 }
 
-impl<'tcx> NormalizationFolder<'_, 'tcx> {
-    fn normalize_alias_ty(
-        &mut self,
-        alias_ty: Ty<'tcx>,
-    ) -> Result<Ty<'tcx>, Vec<FulfillmentError<'tcx>>> {
+impl<'tcx, E> NormalizationFolder<'_, 'tcx, E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
+    fn normalize_alias_ty(&mut self, alias_ty: Ty<'tcx>) -> Result<Ty<'tcx>, Vec<E>> {
         assert!(matches!(alias_ty.kind(), ty::Alias(..)));
 
         let infcx = self.at.infcx;
@@ -63,7 +74,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             };
 
             self.at.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(data),
+                OverflowCause::DeeplyNormalize(data.into()),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -100,15 +111,14 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
     fn normalize_unevaluated_const(
         &mut self,
-        ty: Ty<'tcx>,
         uv: ty::UnevaluatedConst<'tcx>,
-    ) -> Result<ty::Const<'tcx>, Vec<FulfillmentError<'tcx>>> {
+    ) -> Result<ty::Const<'tcx>, Vec<E>> {
         let infcx = self.at.infcx;
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.at.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(ty::AliasTy::new(tcx, uv.def, uv.args)),
+                OverflowCause::DeeplyNormalize(uv.into()),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -117,15 +127,12 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
 
         self.depth += 1;
 
-        let new_infer_ct = infcx.next_const_var(ty, self.at.cause.span);
+        let new_infer_ct = infcx.next_const_var(self.at.cause.span);
         let obligation = Obligation::new(
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::NormalizesTo {
-                alias: AliasTy::new(tcx, uv.def, uv.args),
-                term: new_infer_ct.into(),
-            },
+            ty::NormalizesTo { alias: uv.into(), term: new_infer_ct.into() },
         );
 
         let result = if infcx.predicate_may_hold(&obligation) {
@@ -137,7 +144,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             let ct = infcx.resolve_vars_if_possible(new_infer_ct);
             ct.try_fold_with(self)?
         } else {
-            ty::Const::new_unevaluated(tcx, uv, ty).try_super_fold_with(self)?
+            ty::Const::new_unevaluated(tcx, uv).try_super_fold_with(self)?
         };
 
         self.depth -= 1;
@@ -145,10 +152,13 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
     }
 }
 
-impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
-    type Error = Vec<FulfillmentError<'tcx>>;
+impl<'tcx, E> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx, E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + Debug,
+{
+    type Error = Vec<E>;
 
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }
 
@@ -162,7 +172,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         Ok(t)
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ty, infcx.shallow_resolve(ty));
@@ -189,7 +199,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ct, infcx.shallow_resolve_const(ct));
@@ -205,7 +215,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         if uv.has_escaping_bound_vars() {
             let (uv, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uv);
-            let result = ensure_sufficient_stack(|| self.normalize_unevaluated_const(ct.ty(), uv))?;
+            let result = ensure_sufficient_stack(|| self.normalize_unevaluated_const(uv))?;
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
@@ -215,7 +225,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
                 result,
             ))
         } else {
-            ensure_sufficient_stack(|| self.normalize_unevaluated_const(ct.ty(), uv))
+            ensure_sufficient_stack(|| self.normalize_unevaluated_const(uv))
         }
     }
 }
@@ -236,7 +246,7 @@ struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }
 
@@ -246,7 +256,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
             ty,
             vec![None; ty.outer_exclusive_binder().as_usize()],
         )
-        .unwrap_or_else(|_| ty.super_fold_with(self))
+        .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ty.super_fold_with(self))
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -255,6 +265,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
             ct,
             vec![None; ct.outer_exclusive_binder().as_usize()],
         )
-        .unwrap_or_else(|_| ct.super_fold_with(self))
+        .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ct.super_fold_with(self))
     }
 }

@@ -2,7 +2,8 @@
 // `T: Foo` in the default impl for the purposes of specialization (i.e., it
 // does not think that the user is attempting to specialize on trait `Foo`).
 
-//@ check-pass
+//@ known-bug: #110395
+// FIXME check-pass
 
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]

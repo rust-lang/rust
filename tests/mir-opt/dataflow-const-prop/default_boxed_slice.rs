@@ -1,5 +1,5 @@
 //@ test-mir-pass: DataflowConstProp
-//@ compile-flags: -Zmir-enable-passes=+GVN,+Inline
+//@ compile-flags: -Zmir-enable-passes=+GVN,+Inline -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 

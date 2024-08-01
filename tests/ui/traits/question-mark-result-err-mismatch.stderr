@@ -31,12 +31,12 @@ LL |         .map_err(|_| ())?;
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
-             <String as From<&String>>
-             <String as From<&mut str>>
-             <String as From<&str>>
-             <String as From<Box<str>>>
-             <String as From<Cow<'a, str>>>
-             <String as From<char>>
+             `String` implements `From<&String>`
+             `String` implements `From<&mut str>`
+             `String` implements `From<&str>`
+             `String` implements `From<Box<str>>`
+             `String` implements `From<Cow<'a, str>>`
+             `String` implements `From<char>`
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`

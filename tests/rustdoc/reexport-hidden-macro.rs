@@ -3,12 +3,12 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html'
-// @has - '//*[@id="main-content"]//a[@href="macro.Macro2.html"]' 'Macro2'
-// @has - '//*[@id="reexport.Macro"]/code' 'pub use crate::foo as Macro;'
+//@ has 'foo/index.html'
+//@ has - '//*[@id="main-content"]//a[@href="macro.Macro2.html"]' 'Macro2'
+//@ has - '//*[@id="reexport.Macro"]/code' 'pub use crate::foo as Macro;'
 
-// @has 'foo/macro.Macro2.html'
-// @has - '//*[@class="docblock"]' 'Displayed'
+//@ has 'foo/macro.Macro2.html'
+//@ has - '//*[@class="docblock"]' 'Displayed'
 
 #[macro_export]
 #[doc(hidden)]

@@ -1,7 +1,7 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_hir::{intravisit, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::layout::LayoutOf;
@@ -12,9 +12,16 @@ use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-#[derive(Copy, Clone)]
 pub struct BoxedLocal {
-    pub too_large_for_stack: u64,
+    too_large_for_stack: u64,
+}
+
+impl BoxedLocal {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            too_large_for_stack: conf.too_large_for_stack,
+        }
+    }
 }
 
 declare_clippy_lint! {
@@ -105,8 +112,9 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        let infcx = cx.tcx.infer_ctxt().build();
-        ExprUseVisitor::new(&mut v, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
+        ExprUseVisitor::for_clippy(cx, fn_def_id, &mut v)
+            .consume_body(body)
+            .into_ok();
 
         for node in v.set {
             span_lint_hir(

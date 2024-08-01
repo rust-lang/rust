@@ -8,7 +8,7 @@
 //! in this crate.
 
 // For proving that RootDatabase is RefUnwindSafe.
-#![warn(rust_2018_idioms, unused_lifetimes)]
+
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "128"]
 
@@ -89,8 +89,8 @@ pub use crate::{
     },
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
-        InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition,
-        InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
+        GenericParameterHints, InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart,
+        InlayHintPosition, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -273,11 +273,18 @@ impl Analysis {
         self.with_db(|db| status::status(db, file_id))
     }
 
-    pub fn source_root(&self, file_id: FileId) -> Cancellable<SourceRootId> {
+    pub fn source_root_id(&self, file_id: FileId) -> Cancellable<SourceRootId> {
         self.with_db(|db| db.file_source_root(file_id))
     }
 
-    pub fn parallel_prime_caches<F>(&self, num_worker_threads: u8, cb: F) -> Cancellable<()>
+    pub fn is_local_source_root(&self, source_root_id: SourceRootId) -> Cancellable<bool> {
+        self.with_db(|db| {
+            let sr = db.source_root(source_root_id);
+            !sr.is_library
+        })
+    }
+
+    pub fn parallel_prime_caches<F>(&self, num_worker_threads: usize, cb: F) -> Cancellable<()>
     where
         F: Fn(ParallelPrimeCachesProgress) + Sync + std::panic::UnwindSafe,
     {

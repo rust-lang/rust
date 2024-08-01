@@ -1,6 +1,6 @@
 //! Script to invoke the bundled rust-lld with the correct flavor.
 //!
-//! lld supports multiple command line interfaces. If `-flavor <flavor>` are passed as the first
+//! `lld` supports multiple command line interfaces. If `-flavor <flavor>` are passed as the first
 //! two arguments the `<flavor>` command line interface is used to process the remaining arguments.
 //! If no `-flavor` argument is present the flavor is determined by the executable name.
 //!
@@ -11,7 +11,8 @@
 //! obtained from the wrapper's name as the first two arguments.
 //! On Windows it spawns a `..\rust-lld.exe` child process.
 
-use std::env::{self, consts::EXE_SUFFIX};
+use std::env::consts::EXE_SUFFIX;
+use std::env::{self};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process;

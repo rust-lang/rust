@@ -2,7 +2,7 @@ error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:39:5
    |
 LL |   whiskers: isize,
-   |   --------------- a field by that name exists in `Self`
+   |   -------- a field by that name exists in `Self`
 ...
 LL |     whiskers -= other;
    |     ^^^^^^^^
@@ -35,7 +35,7 @@ error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:84:5
    |
 LL |   whiskers: isize,
-   |   --------------- a field by that name exists in `Self`
+   |   -------- a field by that name exists in `Self`
 ...
 LL |     whiskers = 4;
    |     ^^^^^^^^

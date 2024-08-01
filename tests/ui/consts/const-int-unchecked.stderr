@@ -242,19 +242,19 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:123:25
    |
 LL | const _: u16 = unsafe { std::intrinsics::unchecked_add(40000u16, 30000) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow executing `unchecked_add`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ arithmetic overflow in `unchecked_add`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:126:25
    |
 LL | const _: u32 = unsafe { std::intrinsics::unchecked_sub(14u32, 22) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow executing `unchecked_sub`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ arithmetic overflow in `unchecked_sub`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:129:25
    |
 LL | const _: u16 = unsafe { std::intrinsics::unchecked_mul(300u16, 250u16) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow executing `unchecked_mul`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ arithmetic overflow in `unchecked_mul`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:132:25

@@ -10,8 +10,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks usage of `std::fs::create_dir` and suggest using `std::fs::create_dir_all` instead.
     ///
-    /// ### Why is this bad?
-    /// Sometimes `std::fs::create_dir` is mistakenly chosen over `std::fs::create_dir_all`.
+    /// ### Why restrict this?
+    /// Sometimes `std::fs::create_dir` is mistakenly chosen over `std::fs::create_dir_all`,
+    /// resulting in failure when more than one directory needs to be created or when the directory already exists.
+    /// Crates which never need to specifically create a single directory may wish to prevent this mistake.
     ///
     /// ### Example
     /// ```rust,ignore

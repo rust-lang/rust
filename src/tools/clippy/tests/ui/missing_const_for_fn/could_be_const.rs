@@ -104,12 +104,103 @@ fn main() {}
 
 struct D;
 
+/* FIXME(effects)
 impl const Drop for D {
     fn drop(&mut self) {
         todo!();
     }
 }
+*/
 
 // Lint this, since it can be dropped in const contexts
 // FIXME(effects)
 fn d(this: D) {}
+//~^ ERROR: this could be a `const fn`
+
+mod msrv {
+    struct Foo(*const u8, &'static u8);
+
+    impl Foo {
+        #[clippy::msrv = "1.58"]
+        fn deref_ptr_can_be_const(self) -> usize {
+            //~^ ERROR: this could be a `const fn`
+            unsafe { *self.0 as usize }
+        }
+
+        fn deref_copied_val(self) -> usize {
+            //~^ ERROR: this could be a `const fn`
+            *self.1 as usize
+        }
+    }
+
+    union Bar {
+        val: u8,
+    }
+
+    #[clippy::msrv = "1.56"]
+    fn union_access_can_be_const() {
+        //~^ ERROR: this could be a `const fn`
+        let bar = Bar { val: 1 };
+        let _ = unsafe { bar.val };
+    }
+
+    #[clippy::msrv = "1.62"]
+    mod with_extern {
+        extern "C" fn c() {}
+        //~^ ERROR: this could be a `const fn`
+
+        #[rustfmt::skip]
+        extern fn implicit_c() {}
+        //~^ ERROR: this could be a `const fn`
+
+        // any item functions in extern block won't trigger this lint
+        extern "C" {
+            fn c_in_block();
+        }
+    }
+}
+
+mod issue12677 {
+    pub struct Wrapper {
+        pub strings: Vec<String>,
+    }
+
+    impl Wrapper {
+        #[must_use]
+        pub fn new(strings: Vec<String>) -> Self {
+            Self { strings }
+        }
+
+        #[must_use]
+        pub fn empty() -> Self {
+            Self { strings: Vec::new() }
+        }
+    }
+
+    pub struct Other {
+        pub text: String,
+        pub vec: Vec<String>,
+    }
+
+    impl Other {
+        pub fn new(text: String) -> Self {
+            let vec = Vec::new();
+            Self { text, vec }
+        }
+    }
+}
+
+mod with_ty_alias {
+    trait FooTrait {
+        type Foo: std::fmt::Debug;
+        fn bar(_: Self::Foo) {}
+    }
+    impl FooTrait for () {
+        type Foo = i32;
+    }
+    // NOTE: When checking the type of a function param, make sure it is not an alias with
+    // `AliasTyKind::Projection` before calling `TyCtxt::type_of` to find out what the actual type
+    // is. Because the associate ty could have no default, therefore would cause ICE, as demonstrated
+    // in this test.
+    fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
+}

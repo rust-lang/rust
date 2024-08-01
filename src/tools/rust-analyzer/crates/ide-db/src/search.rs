@@ -1,7 +1,7 @@
 //! Implementation of find-usages functionality.
 //!
 //! It is based on the standard ide trick: first, we run a fast text search to
-//! get a super-set of matches. Then, we we confirm each match using precise
+//! get a super-set of matches. Then, we confirm each match using precise
 //! name resolution.
 
 use std::mem;
@@ -266,7 +266,7 @@ impl IntoIterator for SearchScope {
 
 impl Definition {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
-        let _p = tracing::span!(tracing::Level::INFO, "search_scope").entered();
+        let _p = tracing::info_span!("search_scope").entered();
 
         if let Definition::BuiltinType(_) = self {
             return SearchScope::crate_graph(db);
@@ -320,7 +320,6 @@ impl Definition {
                 hir::GenericDef::TraitAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::TypeAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
-                hir::GenericDef::Variant(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
@@ -434,7 +433,7 @@ impl<'a> FindUsages<'a> {
     }
 
     pub fn search(&self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
-        let _p = tracing::span!(tracing::Level::INFO, "FindUsages:search").entered();
+        let _p = tracing::info_span!("FindUsages:search").entered();
         let sema = self.sema;
 
         let search_scope = {

@@ -1,5 +1,4 @@
 #![feature(precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
 
 trait Tr {
     type Assoc;
@@ -13,25 +12,25 @@ impl Tr for W<'_> {
 
 // The normal way of capturing `'a`...
 impl<'a> W<'a> {
-    fn good1() -> impl use<'a> Into<<W<'a> as Tr>::Assoc> {}
+    fn good1() -> impl Into<<W<'a> as Tr>::Assoc> + use<'a> {}
 }
 
 // This ensures that we don't error when we capture the *parent* copy of `'a`,
 // since the opaque captures that rather than the duplicated `'a` lifetime
 // synthesized from mentioning `'a` directly in the bounds.
 impl<'a> W<'a> {
-    fn good2() -> impl use<'a> Into<<Self as Tr>::Assoc> {}
+    fn good2() -> impl Into<<Self as Tr>::Assoc> + use<'a> {}
 }
 
 // The normal way of capturing `'a`... but not mentioned in the bounds.
 impl<'a> W<'a> {
-    fn bad1() -> impl use<> Into<<W<'a> as Tr>::Assoc> {}
+    fn bad1() -> impl Into<<W<'a> as Tr>::Assoc> + use<> {}
     //~^ ERROR `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
 }
 
 // But also make sure that we error here...
 impl<'a> W<'a> {
-    fn bad2() -> impl use<> Into<<Self as Tr>::Assoc> {}
+    fn bad2() -> impl Into<<Self as Tr>::Assoc> + use<> {}
     //~^ ERROR `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
 }
 

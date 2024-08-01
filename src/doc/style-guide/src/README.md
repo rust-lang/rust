@@ -117,8 +117,7 @@ fn baz() {}
 In various cases, the default Rust style specifies to sort things. If not
 otherwise specified, such sorting should be "version sorting", which ensures
 that (for instance) `x8` comes before `x16` even though the character `1` comes
-before the character `8`. (If not otherwise specified, version-sorting is
-lexicographical.)
+before the character `8`.
 
 For the purposes of the Rust style, to compare two strings for version-sorting:
 
@@ -132,12 +131,13 @@ For the purposes of the Rust style, to compare two strings for version-sorting:
   these strings, treat the chunks as equal (moving on to the next chunk) but
   remember which string had more leading zeroes.
 - To compare two chunks if both are not numeric, compare them by Unicode
-  character lexicographically, except that `_` (underscore) sorts immediately
-  after ` ` (space) but before any other character. (This treats underscore as
-  a word separator, as commonly used in identifiers.)
-  - If the use of version sorting specifies further modifiers, such as sorting
-    non-lowercase before lowercase, apply those modifiers to the lexicographic
-    sort in this step.
+  character lexicographically, with two exceptions:
+  - `_` (underscore) sorts immediately after ` ` (space) but before any other
+    character. (This treats underscore as a word separator, as commonly used in
+    identifiers.)
+  - Unless otherwise specified, version-sorting should sort non-lowercase
+    characters (characters that can start an `UpperCamelCase` identifier)
+    before lowercase characters.
 - If the comparison reaches the end of the string and considers each pair of
   chunks equal:
   - If one of the numeric comparisons noted the earliest point at which one
@@ -157,7 +157,17 @@ leading zeroes.
 
 As an example, version-sorting will sort the following strings in the order
 given:
-- `_ZYWX`
+- `_ZYXW`
+- `_abcd`
+- `A2`
+- `ABCD`
+- `Z_YXW`
+- `ZY_XW`
+- `ZY_XW`
+- `ZYXW`
+- `ZYXW_`
+- `a1`
+- `abcd`
 - `u_zzz`
 - `u8`
 - `u16`
@@ -190,11 +200,7 @@ given:
 - `x86_64`
 - `x86_128`
 - `x87`
-- `Z_YWX`
-- `ZY_WX`
-- `ZYW_X`
-- `ZYWX`
-- `ZYWX_`
+- `zyxw`
 
 ### [Module-level items](items.md)
 

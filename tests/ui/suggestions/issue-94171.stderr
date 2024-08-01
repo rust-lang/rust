@@ -30,7 +30,7 @@ LL | (; {`
    | unclosed delimiter
 ...
 LL |
-   |                                                    ^
+   |                                                   ^
 
 error: aborting due to 3 previous errors
 

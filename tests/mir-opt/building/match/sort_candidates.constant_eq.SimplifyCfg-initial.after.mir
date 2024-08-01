@@ -23,52 +23,52 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
         StorageDead(_5);
         StorageDead(_4);
         PlaceMention(_3);
-        _9 = <str as PartialEq>::eq((_3.0: &str), const "a") -> [return: bb11, unwind: bb19];
+        _9 = <str as PartialEq>::eq((_3.0: &str), const "a") -> [return: bb9, unwind: bb19];
     }
 
     bb1: {
-        switchInt((_3.1: bool)) -> [0: bb2, otherwise: bb3];
+        switchInt((_3.1: bool)) -> [0: bb10, otherwise: bb11];
     }
 
     bb2: {
+        falseEdge -> [real: bb12, imaginary: bb5];
+    }
+
+    bb3: {
+        switchInt((_3.1: bool)) -> [0: bb1, otherwise: bb4];
+    }
+
+    bb4: {
+        falseEdge -> [real: bb16, imaginary: bb1];
+    }
+
+    bb5: {
+        _8 = <str as PartialEq>::eq((_3.0: &str), const "b") -> [return: bb8, unwind: bb19];
+    }
+
+    bb6: {
+        switchInt((_3.1: bool)) -> [0: bb1, otherwise: bb7];
+    }
+
+    bb7: {
+        falseEdge -> [real: bb15, imaginary: bb3];
+    }
+
+    bb8: {
+        switchInt(move _8) -> [0: bb1, otherwise: bb6];
+    }
+
+    bb9: {
+        switchInt(move _9) -> [0: bb5, otherwise: bb2];
+    }
+
+    bb10: {
         _0 = const 5_u32;
         goto -> bb18;
     }
 
-    bb3: {
-        falseEdge -> [real: bb17, imaginary: bb2];
-    }
-
-    bb4: {
-        falseEdge -> [real: bb12, imaginary: bb7];
-    }
-
-    bb5: {
-        switchInt((_3.1: bool)) -> [0: bb1, otherwise: bb6];
-    }
-
-    bb6: {
-        falseEdge -> [real: bb16, imaginary: bb1];
-    }
-
-    bb7: {
-        _8 = <str as PartialEq>::eq((_3.0: &str), const "b") -> [return: bb10, unwind: bb19];
-    }
-
-    bb8: {
-        switchInt((_3.1: bool)) -> [0: bb1, otherwise: bb9];
-    }
-
-    bb9: {
-        falseEdge -> [real: bb15, imaginary: bb5];
-    }
-
-    bb10: {
-        switchInt(move _8) -> [0: bb1, otherwise: bb8];
-    }
-
     bb11: {
-        switchInt(move _9) -> [0: bb7, otherwise: bb4];
+        falseEdge -> [real: bb17, imaginary: bb10];
     }
 
     bb12: {
@@ -89,7 +89,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
 
     bb14: {
         StorageDead(_10);
-        falseEdge -> [real: bb5, imaginary: bb7];
+        falseEdge -> [real: bb3, imaginary: bb5];
     }
 
     bb15: {

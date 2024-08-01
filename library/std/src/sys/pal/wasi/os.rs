@@ -1,18 +1,16 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use core::slice::memchr;
+
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::ops::Drop;
 use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
-use crate::str;
 use crate::sys::common::small_c_string::{run_path_with_cstr, run_with_cstr};
 use crate::sys::unsupported;
-use crate::vec;
-use core::slice::memchr;
+use crate::{fmt, io, str, vec};
 
 // Add a few symbols not in upstream `libc` just yet.
 mod libc {
@@ -244,7 +242,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     .flatten()
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     run_with_cstr(k.as_bytes(), &|k| {
         run_with_cstr(v.as_bytes(), &|v| unsafe {
             let _guard = env_write_lock();
@@ -253,7 +251,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     })
 }
 
-pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     run_with_cstr(n.as_bytes(), &|nbuf| unsafe {
         let _guard = env_write_lock();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)

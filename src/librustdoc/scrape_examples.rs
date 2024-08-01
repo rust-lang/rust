@@ -1,34 +1,27 @@
 //! This module analyzes crates to find call sites that can serve as examples in the documentation.
 
-use crate::clean;
-use crate::config;
-use crate::formats;
-use crate::formats::renderer::FormatRenderer;
-use crate::html::render::Context;
+use std::fs;
+use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{
-    self as hir,
-    intravisit::{self, Visitor},
-};
+use rustc_errors::DiagCtxtHandle;
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir};
 use rustc_interface::interface;
 use rustc_macros::{Decodable, Encodable};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_serialize::{
-    opaque::{FileEncoder, MemDecoder},
-    Decodable, Encodable,
-};
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_session::getopts;
-use rustc_span::{
-    def_id::{CrateNum, DefPathHash, LOCAL_CRATE},
-    edition::Edition,
-    BytePos, FileName, SourceFile,
-};
+use rustc_span::def_id::{CrateNum, DefPathHash, LOCAL_CRATE};
+use rustc_span::edition::Edition;
+use rustc_span::{BytePos, FileName, SourceFile};
 
-use std::fs;
-use std::path::PathBuf;
+use crate::formats::renderer::FormatRenderer;
+use crate::html::render::Context;
+use crate::{clean, config, formats};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ScrapeExamplesOptions {
@@ -38,7 +31,7 @@ pub(crate) struct ScrapeExamplesOptions {
 }
 
 impl ScrapeExamplesOptions {
-    pub(crate) fn new(matches: &getopts::Matches, dcx: &rustc_errors::DiagCtxt) -> Option<Self> {
+    pub(crate) fn new(matches: &getopts::Matches, dcx: DiagCtxtHandle<'_>) -> Option<Self> {
         let output_path = matches.opt_str("scrape-examples-output-path");
         let target_crates = matches.opt_strs("scrape-examples-target-crate");
         let scrape_tests = matches.opt_present("scrape-tests");
@@ -336,7 +329,7 @@ pub(crate) fn run(
 // options.
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
-    dcx: &rustc_errors::DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
 ) -> AllCallLocations {
     let mut all_calls: AllCallLocations = FxHashMap::default();
     for path in with_examples {
@@ -344,7 +337,9 @@ pub(crate) fn load_call_locations(
             Ok(bytes) => bytes,
             Err(e) => dcx.fatal(format!("failed to load examples: {e}")),
         };
-        let mut decoder = MemDecoder::new(&bytes, 0);
+        let Ok(mut decoder) = MemDecoder::new(&bytes, 0) else {
+            dcx.fatal(format!("Corrupt metadata encountered in {path}"))
+        };
         let calls = AllCallLocations::decode(&mut decoder);
 
         for (function, fn_calls) in calls.into_iter() {

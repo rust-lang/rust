@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::path_def_id;
@@ -54,9 +55,10 @@ pub struct FromOverInto {
 }
 
 impl FromOverInto {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        FromOverInto { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        FromOverInto {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -64,10 +66,6 @@ impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !self.msrv.meets(msrvs::RE_REBALANCING_COHERENCE) || !span_is_local(item.span) {
-            return;
-        }
-
         if let ItemKind::Impl(Impl {
             of_trait: Some(hir_trait_ref),
             self_ty,
@@ -77,6 +75,8 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
+            && self.msrv.meets(msrvs::RE_REBALANCING_COHERENCE)
+            && span_is_local(item.span)
             && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
                                                   .map(ty::EarlyBinder::instantiate_identity)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)

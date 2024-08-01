@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `Sum` in this scope
+  --> $DIR/erroneous_type_in_promoted.rs:6:22
+   |
+LL |     UnusedByTheConst(Sum),
+   |                      ^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+LL + use std::iter::Sum;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

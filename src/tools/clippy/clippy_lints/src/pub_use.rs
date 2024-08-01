@@ -5,13 +5,11 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
     /// Restricts the usage of `pub use ...`
     ///
-    /// ### Why is this bad?
-    ///
-    /// `pub use` is usually fine, but a project may wish to limit `pub use` instances to prevent
-    /// unintentional exports or to encourage placing exported items directly in public modules
+    /// ### Why restrict this?
+    /// A project may wish to limit `pub use` instances to prevent
+    /// unintentional exports, or to encourage placing exported items directly in public modules.
     ///
     /// ### Example
     /// ```no_run

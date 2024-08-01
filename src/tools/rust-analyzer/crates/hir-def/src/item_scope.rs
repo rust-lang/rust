@@ -8,7 +8,6 @@ use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCall
 use itertools::Itertools;
 use la_arena::Idx;
 use once_cell::sync::Lazy;
-use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use stdx::format_to;
@@ -65,8 +64,6 @@ pub struct ImportId {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
-    _c: Count<Self>,
-
     /// Defs visible in this scope. This includes `declarations`, but also
     /// imports. The imports belong to this module and can be resolved by using them on
     /// the `use_imports_*` fields.
@@ -234,6 +231,14 @@ impl ItemScope {
         self.impls.iter().copied()
     }
 
+    pub fn all_macro_calls(&self) -> impl Iterator<Item = MacroCallId> + '_ {
+        self.macro_invocations.values().copied().chain(self.attr_macros.values().copied()).chain(
+            self.derive_macros.values().flat_map(|it| {
+                it.iter().flat_map(|it| it.derive_call_ids.iter().copied().flatten())
+            }),
+        )
+    }
+
     pub(crate) fn modules_in_scope(&self) -> impl Iterator<Item = (ModuleId, Visibility)> + '_ {
         self.types.values().copied().filter_map(|(def, vis, _)| match def {
             ModuleDefId::ModuleId(module) => Some((module, vis)),
@@ -287,7 +292,7 @@ impl ItemScope {
     pub(crate) fn names_of<T>(
         &self,
         item: ItemInNs,
-        mut cb: impl FnMut(&Name, Visibility, bool) -> Option<T>,
+        mut cb: impl FnMut(&Name, Visibility, /*declared*/ bool) -> Option<T>,
     ) -> Option<T> {
         match item {
             ItemInNs::Macros(def) => self
@@ -714,7 +719,6 @@ impl ItemScope {
     pub(crate) fn shrink_to_fit(&mut self) {
         // Exhaustive match to require handling new fields.
         let Self {
-            _c: _,
             types,
             values,
             macros,

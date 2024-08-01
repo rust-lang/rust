@@ -8,7 +8,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
 use rustc_errors::{Diag, DiagCtxt};
 use rustc_lint::LateContext;
-use rustc_parse::maybe_new_parser_from_source_str;
+use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
@@ -50,7 +50,7 @@ pub fn check(
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let psess = ParseSess::with_dcx(dcx, sm);
 
-                let mut parser = match maybe_new_parser_from_source_str(&psess, filename, code) {
+                let mut parser = match new_parser_from_source_str(&psess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
                         errs.into_iter().for_each(Diag::cancel);

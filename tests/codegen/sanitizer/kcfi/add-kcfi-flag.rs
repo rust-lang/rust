@@ -8,15 +8,14 @@
 //@ compile-flags: -Ctarget-feature=-crt-static -Zsanitizer=kcfi
 
 #![feature(no_core, lang_items)]
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
-#[lang="copy"]
-trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
 
-pub fn foo() {
-}
+pub fn foo() {}
 
 // CHECK: !{{[0-9]+}} = !{i32 4, !"kcfi", i32 1}

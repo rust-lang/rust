@@ -4,16 +4,15 @@
 //! etc. This is run by default on `./x.py test` and as part of the auto
 //! builders. The tidy checks can be executed with `./x.py test tidy`.
 
-use tidy::*;
-
 use std::collections::VecDeque;
-use std::env;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
-use std::process;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, scope, ScopedJoinHandle};
+use std::{env, process};
+
+use tidy::*;
 
 fn main() {
     // Running Cargo will read the libstd Cargo.toml
@@ -115,6 +114,7 @@ fn main() {
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
         check!(fluent_alphabetical, &compiler_path, bless);
+        check!(fluent_period, &compiler_path);
         check!(target_policy, &root_path);
 
         // Checks that only make sense for the std libs.

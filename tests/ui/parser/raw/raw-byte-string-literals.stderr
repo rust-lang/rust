@@ -1,7 +1,7 @@
 error: bare CR not allowed in raw string
   --> $DIR/raw-byte-string-literals.rs:4:9
    |
-LL |     br"a";
+LL |     br"a␍";
    |         ^
 
 error: non-ASCII character in raw byte string literal

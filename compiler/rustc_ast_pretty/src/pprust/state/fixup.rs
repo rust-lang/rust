@@ -49,6 +49,38 @@ pub(crate) struct FixupContext {
     ///     No parentheses required.
     leftmost_subexpression_in_stmt: bool,
 
+    /// Print expression such that it can be parsed as a match arm.
+    ///
+    /// This is almost equivalent to `stmt`, but the grammar diverges a tiny bit
+    /// between statements and match arms when it comes to braced macro calls.
+    /// Macro calls with brace delimiter terminate a statement without a
+    /// semicolon, but do not terminate a match-arm without comma.
+    ///
+    /// ```ignore (illustrative)
+    /// m! {} - 1;  // two statements: a macro call followed by -1 literal
+    ///
+    /// match () {
+    ///     _ => m! {} - 1,  // binary subtraction operator
+    /// }
+    /// ```
+    match_arm: bool,
+
+    /// This is almost equivalent to `leftmost_subexpression_in_stmt`, other
+    /// than for braced macro calls.
+    ///
+    /// If we have `m! {} - 1` as an expression, the leftmost subexpression
+    /// `m! {}` will need to be parenthesized in the statement case but not the
+    /// match-arm case.
+    ///
+    /// ```ignore (illustrative)
+    /// (m! {}) - 1;  // subexpression needs parens
+    ///
+    /// match () {
+    ///     _ => m! {} - 1,  // no parens
+    /// }
+    /// ```
+    leftmost_subexpression_in_match_arm: bool,
+
     /// This is the difference between:
     ///
     /// ```ignore (illustrative)
@@ -68,6 +100,8 @@ impl Default for FixupContext {
         FixupContext {
             stmt: false,
             leftmost_subexpression_in_stmt: false,
+            match_arm: false,
+            leftmost_subexpression_in_match_arm: false,
             parenthesize_exterior_struct_lit: false,
         }
     }
@@ -76,11 +110,14 @@ impl Default for FixupContext {
 impl FixupContext {
     /// Create the initial fixup for printing an expression in statement
     /// position.
-    ///
-    /// This is currently also used for printing an expression as a match-arm,
-    /// but this is incorrect and leads to over-parenthesizing.
     pub fn new_stmt() -> Self {
         FixupContext { stmt: true, ..FixupContext::default() }
+    }
+
+    /// Create the initial fixup for printing an expression as the right-hand
+    /// side of a match arm.
+    pub fn new_match_arm() -> Self {
+        FixupContext { match_arm: true, ..FixupContext::default() }
     }
 
     /// Create the initial fixup for printing an expression as the "condition"
@@ -106,6 +143,9 @@ impl FixupContext {
         FixupContext {
             stmt: false,
             leftmost_subexpression_in_stmt: self.stmt || self.leftmost_subexpression_in_stmt,
+            match_arm: false,
+            leftmost_subexpression_in_match_arm: self.match_arm
+                || self.leftmost_subexpression_in_match_arm,
             ..self
         }
     }
@@ -119,7 +159,13 @@ impl FixupContext {
     /// example the `$b` in `$a + $b` and `-$b`, but not the one in `[$b]` or
     /// `$a.f($b)`.
     pub fn subsequent_subexpression(self) -> Self {
-        FixupContext { stmt: false, leftmost_subexpression_in_stmt: false, ..self }
+        FixupContext {
+            stmt: false,
+            leftmost_subexpression_in_stmt: false,
+            match_arm: false,
+            leftmost_subexpression_in_match_arm: false,
+            ..self
+        }
     }
 
     /// Determine whether parentheses are needed around the given expression to
@@ -128,7 +174,8 @@ impl FixupContext {
     /// The documentation on `FixupContext::leftmost_subexpression_in_stmt` has
     /// examples.
     pub fn would_cause_statement_boundary(self, expr: &Expr) -> bool {
-        self.leftmost_subexpression_in_stmt && !classify::expr_requires_semi_to_be_stmt(expr)
+        (self.leftmost_subexpression_in_stmt && !classify::expr_requires_semi_to_be_stmt(expr))
+            || (self.leftmost_subexpression_in_match_arm && classify::expr_is_complete(expr))
     }
 
     /// Determine whether parentheses are needed around the given `let`

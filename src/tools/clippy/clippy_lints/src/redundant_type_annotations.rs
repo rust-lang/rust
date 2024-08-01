@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Warns about needless / redundant type annotations.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Code without type annotations is shorter and in most cases
     /// more idiomatic and easier to modify.
     ///

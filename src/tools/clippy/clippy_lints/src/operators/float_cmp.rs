@@ -57,7 +57,6 @@ pub(crate) fn check<'tcx>(
                     Applicability::HasPlaceholders, // snippet
                 );
             }
-            diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`");
         });
     }
 }
@@ -86,6 +85,7 @@ fn get_lint_and_message(is_local: bool, is_comparing_arrays: bool) -> (&'static 
 
 fn is_allowed(val: &Constant<'_>) -> bool {
     match val {
+        // FIXME(f16_f128): add when equality check is available on all platforms
         &Constant::F32(f) => f == 0.0 || f.is_infinite(),
         &Constant::F64(f) => f == 0.0 || f.is_infinite(),
         Constant::Vec(vec) => vec.iter().all(|f| match f {

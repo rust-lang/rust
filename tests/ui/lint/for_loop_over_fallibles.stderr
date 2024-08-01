@@ -97,5 +97,65 @@ help: consider using `if let` to clear intent
 LL |     if let Ok(_) = Ok::<_, ()>([0; 0]) {}
    |     ~~~~~~~~~~ ~~~
 
-warning: 6 warnings emitted
+warning: for loop over a `&Option`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:47:14
+   |
+LL |     for _ in &Some(1) {}
+   |              ^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL |     while let Some(_) = &Some(1) {}
+   |     ~~~~~~~~~~~~~~~ ~~~
+help: consider using `if let` to clear intent
+   |
+LL |     if let Some(_) = &Some(1) {}
+   |     ~~~~~~~~~~~~ ~~~
+
+warning: for loop over a `&Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:51:14
+   |
+LL |     for _ in &Ok::<_, ()>(1) {}
+   |              ^^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL |     while let Ok(_) = &Ok::<_, ()>(1) {}
+   |     ~~~~~~~~~~~~~ ~~~
+help: consider using `if let` to clear intent
+   |
+LL |     if let Ok(_) = &Ok::<_, ()>(1) {}
+   |     ~~~~~~~~~~ ~~~
+
+warning: for loop over a `&mut Option`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:57:14
+   |
+LL |     for _ in &mut Some(1) {}
+   |              ^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL |     while let Some(_) = &mut Some(1) {}
+   |     ~~~~~~~~~~~~~~~ ~~~
+help: consider using `if let` to clear intent
+   |
+LL |     if let Some(_) = &mut Some(1) {}
+   |     ~~~~~~~~~~~~ ~~~
+
+warning: for loop over a `&mut Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:61:14
+   |
+LL |     for _ in &mut Ok::<_, ()>(1) {}
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL |     while let Ok(_) = &mut Ok::<_, ()>(1) {}
+   |     ~~~~~~~~~~~~~ ~~~
+help: consider using `if let` to clear intent
+   |
+LL |     if let Ok(_) = &mut Ok::<_, ()>(1) {}
+   |     ~~~~~~~~~~ ~~~
+
+warning: 10 warnings emitted
 

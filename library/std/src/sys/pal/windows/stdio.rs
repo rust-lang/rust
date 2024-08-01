@@ -1,16 +1,13 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
-use super::api;
-use crate::cmp;
-use crate::io;
+use core::str::utf8_char_width;
+
+use super::api::{self, WinError};
 use crate::mem::MaybeUninit;
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
-use crate::ptr;
-use crate::str;
-use crate::sys::c;
-use crate::sys::cvt;
 use crate::sys::handle::Handle;
-use core::str::utf8_char_width;
+use crate::sys::{c, cvt};
+use crate::{cmp, io, ptr, str};
 
 #[cfg(test)]
 mod tests;
@@ -68,7 +65,7 @@ const MAX_BUFFER_SIZE: usize = 8192;
 // UTF-16 to UTF-8.
 pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
 
-pub fn get_handle(handle_id: c::DWORD) -> io::Result<c::HANDLE> {
+pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
     let handle = unsafe { c::GetStdHandle(handle_id) };
     if handle == c::INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
@@ -87,11 +84,7 @@ fn is_console(handle: c::HANDLE) -> bool {
     unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
 }
 
-fn write(
-    handle_id: c::DWORD,
-    data: &[u8],
-    incomplete_utf8: &mut IncompleteUtf8,
-) -> io::Result<usize> {
+fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> io::Result<usize> {
     if data.is_empty() {
         return Ok(0);
     }
@@ -182,12 +175,12 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         // Note that this theoretically checks validity twice in the (most common) case
         // where the underlying byte sequence is valid utf-8 (given the check in `write()`).
         let result = c::MultiByteToWideChar(
-            c::CP_UTF8,                      // CodePage
-            c::MB_ERR_INVALID_CHARS,         // dwFlags
-            utf8.as_ptr(),                   // lpMultiByteStr
-            utf8.len() as c::c_int,          // cbMultiByte
-            utf16.as_mut_ptr() as c::LPWSTR, // lpWideCharStr
-            utf16.len() as c::c_int,         // cchWideChar
+            c::CP_UTF8,                          // CodePage
+            c::MB_ERR_INVALID_CHARS,             // dwFlags
+            utf8.as_ptr(),                       // lpMultiByteStr
+            utf8.len() as i32,                   // cbMultiByte
+            utf16.as_mut_ptr() as *mut c::WCHAR, // lpWideCharStr
+            utf16.len() as i32,                  // cchWideChar
         );
         assert!(result != 0, "Unexpected error in MultiByteToWideChar");
 
@@ -232,13 +225,7 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
     debug_assert!(data.len() < u32::MAX as usize);
     let mut written = 0;
     cvt(unsafe {
-        c::WriteConsoleW(
-            handle,
-            data.as_ptr() as c::LPCVOID,
-            data.len() as u32,
-            &mut written,
-            ptr::null_mut(),
-        )
+        c::WriteConsoleW(handle, data.as_ptr(), data.len() as u32, &mut written, ptr::null_mut())
     })?;
     Ok(written as usize)
 }
@@ -347,9 +334,9 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
     // traditional DOS method to indicate end of character stream / user input (SUB).
     // See #38274 and https://stackoverflow.com/questions/43836040/win-api-readconsole.
     const CTRL_Z: u16 = 0x1A;
-    const CTRL_Z_MASK: c::ULONG = 1 << CTRL_Z;
+    const CTRL_Z_MASK: u32 = 1 << CTRL_Z;
     let input_control = c::CONSOLE_READCONSOLE_CONTROL {
-        nLength: crate::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
+        nLength: crate::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as u32,
         nInitialChars: 0,
         dwCtrlWakeupMask: CTRL_Z_MASK,
         dwControlKeyState: 0,
@@ -361,7 +348,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
             c::SetLastError(0);
             c::ReadConsoleW(
                 handle,
-                buf.as_mut_ptr() as c::LPVOID,
+                buf.as_mut_ptr() as *mut core::ffi::c_void,
                 buf.len() as u32,
                 &mut amount,
                 &input_control,
@@ -370,7 +357,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 
         // ReadConsoleW returns success with ERROR_OPERATION_ABORTED for Ctrl-C or Ctrl-Break.
         // Explicitly check for that case here and try again.
-        if amount == 0 && api::get_last_error().code == c::ERROR_OPERATION_ABORTED {
+        if amount == 0 && api::get_last_error() == WinError::OPERATION_ABORTED {
             continue;
         }
         break;
@@ -384,8 +371,8 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 }
 
 fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
-    debug_assert!(utf16.len() <= c::c_int::MAX as usize);
-    debug_assert!(utf8.len() <= c::c_int::MAX as usize);
+    debug_assert!(utf16.len() <= i32::MAX as usize);
+    debug_assert!(utf8.len() <= i32::MAX as usize);
 
     if utf16.is_empty() {
         return Ok(0);
@@ -396,9 +383,9 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
             c::CP_UTF8,              // CodePage
             c::WC_ERR_INVALID_CHARS, // dwFlags
             utf16.as_ptr(),          // lpWideCharStr
-            utf16.len() as c::c_int, // cchWideChar
+            utf16.len() as i32,      // cchWideChar
             utf8.as_mut_ptr(),       // lpMultiByteStr
-            utf8.len() as c::c_int,  // cbMultiByte
+            utf8.len() as i32,       // cbMultiByte
             ptr::null(),             // lpDefaultChar
             ptr::null_mut(),         // lpUsedDefaultChar
         )

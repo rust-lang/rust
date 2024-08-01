@@ -195,7 +195,7 @@ fn expand_subtree(
                 .into(),
             ),
             Op::Punct(puncts) => {
-                for punct in puncts {
+                for punct in puncts.as_slice() {
                     arena.push(
                         tt::Leaf::from({
                             let mut it = *punct;
@@ -222,7 +222,7 @@ fn expand_subtree(
             }
             Op::Repeat { tokens: subtree, kind, separator } => {
                 let ExpandResult { value: fragment, err: e } =
-                    expand_repeat(ctx, subtree, *kind, separator, arena, marker);
+                    expand_repeat(ctx, subtree, *kind, separator.as_deref(), arena, marker);
                 err = err.or(e);
                 push_fragment(ctx, arena, fragment)
             }
@@ -242,7 +242,7 @@ fn expand_subtree(
                     .into(),
                 );
             }
-            Op::Length { depth } => {
+            Op::Len { depth } => {
                 let length = ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |_nest| {
                     // FIXME: to be implemented
                     0
@@ -383,7 +383,7 @@ fn expand_repeat(
     ctx: &mut ExpandCtx<'_>,
     template: &MetaTemplate,
     kind: RepeatKind,
-    separator: &Option<Separator>,
+    separator: Option<&Separator>,
     arena: &mut Vec<tt::TokenTree<Span>>,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<Fragment> {

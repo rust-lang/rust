@@ -6,16 +6,10 @@
 //! The functionality in here is shared between persisting to crate metadata and
 //! persisting to incr. comp. caches.
 
-use crate::arena::ArenaAllocatable;
-use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
-use crate::mir::interpret::CtfeProvenance;
-use crate::mir::{
-    self,
-    interpret::{AllocId, ConstAllocation},
-};
-use crate::traits;
-use crate::ty::GenericArgsRef;
-use crate::ty::{self, AdtDef, Ty};
+use std::hash::Hash;
+use std::intrinsics;
+use std::marker::DiscriminantKind;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
@@ -23,9 +17,13 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
-use std::hash::Hash;
-use std::intrinsics;
-use std::marker::DiscriminantKind;
+
+use crate::arena::ArenaAllocatable;
+use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
+use crate::mir::{self};
+use crate::traits;
+use crate::ty::{self, AdtDef, GenericArgsRef, Ty};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -115,18 +113,11 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E>
-    for ty::Binder<'tcx, ty::PredicateKind<'tcx>>
-{
-    fn encode(&self, e: &mut E) {
-        self.bound_vars().encode(e);
-        encode_with_shorthand(e, &self.skip_binder(), TyEncoder::predicate_shorthands);
-    }
-}
-
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Predicate<'tcx> {
     fn encode(&self, e: &mut E) {
-        self.kind().encode(e);
+        let kind = self.kind();
+        kind.bound_vars().encode(e);
+        encode_with_shorthand(e, &kind.skip_binder(), TyEncoder::predicate_shorthands);
     }
 }
 
@@ -233,13 +224,11 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D>
-    for ty::Binder<'tcx, ty::PredicateKind<'tcx>>
-{
-    fn decode(decoder: &mut D) -> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Predicate<'tcx> {
+    fn decode(decoder: &mut D) -> ty::Predicate<'tcx> {
         let bound_vars = Decodable::decode(decoder);
         // Handle shorthands first, if we have a usize > 0x80.
-        ty::Binder::bind_with_vars(
+        let predicate_kind = ty::Binder::bind_with_vars(
             if decoder.positioned_at_shorthand() {
                 let pos = decoder.read_usize();
                 assert!(pos >= SHORTHAND_OFFSET);
@@ -250,13 +239,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D>
                 <ty::PredicateKind<'tcx> as Decodable<D>>::decode(decoder)
             },
             bound_vars,
-        )
-    }
-}
-
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Predicate<'tcx> {
-    fn decode(decoder: &mut D) -> ty::Predicate<'tcx> {
-        let predicate_kind = Decodable::decode(decoder);
+        );
         decoder.interner().mk_predicate(predicate_kind)
     }
 }
@@ -365,8 +348,8 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        let consts: ty::ConstData<'tcx> = Decodable::decode(decoder);
-        decoder.interner().mk_ct_from_kind(consts.kind, consts.ty)
+        let kind: ty::ConstKind<'tcx> = Decodable::decode(decoder);
+        decoder.interner().mk_ct_from_kind(kind)
     }
 }
 
@@ -598,33 +581,4 @@ macro_rules! implement_ty_decoder {
             }
         }
     }
-}
-
-macro_rules! impl_binder_encode_decode {
-    ($($t:ty),+ $(,)?) => {
-        $(
-            impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Binder<'tcx, $t> {
-                fn encode(&self, e: &mut E) {
-                    self.bound_vars().encode(e);
-                    self.as_ref().skip_binder().encode(e);
-                }
-            }
-            impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Binder<'tcx, $t> {
-                fn decode(decoder: &mut D) -> Self {
-                    let bound_vars = Decodable::decode(decoder);
-                    ty::Binder::bind_with_vars(Decodable::decode(decoder), bound_vars)
-                }
-            }
-        )*
-    }
-}
-
-impl_binder_encode_decode! {
-    &'tcx ty::List<Ty<'tcx>>,
-    ty::FnSig<'tcx>,
-    ty::Predicate<'tcx>,
-    ty::TraitPredicate<'tcx>,
-    ty::ExistentialPredicate<'tcx>,
-    ty::TraitRef<'tcx>,
-    ty::ExistentialTraitRef<'tcx>,
 }

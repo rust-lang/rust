@@ -1,20 +1,23 @@
 //! Errors emitted by codegen_ssa
 
-use crate::assert_module_sources::CguReuse;
-use crate::back::command::Command;
-use crate::fluent_generated as fluent;
+use std::borrow::Cow;
+use std::io::Error;
+use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
+
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use rustc_type_ir::FloatTy;
-use std::borrow::Cow;
-use std::io::Error;
-use std::path::{Path, PathBuf};
-use std::process::ExitStatus;
+
+use crate::assert_module_sources::CguReuse;
+use crate::back::command::Command;
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_incorrect_cgu_reuse_type)]
@@ -215,7 +218,7 @@ pub enum LinkRlibError {
 pub struct ThorinErrorWrapper(pub thorin::Error);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
-    fn into_diag(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
             thorin::Error::ReadInput(_) => build(fluent::codegen_ssa_thorin_read_input_failure),
@@ -348,7 +351,7 @@ pub struct LinkingFailed<'a> {
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diag(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_linking_failed);
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
@@ -412,6 +415,10 @@ pub struct UnableToExeLinker {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_msvc_missing_linker)]
 pub struct MsvcMissingLinker;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_self_contained_linker_missing)]
+pub struct SelfContainedLinkerMissing;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_check_installed_visual_studio)]
@@ -493,6 +500,7 @@ pub struct UnableToWriteDebuggerVisualizer {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_rlib_archive_build_failure)]
 pub struct RlibArchiveBuildFailure {
+    pub path: PathBuf,
     pub error: Error,
 }
 
@@ -550,6 +558,7 @@ pub struct UnsupportedLinkSelfContained;
 #[diag(codegen_ssa_archive_build_failure)]
 // Public for rustc_codegen_llvm::back::archive
 pub struct ArchiveBuildFailure {
+    pub path: PathBuf,
     pub error: std::io::Error,
 }
 
@@ -558,13 +567,6 @@ pub struct ArchiveBuildFailure {
 // Public for rustc_codegen_llvm::back::archive
 pub struct UnknownArchiveKind<'a> {
     pub kind: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_coverage_symbol)]
-pub struct ExpectedCoverageSymbol {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

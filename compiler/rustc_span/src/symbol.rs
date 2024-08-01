@@ -2,6 +2,9 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
+use std::hash::{Hash, Hasher};
+use std::{fmt, str};
+
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
@@ -9,10 +12,6 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{symbols, Decodable, Encodable, HashStable_Generic};
-
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::str;
 
 use crate::{with_session_globals, Edition, Span, DUMMY_SP};
 
@@ -103,6 +102,7 @@ symbols! {
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
+        Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",
     }
@@ -166,14 +166,17 @@ symbols! {
         Break,
         C,
         CStr,
+        C_dash_unwind: "C-unwind",
         CallOnceFuture,
         CallRefFuture,
         Capture,
         Center,
         Cleanup,
         Clone,
+        CoerceUnsized,
         Command,
         ConstParamTy,
+        ConstParamTy_,
         Context,
         Continue,
         Copy,
@@ -187,9 +190,18 @@ symbols! {
         DiagMessage,
         Diagnostic,
         DirBuilder,
+        DispatchFromDyn,
         Display,
         DoubleEndedIterator,
         Duration,
+        EffectsCompat,
+        EffectsIntersection,
+        EffectsIntersectionOutput,
+        EffectsMaybe,
+        EffectsNoRuntime,
+        EffectsRuntime,
+        EffectsTyCompat,
+        Effects__,
         Encodable,
         Encoder,
         Enumerate,
@@ -210,7 +222,6 @@ symbols! {
         FsPermissions,
         FusedIterator,
         Future,
-        FutureOutput,
         GlobalAlloc,
         Hash,
         HashMap,
@@ -298,8 +309,10 @@ symbols! {
         Saturating,
         Send,
         SeqCst,
+        Sized,
         SliceIndex,
         SliceIter,
+        SmartPointer,
         Some,
         SpanCtxt,
         String,
@@ -322,6 +335,8 @@ symbols! {
         TyCtxt,
         TyKind,
         Unknown,
+        Unsize,
+        UnsizedConstParamTy,
         Upvars,
         Vec,
         VecDeque,
@@ -430,6 +445,7 @@ symbols! {
         async_drop,
         async_drop_chain,
         async_drop_defer,
+        async_drop_deferred_drop_in_place,
         async_drop_either,
         async_drop_fuse,
         async_drop_in_place,
@@ -439,8 +455,10 @@ symbols! {
         async_fn,
         async_fn_in_trait,
         async_fn_kind_helper,
+        async_fn_kind_upvars,
         async_fn_mut,
         async_fn_once,
+        async_fn_once_output,
         async_fn_track_caller,
         async_fn_traits,
         async_for_loop,
@@ -498,6 +516,8 @@ symbols! {
         call,
         call_mut,
         call_once,
+        call_once_future,
+        call_ref_future,
         caller_location,
         capture_disjoint_fields,
         catch_unwind,
@@ -536,6 +556,7 @@ symbols! {
         clobber_abi,
         clone,
         clone_closures,
+        clone_fn,
         clone_from,
         closure,
         closure_lifetime_binder,
@@ -630,7 +651,9 @@ symbols! {
         coroutine,
         coroutine_clone,
         coroutine_resume,
+        coroutine_return,
         coroutine_state,
+        coroutine_yield,
         coroutines,
         cosf128,
         cosf16,
@@ -699,6 +722,7 @@ symbols! {
         derive,
         derive_const,
         derive_default_enum,
+        derive_smart_pointer,
         destruct,
         destructuring_assignment,
         diagnostic,
@@ -754,6 +778,7 @@ symbols! {
         enable,
         encode,
         end,
+        entry_nops,
         enumerate_method,
         env,
         env_CFG_RELEASE: env!("CFG_RELEASE"),
@@ -782,6 +807,8 @@ symbols! {
         explicit_tail_calls,
         export_name,
         expr,
+        expr_2021,
+        expr_fragment_specifier_2024,
         extended_key_value_attributes,
         extended_varargs_abi_support,
         extern_absolute_paths,
@@ -909,6 +936,7 @@ symbols! {
         fundamental,
         fused_iterator,
         future,
+        future_output,
         future_trait,
         gdb_script_file,
         ge,
@@ -928,6 +956,7 @@ symbols! {
         global_alloc_ty,
         global_allocator,
         global_asm,
+        global_registration,
         globs,
         gt,
         half_open_range_patterns,
@@ -1108,6 +1137,7 @@ symbols! {
         macro_lifetime_matcher,
         macro_literal_matcher,
         macro_metavar_expr,
+        macro_metavar_expr_concat,
         macro_reexport,
         macro_use,
         macro_vis_matcher,
@@ -1164,6 +1194,7 @@ symbols! {
         mir_assume,
         mir_basic_block,
         mir_call,
+        mir_cast_ptr_to_ptr,
         mir_cast_transmute,
         mir_checked,
         mir_copy_for_deref,
@@ -1177,6 +1208,7 @@ symbols! {
         mir_make_place,
         mir_move,
         mir_offset,
+        mir_ptr_metadata,
         mir_retag,
         mir_return,
         mir_return_to,
@@ -1198,6 +1230,7 @@ symbols! {
         modifiers,
         module,
         module_path,
+        more_maybe_bounds,
         more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,
@@ -1295,11 +1328,13 @@ symbols! {
         offset_of,
         offset_of_enum,
         offset_of_nested,
+        offset_of_slice,
         ok_or_else,
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,
         opaque,
+        ops,
         opt_out_copy,
         optimize,
         optimize_attribute,
@@ -1361,6 +1396,7 @@ symbols! {
         passes,
         pat,
         pat_param,
+        patchable_function_entry,
         path,
         pattern_complexity,
         pattern_parentheses,
@@ -1374,6 +1410,7 @@ symbols! {
         plugin,
         plugin_registrar,
         plugins,
+        pointee,
         pointee_trait,
         pointer,
         pointer_like,
@@ -1398,6 +1435,7 @@ symbols! {
         prefetch_read_instruction,
         prefetch_write_data,
         prefetch_write_instruction,
+        prefix_nops,
         preg,
         prelude,
         prelude_import,
@@ -1431,6 +1469,7 @@ symbols! {
         ptr_guaranteed_cmp,
         ptr_is_null,
         ptr_mask,
+        ptr_metadata,
         ptr_null,
         ptr_null_mut,
         ptr_offset_from,
@@ -1478,6 +1517,7 @@ symbols! {
         recursion_limit,
         reexport_test_harness_main,
         ref_pat_eat_one_layer_2024,
+        ref_pat_eat_one_layer_2024_structural,
         ref_pat_everywhere,
         ref_unwind_safe_trait,
         reference,
@@ -1543,6 +1583,7 @@ symbols! {
         rust_2018_preview,
         rust_2021,
         rust_2024,
+        rust_analyzer,
         rust_begin_unwind,
         rust_cold_cc,
         rust_eh_catch_typeinfo,
@@ -1571,14 +1612,16 @@ symbols! {
         rustc_def_path,
         rustc_default_body_unstable,
         rustc_deny_explicit_impl,
+        rustc_deprecated_safe_2024,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,
         rustc_do_not_const_check,
         rustc_doc_primitive,
         rustc_dummy,
-        rustc_dump_env_program_clauses,
-        rustc_dump_program_clauses,
+        rustc_dump_def_parents,
+        rustc_dump_item_bounds,
+        rustc_dump_predicates,
         rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
@@ -1629,9 +1672,10 @@ symbols! {
         rustc_reallocator,
         rustc_regions,
         rustc_reservation_impl,
+        rustc_runtime,
         rustc_safe_intrinsic,
         rustc_serialize,
-        rustc_skip_array_during_method_dispatch,
+        rustc_skip_during_method_dispatch,
         rustc_specialization_trait,
         rustc_std_internal_symbol,
         rustc_strict_coherence,
@@ -1649,6 +1693,7 @@ symbols! {
         rvalue_static_promotion,
         rwpi,
         s,
+        s390x_target_feature,
         safety,
         sanitize,
         sanitizer_cfi_generalize_pointers,
@@ -1657,12 +1702,14 @@ symbols! {
         saturating_add,
         saturating_div,
         saturating_sub,
+        select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,
         semitransparent,
         shadow_call_stack,
         shl,
         shl_assign,
+        shorter_tail_lifetimes,
         should_panic,
         shr,
         shr_assign,
@@ -1680,6 +1727,7 @@ symbols! {
         simd_cast_ptr,
         simd_ceil,
         simd_ctlz,
+        simd_ctpop,
         simd_cttz,
         simd_div,
         simd_eq,
@@ -1884,6 +1932,7 @@ symbols! {
         type_ascription,
         type_changing_struct_update,
         type_id,
+        type_ir_inherent,
         type_length_limit,
         type_macros,
         type_name,
@@ -1950,12 +1999,16 @@ symbols! {
         unreachable_display,
         unreachable_macro,
         unrestricted_attribute_tokens,
+        unsafe_attributes,
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
         unsafe_cell_raw_get,
+        unsafe_extern_blocks,
         unsafe_no_drop_flag,
         unsafe_pin_internals,
         unsize,
+        unsized_const_param_ty,
+        unsized_const_params,
         unsized_fn_params,
         unsized_locals,
         unsized_tuple_coercion,
@@ -2028,14 +2081,18 @@ symbols! {
         write_str,
         write_via_move,
         writeln_macro,
+        x86_amx_intrinsics,
         x87_reg,
         xer,
         xmm_reg,
+        xop_target_feature,
         yeet_desugar_details,
         yeet_expr,
         yes,
         yield_expr,
         ymm_reg,
+        zfh,
+        zfhmin,
         zmm_reg,
     }
 }
@@ -2202,6 +2259,7 @@ impl fmt::Display for IdentPrinter {
 pub struct MacroRulesNormalizedIdent(Ident);
 
 impl MacroRulesNormalizedIdent {
+    #[inline]
     pub fn new(ident: Ident) -> Self {
         Self(ident.normalize_to_macro_rules())
     }
@@ -2389,13 +2447,11 @@ pub mod kw {
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
-    use super::Symbol;
-
-    #[doc(inline)]
-    pub use super::sym_generated::*;
-
     // Used from a macro in `librustc_feature/accepted.rs`
     pub use super::kw::MacroRules as macro_rules;
+    #[doc(inline)]
+    pub use super::sym_generated::*;
+    use super::Symbol;
 
     /// Get the symbol for an integer.
     ///

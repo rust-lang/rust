@@ -22,14 +22,26 @@ error: struct `PrivStruct` is never constructed
 LL | struct PrivStruct;
    |        ^^^^^^^^^^
 
+error: struct `StructUsedAsField` is never constructed
+  --> $DIR/lint-dead-code-1.rs:49:8
+   |
+LL | struct StructUsedAsField;
+   |        ^^^^^^^^^^^^^^^^^
+
+error: struct `PubStruct2` is never constructed
+  --> $DIR/lint-dead-code-1.rs:52:12
+   |
+LL | pub struct PubStruct2 {
+   |            ^^^^^^^^^^
+
 error: enum `priv_enum` is never used
-  --> $DIR/lint-dead-code-1.rs:64:6
+  --> $DIR/lint-dead-code-1.rs:63:6
    |
 LL | enum priv_enum { foo2, bar2 }
    |      ^^^^^^^^^
 
 error: variant `bar3` is never constructed
-  --> $DIR/lint-dead-code-1.rs:67:5
+  --> $DIR/lint-dead-code-1.rs:66:5
    |
 LL | enum used_enum {
    |      --------- variant in this enum
@@ -38,25 +50,25 @@ LL |     bar3
    |     ^^^^
 
 error: function `priv_fn` is never used
-  --> $DIR/lint-dead-code-1.rs:88:4
+  --> $DIR/lint-dead-code-1.rs:87:4
    |
 LL | fn priv_fn() {
    |    ^^^^^^^
 
 error: function `foo` is never used
-  --> $DIR/lint-dead-code-1.rs:93:4
+  --> $DIR/lint-dead-code-1.rs:92:4
    |
 LL | fn foo() {
    |    ^^^
 
 error: function `bar` is never used
-  --> $DIR/lint-dead-code-1.rs:98:4
+  --> $DIR/lint-dead-code-1.rs:97:4
    |
 LL | fn bar() {
    |    ^^^
 
 error: function `baz` is never used
-  --> $DIR/lint-dead-code-1.rs:102:4
+  --> $DIR/lint-dead-code-1.rs:101:4
    |
 LL | fn baz() -> impl Copy {
    |    ^^^
@@ -67,5 +79,5 @@ error: struct `Bar` is never constructed
 LL |     pub struct Bar;
    |                ^^^
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 

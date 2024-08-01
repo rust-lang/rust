@@ -1,13 +1,5 @@
-use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
-
-use super::errors::{
-    AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
-    InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
-    InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
-    InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
-    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
-};
-use super::LoweringContext;
+use std::collections::hash_map::Entry;
+use std::fmt::Write;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
@@ -18,8 +10,16 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Span};
 use rustc_target::asm;
-use std::collections::hash_map::Entry;
-use std::fmt::Write;
+
+use super::errors::{
+    AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
+    InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
+    InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
+    InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
+    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
+};
+use super::LoweringContext;
+use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
@@ -188,7 +188,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .emit();
                         }
                         hir::InlineAsmOperand::Const {
-                            anon_const: self.lower_anon_const(anon_const),
+                            anon_const: self.lower_anon_const_to_anon_const(anon_const),
                         }
                     }
                     InlineAsmOperand::Sym { sym } => {
@@ -223,18 +223,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             };
 
                             // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_hir_id_owner;
+                            let parent_def_id = self.current_def_id_parent;
                             let node_id = self.next_node_id();
-                            self.create_def(
-                                parent_def_id.def_id,
-                                node_id,
-                                kw::Empty,
-                                DefKind::AnonConst,
-                                *op_sp,
-                            );
+                            // HACK(min_generic_const_args): see lower_anon_const
+                            if !expr.is_potential_trivial_const_arg() {
+                                self.create_def(
+                                    parent_def_id,
+                                    node_id,
+                                    kw::Empty,
+                                    DefKind::AnonConst,
+                                    *op_sp,
+                                );
+                            }
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
-                                anon_const: self.lower_anon_const(&anon_const),
+                                anon_const: self.lower_anon_const_to_anon_const(&anon_const),
                             }
                         }
                     }

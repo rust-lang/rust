@@ -2,7 +2,7 @@ use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::{for_each_expr, is_local_used};
+use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
 use clippy_utils::{in_constant, path_to_local};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
@@ -249,7 +249,7 @@ fn emit_redundant_guards<'tcx>(
 /// an error in the future, and rustc already actively warns against this (see rust#41620),
 /// so we don't consider those as usable within patterns for linting purposes.
 fn expr_can_be_pat(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    for_each_expr(expr, |expr| {
+    for_each_expr_without_closures(expr, |expr| {
         if match expr.kind {
             ExprKind::ConstBlock(..) => cx.tcx.features().inline_const_pat,
             ExprKind::Call(c, ..) if let ExprKind::Path(qpath) = c.kind => {

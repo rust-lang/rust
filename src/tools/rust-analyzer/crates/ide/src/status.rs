@@ -20,7 +20,6 @@ use ide_db::{
 };
 use itertools::Itertools;
 use profile::{memory_usage, Bytes};
-use std::env;
 use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
 use triomphe::Arc;
@@ -44,9 +43,6 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{}\n", collect_query(LibrarySymbolsQuery.in_db(db)));
     format_to!(buf, "{}\n", collect_query(ModuleSymbolsQuery.in_db(db)));
     format_to!(buf, "{} in total\n", memory_usage());
-    if env::var("RA_COUNT").is_ok() {
-        format_to!(buf, "\nCounts:\n{}", profile::countme::get_all());
-    }
 
     format_to!(buf, "\nDebug info:\n");
     format_to!(buf, "{}\n", collect_query(AttrsQuery.in_db(db)));

@@ -15,9 +15,11 @@ fn empty_enum(x: EmptyEnum) {
     match x {} // ok
     match x {
         _ => {} //~ ERROR unreachable pattern
+                //~^ NOTE matches no values
     }
     match x {
         _ if false => {} //~ ERROR unreachable pattern
+                         //~^ NOTE matches no values
     }
 }
 
@@ -25,9 +27,11 @@ fn empty_foreign_enum(x: empty::EmptyForeignEnum) {
     match x {} // ok
     match x {
         _ => {} //~ ERROR unreachable pattern
+                //~^ NOTE matches no values
     }
     match x {
         _ if false => {} //~ ERROR unreachable pattern
+                         //~^ NOTE matches no values
     }
 }
 

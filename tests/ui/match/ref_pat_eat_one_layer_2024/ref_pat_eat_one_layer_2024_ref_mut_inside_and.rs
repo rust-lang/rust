@@ -1,0 +1,30 @@
+//@ edition: 2024
+//@ compile-flags: -Zunstable-options
+//@ run-rustfix
+#![allow(incomplete_features)]
+#![feature(ref_pat_eat_one_layer_2024)]
+
+pub fn main() {
+    if let Some(&Some(ref mut x)) = &mut Some(Some(0)) {
+        //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+        let _: &mut u8 = x;
+    }
+
+    if let &Some(Some(ref mut x)) = &mut Some(Some(0)) {
+        //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+        let _: &mut u8 = x;
+    }
+
+    macro_rules! pat {
+        ($var:ident) => { ref mut $var };
+    }
+    let &pat!(x) = &mut 0;
+    //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    let _: &mut u8 = x;
+
+    let &(ref mut a, ref mut b) = &mut (true, false);
+    //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //~| ERROR: cannot borrow as mutable inside an `&` pattern
+    let _: &mut bool = a;
+    let _: &mut bool = b;
+}

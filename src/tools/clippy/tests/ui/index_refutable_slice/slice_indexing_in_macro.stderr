@@ -1,5 +1,5 @@
 error: this binding can be a slice pattern to avoid indexing
-  --> tests/ui/index_refutable_slice/slice_indexing_in_macro.rs:23:21
+  --> tests/ui/index_refutable_slice/slice_indexing_in_macro.rs:25:21
    |
 LL |         if let Some(slice) = slice;
    |                     ^^^^^

@@ -3,7 +3,8 @@
 #![crate_type = "lib"]
 
 pub enum Foo {
-    A, B
+    A,
+    B,
 }
 
 // CHECK-LABEL: @lookup
@@ -15,7 +16,7 @@ pub fn lookup(buf: &[u8; 2], f: Foo) -> u8 {
 
 pub enum Bar {
     A = 2,
-    B = 3
+    B = 3,
 }
 
 // CHECK-LABEL: @lookup_unmodified

@@ -1,20 +1,20 @@
-// @has 'glob_shadowing/index.html'
-// @count - '//div[@class="item-name"]' 6
-// @!has - '//div[@class="desc docblock-short"]' 'sub1::describe'
-// @has - '//div[@class="desc docblock-short"]' 'sub2::describe'
+//@ has 'glob_shadowing/index.html'
+//@ count - '//div[@class="item-name"]' 6
+//@ !has - '//div[@class="desc docblock-short"]' 'sub1::describe'
+//@ has - '//div[@class="desc docblock-short"]' 'sub2::describe'
 
-// @!has - '//div[@class="desc docblock-short"]' 'sub1::describe2'
+//@ !has - '//div[@class="desc docblock-short"]' 'sub1::describe2'
 
-// @!has - '//div[@class="desc docblock-short"]' 'sub1::prelude'
-// @has - '//div[@class="desc docblock-short"]' 'mod::prelude'
+//@ !has - '//div[@class="desc docblock-short"]' 'sub1::prelude'
+//@ has - '//div[@class="desc docblock-short"]' 'mod::prelude'
 
-// @has - '//div[@class="desc docblock-short"]' 'sub1::Foo (struct)'
-// @has - '//div[@class="desc docblock-short"]' 'mod::Foo (function)'
+//@ has - '//div[@class="desc docblock-short"]' 'sub1::Foo (struct)'
+//@ has - '//div[@class="desc docblock-short"]' 'mod::Foo (function)'
 
-// @has - '//div[@class="desc docblock-short"]' 'sub4::inner::X'
+//@ has - '//div[@class="desc docblock-short"]' 'sub4::inner::X'
 
-// @has 'glob_shadowing/fn.describe.html'
-// @has - '//div[@class="docblock"]' 'sub2::describe'
+//@ has 'glob_shadowing/fn.describe.html'
+//@ has - '//div[@class="docblock"]' 'sub2::describe'
 
 mod sub1 {
     // this should be shadowed by sub2::describe

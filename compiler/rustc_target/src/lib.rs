@@ -41,17 +41,13 @@ const RUST_LIB_DIR: &str = "rustlib";
 ///
 /// For example: `target_sysroot_path("/usr", "x86_64-unknown-linux-gnu")` =>
 /// `"lib*/rustlib/x86_64-unknown-linux-gnu"`.
-pub fn target_rustlib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
-    let libdir = find_libdir(sysroot);
-    PathBuf::from_iter([
-        Path::new(libdir.as_ref()),
-        Path::new(RUST_LIB_DIR),
-        Path::new(target_triple),
-    ])
+pub fn relative_target_rustlib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
+    let libdir = find_relative_libdir(sysroot);
+    Path::new(libdir.as_ref()).join(RUST_LIB_DIR).join(target_triple)
 }
 
 /// The name of the directory rustc expects libraries to be located.
-fn find_libdir(sysroot: &Path) -> std::borrow::Cow<'static, str> {
+fn find_relative_libdir(sysroot: &Path) -> std::borrow::Cow<'static, str> {
     // FIXME: This is a quick hack to make the rustc binary able to locate
     // Rust libraries in Linux environments where libraries might be installed
     // to lib64/lib32. This would be more foolproof by basing the sysroot off

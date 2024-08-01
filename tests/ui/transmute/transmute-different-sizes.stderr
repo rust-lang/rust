@@ -25,6 +25,24 @@ LL |     transmute(x)
    = note: source type: `u16` (N bits)
    = note: target type: `<T as Specializable>::Output` (this type does not have a fixed size)
 
-error: aborting due to 3 previous errors
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-different-sizes.rs:38:5
+   |
+LL |     transmute(from)
+   |     ^^^^^^^^^
+   |
+   = note: source type: `*mut T` (pointer to `T`)
+   = note: target type: `PtrAndOverAlignZST<T>` (size can vary because of <T as Pointee>::Metadata)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-different-sizes.rs:47:5
+   |
+LL |     std::mem::transmute(from)
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `*mut T` (pointer to `T`)
+   = note: target type: `PtrAndEmptyArray<T>` (size can vary because of <T as Pointee>::Metadata)
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0512`.

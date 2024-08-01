@@ -1,11 +1,8 @@
 //! Support code for rustdoc and external tools.
 //! You really don't want to be using this unless you need to.
 
-use super::*;
-
-use crate::errors::UnableToConstructConstantValue;
-use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::traits::project::ProjectAndUnifyResult;
+use std::collections::VecDeque;
+use std::iter;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
@@ -13,8 +10,10 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{Region, RegionVid};
 
-use std::collections::VecDeque;
-use std::iter;
+use super::*;
+use crate::errors::UnableToConstructConstantValue;
+use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::traits::project::ProjectAndUnifyResult;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
@@ -303,7 +302,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.args) {
                         already_visited.remove(&pred);
-                        self.add_user_pred(&mut user_computed_preds, pred.to_predicate(self.tcx));
+                        self.add_user_pred(&mut user_computed_preds, pred.upcast(self.tcx));
                         predicates.push_back(pred);
                     } else {
                         debug!(
@@ -540,11 +539,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, args: GenericArgsRef<'_>) -> bool {
+    fn is_param_no_infer(&self, args: GenericArgsRef<'tcx>) -> bool {
         self.is_of_param(args.type_at(0)) && !args.types().any(|t| t.has_infer_types())
     }
 
-    pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
+    pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Param(_) => true,
             ty::Alias(ty::Projection, p) => self.is_of_param(p.self_ty()),
@@ -552,9 +551,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
     }
 
-    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        if let Some(ty) = p.term().skip_binder().ty() {
-            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_ty)
+    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
+        if let Some(ty) = p.term().skip_binder().as_type() {
+            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
         } else {
             false
         }
@@ -612,7 +611,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // an inference variable.
                     // Additionally, we check if we've seen this predicate before,
                     // to avoid rendering duplicate bounds to the user.
-                    if self.is_param_no_infer(p.skip_binder().projection_ty.args)
+                    if self.is_param_no_infer(p.skip_binder().projection_term.args)
                         && !p.term().skip_binder().has_infer_types()
                         && is_new_pred
                     {
@@ -684,7 +683,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // and turn them into an explicit negative impl for our type.
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
-                    match project::poly_project_and_unify_type(selcx, &obligation.with(self.tcx, p))
+                    match project::poly_project_and_unify_term(selcx, &obligation.with(self.tcx, p))
                     {
                         ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
@@ -765,8 +764,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 unevaluated,
                                 obligation.cause.span,
                             ) {
-                                Ok(Some(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, c.ty())),
-                                Ok(None) => {
+                                Ok(Ok(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args))),
+                                Ok(Err(_)) => {
                                     let tcx = self.tcx;
                                     let reported =
                                         tcx.dcx().emit_err(UnableToConstructConstantValue {

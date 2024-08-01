@@ -213,20 +213,38 @@ The valid emit kinds are:
   `CRATE_NAME.o`.
 
 The output filename can be set with the [`-o` flag](#option-o-output). A
-suffix may be added to the filename with the [`-C extra-filename`
-flag](codegen-options/index.md#extra-filename). The files are written to the
-current directory unless the [`--out-dir` flag](#option-out-dir) is used. Each
-emission type may also specify the output filename with the form `KIND=PATH`,
-which takes precedence over the `-o` flag.
-Specifying `-o -` or `--emit KIND=-` asks rustc to emit to stdout.
-Text output types (`asm`, `dep-info`, `llvm-ir` and `mir`) can be written to
-stdout despite it being a tty or not. This will result in an error if any
-binary output type is written to stdout that is a tty.
-This will also result in an error if multiple output types
-would be written to stdout, because they would be all mixed together.
+suffix may be added to the filename with the
+[`-C extra-filename` flag](codegen-options/index.md#extra-filename).
+
+Output files are written to the current directory unless the
+[`--out-dir` flag](#option-out-dir) is used.
 
 [LLVM bitcode]: https://llvm.org/docs/BitCodeFormat.html
 [LLVM IR]: https://llvm.org/docs/LangRef.html
+
+### Custom paths for individual emit kinds
+
+Each emit type can optionally be followed by `=` to specify an explicit output
+path that only applies to the output of that type. For example:
+
+- `--emit=link,dep-info=/path/to/dep-info.d`
+  - Emit the crate itself as normal,
+    and also emit dependency info to the specified path.
+- `--emit=llvm-ir=-,mir`
+  - Emit MIR to the default filename (based on crate name),
+    and emit LLVM IR to stdout.
+
+### Emitting to stdout
+
+When using `--emit` or [`-o`](#option-o-output), output can be sent to stdout
+by specifying `-` as the path (e.g. `-o -`).
+
+Binary output types can only be written to stdout if it is not a tty.
+Text output types (`asm`, `dep-info`, `llvm-ir` and `mir`) can be written to
+stdout regardless of whether it is a tty or not.
+
+Only one type of output can be written to stdout. Attempting to write multiple
+types to stdout at the same time will result in an error.
 
 <a id="option-print"></a>
 ## `--print`: print compiler information

@@ -5,9 +5,10 @@ tex/*/out
 *.out
 *.rs.bk
 .vscode
+.helix
 *.mm_profdata
 perf.data
 perf.data.old
 flamegraph.svg
-tests/extern-so/libtestlib.so
+tests/native-lib/libtestlib.so
 .auto-*

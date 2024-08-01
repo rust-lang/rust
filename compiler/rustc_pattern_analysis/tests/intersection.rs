@@ -1,6 +1,9 @@
 //! Test the computation of arm intersections.
+
 use common::*;
-use rustc_pattern_analysis::{pat::DeconstructedPat, usefulness::PlaceValidity, MatchArm};
+use rustc_pattern_analysis::pat::DeconstructedPat;
+use rustc_pattern_analysis::usefulness::PlaceValidity;
+use rustc_pattern_analysis::MatchArm;
 
 #[macro_use]
 mod common;
@@ -65,5 +68,25 @@ fn test_nested() {
             (_, true),
         ),
         &[&[], &[]],
+    );
+    let ty = Ty::Tuple(&[Ty::Bool; 3]);
+    assert_intersects(
+        pats!(ty;
+            (true, true, _),
+            (true, _, true),
+            (false, _, _),
+        ),
+        &[&[], &[], &[]],
+    );
+    let ty = Ty::Tuple(&[Ty::Bool, Ty::Bool, Ty::U8]);
+    assert_intersects(
+        pats!(ty;
+            (true, _, _),
+            (_, true, 0..10),
+            (_, true, 10..),
+            (_, true, 3),
+            _,
+        ),
+        &[&[], &[], &[], &[1], &[0, 1, 2, 3]],
     );
 }

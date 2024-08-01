@@ -10,6 +10,6 @@ fn main() {
     unsafe {
         let x = i32x2(1, 1);
         let y = i32x2(20, 40);
-        simd_shr(x, y); //~ERROR: overflowing shift by 40 in `simd_shr` in SIMD lane 1
+        simd_shr(x, y); //~ERROR: overflowing shift by 40 in `simd_shr` in lane 1
     }
 }
