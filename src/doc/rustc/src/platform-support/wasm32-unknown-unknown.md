@@ -171,7 +171,7 @@ final binary still has SIMD instructions, for example, the function in question
 will need to be found and the crate in question will likely contain something
 like:
 
-```rust,ignore
+```rust,ignore (not-always-compiled-to-wasm)
 #[target_feature(enable = "simd128")]
 fn foo() {
     // ...
@@ -184,7 +184,7 @@ at compile time either by default or through a Cargo feature. For crate authors
 it's recommended to avoid `#[target_feature(enable = "...")]` except where
 necessary and instead use:
 
-```rust,ignore
+```rust,ignore (not-always-compiled-to-wasm)
 #[cfg(target_feature = "simd128")]
 fn foo() {
     // ...
