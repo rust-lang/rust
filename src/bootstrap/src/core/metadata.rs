@@ -87,5 +87,8 @@ fn workspace_members(build: &Build) -> Vec<Package> {
     };
 
     // Collects `metadata.packages` from all workspaces.
-    collect_metadata("Cargo.toml")
+    let mut packages = vec![];
+    packages.extend(collect_metadata("Cargo.toml"));
+    packages.extend(collect_metadata("library/Cargo.toml"));
+    packages
 }
