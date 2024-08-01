@@ -564,9 +564,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
         match error {
-            GroupedMoveError::MovesFromPlace {
-                mut binds_to, move_from, span: other_span, ..
-            } => {
+            GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
                 self.add_borrow_suggestions(err, span);
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
@@ -576,7 +574,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     };
 
                     if let Some(expr) = self.find_expr(span) {
-                        self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span), None);
+                        self.suggest_cloning(err, place_ty, expr, None);
                     }
 
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -608,13 +606,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 };
 
                 if let Some(expr) = self.find_expr(use_span) {
-                    self.suggest_cloning(
-                        err,
-                        place_ty,
-                        expr,
-                        self.find_expr(span),
-                        Some(use_spans),
-                    );
+                    self.suggest_cloning(err, place_ty, expr, Some(use_spans));
                 }
 
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -739,7 +731,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
 
                 if let Some(expr) = self.find_expr(binding_span) {
-                    self.suggest_cloning(err, bind_to.ty, expr, None, None);
+                    self.suggest_cloning(err, bind_to.ty, expr, None);
                 }
 
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
