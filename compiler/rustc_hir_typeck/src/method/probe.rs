@@ -158,6 +158,30 @@ impl AutorefOrPtrAdjustment {
     }
 }
 
+/// Criteria to apply when searching for a given Pick. This is used during
+/// the search for potentially shadowed methods to ensure we don't search
+/// more candidates than strictly necessary.
+#[derive(Debug)]
+struct PickConstraintsForShadowed {
+    autoderefs: usize,
+    receiver_trait_derefs: usize,
+    def_id: DefId,
+}
+
+impl PickConstraintsForShadowed {
+    fn may_shadow_based_on_autoderefs(&self, autoderefs: usize) -> bool {
+        autoderefs == self.autoderefs
+    }
+
+    fn may_shadow_based_on_receiver_trait_derefs(&self, receiver_trait_derefs: usize) -> bool {
+        receiver_trait_derefs != self.receiver_trait_derefs
+    }
+
+    fn may_shadow_based_on_defid(&self, def_id: DefId) -> bool {
+        def_id != self.def_id
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Pick<'tcx> {
     pub item: ty::AssocItem,
@@ -180,7 +204,6 @@ pub struct Pick<'tcx> {
 
     /// Number of jumps along the Receiver::target chain we followed
     /// to identify this method. Used only for deshadowing errors.
-    #[allow(dead_code)]
     pub receiver_trait_derefs: usize,
 }
 
@@ -1156,6 +1179,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self_ty,
                     hir::Mutability::Not,
                     unstable_candidates.as_deref_mut(),
+                    None,
                 );
                 // Check for shadowing of a by-mut-ref method by a by-reference method (see comments on check_for_shadowing)
                 if let Some(autoref_pick) = autoref_pick {
@@ -1202,6 +1226,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self_ty,
                     hir::Mutability::Mut,
                     unstable_candidates.as_deref_mut(),
+                    None,
                 )
                 .or_else(|| {
                     self.pick_const_ptr_method(step, self_ty, unstable_candidates.as_deref_mut())
@@ -1230,7 +1255,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Report an error in this case.
     fn check_for_shadowed_autorefd_method(
         &self,
-        _possible_shadower: &Pick<'tcx>,
+        possible_shadower: &Pick<'tcx>,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         mutbl: hir::Mutability,
@@ -1239,8 +1264,25 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut empty_vec = vec![];
         let unstable_candidates_for_shadow_probe =
             if tracking_unstable_candidates { Some(&mut empty_vec) } else { None };
-        let _potentially_shadowed_pick =
-            self.pick_autorefd_method(step, self_ty, mutbl, unstable_candidates_for_shadow_probe);
+        // Set criteria for how we find methods possibly shadowed by 'possible_shadower'
+        let pick_constraints = PickConstraintsForShadowed {
+            // It's the same `self` type, other than any autoreffing...
+            autoderefs: possible_shadower.autoderefs,
+            // ... but the method was found in an impl block determined
+            // by searching further along the Receiver chain than the other,
+            // showing that it's arbitrary self types causing the problem...
+            receiver_trait_derefs: possible_shadower.receiver_trait_derefs,
+            // ... and they don't end up pointing to the same item in the
+            // first place (could happen with things like blanket impls for T)
+            def_id: possible_shadower.item.def_id,
+        };
+        let _potentially_shadowed_pick = self.pick_autorefd_method(
+            step,
+            self_ty,
+            mutbl,
+            unstable_candidates_for_shadow_probe,
+            Some(&pick_constraints),
+        );
 
         // At the moment, this function does no checks. A future
         // commit will fill out the body here.
@@ -1263,7 +1305,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return None;
         }
 
-        self.pick_method(self_ty, unstable_candidates).map(|r| {
+        self.pick_method(self_ty, unstable_candidates, None).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
 
@@ -1287,14 +1329,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         mutbl: hir::Mutability,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_constraints: Option<&PickConstraintsForShadowed>,
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
+
+        if let Some(pick_constraints) = pick_constraints {
+            if !pick_constraints.may_shadow_based_on_autoderefs(step.autoderefs) {
+                return None;
+            }
+        }
 
         // In general, during probing we erase regions.
         let region = tcx.lifetimes.re_erased;
 
         let autoref_ty = Ty::new_ref(tcx, region, self_ty, mutbl);
-        self.pick_method(autoref_ty, unstable_candidates).map(|r| {
+        self.pick_method(autoref_ty, unstable_candidates, pick_constraints).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment =
@@ -1323,7 +1372,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         };
 
         let const_ptr_ty = Ty::new_imm_ptr(self.tcx, ty);
-        self.pick_method(const_ptr_ty, unstable_candidates).map(|r| {
+        self.pick_method(const_ptr_ty, unstable_candidates, None).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::ToConstPtr);
@@ -1336,6 +1385,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_constraints: Option<&PickConstraintsForShadowed>,
     ) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
@@ -1350,6 +1400,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 candidates,
                 &mut possibly_unsatisfied_predicates,
                 unstable_candidates.as_deref_mut(),
+                pick_constraints,
             );
             if let Some(pick) = res {
                 return Some(pick);
@@ -1358,16 +1409,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if self.private_candidate.get().is_none() {
             if let Some(Ok(pick)) =
-                self.consider_candidates(self_ty, &self.private_candidates, &mut vec![], None)
+                self.consider_candidates(self_ty, &self.private_candidates, &mut vec![], None, None)
             {
                 self.private_candidate.set(Some((pick.item.kind.as_def_kind(), pick.item.def_id)));
             }
         }
 
         // `pick_method` may be called twice for the same self_ty if no stable methods
-        // match. Only extend once.
-        // FIXME: this shouldn't be done when we're probing just for shadowing possibilities.
-        if unstable_candidates.is_some() {
+        // match. Only extend once. And don't extend if we're just doing a search for
+        // shadowed methods, which will result in a Some pick_constraints.
+        if unstable_candidates.is_some() && pick_constraints.is_none() {
             self.unsatisfied_predicates.borrow_mut().extend(possibly_unsatisfied_predicates);
         }
         None
@@ -1383,9 +1434,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             Option<ObligationCause<'tcx>>,
         )>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_constraints: Option<&PickConstraintsForShadowed>,
     ) -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> = candidates
             .iter()
+            .filter(|candidate| {
+                pick_constraints
+                    .map(|pick_constraints| {
+                        pick_constraints.may_shadow_based_on_defid(candidate.item.def_id)
+                            && pick_constraints.may_shadow_based_on_receiver_trait_derefs(
+                                candidate.receiver_trait_derefs,
+                            )
+                    })
+                    .unwrap_or(true)
+            })
             .map(|probe| {
                 (probe, self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
             })
