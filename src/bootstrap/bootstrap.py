@@ -102,7 +102,7 @@ def _download(path, url, probably_big, verbose, exception):
 
     try:
         if has_wget():
-            run(["wget", "--show-progress", "-O", path, "url"],
+            run(["wget", "--show-progress", "-O", path, url],
                 verbose=verbose,
                 exception=True,
             )
