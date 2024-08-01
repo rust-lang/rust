@@ -484,7 +484,8 @@ impl IntoRawFd for File {
 
 impl FromRawFd for File {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self(FromRawFd::from_raw_fd(raw_fd))
+        let file_desc = unsafe { FileDesc::from_raw_fd(raw_fd) };
+        Self(file_desc)
     }
 }
 

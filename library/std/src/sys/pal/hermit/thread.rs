@@ -25,18 +25,22 @@ impl Thread {
         core_id: isize,
     ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
-        let tid = hermit_abi::spawn2(
-            thread_start,
-            p.expose_provenance(),
-            hermit_abi::Priority::into(hermit_abi::NORMAL_PRIO),
-            stack,
-            core_id,
-        );
+        let tid = unsafe {
+            hermit_abi::spawn2(
+                thread_start,
+                p.expose_provenance(),
+                hermit_abi::Priority::into(hermit_abi::NORMAL_PRIO),
+                stack,
+                core_id,
+            )
+        };
 
         return if tid == 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            unsafe {
+                drop(Box::from_raw(p));
+            }
             Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Unable to create thread!"))
         } else {
             Ok(Thread { tid: tid })
@@ -54,7 +58,9 @@ impl Thread {
     }
 
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
+        unsafe {
+            Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
+        }
     }
 
     #[inline]
