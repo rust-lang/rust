@@ -8,7 +8,6 @@ use crate::io::ErrorKind;
 pub mod weak;
 
 pub mod alloc;
-pub mod android;
 pub mod args;
 pub mod env;
 pub mod fd;
@@ -237,11 +236,7 @@ pub unsafe fn cleanup() {
 }
 
 #[allow(unused_imports)]
-#[cfg(not(target_os = "android"))]
 pub use libc::signal;
-
-#[cfg(target_os = "android")]
-pub use crate::sys::android::signal;
 
 #[inline]
 pub(crate) fn is_interrupted(errno: i32) -> bool {
