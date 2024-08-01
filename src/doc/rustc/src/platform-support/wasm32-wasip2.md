@@ -61,3 +61,10 @@ It's recommended to conditionally compile code for this target with:
 ```text
 #[cfg(all(target_os = "wasi", target_env = "p2"))]
 ```
+
+## Enabled WebAssembly features
+
+The default set of WebAssembly features enabled for compilation is currently the
+same across all WebAssembly targets. For more information on WebAssembly
+features see the documentation for
+[`wasm32-unknown-unknokwn`](./wasm32-unknown-unknown.md)
