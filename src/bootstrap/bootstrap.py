@@ -116,8 +116,10 @@ def _download(path, url, probably_big, verbose, exception):
                 require(["curl", "--version"], exception=platform_is_win32())
                 run(["curl", option,
                      "-L", # Follow redirect.
-                     "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-                     "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
+                     # timeout if speed is < 10 bytes/sec for > 30 seconds
+                     "-y", "30", "-Y", "10",
+                     # timeout if cannot connect within 30 seconds
+                     "--connect-timeout", "30",
                      "-o", path,
                      "--retry", "3", "-SRf", url],
                     verbose=verbose,
@@ -136,7 +138,7 @@ def _download(path, url, probably_big, verbose, exception):
             raise
 
 
-        
+
 def verify(path, expected, verbose):
     """Check if the sha256 sum of the given path is valid"""
     if verbose:
