@@ -39,7 +39,8 @@ pub fn f(x: bool) {
 // CHECK-LABEL: @f(
 // CHECK: br i1 %x, label %bb2, label %bb3, !prof ![[NUM:[0-9]+]]
 // CHECK: bb3:
+// CHECK-NOT: cold_path
 // CHECK: path_b
 // CHECK: bb2:
 // CHECK: path_a
-// CHECK: ![[NUM]] = !{!"branch_weights", i32 2000, i32 1}
+// CHECK: ![[NUM]] = !{!"branch_weights",{{.*,}} i32 2000, i32 1}
