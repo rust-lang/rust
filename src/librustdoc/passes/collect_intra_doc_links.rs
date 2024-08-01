@@ -1950,7 +1950,9 @@ fn resolution_failure(
                             | TraitAlias
                             | TyParam
                             | Static { .. } => "associated item",
-                            Impl { .. } | GlobalAsm => unreachable!("not a path"),
+                            Impl { .. } | GlobalAsm | SyntheticCoroutineBody => {
+                                unreachable!("not a path")
+                            }
                         }
                     } else {
                         "associated item"

@@ -102,25 +102,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
                 }
             }
         }
-
-        // Enforce that coroutine-closure layouts are identical.
-        if let Some(layout) = body.coroutine_layout_raw()
-            && let Some(by_move_body) = body.coroutine_by_move_body()
-            && let Some(by_move_layout) = by_move_body.coroutine_layout_raw()
-        {
-            // FIXME(async_closures): We could do other validation here?
-            if layout.variant_fields.len() != by_move_layout.variant_fields.len() {
-                cfg_checker.fail(
-                    Location::START,
-                    format!(
-                        "Coroutine layout has different number of variant fields from \
-                        by-move coroutine layout:\n\
-                        layout: {layout:#?}\n\
-                        by_move_layout: {by_move_layout:#?}",
-                    ),
-                );
-            }
-        }
     }
 }
 

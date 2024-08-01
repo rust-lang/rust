@@ -141,14 +141,6 @@ pub enum InstanceKind<'tcx> {
         receiver_by_ref: bool,
     },
 
-    /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
-    /// is called on a coroutine-closure whose closure kind greater than `FnOnce`, or
-    /// similarly for `AsyncFnMut`.
-    ///
-    /// This will select the body that is produced by the `ByMoveBody` transform, and thus
-    /// take and use all of its upvars by-move rather than by-ref.
-    CoroutineKindShim { coroutine_def_id: DefId },
-
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
     /// native support.
@@ -248,7 +240,6 @@ impl<'tcx> InstanceKind<'tcx> {
                 coroutine_closure_def_id: def_id,
                 receiver_by_ref: _,
             }
-            | ty::InstanceKind::CoroutineKindShim { coroutine_def_id: def_id }
             | InstanceKind::DropGlue(def_id, _)
             | InstanceKind::CloneShim(def_id, _)
             | InstanceKind::FnPtrAddrShim(def_id, _)
@@ -270,7 +261,6 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::Intrinsic(..)
             | InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::CoroutineKindShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::AsyncDropGlueCtorShim(..)
             | InstanceKind::CloneShim(..)
@@ -377,7 +367,6 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::AsyncDropGlueCtorShim(_, Some(_)) => false,
             InstanceKind::ClosureOnceShim { .. }
             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | InstanceKind::CoroutineKindShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::AsyncDropGlueCtorShim(..)
             | InstanceKind::Item(_)
@@ -452,7 +441,6 @@ pub fn fmt_instance(
         InstanceKind::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceKind::ClosureOnceShim { .. } => write!(f, " - shim"),
         InstanceKind::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
-        InstanceKind::CoroutineKindShim { .. } => write!(f, " - shim"),
         InstanceKind::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceKind::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceKind::CloneShim(_, ty) => write!(f, " - shim({ty})"),
@@ -850,7 +838,9 @@ impl<'tcx> Instance<'tcx> {
                 Some(Instance { def: ty::InstanceKind::Item(coroutine_def_id), args })
             } else {
                 Some(Instance {
-                    def: ty::InstanceKind::CoroutineKindShim { coroutine_def_id },
+                    def: ty::InstanceKind::Item(
+                        tcx.coroutine_by_move_body_def_id(coroutine_def_id),
+                    ),
                     args,
                 })
             }

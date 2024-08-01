@@ -135,6 +135,7 @@ pub fn provide(providers: &mut Providers) {
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
+        coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
         ..providers.queries
     };
 }
@@ -293,10 +294,6 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(check_packed_ref::CheckPackedRef),
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
-            // If this is an async closure's output coroutine, generate
-            // by-move and by-mut bodies if needed. We do this first so
-            // they can be optimized in lockstep with their parent bodies.
-            &coroutine::ByMoveBody,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::Initial,
             &rustc_peek::SanityCheck, // Just a lint
@@ -329,8 +326,15 @@ fn mir_promoted(
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
         _ => ConstQualifs::default(),
     };
-    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
+
+    // the `has_ffi_unwind_calls` query uses the raw mir, so make sure it is run.
     tcx.ensure_with_value().has_ffi_unwind_calls(def);
+
+    // the `by_move_body` query uses the raw mir, so make sure it is run.
+    if tcx.needs_coroutine_by_move_body_def_id(def) {
+        tcx.ensure_with_value().coroutine_by_move_body_def_id(def);
+    }
+
     let mut body = tcx.mir_built(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
@@ -339,14 +343,6 @@ fn mir_promoted(
     // Collect `required_consts` *before* promotion, so if there are any consts being promoted
     // we still add them to the list in the outer MIR body.
     RequiredConstsVisitor::compute_required_consts(&mut body);
-    // If this has an associated by-move async closure body, that doesn't get run through these
-    // passes itself, it gets "tagged along" by the pass manager. `RequiredConstsVisitor` is not
-    // a regular pass so we have to also apply it manually to the other body.
-    if let Some(coroutine) = body.coroutine.as_mut() {
-        if let Some(by_move_body) = coroutine.by_move_body.as_mut() {
-            RequiredConstsVisitor::compute_required_consts(by_move_body);
-        }
-    }
 
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();
@@ -398,7 +394,10 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     if tcx.is_coroutine(def.to_def_id()) {
         tcx.ensure_with_value().mir_coroutine_witnesses(def);
     }
-    let mir_borrowck = tcx.mir_borrowck(def);
+
+    // We only need to borrowck non-synthetic MIR.
+    let tainted_by_errors =
+        if !tcx.is_synthetic_mir(def) { tcx.mir_borrowck(def).tainted_by_errors } else { None };
 
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
@@ -410,7 +409,8 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
-    if let Some(error_reported) = mir_borrowck.tainted_by_errors {
+
+    if let Some(error_reported) = tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
     }
 
@@ -660,14 +660,6 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     // visited does not depend on the optimization level.
     // We do not use `run_passes` for this as that might skip the pass if `injection_phase` is set.
     mentioned_items::MentionedItems.run_pass(tcx, &mut body);
-    // If this has an associated by-move async closure body, that doesn't get run through these
-    // passes itself, it gets "tagged along" by the pass manager. Since we're not using the pass
-    // manager we have to do this by hand.
-    if let Some(coroutine) = body.coroutine.as_mut() {
-        if let Some(by_move_body) = coroutine.by_move_body.as_mut() {
-            mentioned_items::MentionedItems.run_pass(tcx, by_move_body);
-        }
-    }
 
     // If `mir_drops_elaborated_and_const_checked` found that the current body has unsatisfiable
     // predicates, it will shrink the MIR to a single `unreachable` terminator.
@@ -690,7 +682,9 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
         return tcx.arena.alloc(IndexVec::new());
     }
 
-    tcx.ensure_with_value().mir_borrowck(def);
+    if !tcx.is_synthetic_mir(def) {
+        tcx.ensure_with_value().mir_borrowck(def);
+    }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {
