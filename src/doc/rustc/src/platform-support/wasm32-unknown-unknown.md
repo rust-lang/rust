@@ -123,6 +123,14 @@ months or engines that are required to enable features by default.
 
 [proposals]: https://github.com/WebAssembly/proposals
 
+As of the time of this writing the proposals that are enabled by default (the
+`generic` CPU in LLVM terminology) are:
+
+* `multivalue`
+* `mutable-globals`
+* `reference-types`
+* `sign-ext`
+
 If you're compiling WebAssembly code for an engine that does not support a
 feature in LLVM's default feature set then the feature must be disabled at
 compile time. Note, though, that enabled features may be used in the standard
