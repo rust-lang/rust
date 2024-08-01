@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt::Write;
 
 use either::Either;
 use rustc_errors::codes::*;
@@ -15,7 +16,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::AdjustForForeignAbiError;
-use rustc_target::abi::{Size, WrappingRange};
+use rustc_target::abi::WrappingRange;
 
 use crate::interpret::InternKind;
 
@@ -575,18 +576,21 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                     .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, inbounds_size, msg } => {
-                diag.arg("alloc_size", alloc_size.bytes())
-                    .arg("inbounds_size", inbounds_size.bytes())
-                    .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
-                diag.arg(
-                    "pointer",
-                    Pointer::new(
-                        Some(CtfeProvenance::from(alloc_id)),
-                        Size::from_bytes(ptr_offset as u64),
-                    )
-                    .to_string(),
-                );
+                diag.arg("alloc_size", alloc_size.bytes());
+                diag.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                diag.arg("pointer", {
+                    let mut out = format!("{:?}", alloc_id);
+                    if ptr_offset > 0 {
+                        write!(out, "+{:#x}", ptr_offset).unwrap();
+                    } else if ptr_offset < 0 {
+                        write!(out, "-{:#x}", ptr_offset.unsigned_abs()).unwrap();
+                    }
+                    out
+                });
+                diag.arg("inbounds_size_is_neg", inbounds_size < 0);
+                diag.arg("inbounds_size_abs", inbounds_size.unsigned_abs());
                 diag.arg("ptr_offset_is_neg", ptr_offset < 0);
+                diag.arg("ptr_offset_abs", ptr_offset.unsigned_abs());
                 diag.arg(
                     "alloc_size_minus_ptr_offset",
                     alloc_size.bytes().saturating_sub(ptr_offset as u64),
@@ -600,7 +604,8 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                     );
                 }
 
-                diag.arg("inbounds_size", inbounds_size.bytes());
+                diag.arg("inbounds_size_is_neg", inbounds_size < 0);
+                diag.arg("inbounds_size_abs", inbounds_size.unsigned_abs());
                 diag.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             AlignmentCheckFailed(Misalignment { required, has }, msg) => {

@@ -1180,7 +1180,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // We avoid `get_ptr_alloc` since we do *not* want to run the access hooks -- the actual
         // access will happen later.
         let (alloc_id, _offset, _prov) = this
-            .ptr_try_get_alloc_id(place.ptr())
+            .ptr_try_get_alloc_id(place.ptr(), 0)
             .expect("there are no zero-sized atomic accesses");
         if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
             // See if this is fine.
@@ -1307,7 +1307,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         if let Some(data_race) = &this.machine.data_race {
             if data_race.race_detecting() {
                 let size = place.layout.size;
-                let (alloc_id, base_offset, _prov) = this.ptr_get_alloc_id(place.ptr())?;
+                let (alloc_id, base_offset, _prov) = this.ptr_get_alloc_id(place.ptr(), 0)?;
                 // Load and log the atomic operation.
                 // Note that atomic loads are possible even from read-only allocations, so `get_alloc_extra_mut` is not an option.
                 let alloc_meta = this.get_alloc_extra(alloc_id)?.data_race.as_ref().unwrap();

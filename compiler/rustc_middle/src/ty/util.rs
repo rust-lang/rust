@@ -79,7 +79,7 @@ impl<'tcx> Discr<'tcx> {
         let (val, oflo) = if signed {
             let min = size.signed_int_min();
             let max = size.signed_int_max();
-            let val = size.sign_extend(self.val) as i128;
+            let val = size.sign_extend(self.val);
             assert!(n < (i128::MAX as u128));
             let n = n as i128;
             let oflo = val > max - n;
