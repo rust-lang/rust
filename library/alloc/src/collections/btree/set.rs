@@ -1249,25 +1249,25 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     ///
     /// let mut set = BTreeSet::from([1, 2, 3, 4]);
     ///
-    /// let mut cursor = unsafe { set.lower_bound_mut(Bound::Included(&2)) };
+    /// let mut cursor = set.lower_bound_mut(Bound::Included(&2));
     /// assert_eq!(cursor.peek_prev(), Some(&mut 1));
     /// assert_eq!(cursor.peek_next(), Some(&mut 2));
     ///
-    /// let mut cursor = unsafe { set.lower_bound_mut(Bound::Excluded(&2)) };
+    /// let mut cursor = set.lower_bound_mut(Bound::Excluded(&2));
     /// assert_eq!(cursor.peek_prev(), Some(&mut 2));
     /// assert_eq!(cursor.peek_next(), Some(&mut 3));
     ///
-    /// let mut cursor = unsafe { set.lower_bound_mut(Bound::Unbounded) };
+    /// let mut cursor = set.lower_bound_mut(Bound::Unbounded);
     /// assert_eq!(cursor.peek_prev(), None);
     /// assert_eq!(cursor.peek_next(), Some(&mut 1));
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub unsafe fn lower_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
+    pub fn lower_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
     {
-        CursorMut { inner: unsafe { self.map.lower_bound_mut(bound).with_mutable_key() } }
+        CursorMut { inner: self.map.lower_bound_mut(bound) }
     }
 
     /// Returns a [`Cursor`] pointing at the gap after the greatest element
@@ -1353,7 +1353,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
         T: Borrow<Q> + Ord,
         Q: Ord,
     {
-        CursorMut { inner: unsafe { self.map.upper_bound_mut(bound).with_mutable_key() } }
+        CursorMut { inner: self.map.upper_bound_mut(bound) }
     }
 }
 
@@ -2010,6 +2010,31 @@ impl<K: Debug> Debug for Cursor<'_, K> {
     }
 }
 
+/// A cursor over a `BTreeSet` with editing operations.
+///
+/// A `Cursor` is like an iterator, except that it can freely seek back-and-forth, and can
+/// safely mutate the set during iteration. This is because the lifetime of its yielded
+/// references is tied to its own lifetime, instead of just the underlying map. This means
+/// cursors cannot yield multiple elements at once.
+///
+/// Cursors always point to a gap between two elements in the set, and can
+/// operate on the two immediately adjacent elements.
+///
+/// A `CursorMut` is created with the [`BTreeSet::lower_bound_mut`] and [`BTreeSet::upper_bound_mut`]
+/// methods.
+#[unstable(feature = "btree_cursors", issue = "107540")]
+pub struct CursorMut<'a, K: 'a, #[unstable(feature = "allocator_api", issue = "32838")] A = Global>
+{
+    inner: super::map::CursorMut<'a, K, SetValZST, A>,
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl<K: Debug, A> Debug for CursorMut<'_, K, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("CursorMut")
+    }
+}
+
 /// A cursor over a `BTreeSet` with editing operations, and which allows
 /// mutating elements.
 ///
@@ -2021,8 +2046,8 @@ impl<K: Debug> Debug for Cursor<'_, K> {
 /// Cursors always point to a gap between two elements in the set, and can
 /// operate on the two immediately adjacent elements.
 ///
-/// A `CursorMut` is created with the [`BTreeSet::lower_bound_mut`] and
-/// [`BTreeSet::upper_bound_mut`] methods.
+/// A `CursorMutKey` is created from a [`CursorMut`] with the
+/// [`CursorMut::with_mutable_key`] method.
 ///
 /// # Safety
 ///
@@ -2032,15 +2057,18 @@ impl<K: Debug> Debug for Cursor<'_, K> {
 /// * The newly inserted element must be unique in the tree.
 /// * All elements in the tree must remain in sorted order.
 #[unstable(feature = "btree_cursors", issue = "107540")]
-pub struct CursorMut<'a, K: 'a, #[unstable(feature = "allocator_api", issue = "32838")] A = Global>
-{
+pub struct CursorMutKey<
+    'a,
+    K: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A = Global,
+> {
     inner: super::map::CursorMutKey<'a, K, SetValZST, A>,
 }
 
 #[unstable(feature = "btree_cursors", issue = "107540")]
-impl<K: Debug, A> Debug for CursorMut<'_, K, A> {
+impl<K: Debug, A> Debug for CursorMutKey<'_, K, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("CursorMut")
+        f.write_str("CursorMutKey")
     }
 }
 
@@ -2089,6 +2117,70 @@ impl<'a, T, A> CursorMut<'a, T, A> {
     /// If the cursor is already at the end of the set then `None` is returned
     /// and the cursor is not moved.
     #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn next(&mut self) -> Option<&T> {
+        self.inner.next().map(|(k, _)| k)
+    }
+
+    /// Advances the cursor to the previous gap, returning the element that it
+    /// moved over.
+    ///
+    /// If the cursor is already at the start of the set then `None` is returned
+    /// and the cursor is not moved.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn prev(&mut self) -> Option<&T> {
+        self.inner.prev().map(|(k, _)| k)
+    }
+
+    /// Returns a reference to the next element without moving the cursor.
+    ///
+    /// If the cursor is at the end of the set then `None` is returned.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_next(&mut self) -> Option<&T> {
+        self.inner.peek_next().map(|(k, _)| k)
+    }
+
+    /// Returns a reference to the previous element without moving the cursor.
+    ///
+    /// If the cursor is at the start of the set then `None` is returned.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_prev(&mut self) -> Option<&T> {
+        self.inner.peek_prev().map(|(k, _)| k)
+    }
+
+    /// Returns a read-only cursor pointing to the same location as the
+    /// `CursorMut`.
+    ///
+    /// The lifetime of the returned `Cursor` is bound to that of the
+    /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
+    /// `CursorMut` is frozen for the lifetime of the `Cursor`.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn as_cursor(&self) -> Cursor<'_, T> {
+        Cursor { inner: self.inner.as_cursor() }
+    }
+
+    /// Converts the cursor into a [`CursorMutKey`], which allows mutating
+    /// elements in the tree.
+    ///
+    /// # Safety
+    ///
+    /// Since this cursor allows mutating elements, you must ensure that the
+    /// `BTreeSet` invariants are maintained. Specifically:
+    ///
+    /// * The newly inserted element must be unique in the tree.
+    /// * All elements in the tree must remain in sorted order.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn with_mutable_key(self) -> CursorMutKey<'a, T, A> {
+        CursorMutKey { inner: unsafe { self.inner.with_mutable_key() } }
+    }
+}
+
+impl<'a, T, A> CursorMutKey<'a, T, A> {
+    /// Advances the cursor to the next gap, returning the  element that it
+    /// moved over.
+    ///
+    /// If the cursor is already at the end of the set then `None` is returned
+    /// and the cursor is not moved.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn next(&mut self) -> Option<&mut T> {
         self.inner.next().map(|(k, _)| k)
     }
@@ -2105,7 +2197,7 @@ impl<'a, T, A> CursorMut<'a, T, A> {
 
     /// Returns a reference to the next element without moving the cursor.
     ///
-    /// If the cursor is at the end of the set then `None` is returned.
+    /// If the cursor is at the end of the set then `None` is returned
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&mut self) -> Option<&mut T> {
         self.inner.peek_next().map(|(k, _)| k)
@@ -2120,11 +2212,11 @@ impl<'a, T, A> CursorMut<'a, T, A> {
     }
 
     /// Returns a read-only cursor pointing to the same location as the
-    /// `CursorMut`.
+    /// `CursorMutKey`.
     ///
     /// The lifetime of the returned `Cursor` is bound to that of the
-    /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
-    /// `CursorMut` is frozen for the lifetime of the `Cursor`.
+    /// `CursorMutKey`, which means it cannot outlive the `CursorMutKey` and that the
+    /// `CursorMutKey` is frozen for the lifetime of the `Cursor`.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn as_cursor(&self) -> Cursor<'_, T> {
         Cursor { inner: self.inner.as_cursor() }
@@ -2144,6 +2236,92 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMut<'a, T, A> {
     /// Specifically:
     ///
     /// * The newly inserted element must be unique in the tree.
+    /// * All elements in the tree must remain in sorted order.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn insert_after_unchecked(&mut self, value: T) {
+        unsafe { self.inner.insert_after_unchecked(value, SetValZST) }
+    }
+
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap after the
+    /// newly inserted element.
+    ///
+    /// # Safety
+    ///
+    /// You must ensure that the `BTreeSet` invariants are maintained.
+    /// Specifically:
+    ///
+    /// * The newly inserted element must be unique in the tree.
+    /// * All elements in the tree must remain in sorted order.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn insert_before_unchecked(&mut self, value: T) {
+        unsafe { self.inner.insert_before_unchecked(value, SetValZST) }
+    }
+
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap before the
+    /// newly inserted element.
+    ///
+    /// If the inserted element is not greater than the element before the
+    /// cursor (if any), or if it not less than the element after the cursor (if
+    /// any), then an [`UnorderedKeyError`] is returned since this would
+    /// invalidate the [`Ord`] invariant between the elements of the set.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn insert_after(&mut self, value: T) -> Result<(), UnorderedKeyError> {
+        self.inner.insert_after(value, SetValZST)
+    }
+
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap after the
+    /// newly inserted element.
+    ///
+    /// If the inserted element is not greater than the element before the
+    /// cursor (if any), or if it not less than the element after the cursor (if
+    /// any), then an [`UnorderedKeyError`] is returned since this would
+    /// invalidate the [`Ord`] invariant between the elements of the set.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn insert_before(&mut self, value: T) -> Result<(), UnorderedKeyError> {
+        self.inner.insert_before(value, SetValZST)
+    }
+
+    /// Removes the next element from the `BTreeSet`.
+    ///
+    /// The element that was removed is returned. The cursor position is
+    /// unchanged (before the removed element).
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn remove_next(&mut self) -> Option<T> {
+        self.inner.remove_next().map(|(k, _)| k)
+    }
+
+    /// Removes the precending element from the `BTreeSet`.
+    ///
+    /// The element that was removed is returned. The cursor position is
+    /// unchanged (after the removed element).
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn remove_prev(&mut self) -> Option<T> {
+        self.inner.remove_prev().map(|(k, _)| k)
+    }
+}
+
+impl<'a, T: Ord, A: Allocator + Clone> CursorMutKey<'a, T, A> {
+    /// Inserts a new element into the set in the gap that the
+    /// cursor is currently pointing to.
+    ///
+    /// After the insertion the cursor will be pointing at the gap before the
+    /// newly inserted element.
+    ///
+    /// # Safety
+    ///
+    /// You must ensure that the `BTreeSet` invariants are maintained.
+    /// Specifically:
+    ///
+    /// * The key of the newly inserted element must be unique in the tree.
     /// * All elements in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn insert_after_unchecked(&mut self, value: T) {
