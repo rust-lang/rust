@@ -206,7 +206,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else {
                     (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
                 };
-                let truncated_bits = self.truncate(result_bits, layout_val);
+                let truncated_bits = layout_val.size.truncate(result_bits);
                 let result = Scalar::from_uint(truncated_bits, layout_val.size);
                 self.write_scalar(result, dest)?;
             }
@@ -580,13 +580,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         offset_bytes: i64,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        // We first compute the pointer with overflow checks, to get a specific error for when it
-        // overflows (though technically this is redundant with the following inbounds check).
-        let result = ptr.signed_offset(offset_bytes, self)?;
         // The offset must be in bounds starting from `ptr`.
         self.check_ptr_access_signed(ptr, offset_bytes, CheckInAllocMsg::PointerArithmeticTest)?;
-        // Done.
-        Ok(result)
+        // This also implies that there is no overflow, so we are done.
+        Ok(ptr.wrapping_signed_offset(offset_bytes, self))
     }
 
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.

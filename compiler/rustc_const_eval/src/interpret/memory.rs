@@ -473,7 +473,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     throw_ub!(PointerOutOfBounds {
                         alloc_id,
                         alloc_size,
-                        ptr_offset: self.target_usize_to_isize(offset),
+                        ptr_offset: self.sign_extend_to_target_isize(offset),
                         inbounds_size: size,
                         msg,
                     })

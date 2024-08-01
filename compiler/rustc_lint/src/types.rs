@@ -309,11 +309,7 @@ fn report_bin_hex_error(
 ) {
     let (t, actually) = match ty {
         attr::IntType::SignedInt(t) => {
-            let actually = if negative {
-                -(size.sign_extend(val) as i128)
-            } else {
-                size.sign_extend(val) as i128
-            };
+            let actually = if negative { -(size.sign_extend(val)) } else { size.sign_extend(val) };
             (t.name_str(), actually.to_string())
         }
         attr::IntType::UnsignedInt(t) => {

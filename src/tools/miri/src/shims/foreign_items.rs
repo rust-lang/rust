@@ -622,7 +622,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 {
                     let idx = u64::try_from(idx).unwrap();
                     #[allow(clippy::arithmetic_side_effects)] // idx < num, so this never wraps
-                    let new_ptr = ptr.offset(Size::from_bytes(num - idx - 1), this)?;
+                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(num - idx - 1), this);
                     this.write_pointer(new_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
@@ -646,7 +646,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .iter()
                     .position(|&c| c == val);
                 if let Some(idx) = idx {
-                    let new_ptr = ptr.offset(Size::from_bytes(idx as u64), this)?;
+                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(idx as u64), this);
                     this.write_pointer(new_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
