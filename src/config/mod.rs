@@ -217,9 +217,37 @@ impl PartialConfig {
 
         ::toml::to_string(&cloned).map_err(ToTomlError)
     }
+
+    pub(super) fn to_parsed_config(
+        self,
+        style_edition_override: Option<StyleEdition>,
+        edition_override: Option<Edition>,
+        dir: &Path,
+    ) -> Config {
+        Config::default_for_possible_style_edition(
+            style_edition_override.or(self.style_edition),
+            edition_override.or(self.edition),
+        )
+        .fill_from_parsed_config(self, dir)
+    }
 }
 
 impl Config {
+    pub fn default_for_possible_style_edition(
+        style_edition: Option<StyleEdition>,
+        edition: Option<Edition>,
+    ) -> Config {
+        style_edition.map_or_else(
+            || {
+                edition.map_or_else(
+                    || Config::default(),
+                    |e| Self::default_with_style_edition(e.into()),
+                )
+            },
+            |se| Self::default_with_style_edition(se),
+        )
+    }
+
     pub(crate) fn version_meets_requirement(&self) -> bool {
         if self.was_set().required_version() {
             let version = env!("CARGO_PKG_VERSION");
@@ -324,12 +352,13 @@ impl Config {
                 err.push_str(msg)
             }
         }
-        match parsed.try_into() {
+
+        match parsed.try_into::<PartialConfig>() {
             Ok(parsed_config) => {
                 if !err.is_empty() {
                     eprint!("{err}");
                 }
-                Ok(Config::default().fill_from_parsed_config(parsed_config, dir))
+                Ok(parsed_config.to_parsed_config(None, None, dir))
             }
             Err(e) => {
                 err.push_str("Error: Decoding config file failed:\n");

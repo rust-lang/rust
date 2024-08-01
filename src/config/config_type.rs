@@ -210,7 +210,7 @@ macro_rules! create_config {
             )+
 
             #[allow(unreachable_pub)]
-            pub fn default_with_style_edition(style_edition: StyleEdition) -> Config {
+            pub(super) fn default_with_style_edition(style_edition: StyleEdition) -> Config {
                 Config {
                     $(
                         $i: (
