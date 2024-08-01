@@ -637,6 +637,13 @@ pub struct Confusables {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_coroutine_on_non_closure)]
+pub struct CoroutineOnNonClosure {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_empty_confusables)]
 pub(crate) struct EmptyConfusables {
     #[primary_span]
