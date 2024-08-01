@@ -277,7 +277,7 @@ const_eval_partial_pointer_copy =
 const_eval_partial_pointer_overwrite =
     unable to overwrite parts of a pointer in memory at {$ptr}
 const_eval_pointer_arithmetic_overflow =
-    overflowing in-bounds pointer arithmetic
+    overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
 const_eval_pointer_arithmetic_test = out-of-bounds pointer arithmetic
 const_eval_pointer_out_of_bounds =
     {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got {$pointer} {$ptr_offset_is_neg ->

@@ -40,7 +40,7 @@ LL | pub const AFTER_ARRAY: *const u8 = unsafe { [0u8; 100].as_ptr().offset(101)
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: overflowing in-bounds pointer arithmetic
+   = note: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
    |
 note: inside `std::ptr::const_ptr::<impl *const u16>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -53,7 +53,7 @@ LL | pub const OVERFLOW: *const u16 = unsafe { [0u16; 1].as_ptr().offset(isize::
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: overflowing in-bounds pointer arithmetic
+   = note: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
    |
 note: inside `std::ptr::const_ptr::<impl *const u16>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
