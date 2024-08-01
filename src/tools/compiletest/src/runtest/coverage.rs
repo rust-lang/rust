@@ -191,7 +191,7 @@ impl<'test> TestCx<'test> {
 
         rustdoc_cmd.arg(&self.testpaths.file);
 
-        let proc_res = self.compose_and_run_compiler(rustdoc_cmd, None);
+        let proc_res = self.compose_and_run_compiler(rustdoc_cmd, None, self.testpaths);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc --test failed!", &proc_res)
         }
