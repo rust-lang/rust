@@ -36,6 +36,7 @@ pub mod rfs {
 // Re-exports of third-party library crates.
 pub use bstr;
 pub use gimli;
+pub use libc;
 pub use object;
 pub use regex;
 pub use serde_json;
