@@ -202,36 +202,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn cond_br_with_expect(
         &mut self,
-        cond: &'ll Value,
+        mut cond: &'ll Value,
         then_llbb: &'ll BasicBlock,
         else_llbb: &'ll BasicBlock,
         expect: Option<bool>,
     ) {
-        unsafe {
-            // Emit the branch instruction
-            let n = llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
-
-            // If we have expect, emit expectation metadata
-            if let Some(expect) = expect {
-                // Use weights 2000 and 1, which is what Clang uses
-                let (true_weight, false_weight) = if expect { (2000, 1) } else { (1, 2000) };
-                let s = "branch_weights";
-                let v = [
-                    llvm::LLVMMDStringInContext(
-                        self.cx.llcx,
-                        s.as_ptr() as *const c_char,
-                        s.len() as c_uint,
-                    ),
-                    self.cx.const_u32(true_weight),
-                    self.cx.const_u32(false_weight),
-                ];
-                llvm::LLVMSetMetadata(
-                    n,
-                    llvm::MD_prof as c_uint,
-                    llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
-                );
-            }
+        if let Some(expect) = expect {
+            cond = self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expect)]);
         }
+        self.cond_br(cond, then_llbb, else_llbb)
     }
 
     fn switch(
