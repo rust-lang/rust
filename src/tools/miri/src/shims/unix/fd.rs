@@ -12,6 +12,13 @@ use rustc_target::abi::Size;
 use crate::shims::unix::*;
 use crate::*;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum FlockOp {
+    SharedLock { nonblocking: bool },
+    ExclusiveLock { nonblocking: bool },
+    Unlock,
+}
+
 /// Represents an open file descriptor.
 pub trait FileDescription: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
@@ -566,11 +573,4 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let result = result?.map(|c| i64::try_from(c).unwrap());
         Ok(Scalar::from_target_isize(this.try_unwrap_io_result(result)?, this))
     }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum FlockOp {
-    SharedLock { nonblocking: bool },
-    ExclusiveLock { nonblocking: bool },
-    Unlock,
 }
