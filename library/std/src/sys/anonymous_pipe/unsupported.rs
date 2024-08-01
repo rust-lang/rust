@@ -1,10 +1,10 @@
 use crate::io;
 use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::Stdio;
-pub(crate) use crate::sys::pipe::AnonPipe;
+pub use crate::sys::pipe::AnonPipe;
 
 #[inline]
-pub(crate) fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+pub fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     Err(io::Error::UNSUPPORTED_PLATFORM)
 }
 

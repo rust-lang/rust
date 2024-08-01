@@ -2,6 +2,7 @@ use crate::io::{Read, Write};
 use crate::pipe::pipe;
 
 #[test]
+#[cfg(all(windows, unix, not(miri)))]
 fn pipe_creation_clone_and_rw() {
     let (rx, tx) = pipe().unwrap();
 

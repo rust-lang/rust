@@ -1,18 +1,26 @@
-use crate::io;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
 use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::Stdio;
+use crate::sys::c;
 use crate::sys::handle::Handle;
-use crate::sys::pipe::unnamed_anon_pipe;
 use crate::sys_common::{FromInner, IntoInner};
+use crate::{io, ptr};
 
-pub(crate) type AnonPipe = Handle;
+pub type AnonPipe = Handle;
 
-#[inline]
-pub(crate) fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
-    unnamed_anon_pipe().map(|(rx, wx)| (rx.into_inner(), wx.into_inner()))
+pub fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+    let mut read_pipe = c::INVALID_HANDLE_VALUE;
+    let mut write_pipe = c::INVALID_HANDLE_VALUE;
+
+    let ret = unsafe { c::CreatePipe(&mut read_pipe, &mut write_pipe, ptr::null_mut(), 0) };
+
+    if ret == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        unsafe { Ok((Handle::from_raw_handle(read_pipe), Handle::from_raw_handle(write_pipe))) }
+    }
 }
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
@@ -31,7 +39,7 @@ impl AsRawHandle for PipeReader {
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl FromRawHandle for PipeReader {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        Self(Handle::from_raw_handle(raw_handle))
+        unsafe { Self(Handle::from_raw_handle(raw_handle)) }
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
@@ -70,7 +78,7 @@ impl AsRawHandle for PipeWriter {
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl FromRawHandle for PipeWriter {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        Self(Handle::from_raw_handle(raw_handle))
+        unsafe { Self(Handle::from_raw_handle(raw_handle)) }
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
