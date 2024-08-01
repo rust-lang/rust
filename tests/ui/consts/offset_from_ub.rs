@@ -1,4 +1,4 @@
-//@ normalize-stderr-test: "to \d+ bytes of memory" -> "to $$BYTES bytes of memory"
+//@ normalize-stderr-test: "\d+ bytes" -> "$$BYTES bytes"
 #![feature(const_ptr_sub_ptr)]
 #![feature(core_intrinsics)]
 
@@ -55,7 +55,7 @@ const OUT_OF_BOUNDS_2: isize = {
     let end_ptr = (start_ptr).wrapping_add(length);
     // Second ptr is out of bounds
     unsafe { ptr_offset_from(start_ptr, end_ptr) } //~ERROR evaluation of constant value failed
-    //~| expected a pointer to 10 bytes of memory
+    //~| expected a pointer to the end of 10 bytes of memory
 };
 
 pub const DIFFERENT_ALLOC_UNSIGNED: usize = {

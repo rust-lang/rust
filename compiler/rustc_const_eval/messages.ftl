@@ -88,10 +88,18 @@ const_eval_exact_div_has_remainder =
     exact_div: {$a} cannot be divided by {$b} without remainder
 
 const_eval_expected_inbounds_pointer =
-    expected {$inbounds_size ->
-        [0] a pointer to some allocation
-        [1] a pointer to 1 byte of memory
-        *[x] a pointer to {$inbounds_size} bytes of memory
+    expected a pointer to {$inbounds_size_abs ->
+        [0] some allocation
+        *[x] {$inbounds_size_is_neg ->
+            [false] {$inbounds_size_abs ->
+                    [1] 1 byte of memory
+                    *[x] {$inbounds_size_abs} bytes of memory
+                }
+            *[true] the end of {$inbounds_size_abs ->
+                    [1] 1 byte of memory
+                    *[x] {$inbounds_size_abs} bytes of memory
+                }
+        }
     }
 
 const_eval_extern_static =
@@ -243,7 +251,7 @@ const_eval_offset_from_different_allocations =
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
 const_eval_offset_from_test =
-    out-of-bounds `offset_from`
+    out-of-bounds `offset_from` origin
 const_eval_offset_from_underflow =
     `{$name}` called when first pointer is too far before second
 const_eval_offset_from_unsigned_overflow =
@@ -269,17 +277,24 @@ const_eval_partial_pointer_copy =
 const_eval_partial_pointer_overwrite =
     unable to overwrite parts of a pointer in memory at {$ptr}
 const_eval_pointer_arithmetic_overflow =
-    overflowing in-bounds pointer arithmetic
+    overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
 const_eval_pointer_arithmetic_test = out-of-bounds pointer arithmetic
 const_eval_pointer_out_of_bounds =
     {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got {$pointer} {$ptr_offset_is_neg ->
         [true] which points to before the beginning of the allocation
-        *[false] {$alloc_size_minus_ptr_offset ->
-            [0] which is at or beyond the end of the allocation of size {$alloc_size ->
-                [1] 1 byte
-                *[x] {$alloc_size} bytes
+        *[false] {$inbounds_size_is_neg ->
+            [true] {$ptr_offset_abs ->
+                [0] which is at the beginning of the allocation
+                *[other] which does not have enough space to the beginning of the allocation
             }
-            *[x] and there are only {$alloc_size_minus_ptr_offset} bytes starting at that pointer
+            *[false] {$alloc_size_minus_ptr_offset ->
+                [0] which is at or beyond the end of the allocation of size {$alloc_size ->
+                    [1] 1 byte
+                    *[x] {$alloc_size} bytes
+                }
+                [1] which is only 1 byte from the end of the allocation
+                *[x] which is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
+            }
         }
     }
 const_eval_pointer_use_after_free =

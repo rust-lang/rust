@@ -1198,19 +1198,23 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
     }
 
-    /// Convert a pointer with provenance into an allocation-offset pair,
-    /// or a `None` with an absolute address if that conversion is not possible.
+    /// Convert a pointer with provenance into an allocation-offset pair and extra provenance info.
+    /// `size` says how many bytes of memory are expected at that pointer. The *sign* of `size` can
+    /// be used to disambiguate situations where a wildcard pointer sits right in between two
+    /// allocations.
     ///
-    /// This is called when a pointer is about to be used for memory access,
-    /// an in-bounds check, or anything else that requires knowing which allocation it points to.
+    /// If `ptr.provenance.get_alloc_id()` is `Some(p)`, the returned `AllocId` must be `p`.
     /// The resulting `AllocId` will just be used for that one step and the forgotten again
     /// (i.e., we'll never turn the data returned here back into a `Pointer` that might be
     /// stored in machine state).
+    ///
+    /// When this fails, that means the pointer does not point to a live allocation.
     fn ptr_get_alloc(
         ecx: &MiriInterpCx<'tcx>,
         ptr: StrictPointer,
+        size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
-        let rel = ecx.ptr_get_alloc(ptr);
+        let rel = ecx.ptr_get_alloc(ptr, size);
 
         rel.map(|(alloc_id, size)| {
             let tag = match ptr.provenance {

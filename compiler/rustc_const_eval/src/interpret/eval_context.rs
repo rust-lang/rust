@@ -560,17 +560,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.frame().body
     }
 
-    #[inline(always)]
-    pub fn sign_extend(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
-        assert!(ty.abi.is_signed());
-        ty.size.sign_extend(value)
-    }
-
-    #[inline(always)]
-    pub fn truncate(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
-        ty.size.truncate(value)
-    }
-
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         ty.is_freeze(*self.tcx, self.param_env)

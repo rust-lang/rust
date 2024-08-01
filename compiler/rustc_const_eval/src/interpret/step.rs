@@ -362,7 +362,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // of the first element.
             let elem_size = first.layout.size;
             let first_ptr = first.ptr();
-            let rest_ptr = first_ptr.offset(elem_size, self)?;
+            let rest_ptr = first_ptr.wrapping_offset(elem_size, self);
             // No alignment requirement since `copy_op` above already checked it.
             self.mem_copy_repeatedly(
                 first_ptr,
