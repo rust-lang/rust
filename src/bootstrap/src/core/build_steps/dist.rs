@@ -2122,8 +2122,13 @@ impl Step for LlvmTools {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "llvm-tools");
-        // FIXME: allow using the names of the tools themselves?
-        run.alias("llvm-tools").default_condition(default)
+
+        let mut run = run.alias("llvm-tools");
+        for tool in LLVM_TOOLS {
+            run = run.alias(tool);
+        }
+
+        run.default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2131,6 +2136,32 @@ impl Step for LlvmTools {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        fn tools_to_install(paths: &[PathBuf]) -> Vec<&'static str> {
+            let mut tools = vec![];
+
+            for path in paths {
+                let path = path.to_str().unwrap();
+
+                // Include all tools if path is 'llvm-tools'.
+                if path == "llvm-tools" {
+                    return LLVM_TOOLS.to_owned();
+                }
+
+                for tool in LLVM_TOOLS {
+                    if path == *tool {
+                        tools.push(*tool);
+                    }
+                }
+            }
+
+            // If no specific tool is requested, include all tools.
+            if tools.is_empty() {
+                tools = LLVM_TOOLS.to_owned();
+            }
+
+            tools
+        }
+
         let target = self.target;
 
         /* run only if llvm-config isn't used */
@@ -2151,7 +2182,7 @@ impl Step for LlvmTools {
             // Prepare the image directory
             let src_bindir = builder.llvm_out(target).join("bin");
             let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
-            for tool in LLVM_TOOLS {
+            for tool in tools_to_install(&builder.paths) {
                 let exe = src_bindir.join(exe(tool, target));
                 tarball.add_file(&exe, &dst_bindir, 0o755);
             }
