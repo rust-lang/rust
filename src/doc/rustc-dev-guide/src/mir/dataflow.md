@@ -195,8 +195,7 @@ the MIR locations where the relationship holds, or `All` if it's everywhere.
 ![A graph showing a small number of strongly connected components on the region-outlives-graph above](../img/scc-graphviz.png)
 
 **Note:** There are implicit edges from `'static` to every region, but those are not rendered
-in the region graph to avoid clutter. They _do_ however show up in the SCC graph. This is why there are outgoing edges from SCC(5) in the SCC graph above
-that do not seem to have corresponding edges in the region outlives graph above.
+in the region graph to avoid clutter. They _do_ however show up in the SCC graph. This is why there are outgoing edges from `SCC(5)` in the SCC graph that do not seem to have corresponding edges in the region outlives graph above.
 
 ["gen-kill" problems]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 [*Static Program Analysis*]: https://cs.au.dk/~amoeller/spa/
