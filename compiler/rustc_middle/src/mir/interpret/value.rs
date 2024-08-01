@@ -393,7 +393,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_int(self, size: Size) -> InterpResult<'tcx, i128> {
         let b = self.to_bits(size)?;
-        Ok(size.sign_extend(b) as i128)
+        Ok(size.sign_extend(b))
     }
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.

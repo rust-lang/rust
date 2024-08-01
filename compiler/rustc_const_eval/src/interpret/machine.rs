@@ -321,15 +321,21 @@ pub trait Machine<'tcx>: Sized {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx>;
 
-    /// Convert a pointer with provenance into an allocation-offset pair
-    /// and extra provenance info.
+    /// Convert a pointer with provenance into an allocation-offset pair and extra provenance info.
+    /// `size` says how many bytes of memory are expected at that pointer. The *sign* of `size` can
+    /// be used to disambiguate situations where a wildcard pointer sits right in between two
+    /// allocations.
     ///
-    /// The returned `AllocId` must be the same as `ptr.provenance.get_alloc_id()`.
+    /// If `ptr.provenance.get_alloc_id()` is `Some(p)`, the returned `AllocId` must be `p`.
+    /// The resulting `AllocId` will just be used for that one step and the forgotten again
+    /// (i.e., we'll never turn the data returned here back into a `Pointer` that might be
+    /// stored in machine state).
     ///
     /// When this fails, that means the pointer does not point to a live allocation.
     fn ptr_get_alloc(
         ecx: &InterpCx<'tcx, Self>,
         ptr: Pointer<Self::Provenance>,
+        size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)>;
 
     /// Called to adjust global allocations to the Provenance and AllocExtra of this machine.
@@ -658,6 +664,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     fn ptr_get_alloc(
         _ecx: &InterpCx<$tcx, Self>,
         ptr: Pointer<CtfeProvenance>,
+        _size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
         let (prov, offset) = ptr.into_parts();

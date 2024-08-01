@@ -334,14 +334,15 @@ pub enum UndefinedBehaviorInfo<'tcx> {
         alloc_size: Size,
         ptr_offset: i64,
         /// The size of the memory range that was expected to be in-bounds.
-        inbounds_size: Size,
+        inbounds_size: i64,
         msg: CheckInAllocMsg,
     },
     /// Using an integer as a pointer in the wrong way.
     DanglingIntPointer {
         addr: u64,
-        /// The size of the memory range that was expected to be in-bounds (or 0 if we don't know).
-        inbounds_size: Size,
+        /// The size of the memory range that was expected to be in-bounds (or 0 if we need an
+        /// allocation but not any actual memory there, e.g. for function pointers).
+        inbounds_size: i64,
         msg: CheckInAllocMsg,
     },
     /// Used a pointer with bad alignment.

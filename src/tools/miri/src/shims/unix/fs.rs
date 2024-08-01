@@ -996,7 +996,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &this.ptr_to_mplace(entry, dirent64_layout),
                 )?;
 
-                let name_ptr = entry.offset(Size::from_bytes(d_name_offset), this)?;
+                let name_ptr = entry.wrapping_offset(Size::from_bytes(d_name_offset), this);
                 this.write_bytes_ptr(name_ptr, name_bytes.iter().copied())?;
 
                 Some(entry)
