@@ -627,7 +627,7 @@ config_option_with_style_edition_default!(
     RemoveNestedParens, bool, _ => true;
     CombineControlExpr, bool, _ => true;
     ShortArrayElementWidthThreshold, usize, _ => 10;
-    OverflowDelimitedExpr, bool, _ => false;
+    OverflowDelimitedExpr, bool, Edition2024 => true, _ => false;
     StructFieldAlignThreshold, usize, _ => 0;
     EnumDiscrimAlignThreshold, usize, _ => 0;
     MatchArmBlocks, bool, _ => true;

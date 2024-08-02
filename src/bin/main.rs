@@ -915,4 +915,36 @@ mod test {
         let config = get_config(config_file, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2021);
     }
+
+    #[nightly_only_test]
+    #[test]
+    fn correct_defaults_for_style_edition_loaded() {
+        let mut options = GetOptsOptions::default();
+        options.style_edition = Some(StyleEdition::Edition2024);
+        let config = get_config(None, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        assert_eq!(config.overflow_delimited_expr(), true);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_defaults_overridden_from_config() {
+        let options = GetOptsOptions::default();
+        let config_file = Some(Path::new("tests/config/style-edition/overrides"));
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        assert_eq!(config.overflow_delimited_expr(), false);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn style_edition_defaults_overridden_from_cli() {
+        let mut options = GetOptsOptions::default();
+        let config_file = Some(Path::new("tests/config/style-edition/just-style-edition"));
+        options.inline_config =
+            HashMap::from([("overflow_delimited_expr".to_owned(), "false".to_owned())]);
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        assert_eq!(config.overflow_delimited_expr(), false);
+    }
 }
