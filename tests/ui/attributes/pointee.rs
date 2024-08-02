@@ -1,5 +1,6 @@
 #![feature(pointee)]
 #![feature(stmt_expr_attributes)]
+#![feature(derive_smart_pointer)]
 #![deny(unused_attributes)]
 #![allow(dead_code)]
 
