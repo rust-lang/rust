@@ -157,11 +157,9 @@ impl FingerprintHasher for crate::unhash::Unhasher {
     }
 }
 
-impl FromStableHash for Fingerprint {
-    type Hash = StableHasherHash;
-
+impl FromStableHash<StableHasherHash> for Fingerprint {
     #[inline]
-    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
+    fn from(StableHasherHash([_0, _1]): StableHasherHash) -> Self {
         Fingerprint(_0, _1)
     }
 }

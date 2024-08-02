@@ -58,11 +58,9 @@ impl<D: Decoder> Decodable<D> for Hash64 {
     }
 }
 
-impl FromStableHash for Hash64 {
-    type Hash = StableHasherHash;
-
+impl FromStableHash<StableHasherHash> for Hash64 {
     #[inline]
-    fn from(StableHasherHash([_0, __1]): Self::Hash) -> Self {
+    fn from(StableHasherHash([_0, __1]): StableHasherHash) -> Self {
         Self { inner: _0 }
     }
 }
@@ -125,11 +123,9 @@ impl<D: Decoder> Decodable<D> for Hash128 {
     }
 }
 
-impl FromStableHash for Hash128 {
-    type Hash = StableHasherHash;
-
+impl FromStableHash<StableHasherHash> for Hash128 {
     #[inline]
-    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
+    fn from(StableHasherHash([_0, _1]): StableHasherHash) -> Self {
         Self { inner: u128::from(_0) | (u128::from(_1) << 64) }
     }
 }
