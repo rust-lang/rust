@@ -442,7 +442,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 }
 
 fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::Item, name: Symbol) {
-    let (parent, is_impl_child) = match *item.kind {
+    let ((parent_did, parent_path), is_impl_child) = match *item.kind {
         clean::StrippedItem(..) => return,
         clean::AssocConstItem(..) | clean::AssocTypeItem(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
@@ -496,67 +496,59 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         _ => ((None, Some(&*cache.stack)), false),
     };
 
-    match parent {
-        (parent, Some(path)) if is_impl_child || !cache.stripped_mod => {
-            debug_assert!(!item.is_stripped());
-
-            // A crate has a module at its root, containing all items,
-            // which should not be indexed. The crate-item itself is
-            // inserted later on when serializing the search-index.
-            if item.item_id.as_def_id().is_some_and(|idx| !idx.is_crate_root())
-                && let ty = item.type_()
-                && (ty != ItemType::StructField || u16::from_str_radix(name.as_str(), 10).is_err())
+    if let Some(parent_did) = parent_did
+        && parent_path.is_none()
+        && is_impl_child
+    {
+        // We have a parent, but we don't know where they're
+        // defined yet. Wait for later to index this item.
+        let impl_generics = clean_impl_generics(cache.parent_stack.last());
+        cache.orphan_impl_items.push(OrphanImplItem {
+            parent: parent_did,
+            item: item.clone(),
+            impl_generics,
+            impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last()
             {
-                let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
-                // For searching purposes, a re-export is a duplicate if:
-                //
-                // - It's either an inline, or a true re-export
-                // - It's got the same name
-                // - Both of them have the same exact path
-                let defid = (match &*item.kind {
-                    &clean::ItemKind::ImportItem(ref import) => import.source.did,
-                    _ => None,
-                })
-                .or_else(|| item.item_id.as_def_id());
-                // In case this is a field from a tuple struct, we don't add it into
-                // the search index because its name is something like "0", which is
-                // not useful for rustdoc search.
-                cache.search_index.push(IndexItem {
-                    ty,
-                    defid,
-                    name,
-                    path: join_with_double_colon(path),
-                    desc,
-                    parent,
-                    parent_idx: None,
-                    exact_path: None,
-                    impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) =
-                        cache.parent_stack.last()
-                    {
-                        item_id.as_def_id()
-                    } else {
-                        None
-                    },
-                    search_type: get_function_type_for_search(
-                        &item,
-                        tcx,
-                        clean_impl_generics(cache.parent_stack.last()).as_ref(),
-                        parent,
-                        cache,
-                    ),
-                    aliases: item.attrs.get_doc_aliases(),
-                    deprecation: item.deprecation(tcx),
-                });
-            }
-        }
-        (Some(parent), None) if is_impl_child => {
-            // We have a parent, but we don't know where they're
-            // defined yet. Wait for later to index this item.
-            let impl_generics = clean_impl_generics(cache.parent_stack.last());
-            cache.orphan_impl_items.push(OrphanImplItem {
-                parent,
-                item: item.clone(),
-                impl_generics,
+                item_id.as_def_id()
+            } else {
+                None
+            },
+        });
+    } else if let Some(path) = parent_path
+        && (is_impl_child || !cache.stripped_mod)
+    {
+        debug_assert!(!item.is_stripped());
+
+        // A crate has a module at its root, containing all items,
+        // which should not be indexed. The crate-item itself is
+        // inserted later on when serializing the search-index.
+        if item.item_id.as_def_id().is_some_and(|idx| !idx.is_crate_root())
+            && let ty = item.type_()
+            && (ty != ItemType::StructField || u16::from_str_radix(name.as_str(), 10).is_err())
+        {
+            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
+            // For searching purposes, a re-export is a duplicate if:
+            //
+            // - It's either an inline, or a true re-export
+            // - It's got the same name
+            // - Both of them have the same exact path
+            let defid = (match &*item.kind {
+                &clean::ItemKind::ImportItem(ref import) => import.source.did,
+                _ => None,
+            })
+            .or_else(|| item.item_id.as_def_id());
+            // In case this is a field from a tuple struct, we don't add it into
+            // the search index because its name is something like "0", which is
+            // not useful for rustdoc search.
+            cache.search_index.push(IndexItem {
+                ty,
+                defid,
+                name,
+                path: join_with_double_colon(path),
+                desc,
+                parent: parent_did,
+                parent_idx: None,
+                exact_path: None,
                 impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) =
                     cache.parent_stack.last()
                 {
@@ -564,9 +556,17 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
                 } else {
                     None
                 },
+                search_type: get_function_type_for_search(
+                    &item,
+                    tcx,
+                    clean_impl_generics(cache.parent_stack.last()).as_ref(),
+                    parent_did,
+                    cache,
+                ),
+                aliases: item.attrs.get_doc_aliases(),
+                deprecation: item.deprecation(tcx),
             });
         }
-        _ => {}
     }
 }
 
