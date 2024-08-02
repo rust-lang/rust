@@ -442,13 +442,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 }
 
 fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::Item, name: Symbol) {
-    let (parent, is_inherent_impl_item) = match *item.kind {
-        clean::StrippedItem(..) => ((None, None), false),
+    let (parent, is_impl_child) = match *item.kind {
+        clean::StrippedItem(..) => return,
         clean::AssocConstItem(..) | clean::AssocTypeItem(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
             // skip associated items in trait impls
-            ((None, None), false)
+            return;
         }
         clean::TyMethodItem(..)
         | clean::TyAssocConstItem(..)
@@ -469,39 +469,35 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             false,
         ),
         clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
-            if cache.parent_stack.is_empty() {
-                ((None, None), false)
-            } else {
-                let last = cache.parent_stack.last().expect("parent_stack is empty 2");
-                let did = match &*last {
-                    ParentStackItem::Impl {
-                        // impl Trait for &T { fn method(self); }
-                        //
-                        // When generating a function index with the above shape, we want it
-                        // associated with `T`, not with the primitive reference type. It should
-                        // show up as `T::method`, rather than `reference::method`, in the search
-                        // results page.
-                        for_: clean::Type::BorrowedRef { type_, .. },
-                        ..
-                    } => type_.def_id(&cache),
-                    ParentStackItem::Impl { for_, .. } => for_.def_id(&cache),
-                    ParentStackItem::Type(item_id) => item_id.as_def_id(),
-                };
-                let path = did
-                    .and_then(|did| cache.paths.get(&did))
-                    // The current stack not necessarily has correlation
-                    // for where the type was defined. On the other
-                    // hand, `paths` always has the right
-                    // information if present.
-                    .map(|(fqp, _)| &fqp[..fqp.len() - 1]);
-                ((did, path), true)
-            }
+            let last = cache.parent_stack.last().expect("parent_stack is empty 2");
+            let did = match &*last {
+                ParentStackItem::Impl {
+                    // impl Trait for &T { fn method(self); }
+                    //
+                    // When generating a function index with the above shape, we want it
+                    // associated with `T`, not with the primitive reference type. It should
+                    // show up as `T::method`, rather than `reference::method`, in the search
+                    // results page.
+                    for_: clean::Type::BorrowedRef { type_, .. },
+                    ..
+                } => type_.def_id(&cache),
+                ParentStackItem::Impl { for_, .. } => for_.def_id(&cache),
+                ParentStackItem::Type(item_id) => item_id.as_def_id(),
+            };
+            let path = did
+                .and_then(|did| cache.paths.get(&did))
+                // The current stack not necessarily has correlation
+                // for where the type was defined. On the other
+                // hand, `paths` always has the right
+                // information if present.
+                .map(|(fqp, _)| &fqp[..fqp.len() - 1]);
+            ((did, path), true)
         }
         _ => ((None, Some(&*cache.stack)), false),
     };
 
     match parent {
-        (parent, Some(path)) if is_inherent_impl_item || !cache.stripped_mod => {
+        (parent, Some(path)) if is_impl_child || !cache.stripped_mod => {
             debug_assert!(!item.is_stripped());
 
             // A crate has a module at its root, containing all items,
@@ -553,7 +549,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
                 });
             }
         }
-        (Some(parent), None) if is_inherent_impl_item => {
+        (Some(parent), None) if is_impl_child => {
             // We have a parent, but we don't know where they're
             // defined yet. Wait for later to index this item.
             let impl_generics = clean_impl_generics(cache.parent_stack.last());
