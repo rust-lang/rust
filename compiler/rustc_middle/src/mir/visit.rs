@@ -1066,9 +1066,11 @@ macro_rules! super_body {
 
         $self.visit_span($(& $mutability)? $body.span);
 
-        for const_ in &$($mutability)? $body.required_consts {
-            let location = Location::START;
-            $self.visit_const_operand(const_, location);
+        if let Some(required_consts) = &$($mutability)? $body.required_consts {
+            for const_ in required_consts {
+                let location = Location::START;
+                $self.visit_const_operand(const_, location);
+            }
         }
     }
 }

@@ -305,7 +305,7 @@ fn new_body<'tcx>(
     arg_count: usize,
     span: Span,
 ) -> Body<'tcx> {
-    Body::new(
+    let mut body = Body::new(
         source,
         basic_blocks,
         IndexVec::from_elem_n(
@@ -326,7 +326,10 @@ fn new_body<'tcx>(
         None,
         // FIXME(compiler-errors): is this correct?
         None,
-    )
+    );
+    // Shims do not directly mention any consts.
+    body.set_required_consts(Vec::new());
+    body
 }
 
 pub struct DropShimElaborator<'a, 'tcx> {
@@ -969,13 +972,16 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     let source = MirSource::item(ctor_id);
-    let body = new_body(
+    let mut body = new_body(
         source,
         IndexVec::from_elem_n(start_block, 1),
         local_decls,
         sig.inputs().len(),
         span,
     );
+    // A constructor doesn't mention any other items (and we don't run the usual optimization passes
+    // so this would otherwise not get filled).
+    body.set_mentioned_items(Vec::new());
 
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
