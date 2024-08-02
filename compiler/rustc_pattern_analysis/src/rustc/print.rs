@@ -12,7 +12,7 @@
 use std::fmt;
 
 use rustc_middle::thir::PatRange;
-use rustc_middle::ty::{self, AdtDef, Ty};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::sym;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -70,7 +70,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Never => write!(f, "!"),
             PatKind::Box { ref subpattern } => write!(f, "box {subpattern}"),
             PatKind::StructLike { ref enum_info, ref subpatterns } => {
-                write_struct_like(f, self.ty, enum_info, subpatterns)
+                ty::tls::with(|tcx| write_struct_like(f, tcx, self.ty, enum_info, subpatterns))
             }
             PatKind::Deref { ref subpattern } => write_ref_like(f, self.ty, subpattern),
             PatKind::Constant { value } => write!(f, "{value}"),
@@ -105,12 +105,13 @@ pub(crate) enum EnumInfo<'tcx> {
 
 fn write_struct_like<'tcx>(
     f: &mut impl fmt::Write,
+    tcx: TyCtxt<'_>,
     ty: Ty<'tcx>,
     enum_info: &EnumInfo<'tcx>,
     subpatterns: &[FieldPat<'tcx>],
 ) -> fmt::Result {
     let variant_and_name = match *enum_info {
-        EnumInfo::Enum { adt_def, variant_index } => ty::tls::with(|tcx| {
+        EnumInfo::Enum { adt_def, variant_index } => {
             let variant = adt_def.variant(variant_index);
             let adt_did = adt_def.did();
             let name = if tcx.get_diagnostic_item(sym::Option) == Some(adt_did)
@@ -121,9 +122,9 @@ fn write_struct_like<'tcx>(
                 format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
             };
             Some((variant, name))
-        }),
+        }
         EnumInfo::NotEnum => ty.ty_adt_def().and_then(|adt_def| {
-            ty::tls::with(|tcx| Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did()))))
+            Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did())))
         }),
     };
 
