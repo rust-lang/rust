@@ -85,10 +85,9 @@ mod vtable;
 mod prelude {
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
-    pub(crate) use cranelift_codegen::ir::types;
     pub(crate) use cranelift_codegen::ir::{
-        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
-        StackSlotData, StackSlotKind, TrapCode, Type, Value,
+        types, AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc,
+        StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value,
     };
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
