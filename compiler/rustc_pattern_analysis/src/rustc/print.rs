@@ -33,13 +33,8 @@ pub(crate) struct Pat<'tcx> {
 pub(crate) enum PatKind<'tcx> {
     Wild,
 
-    Variant {
-        adt_def: AdtDef<'tcx>,
-        variant_index: VariantIdx,
-        subpatterns: Vec<FieldPat<'tcx>>,
-    },
-
-    Leaf {
+    StructLike {
+        enum_info: EnumInfo<'tcx>,
         subpatterns: Vec<FieldPat<'tcx>>,
     },
 
@@ -67,8 +62,8 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
         match self.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
-            PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
-                write_struct_like(f, self.ty, &self.kind, subpatterns)
+            PatKind::StructLike { ref enum_info, ref subpatterns } => {
+                write_struct_like(f, self.ty, enum_info, subpatterns)
             }
             PatKind::Deref { ref subpattern } => write_ref_like(f, self.ty, subpattern),
             PatKind::Constant { value } => write!(f, "{value}"),
@@ -95,14 +90,20 @@ fn start_or_comma() -> impl FnMut() -> &'static str {
     }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) enum EnumInfo<'tcx> {
+    Enum { adt_def: AdtDef<'tcx>, variant_index: VariantIdx },
+    NotEnum,
+}
+
 fn write_struct_like<'tcx>(
     f: &mut impl fmt::Write,
     ty: Ty<'tcx>,
-    kind: &PatKind<'tcx>,
+    enum_info: &EnumInfo<'tcx>,
     subpatterns: &[FieldPat<'tcx>],
 ) -> fmt::Result {
-    let variant_and_name = match *kind {
-        PatKind::Variant { adt_def, variant_index, .. } => ty::tls::with(|tcx| {
+    let variant_and_name = match *enum_info {
+        EnumInfo::Enum { adt_def, variant_index } => ty::tls::with(|tcx| {
             let variant = adt_def.variant(variant_index);
             let adt_did = adt_def.did();
             let name = if tcx.get_diagnostic_item(sym::Option) == Some(adt_did)
@@ -114,7 +115,7 @@ fn write_struct_like<'tcx>(
             };
             Some((variant, name))
         }),
-        _ => ty.ty_adt_def().and_then(|adt_def| {
+        EnumInfo::NotEnum => ty.ty_adt_def().and_then(|adt_def| {
             if !adt_def.is_enum() {
                 ty::tls::with(|tcx| {
                     Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did())))

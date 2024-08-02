@@ -23,6 +23,7 @@ use crate::constructor::{
 };
 use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
+use crate::rustc::print::EnumInfo;
 use crate::usefulness::{compute_match_usefulness, PlaceValidity};
 use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
 
@@ -832,7 +833,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
             Struct | Variant(_) | UnionField => match pat.ty().kind() {
-                ty::Tuple(..) => PatKind::Leaf {
+                ty::Tuple(..) => PatKind::StructLike {
+                    enum_info: EnumInfo::NotEnum,
                     subpatterns: subpatterns
                         .enumerate()
                         .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
@@ -844,18 +846,20 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     // the pattern is a box pattern.
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
-                ty::Adt(adt_def, _args) => {
-                    let variant_index = RustcPatCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
+                &ty::Adt(adt_def, _) => {
+                    let variant_index = RustcPatCtxt::variant_index_for_adt(&pat.ctor(), adt_def);
                     let subpatterns = subpatterns
                         .enumerate()
                         .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
                         .collect();
 
-                    if adt_def.is_enum() {
-                        PatKind::Variant { adt_def: *adt_def, variant_index, subpatterns }
+                    let enum_info = if adt_def.is_enum() {
+                        EnumInfo::Enum { adt_def, variant_index }
                     } else {
-                        PatKind::Leaf { subpatterns }
-                    }
+                        EnumInfo::NotEnum
+                    };
+
+                    PatKind::StructLike { enum_info, subpatterns }
                 }
                 _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), *pat.ty()),
             },
