@@ -114,8 +114,8 @@ fn write_struct_like<'tcx>(
         EnumInfo::Enum { adt_def, variant_index } => {
             let variant = adt_def.variant(variant_index);
             let adt_did = adt_def.did();
-            let name = if tcx.get_diagnostic_item(sym::Option) == Some(adt_did)
-                || tcx.get_diagnostic_item(sym::Result) == Some(adt_did)
+            let name = if tcx.is_diagnostic_item(sym::Option, adt_did)
+                || tcx.is_diagnostic_item(sym::Result, adt_did)
             {
                 variant.name.to_string()
             } else {
