@@ -3092,6 +3092,27 @@ fn arithmetics {
 }
 
 #[test]
+fn doctest_toggle_macro_delimiter() {
+    check_doc_test(
+        "toggle_macro_delimiter",
+        r#####"
+macro_rules! sth {
+    () => {};
+}
+
+sth! $0( );
+"#####,
+        r#####"
+macro_rules! sth {
+    () => {};
+}
+
+sth! { }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unmerge_match_arm() {
     check_doc_test(
         "unmerge_match_arm",
