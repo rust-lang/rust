@@ -1,5 +1,6 @@
 //@ ignore-cross-compile
-use run_make_support::{rustc, symbols::contains_exact_symbols};
+use run_make_support::rustc;
+use run_make_support::symbols::contains_exact_symbols;
 
 fn main() {
     rustc().input("dylib.rs").output("dylib.so").prefer_dynamic().run();
