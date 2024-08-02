@@ -949,20 +949,20 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - x86
-    /// - x86_64
-    /// - arm
-    /// - aarch64
-    /// - loongarch64
-    /// - m68k
-    /// - csky
-    /// - mips
-    /// - mips64
-    /// - powerpc
-    /// - powerpc64
-    /// - riscv64
-    /// - s390x
-    /// - sparc64
+    /// - `x86`
+    /// - `x86_64`
+    /// - `arm`
+    /// - `aarch64`
+    /// - `loongarch64`
+    /// - `m68k`
+    /// - `csky`
+    /// - `mips`
+    /// - `mips64`
+    /// - `powerpc`
+    /// - `powerpc64`
+    /// - `riscv64`
+    /// - `s390x`
+    /// - `sparc64`
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &str = env!("STD_ENV_ARCH");
 
@@ -970,8 +970,8 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - unix
-    /// - windows
+    /// - `unix`
+    /// - `windows`
     #[stable(feature = "env", since = "1.0.0")]
     pub const FAMILY: &str = os::FAMILY;
 
@@ -980,16 +980,16 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - linux
-    /// - macos
-    /// - ios
-    /// - freebsd
-    /// - dragonfly
-    /// - netbsd
-    /// - openbsd
-    /// - solaris
-    /// - android
-    /// - windows
+    /// - `linux`
+    /// - `macos`
+    /// - `ios`
+    /// - `freebsd`
+    /// - `dragonfly`
+    /// - `netbsd`
+    /// - `openbsd`
+    /// - `solaris`
+    /// - `android`
+    /// - `windows`
     #[stable(feature = "env", since = "1.0.0")]
     pub const OS: &str = os::OS;
 
@@ -998,7 +998,7 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - lib
+    /// - `lib`
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_PREFIX: &str = os::DLL_PREFIX;
@@ -1008,9 +1008,9 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - .so
-    /// - .dylib
-    /// - .dll
+    /// - `.so`
+    /// - `.dylib`
+    /// - `.dll`
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_SUFFIX: &str = os::DLL_SUFFIX;
 
@@ -1019,9 +1019,9 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - so
-    /// - dylib
-    /// - dll
+    /// - `so`
+    /// - `dylib`
+    /// - `dll`
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_EXTENSION: &str = os::DLL_EXTENSION;
 
@@ -1030,9 +1030,9 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - .exe
-    /// - .nexe
-    /// - .pexe
+    /// - `.exe`
+    /// - `.nexe`
+    /// - `.pexe`
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_SUFFIX: &str = os::EXE_SUFFIX;
@@ -1042,7 +1042,7 @@ pub mod consts {
     ///
     /// Some possible values:
     ///
-    /// - exe
+    /// - `exe`
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_EXTENSION: &str = os::EXE_EXTENSION;
