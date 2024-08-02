@@ -192,6 +192,23 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             ret.place_lane(fx, 0).write_cvalue(fx, res_lane);
         }
 
+        "llvm.x86.sse.sqrt.ss" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sqrt_ss&ig_expand=6278
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            assert_eq!(a.layout(), ret.layout());
+            let (_, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
+            assert!(lane_ty.is_floating_point());
+            let ret_lane_layout = fx.layout_of(lane_ty);
+
+            ret.write_cvalue(fx, a);
+
+            let lane = a.value_lane(fx, 0).load_scalar(fx);
+            let res = fx.bcx.ins().sqrt(lane);
+            let res_lane = CValue::by_val(res, ret_lane_layout);
+            ret.place_lane(fx, 0).write_cvalue(fx, res_lane);
+        }
+
         "llvm.x86.sse.sqrt.ps" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sqrt_ps&ig_expand=6245
             intrinsic_args!(fx, args => (a); intrinsic);
