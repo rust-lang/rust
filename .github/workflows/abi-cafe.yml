@@ -8,7 +8,7 @@ permissions: {}
 jobs:
   abi_cafe:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 30
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}-${{ matrix.env.TARGET_TRIPLE }}
       cancel-in-progress: true
@@ -30,9 +30,10 @@ jobs:
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
-          - os: windows-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
+          # FIXME Currently hangs. Re-enable once this is fixed or abi-cafe adds a timeout.
+          #- os: windows-latest
+          #  env:
+          #    TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
     - uses: actions/checkout@v4
