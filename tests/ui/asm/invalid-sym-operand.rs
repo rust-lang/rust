@@ -1,3 +1,7 @@
+//@ needs-asm-support
+//@ ignore-nvptx64
+//@ ignore-spirv
+
 use std::arch::{asm, global_asm};
 
 // Sym operands must point to a function or static
