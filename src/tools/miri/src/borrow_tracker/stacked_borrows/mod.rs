@@ -673,7 +673,8 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
             // attempt to use it for a non-zero-sized access.
             // Dangling slices are a common case here; it's valid to get their length but with raw
             // pointer tagging for example all calls to get_unchecked on them are invalid.
-            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr(), 0) {
+            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
+            {
                 log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
                 // Still give it the new provenance, it got retagged after all.
                 return Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));

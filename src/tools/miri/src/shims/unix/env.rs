@@ -81,8 +81,10 @@ impl<'tcx> UnixEnvVars<'tcx> {
             return Ok(None);
         };
         // The offset is used to strip the "{name}=" part of the string.
-        let var_ptr = var_ptr
-            .wrapping_offset(Size::from_bytes(u64::try_from(name.len()).unwrap().strict_add(1)), ecx);
+        let var_ptr = var_ptr.wrapping_offset(
+            Size::from_bytes(u64::try_from(name.len()).unwrap().strict_add(1)),
+            ecx,
+        );
         Ok(Some(var_ptr))
     }
 
