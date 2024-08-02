@@ -53,7 +53,7 @@ While not recommended by default, some QNX kernel setups may require the `RELRO`
 rustflags = ["-C", "relro_level=off"]
 ```
 
-If your QNX kernel does not allow it, and `relro` is not disabled, running compiled binary would fail with `syntax error: ... unexpected` or similar.  This is due to kernel trying to interpret compiled binary with `/bin/sh`, and obviously failing.  To verify that this is really the case, run your binary with the `DL_DEBUG=all` env var, and look for this output. If you see it, you should disable `relro` as described above.
+If your QNX kernel does not allow it, and `relro` is not disabled, running compiled binary would fail with `syntax error: ... unexpected` or similar.  This is due to kernel trying to interpret compiled binary as a shell script with `/bin/sh`, and obviously failing.  To verify that this is really the case, run your binary with the `DL_DEBUG=all` env var, and look for this output. If you see it, you should disable `relro` as described above.
 
 ```text
 Resolution scope for Executable->/bin/sh:
