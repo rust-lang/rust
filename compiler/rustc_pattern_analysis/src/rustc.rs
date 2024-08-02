@@ -828,7 +828,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         use print::{FieldPat, Pat, PatKind};
         let cx = self;
         let hoist = |p| Box::new(cx.hoist_witness_pat(p));
-        let mut subpatterns = pat.iter_fields().map(hoist);
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
@@ -855,11 +854,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
 
                 PatKind::StructLike { enum_info, subpatterns }
             }
-            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-            // be careful to reconstruct the correct constant pattern here. However a string
-            // literal pattern will never be reported as a non-exhaustiveness witness, so we
-            // ignore this issue.
-            Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
+            Ref => PatKind::Deref { subpattern: hoist(&pat.fields[0]) },
             Slice(slice) => {
                 let (prefix_len, has_dot_dot) = match slice.kind {
                     SliceKind::FixedLen(len) => (len, false),
