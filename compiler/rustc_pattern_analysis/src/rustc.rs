@@ -838,31 +838,24 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // of type `Box` is to use a `box` pattern via #[feature(box_patterns)].
                 PatKind::Box { subpattern: hoist(&pat.fields[0]) }
             }
-            Struct | Variant(_) | UnionField => match pat.ty().kind() {
-                ty::Tuple(..) => PatKind::StructLike {
-                    enum_info: EnumInfo::NotEnum,
-                    subpatterns: subpatterns
-                        .enumerate()
-                        .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
-                        .collect(),
-                },
-                &ty::Adt(adt_def, _) => {
-                    let variant_index = RustcPatCtxt::variant_index_for_adt(&pat.ctor(), adt_def);
-                    let subpatterns = subpatterns
-                        .enumerate()
-                        .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
-                        .collect();
+            Struct | Variant(_) | UnionField => {
+                let enum_info = match *pat.ty().kind() {
+                    ty::Adt(adt_def, _) if adt_def.is_enum() => EnumInfo::Enum {
+                        adt_def,
+                        variant_index: RustcPatCtxt::variant_index_for_adt(pat.ctor(), adt_def),
+                    },
+                    ty::Adt(..) | ty::Tuple(..) => EnumInfo::NotEnum,
+                    _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), *pat.ty()),
+                };
 
-                    let enum_info = if adt_def.is_enum() {
-                        EnumInfo::Enum { adt_def, variant_index }
-                    } else {
-                        EnumInfo::NotEnum
-                    };
+                let subpatterns = pat
+                    .iter_fields()
+                    .enumerate()
+                    .map(|(i, pat)| FieldPat { field: FieldIdx::new(i), pattern: hoist(pat) })
+                    .collect::<Vec<_>>();
 
-                    PatKind::StructLike { enum_info, subpatterns }
-                }
-                _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), *pat.ty()),
-            },
+                PatKind::StructLike { enum_info, subpatterns }
+            }
             // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
             // be careful to reconstruct the correct constant pattern here. However a string
             // literal pattern will never be reported as a non-exhaustiveness witness, so we
