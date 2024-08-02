@@ -503,17 +503,15 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         // We have a parent, but we don't know where they're
         // defined yet. Wait for later to index this item.
         let impl_generics = clean_impl_generics(cache.parent_stack.last());
-        cache.orphan_impl_items.push(OrphanImplItem {
-            parent: parent_did,
-            item: item.clone(),
-            impl_generics,
-            impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last()
-            {
-                item_id.as_def_id()
-            } else {
-                None
-            },
-        });
+        let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last()
+        {
+            item_id.as_def_id()
+        } else {
+            None
+        };
+        let orphan_item =
+            OrphanImplItem { parent: parent_did, item: item.clone(), impl_generics, impl_id };
+        cache.orphan_impl_items.push(orphan_item);
     } else if let Some(path) = parent_path
         && (is_impl_child || !cache.stripped_mod)
     {
@@ -540,32 +538,37 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             // In case this is a field from a tuple struct, we don't add it into
             // the search index because its name is something like "0", which is
             // not useful for rustdoc search.
-            cache.search_index.push(IndexItem {
+            let path = join_with_double_colon(path);
+            let impl_id =
+                if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
+                    item_id.as_def_id()
+                } else {
+                    None
+                };
+            let search_type = get_function_type_for_search(
+                &item,
+                tcx,
+                clean_impl_generics(cache.parent_stack.last()).as_ref(),
+                parent_did,
+                cache,
+            );
+            let aliases = item.attrs.get_doc_aliases();
+            let deprecation = item.deprecation(tcx);
+            let index_item = IndexItem {
                 ty,
                 defid,
                 name,
-                path: join_with_double_colon(path),
+                path,
                 desc,
                 parent: parent_did,
                 parent_idx: None,
                 exact_path: None,
-                impl_id: if let Some(ParentStackItem::Impl { item_id, .. }) =
-                    cache.parent_stack.last()
-                {
-                    item_id.as_def_id()
-                } else {
-                    None
-                },
-                search_type: get_function_type_for_search(
-                    &item,
-                    tcx,
-                    clean_impl_generics(cache.parent_stack.last()).as_ref(),
-                    parent_did,
-                    cache,
-                ),
-                aliases: item.attrs.get_doc_aliases(),
-                deprecation: item.deprecation(tcx),
-            });
+                impl_id,
+                search_type,
+                aliases,
+                deprecation,
+            };
+            cache.search_index.push(index_item);
         }
     }
 }
