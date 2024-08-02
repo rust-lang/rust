@@ -998,9 +998,7 @@ pub const fn cold_path() {}
 /// This intrinsic does not have a stable counterpart.
 #[rustc_const_unstable(feature = "const_likely", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_intrinsic]
 #[rustc_nounwind]
-#[miri::intrinsic_fallback_is_spec]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
     #[cfg(any(bootstrap))]
@@ -1029,9 +1027,7 @@ pub const fn likely(b: bool) -> bool {
 /// This intrinsic does not have a stable counterpart.
 #[rustc_const_unstable(feature = "const_likely", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_intrinsic]
 #[rustc_nounwind]
-#[miri::intrinsic_fallback_is_spec]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
     #[cfg(any(bootstrap))]

@@ -1,34 +1,24 @@
 //@ compile-flags: -O
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
+#![feature(const_likely)]
 
-#[cold]
-fn cold_path() {}
-
-#[inline(always)]
-fn unlikely(x: bool) -> bool {
-    if x {
-        cold_path();
-        true
-    } else {
-        false
-    }
-}
+use std::intrinsics::unlikely;
 
 #[inline(never)]
 #[no_mangle]
 pub fn path_a() {
-    println!("fast_path");
+    println!("path a");
 }
 
 #[inline(never)]
 #[no_mangle]
 pub fn path_b() {
-    println!("slow_path");
+    println!("path b");
 }
 
 #[no_mangle]
-pub fn f(x: bool) {
+pub fn test_unlikely(x: bool) {
     if unlikely(x) {
         path_a();
     } else {
@@ -36,7 +26,7 @@ pub fn f(x: bool) {
     }
 }
 
-// CHECK-LABEL: @f(
+// CHECK-LABEL: @test_unlikely(
 // CHECK: br i1 %x, label %bb2, label %bb4, !prof ![[NUM:[0-9]+]]
 // CHECK: bb4:
 // CHECK: path_b

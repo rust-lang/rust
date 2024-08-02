@@ -118,8 +118,6 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::three_way_compare
         | sym::discriminant_value
         | sym::type_id
-        | sym::likely
-        | sym::unlikely
         | sym::select_unpredictable
         | sym::cold_path
         | sym::ptr_guaranteed_cmp
@@ -488,8 +486,6 @@ pub fn check_intrinsic_type(
             sym::float_to_int_unchecked => (2, 0, vec![param(0)], param(1)),
 
             sym::assume => (0, 0, vec![tcx.types.bool], tcx.types.unit),
-            sym::likely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
-            sym::unlikely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
             sym::select_unpredictable => (1, 0, vec![tcx.types.bool, param(0), param(0)], param(0)),
             sym::cold_path => (0, 0, vec![], tcx.types.unit),
 
