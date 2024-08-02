@@ -62,13 +62,13 @@ pub(crate) enum ProcMacroProgress {
 
 impl GlobalState {
     pub(crate) fn is_quiescent(&self) -> bool {
-        !(self.last_reported_status.is_none()
-            || self.fetch_workspaces_queue.op_in_progress()
-            || self.fetch_build_data_queue.op_in_progress()
-            || self.fetch_proc_macros_queue.op_in_progress()
-            || self.discover_workspace_queue.op_in_progress()
-            || self.vfs_progress_config_version < self.vfs_config_version
-            || self.vfs_progress_n_done < self.vfs_progress_n_total)
+        self.vfs_done
+            && self.last_reported_status.is_some()
+            && !self.fetch_workspaces_queue.op_in_progress()
+            && !self.fetch_build_data_queue.op_in_progress()
+            && !self.fetch_proc_macros_queue.op_in_progress()
+            && !self.discover_workspace_queue.op_in_progress()
+            && self.vfs_progress_config_version >= self.vfs_config_version
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
@@ -102,15 +102,13 @@ impl GlobalState {
     }
 
     pub(crate) fn current_status(&self) -> lsp_ext::ServerStatusParams {
-        let mut status = lsp_ext::ServerStatusParams {
-            health: lsp_ext::Health::Ok,
-            quiescent: self.is_quiescent(),
-            message: None,
-        };
+        let quiescent = self.is_quiescent();
+        let mut status =
+            lsp_ext::ServerStatusParams { health: lsp_ext::Health::Ok, quiescent, message: None };
         let mut message = String::new();
 
         if !self.config.cargo_autoreload(None)
-            && self.is_quiescent()
+            && quiescent
             && self.fetch_workspaces_queue.op_requested()
             && self.config.discover_workspace_config().is_none()
         {
@@ -242,7 +240,7 @@ impl GlobalState {
             let discover_command = self.config.discover_workspace_config().cloned();
             let is_quiescent = !(self.discover_workspace_queue.op_in_progress()
                 || self.vfs_progress_config_version < self.vfs_config_version
-                || self.vfs_progress_n_done < self.vfs_progress_n_total);
+                || !self.vfs_done);
 
             move |sender| {
                 let progress = {

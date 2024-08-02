@@ -61,6 +61,7 @@ type NotifyEvent = notify::Result<notify::Event>;
 
 struct NotifyActor {
     sender: loader::Sender,
+    // FIXME: Consider hashset
     watched_entries: Vec<loader::Entry>,
     // Drop order is significant.
     watcher: Option<(RecommendedWatcher, Receiver<NotifyEvent>)>,
