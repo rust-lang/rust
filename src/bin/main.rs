@@ -734,6 +734,18 @@ impl CliOptions for GetOptsOptions {
     fn config_path(&self) -> Option<&Path> {
         self.config_path.as_deref()
     }
+
+    fn edition(&self) -> Option<Edition> {
+        self.inline_config
+            .get("edition")
+            .map_or(self.edition, |e| Edition::from_str(e).ok())
+    }
+
+    fn style_edition(&self) -> Option<StyleEdition> {
+        self.inline_config
+            .get("style_edition")
+            .map_or(self.style_edition, |se| StyleEdition::from_str(se).ok())
+    }
 }
 
 fn edition_from_edition_str(edition_str: &str) -> Result<Edition> {

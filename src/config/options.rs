@@ -419,6 +419,8 @@ pub trait CliOptions {
     /// It is ok if the returned path doesn't exist or is not canonicalized
     /// (i.e. the callers are expected to handle such cases).
     fn config_path(&self) -> Option<&Path>;
+    fn edition(&self) -> Option<Edition>;
+    fn style_edition(&self) -> Option<StyleEdition>;
 }
 
 /// The edition of the syntax and semantics of code (RFC 2052).

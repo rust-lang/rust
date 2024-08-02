@@ -376,9 +376,13 @@ pub fn load_config<O: CliOptions>(
     file_path: Option<&Path>,
     options: Option<O>,
 ) -> Result<(Config, Option<PathBuf>), Error> {
-    let over_ride = match options {
-        Some(ref opts) => config_path(opts)?,
-        None => None,
+    let (over_ride, _edition, _style_edition) = match options {
+        Some(ref opts) => (
+            config_path(opts)?,
+            opts.edition(),
+            opts.style_edition(),
+        ),
+        None => (None, None, None),
     };
 
     let result = if let Some(over_ride) = over_ride {

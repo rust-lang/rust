@@ -89,6 +89,12 @@ impl CliOptions for NullOptions {
     fn config_path(&self) -> Option<&Path> {
         unreachable!();
     }
+    fn edition(&self) -> Option<rustfmt_nightly::Edition> {
+        unreachable!();
+    }
+    fn style_edition(&self) -> Option<rustfmt_nightly::StyleEdition> {
+        unreachable!();
+    }
 }
 
 fn uncommitted_files() -> Vec<String> {
