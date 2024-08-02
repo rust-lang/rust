@@ -350,6 +350,11 @@ a.test-arrow {
 	margin-bottom: 1em;
 }
 
+.structfield { 
+    padding-top: 0.8rem; 
+    padding-bottom: 0.2rem; 
+}
+
 .error-described {
 	position: relative;
 }
