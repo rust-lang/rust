@@ -2332,6 +2332,7 @@ dependencies = [
  "crossbeam-channel",
  "notify",
  "paths",
+ "rayon",
  "stdx",
  "tracing",
  "vfs",

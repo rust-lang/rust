@@ -15,7 +15,7 @@ use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
 use tracing::{error, span, Level};
-use vfs::{AbsPathBuf, FileId};
+use vfs::{loader::LoadingProgress, AbsPathBuf, FileId};
 
 use crate::{
     config::Config,
@@ -772,12 +772,11 @@ impl GlobalState {
                 let _p = tracing::info_span!("GlobalState::handle_vfs_mgs/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
-                let state = match n_done {
-                    None => Progress::Begin,
-                    Some(done) if done == n_total => Progress::End,
-                    Some(_) => Progress::Report,
+                let (n_done, state) = match n_done {
+                    LoadingProgress::Started => (0, Progress::Begin),
+                    LoadingProgress::Progress(n_done) => (n_done.min(n_total), Progress::Report),
+                    LoadingProgress::Finished => (n_total, Progress::End),
                 };
-                let n_done = n_done.unwrap_or_default();
 
                 self.vfs_progress_config_version = config_version;
                 self.vfs_progress_n_total = n_total;
