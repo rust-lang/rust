@@ -872,7 +872,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 match slice.kind {
                     SliceKind::FixedLen(_) => PatKind::Slice {
                         prefix: subpatterns.collect(),
-                        slice: None,
+                        has_dot_dot: false,
                         suffix: Box::new([]),
                     },
                     SliceKind::VarLen(prefix, _) => {
@@ -893,10 +893,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             }
                         }
                         let suffix: Box<[_]> = subpatterns.collect();
-                        let wild = Pat { ty: pat.ty().inner(), kind: PatKind::Wild };
                         PatKind::Slice {
                             prefix: prefix.into_boxed_slice(),
-                            slice: Some(Box::new(wild)),
+                            has_dot_dot: true,
                             suffix,
                         }
                     }

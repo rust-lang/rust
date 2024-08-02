@@ -50,7 +50,9 @@ pub(crate) enum PatKind<'tcx> {
 
     Slice {
         prefix: Box<[Box<Pat<'tcx>>]>,
-        slice: Option<Box<Pat<'tcx>>>,
+        /// True if this slice-like pattern should include a `..` between the
+        /// prefix and suffix.
+        has_dot_dot: bool,
         suffix: Box<[Box<Pat<'tcx>>]>,
     },
 
@@ -68,8 +70,8 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Deref { ref subpattern } => write_ref_like(f, self.ty, subpattern),
             PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::Range(ref range) => write!(f, "{range}"),
-            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                write_slice_like(f, prefix, slice, suffix)
+            PatKind::Slice { ref prefix, has_dot_dot, ref suffix } => {
+                write_slice_like(f, prefix, has_dot_dot, suffix)
             }
         }
     }
@@ -194,7 +196,7 @@ fn write_ref_like<'tcx>(
 fn write_slice_like<'tcx>(
     f: &mut impl fmt::Write,
     prefix: &[Box<Pat<'tcx>>],
-    slice: &Option<Box<Pat<'tcx>>>,
+    has_dot_dot: bool,
     suffix: &[Box<Pat<'tcx>>],
 ) -> fmt::Result {
     let mut start_or_comma = start_or_comma();
@@ -202,13 +204,8 @@ fn write_slice_like<'tcx>(
     for p in prefix.iter() {
         write!(f, "{}{}", start_or_comma(), p)?;
     }
-    if let Some(ref slice) = *slice {
-        write!(f, "{}", start_or_comma())?;
-        match slice.kind {
-            PatKind::Wild => {}
-            _ => write!(f, "{slice}")?,
-        }
-        write!(f, "..")?;
+    if has_dot_dot {
+        write!(f, "{}..", start_or_comma())?;
     }
     for p in suffix.iter() {
         write!(f, "{}{}", start_or_comma(), p)?;
