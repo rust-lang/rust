@@ -355,7 +355,13 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "tvos",
+        target_os = "watchos",
+        target_os = "visionos"
+    ))]
     pub fn sleep_until(deadline: crate::time::Instant) {
         use core::mem::MaybeUninit;
 
@@ -372,7 +378,7 @@ impl Thread {
             let info = info.assume_init();
             let ticks = nanos * (info.denom as u64) / (info.numer as u64);
 
-            mach_wait_until(ticks);
+            let ret = mach_wait_until(ticks);
             assert_eq!(ret, KERN_SUCCESS);
         }
     }
@@ -392,17 +398,35 @@ impl Thread {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+    target_os = "visionos"
+))]
 const KERN_SUCCESS: libc::c_int = 0;
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+    target_os = "visionos"
+))]
 #[repr(C)]
 struct mach_timebase_info_type {
     numer: u32,
     denom: u32,
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+    target_os = "visionos"
+))]
 extern "C" {
     fn mach_wait_until(deadline: u64) -> libc::c_int;
     fn mach_timebase_info(info: *mut mach_timebase_info_type) -> libc::c_int;
