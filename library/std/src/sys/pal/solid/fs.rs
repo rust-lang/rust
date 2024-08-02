@@ -9,6 +9,7 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
+use crate::sys_common::ignore_notfound,
 pub use crate::sys_common::fs::exists;
 
 /// A file descriptor.
@@ -543,7 +544,7 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
             return result;
         }
     }
-    rmdir(path)
+    ignore_notfound(rmdir(path))
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {

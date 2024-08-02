@@ -2029,6 +2029,7 @@ mod remove_dir_impl {
     use crate::path::{Path, PathBuf};
     use crate::sys::common::small_c_string::run_path_with_cstr;
     use crate::sys::{cvt, cvt_r};
+    use crate::sys_common::ignore_notfound;
 
     pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
         let fd = cvt_r(|| unsafe {
@@ -2141,9 +2142,9 @@ mod remove_dir_impl {
         }
 
         // unlink the directory after removing its contents
-        cvt(unsafe {
+        ignore_notfound(cvt(unsafe {
             unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), path.as_ptr(), libc::AT_REMOVEDIR)
-        })?;
+        }))?;
         Ok(())
     }
 

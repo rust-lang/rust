@@ -12,9 +12,12 @@ use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
-pub use crate::sys_common::fs::exists;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner, ignore_notfound};
 use crate::{fmt, iter, ptr};
+
+pub use crate::sys_common::fs::exists;
+
+
 
 pub struct File {
     fd: WasiFd,
@@ -811,5 +814,5 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
 
     // Once all this directory's contents are deleted it should be safe to
     // delete the directory tiself.
-    parent.remove_directory(osstr2str(path.as_ref())?)
+    ignore_notfound(parent.remove_directory(osstr2str(path.as_ref())?))
 }

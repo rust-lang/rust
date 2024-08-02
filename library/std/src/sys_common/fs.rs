@@ -3,6 +3,7 @@
 use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::path::Path;
+use crate::sys_common::ignore_notfound;
 
 pub(crate) const NOT_FILE_ERROR: Error = io::const_io_error!(
     ErrorKind::InvalidInput,
@@ -47,7 +48,7 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
             return result;
         }
     }
-    fs::remove_dir(path)
+    ignore_notfound(fs::remove_dir(path))
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
