@@ -195,7 +195,7 @@ intrinsics! {
     }
 
     #[ppc_alias = __mulkf3]
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     pub extern "C" fn __multf3(a: f128, b: f128) -> f128 {
         mul(a, b)
     }

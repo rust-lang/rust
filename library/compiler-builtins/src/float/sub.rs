@@ -14,7 +14,7 @@ intrinsics! {
     }
 
     #[ppc_alias = __subkf3]
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     pub extern "C" fn __subtf3(a: f128, b: f128) -> f128 {
         #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
         use crate::float::add::__addkf3 as __addtf3;

@@ -172,7 +172,7 @@ intrinsics! {
     }
 }
 
-#[cfg(not(feature = "no-f16-f128",))]
+#[cfg(f128_enabled)]
 intrinsics! {
     #[avr_skip]
     #[ppc_alias = __lekf2]
