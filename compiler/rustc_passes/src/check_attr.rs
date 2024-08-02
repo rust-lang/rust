@@ -158,6 +158,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_std_internal_symbol(attr, span, target)
                 }
                 [sym::naked] => self.check_naked(hir_id, attr, span, target, attrs),
+                [sym:pointee] => self.check_pointee(hir_id, attr, span, target, attrs),
                 [sym::rustc_never_returns_null_ptr] => {
                     self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
@@ -2278,6 +2279,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);
         }
+    }
+
+    /// Check if `#[pointee]` has been applied to a function
+    fn check_pointee(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
     }
 }
 
