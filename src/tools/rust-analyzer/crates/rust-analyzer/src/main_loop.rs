@@ -19,7 +19,7 @@ use vfs::{AbsPathBuf, FileId};
 
 use crate::{
     config::Config,
-    diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration},
+    diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
     dispatch::{NotificationDispatcher, RequestDispatcher},
     global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
     hack_recover_crate_name,
@@ -87,11 +87,17 @@ pub(crate) enum QueuedTask {
 }
 
 #[derive(Debug)]
+pub(crate) enum DiagnosticsTaskKind {
+    Syntax(DiagnosticsGeneration, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Semantic(DiagnosticsGeneration, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+}
+
+#[derive(Debug)]
 pub(crate) enum Task {
     Response(lsp_server::Response),
     DiscoverLinkedProjects(DiscoverProjectParam),
     Retry(lsp_server::Request),
-    Diagnostics(DiagnosticsGeneration, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Diagnostics(DiagnosticsTaskKind),
     DiscoverTest(lsp_ext::DiscoverTestResults),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
@@ -549,14 +555,29 @@ impl GlobalState {
             }
             // Diagnostics are triggered by the user typing
             // so we run them on a latency sensitive thread.
-            self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
-                let snapshot = self.snapshot();
+            let snapshot = self.snapshot();
+            self.task_pool.handle.spawn_with_sender(ThreadIntent::LatencySensitive, {
                 let subscriptions = subscriptions.clone();
-                move || {
-                    Task::Diagnostics(
-                        generation,
-                        fetch_native_diagnostics(snapshot, subscriptions, slice),
-                    )
+                move |sender| {
+                    let diags = fetch_native_diagnostics(
+                        &snapshot,
+                        subscriptions.clone(),
+                        slice.clone(),
+                        NativeDiagnosticsFetchKind::Syntax,
+                    );
+                    sender
+                        .send(Task::Diagnostics(DiagnosticsTaskKind::Syntax(generation, diags)))
+                        .unwrap();
+
+                    let diags = fetch_native_diagnostics(
+                        &snapshot,
+                        subscriptions,
+                        slice,
+                        NativeDiagnosticsFetchKind::Semantic,
+                    );
+                    sender
+                        .send(Task::Diagnostics(DiagnosticsTaskKind::Semantic(generation, diags)))
+                        .unwrap();
                 }
             });
             start = end;
@@ -644,10 +665,8 @@ impl GlobalState {
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
             Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
             Task::Retry(_) => (),
-            Task::Diagnostics(generation, diagnostics_per_file) => {
-                for (file_id, diagnostics) in diagnostics_per_file {
-                    self.diagnostics.set_native_diagnostics(generation, file_id, diagnostics)
-                }
+            Task::Diagnostics(kind) => {
+                self.diagnostics.set_native_diagnostics(kind);
             }
             Task::PrimeCaches(progress) => match progress {
                 PrimeCachesProgress::Begin => prime_caches_progress.push(progress),

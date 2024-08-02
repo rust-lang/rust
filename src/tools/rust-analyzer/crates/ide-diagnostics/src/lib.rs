@@ -96,6 +96,7 @@ use syntax::{
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticCode {
     RustcHardError(&'static str),
+    SyntaxError,
     RustcLint(&'static str),
     Clippy(&'static str),
     Ra(&'static str, Severity),
@@ -106,6 +107,9 @@ impl DiagnosticCode {
         match self {
             DiagnosticCode::RustcHardError(e) => {
                 format!("https://doc.rust-lang.org/stable/error_codes/{e}.html")
+            }
+            DiagnosticCode::SyntaxError => {
+                String::from("https://doc.rust-lang.org/stable/reference/")
             }
             DiagnosticCode::RustcLint(e) => {
                 format!("https://doc.rust-lang.org/rustc/?search={e}")
@@ -125,6 +129,7 @@ impl DiagnosticCode {
             | DiagnosticCode::RustcLint(r)
             | DiagnosticCode::Clippy(r)
             | DiagnosticCode::Ra(r, _) => r,
+            DiagnosticCode::SyntaxError => "syntax-error",
         }
     }
 }
@@ -154,7 +159,7 @@ impl Diagnostic {
             message,
             range: range.into(),
             severity: match code {
-                DiagnosticCode::RustcHardError(_) => Severity::Error,
+                DiagnosticCode::RustcHardError(_) | DiagnosticCode::SyntaxError => Severity::Error,
                 // FIXME: Rustc lints are not always warning, but the ones that are currently implemented are all warnings.
                 DiagnosticCode::RustcLint(_) => Severity::Warning,
                 // FIXME: We can make this configurable, and if the user uses `cargo clippy` on flycheck, we can
@@ -297,30 +302,53 @@ impl DiagnosticsContext<'_> {
     }
 }
 
-/// Request diagnostics for the given [`FileId`]. The produced diagnostics may point to other files
+/// Request parser level diagnostics for the given [`FileId`].
+pub fn syntax_diagnostics(
+    db: &RootDatabase,
+    config: &DiagnosticsConfig,
+    file_id: FileId,
+) -> Vec<Diagnostic> {
+    let _p = tracing::info_span!("syntax_diagnostics").entered();
+
+    if config.disabled.contains("syntax-error") {
+        return Vec::new();
+    }
+
+    let sema = Semantics::new(db);
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+
+    // [#3434] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
+    db.parse_errors(file_id)
+        .as_deref()
+        .into_iter()
+        .flatten()
+        .take(128)
+        .map(|err| {
+            Diagnostic::new(
+                DiagnosticCode::SyntaxError,
+                format!("Syntax Error: {err}"),
+                FileRange { file_id: file_id.into(), range: err.range() },
+            )
+        })
+        .collect()
+}
+
+/// Request semantic diagnostics for the given [`FileId`]. The produced diagnostics may point to other files
 /// due to macros.
-pub fn diagnostics(
+pub fn semantic_diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
     resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
-    let _p = tracing::info_span!("diagnostics").entered();
+    let _p = tracing::info_span!("semantic_diagnostics").entered();
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
         .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
     let mut res = Vec::new();
-
-    // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    res.extend(db.parse_errors(file_id).as_deref().into_iter().flatten().take(128).map(|err| {
-        Diagnostic::new(
-            DiagnosticCode::RustcHardError("syntax-error"),
-            format!("Syntax Error: {err}"),
-            FileRange { file_id: file_id.into(), range: err.range() },
-        )
-    }));
-    let parse_errors = res.len();
 
     let parse = sema.parse(file_id);
 
@@ -341,8 +369,11 @@ pub fn diagnostics(
     match module {
         // A bunch of parse errors in a file indicate some bigger structural parse changes in the
         // file, so we skip semantic diagnostics so we can show these faster.
-        Some(m) if parse_errors < 16 => m.diagnostics(db, &mut diags, config.style_lints),
-        Some(_) => (),
+        Some(m) => {
+            if !db.parse_errors(file_id).as_deref().is_some_and(|es| es.len() >= 16) {
+                m.diagnostics(db, &mut diags, config.style_lints);
+            }
+        }
         None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id.file_id()),
     }
 
@@ -363,7 +394,7 @@ pub fn diagnostics(
                 res.extend(d.errors.iter().take(16).map(|err| {
                     {
                         Diagnostic::new(
-                            DiagnosticCode::RustcHardError("syntax-error"),
+                            DiagnosticCode::SyntaxError,
                             format!("Syntax Error in Expansion: {err}"),
                             ctx.resolve_precise_location(&d.node.clone(), d.precise_location),
                         )
@@ -461,6 +492,19 @@ pub fn diagnostics(
 
     res.retain(|d| d.severity != Severity::Allow);
 
+    res
+}
+
+/// Request both syntax and semantic diagnostics for the given [`FileId`].
+pub fn full_diagnostics(
+    db: &RootDatabase,
+    config: &DiagnosticsConfig,
+    resolve: &AssistResolveStrategy,
+    file_id: FileId,
+) -> Vec<Diagnostic> {
+    let mut res = syntax_diagnostics(db, config, file_id);
+    let sema = semantic_diagnostics(db, config, resolve, file_id);
+    res.extend(sema);
     res
 }
 

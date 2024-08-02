@@ -325,7 +325,7 @@ fn integrated_diagnostics_benchmark() {
         term_search_borrowck: true,
     };
     host.analysis()
-        .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
+        .full_diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
         .unwrap();
 
     let _g = crate::tracing::hprof::init("*");
@@ -343,7 +343,7 @@ fn integrated_diagnostics_benchmark() {
         let _p = tracing::info_span!("diagnostics").entered();
         let _span = profile::cpu_span();
         host.analysis()
-            .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
+            .full_diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
             .unwrap();
     }
 }

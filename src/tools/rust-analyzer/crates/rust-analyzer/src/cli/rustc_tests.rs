@@ -155,7 +155,7 @@ impl Tester {
                     let root_file = self.root_file;
                     move || {
                         let res = std::panic::catch_unwind(move || {
-                            analysis.diagnostics(
+                            analysis.full_diagnostics(
                                 diagnostic_config,
                                 ide::AssistResolveStrategy::None,
                                 root_file,
