@@ -47,6 +47,8 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 }
 
 impl AnonPipe {
+    #[allow(dead_code)]
+    // FIXME: This function seems legitimately unused.
     pub fn try_clone(&self) -> io::Result<Self> {
         self.0.duplicate().map(Self)
     }
@@ -85,6 +87,8 @@ impl AnonPipe {
         self.0.is_write_vectored()
     }
 
+    #[allow(dead_code)]
+    // FIXME: This function seems legitimately unused.
     pub fn as_file_desc(&self) -> &FileDesc {
         &self.0
     }
