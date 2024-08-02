@@ -290,6 +290,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg(target_arch = "arm")]
+        $(#[$($attr)*])*
         pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             $($body)*
         }
@@ -298,6 +299,7 @@ macro_rules! intrinsics {
         mod $name {
             #[no_mangle]
             #[cfg_attr(all(not(windows), not(target_vendor = "apple")), linkage = "weak")]
+            $(#[$($attr)*])*
             extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
@@ -307,6 +309,7 @@ macro_rules! intrinsics {
         mod $alias {
             #[no_mangle]
             #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
+            $(#[$($attr)*])*
             extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
