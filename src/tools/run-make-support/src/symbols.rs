@@ -25,6 +25,7 @@ where
 ///
 /// Panics if `path` is not a valid object file readable by the current user.
 pub fn any_symbol_contains(path: impl AsRef<Path>, substrings: &[&str]) -> bool {
+    let path = path.as_ref();
     with_symbol_iter(path, |syms| {
         for sym in syms {
             for substring in substrings {
@@ -34,7 +35,7 @@ pub fn any_symbol_contains(path: impl AsRef<Path>, substrings: &[&str]) -> bool 
                     .windows(substring.len())
                     .any(|x| x == substring.as_bytes())
                 {
-                    eprintln!("{:?} contains {}", sym, substring);
+                    eprintln!("{:?} contains {} in {}", sym, substring, path.display());
                     return true;
                 }
             }
@@ -67,4 +68,12 @@ pub fn contains_exact_symbols(path: impl AsRef<Path>, symbol_names: &[&str]) -> 
         }
     }
     result
+}
+
+pub fn print_symbols(path: impl AsRef<Path>) {
+    let path = path.as_ref();
+    println!("symbols in {}:", path.display());
+    with_symbol_iter(path, |syms| {
+        syms.for_each(|sym| println!("  {}", &sym.name().unwrap()));
+    });
 }

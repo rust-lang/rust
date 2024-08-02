@@ -269,6 +269,13 @@ impl Rustc {
         self
     }
 
+    /// Enable `-Z unstable-options` and set `-C symbol-mangling-version`.
+    pub fn symbol_mangling_version(&mut self, v: &str) -> &mut Self {
+        self.cmd.arg("-Zunstable-options");
+        self.cmd.arg(format!("-Csymbol-mangling-version={v}"));
+        self
+    }
+
     /// Specify the edition year.
     pub fn edition(&mut self, edition: &str) -> &mut Self {
         self.cmd.arg("--edition");
