@@ -15,7 +15,7 @@ use rustc_codegen_ssa::{
     errors as ssa_errors, CodegenResults, CompiledModule, CrateInfo, ModuleKind,
 };
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_data_structures::sync::{par_map, IntoDynSyncSend};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_metadata::EncodedMetadata;
@@ -43,7 +43,7 @@ enum OngoingModuleCodegen {
 }
 
 impl<HCX> HashStable<HCX> for OngoingModuleCodegen {
-    fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, _: &mut HCX, _: &mut GenericStableHasher<H>) {
         // do nothing
     }
 }

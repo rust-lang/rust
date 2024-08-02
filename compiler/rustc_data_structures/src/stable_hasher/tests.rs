@@ -45,7 +45,11 @@ fn test_attribute_permutation() {
             }
 
             impl<CTX> HashStable<CTX> for Foo {
-                fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+                fn hash_stable<H: ExtendedHasher>(
+                    &self,
+                    hcx: &mut CTX,
+                    hasher: &mut GenericStableHasher<H>,
+                ) {
                     self.a.hash_stable(hcx, hasher);
                     self.b.hash_stable(hcx, hasher);
                 }

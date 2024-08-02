@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_data_structures::sync::OnceLock;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -186,5 +186,5 @@ impl<D: Decoder> Decodable<D> for Cache {
 
 impl<CTX> HashStable<CTX> for Cache {
     #[inline]
-    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {}
+    fn hash_stable<H: ExtendedHasher>(&self, _: &mut CTX, _: &mut GenericStableHasher<H>) {}
 }

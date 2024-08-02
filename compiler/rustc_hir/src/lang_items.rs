@@ -9,7 +9,7 @@
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -137,7 +137,7 @@ macro_rules! language_item_table {
 }
 
 impl<CTX> HashStable<CTX> for LangItem {
-    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, _: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         ::std::hash::Hash::hash(self, hasher);
     }
 }

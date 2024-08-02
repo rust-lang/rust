@@ -277,7 +277,11 @@ unsafe impl Tag for Tag2 {
 
 #[cfg(test)]
 impl<HCX> crate::stable_hasher::HashStable<HCX> for Tag2 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut crate::stable_hasher::StableHasher) {
+    fn hash_stable<H: crate::stable_hasher::ExtendedHasher>(
+        &self,
+        hcx: &mut HCX,
+        hasher: &mut crate::stable_hasher::GenericStableHasher<H>,
+    ) {
         (*self as u8).hash_stable(hcx, hasher);
     }
 }

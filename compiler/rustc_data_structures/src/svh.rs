@@ -42,7 +42,11 @@ impl fmt::Display for Svh {
 
 impl<T> stable_hasher::HashStable<T> for Svh {
     #[inline]
-    fn hash_stable(&self, ctx: &mut T, hasher: &mut stable_hasher::StableHasher) {
+    fn hash_stable<H: stable_hasher::ExtendedHasher>(
+        &self,
+        ctx: &mut T,
+        hasher: &mut stable_hasher::GenericStableHasher<H>,
+    ) {
         let Svh { hash } = *self;
         hash.hash_stable(ctx, hasher);
     }

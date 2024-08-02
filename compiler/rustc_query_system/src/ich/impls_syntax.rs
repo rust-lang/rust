@@ -4,7 +4,7 @@
 use std::assert_matches::assert_matches;
 
 use rustc_ast as ast;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_span::SourceFile;
 use smallvec::SmallVec;
 
@@ -13,7 +13,11 @@ use crate::ich::StableHashingContext;
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         if self.is_empty() {
             self.len().hash_stable(hcx, hasher);
             return;
@@ -36,7 +40,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
 }
 
 impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
-    fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
+    fn hash_attr<H: ExtendedHasher>(
+        &mut self,
+        attr: &ast::Attribute,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         // Make sure that these have been filtered out.
         debug_assert!(!attr.ident().is_some_and(|ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
@@ -60,7 +68,11 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
 impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         let SourceFile {
             name: _, // We hash the smaller stable_id instead of this
             stable_id,
@@ -107,7 +119,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         // Unfortunately we cannot exhaustively list fields here, since the
         // struct is macro generated.
         self.declared_lang_features.hash_stable(hcx, hasher);

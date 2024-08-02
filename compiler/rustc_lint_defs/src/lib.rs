@@ -2,7 +2,7 @@ use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableCompare, StableHasher, ToStableHashKey,
+    ExtendedHasher, GenericStableHasher, HashStable, StableCompare, ToStableHashKey,
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
@@ -135,7 +135,7 @@ impl LintExpectationId {
 
 impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         match self {
             LintExpectationId::Stable {
                 hir_id,
@@ -529,7 +529,7 @@ impl LintId {
 
 impl<HCX> HashStable<HCX> for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }

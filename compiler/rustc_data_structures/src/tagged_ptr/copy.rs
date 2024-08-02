@@ -7,7 +7,7 @@ use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
 use super::{Pointer, Tag};
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 
 /// A [`Copy`] tagged pointer.
 ///
@@ -273,7 +273,7 @@ where
     P: Pointer + HashStable<HCX>,
     T: Tag + HashStable<HCX>,
 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         self.with_pointer_ref(|ptr| ptr.hash_stable(hcx, hasher));
         self.tag().hash_stable(hcx, hasher);
     }
