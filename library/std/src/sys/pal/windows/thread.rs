@@ -116,25 +116,6 @@ impl Thread {
         }
     }
 
-    pub fn sleep_until(deadline: Instant) {
-        fn high_precision_sleep(deadline: Instant) -> Result<(), ()> {
-            let timer = WaitableTimer::high_resolution()?;
-            timer.set_deadline(deadline.into_inner())?;
-            timer.wait()
-        }
-        // Attempt to use high-precision sleep (Windows 10, version 1803+).
-        // On error fallback to the standard `Sleep` function.
-        // Also preserves the zero duration behaviour of `Sleep`.
-        if high_precision_sleep(deadline).is_ok() {
-            return;
-        }
-
-        let now = Instant::now();
-        if let Some(dur) = deadline.checked_duration_since(now) {
-            unsafe { c::Sleep(super::dur2timeout(dur)) }
-        };
-    }
-
     pub fn handle(&self) -> &Handle {
         &self.handle
     }

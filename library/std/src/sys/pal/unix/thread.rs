@@ -357,8 +357,9 @@ impl Thread {
 
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
     pub fn sleep_until(deadline: crate::time::Instant) {
-        use super::time::Timespec;
         use core::mem::MaybeUninit;
+
+        use super::time::Timespec;
 
         let Timespec { tv_sec, tv_nsec } = deadline.into_inner().into_timespec();
         let nanos = (tv_sec as u64).saturating_mul(1_000_000_000).saturating_add(tv_nsec.0 as u64);
