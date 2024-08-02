@@ -107,12 +107,12 @@ pub enum TypeKind {
 //            for now we content ourselves with providing a no-op HashStable
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+    use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 
     use crate::ModuleCodegen;
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
-        fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+        fn hash_stable<H: ExtendedHasher>(&self, _: &mut HCX, _: &mut GenericStableHasher<H>) {
             // do nothing
         }
     }

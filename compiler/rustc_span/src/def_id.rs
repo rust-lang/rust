@@ -3,7 +3,8 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{
-    Hash64, HashStable, StableHasher, StableOrd, ToStableHashKey,
+    ExtendedHasher, GenericStableHasher, Hash64, HashStable, StableHasher, StableOrd,
+    ToStableHashKey,
 };
 use rustc_data_structures::unhash::Unhasher;
 use rustc_data_structures::AtomicRef;
@@ -404,21 +405,21 @@ rustc_data_structures::define_id_collections!(
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for LocalDefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }

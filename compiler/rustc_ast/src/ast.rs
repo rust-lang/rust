@@ -23,7 +23,7 @@ use std::{cmp, fmt, mem};
 
 pub use rustc_ast_ir::{Movability, Mutability};
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -105,7 +105,7 @@ impl PartialEq<Symbol> for Path {
 }
 
 impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);
@@ -1723,7 +1723,7 @@ impl<CTX> HashStable<CTX> for AttrArgs
 where
     CTX: crate::HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, ctx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         mem::discriminant(self).hash_stable(ctx, hasher);
         match self {
             AttrArgs::Empty => {}
@@ -1759,7 +1759,7 @@ impl<CTX> HashStable<CTX> for DelimArgs
 where
     CTX: crate::HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, ctx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         let DelimArgs { dspan, delim, tokens } = self;
         dspan.hash_stable(ctx, hasher);
         delim.hash_stable(ctx, hasher);

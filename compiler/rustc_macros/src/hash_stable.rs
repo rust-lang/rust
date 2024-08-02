@@ -111,10 +111,10 @@ fn hash_stable_derive_with_mode(
         ),
         quote! {
             #[inline]
-            fn hash_stable(
+            fn hash_stable<__H: ::rustc_data_structures::stable_hasher::ExtendedHasher>(
                 &self,
                 __hcx: &mut #context,
-                __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                __hasher: &mut ::rustc_data_structures::stable_hasher::GenericStableHasher<__H>) {
                 #discriminant
                 match *self { #body }
             }

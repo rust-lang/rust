@@ -29,7 +29,7 @@ use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{try_visit, Movability, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
@@ -529,7 +529,11 @@ impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         self.unpack().hash_stable(hcx, hasher);
     }
 }
@@ -1017,7 +1021,11 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         self.caller_bounds().hash_stable(hcx, hasher);
         self.reveal().hash_stable(hcx, hasher);
     }

@@ -58,7 +58,7 @@ use hygiene::Transparency;
 pub use hygiene::{
     DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext,
 };
-use rustc_data_structures::stable_hasher::HashingControls;
+use rustc_data_structures::stable_hasher::{HashingControls, StableHasher};
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
 pub mod edit_distance;
@@ -83,7 +83,9 @@ use std::{fmt, iter};
 
 use md5::{Digest, Md5};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, Hash128, Hash64, HashStable,
+};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 use sha1::Sha1;
 use sha2::Sha256;
@@ -2274,8 +2276,8 @@ impl<D: Decoder> Decodable<D> for BytePos {
     }
 }
 
-impl<H: HashStableContext> HashStable<H> for RelativeBytePos {
-    fn hash_stable(&self, hcx: &mut H, hasher: &mut StableHasher) {
+impl<HCX: HashStableContext> HashStable<HCX> for RelativeBytePos {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         self.0.hash_stable(hcx, hasher);
     }
 }
@@ -2419,7 +2421,7 @@ where
     /// codepoint offsets. For the purpose of the hash that's sufficient.
     /// Also, hashing filenames is expensive so we avoid doing it twice when the
     /// span starts and ends in the same file, which is almost always the case.
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, ctx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;

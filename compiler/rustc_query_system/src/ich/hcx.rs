@@ -1,5 +1,7 @@
 use rustc_ast as ast;
-use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, HashStable, HashingControls,
+};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
@@ -88,7 +90,11 @@ impl<'a> StableHashingContext<'a> {
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
     #[inline]
-    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        _: &mut StableHashingContext<'a>,
+        _: &mut GenericStableHasher<H>,
+    ) {
         panic!("Node IDs should not appear in incremental state");
     }
 }

@@ -139,7 +139,11 @@ pub struct ScalarInt {
 // Cannot derive these, as the derives take references to the fields, and we
 // can't take references to fields of packed structs.
 impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut crate::ty::StableHasher) {
+    fn hash_stable<H: crate::ty::ExtendedHasher>(
+        &self,
+        hcx: &mut CTX,
+        hasher: &mut crate::ty::GenericStableHasher<H>,
+    ) {
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
         // directly, because `hash_stable` takes `&self` and would thus borrow `self.data`.
         // Since `Self` is a packed struct, that would create a possibly unaligned reference,

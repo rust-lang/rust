@@ -12,7 +12,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
 
 use crate::fingerprint::Fingerprint;
-use crate::stable_hasher::{HashStable, StableCompare, StableHasher, ToStableHashKey};
+use crate::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, HashStable, StableCompare, ToStableHashKey,
+};
 
 /// `UnordItems` is the order-less version of `Iterator`. It only contains methods
 /// that don't (easily) expose an ordering of the underlying items.
@@ -401,7 +403,7 @@ impl<V: Hash + Eq, I: Iterator<Item = V>> From<UnordItems<V, I>> for UnordSet<V>
 
 impl<HCX, V: Hash + Eq + HashStable<HCX>> HashStable<HCX> for UnordSet<V> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -619,7 +621,7 @@ where
 
 impl<HCX, K: Hash + Eq + HashStable<HCX>, V: HashStable<HCX>> HashStable<HCX> for UnordMap<K, V> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -682,7 +684,7 @@ impl<T, I: Iterator<Item = T>> From<UnordItems<T, I>> for UnordBag<T> {
 
 impl<HCX, V: Hash + Eq + HashStable<HCX>> HashStable<HCX> for UnordBag<V> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -711,11 +713,12 @@ where
 fn hash_iter_order_independent<
     HCX,
     T: HashStable<HCX>,
+    H: ExtendedHasher,
     I: Iterator<Item = T> + ExactSizeIterator,
 >(
     mut it: I,
     hcx: &mut HCX,
-    hasher: &mut StableHasher,
+    hasher: &mut GenericStableHasher<H>,
 ) {
     let len = it.len();
     len.hash_stable(hcx, hasher);
@@ -731,7 +734,7 @@ fn hash_iter_order_independent<
         _ => {
             let mut accumulator = Fingerprint::ZERO;
             for item in it {
-                let mut item_hasher = StableHasher::new();
+                let mut item_hasher = GenericStableHasher::<H>::new();
                 item.hash_stable(hcx, &mut item_hasher);
                 let item_fingerprint: Fingerprint = item_hasher.finish();
                 accumulator = accumulator.combine_commutative(item_fingerprint);

@@ -31,7 +31,9 @@ use std::hash::Hash;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, Hash64, HashStable, HashingControls, StableHasher,
+};
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::IndexVec;
@@ -1536,7 +1538,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContex
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, ctx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1552,7 +1554,7 @@ impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, ctx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         assert_default_hashing_controls(ctx, "ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.

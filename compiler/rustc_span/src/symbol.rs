@@ -8,7 +8,7 @@ use std::{fmt, str};
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableCompare, StableHasher, ToStableHashKey,
+    ExtendedHasher, GenericStableHasher, HashStable, StableCompare, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{symbols, Decodable, Encodable, HashStable_Generic};
@@ -2364,7 +2364,7 @@ impl ToString for Symbol {
 
 impl<CTX> HashStable<CTX> for Symbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }

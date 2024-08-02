@@ -994,11 +994,15 @@ pub enum BindingForm<'tcx> {
 TrivialTypeTraversalImpls! { BindingForm<'tcx> }
 
 mod binding_form_impl {
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+    use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
     use rustc_query_system::ich::StableHashingContext;
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
-        fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        fn hash_stable<H: ExtendedHasher>(
+            &self,
+            hcx: &mut StableHashingContext<'a>,
+            hasher: &mut GenericStableHasher<H>,
+        ) {
             use super::BindingForm::*;
             std::mem::discriminant(self).hash_stable(hcx, hasher);
 

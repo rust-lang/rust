@@ -21,7 +21,7 @@ use std::fmt::{self, Debug, Display};
 use std::ops::{Deref, DerefMut};
 use std::{slice, vec};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 /// An owned smart pointer.
 ///
@@ -203,7 +203,7 @@ impl<CTX, T> HashStable<CTX> for P<T>
 where
     T: ?Sized + HashStable<CTX>,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         (**self).hash_stable(hcx, hasher);
     }
 }
