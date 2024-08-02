@@ -442,7 +442,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 }
 
 fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::Item, name: Symbol) {
-    let ((parent_did, parent_path), is_impl_child) = match *item.kind {
+    // Item has a name, so it must also have a DefId (can't be an impl, let alone a blanket or auto impl).
+    let item_def_id = item.item_id.as_def_id().unwrap();
+    let (parent_did, parent_path) = match *item.kind {
         clean::StrippedItem(..) => return,
         clean::AssocConstItem(..) | clean::AssocTypeItem(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
@@ -454,123 +456,114 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         | clean::TyAssocConstItem(..)
         | clean::TyAssocTypeItem(..)
         | clean::StructFieldItem(..)
-        | clean::VariantItem(..) => (
-            (
-                Some(
-                    cache
-                        .parent_stack
-                        .last()
-                        .expect("parent_stack is empty")
-                        .item_id()
-                        .expect_def_id(),
-                ),
-                Some(&cache.stack[..cache.stack.len() - 1]),
-            ),
-            false,
-        ),
+        | clean::VariantItem(..) => {
+            // Don't index if containing module is stripped (i.e., private),
+            // or if item is tuple struct/variant field (name is a number -> not useful for search).
+            if cache.stripped_mod
+                || item.type_() == ItemType::StructField
+                    && name.as_str().chars().all(|c| c.is_digit(10))
+            {
+                return;
+            }
+            let parent_did =
+                cache.parent_stack.last().expect("parent_stack is empty").item_id().expect_def_id();
+            let parent_path = &cache.stack[..cache.stack.len() - 1];
+            (Some(parent_did), parent_path)
+        }
         clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
-            let did = match &*last {
-                ParentStackItem::Impl {
-                    // impl Trait for &T { fn method(self); }
-                    //
-                    // When generating a function index with the above shape, we want it
-                    // associated with `T`, not with the primitive reference type. It should
-                    // show up as `T::method`, rather than `reference::method`, in the search
-                    // results page.
-                    for_: clean::Type::BorrowedRef { type_, .. },
-                    ..
-                } => type_.def_id(&cache),
+            let parent_did = match &*last {
+                // impl Trait for &T { fn method(self); }
+                //
+                // When generating a function index with the above shape, we want it
+                // associated with `T`, not with the primitive reference type. It should
+                // show up as `T::method`, rather than `reference::method`, in the search
+                // results page.
+                ParentStackItem::Impl { for_: clean::Type::BorrowedRef { type_, .. }, .. } => {
+                    type_.def_id(&cache)
+                }
                 ParentStackItem::Impl { for_, .. } => for_.def_id(&cache),
                 ParentStackItem::Type(item_id) => item_id.as_def_id(),
             };
-            let path = did
-                .and_then(|did| cache.paths.get(&did))
-                // The current stack not necessarily has correlation
-                // for where the type was defined. On the other
-                // hand, `paths` always has the right
-                // information if present.
-                .map(|(fqp, _)| &fqp[..fqp.len() - 1]);
-            ((did, path), true)
+            let Some(parent_did) = parent_did else { return };
+            // The current stack not necessarily has correlation
+            // for where the type was defined. On the other
+            // hand, `paths` always has the right
+            // information if present.
+            match cache.paths.get(&parent_did) {
+                Some((fqp, _)) => (Some(parent_did), &fqp[..fqp.len() - 1]),
+                None => {
+                    handle_orphan_impl_child(cache, item, parent_did);
+                    return;
+                }
+            }
         }
-        _ => ((None, Some(&*cache.stack)), false),
+        _ => {
+            // Don't index if item is crate root, which is inserted later on when serializing the index.
+            if item_def_id.is_crate_root() {
+                return;
+            }
+            (None, &*cache.stack)
+        }
     };
 
-    if let Some(parent_did) = parent_did
-        && parent_path.is_none()
-        && is_impl_child
-    {
-        // We have a parent, but we don't know where they're
-        // defined yet. Wait for later to index this item.
-        let impl_generics = clean_impl_generics(cache.parent_stack.last());
-        let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last()
-        {
-            item_id.as_def_id()
-        } else {
-            None
-        };
-        let orphan_item =
-            OrphanImplItem { parent: parent_did, item: item.clone(), impl_generics, impl_id };
-        cache.orphan_impl_items.push(orphan_item);
-    } else if let Some(path) = parent_path
-        && (is_impl_child || !cache.stripped_mod)
-    {
-        debug_assert!(!item.is_stripped());
+    debug_assert!(!item.is_stripped());
 
-        // A crate has a module at its root, containing all items,
-        // which should not be indexed. The crate-item itself is
-        // inserted later on when serializing the search-index.
-        if item.item_id.as_def_id().is_some_and(|idx| !idx.is_crate_root())
-            && let ty = item.type_()
-            && (ty != ItemType::StructField || u16::from_str_radix(name.as_str(), 10).is_err())
-        {
-            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
-            // For searching purposes, a re-export is a duplicate if:
-            //
-            // - It's either an inline, or a true re-export
-            // - It's got the same name
-            // - Both of them have the same exact path
-            let defid = (match &*item.kind {
-                &clean::ItemKind::ImportItem(ref import) => import.source.did,
-                _ => None,
-            })
-            .or_else(|| item.item_id.as_def_id());
-            // In case this is a field from a tuple struct, we don't add it into
-            // the search index because its name is something like "0", which is
-            // not useful for rustdoc search.
-            let path = join_with_double_colon(path);
-            let impl_id =
-                if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
-                    item_id.as_def_id()
-                } else {
-                    None
-                };
-            let search_type = get_function_type_for_search(
-                &item,
-                tcx,
-                clean_impl_generics(cache.parent_stack.last()).as_ref(),
-                parent_did,
-                cache,
-            );
-            let aliases = item.attrs.get_doc_aliases();
-            let deprecation = item.deprecation(tcx);
-            let index_item = IndexItem {
-                ty,
-                defid,
-                name,
-                path,
-                desc,
-                parent: parent_did,
-                parent_idx: None,
-                exact_path: None,
-                impl_id,
-                search_type,
-                aliases,
-                deprecation,
-            };
-            cache.search_index.push(index_item);
-        }
-    }
+    let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
+    // For searching purposes, a re-export is a duplicate if:
+    //
+    // - It's either an inline, or a true re-export
+    // - It's got the same name
+    // - Both of them have the same exact path
+    let defid = match &*item.kind {
+        clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
+        _ => item_def_id,
+    };
+    let path = join_with_double_colon(parent_path);
+    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
+        item_id.as_def_id()
+    } else {
+        None
+    };
+    let search_type = get_function_type_for_search(
+        &item,
+        tcx,
+        clean_impl_generics(cache.parent_stack.last()).as_ref(),
+        parent_did,
+        cache,
+    );
+    let aliases = item.attrs.get_doc_aliases();
+    let deprecation = item.deprecation(tcx);
+    let index_item = IndexItem {
+        ty: item.type_(),
+        defid: Some(defid),
+        name,
+        path,
+        desc,
+        parent: parent_did,
+        parent_idx: None,
+        exact_path: None,
+        impl_id,
+        search_type,
+        aliases,
+        deprecation,
+    };
+    cache.search_index.push(index_item);
+}
+
+/// We have a parent, but we don't know where they're
+/// defined yet. Wait for later to index this item.
+/// See [`Cache::orphan_impl_items`].
+fn handle_orphan_impl_child(cache: &mut Cache, item: &clean::Item, parent_did: DefId) {
+    let impl_generics = clean_impl_generics(cache.parent_stack.last());
+    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
+        item_id.as_def_id()
+    } else {
+        None
+    };
+    let orphan_item =
+        OrphanImplItem { parent: parent_did, item: item.clone(), impl_generics, impl_id };
+    cache.orphan_impl_items.push(orphan_item);
 }
 
 pub(crate) struct OrphanImplItem {
