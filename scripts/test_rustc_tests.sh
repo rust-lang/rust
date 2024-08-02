@@ -118,6 +118,7 @@ rm tests/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/consts/const-mut-refs-crate.rs # same
+rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
