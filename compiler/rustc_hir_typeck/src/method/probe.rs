@@ -1030,12 +1030,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn pick_core(&self) -> Option<PickResult<'tcx>> {
         // Pick stable methods only first, and consider unstable candidates if not found.
-        self.pick_all_method(Some(&mut vec![])).or_else(|| self.pick_all_method(None))
+        self.pick_all_method(Some(vec![])).or_else(|| self.pick_all_method(None))
     }
 
     fn pick_all_method(
         &self,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        mut unstable_candidates: Option<Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
         self.steps
             .iter()
@@ -1056,30 +1056,23 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .unwrap_or_else(|_| {
                         span_bug!(self.span, "{:?} was applicable but now isn't?", step.self_ty)
                     });
-                self.pick_by_value_method(step, self_ty, unstable_candidates.as_deref_mut())
+                self.pick_by_value_method(step, self_ty, &mut unstable_candidates).or_else(|| {
+                    self.pick_autorefd_method(
+                        step,
+                        self_ty,
+                        hir::Mutability::Not,
+                        &mut unstable_candidates,
+                    )
                     .or_else(|| {
                         self.pick_autorefd_method(
                             step,
                             self_ty,
-                            hir::Mutability::Not,
-                            unstable_candidates.as_deref_mut(),
+                            hir::Mutability::Mut,
+                            &mut unstable_candidates,
                         )
-                        .or_else(|| {
-                            self.pick_autorefd_method(
-                                step,
-                                self_ty,
-                                hir::Mutability::Mut,
-                                unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                        .or_else(|| {
-                            self.pick_const_ptr_method(
-                                step,
-                                self_ty,
-                                unstable_candidates.as_deref_mut(),
-                            )
-                        })
                     })
+                    .or_else(|| self.pick_const_ptr_method(step, self_ty, &mut unstable_candidates))
+                })
             })
     }
 
@@ -1093,7 +1086,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: &mut Option<Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
         if step.unsize {
             return None;
@@ -1122,7 +1115,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         mutbl: hir::Mutability,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: &mut Option<Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
@@ -1147,7 +1140,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: &mut Option<Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
         // Don't convert an unsized reference to ptr
         if step.unsize {
@@ -1171,7 +1164,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick_method(
         &self,
         self_ty: Ty<'tcx>,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: &mut Option<Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
@@ -1185,7 +1178,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self_ty,
                 candidates,
                 &mut possibly_unsatisfied_predicates,
-                unstable_candidates.as_deref_mut(),
+                unstable_candidates,
             );
             if let Some(pick) = res {
                 return Some(pick);
@@ -1194,7 +1187,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if self.private_candidate.get().is_none() {
             if let Some(Ok(pick)) =
-                self.consider_candidates(self_ty, &self.private_candidates, &mut vec![], None)
+                self.consider_candidates(self_ty, &self.private_candidates, &mut vec![], &mut None)
             {
                 self.private_candidate.set(Some((pick.item.kind.as_def_kind(), pick.item.def_id)));
             }
@@ -1217,7 +1210,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )>,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: &mut Option<Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> = candidates
             .iter()
@@ -1237,7 +1230,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        if let Some(uc) = &mut unstable_candidates {
+        if let Some(uc) = unstable_candidates {
             applicable_candidates.retain(|&(candidate, _)| {
                 if let stability::EvalResult::Deny { feature, .. } =
                     self.tcx.eval_stability(candidate.item.def_id, None, self.span, None)
@@ -1255,10 +1248,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         applicable_candidates.pop().map(|(probe, status)| match status {
-            ProbeResult::Match => {
-                Ok(probe
-                    .to_unadjusted_pick(self_ty, unstable_candidates.cloned().unwrap_or_default()))
-            }
+            ProbeResult::Match => Ok(probe.to_unadjusted_pick(
+                self_ty,
+                unstable_candidates.as_ref().cloned().unwrap_or_default(),
+            )),
             ProbeResult::NoMatch | ProbeResult::BadReturnType => Err(MethodError::BadReturnType),
         })
     }
