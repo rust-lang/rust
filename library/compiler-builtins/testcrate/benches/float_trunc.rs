@@ -32,7 +32,7 @@ float_bench! {
     sig: (a: f64) -> f16,
     crate_fn: trunc::__truncdfhf2,
     sys_fn: __truncdfhf2,
-    sys_available: not(feature = "no-sys-f128"),
+    sys_available: not(feature = "no-sys-f16"),
     asm: [
         #[cfg(target_arch = "aarch64")] {
             // FIXME(f16_f128): remove `from_bits()` after f16 asm support (rust-lang/rust/#116909)
