@@ -175,10 +175,6 @@ pub(crate) mod instant_internal {
 
     #[cfg(target_arch = "x86_64")]
     fn timestamp_rdtsc() -> Option<Duration> {
-        if !crate::arch::x86_64::has_cpuid() {
-            return None;
-        }
-
         static FREQUENCY: crate::sync::OnceLock<u64> = crate::sync::OnceLock::new();
 
         // Get Frequency in Mhz
@@ -200,10 +196,6 @@ pub(crate) mod instant_internal {
 
     #[cfg(target_arch = "x86")]
     fn timestamp_rdtsc() -> Option<Duration> {
-        if !crate::arch::x86::has_cpuid() {
-            return None;
-        }
-
         static FREQUENCY: crate::sync::OnceLock<u64> = crate::sync::OnceLock::new();
 
         let freq = FREQUENCY
