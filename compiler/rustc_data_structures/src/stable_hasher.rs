@@ -10,6 +10,7 @@ use smallvec::SmallVec;
 #[cfg(test)]
 mod tests;
 
+pub use rustc_stable_hash::hashers::StableBlake2sHasher256;
 pub use rustc_stable_hash::{
     FromStableHash, IntoStableHash, SipHasher128Hash as StableHasherHash,
     StableHasher as GenericStableHasher, StableSipHasher128 as StableHasher,
@@ -21,6 +22,7 @@ pub trait ExtendedHasher:
 }
 
 impl ExtendedHasher for rustc_stable_hash::hashers::SipHasher128 {}
+impl ExtendedHasher for rustc_stable_hash::hashers::Blake2sHasher256 {}
 
 use crate::fingerprint::Fingerprint;
 pub use crate::hashes::{Hash128, Hash64};
