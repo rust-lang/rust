@@ -43,4 +43,4 @@ pub fn f(x: bool) {
 // CHECK: path_b
 // CHECK: bb2:
 // CHECK: path_a
-// CHECK: ![[NUM]] = !{!"branch_weights",{{.*,}} i32 2000, i32 1}
+// CHECK: ![[NUM]] = !{!"branch_weights", {{(!"expected", )?}}i32 2000, i32 1}
