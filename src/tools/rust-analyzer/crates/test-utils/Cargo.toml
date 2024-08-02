@@ -18,6 +18,7 @@ text-size.workspace = true
 tracing.workspace = true
 rustc-hash.workspace = true
 
+paths.workspace = true
 stdx.workspace = true
 profile.workspace = true
 

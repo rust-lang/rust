@@ -1987,6 +1987,7 @@ name = "test-utils"
 version = "0.0.0"
 dependencies = [
  "dissimilar",
+ "paths",
  "profile",
  "rustc-hash",
  "stdx",

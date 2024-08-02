@@ -37,7 +37,7 @@ use std::{
 };
 
 use anyhow::{bail, format_err, Context};
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashSet;
 
 pub use crate::{
@@ -132,8 +132,11 @@ impl ProjectManifest {
                 .filter_map(Result::ok)
                 .map(|it| it.path().join("Cargo.toml"))
                 .filter(|it| it.exists())
+                .map(Utf8PathBuf::from_path_buf)
+                .filter_map(Result::ok)
                 .map(AbsPathBuf::try_from)
-                .filter_map(|it| it.ok()?.try_into().ok())
+                .filter_map(Result::ok)
+                .filter_map(|it| it.try_into().ok())
                 .collect()
         }
     }
