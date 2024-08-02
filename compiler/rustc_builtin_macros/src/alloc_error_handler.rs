@@ -80,7 +80,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let params = thin_vec![cx.param(span, size, ty_usize.clone()), cx.param(span, align, ty_usize)];
     let decl = cx.fn_decl(params, never);
     let header = FnHeader { safety: Safety::Unsafe(span), ..FnHeader::default() };
-    let sig = FnSig { decl, header, span: span };
+    let sig = FnSig { decl, header, span };
 
     let body = Some(cx.block_expr(call));
     let kind = ItemKind::Fn(Box::new(Fn {
