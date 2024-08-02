@@ -1,0 +1,54 @@
+error: attribute should be applied to a function definition
+  --> $DIR/pointee.rs:7:5
+   |
+LL |       #[pointee]
+   |       ^^^^^^^^^^
+LL | /     {
+LL | |         1
+LL | |     };
+   | |_____- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/pointee.rs:13:1
+   |
+LL | #[pointee]
+   | ^^^^^^^^^^
+LL | type InvalidTy = ();
+   | -------------------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/pointee.rs:16:1
+   |
+LL | #[pointee]
+   | ^^^^^^^^^^
+LL | mod invalid_module {}
+   | --------------------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/pointee.rs:20:13
+   |
+LL |     let _ = #[pointee]
+   |             ^^^^^^^^^^
+LL |     (|| 1);
+   |     ------ not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/pointee.rs:24:1
+   |
+LL | #[pointee]
+   | ^^^^^^^^^^
+LL | struct F;
+   | --------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/pointee.rs:27:1
+   |
+LL |   #[pointee]
+   |   ^^^^^^^^^^
+LL | / impl F {
+LL | |     #[pointee]
+LL | |     fn valid(&self) {}
+LL | | }
+   | |_- not a function definition
+
+error: aborting due to 6 previous errors
