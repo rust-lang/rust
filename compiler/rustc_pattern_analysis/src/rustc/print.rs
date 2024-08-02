@@ -116,13 +116,7 @@ fn write_struct_like<'tcx>(
             Some((variant, name))
         }),
         EnumInfo::NotEnum => ty.ty_adt_def().and_then(|adt_def| {
-            if !adt_def.is_enum() {
-                ty::tls::with(|tcx| {
-                    Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did())))
-                })
-            } else {
-                None
-            }
+            ty::tls::with(|tcx| Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did()))))
         }),
     };
 
