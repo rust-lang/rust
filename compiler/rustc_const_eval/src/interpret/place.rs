@@ -572,7 +572,10 @@ where
 
         if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(&dest.to_op(self)?)?;
+            self.validate_operand(
+                &dest.to_op(self)?,
+                M::enforce_validity_recursively(self, dest.layout()),
+            )?;
         }
 
         Ok(())
@@ -811,7 +814,10 @@ where
         // Generally for transmutation, data must be valid both at the old and new type.
         // But if the types are the same, the 2nd validation below suffices.
         if src.layout().ty != dest.layout().ty && M::enforce_validity(self, src.layout()) {
-            self.validate_operand(&src.to_op(self)?)?;
+            self.validate_operand(
+                &src.to_op(self)?,
+                M::enforce_validity_recursively(self, src.layout()),
+            )?;
         }
 
         // Do the actual copy.
@@ -819,7 +825,10 @@ where
 
         if validate_dest && M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(&dest.to_op(self)?)?;
+            self.validate_operand(
+                &dest.to_op(self)?,
+                M::enforce_validity_recursively(self, dest.layout()),
+            )?;
         }
 
         Ok(())

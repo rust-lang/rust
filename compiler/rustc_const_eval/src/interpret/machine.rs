@@ -165,6 +165,13 @@ pub trait Machine<'tcx>: Sized {
 
     /// Whether to enforce the validity invariant for a specific layout.
     fn enforce_validity(ecx: &InterpCx<'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
+    /// Whether to enforce the validity invariant *recursively*.
+    fn enforce_validity_recursively(
+        _ecx: &InterpCx<'tcx, Self>,
+        _layout: TyAndLayout<'tcx>,
+    ) -> bool {
+        false
+    }
 
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'tcx, Self>) -> bool {

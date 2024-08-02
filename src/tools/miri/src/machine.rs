@@ -187,7 +187,11 @@ impl fmt::Display for MiriMemoryKind {
 pub type MemoryKind = interpret::MemoryKind<MiriMemoryKind>;
 
 /// Pointer provenance.
-#[derive(Clone, Copy)]
+// This needs to be `Eq`+`Hash` because the `Machine` trait needs that because validity checking
+// *might* be recursive and then it has to track which places have already been visited.
+// These implementations are a bit questionable, and it means we may check the same place multiple
+// times with different provenance, but that is in general not wrong.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Provenance {
     /// For pointers with concrete provenance. we exactly know which allocation they are attached to
     /// and what their borrow tag is.
@@ -213,24 +217,6 @@ pub enum Provenance {
     ///   of using *any* exposed pointer for this access, and only keep information about the borrow
     ///   stack that would be true with all possible choices.
     Wildcard,
-}
-
-// This needs to be `Eq`+`Hash` because the `Machine` trait needs that because validity checking
-// *might* be recursive and then it has to track which places have already been visited.
-// However, comparing provenance is meaningless, since `Wildcard` might be any provenance -- and of
-// course we don't actually do recursive checking.
-// We could change `RefTracking` to strip provenance for its `seen` set but that type is generic so that is quite annoying.
-// Instead owe add the required instances but make them panic.
-impl PartialEq for Provenance {
-    fn eq(&self, _other: &Self) -> bool {
-        panic!("Provenance must not be compared")
-    }
-}
-impl Eq for Provenance {}
-impl std::hash::Hash for Provenance {
-    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {
-        panic!("Provenance must not be hashed")
-    }
 }
 
 /// The "extra" information a pointer has over a regular AllocId.
@@ -460,7 +446,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) isolated_op: IsolatedOp,
 
     /// Whether to enforce the validity invariant.
-    pub(crate) validate: bool,
+    pub(crate) validation: ValidationMode,
 
     /// The table of file descriptors.
     pub(crate) fds: shims::FdTable,
@@ -659,7 +645,7 @@ impl<'tcx> MiriMachine<'tcx> {
             cmd_line: None,
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
-            validate: config.validate,
+            validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
             dirs: Default::default(),
             layouts,
@@ -801,7 +787,7 @@ impl VisitProvenance for MiriMachine<'_> {
             fds,
             tcx: _,
             isolated_op: _,
-            validate: _,
+            validation: _,
             clock: _,
             layouts: _,
             static_roots: _,
@@ -943,7 +929,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     #[inline(always)]
     fn enforce_validity(ecx: &MiriInterpCx<'tcx>, _layout: TyAndLayout<'tcx>) -> bool {
-        ecx.machine.validate
+        ecx.machine.validation != ValidationMode::No
+    }
+    #[inline(always)]
+    fn enforce_validity_recursively(ecx: &InterpCx<'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
+        ecx.machine.validation == ValidationMode::Deep
     }
 
     #[inline(always)]
