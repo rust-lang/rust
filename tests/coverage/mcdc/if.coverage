@@ -162,7 +162,7 @@
    LL|       |
    LL|      4|fn mcdc_check_not_tree_decision(a: bool, b: bool, c: bool) {
    LL|      4|    // Contradict to `mcdc_check_tree_decision`,
-   LL|      4|    // 100% branch coverage of this expression does not mean indicates 100% mcdc coverage.
+   LL|      4|    // 100% branch coverage of this expression does not indicate 100% mcdc coverage.
    LL|      4|    if (a || b) && c {
                            ^1
   ------------------
