@@ -6,14 +6,17 @@ use std::iter::Peekable;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::str::Chars;
+use std::str::{Chars, FromStr};
 use std::thread;
 
 use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle};
 use crate::formatting::{ReportedErrors, SourceFile};
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
 use crate::source_file;
-use crate::{is_nightly_channel, FormatReport, FormatReportFormatterBuilder, Input, Session};
+use crate::{
+    is_nightly_channel, Edition, FormatReport, FormatReportFormatterBuilder, Input, Session,
+    StyleEdition,
+};
 
 use rustfmt_config_proc_macro::nightly_only_test;
 
@@ -710,13 +713,22 @@ fn print_mismatches<T: Fn(u32) -> String>(
 
 fn read_config(filename: &Path) -> Config {
     let sig_comments = read_significant_comments(filename);
+    let (edition, style_edition) = get_editions_from_comments(&sig_comments);
     // Look for a config file. If there is a 'config' property in the significant comments, use
     // that. Otherwise, if there are no significant comments at all, look for a config file with
     // the same name as the test file.
     let mut config = if !sig_comments.is_empty() {
-        get_config(sig_comments.get("config").map(Path::new))
+        get_config(
+            sig_comments.get("config").map(Path::new),
+            edition,
+            style_edition,
+        )
     } else {
-        get_config(filename.with_extension("toml").file_name().map(Path::new))
+        get_config(
+            filename.with_extension("toml").file_name().map(Path::new),
+            edition,
+            style_edition,
+        )
     };
 
     for (key, val) in &sig_comments {
@@ -747,13 +759,28 @@ enum IdempotentCheckError {
     Parse,
 }
 
+fn get_editions_from_comments(
+    comments: &HashMap<String, String>,
+) -> (Option<Edition>, Option<StyleEdition>) {
+    (
+        comments
+            .get("edition")
+            .map(|e| Edition::from_str(e).expect(&format!("invalid edition value: '{}'", e))),
+        comments.get("style_edition").map(|se| {
+            StyleEdition::from_str(se).expect(&format!("invalid style_edition value: '{}'", se))
+        }),
+    )
+}
+
 fn idempotent_check(
     filename: &PathBuf,
     opt_config: &Option<PathBuf>,
 ) -> Result<FormatReport, IdempotentCheckError> {
     let sig_comments = read_significant_comments(filename);
     let config = if let Some(ref config_file_path) = opt_config {
-        Config::from_toml_path(config_file_path).expect("`rustfmt.toml` not found")
+        let (edition, style_edition) = get_editions_from_comments(&sig_comments);
+        Config::from_toml_path(config_file_path, edition, style_edition)
+            .expect("`rustfmt.toml` not found")
     } else {
         read_config(filename)
     };
@@ -777,14 +804,18 @@ fn idempotent_check(
 // Reads test config file using the supplied (optional) file name. If there's no file name or the
 // file doesn't exist, just return the default config. Otherwise, the file must be read
 // successfully.
-fn get_config(config_file: Option<&Path>) -> Config {
+fn get_config(
+    config_file: Option<&Path>,
+    edition: Option<Edition>,
+    style_edition: Option<StyleEdition>,
+) -> Config {
     let config_file_name = match config_file {
-        None => return Default::default(),
+        None => return Config::default_for_possible_style_edition(style_edition, edition),
         Some(file_name) => {
             let mut full_path = PathBuf::from("tests/config/");
             full_path.push(file_name);
             if !full_path.exists() {
-                return Default::default();
+                return Config::default_for_possible_style_edition(style_edition, edition);
             };
             full_path
         }
@@ -796,7 +827,13 @@ fn get_config(config_file: Option<&Path>) -> Config {
         .read_to_string(&mut def_config)
         .expect("Couldn't read config");
 
-    Config::from_toml(&def_config, Path::new("tests/config/")).expect("invalid TOML")
+    Config::from_toml_for_style_edition(
+        &def_config,
+        Path::new("tests/config/"),
+        edition,
+        style_edition,
+    )
+    .expect("invalid TOML")
 }
 
 // Reads significant comments of the form: `// rustfmt-key: value` into a hash map.
