@@ -498,6 +498,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
+            sym::cold_path => {
+                return Ok(());
+            }
+
             _ => {
                 // Need to use backend-specific things in the implementation.
                 return bx.codegen_intrinsic_call(instance, fn_abi, args, llresult, span);
