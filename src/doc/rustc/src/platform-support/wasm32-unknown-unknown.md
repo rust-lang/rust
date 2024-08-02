@@ -141,7 +141,7 @@ Rust standard library additionally must be recompiled.
 Compiling all code for the initial release of WebAssembly looks like:
 
 ```sh
-$ export RUSTFLAG=-Ctarget-cpu=mvp
+$ export RUSTFLAGS=-Ctarget-cpu=mvp
 $ cargo +nightly build -Zbuild-std=panic_abort,std --target wasm32-unknown-unknown
 ```
 
@@ -166,7 +166,7 @@ about the supported WebAssembly features the engine has.
 
 Note that it is still possible for Rust crates and libraries to enable
 WebAssembly features on a per-function level. This means that the build
-command above may not be sufficent to disable all WebAssembly features. If the
+command above may not be sufficient to disable all WebAssembly features. If the
 final binary still has SIMD instructions, for example, the function in question
 will need to be found and the crate in question will likely contain something
 like:

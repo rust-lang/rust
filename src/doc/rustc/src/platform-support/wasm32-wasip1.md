@@ -136,6 +136,5 @@ to Rust 1.80 the `target_env` condition was not set.
 ## Enabled WebAssembly features
 
 The default set of WebAssembly features enabled for compilation is currently the
-same across all WebAssembly targets. For more information on WebAssembly
-features see the documentation for
-[`wasm32-unknown-unknokwn`](./wasm32-unknown-unknown.md)
+same as [`wasm32-unknown-unknokwn`](./wasm32-unknown-unknown.md). See the
+documentation there for more information.
