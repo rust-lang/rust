@@ -223,16 +223,20 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
             continue;
         }
 
-        // Crucially, we check this *before* checking whether the `alloc_id`
-        // has already been interned. The point of this check is to ensure that when
-        // there are multiple pointers to the same allocation, they are *all* immutable.
-        // Therefore it would be bad if we only checked the first pointer to any given
-        // allocation.
+        // Ensure that this is is derived from a shared reference. Crucially, we check this *before*
+        // checking whether the `alloc_id` has already been interned. The point of this check is to
+        // ensure that when there are multiple pointers to the same allocation, they are *all*
+        // derived from a shared reference. Therefore it would be bad if we only checked the first
+        // pointer to any given allocation.
         // (It is likely not possible to actually have multiple pointers to the same allocation,
         // so alternatively we could also check that and ICE if there are multiple such pointers.)
+        // See <https://github.com/rust-lang/rust/pull/128543> for why we are checking for
+        // "shared reference" and not "immutable", i.e., for why we are allowed interior-mutable
+        // shared references: they can actually be created in safe code while pointing to apparently
+        // "immutable" values, via promotion of `&None::<Cell<T>>`.
         if intern_kind != InternKind::Promoted
             && inner_mutability == Mutability::Not
-            && !prov.immutable()
+            && !prov.shared_ref()
         {
             if ecx.tcx.try_get_global_alloc(alloc_id).is_some()
                 && !just_interned.contains(&alloc_id)
@@ -245,7 +249,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
                 // this to the todo list, since after all it is already interned.
                 continue;
             }
-            // Found a mutable pointer inside a const where inner allocations should be
+            // Found a mutable reference inside a const where inner allocations should be
             // immutable. We exclude promoteds from this, since things like `&mut []` and
             // `&None::<Cell<i32>>` lead to promotion that can produce mutable pointers. We rely
             // on the promotion analysis not screwing up to ensure that it is sound to intern

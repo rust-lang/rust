@@ -718,16 +718,29 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         _kind: mir::RetagKind,
         val: &ImmTy<'tcx, CtfeProvenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, CtfeProvenance>> {
-        // If it's a frozen shared reference that's not already immutable, make it immutable.
+        // If it's a frozen shared reference that's not already immutable, potentially make it immutable.
         // (Do nothing on `None` provenance, that cannot store immutability anyway.)
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
             && *mutbl == Mutability::Not
-            && val.to_scalar_and_meta().0.to_pointer(ecx)?.provenance.is_some_and(|p| !p.immutable())
-            // That next check is expensive, that's why we have all the guards above.
-            && ty.is_freeze(*ecx.tcx, ecx.param_env)
+            && val
+                .to_scalar_and_meta()
+                .0
+                .to_pointer(ecx)?
+                .provenance
+                .is_some_and(|p| !p.immutable())
         {
+            // That next check is expensive, that's why we have all the guards above.
+            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.param_env);
             let place = ecx.ref_to_mplace(val)?;
-            let new_place = place.map_provenance(CtfeProvenance::as_immutable);
+            let new_place = if is_immutable {
+                place.map_provenance(CtfeProvenance::as_immutable)
+            } else {
+                // Even if it is not immutable, remember that it is a shared reference.
+                // This allows it to become part of the final value of the constant.
+                // (See <https://github.com/rust-lang/rust/pull/128543> for why we allow this
+                // even when there is interior mutability.)
+                place.map_provenance(CtfeProvenance::as_shared_ref)
+            };
             Ok(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout))
         } else {
             Ok(val.clone())
