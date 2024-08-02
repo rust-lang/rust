@@ -24,7 +24,8 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   # Needed for apt-key to work:
   dirmngr \
   gpg-agent \
-  g++-9-arm-linux-gnueabi
+  g++-9-arm-linux-gnueabi \
+  g++-riscv64-linux-gnu
 
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
 RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
@@ -73,6 +74,10 @@ RUN env \
     CC=arm-linux-gnueabi-gcc-9 CFLAGS="-march=armv7-a" \
     CXX=arm-linux-gnueabi-g++-9 CXXFLAGS="-march=armv7-a" \
     bash musl.sh armv7 && \
+    env \
+    CC=riscv64-linux-gnu-gcc \
+    CXX=riscv64-linux-gnu-g++ \
+    bash musl.sh riscv64gc && \
     rm -rf /build/*
 
 WORKDIR /tmp
@@ -125,6 +130,7 @@ ENV TARGETS=$TARGETS,x86_64-unknown-none
 ENV TARGETS=$TARGETS,aarch64-unknown-uefi
 ENV TARGETS=$TARGETS,i686-unknown-uefi
 ENV TARGETS=$TARGETS,x86_64-unknown-uefi
+ENV TARGETS=$TARGETS,riscv64gc-unknown-linux-musl
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-9 (for gnux32) but not in the search path of the
@@ -133,6 +139,7 @@ ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
-  --musl-root-armv7=/musl-armv7
+  --musl-root-armv7=/musl-armv7 \
+  --musl-root-riscv64gc=/musl-riscv64gc
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
