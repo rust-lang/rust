@@ -31,11 +31,11 @@ impl Condvar {
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        self.wait_optional_timeout(mutex, None);
+        unsafe { self.wait_optional_timeout(mutex, None) };
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, timeout: Duration) -> bool {
-        self.wait_optional_timeout(mutex, Some(timeout))
+        unsafe { self.wait_optional_timeout(mutex, Some(timeout)) }
     }
 
     unsafe fn wait_optional_timeout(&self, mutex: &Mutex, timeout: Option<Duration>) -> bool {
@@ -43,7 +43,7 @@ impl Condvar {
         let futex_value = self.futex.load(Relaxed);
 
         // Unlock the mutex before going to sleep.
-        mutex.unlock();
+        unsafe { mutex.unlock() };
 
         // Wait, but only if there hasn't been any
         // notification since we unlocked the mutex.
