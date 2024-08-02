@@ -2041,3 +2041,84 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn issue_17734() {
+    check_types(
+        r#"
+fn test() {
+    let x = S::foo::<'static, &()>(&S);
+     // ^ Wrap<'?, ()>
+    let x = S::foo::<&()>(&S);
+     // ^ Wrap<'?, ()>
+    let x = S.foo::<'static, &()>();
+     // ^ Wrap<'?, ()>
+    let x = S.foo::<&()>();
+     // ^ Wrap<'?, ()>
+}
+
+struct S;
+
+impl S {
+    pub fn foo<'a, T: Trait<'a>>(&'a self) -> T::Proj {
+        loop {}
+    }
+}
+
+struct Wrap<'a, T>(T);
+trait Trait<'a> {
+    type Proj;
+}
+impl<'a, T> Trait<'a> for &'a T {
+    type Proj = Wrap<'a, T>;
+}
+"#,
+    )
+}
+
+#[test]
+fn issue_17738() {
+    check_types(
+        r#"
+//- minicore: index
+use core::ops::{Index, IndexMut};
+
+struct Foo<K, V>(K, V);
+
+struct Bar;
+
+impl Bar {
+    fn bar(&mut self) {}
+}
+
+impl<K, V> Foo<K, V> {
+    fn new(_v: V) -> Self {
+        loop {}
+    }
+}
+
+impl<K, B, V> Index<B> for Foo<K, V> {
+    type Output = V;
+    fn index(&self, _index: B) -> &Self::Output {
+        loop {}
+    }
+}
+
+impl<K, V> IndexMut<K> for Foo<K, V> {
+    fn index_mut(&mut self, _index: K) -> &mut Self::Output {
+        loop {}
+    }
+}
+
+fn test() {
+    let mut t1 = Foo::new(Bar);
+     // ^^^^^^ Foo<&'? (), Bar>
+    t1[&()] = Bar;
+
+    let mut t2 = Foo::new(Bar);
+     // ^^^^^^ Foo<&'? (), Bar>
+    t2[&()].bar();
+}
+"#,
+    )
+}

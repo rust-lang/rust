@@ -748,4 +748,16 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_17585() {
+        check_diagnostics(
+            r#"
+fn f() {
+    let (_, _, _, ..) = (true, 42);
+     // ^^^^^^^^^^^^^ error: expected (bool, i32), found (bool, i32, {unknown})
+}
+"#,
+        );
+    }
 }

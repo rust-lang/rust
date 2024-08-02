@@ -4,7 +4,7 @@ use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh}
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
@@ -203,6 +203,35 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::unlikely => self
                 .call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(false)]),
+            sym::select_unpredictable => {
+                let cond = args[0].immediate();
+                assert_eq!(args[1].layout, args[2].layout);
+                let select = |bx: &mut Self, true_val, false_val| {
+                    let result = bx.select(cond, true_val, false_val);
+                    bx.set_unpredictable(&result);
+                    result
+                };
+                match (args[1].val, args[2].val) {
+                    (OperandValue::Ref(true_val), OperandValue::Ref(false_val)) => {
+                        assert!(true_val.llextra.is_none());
+                        assert!(false_val.llextra.is_none());
+                        assert_eq!(true_val.align, false_val.align);
+                        let ptr = select(self, true_val.llval, false_val.llval);
+                        let selected =
+                            OperandValue::Ref(PlaceValue::new_sized(ptr, true_val.align));
+                        selected.store(self, result);
+                        return Ok(());
+                    }
+                    (OperandValue::Immediate(_), OperandValue::Immediate(_))
+                    | (OperandValue::Pair(_, _), OperandValue::Pair(_, _)) => {
+                        let true_val = args[1].immediate_or_packed_pair(self);
+                        let false_val = args[2].immediate_or_packed_pair(self);
+                        select(self, true_val, false_val)
+                    }
+                    (OperandValue::ZeroSized, OperandValue::ZeroSized) => return Ok(()),
+                    _ => span_bug!(span, "Incompatible OperandValue for select_unpredictable"),
+                }
+            }
             sym::catch_unwind => {
                 catch_unwind_intrinsic(
                     self,

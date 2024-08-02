@@ -1,8 +1,8 @@
 //! See [`AssistContext`].
 
-use hir::Semantics;
-use ide_db::base_db::{FileId, FileRange};
-use ide_db::{label::Label, RootDatabase};
+use hir::{FileRange, Semantics};
+use ide_db::EditionedFileId;
+use ide_db::{label::Label, FileId, RootDatabase};
 use syntax::{
     algo::{self, find_node_at_offset, find_node_at_range},
     AstNode, AstToken, Direction, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange,
@@ -90,7 +90,7 @@ impl<'a> AssistContext<'a> {
         self.frange.range.start()
     }
 
-    pub(crate) fn file_id(&self) -> FileId {
+    pub(crate) fn file_id(&self) -> EditionedFileId {
         self.frange.file_id
     }
 
@@ -139,7 +139,7 @@ impl Assists {
     pub(crate) fn new(ctx: &AssistContext<'_>, resolve: AssistResolveStrategy) -> Assists {
         Assists {
             resolve,
-            file: ctx.frange.file_id,
+            file: ctx.frange.file_id.file_id(),
             buf: Vec::new(),
             allowed: ctx.config.allowed.clone(),
         }
@@ -185,11 +185,11 @@ impl Assists {
             return None;
         }
 
-        let mut trigger_signature_help = false;
+        let mut command = None;
         let source_change = if self.resolve.should_resolve(&id) {
             let mut builder = SourceChangeBuilder::new(self.file);
             f(&mut builder);
-            trigger_signature_help = builder.trigger_signature_help;
+            command = builder.command.take();
             Some(builder.finish())
         } else {
             None
@@ -197,7 +197,7 @@ impl Assists {
 
         let label = Label::new(label);
         let group = group.cloned();
-        self.buf.push(Assist { id, label, group, target, source_change, trigger_signature_help });
+        self.buf.push(Assist { id, label, group, target, source_change, command });
         Some(())
     }
 

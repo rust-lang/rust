@@ -1555,7 +1555,7 @@ LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(18, 0)
+#if LLVM_VERSION_GE(18, 0) && LLVM_VERSION_LT(19, 0)
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_condbitmap_update));
 #else

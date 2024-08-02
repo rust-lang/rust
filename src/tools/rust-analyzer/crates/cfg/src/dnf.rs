@@ -27,7 +27,7 @@ struct Literal {
 }
 
 impl DnfExpr {
-    pub fn new(expr: CfgExpr) -> Self {
+    pub fn new(expr: &CfgExpr) -> Self {
         let builder = Builder { expr: DnfExpr { conjunctions: Vec::new() } };
 
         builder.lower(expr)
@@ -66,9 +66,9 @@ impl DnfExpr {
             }
         }
 
-        res.enabled.sort_unstable();
+        res.enabled.sort_unstable_by(compare);
         res.enabled.dedup();
-        res.disabled.sort_unstable();
+        res.disabled.sort_unstable_by(compare);
         res.disabled.dedup();
         Some(res)
     }
@@ -114,11 +114,22 @@ impl DnfExpr {
             };
 
             // Undo the FxHashMap randomization for consistent output.
-            diff.enable.sort_unstable();
-            diff.disable.sort_unstable();
+            diff.enable.sort_unstable_by(compare);
+            diff.disable.sort_unstable_by(compare);
 
             Some(diff)
         })
+    }
+}
+
+fn compare(a: &CfgAtom, b: &CfgAtom) -> std::cmp::Ordering {
+    match (a, b) {
+        (CfgAtom::Flag(a), CfgAtom::Flag(b)) => a.as_str().cmp(b.as_str()),
+        (CfgAtom::Flag(_), CfgAtom::KeyValue { .. }) => std::cmp::Ordering::Less,
+        (CfgAtom::KeyValue { .. }, CfgAtom::Flag(_)) => std::cmp::Ordering::Greater,
+        (CfgAtom::KeyValue { key, value }, CfgAtom::KeyValue { key: key2, value: value2 }) => {
+            key.as_str().cmp(key2.as_str()).then(value.as_str().cmp(value2.as_str()))
+        }
     }
 }
 
@@ -143,9 +154,9 @@ impl fmt::Display for DnfExpr {
 }
 
 impl Conjunction {
-    fn new(parts: Vec<CfgExpr>) -> Self {
+    fn new(parts: Box<[CfgExpr]>) -> Self {
         let mut literals = Vec::new();
-        for part in parts {
+        for part in parts.into_vec() {
             match part {
                 CfgExpr::Invalid | CfgExpr::Atom(_) | CfgExpr::Not(_) => {
                     literals.push(Literal::new(part));
@@ -221,27 +232,28 @@ struct Builder {
 }
 
 impl Builder {
-    fn lower(mut self, expr: CfgExpr) -> DnfExpr {
+    fn lower(mut self, expr: &CfgExpr) -> DnfExpr {
         let expr = make_nnf(expr);
         let expr = make_dnf(expr);
 
         match expr {
             CfgExpr::Invalid | CfgExpr::Atom(_) | CfgExpr::Not(_) => {
-                self.expr.conjunctions.push(Conjunction::new(vec![expr]));
+                self.expr.conjunctions.push(Conjunction::new(Box::new([expr])));
             }
             CfgExpr::All(conj) => {
                 self.expr.conjunctions.push(Conjunction::new(conj));
             }
-            CfgExpr::Any(mut disj) => {
+            CfgExpr::Any(disj) => {
+                let mut disj = disj.into_vec();
                 disj.reverse();
                 while let Some(conj) = disj.pop() {
                     match conj {
                         CfgExpr::Invalid | CfgExpr::Atom(_) | CfgExpr::All(_) | CfgExpr::Not(_) => {
-                            self.expr.conjunctions.push(Conjunction::new(vec![conj]));
+                            self.expr.conjunctions.push(Conjunction::new(Box::new([conj])));
                         }
                         CfgExpr::Any(inner_disj) => {
                             // Flatten.
-                            disj.extend(inner_disj.into_iter().rev());
+                            disj.extend(inner_disj.into_vec().into_iter().rev());
                         }
                     }
                 }
@@ -255,11 +267,11 @@ impl Builder {
 fn make_dnf(expr: CfgExpr) -> CfgExpr {
     match expr {
         CfgExpr::Invalid | CfgExpr::Atom(_) | CfgExpr::Not(_) => expr,
-        CfgExpr::Any(e) => flatten(CfgExpr::Any(e.into_iter().map(make_dnf).collect())),
+        CfgExpr::Any(e) => flatten(CfgExpr::Any(e.into_vec().into_iter().map(make_dnf).collect())),
         CfgExpr::All(e) => {
-            let e = e.into_iter().map(make_dnf).collect::<Vec<_>>();
+            let e = e.into_vec().into_iter().map(make_dnf).collect::<Vec<_>>();
 
-            flatten(CfgExpr::Any(distribute_conj(&e)))
+            flatten(CfgExpr::Any(distribute_conj(&e).into_boxed_slice()))
         }
     }
 }
@@ -270,7 +282,7 @@ fn distribute_conj(conj: &[CfgExpr]) -> Vec<CfgExpr> {
         match rest {
             [head, tail @ ..] => match head {
                 CfgExpr::Any(disj) => {
-                    for part in disj {
+                    for part in disj.iter() {
                         with.push(part.clone());
                         go(out, with, tail);
                         with.pop();
@@ -284,7 +296,7 @@ fn distribute_conj(conj: &[CfgExpr]) -> Vec<CfgExpr> {
             },
             _ => {
                 // Turn accumulated parts into a new conjunction.
-                out.push(CfgExpr::All(with.clone()));
+                out.push(CfgExpr::All(with.clone().into_boxed_slice()));
             }
         }
     }
@@ -297,25 +309,27 @@ fn distribute_conj(conj: &[CfgExpr]) -> Vec<CfgExpr> {
     out
 }
 
-fn make_nnf(expr: CfgExpr) -> CfgExpr {
+fn make_nnf(expr: &CfgExpr) -> CfgExpr {
     match expr {
-        CfgExpr::Invalid | CfgExpr::Atom(_) => expr,
-        CfgExpr::Any(expr) => CfgExpr::Any(expr.into_iter().map(make_nnf).collect()),
-        CfgExpr::All(expr) => CfgExpr::All(expr.into_iter().map(make_nnf).collect()),
-        CfgExpr::Not(operand) => match *operand {
-            CfgExpr::Invalid | CfgExpr::Atom(_) => CfgExpr::Not(operand.clone()), // Original negated expr
-            CfgExpr::Not(expr) => {
-                // Remove double negation.
-                make_nnf(*expr)
-            }
-            // Convert negated conjunction/disjunction using DeMorgan's Law.
-            CfgExpr::Any(inner) => CfgExpr::All(
-                inner.into_iter().map(|expr| make_nnf(CfgExpr::Not(Box::new(expr)))).collect(),
-            ),
-            CfgExpr::All(inner) => CfgExpr::Any(
-                inner.into_iter().map(|expr| make_nnf(CfgExpr::Not(Box::new(expr)))).collect(),
-            ),
-        },
+        CfgExpr::Invalid | CfgExpr::Atom(_) => expr.clone(),
+        CfgExpr::Any(expr) => CfgExpr::Any(expr.iter().map(make_nnf).collect()),
+        CfgExpr::All(expr) => CfgExpr::All(expr.iter().map(make_nnf).collect()),
+        CfgExpr::Not(operand) => make_nnf_neg(operand),
+    }
+}
+
+fn make_nnf_neg(operand: &CfgExpr) -> CfgExpr {
+    match operand {
+        // Original negated expr
+        CfgExpr::Invalid => CfgExpr::Not(Box::new(CfgExpr::Invalid)), // Original negated expr
+        // Original negated expr
+        CfgExpr::Atom(atom) => CfgExpr::Not(Box::new(CfgExpr::Atom(atom.clone()))),
+        // Remove double negation.
+        CfgExpr::Not(expr) => make_nnf(expr),
+        // Convert negated conjunction/disjunction using DeMorgan's Law.
+        CfgExpr::Any(inner) => CfgExpr::All(inner.iter().map(make_nnf_neg).collect()),
+        // Convert negated conjunction/disjunction using DeMorgan's Law.
+        CfgExpr::All(inner) => CfgExpr::Any(inner.iter().map(make_nnf_neg).collect()),
     }
 }
 
@@ -324,20 +338,22 @@ fn flatten(expr: CfgExpr) -> CfgExpr {
     match expr {
         CfgExpr::All(inner) => CfgExpr::All(
             inner
-                .into_iter()
+                .iter()
                 .flat_map(|e| match e {
-                    CfgExpr::All(inner) => inner,
-                    _ => vec![e],
+                    CfgExpr::All(inner) => inner.as_ref(),
+                    _ => std::slice::from_ref(e),
                 })
+                .cloned()
                 .collect(),
         ),
         CfgExpr::Any(inner) => CfgExpr::Any(
             inner
-                .into_iter()
+                .iter()
                 .flat_map(|e| match e {
-                    CfgExpr::Any(inner) => inner,
-                    _ => vec![e],
+                    CfgExpr::Any(inner) => inner.as_ref(),
+                    _ => std::slice::from_ref(e),
                 })
+                .cloned()
                 .collect(),
         ),
         _ => expr,

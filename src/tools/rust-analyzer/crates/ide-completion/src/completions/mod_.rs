@@ -7,7 +7,8 @@ use ide_db::{
     base_db::{SourceDatabaseExt, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
 };
-use syntax::{ast, AstNode, SyntaxKind};
+use stdx::IsNoneOr;
+use syntax::{ast, AstNode, SyntaxKind, ToSmolStr};
 
 use crate::{context::CompletionContext, CompletionItem, Completions};
 
@@ -43,11 +44,11 @@ pub(crate) fn complete_mod(
 
     let module_definition_file =
         current_module.definition_source_file_id(ctx.db).original_file(ctx.db);
-    let source_root = ctx.db.source_root(ctx.db.file_source_root(module_definition_file));
+    let source_root = ctx.db.source_root(ctx.db.file_source_root(module_definition_file.file_id()));
     let directory_to_look_for_submodules = directory_to_look_for_submodules(
         current_module,
         ctx.db,
-        source_root.path_for_file(&module_definition_file)?,
+        source_root.path_for_file(&module_definition_file.file_id())?,
     )?;
 
     let existing_mod_declarations = current_module
@@ -63,9 +64,9 @@ pub(crate) fn complete_mod(
 
     source_root
         .iter()
-        .filter(|submodule_candidate_file| submodule_candidate_file != &module_definition_file)
-        .filter(|submodule_candidate_file| {
-            Some(submodule_candidate_file) != module_declaration_file.as_ref()
+        .filter(|&submodule_candidate_file| submodule_candidate_file != module_definition_file)
+        .filter(|&submodule_candidate_file| {
+            IsNoneOr::is_none_or(module_declaration_file, |it| it != submodule_candidate_file)
         })
         .filter_map(|submodule_file| {
             let submodule_path = source_root.path_for_file(&submodule_file)?;
@@ -139,7 +140,7 @@ fn directory_to_look_for_submodules(
     module_chain_to_containing_module_file(module, db)
         .into_iter()
         .filter_map(|module| module.name(db))
-        .try_fold(base_directory, |path, name| path.join(&name.to_smol_str()))
+        .try_fold(base_directory, |path, name| path.join(&name.display_no_db().to_smolstr()))
 }
 
 fn module_chain_to_containing_module_file(

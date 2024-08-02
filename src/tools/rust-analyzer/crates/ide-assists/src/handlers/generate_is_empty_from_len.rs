@@ -1,4 +1,4 @@
-use hir::{known, HasSource, Name};
+use hir::{sym, HasSource, Name};
 use syntax::{
     ast::{self, HasName},
     AstNode,
@@ -54,13 +54,13 @@ pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext<
     }
 
     let impl_ = fn_node.syntax().ancestors().find_map(ast::Impl::cast)?;
-    let len_fn = get_impl_method(ctx, &impl_, &known::len)?;
+    let len_fn = get_impl_method(ctx, &impl_, &Name::new_symbol_root(sym::len.clone()))?;
     if !len_fn.ret_type(ctx.sema.db).is_usize() {
         cov_mark::hit!(len_fn_different_return_type);
         return None;
     }
 
-    if get_impl_method(ctx, &impl_, &known::is_empty).is_some() {
+    if get_impl_method(ctx, &impl_, &Name::new_symbol_root(sym::is_empty.clone())).is_some() {
         cov_mark::hit!(is_empty_already_implemented);
         return None;
     }

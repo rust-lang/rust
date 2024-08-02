@@ -27,7 +27,7 @@ use lsp_types::{
     SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use paths::Utf8PathBuf;
-use project_model::{ManifestPath, ProjectWorkspaceKind, TargetKind};
+use project_model::{CargoWorkspace, ManifestPath, ProjectWorkspaceKind, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
@@ -37,7 +37,7 @@ use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 use crate::{
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diff::diff,
-    global_state::{GlobalState, GlobalStateSnapshot},
+    global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
@@ -50,14 +50,15 @@ use crate::{
         self, CrateInfoResult, ExternalDocsPair, ExternalDocsResponse, FetchDependencyListParams,
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
-    target_spec::TargetSpec,
+    target_spec::{CargoTargetSpec, TargetSpec},
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     state.proc_macro_clients = Arc::from_iter([]);
     state.build_deps_changed = false;
 
-    state.fetch_workspaces_queue.request_op("reload workspace request".to_owned(), false);
+    let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+    state.fetch_workspaces_queue.request_op("reload workspace request".to_owned(), req);
     Ok(())
 }
 
@@ -110,6 +111,13 @@ pub(crate) fn handle_analyzer_status(
             .status(file_id)
             .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
     );
+
+    buf.push_str("\nVersion: \n");
+    format_to!(buf, "{}", crate::version());
+
+    buf.push_str("\nConfiguration: \n");
+    format_to!(buf, "{:?}", snap.config);
+
     Ok(buf)
 }
 
@@ -124,11 +132,6 @@ pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Res
     format_to!(out, "{:>8}        Remaining\n", profile::memory_usage().allocated);
 
     Ok(out)
-}
-
-pub(crate) fn handle_shuffle_crate_graph(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    state.analysis_host.shuffle_crate_graph();
-    Ok(())
 }
 
 pub(crate) fn handle_syntax_tree(
@@ -191,6 +194,20 @@ pub(crate) fn handle_view_item_tree(
     Ok(res)
 }
 
+// cargo test requires the real package name which might contain hyphens but
+// the test identifier passed to this function is the namespace form where hyphens
+// are replaced with underscores so we have to reverse this and find the real package name
+fn find_package_name(namespace_root: &str, cargo: &CargoWorkspace) -> Option<String> {
+    cargo.packages().find_map(|p| {
+        let package_name = &cargo[p].name;
+        if package_name.replace('-', "_") == namespace_root {
+            Some(package_name.clone())
+        } else {
+            None
+        }
+    })
+}
+
 pub(crate) fn handle_run_test(
     state: &mut GlobalState,
     params: lsp_ext::RunTestParams,
@@ -198,7 +215,7 @@ pub(crate) fn handle_run_test(
     if let Some(_session) = state.test_run_session.take() {
         state.send_notification::<lsp_ext::EndRunTest>(());
     }
-    // We detect the lowest common ansector of all included tests, and
+    // We detect the lowest common ancestor of all included tests, and
     // run it. We ignore excluded tests for now, the client will handle
     // it for us.
     let lca = match params.include {
@@ -217,20 +234,31 @@ pub(crate) fn handle_run_test(
             .unwrap_or_default(),
         None => "".to_owned(),
     };
-    let test_path = if lca.is_empty() {
-        None
-    } else if let Some((_, path)) = lca.split_once("::") {
-        Some(path)
+    let (namespace_root, test_path) = if lca.is_empty() {
+        (None, None)
+    } else if let Some((namespace_root, path)) = lca.split_once("::") {
+        (Some(namespace_root), Some(path))
     } else {
-        None
+        (Some(lca.as_str()), None)
     };
     let mut handles = vec![];
     for ws in &*state.workspaces {
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
+            let test_target = if let Some(namespace_root) = namespace_root {
+                if let Some(package_name) = find_package_name(namespace_root, cargo) {
+                    flycheck::TestTarget::Package(package_name)
+                } else {
+                    flycheck::TestTarget::Workspace
+                }
+            } else {
+                flycheck::TestTarget::Workspace
+            };
+
             let handle = flycheck::CargoTestHandle::new(
                 test_path,
                 state.config.cargo_test_options(),
                 cargo.workspace_root(),
+                test_target,
                 state.test_run_sender.clone(),
             )?;
             handles.push(handle);
@@ -848,6 +876,14 @@ pub(crate) fn handle_runnables(
                 if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
                     runnable.label = format!("{} + expect", runnable.label);
                     r.environment.insert("UPDATE_EXPECT".to_owned(), "1".to_owned());
+                    if let Some(TargetSpec::Cargo(CargoTargetSpec {
+                        sysroot_root: Some(sysroot_root),
+                        ..
+                    })) = &target_spec
+                    {
+                        r.environment
+                            .insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
+                    }
                 }
             }
             res.push(runnable);
@@ -889,7 +925,12 @@ pub(crate) fn handle_runnables(
                         override_cargo: config.override_cargo.clone(),
                         cargo_args,
                         executable_args: Vec::new(),
-                        environment: Default::default(),
+                        environment: spec
+                            .sysroot_root
+                            .as_ref()
+                            .map(|root| ("RUSTC_TOOLCHAIN".to_owned(), root.to_string()))
+                            .into_iter()
+                            .collect(),
                     }),
                 })
             }
@@ -2069,8 +2110,9 @@ fn run_rustfmt(
     let edition = editions.iter().copied().max();
 
     let line_index = snap.file_line_index(file_id)?;
+    let sr = snap.analysis.source_root_id(file_id)?;
 
-    let mut command = match snap.config.rustfmt() {
+    let mut command = match snap.config.rustfmt(Some(sr)) {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = process::Command::new(toolchain::Tool::Rustfmt.path());
@@ -2259,7 +2301,7 @@ pub(crate) fn internal_testing_fetch_config(
     serde_json::to_value(match &*params.config {
         "local" => state.config.assist(source_root).assist_emit_must_use,
         "global" => matches!(
-            state.config.rustfmt(),
+            state.config.rustfmt(source_root),
             RustfmtConfig::Rustfmt { enable_range_formatting: true, .. }
         ),
         _ => return Err(anyhow::anyhow!("Unknown test config key: {}", params.config)),

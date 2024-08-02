@@ -11,10 +11,9 @@
 
 use hir::{DescendPreference, PathResolution, Semantics};
 use ide_db::{
-    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
-    RootDatabase,
+    FileId, RootDatabase,
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
@@ -25,7 +24,7 @@ use syntax::{
     SyntaxNode, TextRange, TextSize, T,
 };
 
-use crate::{FilePosition, NavigationTarget, TryToNav};
+use crate::{highlight_related, FilePosition, HighlightedRange, NavigationTarget, TryToNav};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
@@ -56,7 +55,7 @@ pub(crate) fn find_all_refs(
     search_scope: Option<SearchScope>,
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = tracing::info_span!("find_all_refs").entered();
-    let syntax = sema.parse(position.file_id).syntax().clone();
+    let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
             let mut usages =
@@ -70,7 +69,7 @@ pub(crate) fn find_all_refs(
                 .into_iter()
                 .map(|(file_id, refs)| {
                     (
-                        file_id,
+                        file_id.into(),
                         refs.into_iter()
                             .map(|file_ref| (file_ref.range, file_ref.category))
                             .unique()
@@ -103,6 +102,11 @@ pub(crate) fn find_all_refs(
             ReferenceSearchResult { declaration, references }
         }
     };
+
+    // Find references for control-flow keywords.
+    if let Some(res) = handle_control_flow_keywords(sema, position) {
+        return Some(vec![res]);
+    }
 
     match name_for_constructor_search(&syntax, position) {
         Some(name) => {
@@ -297,10 +301,42 @@ fn is_lit_name_ref(name_ref: &ast::NameRef) -> bool {
     }).unwrap_or(false)
 }
 
+fn handle_control_flow_keywords(
+    sema: &Semantics<'_, RootDatabase>,
+    FilePosition { file_id, offset }: FilePosition,
+) -> Option<ReferenceSearchResult> {
+    let file = sema.parse_guess_edition(file_id);
+    let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword())?;
+
+    let references = match token.kind() {
+        T![fn] | T![return] | T![try] => highlight_related::highlight_exit_points(sema, token),
+        T![async] => highlight_related::highlight_yield_points(sema, token),
+        T![loop] | T![while] | T![break] | T![continue] => {
+            highlight_related::highlight_break_points(sema, token)
+        }
+        T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
+            highlight_related::highlight_break_points(sema, token)
+        }
+        _ => return None,
+    }
+    .into_iter()
+    .map(|(file_id, ranges)| {
+        let ranges = ranges
+            .into_iter()
+            .map(|HighlightedRange { range, category }| (range, category))
+            .collect();
+        (file_id.into(), ranges)
+    })
+    .collect();
+
+    Some(ReferenceSearchResult { declaration: None, references })
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FileId;
+    use ide_db::FileId;
+    use span::EditionedFileId;
     use stdx::format_to;
 
     use crate::{fixture, SearchScope};
@@ -941,7 +977,7 @@ pub(super) struct Foo$0 {
 
         check_with_scope(
             code,
-            Some(SearchScope::single_file(FileId::from_raw(2))),
+            Some(SearchScope::single_file(EditionedFileId::current_edition(FileId::from_raw(2)))),
             expect![[r#"
                 quux Function FileId(0) 19..35 26..30
 
@@ -1200,7 +1236,7 @@ impl Foo {
         let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 
         let mut actual = String::new();
-        for refs in refs {
+        for mut refs in refs {
             actual += "\n\n";
 
             if let Some(decl) = refs.declaration {
@@ -1211,7 +1247,8 @@ impl Foo {
                 actual += "\n\n";
             }
 
-            for (file_id, references) in &refs.references {
+            for (file_id, references) in &mut refs.references {
+                references.sort_by_key(|(range, _)| range.start());
                 for (range, category) in references {
                     format_to!(actual, "{:?} {:?}", file_id, range);
                     for (name, _flag) in category.iter_names() {
@@ -2186,5 +2223,265 @@ fn test() {
                 FileId(0) 68..69 read
             "#]],
         );
+    }
+
+    #[test]
+    fn goto_ref_fn_kw() {
+        check(
+            r#"
+macro_rules! N {
+    ($i:ident, $x:expr, $blk:expr) => {
+        for $i in 0..$x {
+            $blk
+        }
+    };
+}
+
+fn main() {
+    $0fn f() {
+        N!(i, 5, {
+            println!("{}", i);
+            return;
+        });
+
+        for i in 1..5 {
+            return;
+        }
+
+       (|| {
+            return;
+        })();
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 136..138
+                FileId(0) 207..213
+                FileId(0) 264..270
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_exit_points() {
+        check(
+            r#"
+fn$0 foo() -> u32 {
+    if true {
+        return 0;
+    }
+
+    0?;
+    0xDEAD_BEEF
+}
+"#,
+            expect![[r#"
+                FileId(0) 0..2
+                FileId(0) 40..46
+                FileId(0) 62..63
+                FileId(0) 69..80
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_ref_yield_points() {
+        check(
+            r#"
+pub async$0 fn foo() {
+    let x = foo()
+        .await
+        .await;
+    || { 0.await };
+    (async { 0.await }).await
+}
+"#,
+            expect![[r#"
+                FileId(0) 4..9
+                FileId(0) 48..53
+                FileId(0) 63..68
+                FileId(0) 114..119
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_for_kw() {
+        check(
+            r#"
+fn main() {
+    $0for i in 1..5 {
+        break;
+        continue;
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 16..19
+                FileId(0) 40..45
+                FileId(0) 55..63
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_on_break_kw() {
+        check(
+            r#"
+fn main() {
+    for i in 1..5 {
+        $0break;
+        continue;
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 16..19
+                FileId(0) 40..45
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_on_break_kw_for_block() {
+        check(
+            r#"
+fn main() {
+    'a:{
+        $0break 'a;
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 16..19
+                FileId(0) 29..37
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_on_break_with_label() {
+        check(
+            r#"
+fn foo() {
+    'outer: loop {
+         break;
+         'inner: loop {
+            'innermost: loop {
+            }
+            $0break 'outer;
+            break;
+        }
+        break;
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 15..27
+                FileId(0) 39..44
+                FileId(0) 127..139
+                FileId(0) 178..183
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_on_return_in_try() {
+        check(
+            r#"
+fn main() {
+    fn f() {
+        try {
+            $0return;
+        }
+
+        return;
+    }
+    return;
+}
+"#,
+            expect![[r#"
+                FileId(0) 16..18
+                FileId(0) 51..57
+                FileId(0) 78..84
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_on_break_in_try() {
+        check(
+            r#"
+fn main() {
+    for i in 1..100 {
+        let x: Result<(), ()> = try {
+            $0break;
+        };
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 16..19
+                FileId(0) 84..89
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_on_return_in_async_block() {
+        check(
+            r#"
+fn main() {
+    $0async {
+        return;
+    }
+}
+"#,
+            expect![[r#"
+                FileId(0) 16..21
+                FileId(0) 32..38
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_on_return_in_macro_call() {
+        check(
+            r#"
+//- minicore:include
+//- /lib.rs
+macro_rules! M {
+    ($blk:expr) => {
+        fn f() {
+            $blk
+        }
+
+        $blk
+    };
+}
+
+fn main() {
+    M!({
+        return$0;
+    });
+
+    f();
+    include!("a.rs")
+}
+
+//- /a.rs
+{
+    return;
+}
+"#,
+            expect![[r#"
+                FileId(0) 46..48
+                FileId(0) 106..108
+                FileId(0) 122..149
+                FileId(0) 135..141
+                FileId(0) 165..181
+                FileId(1) 6..12
+            "#]],
+        )
     }
 }

@@ -1575,7 +1575,7 @@ pub struct RefOfMutStatic<'a> {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_not_supported_delegation)]
-pub struct NotSupportedDelegation<'a> {
+pub struct UnsupportedDelegation<'a> {
     #[primary_span]
     pub span: Span,
     pub descr: &'a str,

@@ -3,6 +3,7 @@
 use std::fmt;
 
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
+use intern::sym;
 use once_cell::unsync::Lazy;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
@@ -74,9 +75,9 @@ pub(crate) struct MatchCheckCtx<'db> {
 impl<'db> MatchCheckCtx<'db> {
     pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
         let def_map = db.crate_def_map(module.krate());
-        let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
+        let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
         let min_exhaustive_patterns =
-            def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
+            def_map.is_unstable_feature_enabled(&sym::min_exhaustive_patterns);
         Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
     }
 
@@ -85,6 +86,15 @@ impl<'db> MatchCheckCtx<'db> {
         arms: &[MatchArm<'db>],
         scrut_ty: Ty,
     ) -> Result<UsefulnessReport<'db, Self>, ()> {
+        if scrut_ty.contains_unknown() {
+            return Err(());
+        }
+        for arm in arms {
+            if arm.pat.ty().contains_unknown() {
+                return Err(());
+            }
+        }
+
         // FIXME: Determine place validity correctly. For now, err on the safe side.
         let place_validity = PlaceValidity::MaybeInvalid;
         // Measured to take ~100ms on modern hardware.
@@ -99,7 +109,7 @@ impl<'db> MatchCheckCtx<'db> {
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
         let is_local = adt.krate(self.db.upcast()) == self.module.krate();
-        !is_local && self.db.attrs(adt.into()).by_key("non_exhaustive").exists()
+        !is_local && self.db.attrs(adt.into()).by_key(&sym::non_exhaustive).exists()
     }
 
     fn variant_id_for_adt(

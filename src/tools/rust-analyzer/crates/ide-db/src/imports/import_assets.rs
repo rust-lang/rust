@@ -9,13 +9,13 @@ use itertools::{EitherOrBoth, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make, HasName},
-    AstNode, SmolStr, SyntaxNode,
+    AstNode, SmolStr, SyntaxNode, ToSmolStr,
 };
 
 use crate::{
     helpers::item_name,
     items_locator::{self, AssocSearchMode, DEFAULT_QUERY_SEARCH_LIMIT},
-    RootDatabase,
+    FxIndexSet, RootDatabase,
 };
 
 /// A candidate for import, derived during various IDE activities:
@@ -262,7 +262,7 @@ impl ImportAssets {
 
         let scope = match sema.scope(&self.candidate_node) {
             Some(it) => it,
-            None => return <FxHashSet<_>>::default().into_iter(),
+            None => return <FxIndexSet<_>>::default().into_iter(),
         };
 
         let krate = self.module_with_candidate.krate();
@@ -319,7 +319,7 @@ fn path_applicable_imports(
     path_candidate: &PathImportCandidate,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath> + Copy,
     scope_filter: impl Fn(ItemInNs) -> bool + Copy,
-) -> FxHashSet<LocatedImport> {
+) -> FxIndexSet<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::path_applicable_imports").entered();
 
     match &path_candidate.qualifier {
@@ -389,16 +389,16 @@ fn import_for_item(
     let mut import_path_candidate_segments = import_path_candidate.segments().iter().rev();
     let predicate = |it: EitherOrBoth<&SmolStr, &Name>| match it {
         // segments match, check next one
-        EitherOrBoth::Both(a, b) if b.as_str() == Some(&**a) => None,
+        EitherOrBoth::Both(a, b) if b.as_str() == &**a => None,
         // segments mismatch / qualifier is longer than the path, bail out
         EitherOrBoth::Both(..) | EitherOrBoth::Left(_) => Some(false),
         // all segments match and we have exhausted the qualifier, proceed
         EitherOrBoth::Right(_) => Some(true),
     };
     if item_as_assoc.is_none() {
-        let item_name = item_name(db, original_item)?.as_text()?;
+        let item_name = item_name(db, original_item)?;
         let last_segment = import_path_candidate_segments.next()?;
-        if last_segment.as_str() != Some(&*item_name) {
+        if *last_segment != item_name {
             return None;
         }
     }
@@ -459,7 +459,7 @@ fn find_import_for_segment(
     unresolved_first_segment: &str,
 ) -> Option<ItemInNs> {
     let segment_is_name = item_name(db, original_item)
-        .map(|name| name.to_smol_str() == unresolved_first_segment)
+        .map(|name| name.display_no_db().to_smolstr() == unresolved_first_segment)
         .unwrap_or(false);
 
     Some(if segment_is_name {
@@ -483,7 +483,7 @@ fn module_with_segment_name(
     };
     while let Some(module) = current_module {
         if let Some(module_name) = module.name(db) {
-            if module_name.to_smol_str() == segment_name {
+            if module_name.display_no_db().to_smolstr() == segment_name {
                 return Some(module);
             }
         }
@@ -500,7 +500,7 @@ fn trait_applicable_items(
     trait_assoc_item: bool,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
     scope_filter: impl Fn(hir::Trait) -> bool,
-) -> FxHashSet<LocatedImport> {
+) -> FxIndexSet<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::trait_applicable_items").entered();
 
     let db = sema.db;
@@ -566,7 +566,7 @@ fn trait_applicable_items(
         definitions_exist_in_trait_crate || definitions_exist_in_receiver_crate()
     });
 
-    let mut located_imports = FxHashSet::default();
+    let mut located_imports = FxIndexSet::default();
     let mut trait_import_paths = FxHashMap::default();
 
     if trait_assoc_item {
@@ -703,7 +703,7 @@ fn path_import_candidate(
 ) -> Option<ImportCandidate> {
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
-            None => {
+            Some(PathResolution::Def(ModuleDef::BuiltinType(_))) | None => {
                 if qualifier.first_qualifier().map_or(true, |it| sema.resolve_path(&it).is_none()) {
                     let qualifier = qualifier
                         .segments()

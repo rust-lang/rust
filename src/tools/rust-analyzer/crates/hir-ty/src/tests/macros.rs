@@ -703,7 +703,7 @@ fn infer_builtin_macros_file() {
         }
         "#,
         expect![[r#"
-            !0..2 '""': &'static str
+            !0..6 '"file"': &'static str
             63..87 '{     ...!(); }': ()
             73..74 'x': &'static str
         "#]],

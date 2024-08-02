@@ -239,6 +239,9 @@ pub unsafe extern "C" fn compatible_target_feature() {
 }
 
 #[doc = "foo bar baz"]
+/// a doc comment
+// a normal comment
+#[doc(alias = "ADocAlias")]
 #[naked]
 pub unsafe extern "C" fn compatible_doc_attributes() {
     asm!("", options(noreturn, raw));

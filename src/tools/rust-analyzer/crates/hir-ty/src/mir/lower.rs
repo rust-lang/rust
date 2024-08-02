@@ -2,7 +2,7 @@
 
 use std::{fmt::Write, iter, mem};
 
-use base_db::{salsa::Cycle, FileId};
+use base_db::salsa::Cycle;
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     body::Body,
@@ -21,6 +21,7 @@ use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
+use span::FileId;
 use syntax::TextRange;
 use triomphe::Arc;
 
@@ -1113,9 +1114,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             .iter()
                             .map(|it| {
                                 let o = match it.1.name.as_str() {
-                                    Some("start") => lp.take(),
-                                    Some("end") => rp.take(),
-                                    Some("exhausted") => {
+                                    "start" => lp.take(),
+                                    "end" => rp.take(),
+                                    "exhausted" => {
                                         Some(Operand::from_bytes(Box::new([0]), TyBuilder::bool()))
                                     }
                                     _ => None,
@@ -1406,6 +1407,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         const USIZE_SIZE: usize = mem::size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
+                let b = b.as_str();
                 let mut data = [0; { 2 * USIZE_SIZE }];
                 data[..USIZE_SIZE].copy_from_slice(&0usize.to_le_bytes());
                 data[USIZE_SIZE..].copy_from_slice(&b.len().to_le_bytes());
@@ -1718,14 +1720,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
     /// This function push `StorageLive` statement for the binding, and applies changes to add `StorageDead` and
     /// `Drop` in the appropriated places.
     fn push_storage_live(&mut self, b: BindingId, current: BasicBlockId) -> Result<()> {
-        let span = self.body.bindings[b]
-            .definitions
-            .first()
-            .copied()
-            .map(MirSpan::PatId)
-            .unwrap_or(MirSpan::Unknown);
         let l = self.binding_local(b)?;
-        self.push_storage_live_for_local(l, current, span)
+        self.push_storage_live_for_local(l, current, MirSpan::BindingId(b))
     }
 
     fn push_storage_live_for_local(

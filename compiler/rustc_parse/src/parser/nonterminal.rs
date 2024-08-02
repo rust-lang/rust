@@ -39,6 +39,7 @@ impl<'a> Parser<'a> {
         }
 
         match kind {
+            // `expr_2021` and earlier
             NonterminalKind::Expr(Expr2021 { .. }) => {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
@@ -46,8 +47,16 @@ impl<'a> Parser<'a> {
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Const)
             }
+            // Current edition expressions
             NonterminalKind::Expr(Expr) => {
-                token.can_begin_expr()
+                // In Edition 2024, `_` is considered an expression, so we
+                // need to allow it here because `token.can_begin_expr()` does
+                // not consider `_` to be an expression.
+                //
+                // Because `can_begin_expr` is used elsewhere, we need to reduce
+                // the scope of where the `_` is considered an expression to
+                // just macro parsing code.
+                (token.can_begin_expr() || token.is_keyword(kw::Underscore))
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
             }

@@ -14,7 +14,7 @@ use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::{span_bug, ty};
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-    UNUSED_IMPORTS,
+    REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -1387,14 +1387,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
-            /* FIXME(unused_imports): Add this back as a new lint
-            self.lint_buffer.buffer_lint_with_diagnostic(
-                UNUSED_IMPORTS,
+            self.lint_buffer.buffer_lint(
+                REDUNDANT_IMPORTS,
                 id,
                 import.span,
                 BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
-            */
             return true;
         }
 

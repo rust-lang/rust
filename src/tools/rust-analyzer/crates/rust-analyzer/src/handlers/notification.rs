@@ -14,7 +14,7 @@ use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
     config::{Config, ConfigChange},
-    global_state::GlobalState,
+    global_state::{FetchWorkspaceRequest, GlobalState},
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
     mem_docs::DocumentData,
@@ -73,7 +73,7 @@ pub(crate) fn handle_did_open_text_document(
 
         tracing::info!("New file content set {:?}", params.text_document.text);
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
-        if state.config.notifications().unindexed_project {
+        if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
             let _ = state
                 .deferred_task_queue
@@ -150,15 +150,29 @@ pub(crate) fn handle_did_save_text_document(
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         // Re-fetch workspaces if a workspace related file has changed
-        if let Some(abs_path) = vfs_path.as_path() {
-            if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
-                state
-                    .fetch_workspaces_queue
-                    .request_op(format!("workspace vfs file change saved {abs_path}"), false);
-            } else if state.detached_files.contains(abs_path) {
-                state
-                    .fetch_workspaces_queue
-                    .request_op(format!("detached file saved {abs_path}"), false);
+        if let Some(path) = vfs_path.as_path() {
+            let additional_files = &state
+                .config
+                .discover_workspace_config()
+                .map(|cfg| cfg.files_to_watch.iter().map(String::as_str).collect::<Vec<&str>>())
+                .unwrap_or_default();
+
+            if reload::should_refresh_for_change(path, ChangeKind::Modify, additional_files) {
+                state.fetch_workspaces_queue.request_op(
+                    format!("workspace vfs file change saved {path}"),
+                    FetchWorkspaceRequest {
+                        path: Some(path.to_owned()),
+                        force_crate_graph_reload: false,
+                    },
+                );
+            } else if state.detached_files.contains(path) {
+                state.fetch_workspaces_queue.request_op(
+                    format!("detached file saved {path}"),
+                    FetchWorkspaceRequest {
+                        path: Some(path.to_owned()),
+                        force_crate_graph_reload: false,
+                    },
+                );
             }
         }
 
@@ -240,7 +254,9 @@ pub(crate) fn handle_did_change_workspace_folders(
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();
-        state.fetch_workspaces_queue.request_op("client workspaces changed".to_owned(), false)
+
+        let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+        state.fetch_workspaces_queue.request_op("client workspaces changed".to_owned(), req);
     }
 
     Ok(())
@@ -274,7 +290,6 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 .into_iter()
                 .flat_map(|id| world.analysis.transitive_rev_deps(id))
                 .flatten()
-                .sorted()
                 .unique()
                 .collect();
 

@@ -1,10 +1,10 @@
 use hir::{
     db::HirDatabase, HasSource, HasVisibility, HirFileIdExt, ModuleDef, PathResolution, ScopeDef,
 };
-use ide_db::base_db::FileId;
+use ide_db::FileId;
 use syntax::{
     ast::{self, edit_in_place::HasVisibilityEdit, make, HasVisibility as _},
-    AstNode, TextRange,
+    AstNode, TextRange, ToSmolStr,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -48,7 +48,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let (_, def) = module
         .scope(ctx.db(), None)
         .into_iter()
-        .find(|(name, _)| name.to_smol_str() == name_ref.text().as_str())?;
+        .find(|(name, _)| name.display_no_db().to_smolstr() == name_ref.text().as_str())?;
     let ScopeDef::ModuleDef(def) = def else {
         return None;
     };
@@ -128,7 +128,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     );
 
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
-        edit.edit_file(target_file);
+        edit.edit_file(target_file.file_id());
 
         let vis_owner = edit.make_mut(vis_owner);
         vis_owner.set_visibility(Some(missing_visibility.clone_for_update()));
@@ -155,7 +155,11 @@ fn target_data_for_def(
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
         let range = in_file_syntax.value.text_range();
-        Some((ast::AnyHasVisibility::new(source.value), range, file_id.original_file(db.upcast())))
+        Some((
+            ast::AnyHasVisibility::new(source.value),
+            range,
+            file_id.original_file(db.upcast()).file_id(),
+        ))
     }
 
     let target_name;
@@ -197,7 +201,7 @@ fn target_data_for_def(
             let in_file_source = m.declaration_source(db)?;
             let file_id = in_file_source.file_id.original_file(db.upcast());
             let range = in_file_source.value.syntax().text_range();
-            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id)
+            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id.file_id())
         }
         // FIXME
         hir::ModuleDef::Macro(_) => return None,

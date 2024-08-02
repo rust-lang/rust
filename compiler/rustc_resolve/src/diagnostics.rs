@@ -2026,14 +2026,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
+            } else if ident.name == kw::Underscore {
+                (format!("`_` is not a valid crate or module name"), None)
             } else if self.tcx.sess.is_rust_2015() {
                 (
                     format!("you might be missing crate `{ident}`"),
                     Some((
-                        vec![],
-                        format!(
-                            "consider adding `extern crate {ident}` to use the `{ident}` crate"
-                        ),
+                        vec![(
+                            self.current_crate_outer_attr_insert_span,
+                            format!("extern crate {ident};\n"),
+                        )],
+                        format!("consider importing the `{ident}` crate"),
                         Applicability::MaybeIncorrect,
                     )),
                 )

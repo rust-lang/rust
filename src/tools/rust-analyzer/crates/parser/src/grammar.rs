@@ -165,42 +165,6 @@ pub(crate) mod entry {
             }
             m.complete(p, ERROR);
         }
-
-        pub(crate) fn eager_macro_input(p: &mut Parser<'_>) {
-            let m = p.start();
-
-            let closing_paren_kind = match p.current() {
-                T!['{'] => T!['}'],
-                T!['('] => T![')'],
-                T!['['] => T![']'],
-                _ => {
-                    p.error("expected `{`, `[`, `(`");
-                    while !p.at(EOF) {
-                        p.bump_any();
-                    }
-                    m.complete(p, ERROR);
-                    return;
-                }
-            };
-            p.bump_any();
-            while !p.at(EOF) && !p.at(closing_paren_kind) {
-                if expressions::expr(p).is_none() {
-                    break;
-                }
-                if !p.at(EOF) && !p.at(closing_paren_kind) {
-                    p.expect(T![,]);
-                }
-            }
-            p.expect(closing_paren_kind);
-            if p.at(EOF) {
-                m.complete(p, MACRO_EAGER_INPUT);
-                return;
-            }
-            while !p.at(EOF) {
-                p.bump_any();
-            }
-            m.complete(p, ERROR);
-        }
     }
 }
 

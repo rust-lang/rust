@@ -67,16 +67,16 @@ pub struct FileId(u32);
 // pub struct FileId(NonMaxU32);
 
 impl FileId {
-    pub const MAX_FILE_ID: u32 = 0x7fff_ffff;
+    pub const MAX: u32 = 0x7fff_ffff;
 
     #[inline]
     pub const fn from_raw(raw: u32) -> FileId {
-        assert!(raw <= Self::MAX_FILE_ID);
+        assert!(raw <= Self::MAX);
         FileId(raw)
     }
 
     #[inline]
-    pub fn index(self) -> u32 {
+    pub const fn index(self) -> u32 {
         self.0
     }
 }

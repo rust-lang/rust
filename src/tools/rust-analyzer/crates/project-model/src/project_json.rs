@@ -224,6 +224,7 @@ impl ProjectJson {
                     Crate {
                         display_name: crate_data
                             .display_name
+                            .as_deref()
                             .map(CrateDisplayName::from_canonical_name),
                         root_module,
                         edition: crate_data.edition.into(),
@@ -275,9 +276,24 @@ impl ProjectJson {
         self.manifest.as_ref()
     }
 
+    pub fn crate_by_buildfile(&self, path: &AbsPath) -> Option<Build> {
+        // this is fast enough for now, but it's unfortunate that this is O(crates).
+        let path: &std::path::Path = path.as_ref();
+        self.crates
+            .iter()
+            .filter(|krate| krate.is_workspace_member)
+            .filter_map(|krate| krate.build.clone())
+            .find(|build| build.build_file.as_std_path() == path)
+    }
+
     /// Returns the path to the project's manifest or root folder, if no manifest exists.
     pub fn manifest_or_root(&self) -> &AbsPath {
         self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())
+    }
+
+    /// Returns the path to the project's root folder.
+    pub fn project_root(&self) -> &AbsPath {
+        &self.project_root
     }
 
     pub fn runnables(&self) -> &[Runnable] {
@@ -285,7 +301,7 @@ impl ProjectJson {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct ProjectJsonData {
     sysroot: Option<Utf8PathBuf>,
     sysroot_src: Option<Utf8PathBuf>,
@@ -294,7 +310,7 @@ pub struct ProjectJsonData {
     runnables: Vec<RunnableData>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 struct CrateData {
     display_name: Option<String>,
     root_module: Utf8PathBuf,
@@ -318,7 +334,7 @@ struct CrateData {
     build: Option<BuildData>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename = "edition")]
 enum EditionData {
     #[serde(rename = "2015")]
@@ -331,7 +347,7 @@ enum EditionData {
     Edition2024,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct BuildData {
     label: String,
     build_file: Utf8PathBuf,
@@ -418,7 +434,7 @@ pub(crate) struct Dep {
     pub(crate) name: CrateName,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 struct CrateSource {
     include_dirs: Vec<Utf8PathBuf>,
     exclude_dirs: Vec<Utf8PathBuf>,

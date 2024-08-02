@@ -53,7 +53,6 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]

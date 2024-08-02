@@ -13,7 +13,7 @@ use region_constraints::{
 pub use relate::combine::{CombineFields, PredicateEmittingRelation};
 pub use relate::StructurallyRelateAliases;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
@@ -1318,38 +1318,36 @@ impl<'tcx> InferCtxt<'tcx> {
             return inner;
         }
 
-        struct ToFreshVars<'a, 'tcx> {
-            infcx: &'a InferCtxt<'tcx>,
-            span: Span,
-            lbrct: BoundRegionConversionTime,
-            map: FxHashMap<ty::BoundVar, ty::GenericArg<'tcx>>,
+        let bound_vars = value.bound_vars();
+        let mut args = Vec::with_capacity(bound_vars.len());
+
+        for bound_var_kind in bound_vars {
+            let arg: ty::GenericArg<'_> = match bound_var_kind {
+                ty::BoundVariableKind::Ty(_) => self.next_ty_var(span).into(),
+                ty::BoundVariableKind::Region(br) => {
+                    self.next_region_var(BoundRegion(span, br, lbrct)).into()
+                }
+                ty::BoundVariableKind::Const => self.next_const_var(span).into(),
+            };
+            args.push(arg);
         }
 
-        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'_, 'tcx> {
+        struct ToFreshVars<'tcx> {
+            args: Vec<ty::GenericArg<'tcx>>,
+        }
+
+        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'tcx> {
             fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
-                self.map
-                    .entry(br.var)
-                    .or_insert_with(|| {
-                        self.infcx
-                            .next_region_var(BoundRegion(self.span, br.kind, self.lbrct))
-                            .into()
-                    })
-                    .expect_region()
+                self.args[br.var.index()].expect_region()
             }
             fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
-                self.map
-                    .entry(bt.var)
-                    .or_insert_with(|| self.infcx.next_ty_var(self.span).into())
-                    .expect_ty()
+                self.args[bt.var.index()].expect_ty()
             }
             fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
-                self.map
-                    .entry(bv)
-                    .or_insert_with(|| self.infcx.next_const_var(self.span).into())
-                    .expect_const()
+                self.args[bv.index()].expect_const()
             }
         }
-        let delegate = ToFreshVars { infcx: self, span, lbrct, map: Default::default() };
+        let delegate = ToFreshVars { args };
         self.tcx.replace_bound_vars_uncached(value, delegate)
     }
 

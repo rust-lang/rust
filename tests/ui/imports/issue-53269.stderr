@@ -4,7 +4,10 @@ error[E0432]: unresolved import `nonexistent_module`
 LL |     use nonexistent_module::mac;
    |         ^^^^^^^^^^^^^^^^^^ you might be missing crate `nonexistent_module`
    |
-   = help: consider adding `extern crate nonexistent_module` to use the `nonexistent_module` crate
+help: consider importing the `nonexistent_module` crate
+   |
+LL + extern crate nonexistent_module;
+   |
 
 error[E0659]: `mac` is ambiguous
   --> $DIR/issue-53269.rs:8:5

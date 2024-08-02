@@ -6,16 +6,17 @@
 
 use std::mem;
 
-use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
+use base_db::{salsa::Database, SourceDatabase, SourceDatabaseExt};
 use hir::{
-    AsAssocItem, DefWithBody, DescendPreference, HasAttrs, HasSource, HirFileIdExt, InFile,
-    InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
+    sym, AsAssocItem, DefWithBody, DescendPreference, FileRange, HasAttrs, HasSource, HirFileIdExt,
+    InFile, InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
-use nohash_hasher::IntMap;
 use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize};
+use rustc_hash::FxHashMap;
+use span::EditionedFileId;
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize, ToSmolStr};
 use triomphe::Arc;
 
 use crate::{
@@ -26,7 +27,7 @@ use crate::{
 
 #[derive(Debug, Default, Clone)]
 pub struct UsageSearchResult {
-    pub references: IntMap<FileId, Vec<FileReference>>,
+    pub references: FxHashMap<EditionedFileId, Vec<FileReference>>,
 }
 
 impl UsageSearchResult {
@@ -38,8 +39,8 @@ impl UsageSearchResult {
         self.references.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&FileId, &[FileReference])> + '_ {
-        self.references.iter().map(|(file_id, refs)| (file_id, &**refs))
+    pub fn iter(&self) -> impl Iterator<Item = (EditionedFileId, &[FileReference])> + '_ {
+        self.references.iter().map(|(&file_id, refs)| (file_id, &**refs))
     }
 
     pub fn file_ranges(&self) -> impl Iterator<Item = FileRange> + '_ {
@@ -50,8 +51,8 @@ impl UsageSearchResult {
 }
 
 impl IntoIterator for UsageSearchResult {
-    type Item = (FileId, Vec<FileReference>);
-    type IntoIter = <IntMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
+    type Item = (EditionedFileId, Vec<FileReference>);
+    type IntoIter = <FxHashMap<EditionedFileId, Vec<FileReference>> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.references.into_iter()
@@ -142,36 +143,40 @@ bitflags::bitflags! {
 /// e.g. for things like local variables.
 #[derive(Clone, Debug)]
 pub struct SearchScope {
-    entries: IntMap<FileId, Option<TextRange>>,
+    entries: FxHashMap<EditionedFileId, Option<TextRange>>,
 }
 
 impl SearchScope {
-    fn new(entries: IntMap<FileId, Option<TextRange>>) -> SearchScope {
+    fn new(entries: FxHashMap<EditionedFileId, Option<TextRange>>) -> SearchScope {
         SearchScope { entries }
     }
 
     /// Build a search scope spanning the entire crate graph of files.
     fn crate_graph(db: &RootDatabase) -> SearchScope {
-        let mut entries = IntMap::default();
+        let mut entries = FxHashMap::default();
 
         let graph = db.crate_graph();
         for krate in graph.iter() {
             let root_file = graph[krate].root_file_id;
             let source_root_id = db.file_source_root(root_file);
             let source_root = db.source_root(source_root_id);
-            entries.extend(source_root.iter().map(|id| (id, None)));
+            entries.extend(
+                source_root.iter().map(|id| (EditionedFileId::new(id, graph[krate].edition), None)),
+            );
         }
         SearchScope { entries }
     }
 
     /// Build a search scope spanning all the reverse dependencies of the given crate.
     fn reverse_dependencies(db: &RootDatabase, of: hir::Crate) -> SearchScope {
-        let mut entries = IntMap::default();
+        let mut entries = FxHashMap::default();
         for rev_dep in of.transitive_reverse_dependencies(db) {
             let root_file = rev_dep.root_file(db);
             let source_root_id = db.file_source_root(root_file);
             let source_root = db.source_root(source_root_id);
-            entries.extend(source_root.iter().map(|id| (id, None)));
+            entries.extend(
+                source_root.iter().map(|id| (EditionedFileId::new(id, rev_dep.edition(db)), None)),
+            );
         }
         SearchScope { entries }
     }
@@ -181,12 +186,17 @@ impl SearchScope {
         let root_file = of.root_file(db);
         let source_root_id = db.file_source_root(root_file);
         let source_root = db.source_root(source_root_id);
-        SearchScope { entries: source_root.iter().map(|id| (id, None)).collect() }
+        SearchScope {
+            entries: source_root
+                .iter()
+                .map(|id| (EditionedFileId::new(id, of.edition(db)), None))
+                .collect(),
+        }
     }
 
     /// Build a search scope spanning the given module and all its submodules.
     pub fn module_and_children(db: &RootDatabase, module: hir::Module) -> SearchScope {
-        let mut entries = IntMap::default();
+        let mut entries = FxHashMap::default();
 
         let (file_id, range) = {
             let InFile { file_id, value } = module.definition_source_range(db);
@@ -211,11 +221,11 @@ impl SearchScope {
 
     /// Build an empty search scope.
     pub fn empty() -> SearchScope {
-        SearchScope::new(IntMap::default())
+        SearchScope::new(FxHashMap::default())
     }
 
     /// Build a empty search scope spanning the given file.
-    pub fn single_file(file: FileId) -> SearchScope {
+    pub fn single_file(file: EditionedFileId) -> SearchScope {
         SearchScope::new(std::iter::once((file, None)).collect())
     }
 
@@ -225,7 +235,7 @@ impl SearchScope {
     }
 
     /// Build a empty search scope spanning the given files.
-    pub fn files(files: &[FileId]) -> SearchScope {
+    pub fn files(files: &[EditionedFileId]) -> SearchScope {
         SearchScope::new(files.iter().map(|f| (*f, None)).collect())
     }
 
@@ -256,8 +266,8 @@ impl SearchScope {
 }
 
 impl IntoIterator for SearchScope {
-    type Item = (FileId, Option<TextRange>);
-    type IntoIter = std::collections::hash_map::IntoIter<FileId, Option<TextRange>>;
+    type Item = (EditionedFileId, Option<TextRange>);
+    type IntoIter = std::collections::hash_map::IntoIter<EditionedFileId, Option<TextRange>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.entries.into_iter()
@@ -333,7 +343,7 @@ impl Definition {
         if let Definition::Macro(macro_def) = self {
             return match macro_def.kind(db) {
                 hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).by_key("macro_export").exists() {
+                    if macro_def.attrs(db).by_key(&sym::macro_export).exists() {
                         SearchScope::reverse_dependencies(db, module.krate())
                     } else {
                         SearchScope::krate(db, module.krate())
@@ -432,7 +442,7 @@ impl<'a> FindUsages<'a> {
         res
     }
 
-    pub fn search(&self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
+    pub fn search(&self, sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool) {
         let _p = tracing::info_span!("FindUsages:search").entered();
         let sema = self.sema;
 
@@ -456,7 +466,7 @@ impl<'a> FindUsages<'a> {
                 module
                     .krate()
                     .display_name(self.sema.db)
-                    .map(|crate_name| crate_name.crate_name().as_smol_str().clone())
+                    .map(|crate_name| crate_name.crate_name().symbol().as_str().into())
             }
             _ => {
                 let self_kw_refs = || {
@@ -468,7 +478,10 @@ impl<'a> FindUsages<'a> {
                 };
                 // We need to unescape the name in case it is written without "r#" in earlier
                 // editions of Rust where it isn't a keyword.
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.unescaped().to_smol_str())
+                self.def
+                    .name(sema.db)
+                    .or_else(self_kw_refs)
+                    .map(|it| it.unescaped().display(sema.db).to_smolstr())
             }
         };
         let name = match &name {
@@ -494,13 +507,13 @@ impl<'a> FindUsages<'a> {
             })
         }
 
-        // for<'a> |scope: &'a SearchScope| -> impl Iterator<Item = (Arc<String>, FileId, TextRange)> + 'a { ... }
+        // for<'a> |scope: &'a SearchScope| -> impl Iterator<Item = (Arc<String>, EditionedFileId, TextRange)> + 'a { ... }
         fn scope_files<'a>(
             sema: &'a Semantics<'_, RootDatabase>,
             scope: &'a SearchScope,
-        ) -> impl Iterator<Item = (Arc<str>, FileId, TextRange)> + 'a {
+        ) -> impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)> + 'a {
             scope.entries.iter().map(|(&file_id, &search_range)| {
-                let text = sema.db.file_text(file_id);
+                let text = sema.db.file_text(file_id.file_id());
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
@@ -624,7 +637,7 @@ impl<'a> FindUsages<'a> {
                     return;
                 };
 
-                let text = sema.db.file_text(file_id);
+                let text = sema.db.file_text(file_id.file_id());
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
@@ -648,7 +661,7 @@ impl<'a> FindUsages<'a> {
         &self,
         self_ty: &hir::Type,
         name_ref: &ast::NameRef,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(Definition::SelfType(impl_)))
@@ -669,7 +682,7 @@ impl<'a> FindUsages<'a> {
     fn found_self_module_name_ref(
         &self,
         name_ref: &ast::NameRef,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def @ Definition::Module(_))) if def == self.def => {
@@ -692,11 +705,11 @@ impl<'a> FindUsages<'a> {
 
     fn found_format_args_ref(
         &self,
-        file_id: FileId,
+        file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
         res: Option<PathResolution>,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match res.map(Definition::from) {
             Some(def) if def == self.def => {
@@ -714,7 +727,7 @@ impl<'a> FindUsages<'a> {
     fn found_lifetime(
         &self,
         lifetime: &ast::Lifetime,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify_lifetime(self.sema, lifetime) {
             Some(NameRefClass::Definition(def)) if def == self.def => {
@@ -733,7 +746,7 @@ impl<'a> FindUsages<'a> {
     fn found_name_ref(
         &self,
         name_ref: &ast::NameRef,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def))
@@ -807,7 +820,7 @@ impl<'a> FindUsages<'a> {
     fn found_name(
         &self,
         name: &ast::Name,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameClass::classify(self.sema, name) {
             Some(NameClass::PatFieldShorthand { local_def: _, field_ref })

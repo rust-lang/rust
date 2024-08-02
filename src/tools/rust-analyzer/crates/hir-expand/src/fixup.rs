@@ -1,6 +1,7 @@
 //! To make attribute macros work reliably when typing, we need to take care to
 //! fix up syntax errors in the code we're passing to them.
 
+use intern::sym;
 use mbe::DocCommentDesugarMode;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
@@ -80,12 +81,13 @@ pub(crate) fn fixup_syntax(
             original.push(original_tree);
             let span = span_map.span_for_range(node_range);
             let replacement = Leaf::Ident(Ident {
-                text: "__ra_fixup".into(),
+                sym: sym::__ra_fixup.clone(),
                 span: Span {
                     range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
                     ctx: span.ctx,
                 },
+                is_raw: tt::IdentIsRaw::No,
             });
             append.insert(node.clone().into(), vec![replacement]);
             preorder.skip_subtree();
@@ -99,8 +101,9 @@ pub(crate) fn fixup_syntax(
                         // incomplete field access: some_expr.|
                         append.insert(node.clone().into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
+                                sym: sym::__ra_fixup.clone(),
                                 span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -136,8 +139,9 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(if_token.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                sym: sym::__ra_fixup.clone(),
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -166,8 +170,9 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(while_token.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                sym: sym::__ra_fixup.clone(),
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -213,8 +218,9 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(match_token.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                sym: sym::__ra_fixup.clone(),
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             }),
                         ]);
                     }
@@ -242,13 +248,14 @@ pub(crate) fn fixup_syntax(
                     };
 
                     let [pat, in_token, iter] = [
-                         "_",
-                         "in",
-                         "__ra_fixup"
-                    ].map(|text|
+                         sym::underscore.clone(),
+                         sym::in_.clone(),
+                         sym::__ra_fixup.clone(),
+                    ].map(|sym|
                         Leaf::Ident(Ident {
-                            text: text.into(),
-                            span: fake_span(node_range)
+                            sym,
+                            span: fake_span(node_range),
+                            is_raw: tt::IdentIsRaw::No
                         }),
                     );
 
@@ -280,8 +287,9 @@ pub(crate) fn fixup_syntax(
                         if it.name_ref().is_some() && it.expr().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    text: "__ra_fixup".into(),
-                                    span: fake_span(node_range)
+                                    sym: sym::__ra_fixup.clone(),
+                                    span: fake_span(node_range),
+                                    is_raw: tt::IdentIsRaw::No
                                 })
                             ]);
                         }
@@ -292,8 +300,9 @@ pub(crate) fn fixup_syntax(
                         if it.segment().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    text: "__ra_fixup".into(),
-                                    span: fake_span(node_range)
+                                    sym: sym::__ra_fixup.clone(),
+                                    span: fake_span(node_range),
+                                    is_raw: tt::IdentIsRaw::No
                                 })
                             ]);
                         }
@@ -325,8 +334,9 @@ pub(crate) fn fixup_syntax(
                     if it.body().is_none() {
                         append.insert(node.into(), vec![
                             Leaf::Ident(Ident {
-                                text: "__ra_fixup".into(),
-                                span: fake_span(node_range)
+                                sym: sym::__ra_fixup.clone(),
+                                span: fake_span(node_range),
+                                is_raw: tt::IdentIsRaw::No
                             })
                         ]);
                     }
@@ -423,9 +433,9 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
 
 #[cfg(test)]
 mod tests {
-    use base_db::FileId;
     use expect_test::{expect, Expect};
     use mbe::DocCommentDesugarMode;
+    use span::{Edition, EditionedFileId, FileId};
     use syntax::TextRange;
     use triomphe::Arc;
 
@@ -439,9 +449,9 @@ mod tests {
     // `TokenTree`s, see the last assertion in `check()`.
     fn check_leaf_eq(a: &tt::Leaf, b: &tt::Leaf) -> bool {
         match (a, b) {
-            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.text == b.text,
+            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.symbol == b.symbol,
             (tt::Leaf::Punct(a), tt::Leaf::Punct(b)) => a.char == b.char,
-            (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.text == b.text,
+            (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.sym == b.sym,
             _ => false,
         }
     }
@@ -463,7 +473,10 @@ mod tests {
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture, span::Edition::CURRENT);
-        let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
+        let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(EditionedFileId::new(
+            FileId::from_raw(0),
+            Edition::CURRENT,
+        ))));
         let fixups = super::fixup_syntax(
             span_map.as_ref(),
             &parsed.syntax_node(),

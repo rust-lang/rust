@@ -42,8 +42,15 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Foreign(..)
         | ty::Error(_) => true,
 
-        // `T is PAT`, `[T; N]`, and `[T]` have same properties as T.
-        ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        // `T is PAT` and `[T]` have same properties as T.
+        ty::Pat(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        ty::Array(ty, size) => {
+            // Empty array never has a dtor. See issue #110288.
+            match size.try_to_target_usize(tcx) {
+                Some(0) => true,
+                _ => trivial_dropck_outlives(tcx, *ty),
+            }
+        }
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.

@@ -1,10 +1,9 @@
 use hir::Name;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
-    base_db::FileRange,
     label::Label,
     source_change::SourceChange,
-    RootDatabase,
+    FileRange, RootDatabase,
 };
 use syntax::TextRange;
 use text_edit::TextEdit;
@@ -43,7 +42,7 @@ pub(crate) fn unused_variables(
             ast,
         )
         .with_fixes(name_range.and_then(|it| {
-            fixes(ctx.sema.db, var_name, it.range, diagnostic_range, ast.file_id.is_macro())
+            fixes(ctx.sema.db, var_name, it.range, diagnostic_range.into(), ast.file_id.is_macro())
         }))
         .experimental(),
     )
@@ -73,7 +72,7 @@ fn fixes(
             diagnostic_range.file_id,
             TextEdit::replace(name_range, format!("_{}", var_name.display(db))),
         )),
-        trigger_signature_help: false,
+        command: None,
     }])
 }
 

@@ -8,7 +8,6 @@ use std::{
     ops::{self, ControlFlow, Not},
 };
 
-use base_db::{FileId, FileRange};
 use either::Either;
 use hir_def::{
     hir::Expr,
@@ -20,16 +19,16 @@ use hir_def::{
 };
 use hir_expand::{
     attrs::collect_attrs,
-    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::InRealFile,
     name::AsName,
-    InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{Span, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+use span::{EditionedFileId, FileId, Span, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -225,12 +224,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
 
-    pub fn file_to_module_def(&self, file: FileId) -> Option<Module> {
-        self.imp.file_to_module_defs(file).next()
+    pub fn file_to_module_def(&self, file: impl Into<FileId>) -> Option<Module> {
+        self.imp.file_to_module_defs(file.into()).next()
     }
 
-    pub fn file_to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
-        self.imp.file_to_module_defs(file)
+    pub fn file_to_module_defs(&self, file: impl Into<FileId>) -> impl Iterator<Item = Module> {
+        self.imp.file_to_module_defs(file.into())
     }
 
     pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
@@ -300,7 +299,23 @@ impl<'db> SemanticsImpl<'db> {
         }
     }
 
-    pub fn parse(&self, file_id: FileId) -> ast::SourceFile {
+    pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
+        let tree = self.db.parse(file_id).tree();
+        self.cache(tree.syntax().clone(), file_id.into());
+        tree
+    }
+
+    pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
+        Some(EditionedFileId::new(
+            file,
+            self.file_to_module_defs(file).next()?.krate().edition(self.db),
+        ))
+    }
+
+    pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
+        let file_id = self
+            .attach_first_edition(file_id)
+            .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
@@ -757,7 +772,7 @@ impl<'db> SemanticsImpl<'db> {
         // iterate related crates and find all include! invocations that include_file_id matches
         for (invoc, _) in self
             .db
-            .relevant_crates(file_id)
+            .relevant_crates(file_id.file_id())
             .iter()
             .flat_map(|krate| self.db.include_macro_invoc(*krate))
             .filter(|&(_, include_file_id)| include_file_id == file_id)
@@ -1089,6 +1104,7 @@ impl<'db> SemanticsImpl<'db> {
         node.original_file_range_opt(self.db.upcast())
             .filter(|(_, ctx)| ctx.is_root())
             .map(TupleExt::head)
+            .map(Into::into)
     }
 
     /// Attempts to map the node out of macro expanded files.

@@ -5,12 +5,13 @@ use std::{
 
 use either::Either;
 use hir::{
-    known, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
+    sym, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
     ModuleDefId, Semantics,
 };
-use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
+use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
+use span::EditionedFileId;
 use stdx::never;
 use syntax::{
     ast::{self, AstNode},
@@ -493,6 +494,9 @@ pub(crate) fn inlay_hints(
 ) -> Vec<InlayHint> {
     let _p = tracing::info_span!("inlay_hints").entered();
     let sema = Semantics::new(db);
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
     let file = sema.parse(file_id);
     let file = file.syntax();
 
@@ -527,6 +531,9 @@ pub(crate) fn inlay_hints_resolve(
 ) -> Option<InlayHint> {
     let _p = tracing::info_span!("inlay_hints_resolve").entered();
     let sema = Semantics::new(db);
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
     let file = sema.parse(file_id);
     let file = file.syntax();
 
@@ -551,7 +558,7 @@ fn hints(
     hints: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: FileId,
+    file_id: EditionedFileId,
     node: SyntaxNode,
 ) {
     closing_brace::hints(hints, sema, config, file_id, node.clone());
@@ -633,7 +640,7 @@ fn hint_iterator(
 
     if ty.impls_trait(db, iter_trait, &[]) {
         let assoc_type_item = iter_trait.items(db).into_iter().find_map(|item| match item {
-            hir::AssocItem::TypeAlias(alias) if alias.name(db) == known::Item => Some(alias),
+            hir::AssocItem::TypeAlias(alias) if alias.name(db) == sym::Item.clone() => Some(alias),
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, &[], assoc_type_item) {

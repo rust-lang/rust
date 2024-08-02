@@ -5,10 +5,11 @@
 
 use std::{collections::hash_map::Entry, iter, mem};
 
-use crate::SnippetCap;
-use base_db::{AnchoredPathBuf, FileId};
+use crate::{assists::Command, SnippetCap};
+use base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+use span::FileId;
 use stdx::never;
 use syntax::{
     algo, AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
@@ -32,28 +33,28 @@ impl SourceChange {
         SourceChange { source_file_edits, file_system_edits, is_snippet: false }
     }
 
-    pub fn from_text_edit(file_id: FileId, edit: TextEdit) -> Self {
+    pub fn from_text_edit(file_id: impl Into<FileId>, edit: TextEdit) -> Self {
         SourceChange {
-            source_file_edits: iter::once((file_id, (edit, None))).collect(),
+            source_file_edits: iter::once((file_id.into(), (edit, None))).collect(),
             ..Default::default()
         }
     }
 
     /// Inserts a [`TextEdit`] for the given [`FileId`]. This properly handles merging existing
     /// edits for a file if some already exist.
-    pub fn insert_source_edit(&mut self, file_id: FileId, edit: TextEdit) {
-        self.insert_source_and_snippet_edit(file_id, edit, None)
+    pub fn insert_source_edit(&mut self, file_id: impl Into<FileId>, edit: TextEdit) {
+        self.insert_source_and_snippet_edit(file_id.into(), edit, None)
     }
 
     /// Inserts a [`TextEdit`] and potentially a [`SnippetEdit`] for the given [`FileId`].
     /// This properly handles merging existing edits for a file if some already exist.
     pub fn insert_source_and_snippet_edit(
         &mut self,
-        file_id: FileId,
+        file_id: impl Into<FileId>,
         edit: TextEdit,
         snippet_edit: Option<SnippetEdit>,
     ) {
-        match self.source_file_edits.entry(file_id) {
+        match self.source_file_edits.entry(file_id.into()) {
             Entry::Occupied(mut entry) => {
                 let value = entry.get_mut();
                 never!(value.0.union(edit).is_err(), "overlapping edits for same file");
@@ -194,7 +195,7 @@ pub struct SourceChangeBuilder {
     pub edit: TextEditBuilder,
     pub file_id: FileId,
     pub source_change: SourceChange,
-    pub trigger_signature_help: bool,
+    pub command: Option<Command>,
 
     /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
     pub mutated_tree: Option<TreeMutator>,
@@ -231,20 +232,20 @@ impl TreeMutator {
 }
 
 impl SourceChangeBuilder {
-    pub fn new(file_id: FileId) -> SourceChangeBuilder {
+    pub fn new(file_id: impl Into<FileId>) -> SourceChangeBuilder {
         SourceChangeBuilder {
             edit: TextEdit::builder(),
-            file_id,
+            file_id: file_id.into(),
             source_change: SourceChange::default(),
-            trigger_signature_help: false,
+            command: None,
             mutated_tree: None,
             snippet_builder: None,
         }
     }
 
-    pub fn edit_file(&mut self, file_id: FileId) {
+    pub fn edit_file(&mut self, file_id: impl Into<FileId>) {
         self.commit();
-        self.file_id = file_id;
+        self.file_id = file_id.into();
     }
 
     fn commit(&mut self) {
@@ -300,12 +301,19 @@ impl SourceChangeBuilder {
         let file_system_edit = FileSystemEdit::CreateFile { dst, initial_contents: content.into() };
         self.source_change.push_file_system_edit(file_system_edit);
     }
-    pub fn move_file(&mut self, src: FileId, dst: AnchoredPathBuf) {
-        let file_system_edit = FileSystemEdit::MoveFile { src, dst };
+    pub fn move_file(&mut self, src: impl Into<FileId>, dst: AnchoredPathBuf) {
+        let file_system_edit = FileSystemEdit::MoveFile { src: src.into(), dst };
         self.source_change.push_file_system_edit(file_system_edit);
     }
-    pub fn trigger_signature_help(&mut self) {
-        self.trigger_signature_help = true;
+
+    /// Triggers the parameter hint popup after the assist is applied
+    pub fn trigger_parameter_hints(&mut self) {
+        self.command = Some(Command::TriggerParameterHints);
+    }
+
+    /// Renames the item at the cursor position after the assist is applied
+    pub fn rename(&mut self) {
+        self.command = Some(Command::Rename);
     }
 
     /// Adds a tabstop snippet to place the cursor before `node`

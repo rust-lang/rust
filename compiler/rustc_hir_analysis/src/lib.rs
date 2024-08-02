@@ -83,6 +83,7 @@ pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
+mod delegation;
 pub mod hir_ty_lowering;
 // FIXME: This module shouldn't be public.
 pub mod collect;
@@ -146,6 +147,10 @@ pub fn provide(providers: &mut Providers) {
     variance::provide(providers);
     outlives::provide(providers);
     hir_wf_check::provide(providers);
+    *providers = Providers {
+        inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
+        ..*providers
+    };
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) {

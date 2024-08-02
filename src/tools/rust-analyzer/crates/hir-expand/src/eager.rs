@@ -54,6 +54,7 @@ pub fn expand_eager_macro_input(
         ctxt: call_site,
     }
     .intern(db);
+    #[allow(deprecated)] // builtin eager macros are never derives
     let (_, _, span) = db.macro_arg(arg_id);
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         db.parse_macro_expansion(arg_id.as_macro_file());
@@ -175,14 +176,19 @@ fn eager_macro_recur(
             Some(path) => match macro_resolver(&path) {
                 Some(def) => def,
                 None => {
-                    error =
-                        Some(ExpandError::other(format!("unresolved macro {}", path.display(db))));
+                    error = Some(ExpandError::other(
+                        span_map.span_at(call.syntax().text_range().start()),
+                        format!("unresolved macro {}", path.display(db)),
+                    ));
                     offset += call.syntax().text_range().len();
                     continue;
                 }
             },
             None => {
-                error = Some(ExpandError::other("malformed macro invocation"));
+                error = Some(ExpandError::other(
+                    span_map.span_at(call.syntax().text_range().start()),
+                    "malformed macro invocation",
+                ));
                 offset += call.syntax().text_range().len();
                 continue;
             }

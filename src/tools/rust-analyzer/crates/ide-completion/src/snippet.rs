@@ -206,10 +206,11 @@ fn validate_snippet(
 ) -> Option<(Box<[GreenNode]>, String, Option<Box<str>>)> {
     let mut imports = Vec::with_capacity(requires.len());
     for path in requires.iter() {
-        let use_path = ast::SourceFile::parse(&format!("use {path};"), syntax::Edition::CURRENT)
-            .syntax_node()
-            .descendants()
-            .find_map(ast::Path::cast)?;
+        let use_path =
+            ast::SourceFile::parse(&format!("use {path};"), syntax::Edition::CURRENT_FIXME)
+                .syntax_node()
+                .descendants()
+                .find_map(ast::Path::cast)?;
         if use_path.syntax().text() != path.as_str() {
             return None;
         }

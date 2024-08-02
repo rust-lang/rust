@@ -909,6 +909,15 @@ pub fn version_at_macro_invocation(
 ) {
     let verbose = matches.opt_present("verbose");
 
+    let mut version = version;
+    let mut release = release;
+    let tmp;
+    if let Ok(force_version) = std::env::var("RUSTC_OVERRIDE_VERSION_STRING") {
+        tmp = force_version;
+        version = &tmp;
+        release = &tmp;
+    }
+
     safe_println!("{binary} {version}");
 
     if verbose {

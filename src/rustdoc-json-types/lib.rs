@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 32;
+pub const FORMAT_VERSION: u32 = 33;
 
 /// The root of the emitted JSON blob.
 ///
@@ -326,7 +326,6 @@ pub enum ItemKind {
     Function,
     /// A type alias declaration, e.g. `type Pig = std::borrow::Cow<'static, str>;`
     TypeAlias,
-    OpaqueTy,
     /// The declaration of a constant, e.g. `const GREETING: &str = "Hi :3";`
     Constant,
     /// A `trait` declaration.
@@ -414,7 +413,6 @@ pub enum ItemEnum {
 
     /// A type alias declaration, e.g. `type Pig = std::borrow::Cow<'static, str>;`
     TypeAlias(TypeAlias),
-    OpaqueTy(OpaqueTy),
     /// The declaration of a constant, e.g. `const GREETING: &str = "Hi :3";`
     Constant {
         /// The type of the constant.
@@ -1197,12 +1195,6 @@ pub struct TypeAlias {
     #[serde(rename = "type")]
     pub type_: Type,
     /// Information about the type parameters and `where` clauses of the alias.
-    pub generics: Generics,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OpaqueTy {
-    pub bounds: Vec<GenericBound>,
     pub generics: Generics,
 }
 

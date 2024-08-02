@@ -11,7 +11,7 @@ use rand::Rng;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::Span;
-use rustc_target::abi::{Align, HasDataLayout, Size};
+use rustc_target::abi::{Align, Size};
 
 use crate::{concurrency::VClock, *};
 
@@ -105,15 +105,17 @@ impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Returns the exposed `AllocId` that corresponds to the specified addr,
     // or `None` if the addr is out of bounds
-    fn alloc_id_from_addr(&self, addr: u64) -> Option<AllocId> {
+    fn alloc_id_from_addr(&self, addr: u64, size: i64) -> Option<AllocId> {
         let ecx = self.eval_context_ref();
         let global_state = ecx.machine.alloc_addresses.borrow();
         assert!(global_state.provenance_mode != ProvenanceMode::Strict);
 
+        // We always search the allocation to the right of this address. So if the size is structly
+        // negative, we have to search for `addr-1` instead.
+        let addr = if size >= 0 { addr } else { addr.saturating_sub(1) };
         let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
 
         // Determine the in-bounds provenance for this pointer.
-        // (This is only called on an actual access, so in-bounds is the only possible kind of provenance.)
         let alloc_id = match pos {
             Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
             Err(0) => None,
@@ -305,20 +307,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let (prov, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
         let alloc_id = prov.alloc_id();
-        let base_addr = ecx.addr_from_alloc_id(alloc_id, kind)?;
 
-        // Add offset with the right kind of pointer-overflowing arithmetic.
-        let dl = ecx.data_layout();
-        let absolute_addr = dl.overflowing_offset(base_addr, offset.bytes()).0;
-        Ok(interpret::Pointer::new(
+        // Get a pointer to the beginning of this allocation.
+        let base_addr = ecx.addr_from_alloc_id(alloc_id, kind)?;
+        let base_ptr = interpret::Pointer::new(
             Provenance::Concrete { alloc_id, tag },
-            Size::from_bytes(absolute_addr),
-        ))
+            Size::from_bytes(base_addr),
+        );
+        // Add offset with the right kind of pointer-overflowing arithmetic.
+        Ok(base_ptr.wrapping_offset(offset, ecx))
     }
 
     /// When a pointer is used for a memory access, this computes where in which allocation the
     /// access is going.
-    fn ptr_get_alloc(&self, ptr: interpret::Pointer<Provenance>) -> Option<(AllocId, Size)> {
+    fn ptr_get_alloc(
+        &self,
+        ptr: interpret::Pointer<Provenance>,
+        size: i64,
+    ) -> Option<(AllocId, Size)> {
         let ecx = self.eval_context_ref();
 
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
@@ -327,7 +333,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             alloc_id
         } else {
             // A wildcard pointer.
-            ecx.alloc_id_from_addr(addr.bytes())?
+            ecx.alloc_id_from_addr(addr.bytes(), size)?
         };
 
         // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_root_pointer
@@ -335,12 +341,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let base_addr = *ecx.machine.alloc_addresses.borrow().base_addr.get(&alloc_id).unwrap();
 
         // Wrapping "addr - base_addr"
-        #[allow(clippy::cast_possible_wrap)] // we want to wrap here
-        let neg_base_addr = (base_addr as i64).wrapping_neg();
-        Some((
-            alloc_id,
-            Size::from_bytes(ecx.overflowing_signed_offset(addr.bytes(), neg_base_addr).0),
-        ))
+        let rel_offset = ecx.truncate_to_target_usize(addr.bytes().wrapping_sub(base_addr));
+        Some((alloc_id, Size::from_bytes(rel_offset)))
     }
 }
 

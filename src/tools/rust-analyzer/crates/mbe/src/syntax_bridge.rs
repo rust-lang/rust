@@ -2,18 +2,20 @@
 
 use std::fmt;
 
+use intern::Symbol;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, SpanAnchor, SpanData, SpanMap};
-use stdx::{never, non_empty_vec::NonEmptyVec};
+use stdx::{format_to, never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
-    AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
-    SyntaxKind::*,
+    format_smolstr, AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement,
+    SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
 use tt::{
     buffer::{Cursor, TokenBuffer},
     iter::TtIter,
+    token_to_literal,
 };
 
 use crate::to_parser_input::to_parser_input;
@@ -50,7 +52,10 @@ pub(crate) mod dummy_test_span_utils {
     pub const DUMMY: Span = Span {
         range: TextRange::empty(TextSize::new(0)),
         anchor: span::SpanAnchor {
-            file_id: span::FileId::from_raw(0xe4e4e),
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
             ast_id: span::ROOT_ERASED_FILE_AST_ID,
         },
         ctx: SyntaxContextId::ROOT,
@@ -63,7 +68,10 @@ pub(crate) mod dummy_test_span_utils {
             Span {
                 range,
                 anchor: span::SpanAnchor {
-                    file_id: span::FileId::from_raw(0xe4e4e),
+                    file_id: span::EditionedFileId::new(
+                        span::FileId::from_raw(0xe4e4e),
+                        span::Edition::CURRENT,
+                    ),
                     ast_id: span::ROOT_ERASED_FILE_AST_ID,
                 },
                 ctx: SyntaxContextId::ROOT,
@@ -145,7 +153,7 @@ where
         } => TokenBuffer::from_tokens(token_trees),
         _ => TokenBuffer::from_subtree(tt),
     };
-    let parser_input = to_parser_input(&buffer);
+    let parser_input = to_parser_input(edition, &buffer);
     let parser_output = entry_point.parse(&parser_input, edition);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     for event in parser_output.iter() {
@@ -167,6 +175,7 @@ where
 /// Convert a string to a `TokenTree`. The spans of the subtree will be anchored to the provided
 /// anchor with the given context.
 pub fn parse_to_token_tree<Ctx>(
+    edition: Edition,
     anchor: SpanAnchor,
     ctx: Ctx,
     text: &str,
@@ -175,7 +184,7 @@ where
     SpanData<Ctx>: Copy + fmt::Debug,
     Ctx: Copy,
 {
-    let lexed = parser::LexedStr::new(text);
+    let lexed = parser::LexedStr::new(edition, text);
     if lexed.errors().next().is_some() {
         return None;
     }
@@ -185,11 +194,15 @@ where
 }
 
 /// Convert a string to a `TokenTree`. The passed span will be used for all spans of the produced subtree.
-pub fn parse_to_token_tree_static_span<S>(span: S, text: &str) -> Option<tt::Subtree<S>>
+pub fn parse_to_token_tree_static_span<S>(
+    edition: Edition,
+    span: S,
+    text: &str,
+) -> Option<tt::Subtree<S>>
 where
     S: Copy + fmt::Debug,
 {
-    let lexed = parser::LexedStr::new(text);
+    let lexed = parser::LexedStr::new(edition, text);
     if lexed.errors().next().is_some() {
         return None;
     }
@@ -199,15 +212,12 @@ where
 }
 
 /// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep<S>(
-    tt: &tt::Subtree<S>,
+pub fn parse_exprs_with_sep(
+    tt: &tt::Subtree<span::Span>,
     sep: char,
-    span: S,
+    span: span::Span,
     edition: Edition,
-) -> Vec<tt::Subtree<S>>
-where
-    S: Copy + fmt::Debug,
-{
+) -> Vec<tt::Subtree<span::Span>> {
     if tt.token_trees.is_empty() {
         return Vec::new();
     }
@@ -216,7 +226,12 @@ where
     let mut res = Vec::new();
 
     while iter.peek_n(0).is_some() {
-        let expanded = crate::expect_fragment(&mut iter, parser::PrefixEntryPoint::Expr, edition);
+        let expanded = crate::expect_fragment(
+            &mut iter,
+            parser::PrefixEntryPoint::Expr,
+            edition,
+            tt::DelimSpan { open: tt.delimiter.open, close: tt.delimiter.close },
+        );
 
         res.push(match expanded.value {
             None => break,
@@ -317,18 +332,29 @@ where
                         .into()
                 }
                 kind => {
-                    macro_rules! make_leaf {
-                        ($i:ident) => {
-                            tt::$i { span: conv.span_for(abs_range), text: token.to_text(conv) }
-                                .into()
+                    macro_rules! make_ident {
+                        () => {
+                            tt::Ident {
+                                span: conv.span_for(abs_range),
+                                sym: Symbol::intern(&token.to_text(conv)),
+                                is_raw: tt::IdentIsRaw::No,
+                            }
+                            .into()
                         };
                     }
                     let leaf: tt::Leaf<_> = match kind {
-                        T![true] | T![false] => make_leaf!(Ident),
-                        IDENT => make_leaf!(Ident),
-                        UNDERSCORE => make_leaf!(Ident),
-                        k if k.is_keyword() => make_leaf!(Ident),
-                        k if k.is_literal() => make_leaf!(Literal),
+                        T![true] | T![false] => make_ident!(),
+                        IDENT => {
+                            let text = token.to_text(conv);
+                            tt::Ident::new(&text, conv.span_for(abs_range)).into()
+                        }
+                        UNDERSCORE => make_ident!(),
+                        k if k.is_keyword() => make_ident!(),
+                        k if k.is_literal() => {
+                            let text = token.to_text(conv);
+                            let span = conv.span_for(abs_range);
+                            token_to_literal(&text, span).into()
+                        }
                         LIFETIME_IDENT => {
                             let apostrophe = tt::Leaf::from(tt::Punct {
                                 char: '\'',
@@ -339,11 +365,12 @@ where
                             token_trees.push(apostrophe.into());
 
                             let ident = tt::Leaf::from(tt::Ident {
-                                text: SmolStr::new(&token.to_text(conv)[1..]),
+                                sym: Symbol::intern(&token.to_text(conv)[1..]),
                                 span: conv.span_for(TextRange::new(
                                     abs_range.start() + TextSize::of('\''),
                                     abs_range.end(),
                                 )),
+                                is_raw: tt::IdentIsRaw::No,
                             });
                             token_trees.push(ident.into());
                             continue;
@@ -421,16 +448,10 @@ fn is_single_token_op(kind: SyntaxKind) -> bool {
 /// That is, strips leading `///` (or `/**`, etc)
 /// and strips the ending `*/`
 /// And then quote the string, which is needed to convert to `tt::Literal`
-fn doc_comment_text(comment: &ast::Comment, mode: DocCommentDesugarMode) -> SmolStr {
-    let prefix_len = comment.prefix().len();
-    let mut text = &comment.text()[prefix_len..];
-
-    // Remove ending "*/"
-    if comment.kind().shape == ast::CommentShape::Block {
-        text = &text[0..text.len() - 2];
-    }
-
-    let text = match mode {
+///
+/// Note that proc-macros desugar with string literals where as macro_rules macros desugar with raw string literals.
+pub fn desugar_doc_comment_text(text: &str, mode: DocCommentDesugarMode) -> (Symbol, tt::LitKind) {
+    match mode {
         DocCommentDesugarMode::Mbe => {
             let mut num_of_hashes = 0;
             let mut count = 0;
@@ -444,14 +465,13 @@ fn doc_comment_text(comment: &ast::Comment, mode: DocCommentDesugarMode) -> Smol
             }
 
             // Quote raw string with delimiters
-            // Note that `tt::Literal` expect an escaped string
-            format!(r#"r{delim}"{text}"{delim}"#, delim = "#".repeat(num_of_hashes))
+            (Symbol::intern(text), tt::LitKind::StrRaw(num_of_hashes))
         }
         // Quote string with delimiters
-        // Note that `tt::Literal` expect an escaped string
-        DocCommentDesugarMode::ProcMacro => format!(r#""{}""#, text.escape_debug()),
-    };
-    text.into()
+        DocCommentDesugarMode::ProcMacro => {
+            (Symbol::intern(&format_smolstr!("{}", text.escape_debug())), tt::LitKind::Str)
+        }
+    }
 }
 
 fn convert_doc_comment<S: Copy>(
@@ -463,8 +483,13 @@ fn convert_doc_comment<S: Copy>(
     let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
 
-    let mk_ident =
-        |s: &str| tt::TokenTree::from(tt::Leaf::from(tt::Ident { text: s.into(), span }));
+    let mk_ident = |s: &str| {
+        tt::TokenTree::from(tt::Leaf::from(tt::Ident {
+            sym: Symbol::intern(s),
+            span,
+            is_raw: tt::IdentIsRaw::No,
+        }))
+    };
 
     let mk_punct = |c: char| {
         tt::TokenTree::from(tt::Leaf::from(tt::Punct {
@@ -475,7 +500,15 @@ fn convert_doc_comment<S: Copy>(
     };
 
     let mk_doc_literal = |comment: &ast::Comment| {
-        let lit = tt::Literal { text: doc_comment_text(comment, mode), span };
+        let prefix_len = comment.prefix().len();
+        let mut text = &comment.text()[prefix_len..];
+
+        // Remove ending "*/"
+        if comment.kind().shape == ast::CommentShape::Block {
+            text = &text[0..text.len() - 2];
+        }
+        let (text, kind) = desugar_doc_comment_text(text, mode);
+        let lit = tt::Literal { symbol: text, span, kind, suffix: None };
 
         tt::TokenTree::from(tt::Leaf::from(lit))
     };
@@ -902,16 +935,22 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
 
 impl<Ctx> TtTreeSink<'_, Ctx>
 where
-    SpanData<Ctx>: Copy,
+    SpanData<Ctx>: Copy + fmt::Debug,
 {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
         let (text, span) = match self.cursor.token_tree() {
-            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Literal(lit), _)) => {
-                (lit.text.as_str(), lit.span)
-            }
-            _ => unreachable!(),
+            Some(tt::buffer::TokenTreeRef::Leaf(
+                tt::Leaf::Literal(tt::Literal {
+                    symbol: text,
+                    span,
+                    kind: tt::LitKind::Float,
+                    suffix: _,
+                }),
+                _,
+            )) => (text.as_str(), *span),
+            tt => unreachable!("{tt:?}"),
         };
         // FIXME: Span splitting
         match text.split_once('.') {
@@ -954,7 +993,7 @@ where
         }
 
         let mut last = self.cursor;
-        for _ in 0..n_tokens {
+        'tokens: for _ in 0..n_tokens {
             let tmp: u8;
             if self.cursor.eof() {
                 break;
@@ -962,23 +1001,36 @@ where
             last = self.cursor;
             let (text, span) = loop {
                 break match self.cursor.token_tree() {
-                    Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
-                        // Mark the range if needed
-                        let (text, span) = match leaf {
-                            tt::Leaf::Ident(ident) => (ident.text.as_str(), ident.span),
-                            tt::Leaf::Punct(punct) => {
-                                assert!(punct.char.is_ascii());
-                                tmp = punct.char as u8;
-                                (
-                                    std::str::from_utf8(std::slice::from_ref(&tmp)).unwrap(),
-                                    punct.span,
-                                )
+                    Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => match leaf {
+                        tt::Leaf::Ident(ident) => {
+                            if ident.is_raw.yes() {
+                                self.buf.push_str("r#");
+                                self.text_pos += TextSize::of("r#");
                             }
-                            tt::Leaf::Literal(lit) => (lit.text.as_str(), lit.span),
-                        };
-                        self.cursor = self.cursor.bump();
-                        (text, span)
-                    }
+                            let r = (ident.sym.as_str(), ident.span);
+                            self.cursor = self.cursor.bump();
+                            r
+                        }
+                        tt::Leaf::Punct(punct) => {
+                            assert!(punct.char.is_ascii());
+                            tmp = punct.char as u8;
+                            let r = (
+                                std::str::from_utf8(std::slice::from_ref(&tmp)).unwrap(),
+                                punct.span,
+                            );
+                            self.cursor = self.cursor.bump();
+                            r
+                        }
+                        tt::Leaf::Literal(lit) => {
+                            let buf_l = self.buf.len();
+                            format_to!(self.buf, "{lit}");
+                            debug_assert_ne!(self.buf.len() - buf_l, 0);
+                            self.text_pos += TextSize::new((self.buf.len() - buf_l) as u32);
+                            self.token_map.push(self.text_pos, lit.span);
+                            self.cursor = self.cursor.bump();
+                            continue 'tokens;
+                        }
+                    },
                     Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
                         self.cursor = self.cursor.subtree().unwrap();
                         match delim_to_str(subtree.delimiter.kind, false) {

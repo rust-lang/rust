@@ -1,9 +1,9 @@
 use ide_db::{
     assists::{AssistId, AssistKind},
-    base_db::FileId,
     defs::Definition,
     search::{FileReference, FileReferenceNode},
     syntax_helpers::node_ext::full_path_of_name_ref,
+    EditionedFileId,
 };
 use syntax::{
     ast::{self, NameRef},
@@ -95,7 +95,7 @@ pub(crate) fn unnecessary_async(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
 fn find_all_references(
     ctx: &AssistContext<'_>,
     def: &Definition,
-) -> impl Iterator<Item = (FileId, FileReference)> {
+) -> impl Iterator<Item = (EditionedFileId, FileReference)> {
     def.usages(&ctx.sema).all().into_iter().flat_map(|(file_id, references)| {
         references.into_iter().map(move |reference| (file_id, reference))
     })

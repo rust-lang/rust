@@ -50,7 +50,7 @@ debug = 2
 [workspace.dependencies]
 # local crates
 base-db = { path = "./crates/base-db", version = "0.0.0" }
-cfg = { path = "./crates/cfg", version = "0.0.0" }
+cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
 flycheck = { path = "./crates/flycheck", version = "0.0.0" }
 hir = { path = "./crates/hir", version = "0.0.0" }
 hir-def = { path = "./crates/hir-def", version = "0.0.0" }
@@ -163,14 +163,14 @@ xshell = "0.2.5"
 dashmap = { version = "=5.5.3", features = ["raw-api"] }
 
 [workspace.lints.rust]
-bare_trait_objects = "warn"
+# remember to update RUSTFLAGS in ci.yml if you add something here
+
 elided_lifetimes_in_paths = "warn"
-ellipsis_inclusive_range_patterns = "warn"
 explicit_outlives_requirements = "warn"
+unsafe_op_in_unsafe_fn = "warn"
 unused_extern_crates = "warn"
 unused_lifetimes = "warn"
 unreachable_pub = "warn"
-semicolon_in_expressions_from_macros = "warn"
 
 [workspace.lints.clippy]
 # FIXME Remove the tidy test once the lint table is stable

@@ -1,0 +1,66 @@
+error: `cfg` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:5:3
+   |
+LL | #[unsafe(cfg(any()))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `cfg_attr` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:8:3
+   |
+LL | #[unsafe(cfg_attr(any(), allow(dead_code)))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `test` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:11:3
+   |
+LL | #[unsafe(test)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `ignore` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:14:3
+   |
+LL | #[unsafe(ignore = "test")]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `should_panic` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:17:3
+   |
+LL | #[unsafe(should_panic(expected = "test"))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `macro_use` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:20:3
+   |
+LL | #[unsafe(macro_use)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `macro_export` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:22:7
+   |
+LL |     #[unsafe(macro_export)]
+   |       ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `used` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:28:3
+   |
+LL | #[unsafe(used)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: aborting due to 8 previous errors
+

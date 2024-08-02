@@ -618,10 +618,12 @@ impl<'a> Parser<'a> {
     /// Parse `box expr` - this syntax has been removed, but we still parse this
     /// for now to provide a more useful error
     fn parse_expr_box(&mut self, box_kw: Span) -> PResult<'a, (Span, ExprKind)> {
-        let (span, _) = self.parse_expr_prefix_common(box_kw)?;
-        let inner_span = span.with_lo(box_kw.hi());
-        let code = self.psess.source_map().span_to_snippet(inner_span).unwrap();
-        let guar = self.dcx().emit_err(errors::BoxSyntaxRemoved { span: span, code: code.trim() });
+        let (span, expr) = self.parse_expr_prefix_common(box_kw)?;
+        // Make a multipart suggestion instead of `span_to_snippet` in case source isn't available
+        let box_kw_and_lo = box_kw.until(self.interpolated_or_expr_span(&expr));
+        let hi = span.shrink_to_hi();
+        let sugg = errors::AddBoxNew { box_kw_and_lo, hi };
+        let guar = self.dcx().emit_err(errors::BoxSyntaxRemoved { span, sugg });
         Ok((span, ExprKind::Err(guar)))
     }
 
@@ -3153,7 +3155,8 @@ impl<'a> Parser<'a> {
 
                 if !require_comma {
                     arm_body = Some(expr);
-                    this.eat(&token::Comma);
+                    // Eat a comma if it exists, though.
+                    let _ = this.eat(&token::Comma);
                     Ok(Recovered::No)
                 } else if let Some((span, guar)) =
                     this.parse_arm_body_missing_braces(&expr, arrow_span)
@@ -3654,7 +3657,7 @@ impl<'a> Parser<'a> {
                         fields.push(f);
                     }
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
-                    self.eat(&token::Comma);
+                    let _ = self.eat(&token::Comma);
                 }
             }
         }

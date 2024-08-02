@@ -3,12 +3,9 @@
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
-    base_db::{FileId, FileRange, SourceDatabaseExt},
-    defs::Definition,
-    documentation::Documentation,
-    famous_defs::FamousDefs,
-    helpers::get_definition,
-    FxHashMap, FxHashSet, RootDatabase,
+    base_db::SourceDatabaseExt, defs::Definition, documentation::Documentation,
+    famous_defs::FamousDefs, helpers::get_definition, FileId, FileRange, FxHashMap, FxHashSet,
+    RootDatabase,
 };
 use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
@@ -160,7 +157,7 @@ impl StaticIndex<'_> {
             .unwrap();
         // hovers
         let sema = hir::Semantics::new(self.db);
-        let tokens_or_nodes = sema.parse(file_id).syntax().clone();
+        let tokens_or_nodes = sema.parse_guess_edition(file_id).syntax().clone();
         let tokens = tokens_or_nodes.descendants_with_tokens().filter_map(|it| match it {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(it) => Some(it),
@@ -234,7 +231,7 @@ impl StaticIndex<'_> {
         let db = &*analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id);
+            let source_root = db.file_source_root(file_id.into());
             let source_root = db.source_root(source_root);
             !source_root.is_library
         });
@@ -251,7 +248,7 @@ impl StaticIndex<'_> {
             if visited_files.contains(&file_id) {
                 continue;
             }
-            this.add_file(file_id);
+            this.add_file(file_id.into());
             // mark the file
             visited_files.insert(file_id);
         }
@@ -262,7 +259,7 @@ impl StaticIndex<'_> {
 #[cfg(test)]
 mod tests {
     use crate::{fixture, StaticIndex};
-    use ide_db::{base_db::FileRange, FxHashSet};
+    use ide_db::{FileRange, FxHashSet};
     use syntax::TextSize;
 
     fn check_all_ranges(ra_fixture: &str) {

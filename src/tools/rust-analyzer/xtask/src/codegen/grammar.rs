@@ -17,15 +17,22 @@ use quote::{format_ident, quote};
 use ungrammar::{Grammar, Rule};
 
 use crate::{
-    codegen::{add_preamble, ensure_file_contents, reformat},
+    codegen::{add_preamble, ensure_file_contents, grammar::ast_src::generate_kind_src, reformat},
     project_root,
 };
 
 mod ast_src;
-use self::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC};
+use self::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc};
 
 pub(crate) fn generate(check: bool) {
-    let syntax_kinds = generate_syntax_kinds(KINDS_SRC);
+    let grammar = fs::read_to_string(project_root().join("crates/syntax/rust.ungram"))
+        .unwrap()
+        .parse()
+        .unwrap();
+    let ast = lower(&grammar);
+    let kinds_src = generate_kind_src(&ast.nodes, &ast.enums, &grammar);
+
+    let syntax_kinds = generate_syntax_kinds(kinds_src);
     let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
     ensure_file_contents(
         crate::flags::CodegenType::Grammar,
@@ -33,12 +40,6 @@ pub(crate) fn generate(check: bool) {
         &syntax_kinds,
         check,
     );
-
-    let grammar = fs::read_to_string(project_root().join("crates/syntax/rust.ungram"))
-        .unwrap()
-        .parse()
-        .unwrap();
-    let ast = lower(&grammar);
 
     let ast_tokens = generate_tokens(&ast);
     let ast_tokens_file = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
@@ -49,7 +50,7 @@ pub(crate) fn generate(check: bool) {
         check,
     );
 
-    let ast_nodes = generate_nodes(KINDS_SRC, &ast);
+    let ast_nodes = generate_nodes(kinds_src, &ast);
     let ast_nodes_file = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
     ensure_file_contents(
         crate::flags::CodegenType::Grammar,
@@ -96,7 +97,7 @@ fn generate_tokens(grammar: &AstSrc) -> String {
     .replace("#[derive", "\n#[derive")
 }
 
-fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
+fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
     let (node_defs, node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
@@ -117,7 +118,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 });
 
             let methods = node.fields.iter().map(|field| {
-                let method_name = field.method_name();
+                let method_name = format_ident!("{}", field.method_name());
                 let ty = field.ty();
 
                 if field.is_many() {
@@ -260,7 +261,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 .iter()
                 .map(|name| format_ident!("{}", to_upper_snake_case(&name.name.to_string())))
                 .collect();
-
+            let nodes = nodes.iter().map(|node| format_ident!("{}", node.name));
             (
                 quote! {
                     #[pretty_doc_comment_placeholder_workaround]
@@ -293,6 +294,15 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             &self.syntax
                         }
                     }
+
+                    #(
+                        impl From<#nodes> for #name {
+                            #[inline]
+                            fn from(node: #nodes) -> #name {
+                                #name { syntax: node.syntax }
+                            }
+                        }
+                    )*
                 },
             )
         })
@@ -366,7 +376,7 @@ fn write_doc_comment(contents: &[String], dest: &mut String) {
     }
 }
 
-fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
+fn generate_syntax_kinds(grammar: KindsSrc) -> String {
     let (single_byte_tokens_values, single_byte_tokens): (Vec<_>, Vec<_>) = grammar
         .punct
         .iter()
@@ -481,7 +491,9 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
             #([#all_keywords_idents] => { $crate::SyntaxKind::#all_keywords };)*
             [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
+            [int_number] => { $crate::SyntaxKind::INT_NUMBER };
             [ident] => { $crate::SyntaxKind::IDENT };
+            [string] => { $crate::SyntaxKind::STRING };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
         }
     };
@@ -550,7 +562,7 @@ impl Field {
             _ => None,
         }
     }
-    fn method_name(&self) -> proc_macro2::Ident {
+    fn method_name(&self) -> String {
         match self {
             Field::Token(name) => {
                 let name = match name.as_str() {
@@ -585,13 +597,13 @@ impl Field {
                     "~" => "tilde",
                     _ => name,
                 };
-                format_ident!("{}_token", name)
+                format!("{name}_token",)
             }
             Field::Node { name, .. } => {
                 if name == "type" {
-                    format_ident!("ty")
+                    String::from("ty")
                 } else {
-                    format_ident!("{}", name)
+                    name.to_owned()
                 }
             }
         }
@@ -601,6 +613,15 @@ impl Field {
             Field::Token(_) => format_ident!("SyntaxToken"),
             Field::Node { ty, .. } => format_ident!("{}", ty),
         }
+    }
+}
+
+fn clean_token_name(name: &str) -> String {
+    let cleaned = name.trim_start_matches(['@', '#', '?']);
+    if cleaned.is_empty() {
+        name.to_owned()
+    } else {
+        cleaned.to_owned()
     }
 }
 
@@ -683,14 +704,12 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
         }
         Rule::Token(token) => {
             assert!(label.is_none());
-            let mut name = grammar[*token].name.clone();
-            if name != "int_number" && name != "string" {
-                if "[]{}()".contains(&name) {
-                    name = format!("'{name}'");
-                }
-                let field = Field::Token(name);
-                acc.push(field);
+            let mut name = clean_token_name(&grammar[*token].name);
+            if "[]{}()".contains(&name) {
+                name = format!("'{name}'");
             }
+            let field = Field::Token(name);
+            acc.push(field);
         }
         Rule::Rep(inner) => {
             if let Rule::Node(node) = &**inner {
@@ -863,7 +882,7 @@ fn extract_struct_traits(ast: &mut AstSrc) {
 fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str]) {
     let mut to_remove = Vec::new();
     for (i, field) in node.fields.iter().enumerate() {
-        let method_name = field.method_name().to_string();
+        let method_name = field.method_name();
         if methods.iter().any(|&it| it == method_name) {
             to_remove.push(i);
         }

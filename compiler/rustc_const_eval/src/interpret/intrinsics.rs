@@ -206,7 +206,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else {
                     (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
                 };
-                let truncated_bits = self.truncate(result_bits, layout_val);
+                let truncated_bits = layout_val.size.truncate(result_bits);
                 let result = Scalar::from_uint(truncated_bits, layout_val.size);
                 self.write_scalar(result, dest)?;
             }
@@ -243,7 +243,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (a_offset, b_offset, is_addr) = if M::Provenance::OFFSET_IS_ADDR {
                     (a.addr().bytes(), b.addr().bytes(), /*is_addr*/ true)
                 } else {
-                    match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
+                    match (self.ptr_try_get_alloc_id(a, 0), self.ptr_try_get_alloc_id(b, 0)) {
                         (Err(a), Err(b)) => {
                             // Neither pointer points to an allocation, so they are both absolute.
                             (a, b, /*is_addr*/ true)
@@ -312,7 +312,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Check that the memory between them is dereferenceable at all, starting from the
-                // base pointer: `dist` is `a - b`, so it is based on `b`.
+                // origin pointer: `dist` is `a - b`, so it is based on `b`.
                 self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)?;
                 // Then check that this is also dereferenceable from `a`. This ensures that they are
                 // derived from the same allocation.
@@ -580,13 +580,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         offset_bytes: i64,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        // We first compute the pointer with overflow checks, to get a specific error for when it
-        // overflows (though technically this is redundant with the following inbounds check).
-        let result = ptr.signed_offset(offset_bytes, self)?;
         // The offset must be in bounds starting from `ptr`.
         self.check_ptr_access_signed(ptr, offset_bytes, CheckInAllocMsg::PointerArithmeticTest)?;
-        // Done.
-        Ok(result)
+        // This also implies that there is no overflow, so we are done.
+        Ok(ptr.wrapping_signed_offset(offset_bytes, self))
     }
 
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.

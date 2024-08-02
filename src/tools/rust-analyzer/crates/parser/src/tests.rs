@@ -9,7 +9,11 @@ use std::{
 
 use expect_test::expect_file;
 
-use crate::{LexedStr, TopEntryPoint};
+use crate::{Edition, LexedStr, TopEntryPoint};
+
+#[rustfmt::skip]
+#[path = "../test_data/generated/runner.rs"]
+mod runner;
 
 #[test]
 fn lex_ok() {
@@ -30,7 +34,7 @@ fn lex_err() {
 }
 
 fn lex(text: &str) -> String {
-    let lexed = LexedStr::new(text);
+    let lexed = LexedStr::new(Edition::CURRENT, text);
 
     let mut res = String::new();
     for i in 0..lexed.len() {
@@ -48,17 +52,7 @@ fn lex(text: &str) -> String {
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual);
-    }
-}
-
-#[test]
-fn parse_inline_ok() {
-    for case in TestCase::list("parser/inline/ok") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text, Edition::CURRENT);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
     }
@@ -68,26 +62,16 @@ fn parse_inline_ok() {
 fn parse_err() {
     for case in TestCase::list("parser/err") {
         let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text, Edition::CURRENT);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
     }
 }
 
-#[test]
-fn parse_inline_err() {
-    for case in TestCase::list("parser/inline/err") {
-        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
-        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
-        expect_file![case.rast].assert_eq(&actual)
-    }
-}
-
-fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
-    let lexed = LexedStr::new(text);
-    let input = lexed.to_input();
-    let output = entry.parse(&input, crate::Edition::CURRENT);
+fn parse(entry: TopEntryPoint, text: &str, edition: Edition) -> (String, bool) {
+    let lexed = LexedStr::new(edition, text);
+    let input = lexed.to_input(edition);
+    let output = entry.parse(&input, edition);
 
     let mut buf = String::new();
     let mut errors = Vec::new();
@@ -166,4 +150,38 @@ impl TestCase {
         res.sort();
         res
     }
+}
+
+#[track_caller]
+fn run_and_expect_no_errors(path: &str) {
+    run_and_expect_no_errors_with_edition(path, Edition::CURRENT)
+}
+
+#[track_caller]
+fn run_and_expect_errors(path: &str) {
+    run_and_expect_errors_with_edition(path, Edition::CURRENT)
+}
+
+#[track_caller]
+fn run_and_expect_no_errors_with_edition(path: &str, edition: Edition) {
+    let path = PathBuf::from(path);
+    let text = std::fs::read_to_string(&path).unwrap();
+    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text, edition);
+    assert!(!errors, "errors in an OK file {}:\n{actual}", path.display());
+    let mut p = PathBuf::from("..");
+    p.push(path);
+    p.set_extension("rast");
+    expect_file![p].assert_eq(&actual)
+}
+
+#[track_caller]
+fn run_and_expect_errors_with_edition(path: &str, edition: Edition) {
+    let path = PathBuf::from(path);
+    let text = std::fs::read_to_string(&path).unwrap();
+    let (actual, errors) = parse(TopEntryPoint::SourceFile, &text, edition);
+    assert!(errors, "no errors in an ERR file {}:\n{actual}", path.display());
+    let mut p = PathBuf::from("..");
+    p.push(path);
+    p.set_extension("rast");
+    expect_file![p].assert_eq(&actual)
 }

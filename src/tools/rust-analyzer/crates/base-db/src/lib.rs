@@ -6,8 +6,10 @@ mod input;
 use std::panic;
 
 use salsa::Durability;
+use span::EditionedFileId;
 use syntax::{ast, Parse, SourceFile, SyntaxError};
 use triomphe::Arc;
+use vfs::FileId;
 
 pub use crate::{
     change::FileChange,
@@ -18,8 +20,7 @@ pub use crate::{
     },
 };
 pub use salsa::{self, Cancelled};
-pub use span::{FilePosition, FileRange};
-pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, FileId, VfsPath};
+pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, VfsPath};
 
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 
@@ -41,9 +42,9 @@ pub trait Upcast<T: ?Sized> {
     fn upcast(&self) -> &T;
 }
 
-pub const DEFAULT_FILE_TEXT_LRU_CAP: usize = 16;
-pub const DEFAULT_PARSE_LRU_CAP: usize = 128;
-pub const DEFAULT_BORROWCK_LRU_CAP: usize = 2024;
+pub const DEFAULT_FILE_TEXT_LRU_CAP: u16 = 16;
+pub const DEFAULT_PARSE_LRU_CAP: u16 = 128;
+pub const DEFAULT_BORROWCK_LRU_CAP: u16 = 2024;
 
 pub trait FileLoader {
     /// Text of the file.
@@ -58,10 +59,11 @@ pub trait FileLoader {
 #[salsa::query_group(SourceDatabaseStorage)]
 pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// Parses the file into the syntax tree.
-    fn parse(&self, file_id: FileId) -> Parse<ast::SourceFile>;
+    #[salsa::lru]
+    fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
 
     /// Returns the set of errors obtained from parsing the file including validation errors.
-    fn parse_errors(&self, file_id: FileId) -> Option<Arc<[SyntaxError]>>;
+    fn parse_errors(&self, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>>;
 
     /// The crate graph.
     #[salsa::input]
@@ -82,14 +84,14 @@ fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseC
     db.toolchain(krate).as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
 }
 
-fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
+fn parse(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Parse<ast::SourceFile> {
     let _p = tracing::info_span!("parse", ?file_id).entered();
+    let (file_id, edition) = file_id.unpack();
     let text = db.file_text(file_id);
-    // FIXME: Edition based parsing
-    SourceFile::parse(&text, span::Edition::CURRENT)
+    SourceFile::parse(&text, edition)
 }
 
-fn parse_errors(db: &dyn SourceDatabase, file_id: FileId) -> Option<Arc<[SyntaxError]>> {
+fn parse_errors(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>> {
     let errors = db.parse(file_id).errors();
     match &*errors {
         [] => None,
@@ -104,6 +106,7 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn compressed_file_text(&self, file_id: FileId) -> Arc<[u8]>;
 
+    #[salsa::lru]
     fn file_text(&self, file_id: FileId) -> Arc<str>;
 
     /// Path to a file, relative to the root of its source root.

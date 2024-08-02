@@ -8,7 +8,6 @@ import { makeDebugConfig } from "./debug";
 import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
 import { unwrapUndefinable, type RustEditor } from "./util";
-import * as toolchain from "./toolchain";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -115,7 +114,7 @@ export async function createTaskFromRunnable(
 
     let definition: tasks.TaskDefinition;
     let options;
-    let cargo;
+    let cargo = "cargo";
     if (runnable.kind === "cargo") {
         const runnableArgs = runnable.args;
         let args = createCargoArgs(runnableArgs);
@@ -126,8 +125,6 @@ export async function createTaskFromRunnable(
 
             cargo = unwrapUndefinable(cargoParts[0]);
             args = [...cargoParts.slice(1), ...args];
-        } else {
-            cargo = await toolchain.cargoPath();
         }
 
         definition = {
@@ -200,7 +197,7 @@ async function getRunnables(
             continue;
         }
 
-        if (debuggeeOnly && (r.label.startsWith("doctest") || r.label.startsWith("cargo"))) {
+        if (debuggeeOnly && r.label.startsWith("doctest")) {
             continue;
         }
         items.push(new RunnableQuickPick(r));

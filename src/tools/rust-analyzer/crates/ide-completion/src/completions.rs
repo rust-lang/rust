@@ -24,9 +24,9 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{known, HasAttrs, ImportPathConfig, ScopeDef, Variant};
+use hir::{sym, HasAttrs, ImportPathConfig, Name, ScopeDef, Variant};
 use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SymbolKind};
-use syntax::{ast, SmolStr};
+use syntax::{ast, SmolStr, ToSmolStr};
 
 use crate::{
     context::{
@@ -541,13 +541,21 @@ impl Completions {
     }
 
     pub(crate) fn add_lifetime(&mut self, ctx: &CompletionContext<'_>, name: hir::Name) {
-        CompletionItem::new(SymbolKind::LifetimeParam, ctx.source_range(), name.to_smol_str())
-            .add_to(self, ctx.db)
+        CompletionItem::new(
+            SymbolKind::LifetimeParam,
+            ctx.source_range(),
+            name.display_no_db().to_smolstr(),
+        )
+        .add_to(self, ctx.db)
     }
 
     pub(crate) fn add_label(&mut self, ctx: &CompletionContext<'_>, name: hir::Name) {
-        CompletionItem::new(SymbolKind::Label, ctx.source_range(), name.to_smol_str())
-            .add_to(self, ctx.db)
+        CompletionItem::new(
+            SymbolKind::Label,
+            ctx.source_range(),
+            name.display_no_db().to_smolstr(),
+        )
+        .add_to(self, ctx.db)
     }
 
     pub(crate) fn add_variant_pat(
@@ -618,7 +626,8 @@ fn enum_variants_with_paths(
     let mut process_variant = |variant: Variant| {
         let self_path = hir::ModPath::from_segments(
             hir::PathKind::Plain,
-            iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
+            iter::once(Name::new_symbol_root(sym::Self_.clone()))
+                .chain(iter::once(variant.name(ctx.db))),
         );
 
         cb(acc, ctx, variant, self_path);

@@ -26,10 +26,7 @@ fn main() {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
         let lock_path = config.out.join("lock");
-        let pid = match fs::read_to_string(&lock_path) {
-            Ok(contents) => contents,
-            Err(_) => String::new(),
-        };
+        let pid = fs::read_to_string(&lock_path).unwrap_or_default();
 
         build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
             .write(true)

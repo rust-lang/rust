@@ -3,11 +3,10 @@
 
 use hir::{ImportPathConfig, PathResolution, Semantics};
 use ide_db::{
-    base_db::{FileId, FileRange},
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope},
     source_change::SourceChangeBuilder,
-    FxHashMap, RootDatabase,
+    EditionedFileId, FileRange, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
 use stdx::{format_to, never};
@@ -102,7 +101,7 @@ impl State {
 pub(crate) fn json_in_items(
     sema: &Semantics<'_, RootDatabase>,
     acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
+    file_id: EditionedFileId,
     node: &SyntaxNode,
     config: &DiagnosticsConfig,
 ) {
@@ -132,7 +131,7 @@ pub(crate) fn json_in_items(
                     Diagnostic::new(
                         DiagnosticCode::Ra("json-is-not-rust", Severity::WeakWarning),
                         "JSON syntax is not valid as a Rust item",
-                        FileRange { file_id, range },
+                        FileRange { file_id: file_id.into(), range },
                     )
                     .with_fixes(Some(vec![{
                         let mut scb = SourceChangeBuilder::new(file_id);

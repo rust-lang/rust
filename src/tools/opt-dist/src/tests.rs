@@ -60,17 +60,26 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
         .join(format!("llvm-config{}", executable_extension()));
     assert!(llvm_config.is_file());
 
-    let rustc = format!("build.rustc={}", rustc_path.to_string().replace('\\', "/"));
-    let cargo = format!("build.cargo={}", cargo_path.to_string().replace('\\', "/"));
-    let llvm_config =
-        format!("target.{host_triple}.llvm-config={}", llvm_config.to_string().replace('\\', "/"));
+    let config_content = format!(
+        r#"profile = "user"
+change-id = 115898
 
-    log::info!("Set the following configurations for running tests:");
-    log::info!("\t{rustc}");
-    log::info!("\t{cargo}");
-    log::info!("\t{llvm_config}");
+[build]
+rustc = "{rustc}"
+cargo = "{cargo}"
+
+[target.{host_triple}]
+llvm-config = "{llvm_config}"
+"#,
+        rustc = rustc_path.to_string().replace('\\', "/"),
+        cargo = cargo_path.to_string().replace('\\', "/"),
+        llvm_config = llvm_config.to_string().replace('\\', "/")
+    );
+    log::info!("Using following `config.toml` for running tests:\n{config_content}");
 
     // Simulate a stage 0 compiler with the extracted optimized dist artifacts.
+    std::fs::write("config.toml", config_content)?;
+
     let x_py = env.checkout_path().join("x.py");
     let mut args = vec![
         env.python_binary(),
@@ -89,12 +98,6 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
         "tests/run-pass-valgrind",
         "tests/ui",
         "tests/crashes",
-        "--set",
-        &rustc,
-        "--set",
-        &cargo,
-        "--set",
-        &llvm_config,
     ];
     for test_path in env.skipped_tests() {
         args.extend(["--skip", test_path]);

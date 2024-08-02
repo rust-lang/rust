@@ -15,7 +15,8 @@ doctest = false
 rustc-hash.workspace = true
 
 # locals deps
-tt.workspace = true
+tt = { workspace = true, optional = true }
+intern.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.1"
