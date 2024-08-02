@@ -260,17 +260,20 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
 
         // Index this method for searching later on.
-        if let Some(name) = item.name.or_else(|| {
-            if item.is_stripped() {
-                None
-            } else if let clean::ImportItem(ref i) = *item.kind
-                && let clean::ImportKind::Simple(s) = i.kind
-            {
-                Some(s)
-            } else {
-                None
-            }
-        }) {
+        let search_name = if !item.is_stripped() {
+            item.name.or_else(|| {
+                if let clean::ImportItem(ref i) = *item.kind
+                    && let clean::ImportKind::Simple(s) = i.kind
+                {
+                    Some(s)
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        };
+        if let Some(name) = search_name {
             add_item_to_search_index(self.tcx, &mut self.cache, &item, name)
         }
 
