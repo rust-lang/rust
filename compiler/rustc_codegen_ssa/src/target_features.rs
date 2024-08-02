@@ -78,6 +78,7 @@ pub fn from_target_feature(
                 Some(sym::loongarch_target_feature) => rust_features.loongarch_target_feature,
                 Some(sym::lahfsahf_target_feature) => rust_features.lahfsahf_target_feature,
                 Some(sym::prfchw_target_feature) => rust_features.prfchw_target_feature,
+                Some(sym::sha512_sm_x86) => rust_features.sha512_sm_x86,
                 Some(sym::x86_amx_intrinsics) => rust_features.x86_amx_intrinsics,
                 Some(sym::xop_target_feature) => rust_features.xop_target_feature,
                 Some(sym::s390x_target_feature) => rust_features.s390x_target_feature,
