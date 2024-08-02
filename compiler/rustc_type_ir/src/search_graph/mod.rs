@@ -46,6 +46,9 @@ pub trait Cx: Copy {
 
 pub trait Delegate {
     type Cx: Cx;
+    /// Whether to use the provisional cache. Set to `false` by a fuzzer when
+    /// validating the search graph.
+    const ENABLE_PROVISIONAL_CACHE: bool;
     type ValidationScope;
     /// Returning `Some` disables the global cache for the current goal.
     ///
@@ -525,12 +528,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             } else if D::inspect_is_noop(inspect) {
                 self.insert_global_cache(cx, input, final_entry, result, dep_node)
             }
-        } else {
+        } else if D::ENABLE_PROVISIONAL_CACHE {
             debug_assert!(validate_cache.is_none());
             let entry = self.provisional_cache.entry(input).or_default();
             let StackEntry { heads, nested_goals, .. } = final_entry;
             let path_from_head = Self::stack_path_kind(cx, &self.stack, heads.highest_cycle_head());
             entry.push(ProvisionalCacheEntry { heads, path_from_head, nested_goals, result });
+        } else {
+            debug_assert!(validate_cache.is_none());
         }
 
         result
@@ -672,6 +677,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     }
 
     fn lookup_provisional_cache(&mut self, cx: X, input: X::Input) -> Option<X::Result> {
+        if !D::ENABLE_PROVISIONAL_CACHE {
+            return None;
+        }
+
         let entries = self.provisional_cache.get(&input)?;
         for &ProvisionalCacheEntry { ref heads, path_from_head, ref nested_goals, result } in
             entries

@@ -23,6 +23,7 @@ where
 {
     type Cx = D::Interner;
 
+    const ENABLE_PROVISIONAL_CACHE: bool = true;
     type ValidationScope = Infallible;
     fn enter_validation_scope(
         _cx: Self::Cx,
