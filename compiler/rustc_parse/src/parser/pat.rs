@@ -25,7 +25,7 @@ use crate::errors::{
     UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
     UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
-use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
+use crate::parser::expr::could_be_unclosed_char_literal;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -403,8 +403,9 @@ impl<'a> Parser<'a> {
 
             // Parse an associative expression such as `+ expr`, `% expr`, ...
             // Assignements, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
-            let lhs = LhsExpr::Parsed { expr, starts_statement: false };
-            if let Ok(expr) = snapshot.parse_expr_assoc_with(0, lhs).map_err(|err| err.cancel()) {
+            if let Ok(expr) =
+                snapshot.parse_expr_assoc_rest_with(0, false, expr).map_err(|err| err.cancel())
+            {
                 // We got a valid expression.
                 self.restore_snapshot(snapshot);
                 self.restrictions.remove(Restrictions::IS_PAT);
