@@ -316,9 +316,6 @@ const_eval_range_upper = less or equal to {$hi}
 const_eval_range_wrapping = less or equal to {$hi}, or greater or equal to {$lo}
 const_eval_raw_bytes = the raw bytes of the constant (size: {$size}, align: {$align}) {"{"}{$bytes}{"}"}
 
-const_eval_raw_eq_with_provenance =
-    `raw_eq` on bytes with provenance
-
 const_eval_raw_ptr_comparison =
     pointers cannot be reliably compared during const eval
     .note = see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information

@@ -383,15 +383,17 @@ pub struct Body<'tcx> {
 
     /// Constants that are required to evaluate successfully for this MIR to be well-formed.
     /// We hold in this field all the constants we are not able to evaluate yet.
+    /// `None` indicates that the list has not been computed yet.
     ///
     /// This is soundness-critical, we make a guarantee that all consts syntactically mentioned in a
     /// function have successfully evaluated if the function ever gets executed at runtime.
-    pub required_consts: Vec<ConstOperand<'tcx>>,
+    pub required_consts: Option<Vec<ConstOperand<'tcx>>>,
 
     /// Further items that were mentioned in this function and hence *may* become monomorphized,
     /// depending on optimizations. We use this to avoid optimization-dependent compile errors: the
     /// collector recursively traverses all "mentioned" items and evaluates all their
     /// `required_consts`.
+    /// `None` indicates that the list has not been computed yet.
     ///
     /// This is *not* soundness-critical and the contents of this list are *not* a stable guarantee.
     /// All that's relevant is that this set is optimization-level-independent, and that it includes
@@ -399,7 +401,7 @@ pub struct Body<'tcx> {
     /// set after drop elaboration, so some drop calls that can never be reached are not considered
     /// "mentioned".) See the documentation of `CollectionMode` in
     /// `compiler/rustc_monomorphize/src/collector.rs` for more context.
-    pub mentioned_items: Vec<Spanned<MentionedItem<'tcx>>>,
+    pub mentioned_items: Option<Vec<Spanned<MentionedItem<'tcx>>>>,
 
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
@@ -477,8 +479,8 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
-            required_consts: Vec::new(),
-            mentioned_items: Vec::new(),
+            required_consts: None,
+            mentioned_items: None,
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
@@ -507,8 +509,8 @@ impl<'tcx> Body<'tcx> {
             arg_count: 0,
             spread_arg: None,
             span: DUMMY_SP,
-            required_consts: Vec::new(),
-            mentioned_items: Vec::new(),
+            required_consts: None,
+            mentioned_items: None,
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,
@@ -784,6 +786,40 @@ impl<'tcx> Body<'tcx> {
 
         // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
         caller_location.unwrap_or_else(|| from_span(source_info.span))
+    }
+
+    #[track_caller]
+    pub fn set_required_consts(&mut self, required_consts: Vec<ConstOperand<'tcx>>) {
+        assert!(
+            self.required_consts.is_none(),
+            "required_consts for {:?} have already been set",
+            self.source.def_id()
+        );
+        self.required_consts = Some(required_consts);
+    }
+    #[track_caller]
+    pub fn required_consts(&self) -> &[ConstOperand<'tcx>] {
+        match &self.required_consts {
+            Some(l) => l,
+            None => panic!("required_consts for {:?} have not yet been set", self.source.def_id()),
+        }
+    }
+
+    #[track_caller]
+    pub fn set_mentioned_items(&mut self, mentioned_items: Vec<Spanned<MentionedItem<'tcx>>>) {
+        assert!(
+            self.mentioned_items.is_none(),
+            "mentioned_items for {:?} have already been set",
+            self.source.def_id()
+        );
+        self.mentioned_items = Some(mentioned_items);
+    }
+    #[track_caller]
+    pub fn mentioned_items(&self) -> &[Spanned<MentionedItem<'tcx>>] {
+        match &self.mentioned_items {
+            Some(l) => l,
+            None => panic!("mentioned_items for {:?} have not yet been set", self.source.def_id()),
+        }
     }
 }
 
