@@ -894,6 +894,9 @@ pub fn sleep(dur: Duration) {
 /// | Android   | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Solaris   | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Fuchsia   | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Darwin    | [mach_wait_until]                                                    |
 /// | WASI      | [subscription_clock]                                                 |
 /// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |

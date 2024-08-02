@@ -310,10 +310,10 @@ impl Thread {
         target_os = "android",
         target_os = "solaris",
         target_os = "illumos",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos"
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_vendor = "apple"
     )))]
     pub fn sleep_until(deadline: Instant) {
         let now = Instant::now();
@@ -323,7 +323,7 @@ impl Thread {
         }
     }
 
-    // Note depends on clock_nanosleep (not supported on macos/ios/watchos/tvos)
+    // Note depends on clock_nanosleep (not supported on os's by apple)
     #[cfg(any(
         target_os = "freebsd",
         target_os = "netbsd",
@@ -331,6 +331,9 @@ impl Thread {
         target_os = "android",
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
     ))]
     pub fn sleep_until(deadline: crate::time::Instant) {
         let mut ts = deadline
@@ -355,13 +358,7 @@ impl Thread {
         }
     }
 
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "tvos",
-        target_os = "watchos",
-        target_os = "visionos"
-    ))]
+    #[cfg(target_vendor = "apple")]
     pub fn sleep_until(deadline: crate::time::Instant) {
         use core::mem::MaybeUninit;
 
@@ -398,35 +395,17 @@ impl Thread {
     }
 }
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "visionos"
-))]
+#[cfg(target_vendor = "apple")]
 const KERN_SUCCESS: libc::c_int = 0;
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "visionos"
-))]
+#[cfg(target_vendor = "apple")]
 #[repr(C)]
 struct mach_timebase_info_type {
     numer: u32,
     denom: u32,
 }
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos",
-    target_os = "watchos",
-    target_os = "visionos"
-))]
+#[cfg(target_vendor = "apple")]
 extern "C" {
     fn mach_wait_until(deadline: u64) -> libc::c_int;
     fn mach_timebase_info(info: *mut mach_timebase_info_type) -> libc::c_int;
