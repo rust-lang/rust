@@ -2491,6 +2491,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// Consider ignoring the error if validating the removal is not required for your use case.
 ///
+/// [`io::ErrorKind::NotFound`] is only returned if no removal occurs.
+///
 /// [`fs::remove_file`]: remove_file
 /// [`fs::remove_dir`]: remove_dir
 ///
