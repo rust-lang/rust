@@ -48,28 +48,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
-        // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
-        // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
-        // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
-        if span.is_desugaring(DesugaringKind::CondTemporary) {
-            return;
-        }
-
-        // Don't lint if the result of an async block or async function is `!`.
-        // This does not affect the unreachable lints *within* the body.
-        if span.is_desugaring(DesugaringKind::Async) {
-            return;
-        }
-
-        // Don't lint *within* the `.await` operator, since that's all just desugaring junk.
-        // We only want to lint if there is a subsequent expression after the `.await`.
-        if span.is_desugaring(DesugaringKind::Await) {
-            return;
-        }
-
         let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
             return;
         };
+
+        match span.desugaring_kind() {
+            // If span arose from a desugaring of `if` or `while`, then it is the condition
+            // itself, which diverges, that we are about to lint on. This gives suboptimal
+            // diagnostics. Instead, stop here so that the `if`- or `while`-expression's
+            // block is linted instead.
+            Some(DesugaringKind::CondTemporary) => return,
+
+            // Don't lint if the result of an async block or async function is `!`.
+            // This does not affect the unreachable lints *within* the body.
+            Some(DesugaringKind::Async) => return,
+
+            // Don't lint *within* the `.await` operator, since that's all just desugaring
+            // junk. We only want to lint if there is a subsequent expression after the
+            // `.await` operator.
+            Some(DesugaringKind::Await) => return,
+
+            _ => {}
+        }
 
         // Don't warn twice.
         self.diverges.set(Diverges::WarnedAlways);
