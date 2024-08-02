@@ -733,9 +733,7 @@ fn coroutine_saved_local_eligibility(
                     // point, so it is no longer a candidate.
                     trace!(
                         "removing local {:?} in >1 variant ({:?}, {:?})",
-                        local,
-                        variant_index,
-                        idx
+                        local, variant_index, idx
                     );
                     ineligible_locals.insert(*local);
                     assignments[*local] = Ineligible(None);

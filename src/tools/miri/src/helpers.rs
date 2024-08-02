@@ -606,7 +606,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(&place.ptr().offset(size, this)?, Size::ZERO)?;
+        unsafe_cell_action(&place.ptr().wrapping_offset(size, this), Size::ZERO)?;
         // Done!
         return Ok(());
 
@@ -975,7 +975,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.get_ptr_alloc(ptr.offset(len, this)?, size1)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = this.get_ptr_alloc(ptr.wrapping_offset(len, this), size1)?.unwrap(); // not a ZST, so we will get a result
             let byte = alloc.read_integer(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
@@ -1039,7 +1039,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 break;
             } else {
                 wchars.push(wchar_int.try_into().unwrap());
-                ptr = ptr.offset(size, this)?;
+                ptr = ptr.wrapping_offset(size, this);
             }
         }
 

@@ -767,8 +767,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
+            fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
@@ -1615,6 +1615,21 @@ pub struct FooStruct;
 "#,
         expect![[r#"
             tt FooTrait (use dep::FooTrait)
+        "#]],
+    );
+}
+
+#[test]
+fn primitive_mod() {
+    check(
+        r#"
+//- minicore: str
+fn main() {
+    str::from$0
+}
+"#,
+        expect![[r#"
+            fn from_utf8_unchecked(…) (use core::str) const unsafe fn(&[u8]) -> &str
         "#]],
     );
 }

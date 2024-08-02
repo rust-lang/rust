@@ -88,8 +88,8 @@ pub fn has_test_related_attribute(attrs: &hir::AttrsWithOwner) -> bool {
         let path = attr.path();
         (|| {
             Some(
-                path.segments().first()?.as_text()?.starts_with("test")
-                    || path.segments().last()?.as_text()?.ends_with("test"),
+                path.segments().first()?.as_str().starts_with("test")
+                    || path.segments().last()?.as_str().ends_with("test"),
             )
         })()
         .unwrap_or_default()

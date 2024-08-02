@@ -55,6 +55,7 @@
 //!     size_of: sized
 //!     sized:
 //!     slice:
+//!     str:
 //!     sync: sized
 //!     transmute:
 //!     try: infallible
@@ -1367,6 +1368,14 @@ pub mod iter {
     pub use self::traits::{IntoIterator, Iterator};
 }
 // endregion:iterator
+
+// region:str
+pub mod str {
+    pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
+        ""
+    }
+}
+// endregion:str
 
 // region:panic
 mod panic {

@@ -330,6 +330,7 @@ impl TestProps {
     pub fn from_file(testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, revision, config);
+        props.exec_env.push(("RUSTC".to_string(), config.rustc_path.display().to_string()));
 
         match (props.pass_mode, props.fail_mode) {
             (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),

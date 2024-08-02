@@ -184,7 +184,7 @@ fn normalize(name: &str) -> Option<String> {
 
 fn is_valid_name(name: &str) -> bool {
     matches!(
-        ide_db::syntax_helpers::LexedStr::single_token(name),
+        ide_db::syntax_helpers::LexedStr::single_token(syntax::Edition::CURRENT_FIXME, name),
         Some((syntax::SyntaxKind::IDENT, _error))
     )
 }
@@ -319,7 +319,7 @@ fn from_field_name(expr: &ast::Expr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use hir::FileRange;
     use test_fixture::WithFixture;
 
     use super::*;

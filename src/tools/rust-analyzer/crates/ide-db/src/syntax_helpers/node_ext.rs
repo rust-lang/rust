@@ -36,10 +36,35 @@ pub fn walk_expr(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Expr)) {
     })
 }
 
+pub fn is_closure_or_blk_with_modif(expr: &ast::Expr) -> bool {
+    match expr {
+        ast::Expr::BlockExpr(block_expr) => {
+            matches!(
+                block_expr.modifier(),
+                Some(
+                    ast::BlockModifier::Async(_)
+                        | ast::BlockModifier::Try(_)
+                        | ast::BlockModifier::Const(_)
+                )
+            )
+        }
+        ast::Expr::ClosureExpr(_) => true,
+        _ => false,
+    }
+}
+
 /// Preorder walk all the expression's child expressions preserving events.
 /// If the callback returns true on an [`WalkEvent::Enter`], the subtree of the expression will be skipped.
 /// Note that the subtree may already be skipped due to the context analysis this function does.
 pub fn preorder_expr(start: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool) {
+    preorder_expr_with_ctx_checker(start, &is_closure_or_blk_with_modif, cb);
+}
+
+pub fn preorder_expr_with_ctx_checker(
+    start: &ast::Expr,
+    check_ctx: &dyn Fn(&ast::Expr) -> bool,
+    cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool,
+) {
     let mut preorder = start.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
@@ -71,20 +96,7 @@ pub fn preorder_expr(start: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>)
                 if ast::GenericArg::can_cast(node.kind()) {
                     preorder.skip_subtree();
                 } else if let Some(expr) = ast::Expr::cast(node) {
-                    let is_different_context = match &expr {
-                        ast::Expr::BlockExpr(block_expr) => {
-                            matches!(
-                                block_expr.modifier(),
-                                Some(
-                                    ast::BlockModifier::Async(_)
-                                        | ast::BlockModifier::Try(_)
-                                        | ast::BlockModifier::Const(_)
-                                )
-                            )
-                        }
-                        ast::Expr::ClosureExpr(_) => true,
-                        _ => false,
-                    } && expr.syntax() != start.syntax();
+                    let is_different_context = check_ctx(&expr) && expr.syntax() != start.syntax();
                     let skip = cb(WalkEvent::Enter(expr));
                     if skip || is_different_context {
                         preorder.skip_subtree();
@@ -277,6 +289,8 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
                     });
                 }
                 Some(ast::BlockModifier::Unsafe(_)) => (),
+                Some(ast::BlockModifier::Gen(_)) => (),
+                Some(ast::BlockModifier::AsyncGen(_)) => (),
                 None => (),
             }
             if let Some(stmt_list) = b.stmt_list() {
@@ -392,7 +406,7 @@ fn for_each_break_expr(
     }
 }
 
-fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> bool {
+pub fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> bool {
     lt1.as_ref().zip(lt2.as_ref()).map_or(false, |(lt, lbl)| lt.text() == lbl.text())
 }
 

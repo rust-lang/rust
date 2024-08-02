@@ -64,11 +64,7 @@ enum FieldOrTupleIdx {
 impl FieldOrTupleIdx {
     fn name(&self, db: &RootDatabase) -> String {
         match *self {
-            FieldOrTupleIdx::Field(f) => f
-                .name(db)
-                .as_str()
-                .map(|s| s.to_owned())
-                .unwrap_or_else(|| format!(".{}", f.name(db).as_tuple_index().unwrap())),
+            FieldOrTupleIdx::Field(f) => f.name(db).as_str().to_owned(),
             FieldOrTupleIdx::TupleIdx(i) => format!(".{i}"),
         }
     }
@@ -88,7 +84,7 @@ pub(crate) fn view_memory_layout(
     position: FilePosition,
 ) -> Option<RecursiveMemoryLayout> {
     let sema = Semantics::new(db);
-    let file = sema.parse(position.file_id);
+    let file = sema.parse_guess_edition(position.file_id);
     let token =
         pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
             SyntaxKind::IDENT => 3,
@@ -189,14 +185,7 @@ pub(crate) fn view_memory_layout(
                 | Definition::SelfType(_) => "[ROOT]".to_owned(),
 
                 // def is an item
-                def => def
-                    .name(db)
-                    .map(|n| {
-                        n.as_str()
-                            .map(|s| s.to_owned())
-                            .unwrap_or_else(|| format!(".{}", n.as_tuple_index().unwrap()))
-                    })
-                    .unwrap_or("[ROOT]".to_owned()),
+                def => def.name(db).map(|n| n.as_str().to_owned()).unwrap_or("[ROOT]".to_owned()),
             };
 
             let typename = ty.display(db).to_string();

@@ -164,6 +164,7 @@ impl Merge for ast::UseTree {
     }
 }
 
+#[derive(Debug)]
 enum Edit {
     Remove(Either<ast::Use, ast::UseTree>),
     Replace(SyntaxNode, SyntaxNode),
@@ -731,6 +732,74 @@ use std::{
             merge_imports,
             r"use std::$0{fmt::Display, fmt::Debug}$0;",
             r"use std::fmt::{Debug, Display};",
+        );
+    }
+
+    #[test]
+    fn test_merge_with_synonymous_imports_1() {
+        check_assist(
+            merge_imports,
+            r"
+mod top {
+    pub(crate) mod a {
+        pub(crate) struct A;
+    }
+    pub(crate) mod b {
+        pub(crate) struct B;
+        pub(crate) struct D;
+    }
+}
+
+use top::a::A;
+use $0top::b::{B, B as C};
+",
+            r"
+mod top {
+    pub(crate) mod a {
+        pub(crate) struct A;
+    }
+    pub(crate) mod b {
+        pub(crate) struct B;
+        pub(crate) struct D;
+    }
+}
+
+use top::{a::A, b::{B, B as C}};
+",
+        );
+    }
+
+    #[test]
+    fn test_merge_with_synonymous_imports_2() {
+        check_assist(
+            merge_imports,
+            r"
+mod top {
+    pub(crate) mod a {
+        pub(crate) struct A;
+    }
+    pub(crate) mod b {
+        pub(crate) struct B;
+        pub(crate) struct D;
+    }
+}
+
+use top::a::A;
+use $0top::b::{B as D, B as C};
+",
+            r"
+mod top {
+    pub(crate) mod a {
+        pub(crate) struct A;
+    }
+    pub(crate) mod b {
+        pub(crate) struct B;
+        pub(crate) struct D;
+    }
+}
+
+use top::{a::A, b::{B as D, B as C}};
+",
         );
     }
 }

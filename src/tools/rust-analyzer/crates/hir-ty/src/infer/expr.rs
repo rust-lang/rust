@@ -12,10 +12,11 @@ use hir_def::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
-    path::{GenericArgs, Path},
+    path::{GenericArg, GenericArgs, Path},
     BlockId, FieldId, GenericDefId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::Name;
+use intern::sym;
 use stdx::always;
 use syntax::ast::RangeOp;
 
@@ -646,8 +647,10 @@ impl InferenceContext<'_> {
                 match op {
                     UnaryOp::Deref => {
                         if let Some(deref_trait) = self.resolve_lang_trait(LangItem::Deref) {
-                            if let Some(deref_fn) =
-                                self.db.trait_data(deref_trait).method_by_name(&name![deref])
+                            if let Some(deref_fn) = self
+                                .db
+                                .trait_data(deref_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::deref.clone()))
                             {
                                 // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
                                 // the mutability is not wrong, and will be fixed in `self.infer_mut`).
@@ -785,8 +788,10 @@ impl InferenceContext<'_> {
                     // mutability will be fixed up in `InferenceContext::infer_mut`;
                     adj.push(Adjustment::borrow(Mutability::Not, self_ty.clone()));
                     self.write_expr_adj(*base, adj);
-                    if let Some(func) =
-                        self.db.trait_data(index_trait).method_by_name(&name!(index))
+                    if let Some(func) = self
+                        .db
+                        .trait_data(index_trait)
+                        .method_by_name(&Name::new_symbol_root(sym::index.clone()))
                     {
                         let substs = TyBuilder::subst_for_def(self.db, index_trait, None)
                             .push(self_ty.clone())
@@ -1165,7 +1170,7 @@ impl InferenceContext<'_> {
             Expr::Tuple { exprs, .. } => {
                 // We don't consider multiple ellipses. This is analogous to
                 // `hir_def::body::lower::ExprCollector::collect_tuple_pat()`.
-                let ellipsis = exprs.iter().position(|e| is_rest_expr(*e));
+                let ellipsis = exprs.iter().position(|e| is_rest_expr(*e)).map(|it| it as u32);
                 let exprs: Vec<_> = exprs.iter().filter(|e| !is_rest_expr(**e)).copied().collect();
 
                 self.infer_tuple_pat_like(&rhs_ty, (), ellipsis, &exprs)
@@ -1179,7 +1184,7 @@ impl InferenceContext<'_> {
 
                 // We don't consider multiple ellipses. This is analogous to
                 // `hir_def::body::lower::ExprCollector::collect_tuple_pat()`.
-                let ellipsis = args.iter().position(|e| is_rest_expr(*e));
+                let ellipsis = args.iter().position(|e| is_rest_expr(*e)).map(|it| it as u32);
                 let args: Vec<_> = args.iter().filter(|e| !is_rest_expr(**e)).copied().collect();
 
                 self.infer_tuple_struct_pat_like(path, &rhs_ty, (), lhs, ellipsis, &args)
@@ -1846,29 +1851,45 @@ impl InferenceContext<'_> {
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
             let self_params = type_params + const_params + lifetime_params;
-            for (arg, kind_id) in
-                generic_args.args.iter().zip(def_generics.iter_self_id()).take(self_params)
-            {
-                let arg = generic_arg_to_chalk(
-                    self.db,
-                    kind_id,
-                    arg,
-                    self,
-                    |this, type_ref| this.make_ty(type_ref),
-                    |this, c, ty| {
-                        const_or_path_to_chalk(
-                            this.db,
-                            &this.resolver,
-                            this.owner.into(),
-                            ty,
-                            c,
-                            ParamLoweringMode::Placeholder,
-                            || this.generics(),
-                            DebruijnIndex::INNERMOST,
-                        )
-                    },
-                    |this, lt_ref| this.make_lifetime(lt_ref),
-                );
+
+            let mut args = generic_args.args.iter().peekable();
+            for kind_id in def_generics.iter_self_id().take(self_params) {
+                let arg = args.peek();
+                let arg = match (kind_id, arg) {
+                    // Lifetimes can be elided.
+                    // Once we have implemented lifetime elision correctly,
+                    // this should be handled in a proper way.
+                    (
+                        GenericParamId::LifetimeParamId(_),
+                        None | Some(GenericArg::Type(_) | GenericArg::Const(_)),
+                    ) => error_lifetime().cast(Interner),
+
+                    // If we run out of `generic_args`, stop pushing substs
+                    (_, None) => break,
+
+                    // Normal cases
+                    (_, Some(_)) => generic_arg_to_chalk(
+                        self.db,
+                        kind_id,
+                        args.next().unwrap(), // `peek()` is `Some(_)`, so guaranteed no panic
+                        self,
+                        |this, type_ref| this.make_ty(type_ref),
+                        |this, c, ty| {
+                            const_or_path_to_chalk(
+                                this.db,
+                                &this.resolver,
+                                this.owner.into(),
+                                ty,
+                                c,
+                                ParamLoweringMode::Placeholder,
+                                || this.generics(),
+                                DebruijnIndex::INNERMOST,
+                            )
+                        },
+                        |this, lt_ref| this.make_lifetime(lt_ref),
+                    ),
+                };
+
                 substs.push(arg);
             }
         };
@@ -1945,25 +1966,25 @@ impl InferenceContext<'_> {
         };
 
         let data = self.db.function_data(func);
-        if data.legacy_const_generics_indices.is_empty() {
+        let Some(legacy_const_generics_indices) = &data.legacy_const_generics_indices else {
             return Default::default();
-        }
+        };
 
         // only use legacy const generics if the param count matches with them
-        if data.params.len() + data.legacy_const_generics_indices.len() != args.len() {
+        if data.params.len() + legacy_const_generics_indices.len() != args.len() {
             if args.len() <= data.params.len() {
                 return Default::default();
             } else {
                 // there are more parameters than there should be without legacy
                 // const params; use them
-                let mut indices = data.legacy_const_generics_indices.clone();
+                let mut indices = legacy_const_generics_indices.as_ref().clone();
                 indices.sort();
                 return indices;
             }
         }
 
         // check legacy const parameters
-        for (subst_idx, arg_idx) in data.legacy_const_generics_indices.iter().copied().enumerate() {
+        for (subst_idx, arg_idx) in legacy_const_generics_indices.iter().copied().enumerate() {
             let arg = match subst.at(Interner, subst_idx).constant(Interner) {
                 Some(c) => c,
                 None => continue, // not a const parameter?
@@ -1976,7 +1997,7 @@ impl InferenceContext<'_> {
             self.infer_expr(args[arg_idx as usize], &expected);
             // FIXME: evaluate and unify with the const
         }
-        let mut indices = data.legacy_const_generics_indices.clone();
+        let mut indices = legacy_const_generics_indices.as_ref().clone();
         indices.sort();
         indices
     }

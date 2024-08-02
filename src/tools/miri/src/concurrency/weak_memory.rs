@@ -468,7 +468,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         init: Scalar,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr())?;
+        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
         if let (
             crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
             crate::MiriMachine { data_race: Some(global), threads, .. },
@@ -495,7 +495,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
         if let Some(global) = &this.machine.data_race {
-            let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr())?;
+            let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
                 if atomic == AtomicReadOrd::SeqCst {
                     global.sc_read(&this.machine.threads);
@@ -535,7 +535,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         init: Scalar,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr())?;
+        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr(), 0)?;
         if let (
             crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
             crate::MiriMachine { data_race: Some(global), threads, .. },
@@ -585,7 +585,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 global.sc_read(&this.machine.threads);
             }
             let size = place.layout.size;
-            let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr())?;
+            let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
                 let buffer = alloc_buffers
                     .get_or_create_store_buffer(alloc_range(base_offset, size), init)?;

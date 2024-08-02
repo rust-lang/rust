@@ -1,5 +1,5 @@
 #![doc = include_str!("error.md")]
-#![stable(feature = "error_in_core", since = "CURRENT_RUSTC_VERSION")]
+#![stable(feature = "error_in_core", since = "1.81.0")]
 
 #[cfg(test)]
 mod tests;

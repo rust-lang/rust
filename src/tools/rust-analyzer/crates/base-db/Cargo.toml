@@ -27,6 +27,7 @@ stdx.workspace = true
 syntax.workspace = true
 vfs.workspace = true
 span.workspace = true
+intern.workspace = true
 
 [lints]
 workspace = true

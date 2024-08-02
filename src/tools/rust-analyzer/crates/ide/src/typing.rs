@@ -15,10 +15,8 @@
 
 mod on_enter;
 
-use ide_db::{
-    base_db::{FilePosition, SourceDatabase},
-    RootDatabase,
-};
+use ide_db::{base_db::SourceDatabase, FilePosition, RootDatabase};
+use span::EditionedFileId;
 use syntax::{
     algo::{ancestors_at_offset, find_node_at_offset},
     ast::{self, edit::IndentLevel, AstToken},
@@ -68,7 +66,7 @@ pub(crate) fn on_char_typed(
     if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
         return None;
     }
-    let file = &db.parse(position.file_id);
+    let file = &db.parse(EditionedFileId::current_edition(position.file_id));
     if !stdx::always!(file.tree().syntax().text().char_at(position.offset) == Some(char_typed)) {
         return None;
     }
@@ -128,7 +126,7 @@ fn on_opening_bracket_typed(
         return None;
     }
     // FIXME: Edition
-    let file = file.reparse(&Indel::delete(range), span::Edition::CURRENT);
+    let file = file.reparse(&Indel::delete(range), span::Edition::CURRENT_FIXME);
 
     if let Some(edit) = bracket_expr(&file.tree(), offset, opening_bracket, closing_bracket) {
         return Some(edit);
@@ -412,7 +410,7 @@ mod tests {
         let (offset, mut before) = extract_offset(before);
         let edit = TextEdit::insert(offset, char_typed.to_string());
         edit.apply(&mut before);
-        let parse = SourceFile::parse(&before, span::Edition::CURRENT);
+        let parse = SourceFile::parse(&before, span::Edition::CURRENT_FIXME);
         on_char_typed_inner(&parse, offset, char_typed).map(|it| {
             it.apply(&mut before);
             before.to_string()

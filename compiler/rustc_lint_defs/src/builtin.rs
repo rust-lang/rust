@@ -82,6 +82,7 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PTR_CAST_ADD_AUTO_TO_OBJECT,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
         REFINING_IMPL_TRAIT_INTERNAL,
         REFINING_IMPL_TRAIT_REACHABLE,
@@ -427,6 +428,31 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `redundant_imports` lint detects imports that are redundant due to being
+    /// imported already; either through a previous import, or being present in
+    /// the prelude.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(redundant_imports)]
+    /// use std::option::Option::None;
+    /// fn foo() -> Option<i32> { None }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Redundant imports are unnecessary and can be removed to simplify code.
+    /// If you intended to re-export the item to make it available outside of the
+    /// module, add a visibility modifier like `pub`.
+    pub REDUNDANT_IMPORTS,
+    Allow,
+    "imports that are redundant due to being imported already"
+}
+
+declare_lint! {
     /// The `must_not_suspend` lint guards against values that shouldn't be held across suspend points
     /// (`.await`)
     ///
@@ -617,8 +643,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![cfg_attr(bootstrap, feature(lint_reasons))]
-    ///
     /// #[expect(unused_variables)]
     /// let x = 10;
     /// println!("{}", x);
@@ -1836,8 +1860,7 @@ declare_lint! {
     /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
-    "hidden lifetime parameters in types are deprecated",
-    crate_level_only
+    "hidden lifetime parameters in types are deprecated"
 }
 
 declare_lint! {

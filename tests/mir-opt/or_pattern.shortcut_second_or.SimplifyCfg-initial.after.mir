@@ -39,7 +39,7 @@ fn shortcut_second_or() -> () {
     }
 
     bb5: {
-        falseEdge -> [real: bb10, imaginary: bb6];
+        falseEdge -> [real: bb12, imaginary: bb6];
     }
 
     bb6: {
@@ -47,18 +47,19 @@ fn shortcut_second_or() -> () {
     }
 
     bb7: {
-        falseEdge -> [real: bb12, imaginary: bb8];
+        falseEdge -> [real: bb10, imaginary: bb8];
     }
 
     bb8: {
-        falseEdge -> [real: bb13, imaginary: bb3];
+        falseEdge -> [real: bb9, imaginary: bb3];
     }
 
     bb9: {
-        _0 = const ();
-        StorageDead(_4);
-        StorageDead(_3);
-        goto -> bb14;
+        StorageLive(_3);
+        _3 = (_1.0: (i32, i32));
+        StorageLive(_4);
+        _4 = (_1.1: i32);
+        goto -> bb13;
     }
 
     bb10: {
@@ -66,7 +67,7 @@ fn shortcut_second_or() -> () {
         _3 = (_1.0: (i32, i32));
         StorageLive(_4);
         _4 = (_1.1: i32);
-        goto -> bb9;
+        goto -> bb13;
     }
 
     bb11: {
@@ -74,7 +75,7 @@ fn shortcut_second_or() -> () {
         _3 = (_1.0: (i32, i32));
         StorageLive(_4);
         _4 = (_1.1: i32);
-        goto -> bb9;
+        goto -> bb13;
     }
 
     bb12: {
@@ -82,15 +83,14 @@ fn shortcut_second_or() -> () {
         _3 = (_1.0: (i32, i32));
         StorageLive(_4);
         _4 = (_1.1: i32);
-        goto -> bb9;
+        goto -> bb13;
     }
 
     bb13: {
-        StorageLive(_3);
-        _3 = (_1.0: (i32, i32));
-        StorageLive(_4);
-        _4 = (_1.1: i32);
-        goto -> bb9;
+        _0 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb14;
     }
 
     bb14: {

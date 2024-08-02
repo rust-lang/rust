@@ -73,14 +73,29 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
     fn eof_err(&mut self) -> PErr<'psess> {
         let msg = "this file contains an unclosed delimiter";
         let mut err = self.string_reader.dcx().struct_span_err(self.token.span, msg);
-        for &(_, sp) in &self.diag_info.open_braces {
-            err.span_label(sp, "unclosed delimiter");
+
+        let unclosed_delimiter_show_limit = 5;
+        let len = usize::min(unclosed_delimiter_show_limit, self.diag_info.open_braces.len());
+        for &(_, span) in &self.diag_info.open_braces[..len] {
+            err.span_label(span, "unclosed delimiter");
             self.diag_info.unmatched_delims.push(UnmatchedDelim {
                 found_delim: None,
                 found_span: self.token.span,
-                unclosed_span: Some(sp),
+                unclosed_span: Some(span),
                 candidate_span: None,
             });
+        }
+
+        if let Some((_, span)) = self.diag_info.open_braces.get(unclosed_delimiter_show_limit)
+            && self.diag_info.open_braces.len() >= unclosed_delimiter_show_limit + 2
+        {
+            err.span_label(
+                *span,
+                format!(
+                    "another {} unclosed delimiters begin from here",
+                    self.diag_info.open_braces.len() - unclosed_delimiter_show_limit
+                ),
+            );
         }
 
         if let Some((delim, _)) = self.diag_info.open_braces.last() {

@@ -74,13 +74,12 @@ impl GlobalState {
         }
     }
 
-    /// Sends a notification to the client containing the error `message`.
     /// If `additional_info` is [`Some`], appends a note to the notification telling to check the logs.
     /// This will always log `message` + `additional_info` to the server's error log.
     pub(crate) fn show_and_log_error(&mut self, message: String, additional_info: Option<String>) {
         match additional_info {
             Some(additional_info) => {
-                tracing::error!("{}:\n{}", &message, &additional_info);
+                tracing::error!("{message}:\n{additional_info}");
                 self.show_message(
                     lsp_types::MessageType::ERROR,
                     message,
@@ -88,7 +87,7 @@ impl GlobalState {
                 );
             }
             None => {
-                tracing::error!("{}", &message);
+                tracing::error!("{message}");
                 self.send_notification::<lsp_types::notification::ShowMessage>(
                     lsp_types::ShowMessageParams { typ: lsp_types::MessageType::ERROR, message },
                 );

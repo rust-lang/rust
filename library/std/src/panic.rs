@@ -37,7 +37,7 @@ pub type PanicInfo<'a> = PanicHookInfo<'a>;
 /// ```
 ///
 /// [`set_hook`]: ../../std/panic/fn.set_hook.html
-#[stable(feature = "panic_hook_info", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "panic_hook_info", since = "1.81.0")]
 #[derive(Debug)]
 pub struct PanicHookInfo<'a> {
     payload: &'a (dyn Any + Send),

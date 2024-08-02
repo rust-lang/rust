@@ -2,6 +2,7 @@
 
 use base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase};
 use hir::{Crate, Enum, Function, Macro, Module, ScopeDef, Semantics, Trait};
+use syntax::ToSmolStr;
 
 use crate::RootDatabase;
 
@@ -198,15 +199,18 @@ impl FamousDefs<'_, '_> {
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;
-                if name.to_smol_str() == segment {
+                if name.display_no_db().to_smolstr() == segment {
                     Some(child)
                 } else {
                     None
                 }
             })?;
         }
-        let def =
-            module.scope(db, None).into_iter().find(|(name, _def)| name.to_smol_str() == trait_)?.1;
+        let def = module
+            .scope(db, None)
+            .into_iter()
+            .find(|(name, _def)| name.display_no_db().to_smolstr() == trait_)?
+            .1;
         Some(def)
     }
 }

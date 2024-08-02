@@ -2744,7 +2744,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// ```
 ///
 /// [`Path::exists`]: crate::path::Path::exists
-#[stable(feature = "fs_try_exists", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fs_try_exists", since = "1.81.0")]
 #[inline]
 pub fn exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
     fs_imp::exists(path.as_ref())

@@ -2,7 +2,7 @@
 
 use hir::{AsAssocItem, HirDisplay};
 use ide_db::SymbolKind;
-use syntax::SmolStr;
+use syntax::{SmolStr, ToSmolStr};
 
 use crate::{item::CompletionItem, render::RenderContext};
 
@@ -32,11 +32,11 @@ fn render(
     let name = type_alias.name(db);
     let (name, escaped_name) = if with_eq {
         (
-            SmolStr::from_iter([&name.unescaped().to_smol_str(), " = "]),
-            SmolStr::from_iter([&name.to_smol_str(), " = "]),
+            SmolStr::from_iter([&name.unescaped().display(db).to_smolstr(), " = "]),
+            SmolStr::from_iter([&name.display_no_db().to_smolstr(), " = "]),
         )
     } else {
-        (name.unescaped().to_smol_str(), name.to_smol_str())
+        (name.unescaped().display(db).to_smolstr(), name.display_no_db().to_smolstr())
     };
     let detail = type_alias.display(db).to_string();
 
@@ -48,7 +48,7 @@ fn render(
 
     if let Some(actm) = type_alias.as_assoc_item(db) {
         if let Some(trt) = actm.container_or_implemented_trait(db) {
-            item.trait_name(trt.name(db).to_smol_str());
+            item.trait_name(trt.name(db).display_no_db().to_smolstr());
         }
     }
     item.insert_text(escaped_name);

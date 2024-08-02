@@ -1355,6 +1355,16 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
     }
 
+    pub fn set_unpredictable(&mut self, inst: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetMetadata(
+                inst,
+                llvm::MD_unpredictable as c_uint,
+                llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0),
+            );
+        }
+    }
+
     pub fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs) }
     }

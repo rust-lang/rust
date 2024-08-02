@@ -162,11 +162,12 @@ fn add_preamble(cg: CodegenType, mut text: String) -> String {
 /// Checks that the `file` has the specified `contents`. If that is not the
 /// case, updates the file and then fails the test.
 #[allow(clippy::print_stderr)]
-fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: bool) {
+fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: bool) -> bool {
+    let contents = normalize_newlines(contents);
     if let Ok(old_contents) = fs::read_to_string(file) {
-        if normalize_newlines(&old_contents) == normalize_newlines(contents) {
+        if normalize_newlines(&old_contents) == contents {
             // File is already up to date.
-            return;
+            return false;
         }
     }
 
@@ -193,6 +194,7 @@ fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: boo
             let _ = fs::create_dir_all(parent);
         }
         fs::write(file, contents).unwrap();
+        true
     }
 }
 

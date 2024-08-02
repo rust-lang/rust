@@ -295,7 +295,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             );
         }
 
-        match self.ptr_try_get_alloc_id(ptr) {
+        match self.ptr_try_get_alloc_id(ptr, 0) {
             Ok((alloc_id, offset, _extra)) => {
                 let (_size, alloc_align, _kind) = self.get_alloc_info(alloc_id);
 
@@ -510,7 +510,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 // If an allocation is created in an another const,
                 // we don't deallocate it.
-                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr)?;
+                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr, 0)?;
                 let is_allocated_in_another_const = matches!(
                     ecx.tcx.try_get_global_alloc(alloc_id),
                     Some(interpret::GlobalAlloc::Memory(_))

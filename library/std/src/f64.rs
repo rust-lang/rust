@@ -574,7 +574,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        crate::sys::log2f64(self)
+        unsafe { intrinsics::log2f64(self) }
     }
 
     /// Returns the base 10 logarithm of the number.

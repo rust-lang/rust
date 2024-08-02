@@ -112,8 +112,19 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
 
     // test_err async_without_semicolon
     // fn foo() { let _ = async {} }
-    if p.at(T![async]) && !matches!(p.nth(1), T!['{'] | T![move] | T![|]) {
+    if p.at(T![async])
+        && (!matches!(p.nth(1), T!['{'] | T![gen] | T![move] | T![|])
+            || matches!((p.nth(1), p.nth(2)), (T![gen], T![fn])))
+    {
         p.eat(T![async]);
+        has_mods = true;
+    }
+
+    // test_err gen_fn
+    // gen fn gen_fn() {}
+    // async gen fn async_gen_fn() {}
+    if p.at(T![gen]) && p.nth(1) == T![fn] {
+        p.eat(T![gen]);
         has_mods = true;
     }
 
@@ -173,13 +184,6 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         }
     }
 
-    // test existential_type
-    // existential type Foo: Fn() -> usize;
-    if p.at_contextual_kw(T![existential]) && p.nth(1) == T![type] {
-        p.bump_remap(T![existential]);
-        has_mods = true;
-    }
-
     // items
     match p.current() {
         T![fn] => fn_(p, m),
@@ -201,7 +205,7 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
 
         _ if has_visibility || has_mods => {
             if has_mods {
-                p.error("expected existential, fn, trait or impl");
+                p.error("expected fn, trait or impl");
             } else {
                 p.error("expected an item");
             }
@@ -226,13 +230,8 @@ fn opt_item_without_modifiers(p: &mut Parser<'_>, m: Marker) -> Result<(), Marke
         IDENT if p.at_contextual_kw(T![union]) && p.nth(1) == IDENT => adt::union(p, m),
 
         T![macro] => macro_def(p, m),
-        // check if current token is "macro_rules" followed by "!" followed by an identifier or "try"
-        // try is keyword since the 2018 edition and the parser is not edition aware (yet!)
-        IDENT
-            if p.at_contextual_kw(T![macro_rules])
-                && p.nth_at(1, BANG)
-                && (p.nth_at(2, IDENT) || p.nth_at(2, T![try])) =>
-        {
+        // check if current token is "macro_rules" followed by "!" followed by an identifier
+        IDENT if p.at_contextual_kw(T![macro_rules]) && p.nth_at(1, BANG) && p.nth_at(2, IDENT) => {
             macro_rules(p, m)
         }
 
@@ -330,23 +329,14 @@ pub(crate) fn extern_item_list(p: &mut Parser<'_>) {
     m.complete(p, EXTERN_ITEM_LIST);
 }
 
+// test try_macro_rules 2015
+// macro_rules! try { () => {} }
 fn macro_rules(p: &mut Parser<'_>, m: Marker) {
     assert!(p.at_contextual_kw(T![macro_rules]));
     p.bump_remap(T![macro_rules]);
     p.expect(T![!]);
 
-    // Special-case `macro_rules! try`.
-    // This is a hack until we do proper edition support
-
-    // test try_macro_rules
-    // macro_rules! try { () => {} }
-    if p.at(T![try]) {
-        let m = p.start();
-        p.bump_remap(IDENT);
-        m.complete(p, NAME);
-    } else {
-        name(p);
-    }
+    name(p);
 
     match p.current() {
         // test macro_rules_non_brace
@@ -384,7 +374,7 @@ fn macro_def(p: &mut Parser<'_>, m: Marker) {
     m.complete(p, MACRO_DEF);
 }
 
-// test fn
+// test fn_
 // fn foo() {}
 fn fn_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![fn]);

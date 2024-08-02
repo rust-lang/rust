@@ -13,7 +13,7 @@ use crate::{
 };
 use hir_expand::name::Name;
 use intern::Interned;
-use syntax::ast;
+use syntax::{ast, ToSmolStr};
 
 pub use hir_expand::mod_path::{path, ModPath, PathKind};
 
@@ -29,7 +29,7 @@ impl Display for ImportAlias {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ImportAlias::Underscore => f.write_str("_"),
-            ImportAlias::Alias(name) => f.write_str(&name.to_smol_str()),
+            ImportAlias::Alias(name) => f.write_str(&name.display_no_db().to_smolstr()),
         }
     }
 }

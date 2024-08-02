@@ -2,8 +2,8 @@
 
 use hir::{Crate, Module, ModuleDef, Semantics};
 use ide_db::{
-    base_db::{CrateGraph, CrateId, FileId, SourceDatabase},
-    RootDatabase,
+    base_db::{CrateGraph, CrateId, SourceDatabase},
+    FileId, RootDatabase,
 };
 use syntax::TextRange;
 
@@ -66,8 +66,11 @@ fn discover_tests_in_module(
 
     let mut r = vec![];
     for c in module.children(db) {
-        let module_name =
-            c.name(db).as_ref().and_then(|n| n.as_str()).unwrap_or("[mod without name]").to_owned();
+        let module_name = c
+            .name(db)
+            .as_ref()
+            .map(|n| n.as_str().to_owned())
+            .unwrap_or_else(|| "[mod without name]".to_owned());
         let module_id = format!("{prefix_id}::{module_name}");
         let module_children = discover_tests_in_module(db, c, module_id.clone(), only_in_this_file);
         if !module_children.is_empty() {
@@ -94,7 +97,7 @@ fn discover_tests_in_module(
             continue;
         }
         let nav = f.try_to_nav(db).map(|r| r.call_site);
-        let fn_name = f.name(db).as_str().unwrap_or("[function without name]").to_owned();
+        let fn_name = f.name(db).as_str().to_owned();
         r.push(TestItem {
             id: format!("{prefix_id}::{fn_name}"),
             kind: TestItemKind::Function,
@@ -153,7 +156,7 @@ fn find_module_id_and_test_parents(
     let parent = Some(id.clone());
     id += "::";
     let module_name = &module.name(sema.db);
-    let module_name = module_name.as_ref().and_then(|n| n.as_str()).unwrap_or("[mod without name]");
+    let module_name = module_name.as_ref().map(|n| n.as_str()).unwrap_or("[mod without name]");
     id += module_name;
     let nav = NavigationTarget::from_module_to_decl(sema.db, module).call_site;
     r.push(TestItem {

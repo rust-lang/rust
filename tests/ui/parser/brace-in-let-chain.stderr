@@ -17,14 +17,8 @@ LL | fn qux() {
    |          - unclosed delimiter
 ...
 LL | fn foo() {
-   |          - unclosed delimiter
+   |          - another 3 unclosed delimiters begin from here
 ...
-LL | fn bar() {
-   |          - unclosed delimiter
-...
-LL | fn baz() {
-   |          - unclosed delimiter
-LL |     if false {
 LL |         {
    |         - this delimiter might not be properly closed...
 LL |             && let () = ()

@@ -171,12 +171,13 @@
 /// still be live when `T` gets dropped. The exact details of this analysis are not yet
 /// stably guaranteed and **subject to change**. Currently, the analysis works as follows:
 /// - If `T` has no drop glue, then trivially nothing is required to be live. This is the case if
-///   neither `T` nor any of its (recursive) fields have a destructor (`impl Drop`). [`PhantomData`]
-///   and [`ManuallyDrop`] are considered to never have a destructor, no matter their field type.
+///   neither `T` nor any of its (recursive) fields have a destructor (`impl Drop`). [`PhantomData`],
+///   arrays of length 0 and [`ManuallyDrop`] are considered to never have a destructor, no matter
+///   their field type.
 /// - If `T` has drop glue, then, for all types `U` that are *owned* by any field of `T`,
 ///   recursively add the types and lifetimes that need to be live when `U` gets dropped. The set of
 ///   owned types is determined by recursively traversing `T`:
-///   - Recursively descend through `PhantomData`, `Box`, tuples, and arrays (including arrays of
+///   - Recursively descend through `PhantomData`, `Box`, tuples, and arrays (excluding arrays of
 ///     length 0).
 ///   - Stop at reference and raw pointer types as well as function pointers and function items;
 ///     they do not own anything.

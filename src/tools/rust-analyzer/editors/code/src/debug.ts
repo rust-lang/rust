@@ -3,10 +3,10 @@ import * as vscode from "vscode";
 import * as path from "path";
 import type * as ra from "./lsp_ext";
 
-import { Cargo, getRustcId, getSysroot } from "./toolchain";
+import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { prepareEnv } from "./run";
-import { isCargoRunnableArgs, unwrapUndefinable } from "./util";
+import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
 type DebugConfigProvider = (
@@ -142,18 +142,29 @@ async function getDebugConfiguration(
     const executable = await getDebugExecutable(runnableArgs, env);
     let sourceFileMap = debugOptions.sourceFileMap;
     if (sourceFileMap === "auto") {
-        // let's try to use the default toolchain
-        const [commitHash, sysroot] = await Promise.all([
-            getRustcId(wsFolder),
-            getSysroot(wsFolder),
-        ]);
-        const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
         sourceFileMap = {};
-        sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
+        const sysroot = env["RUSTC_TOOLCHAIN"];
+        if (sysroot) {
+            // let's try to use the default toolchain
+            const data = await execute(`rustc -V -v`, { cwd: wsFolder, env });
+            const rx = /commit-hash:\s(.*)$/m;
+
+            const commitHash = rx.exec(data)?.[1];
+            if (commitHash) {
+                const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
+                sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
+            }
+        }
     }
 
     const provider = unwrapUndefinable(knownEngines[debugEngine.id]);
-    const debugConfig = provider(runnable, runnableArgs, simplifyPath(executable), env);
+    const debugConfig = provider(
+        runnable,
+        runnableArgs,
+        simplifyPath(executable),
+        env,
+        sourceFileMap,
+    );
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
         for (var key in settingsMap) {

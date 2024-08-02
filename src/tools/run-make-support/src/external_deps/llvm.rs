@@ -36,6 +36,12 @@ pub fn llvm_ar() -> LlvmAr {
     LlvmAr::new()
 }
 
+/// Construct a new `llvm-nm` invocation. This assumes that `llvm-nm` is available
+/// at `$LLVM_BIN_DIR/llvm-nm`.
+pub fn llvm_nm() -> LlvmNm {
+    LlvmNm::new()
+}
+
 /// A `llvm-readobj` invocation builder.
 #[derive(Debug)]
 #[must_use]
@@ -71,11 +77,19 @@ pub struct LlvmAr {
     cmd: Command,
 }
 
+/// A `llvm-nm` invocation builder.
+#[derive(Debug)]
+#[must_use]
+pub struct LlvmNm {
+    cmd: Command,
+}
+
 crate::macros::impl_common_helpers!(LlvmReadobj);
 crate::macros::impl_common_helpers!(LlvmProfdata);
 crate::macros::impl_common_helpers!(LlvmFilecheck);
 crate::macros::impl_common_helpers!(LlvmObjdump);
 crate::macros::impl_common_helpers!(LlvmAr);
+crate::macros::impl_common_helpers!(LlvmNm);
 
 /// Generate the path to the bin directory of LLVM.
 #[must_use]
@@ -241,6 +255,22 @@ impl LlvmAr {
     pub fn output_input(&mut self, out: impl AsRef<Path>, input: impl AsRef<Path>) -> &mut Self {
         self.cmd.arg(out.as_ref());
         self.cmd.arg(input.as_ref());
+        self
+    }
+}
+
+impl LlvmNm {
+    /// Construct a new `llvm-nm` invocation. This assumes that `llvm-nm` is available
+    /// at `$LLVM_BIN_DIR/llvm-nm`.
+    pub fn new() -> Self {
+        let llvm_nm = llvm_bin_dir().join("llvm-nm");
+        let cmd = Command::new(llvm_nm);
+        Self { cmd }
+    }
+
+    /// Provide an input file.
+    pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg(path.as_ref());
         self
     }
 }

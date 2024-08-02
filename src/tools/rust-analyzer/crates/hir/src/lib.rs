@@ -37,14 +37,14 @@ mod display;
 use std::{mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, FileId};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin};
 use either::Either;
 use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
     data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
-    item_tree::ItemTreeNode,
+    item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
@@ -58,7 +58,7 @@ use hir_def::{
     TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{
-    attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, AstId, MacroCallKind, ValueResult,
+    attrs::collect_attrs, proc_macro::ProcMacroKind, AstId, MacroCallKind, ValueResult,
 };
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
@@ -78,11 +78,11 @@ use hir_ty::{
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
-use span::{Edition, MacroCallId};
+use span::{Edition, EditionedFileId, FileId, MacroCallId};
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, HasAttrs as _, HasName},
-    format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
+    ast::{self, HasAttrs as _, HasGenericParams, HasName},
+    format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr, T,
 };
 use triomphe::Arc;
 
@@ -129,12 +129,16 @@ pub use {
     hir_expand::{
         attrs::{Attr, AttrId},
         change::ChangeWithProcMacros,
+        files::{
+            FilePosition, FilePositionWrapper, FileRange, FileRangeWrapper, HirFilePosition,
+            HirFileRange, InFile, InFileWrapper, InMacroFile, InRealFile, MacroFilePosition,
+            MacroFileRange,
+        },
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
-        name::{known, Name},
-        proc_macro::ProcMacros,
-        tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
-        MacroFileIdExt,
+        name::Name,
+        proc_macro::{ProcMacros, ProcMacrosBuilder},
+        tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt,
     },
     hir_ty::{
         consteval::ConstEvalError,
@@ -145,6 +149,7 @@ pub use {
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
+    intern::{sym, Symbol},
 };
 
 // These are negative re-exports: pub using these names is forbidden, they
@@ -258,7 +263,7 @@ impl Crate {
     pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
         let attrs = db.attrs(AttrDefId::ModuleId(self.root_module().into()));
-        let doc_url = attrs.by_key("doc").find_string_value_in_tt("html_root_url");
+        let doc_url = attrs.by_key(&sym::doc).find_string_value_in_tt(&sym::html_root_url);
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
@@ -676,9 +681,9 @@ impl Module {
                             TypeOrConstParamId { parent, local_id },
                         ))
                     });
-                let res = type_params
-                    .chain(lifetime_params)
-                    .any(|p| db.attrs(AttrDefId::GenericParamId(p)).by_key("may_dangle").exists());
+                let res = type_params.chain(lifetime_params).any(|p| {
+                    db.attrs(AttrDefId::GenericParamId(p)).by_key(&sym::may_dangle).exists()
+                });
                 Some(res)
             })()
             .unwrap_or(false);
@@ -828,19 +833,27 @@ fn macro_call_diagnostics(
     let ValueResult { value: parse_errors, err } = &*e;
     if let Some(err) = err {
         let loc = db.lookup_intern_macro_call(macro_call_id);
-        let (node, precise_location, macro_name, kind) = precise_macro_call_location(&loc.kind, db);
-        let diag = match err {
-            &hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
-                UnresolvedProcMacro { node, precise_location, macro_name, kind, krate }.into()
-            }
-            err => MacroError { node, precise_location, message: err.to_string() }.into(),
+        let file_id = loc.kind.file_id();
+        let node =
+            InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
+        let (message, error) = err.render_to_string(db.upcast());
+        let precise_location = if err.span().anchor.file_id == file_id {
+            Some(
+                err.span().range
+                    + db.ast_id_map(err.span().anchor.file_id.into())
+                        .get_erased(err.span().anchor.ast_id)
+                        .text_range()
+                        .start(),
+            )
+        } else {
+            None
         };
-        acc.push(diag);
+        acc.push(MacroError { node, precise_location, message, error }.into());
     }
 
     if !parse_errors.is_empty() {
         let loc = db.lookup_intern_macro_call(macro_call_id);
-        let (node, precise_location, _, _) = precise_macro_call_location(&loc.kind, db);
+        let (node, precise_location) = precise_macro_call_location(&loc.kind, db);
         acc.push(
             MacroExpansionParseError { node, precise_location, errors: parse_errors.clone() }
                 .into(),
@@ -890,6 +903,19 @@ fn emit_def_diagnostic_(
             acc.push(UnresolvedExternCrate { decl: InFile::new(ast.file_id, item) }.into());
         }
 
+        DefDiagnosticKind::MacroError { ast, path, err } => {
+            let item = ast.to_ptr(db.upcast());
+            let (message, error) = err.render_to_string(db.upcast());
+            acc.push(
+                MacroError {
+                    node: InFile::new(ast.file_id, item.syntax_node_ptr()),
+                    precise_location: None,
+                    message: format!("{}: {message}", path.display(db.upcast())),
+                    error,
+                }
+                .into(),
+            )
+        }
         DefDiagnosticKind::UnresolvedImport { id, index } => {
             let file_id = id.file_id();
             let item_tree = id.item_tree(db.upcast());
@@ -901,22 +927,93 @@ fn emit_def_diagnostic_(
             );
         }
 
-        DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
-            let item = ast.to_ptr(db.upcast());
-            acc.push(
-                InactiveCode { node: ast.with_value(item), cfg: cfg.clone(), opts: opts.clone() }
+        DefDiagnosticKind::UnconfiguredCode { tree, item, cfg, opts } => {
+            let item_tree = tree.item_tree(db.upcast());
+            let ast_id_map = db.ast_id_map(tree.file_id());
+            // FIXME: This parses... We could probably store relative ranges for the children things
+            // here in the item tree?
+            (|| {
+                let process_field_list =
+                    |field_list: Option<_>, idx: ItemTreeFieldId| match field_list? {
+                        ast::FieldList::RecordFieldList(it) => Some(SyntaxNodePtr::new(
+                            it.fields().nth(idx.into_raw().into_u32() as usize)?.syntax(),
+                        )),
+                        ast::FieldList::TupleFieldList(it) => Some(SyntaxNodePtr::new(
+                            it.fields().nth(idx.into_raw().into_u32() as usize)?.syntax(),
+                        )),
+                    };
+                let ptr = match *item {
+                    AttrOwner::ModItem(it) => {
+                        ast_id_map.get(it.ast_id(&item_tree)).syntax_node_ptr()
+                    }
+                    AttrOwner::TopLevel => ast_id_map.root(),
+                    AttrOwner::Variant(it) => {
+                        ast_id_map.get(item_tree[it].ast_id).syntax_node_ptr()
+                    }
+                    AttrOwner::Field(FieldParent::Variant(parent), idx) => process_field_list(
+                        ast_id_map
+                            .get(item_tree[parent].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .field_list(),
+                        idx,
+                    )?,
+                    AttrOwner::Field(FieldParent::Struct(parent), idx) => process_field_list(
+                        ast_id_map
+                            .get(item_tree[parent.index()].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .field_list(),
+                        idx,
+                    )?,
+                    AttrOwner::Field(FieldParent::Union(parent), idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(item_tree[parent.index()].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .record_field_list()?
+                            .fields()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                    AttrOwner::Param(parent, idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(item_tree[parent.index()].ast_id)
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .param_list()?
+                            .params()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                    AttrOwner::TypeOrConstParamData(parent, idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(parent.ast_id(&item_tree))
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .generic_param_list()?
+                            .type_or_const_params()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                    AttrOwner::LifetimeParamData(parent, idx) => SyntaxNodePtr::new(
+                        ast_id_map
+                            .get(parent.ast_id(&item_tree))
+                            .to_node(&db.parse_or_expand(tree.file_id()))
+                            .generic_param_list()?
+                            .lifetime_params()
+                            .nth(idx.into_raw().into_u32() as usize)?
+                            .syntax(),
+                    ),
+                };
+                acc.push(
+                    InactiveCode {
+                        node: InFile::new(tree.file_id(), ptr),
+                        cfg: cfg.clone(),
+                        opts: opts.clone(),
+                    }
                     .into(),
-            );
-        }
-        DefDiagnosticKind::UnresolvedProcMacro { ast, krate } => {
-            let (node, precise_location, macro_name, kind) = precise_macro_call_location(ast, db);
-            acc.push(
-                UnresolvedProcMacro { node, precise_location, macro_name, kind, krate: *krate }
-                    .into(),
-            );
+                );
+                Some(())
+            })();
         }
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
-            let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
+            let (node, precise_location) = precise_macro_call_location(ast, db);
             acc.push(
                 UnresolvedMacroCall {
                     macro_call: node,
@@ -985,7 +1082,7 @@ fn emit_def_diagnostic_(
 fn precise_macro_call_location(
     ast: &MacroCallKind,
     db: &dyn HirDatabase,
-) -> (InFile<SyntaxNodePtr>, Option<TextRange>, Option<String>, MacroKind) {
+) -> (InFile<SyntaxNodePtr>, Option<TextRange>) {
     // FIXME: maybe we actually want slightly different ranges for the different macro diagnostics
     // - e.g. the full attribute for macro errors, but only the name for name resolution
     match ast {
@@ -997,8 +1094,6 @@ fn precise_macro_call_location(
                     .and_then(|it| it.segment())
                     .and_then(|it| it.name_ref())
                     .map(|it| it.syntax().text_range()),
-                node.path().and_then(|it| it.segment()).map(|it| it.to_string()),
-                MacroKind::ProcMacro,
             )
         }
         MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
@@ -1027,8 +1122,6 @@ fn precise_macro_call_location(
             (
                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
                 token.as_ref().map(|tok| tok.text_range()),
-                token.as_ref().map(ToString::to_string),
-                MacroKind::Derive,
             )
         }
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
@@ -1043,12 +1136,6 @@ fn precise_macro_call_location(
             (
                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
                 Some(attr.syntax().text_range()),
-                attr.path()
-                    .and_then(|path| path.segment())
-                    .and_then(|seg| seg.name_ref())
-                    .as_ref()
-                    .map(ToString::to_string),
-                MacroKind::Attr,
             )
         }
     }
@@ -1712,20 +1799,28 @@ impl DefWithBody {
                 BodyDiagnostic::InactiveCode { node, cfg, opts } => {
                     InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
                 }
-                BodyDiagnostic::MacroError { node, message } => MacroError {
-                    node: (*node).map(|it| it.into()),
-                    precise_location: None,
-                    message: message.to_string(),
+                BodyDiagnostic::MacroError { node, err } => {
+                    let (message, error) = err.render_to_string(db.upcast());
+
+                    let precise_location = if err.span().anchor.file_id == node.file_id {
+                        Some(
+                            err.span().range
+                                + db.ast_id_map(err.span().anchor.file_id.into())
+                                    .get_erased(err.span().anchor.ast_id)
+                                    .text_range()
+                                    .start(),
+                        )
+                    } else {
+                        None
+                    };
+                    MacroError {
+                        node: (*node).map(|it| it.into()),
+                        precise_location,
+                        message,
+                        error,
+                    }
+                    .into()
                 }
-                .into(),
-                BodyDiagnostic::UnresolvedProcMacro { node, krate } => UnresolvedProcMacro {
-                    node: (*node).map(|it| it.into()),
-                    precise_location: None,
-                    macro_name: None,
-                    kind: MacroKind::ProcMacro,
-                    krate: *krate,
-                }
-                .into(),
                 BodyDiagnostic::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
                     macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
                     precise_location: None,
@@ -1801,6 +1896,16 @@ impl DefWithBody {
                             Some(s) => s.map(|it| it.into()),
                             None => continue,
                         },
+                        mir::MirSpan::BindingId(b) => {
+                            match source_map
+                                .patterns_for_binding(b)
+                                .iter()
+                                .find_map(|p| source_map.pat_syntax(*p).ok())
+                            {
+                                Some(s) => s.map(|it| it.into()),
+                                None => continue,
+                            }
+                        }
                         mir::MirSpan::Unknown => continue,
                     };
                     acc.push(
@@ -1817,8 +1922,8 @@ impl DefWithBody {
                     let Some(&local) = mir_body.binding_locals.get(binding_id) else {
                         continue;
                     };
-                    if body[binding_id]
-                        .definitions
+                    if source_map
+                        .patterns_for_binding(binding_id)
                         .iter()
                         .any(|&pat| source_map.pat_syntax(pat).is_err())
                     {
@@ -1826,7 +1931,7 @@ impl DefWithBody {
                         continue;
                     }
                     let mut need_mut = &mol[local];
-                    if body[binding_id].name.as_str() == Some("self")
+                    if body[binding_id].name == sym::self_.clone()
                         && need_mut == &mir::MutabilityReason::Unused
                     {
                         need_mut = &mir::MutabilityReason::Not;
@@ -1836,7 +1941,7 @@ impl DefWithBody {
 
                     match (need_mut, is_mut) {
                         (mir::MutabilityReason::Unused, _) => {
-                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
+                            let should_ignore = body[binding_id].name.as_str().starts_with('_');
                             if !should_ignore {
                                 acc.push(UnusedVariable { local }.into())
                             }
@@ -1854,6 +1959,16 @@ impl DefWithBody {
                                         Ok(s) => s.map(|it| it.into()),
                                         Err(_) => continue,
                                     },
+                                    mir::MirSpan::BindingId(b) => {
+                                        match source_map
+                                            .patterns_for_binding(*b)
+                                            .iter()
+                                            .find_map(|p| source_map.pat_syntax(*p).ok())
+                                        {
+                                            Some(s) => s.map(|it| it.into()),
+                                            None => continue,
+                                        }
+                                    }
                                     mir::MirSpan::SelfParam => match source_map.self_param_syntax()
                                     {
                                         Some(s) => s.map(|it| it.into()),
@@ -1866,7 +1981,7 @@ impl DefWithBody {
                         }
                         (mir::MutabilityReason::Not, true) => {
                             if !infer.mutated_bindings_in_closure.contains(&binding_id) {
-                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
+                                let should_ignore = body[binding_id].name.as_str().starts_with('_');
                                 if !should_ignore {
                                     acc.push(UnusedMut { local }.into())
                                 }
@@ -1972,7 +2087,6 @@ impl Function {
                 return Type::new_with_resolver_inner(db, &resolver, output_eq.ty).into();
             }
         }
-        never!("Async fn ret_type should be impl Future");
         None
     }
 
@@ -2087,14 +2201,14 @@ impl Function {
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
         let data = db.function_data(self.id);
-        data.attrs.export_name() == Some("main")
-            || self.module(db).is_crate_root() && data.name.to_smol_str() == "main"
+        data.attrs.export_name() == Some(&sym::main)
+            || self.module(db).is_crate_root() && data.name == sym::main
     }
 
     /// Is this a function with an `export_name` of `main`?
     pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
         let data = db.function_data(self.id);
-        data.attrs.export_name() == Some("main")
+        data.attrs.export_name() == Some(&sym::main)
     }
 
     /// Does this function have the ignore attribute?
@@ -2588,7 +2702,7 @@ pub struct StaticLifetime;
 
 impl StaticLifetime {
     pub fn name(self) -> Name {
-        known::STATIC_LIFETIME
+        Name::new_symbol_root(sym::tick_static.clone())
     }
 }
 
@@ -3199,7 +3313,7 @@ impl LocalSource {
         }
     }
 
-    pub fn original_file(&self, db: &dyn HirDatabase) -> FileId {
+    pub fn original_file(&self, db: &dyn HirDatabase) -> EditionedFileId {
         self.source.file_id.original_file(db.upcast())
     }
 
@@ -3248,7 +3362,7 @@ impl Local {
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
-        self.name(db) == name![self]
+        self.name(db) == sym::self_.clone()
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
@@ -3287,8 +3401,8 @@ impl Local {
                     source: source.map(|ast| Either::Right(ast.to_node(&root))),
                 }]
             }
-            _ => body[self.binding_id]
-                .definitions
+            _ => source_map
+                .patterns_for_binding(self.binding_id)
                 .iter()
                 .map(|&definition| {
                     let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
@@ -3316,8 +3430,8 @@ impl Local {
                     source: source.map(|ast| Either::Right(ast.to_node(&root))),
                 }
             }
-            _ => body[self.binding_id]
-                .definitions
+            _ => source_map
+                .patterns_for_binding(self.binding_id)
                 .first()
                 .map(|&definition| {
                     let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
@@ -3379,23 +3493,27 @@ impl BuiltinAttr {
         if let builtin @ Some(_) = Self::builtin(name) {
             return builtin;
         }
-        let idx =
-            db.crate_def_map(krate.id).registered_attrs().iter().position(|it| it == name)? as u32;
+        let idx = db
+            .crate_def_map(krate.id)
+            .registered_attrs()
+            .iter()
+            .position(|it| it.as_str() == name)? as u32;
         Some(BuiltinAttr { krate: Some(krate.id), idx })
     }
 
     fn builtin(name: &str) -> Option<Self> {
-        hir_expand::inert_attr_macro::find_builtin_attr_idx(name)
+        hir_expand::inert_attr_macro::find_builtin_attr_idx(&Symbol::intern(name))
             .map(|idx| BuiltinAttr { krate: None, idx: idx as u32 })
     }
 
-    pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
-        // FIXME: Return a `Name` here
+    pub fn name(&self, db: &dyn HirDatabase) -> Name {
         match self.krate {
-            Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx as usize].clone(),
-            None => {
-                SmolStr::new(hir_expand::inert_attr_macro::INERT_ATTRIBUTES[self.idx as usize].name)
-            }
+            Some(krate) => Name::new_symbol_root(
+                db.crate_def_map(krate).registered_attrs()[self.idx as usize].clone(),
+            ),
+            None => Name::new_symbol_root(Symbol::intern(
+                hir_expand::inert_attr_macro::INERT_ATTRIBUTES[self.idx as usize].name,
+            )),
         }
     }
 
@@ -3419,13 +3537,15 @@ impl ToolModule {
     pub(crate) fn by_name(db: &dyn HirDatabase, krate: Crate, name: &str) -> Option<Self> {
         let krate = krate.id;
         let idx =
-            db.crate_def_map(krate).registered_tools().iter().position(|it| it == name)? as u32;
+            db.crate_def_map(krate).registered_tools().iter().position(|it| it.as_str() == name)?
+                as u32;
         Some(ToolModule { krate, idx })
     }
 
-    pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
-        // FIXME: Return a `Name` here
-        db.crate_def_map(self.krate).registered_tools()[self.idx as usize].clone()
+    pub fn name(&self, db: &dyn HirDatabase) -> Name {
+        Name::new_symbol_root(
+            db.crate_def_map(self.krate).registered_tools()[self.idx as usize].clone(),
+        )
     }
 }
 
@@ -3692,6 +3812,10 @@ impl Impl {
         let trait_ = db.trait_impls_in_crate(krate.id);
 
         inherent.all_impls().chain(trait_.all_impls()).map(Self::from).collect()
+    }
+
+    pub fn all_in_module(db: &dyn HirDatabase, module: Module) -> Vec<Impl> {
+        module.id.def_map(db.upcast())[module.id.local_id].scope.impls().map(Into::into).collect()
     }
 
     pub fn all_for_type(db: &dyn HirDatabase, Type { ty, env }: Type) -> Vec<Impl> {
@@ -4600,7 +4724,7 @@ impl Type {
     ) -> impl Iterator<Item = SmolStr> + 'a {
         // iterate the lifetime
         self.as_adt()
-            .and_then(|a| a.lifetime(db).map(|lt| lt.name.to_smol_str()))
+            .and_then(|a| a.lifetime(db).map(|lt| lt.name.display_no_db().to_smolstr()))
             .into_iter()
             // add the type and const parameters
             .chain(self.type_and_const_arguments(db))

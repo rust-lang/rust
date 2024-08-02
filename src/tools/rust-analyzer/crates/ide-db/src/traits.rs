@@ -113,8 +113,8 @@ fn assoc_item_of_trait(
 
 #[cfg(test)]
 mod tests {
-    use base_db::FilePosition;
     use expect_test::{expect, Expect};
+    use hir::FilePosition;
     use hir::Semantics;
     use syntax::ast::{self, AstNode};
     use test_fixture::ChangeFixture;

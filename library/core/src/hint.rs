@@ -194,8 +194,8 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 #[track_caller]
 #[inline(always)]
 #[doc(alias = "assume")]
-#[stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "hint_assert_unchecked", since = "1.81.0")]
+#[rustc_const_stable(feature = "hint_assert_unchecked", since = "1.81.0")]
 pub const unsafe fn assert_unchecked(cond: bool) {
     // SAFETY: The caller promised `cond` is true.
     unsafe {

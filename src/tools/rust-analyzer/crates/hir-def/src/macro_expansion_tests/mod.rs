@@ -24,6 +24,7 @@ use hir_expand::{
     span_map::SpanMapRef,
     InFile, MacroFileId, MacroFileIdExt,
 };
+use intern::Symbol;
 use span::Span;
 use stdx::{format_to, format_to_acc};
 use syntax::{
@@ -55,7 +56,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 "#
         .into(),
         ProcMacro {
-            name: "identity_when_valid".into(),
+            name: Symbol::intern("identity_when_valid"),
             kind: ProcMacroKind::Attr,
             expander: sync::Arc::new(IdentityWhenValidProcMacroExpander),
             disabled: false,
@@ -121,7 +122,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
         let mut expn_text = String::new();
         if let Some(err) = exp.err {
-            format_to!(expn_text, "/* error: {} */", err);
+            format_to!(expn_text, "/* error: {} */", err.render_to_string(&db).0);
         }
         let (parse, token_map) = exp.value;
         if expect_errors {

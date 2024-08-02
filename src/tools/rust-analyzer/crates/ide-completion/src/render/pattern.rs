@@ -3,7 +3,7 @@
 use hir::{db::HirDatabase, Name, StructKind};
 use ide_db::{documentation::HasDocs, SnippetCap};
 use itertools::Itertools;
-use syntax::SmolStr;
+use syntax::{SmolStr, ToSmolStr};
 
 use crate::{
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
@@ -31,7 +31,8 @@ pub(crate) fn render_struct_pat(
     }
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db()));
-    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
+    let (name, escaped_name) =
+        (name.unescaped().display(ctx.db()).to_smolstr(), name.display(ctx.db()).to_smolstr());
     let kind = strukt.kind(ctx.db());
     let label = format_literal_label(name.as_str(), kind, ctx.snippet_cap());
     let lookup = format_literal_lookup(name.as_str(), kind);
@@ -63,7 +64,11 @@ pub(crate) fn render_variant_pat(
         ),
         None => {
             let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
-            (name.unescaped().to_smol_str(), name.to_smol_str())
+            let it = (
+                name.unescaped().display(ctx.db()).to_smolstr(),
+                name.display(ctx.db()).to_smolstr(),
+            );
+            it
         }
     };
 
@@ -184,7 +189,7 @@ fn render_record_as_pat(
         None => {
             format!(
                 "{name} {{ {}{} }}",
-                fields.map(|field| field.name(db).to_smol_str()).format(", "),
+                fields.map(|field| field.name(db).display_no_db().to_smolstr()).format(", "),
                 if fields_omitted { ", .." } else { "" },
                 name = name
             )

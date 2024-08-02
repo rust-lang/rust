@@ -6,14 +6,15 @@ use std::{collections::VecDeque, fmt, fs, iter, sync};
 
 use anyhow::Context;
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileId,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env,
     LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
+use intern::{sym, Symbol};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
-use span::Edition;
+use span::{Edition, FileId};
 use toolchain::Tool;
 use tracing::instrument;
 use triomphe::Arc;
@@ -30,6 +31,7 @@ use crate::{
     utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath, Package,
     ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
 };
+use tracing::{debug, error, info};
 
 pub type FileLoader<'a> = &'a mut dyn for<'b> FnMut(&'b AbsPath) -> Option<FileId>;
 
@@ -249,7 +251,7 @@ impl ProjectWorkspace {
                 };
 
                 let rustc =  rustc_dir.and_then(|rustc_dir| {
-                    tracing::info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
+                    info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
                     match CargoWorkspace::fetch_metadata(
                         &rustc_dir,
                         cargo_toml.parent(),
@@ -521,6 +523,14 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn workspace_root(&self) -> &AbsPath {
+        match &self.kind {
+            ProjectWorkspaceKind::Cargo { cargo, .. } => cargo.workspace_root(),
+            ProjectWorkspaceKind::Json(project) => project.project_root(),
+            ProjectWorkspaceKind::DetachedFile { file, .. } => file.parent(),
+        }
+    }
+
     pub fn manifest(&self) -> Option<&ManifestPath> {
         match &self.kind {
             ProjectWorkspaceKind::Cargo { cargo, .. } => Some(cargo.manifest_path()),
@@ -766,9 +776,9 @@ impl ProjectWorkspace {
         };
 
         if matches!(sysroot.mode(), SysrootMode::Stitched(_)) && crate_graph.patch_cfg_if() {
-            tracing::debug!("Patched std to depend on cfg-if")
+            debug!("Patched std to depend on cfg-if")
         } else {
-            tracing::debug!("Did not patch std to depend on cfg-if")
+            debug!("Did not patch std to depend on cfg-if")
         }
         (crate_graph, proc_macros)
     }
@@ -893,7 +903,10 @@ fn project_json_to_crate_graph(
                     .collect();
                 override_cfg.apply(
                     &mut cfg_options,
-                    display_name.as_ref().map(|it| it.canonical_name()).unwrap_or_default(),
+                    display_name
+                        .as_ref()
+                        .map(|it| it.canonical_name().as_str())
+                        .unwrap_or_default(),
                 );
                 let crate_graph_crate_id = crate_graph.add_crate_root(
                     file_id,
@@ -913,10 +926,18 @@ fn project_json_to_crate_graph(
                         CrateOrigin::Local { repo: None, name: None }
                     },
                 );
+                debug!(
+                    ?crate_graph_crate_id,
+                    crate = display_name.as_ref().map(|name| name.canonical_name().as_str()),
+                    "added root to crate graph"
+                );
                 if *is_proc_macro {
                     if let Some(path) = proc_macro_dylib_path.clone() {
                         let node = Ok((
-                            display_name.as_ref().map(|it| it.canonical_name().to_owned()),
+                            display_name
+                                .as_ref()
+                                .map(|it| it.canonical_name().as_str().to_owned())
+                                .unwrap_or_else(|| format!("crate{}", idx.0)),
                             path,
                         ));
                         proc_macros.insert(crate_graph_crate_id, node);
@@ -927,6 +948,7 @@ fn project_json_to_crate_graph(
         )
         .collect();
 
+    debug!(map = ?idx_to_crate_id);
     for (from_idx, krate) in project.crates() {
         if let Some(&from) = idx_to_crate_id.get(&from_idx) {
             public_deps.add_to_crate_graph(crate_graph, from);
@@ -977,8 +999,8 @@ fn cargo_to_crate_graph(
 
             if cargo[pkg].is_local {
                 // Add test cfg for local crates
-                cfg_options.insert_atom("test".into());
-                cfg_options.insert_atom("rust_analyzer".into());
+                cfg_options.insert_atom(sym::test.clone());
+                cfg_options.insert_atom(sym::rust_analyzer.clone());
             }
 
             override_cfg.apply(&mut cfg_options, &cargo[pkg].name);
@@ -1013,12 +1035,12 @@ fn cargo_to_crate_graph(
                 if pkg_data.is_local {
                     CrateOrigin::Local {
                         repo: pkg_data.repository.clone(),
-                        name: Some(pkg_data.name.clone()),
+                        name: Some(Symbol::intern(&pkg_data.name)),
                     }
                 } else {
                     CrateOrigin::Library {
                         repo: pkg_data.repository.clone(),
-                        name: pkg_data.name.clone(),
+                        name: Symbol::intern(&pkg_data.name),
                     }
                 },
             );
@@ -1144,21 +1166,19 @@ fn detached_file_to_crate_graph(
         sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load);
 
     let mut cfg_options = CfgOptions::from_iter(rustc_cfg);
-    cfg_options.insert_atom("test".into());
-    cfg_options.insert_atom("rust_analyzer".into());
+    cfg_options.insert_atom(sym::test.clone());
+    cfg_options.insert_atom(sym::rust_analyzer.clone());
     override_cfg.apply(&mut cfg_options, "");
     let cfg_options = Arc::new(cfg_options);
 
     let file_id = match load(detached_file) {
         Some(file_id) => file_id,
         None => {
-            tracing::error!("Failed to load detached file {:?}", detached_file);
+            error!("Failed to load detached file {:?}", detached_file);
             return (crate_graph, FxHashMap::default());
         }
     };
-    let display_name = detached_file
-        .file_stem()
-        .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_owned()));
+    let display_name = detached_file.file_stem().map(CrateDisplayName::from_canonical_name);
     let detached_file_crate = crate_graph.add_crate_root(
         file_id,
         Edition::CURRENT,
@@ -1231,7 +1251,7 @@ fn handle_rustc_crates(
                         file_id,
                         &rustc_workspace[tgt].name,
                         kind,
-                        CrateOrigin::Rustc { name: rustc_workspace[pkg].name.clone() },
+                        CrateOrigin::Rustc { name: Symbol::intern(&rustc_workspace[pkg].name) },
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -1307,7 +1327,7 @@ fn add_target_crate_root(
     let cfg_options = {
         let mut opts = cfg_options;
         for feature in pkg.active_features.iter() {
-            opts.insert_key_value("feature".into(), feature.into());
+            opts.insert_key_value(sym::feature.clone(), Symbol::intern(feature));
         }
         if let Some(cfgs) = build_data.as_ref().map(|it| &it.cfgs) {
             opts.extend(cfgs.iter().cloned());
@@ -1328,7 +1348,7 @@ fn add_target_crate_root(
     let crate_id = crate_graph.add_crate_root(
         file_id,
         edition,
-        Some(CrateDisplayName::from_canonical_name(cargo_name.to_owned())),
+        Some(CrateDisplayName::from_canonical_name(cargo_name)),
         Some(pkg.version.to_string()),
         Arc::new(cfg_options),
         potential_cfg_options.map(Arc::new),
@@ -1338,8 +1358,8 @@ fn add_target_crate_root(
     );
     if let TargetKind::Lib { is_proc_macro: true } = kind {
         let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
-            Some(it) => it.cloned().map(|path| Ok((Some(cargo_name.to_owned()), path))),
-            None => Some(Err("crate has not yet been built".to_owned())),
+            Some(it) => it.cloned().map(|path| Ok((cargo_name.to_owned(), path))),
+            None => Some(Err("proc-macro crate is missing its build data".to_owned())),
         };
         if let Some(proc_macro) = proc_macro {
             proc_macros.insert(crate_id, proc_macro);
@@ -1349,7 +1369,7 @@ fn add_target_crate_root(
     crate_id
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct SysrootPublicDeps {
     deps: Vec<(CrateName, CrateId, bool)>,
 }
@@ -1381,8 +1401,8 @@ fn sysroot_to_crate_graph(
                 &CfgOverrides {
                     global: CfgDiff::new(
                         vec![
-                            CfgAtom::Flag("debug_assertions".into()),
-                            CfgAtom::Flag("miri".into()),
+                            CfgAtom::Flag(sym::debug_assertions.clone()),
+                            CfgAtom::Flag(sym::miri.clone()),
                         ],
                         vec![],
                     )
@@ -1394,14 +1414,14 @@ fn sysroot_to_crate_graph(
 
             let mut pub_deps = vec![];
             let mut libproc_macro = None;
-            let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag("test".into())]).unwrap();
+            let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag(sym::test.clone())]).unwrap();
             for (cid, c) in cg.iter_mut() {
                 // uninject `test` flag so `core` keeps working.
                 Arc::make_mut(&mut c.cfg_options).apply_diff(diff.clone());
                 // patch the origin
                 if c.origin.is_local() {
                     let lang_crate = LangCrateOrigin::from(
-                        c.display_name.as_ref().map_or("", |it| it.canonical_name()),
+                        c.display_name.as_ref().map_or("", |it| it.canonical_name().as_str()),
                     );
                     c.origin = CrateOrigin::Lang(lang_crate);
                     match lang_crate {
@@ -1449,8 +1469,8 @@ fn sysroot_to_crate_graph(
             let cfg_options = Arc::new({
                 let mut cfg_options = CfgOptions::default();
                 cfg_options.extend(rustc_cfg);
-                cfg_options.insert_atom("debug_assertions".into());
-                cfg_options.insert_atom("miri".into());
+                cfg_options.insert_atom(sym::debug_assertions.clone());
+                cfg_options.insert_atom(sym::miri.clone());
                 cfg_options
             });
             let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched
@@ -1458,11 +1478,10 @@ fn sysroot_to_crate_graph(
                 .filter_map(|krate| {
                     let file_id = load(&stitched[krate].root)?;
 
-                    let display_name =
-                        CrateDisplayName::from_canonical_name(stitched[krate].name.clone());
+                    let display_name = CrateDisplayName::from_canonical_name(&stitched[krate].name);
                     let crate_id = crate_graph.add_crate_root(
                         file_id,
-                        Edition::CURRENT,
+                        Edition::CURRENT_FIXME,
                         Some(display_name),
                         None,
                         cfg_options.clone(),

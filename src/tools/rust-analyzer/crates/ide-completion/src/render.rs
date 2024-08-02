@@ -10,14 +10,14 @@ pub(crate) mod type_alias;
 pub(crate) mod union_literal;
 pub(crate) mod variant;
 
-use hir::{AsAssocItem, HasAttrs, HirDisplay, ImportPathConfig, ModuleDef, ScopeDef, Type};
+use hir::{sym, AsAssocItem, HasAttrs, HirDisplay, ImportPathConfig, ModuleDef, ScopeDef, Type};
 use ide_db::{
     documentation::{Documentation, HasDocs},
     helpers::item_name,
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{ast, format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange};
+use syntax::{ast, format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr};
 use text_edit::TextEdit;
 
 use crate::{
@@ -95,7 +95,7 @@ impl<'a> RenderContext<'a> {
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
         let attrs = def.attrs(self.db());
-        attrs.by_key("deprecated").exists()
+        attrs.by_key(&sym::deprecated).exists()
     }
 
     fn is_deprecated_assoc_item(&self, as_assoc_item: impl AsAssocItem) -> bool {
@@ -133,7 +133,8 @@ pub(crate) fn render_field(
     let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
     let name = field.name(db);
-    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
+    let (name, escaped_name) =
+        (name.unescaped().display(db).to_smolstr(), name.display_no_db().to_smolstr());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
@@ -280,8 +281,7 @@ pub(crate) fn render_expr(
     let mut snippet_formatter = |ty: &hir::Type| {
         let arg_name = ty
             .as_adt()
-            .and_then(|adt| adt.name(ctx.db).as_text())
-            .map(|s| stdx::to_lower_snake_case(s.as_str()))
+            .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
             .unwrap_or_else(|| String::from("_"));
         let res = format!("${{{i}:{arg_name}}}");
         i += 1;
@@ -290,8 +290,7 @@ pub(crate) fn render_expr(
 
     let mut label_formatter = |ty: &hir::Type| {
         ty.as_adt()
-            .and_then(|adt| adt.name(ctx.db).as_text())
-            .map(|s| stdx::to_lower_snake_case(s.as_str()))
+            .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
             .unwrap_or_else(|| String::from("..."))
     };
 
@@ -401,10 +400,10 @@ fn render_resolution_path(
     let config = completion.config;
     let requires_import = import_to_add.is_some();
 
-    let name = local_name.to_smol_str();
+    let name = local_name.display_no_db().to_smolstr();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
     if local_name.is_escaped() {
-        item.insert_text(local_name.to_smol_str());
+        item.insert_text(local_name.display_no_db().to_smolstr());
     }
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
@@ -486,8 +485,11 @@ fn render_resolution_simple_(
     let ctx = ctx.import_to_add(import_to_add);
     let kind = res_to_kind(resolution);
 
-    let mut item =
-        CompletionItem::new(kind, ctx.source_range(), local_name.unescaped().to_smol_str());
+    let mut item = CompletionItem::new(
+        kind,
+        ctx.source_range(),
+        local_name.unescaped().display(db).to_smolstr(),
+    );
     item.set_relevance(ctx.completion_relevance())
         .set_documentation(scope_def_docs(db, resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));

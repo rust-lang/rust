@@ -342,7 +342,7 @@ mod test {
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ()");
         let offset = range_or_offset.expect_offset();
-        (host, FilePosition { file_id, offset })
+        (host, FilePosition { file_id: file_id.into(), offset })
     }
 
     /// If expected == "", then assert that there are no symbols (this is basically local symbol)

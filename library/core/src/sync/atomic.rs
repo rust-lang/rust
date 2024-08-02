@@ -1077,7 +1077,7 @@ impl AtomicBool {
     /// assert_eq!(foo.load(Ordering::SeqCst), true);
     /// ```
     #[inline]
-    #[stable(feature = "atomic_bool_fetch_not", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_bool_fetch_not", since = "1.81.0")]
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_not(&self, order: Ordering) -> bool {

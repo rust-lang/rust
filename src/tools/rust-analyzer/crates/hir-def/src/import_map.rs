@@ -9,6 +9,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::{format_to, TupleExt};
+use syntax::ToSmolStr;
 use triomphe::Arc;
 
 use crate::{
@@ -81,9 +82,9 @@ impl ImportMap {
             .iter()
             // We've only collected items, whose name cannot be tuple field so unwrapping is fine.
             .flat_map(|(&item, (info, _))| {
-                info.iter()
-                    .enumerate()
-                    .map(move |(idx, info)| (item, info.name.to_smol_str(), idx as u32))
+                info.iter().enumerate().map(move |(idx, info)| {
+                    (item, info.name.display(db.upcast()).to_smolstr(), idx as u32)
+                })
             })
             .collect();
         importables.sort_by(|(_, l_info, _), (_, r_info, _)| {
@@ -412,7 +413,7 @@ pub fn search_dependencies(
             for map in &import_maps {
                 op = op.add(map.fst.search(&automaton));
             }
-            search_maps(&import_maps, op.union(), query)
+            search_maps(db, &import_maps, op.union(), query)
         }
         SearchMode::Fuzzy => {
             let automaton = fst::automaton::Subsequence::new(&query.lowercased);
@@ -420,7 +421,7 @@ pub fn search_dependencies(
             for map in &import_maps {
                 op = op.add(map.fst.search(&automaton));
             }
-            search_maps(&import_maps, op.union(), query)
+            search_maps(db, &import_maps, op.union(), query)
         }
         SearchMode::Prefix => {
             let automaton = fst::automaton::Str::new(&query.lowercased).starts_with();
@@ -428,12 +429,13 @@ pub fn search_dependencies(
             for map in &import_maps {
                 op = op.add(map.fst.search(&automaton));
             }
-            search_maps(&import_maps, op.union(), query)
+            search_maps(db, &import_maps, op.union(), query)
         }
     }
 }
 
 fn search_maps(
+    db: &dyn DefDatabase,
     import_maps: &[Arc<ImportMap>],
     mut stream: fst::map::Union<'_>,
     query: &Query,
@@ -459,7 +461,7 @@ fn search_maps(
                     query.search_mode.check(
                         &query.query,
                         query.case_sensitive,
-                        &info.name.to_smol_str(),
+                        &info.name.display(db.upcast()).to_smolstr(),
                     )
                 });
             res.extend(iter.map(TupleExt::head));

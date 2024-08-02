@@ -13,7 +13,7 @@ error: `r#unsafe` is not an unsafe attribute
   --> $DIR/double-unsafe-attributes.rs:3:3
    |
 LL | #[unsafe(unsafe(no_mangle))]
-   |   ^^^^^^
+   |   ^^^^^^ this is not an unsafe attribute
    |
    = note: extraneous unsafe is not allowed in attributes
 

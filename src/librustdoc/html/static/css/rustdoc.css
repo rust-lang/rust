@@ -1477,7 +1477,20 @@ a.test-arrow:hover {
 .example-wrap:hover > .test-arrow {
 	padding: 2px 7px;
 }
-.example-wrap:hover > .test-arrow, .example-wrap:hover > .button-holder {
+/*
+On iPad, the ":hover" state sticks around, making things work not greatly. Do work around
+it, we move it into this media query. More information can be found at:
+https://css-tricks.com/solving-sticky-hover-states-with-media-hover-hover/
+
+However, using `@media (hover: hover)` makes this rule never to be applied in GUI tests, so
+instead, we check that it's not a "finger" cursor.
+*/
+@media not (pointer: coarse) {
+	.example-wrap:hover > .test-arrow, .example-wrap:hover > .button-holder {
+		visibility: visible;
+	}
+}
+.example-wrap .button-holder.keep-visible {
 	visibility: visible;
 }
 .example-wrap .button-holder .copy-button {

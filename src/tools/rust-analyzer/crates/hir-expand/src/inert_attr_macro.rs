@@ -10,6 +10,7 @@
 
 use std::sync::OnceLock;
 
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 
 pub struct BuiltinAttribute {
@@ -26,11 +27,16 @@ pub struct AttributeTemplate {
     pub name_value_str: Option<&'static str>,
 }
 
-pub fn find_builtin_attr_idx(name: &str) -> Option<usize> {
-    static BUILTIN_LOOKUP_TABLE: OnceLock<FxHashMap<&'static str, usize>> = OnceLock::new();
+pub fn find_builtin_attr_idx(name: &Symbol) -> Option<usize> {
+    static BUILTIN_LOOKUP_TABLE: OnceLock<FxHashMap<Symbol, usize>> = OnceLock::new();
     BUILTIN_LOOKUP_TABLE
         .get_or_init(|| {
-            INERT_ATTRIBUTES.iter().map(|attr| attr.name).enumerate().map(|(a, b)| (b, a)).collect()
+            INERT_ATTRIBUTES
+                .iter()
+                .map(|attr| attr.name)
+                .enumerate()
+                .map(|(a, b)| (Symbol::intern(b), a))
+                .collect()
         })
         .get(name)
         .copied()
@@ -553,7 +559,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     BuiltinAttribute {
-        // name: sym::rustc_diagnostic_item,
+        // name: sym::rustc_diagnostic_item.clone(),
         name: "rustc_diagnostic_item",
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
         // only_local: false,
@@ -562,7 +568,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         // duplicates: ErrorFollowing,
         // gate: Gated(
             // Stability::Unstable,
-            // sym::rustc_attrs,
+            // sym::rustc_attrs.clone(),
             // "diagnostic items compiler internal support for linting",
             // cfg_fn!(rustc_attrs),
         // ),

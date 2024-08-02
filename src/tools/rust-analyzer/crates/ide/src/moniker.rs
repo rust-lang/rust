@@ -5,10 +5,10 @@ use core::fmt;
 
 use hir::{Adt, AsAssocItem, AssocItemContainer, Crate, DescendPreference, MacroKind, Semantics};
 use ide_db::{
-    base_db::{CrateOrigin, FilePosition, LangCrateOrigin},
+    base_db::{CrateOrigin, LangCrateOrigin},
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
-    RootDatabase,
+    FilePosition, RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{AstNode, SyntaxKind::*, T};
@@ -133,7 +133,7 @@ pub(crate) fn moniker(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<MonikerResult>>> {
     let sema = &Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
     let current_crate: hir::Crate = crates_for(db, file_id).pop()?.into();
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
@@ -408,7 +408,7 @@ pub(crate) fn def_to_moniker(
                     }),
                 ),
             };
-            PackageInformation { name, repo, version }
+            PackageInformation { name: name.as_str().to_owned(), repo, version }
         },
     })
 }

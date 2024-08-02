@@ -207,7 +207,9 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         let sess = self.sess;
         match self.build_inner(output) {
             Ok(any_members) => any_members,
-            Err(e) => sess.dcx().emit_fatal(ArchiveBuildFailure { error: e }),
+            Err(error) => {
+                sess.dcx().emit_fatal(ArchiveBuildFailure { path: output.to_owned(), error })
+            }
         }
     }
 }
@@ -218,11 +220,7 @@ impl<'a> ArArchiveBuilder<'a> {
             "gnu" => ArchiveKind::Gnu,
             "bsd" => ArchiveKind::Bsd,
             "darwin" => ArchiveKind::Darwin,
-            "coff" => {
-                // FIXME: ar_archive_writer doesn't support COFF archives yet.
-                // https://github.com/rust-lang/ar_archive_writer/issues/9
-                ArchiveKind::Gnu
-            }
+            "coff" => ArchiveKind::Coff,
             "aix_big" => ArchiveKind::AixBig,
             kind => {
                 self.sess.dcx().emit_fatal(UnknownArchiveKind { kind });
