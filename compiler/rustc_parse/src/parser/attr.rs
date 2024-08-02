@@ -8,7 +8,7 @@ use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
+use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, ParserRange, PathStyle};
 use crate::{errors, fluent_generated as fluent, maybe_whole};
 
 // Public for rustfmt usage
@@ -313,8 +313,8 @@ impl<'a> Parser<'a> {
                 // inner attribute, for possible later processing in a `LazyAttrTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
                     let end_pos = self.num_bump_calls;
-                    let range = start_pos..end_pos;
-                    self.capture_state.inner_attr_ranges.insert(attr.id, range);
+                    let parser_range = ParserRange(start_pos..end_pos);
+                    self.capture_state.inner_attr_parser_ranges.insert(attr.id, parser_range);
                 }
                 attrs.push(attr);
             } else {
