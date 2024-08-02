@@ -358,7 +358,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
     if let Some(entry_def) = tcx.entry_fn(()) {
         return entry_def;
     }
-    // Look for a symbol in the local crate named `miri_start`, and threat that as the entry point.
+    // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
     let sym = tcx.exported_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
         if sym.symbol_name_for_local_instance(tcx).name == "miri_start" { Some(sym) } else { None }
     });
@@ -391,14 +391,16 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
             );
         }
     } else {
-        tcx.dcx().fatal("Miri can only run programs that have a main function.\n\
-                    Alternatively, you can export a `miri_start` function:\n\
-                    \n\
-                    #[cfg(miri)]\n\
-                    #[no_mangle]\n\
-                    fn miri_start(argc: isize, argv: *const *const u8) -> isize {\
-                    \n    // Call the actual start function that your project implements, based on your target's conventions.\n\
-                    }");
+        tcx.dcx().fatal(
+            "Miri can only run programs that have a main function.\n\
+            Alternatively, you can export a `miri_start` function:\n\
+            \n\
+            #[cfg(miri)]\n\
+            #[no_mangle]\n\
+            fn miri_start(argc: isize, argv: *const *const u8) -> isize {\
+            \n    // Call the actual start function that your project implements, based on your target's conventions.\n\
+            }"
+        );
     }
 }
 
