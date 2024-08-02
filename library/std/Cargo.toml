@@ -90,8 +90,8 @@ backtrace = [
     'miniz_oxide/rustc-dep-of-std',
 ]
 
-panic-unwind = ["panic_unwind"]
-profiler = ["profiler_builtins"]
+panic-unwind = ["dep:panic_unwind"]
+profiler = ["dep:profiler_builtins"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
 compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]
