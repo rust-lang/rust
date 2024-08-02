@@ -4,7 +4,7 @@ use std::{fmt, iter};
 
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableBlake2sHasher256};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -134,7 +134,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let ty = self.erase_regions(ty);
 
         self.with_stable_hashing_context(|mut hcx| {
-            let mut hasher = StableHasher::new();
+            let mut hasher = StableBlake2sHasher256::new();
             hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
             hasher.finish()
         })

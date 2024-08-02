@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableBlake2sHasher256};
 use rustc_macros::HashStable;
 use rustc_middle::bug;
 use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
@@ -94,7 +94,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     ///
     /// Right now this takes the form of a hex-encoded opaque hash value.
     pub fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
-        let mut hasher = StableHasher::new();
+        let mut hasher = StableBlake2sHasher256::new();
         tcx.with_stable_hashing_context(|mut hcx| {
             hcx.while_hashing_spans(false, |hcx| self.hash_stable(hcx, &mut hasher))
         });
