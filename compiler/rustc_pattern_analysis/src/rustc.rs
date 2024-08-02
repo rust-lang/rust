@@ -827,7 +827,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> print::Pat<'tcx> {
         use print::{FieldPat, Pat, PatKind};
         let cx = self;
-        let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
         let hoist = |p| Box::new(cx.hoist_witness_pat(p));
         let mut subpatterns = pat.iter_fields().map(hoist);
         let kind = match pat.ctor() {
@@ -862,37 +861,35 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             // ignore this issue.
             Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
             Slice(slice) => {
-                match slice.kind {
-                    SliceKind::FixedLen(_) => PatKind::Slice {
-                        prefix: subpatterns.collect(),
-                        has_dot_dot: false,
-                        suffix: Box::new([]),
-                    },
-                    SliceKind::VarLen(prefix, _) => {
-                        let mut subpatterns = subpatterns.peekable();
-                        let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix).collect();
-                        if slice.array_len.is_some() {
-                            // Improves diagnostics a bit: if the type is a known-size array, instead
-                            // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
-                            // This is incorrect if the size is not known, since `[_, ..]` captures
-                            // arrays of lengths `>= 1` whereas `[..]` captures any length.
-                            while !prefix.is_empty() && is_wildcard(prefix.last().unwrap()) {
-                                prefix.pop();
-                            }
-                            while subpatterns.peek().is_some()
-                                && is_wildcard(subpatterns.peek().unwrap())
-                            {
-                                subpatterns.next();
-                            }
-                        }
-                        let suffix: Box<[_]> = subpatterns.collect();
-                        PatKind::Slice {
-                            prefix: prefix.into_boxed_slice(),
-                            has_dot_dot: true,
-                            suffix,
-                        }
+                let (prefix_len, has_dot_dot) = match slice.kind {
+                    SliceKind::FixedLen(len) => (len, false),
+                    SliceKind::VarLen(prefix_len, _) => (prefix_len, true),
+                };
+
+                let (mut prefix, mut suffix) = pat.fields.split_at(prefix_len);
+
+                // If the pattern contains a `..`, but is applied to values of statically-known
+                // length (arrays), then we can slightly simplify diagnostics by merging any
+                // adjacent wildcard patterns into the `..`: `[x, _, .., _, y]` => `[x, .., y]`.
+                // (This simplification isn't allowed for slice values, because in that case
+                // `[x, .., y]` would match some slices that `[x, _, .., _, y]` would not.)
+                if has_dot_dot && slice.array_len.is_some() {
+                    while let [rest @ .., last] = prefix
+                        && would_print_as_wildcard(cx.tcx, last)
+                    {
+                        prefix = rest;
+                    }
+                    while let [first, rest @ ..] = suffix
+                        && would_print_as_wildcard(cx.tcx, first)
+                    {
+                        suffix = rest;
                     }
                 }
+
+                let prefix = prefix.iter().map(hoist).collect();
+                let suffix = suffix.iter().map(hoist).collect();
+
+                PatKind::Slice { prefix, has_dot_dot, suffix }
             }
             &Str(value) => PatKind::Constant { value },
             Never if self.tcx.features().never_patterns => PatKind::Never,
@@ -907,6 +904,22 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         };
 
         Pat { ty: pat.ty().inner(), kind }
+    }
+}
+
+/// Returns `true` if the given pattern would be printed as a wildcard (`_`).
+fn would_print_as_wildcard(tcx: TyCtxt<'_>, p: &WitnessPat<'_, '_>) -> bool {
+    match p.ctor() {
+        Constructor::IntRange(IntRange {
+            lo: MaybeInfiniteInt::NegInfinity,
+            hi: MaybeInfiniteInt::PosInfinity,
+        })
+        | Constructor::Wildcard
+        | Constructor::NonExhaustive
+        | Constructor::Hidden
+        | Constructor::PrivateUninhabited => true,
+        Constructor::Never if !tcx.features().never_patterns => true,
+        _ => false,
     }
 }
 
