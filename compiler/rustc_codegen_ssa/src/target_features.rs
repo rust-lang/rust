@@ -160,7 +160,7 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .target
                     .supported_target_features()
                     .iter()
-                    .map(|&(a, b)| (a.to_string(), b.as_feature_name()))
+                    .map(|&(a, b, _)| (a.to_string(), b.as_feature_name()))
                     .collect()
             }
         },
@@ -168,9 +168,9 @@ pub(crate) fn provide(providers: &mut Providers) {
             let implied_features = tcx
                 .sess
                 .target
-                .implied_target_features()
+                .supported_target_features()
                 .iter()
-                .map(|(f, i)| (Symbol::intern(f), i))
+                .map(|(f, _, i)| (Symbol::intern(f), i))
                 .collect::<FxHashMap<_, _>>();
 
             // implied target features have their own implied target features, so we traverse the

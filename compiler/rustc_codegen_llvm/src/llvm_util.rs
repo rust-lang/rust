@@ -312,7 +312,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     sess.target
         .supported_target_features()
         .iter()
-        .filter_map(|&(feature, gate)| {
+        .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
             } else {
@@ -386,7 +386,7 @@ fn print_target_features(out: &mut String, sess: &Session, tm: &llvm::TargetMach
         .target
         .supported_target_features()
         .iter()
-        .map(|(feature, _gate)| {
+        .map(|(feature, _gate, _implied)| {
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
             let llvm_feature = to_llvm_features(sess, *feature).llvm_feature_name;
             let desc =
@@ -571,17 +571,19 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             let feature = backend_feature_name(sess, s)?;
             // Warn against use of LLVM specific feature names and unstable features on the CLI.
             if diagnostics {
-                let feature_state = supported_features.iter().find(|&&(v, _)| v == feature);
+                let feature_state = supported_features.iter().find(|&&(v, _, _)| v == feature);
                 if feature_state.is_none() {
-                    let rust_feature = supported_features.iter().find_map(|&(rust_feature, _)| {
-                        let llvm_features = to_llvm_features(sess, rust_feature);
-                        if llvm_features.contains(feature) && !llvm_features.contains(rust_feature)
-                        {
-                            Some(rust_feature)
-                        } else {
-                            None
-                        }
-                    });
+                    let rust_feature =
+                        supported_features.iter().find_map(|&(rust_feature, _, _)| {
+                            let llvm_features = to_llvm_features(sess, rust_feature);
+                            if llvm_features.contains(feature)
+                                && !llvm_features.contains(rust_feature)
+                            {
+                                Some(rust_feature)
+                            } else {
+                                None
+                            }
+                        });
                     let unknown_feature = if let Some(rust_feature) = rust_feature {
                         UnknownCTargetFeature {
                             feature,
@@ -592,7 +594,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                     };
                     sess.dcx().emit_warn(unknown_feature);
                 } else if feature_state
-                    .is_some_and(|(_name, feature_gate)| !feature_gate.is_stable())
+                    .is_some_and(|(_name, feature_gate, _implied)| !feature_gate.is_stable())
                 {
                     // An unstable feature. Warn about using it.
                     sess.dcx().emit_warn(UnstableCTargetFeature { feature });
