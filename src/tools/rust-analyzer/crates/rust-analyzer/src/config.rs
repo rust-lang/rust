@@ -3450,7 +3450,7 @@ mod tests {
         let s = remove_ws(&schema);
         if !p.contains(&s) {
             package_json.replace_range(start..end, &schema);
-            ensure_file_contents(&package_json_path, &package_json)
+            ensure_file_contents(package_json_path.as_std_path(), &package_json)
         }
     }
 
@@ -3458,7 +3458,7 @@ mod tests {
     fn generate_config_documentation() {
         let docs_path = project_root().join("docs/user/generated_config.adoc");
         let expected = FullConfigInput::manual();
-        ensure_file_contents(&docs_path, &expected);
+        ensure_file_contents(docs_path.as_std_path(), &expected);
     }
 
     fn remove_ws(text: &str) -> String {
@@ -3467,13 +3467,8 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_null() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3487,32 +3482,22 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_abs() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
         "procMacro" : {
-            "server": project_root().display().to_string(),
+            "server": project_root().to_string(),
         }}));
 
         (config, _, _) = config.apply_change(change);
-        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::try_from(project_root()).unwrap()));
+        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::assert(project_root())));
     }
 
     #[test]
     fn proc_macro_srv_rel() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
 
@@ -3531,13 +3516,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_unset() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
 
@@ -3554,13 +3534,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_subdir() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3577,13 +3552,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_relative_dir() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3603,13 +3573,8 @@ mod tests {
 
     #[test]
     fn toml_unknown_key() {
-        let config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
 

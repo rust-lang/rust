@@ -6,17 +6,12 @@
 //! This module implements this second part. We use "build script" terminology
 //! here, but it covers procedural macros as well.
 
-use std::{
-    cell::RefCell,
-    io, mem,
-    path::{self, PathBuf},
-    process::Command,
-};
+use std::{cell::RefCell, io, mem, path, process::Command};
 
 use cargo_metadata::{camino::Utf8Path, Message};
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use toolchain::Tool;
@@ -423,7 +418,7 @@ impl WorkspaceBuildScripts {
                 utf8_stdout(cmd)
             })()?;
 
-            let target_libdir = AbsPathBuf::try_from(PathBuf::from(target_libdir))
+            let target_libdir = AbsPathBuf::try_from(Utf8PathBuf::from(target_libdir))
                 .map_err(|_| anyhow::format_err!("target-libdir was not an absolute path"))?;
             tracing::info!("Loading rustc proc-macro paths from {target_libdir}");
 
@@ -435,7 +430,8 @@ impl WorkspaceBuildScripts {
                         let extension = path.extension()?;
                         if extension == std::env::consts::DLL_EXTENSION {
                             let name = path.file_stem()?.to_str()?.split_once('-')?.0.to_owned();
-                            let path = AbsPathBuf::try_from(path).ok()?;
+                            let path = AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).ok()?)
+                                .ok()?;
                             return Some((name, path));
                         }
                     }
