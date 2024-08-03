@@ -151,7 +151,8 @@ impl LlvmReadobj {
         self
     }
 
-    /// Pass `--symbols` to display the symbol.
+    /// Pass `--symbols` to display the symbol table, including both local
+    /// and global symbols.
     pub fn symbols(&mut self) -> &mut Self {
         self.cmd.arg("--symbols");
         self
