@@ -423,7 +423,13 @@ impl<A: Allocator> RawVecInner<A> {
     #[inline]
     fn with_capacity_in(capacity: usize, alloc: A, elem_layout: Layout) -> Self {
         match Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc, elem_layout) {
-            Ok(res) => res,
+            Ok(this) => {
+                unsafe {
+                    // Make it more obvious that a subsquent Vec::reserve(capacity) will not allocate.
+                    hint::assert_unchecked(!this.needs_to_grow(0, capacity, elem_layout));
+                }
+                this
+            }
             Err(err) => handle_error(err),
         }
     }
