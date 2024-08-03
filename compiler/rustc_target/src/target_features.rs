@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::symbol::{sym, Symbol};
 
 /// Features that control behaviour of rustc, rather than the codegen.
@@ -468,5 +469,29 @@ impl super::spec::Target {
             "aarch64" | "arm64ec" => AARCH64_TIED_FEATURES,
             _ => &[],
         }
+    }
+
+    pub fn implied_target_features(
+        &self,
+        base_features: impl Iterator<Item = Symbol>,
+    ) -> FxHashSet<Symbol> {
+        let implied_features = self
+            .supported_target_features()
+            .iter()
+            .map(|(f, _, i)| (Symbol::intern(f), i))
+            .collect::<FxHashMap<_, _>>();
+
+        // implied target features have their own implied target features, so we traverse the
+        // map until there are no more features to add
+        let mut features = FxHashSet::default();
+        let mut new_features = base_features.collect::<Vec<Symbol>>();
+        while let Some(new_feature) = new_features.pop() {
+            if features.insert(new_feature) {
+                if let Some(implied_features) = implied_features.get(&new_feature) {
+                    new_features.extend(implied_features.iter().copied().map(Symbol::intern))
+                }
+            }
+        }
+        features
     }
 }
