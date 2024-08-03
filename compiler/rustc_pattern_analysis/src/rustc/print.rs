@@ -62,6 +62,8 @@ pub(crate) enum PatKind<'tcx> {
     },
 
     Never,
+
+    Print(String),
 }
 
 impl<'tcx> fmt::Display for Pat<'tcx> {
@@ -79,6 +81,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Slice { ref prefix, has_dot_dot, ref suffix } => {
                 write_slice_like(f, prefix, has_dot_dot, suffix)
             }
+            PatKind::Print(ref string) => write!(f, "{string}"),
         }
     }
 }
