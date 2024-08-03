@@ -512,6 +512,11 @@ impl TargetSelection {
     pub fn is_windows(&self) -> bool {
         self.contains("windows")
     }
+
+    /// Path to the file defining the custom target, if any.
+    pub fn filepath(&self) -> Option<&Path> {
+        self.file.as_ref().map(Path::new)
+    }
 }
 
 impl fmt::Display for TargetSelection {

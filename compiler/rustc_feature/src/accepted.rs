@@ -390,6 +390,8 @@ declare_features! (
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208)),
     /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668)),
+    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
+    (accepted, unsafe_extern_blocks, "CURRENT_RUSTC_VERSION", Some(123743)),
     /// Allows importing and reexporting macros with `use`,
     /// enables macro modularization in general.
     (accepted, use_extern_macros, "1.30.0", Some(35896)),
