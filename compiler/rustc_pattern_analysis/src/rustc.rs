@@ -847,7 +847,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 let subpatterns = pat
                     .iter_fields()
                     .enumerate()
-                    .map(|(i, pat)| FieldPat { field: FieldIdx::new(i), pattern: hoist(pat) })
+                    .map(|(i, pat)| FieldPat {
+                        field: FieldIdx::new(i),
+                        pattern: hoist(pat),
+                        is_wildcard: would_print_as_wildcard(cx.tcx, pat),
+                    })
                     .collect::<Vec<_>>();
 
                 PatKind::StructLike { enum_info, subpatterns }

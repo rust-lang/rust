@@ -21,6 +21,7 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 pub(crate) struct FieldPat<'tcx> {
     pub(crate) field: FieldIdx,
     pub(crate) pattern: Box<Pat<'tcx>>,
+    pub(crate) is_wildcard: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -139,12 +140,12 @@ fn write_struct_like<'tcx>(
             write!(f, " {{ ")?;
 
             let mut printed = 0;
-            for p in subpatterns {
-                if let PatKind::Wild = p.pattern.kind {
+            for &FieldPat { field, ref pattern, is_wildcard } in subpatterns {
+                if is_wildcard {
                     continue;
                 }
-                let name = variant.fields[p.field].name;
-                write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
+                let field_name = variant.fields[field].name;
+                write!(f, "{}{field_name}: {pattern}", start_or_comma())?;
                 printed += 1;
             }
 
