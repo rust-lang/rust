@@ -930,7 +930,7 @@ a.doc-anchor {
 	left: -17px;
 	/* We add this padding so that when the cursor moves from the heading's text to the anchor,
 	   the anchor doesn't disappear. */
-	padding-right: 5px;
+	padding-right: 10px;
 	/* And this padding is used to make the anchor larger and easier to click on. */
 	padding-left: 3px;
 }
