@@ -21,6 +21,7 @@ pub mod netc {
     //!
     //! Some Windows API types are not quite what's expected by our cross-platform
     //! net code. E.g. naming differences or different pointer types.
+
     use core::ffi::{c_char, c_int, c_uint, c_ulong, c_ushort, c_void};
 
     use crate::sys::c::{self, ADDRESS_FAMILY, ADDRINFOA, SOCKADDR, SOCKET};

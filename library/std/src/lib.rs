@@ -667,7 +667,6 @@ mod panicking;
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
-// Re-export macros defined in core.
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use core::cfg_match;
 #[unstable(
@@ -686,6 +685,7 @@ pub use core::{
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
     module_path, option_env, stringify, trace_macros,
 };
+// Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
