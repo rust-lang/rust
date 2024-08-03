@@ -807,7 +807,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 range.hi
             };
             let hi = cx.hoist_pat_range_bdy(hi, ty);
-            PatKind::Range(Box::new(PatRange { lo, hi, end, ty: ty.inner() }))
+            PatKind::Print(PatRange { lo, hi, end, ty: ty.inner() }.to_string())
         };
 
         Pat { ty: ty.inner(), kind }
