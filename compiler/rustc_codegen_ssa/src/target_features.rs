@@ -1,6 +1,6 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
@@ -165,26 +165,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             }
         },
         implied_target_features: |tcx, feature| {
-            let implied_features = tcx
-                .sess
-                .target
-                .supported_target_features()
-                .iter()
-                .map(|(f, _, i)| (Symbol::intern(f), i))
-                .collect::<FxHashMap<_, _>>();
-
-            // implied target features have their own implied target features, so we traverse the
-            // map until there are no more features to add
-            let mut features = UnordSet::new();
-            let mut new_features = vec![feature];
-            while let Some(new_feature) = new_features.pop() {
-                if features.insert(new_feature) {
-                    if let Some(implied_features) = implied_features.get(&new_feature) {
-                        new_features.extend(implied_features.iter().copied().map(Symbol::intern))
-                    }
-                }
-            }
-            features
+            tcx.sess.target.implied_target_features(std::iter::once(feature)).into()
         },
         asm_target_features,
         ..*providers

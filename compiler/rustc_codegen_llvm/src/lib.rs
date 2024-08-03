@@ -434,7 +434,7 @@ impl ModuleLlvm {
             ModuleLlvm {
                 llmod_raw,
                 llcx,
-                tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
+                tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess, true)),
             }
         }
     }

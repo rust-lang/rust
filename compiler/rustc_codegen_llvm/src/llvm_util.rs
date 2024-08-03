@@ -308,7 +308,53 @@ pub fn check_tied_features(
 /// Used to generate cfg variables and apply features
 /// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-    let target_machine = create_informational_target_machine(sess);
+    let rust_features = sess
+        .target
+        .supported_target_features()
+        .iter()
+        .map(|(feature, _, _)| {
+            (to_llvm_features(sess, feature).llvm_feature_name, Symbol::intern(feature))
+        })
+        .collect::<FxHashMap<_, _>>();
+
+    let mut features = FxHashSet::default();
+
+    // Add base features for the target
+    let target_machine = create_informational_target_machine(sess, false);
+    features.extend(
+        sess.target
+            .supported_target_features()
+            .iter()
+            .filter(|(feature, _, _)| {
+                // skip checking special features, as LLVM may not understands them
+                if RUSTC_SPECIAL_FEATURES.contains(feature) {
+                    return true;
+                }
+                // check that all features in a given smallvec are enabled
+                for llvm_feature in to_llvm_features(sess, feature) {
+                    let cstr = SmallCStr::new(llvm_feature);
+                    if !unsafe { llvm::LLVMRustHasFeature(&target_machine, cstr.as_ptr()) } {
+                        return false;
+                    }
+                }
+                true
+            })
+            .map(|(feature, _, _)| Symbol::intern(feature)),
+    );
+
+    // Add enabled features
+    for llvm_feature in global_llvm_features(sess, false) {
+        let (add, llvm_feature) = llvm_feature.split_at(1);
+        let feature =
+            rust_features.get(llvm_feature).cloned().unwrap_or(Symbol::intern(llvm_feature));
+        if add == "+" {
+            features.extend(sess.target.implied_target_features(std::iter::once(feature)));
+        } else if add == "-" {
+            features.remove(&feature);
+        }
+    }
+
+    // Filter enabled features based on feature gates
     sess.target
         .supported_target_features()
         .iter()
@@ -320,18 +366,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             }
         })
         .filter(|feature| {
-            // skip checking special features, as LLVM may not understands them
-            if RUSTC_SPECIAL_FEATURES.contains(feature) {
-                return true;
-            }
-            // check that all features in a given smallvec are enabled
-            for llvm_feature in to_llvm_features(sess, feature) {
-                let cstr = SmallCStr::new(llvm_feature);
-                if !unsafe { llvm::LLVMRustHasFeature(&target_machine, cstr.as_ptr()) } {
-                    return false;
-                }
-            }
-            true
+            RUSTC_SPECIAL_FEATURES.contains(feature) || features.contains(&Symbol::intern(feature))
         })
         .map(|feature| Symbol::intern(feature))
         .collect()
@@ -440,7 +475,7 @@ fn print_target_features(out: &mut String, sess: &Session, tm: &llvm::TargetMach
 
 pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
     require_inited();
-    let tm = create_informational_target_machine(sess);
+    let tm = create_informational_target_machine(sess, true);
     match req.kind {
         PrintKind::TargetCPUs => {
             // SAFETY generate a C compatible string from a byte slice to pass
