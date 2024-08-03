@@ -375,7 +375,15 @@ impl Thread {
             let info = info.assume_init();
             let ticks = nanos * (info.denom as u64) / (info.numer as u64);
 
-            let ret = mach_wait_until(ticks);
+            loop {
+                // There are no docs on the mach_wait_until some details can be
+                // learned from the `Apple OSS Distributions` xnu source code.
+                // Specifically: xnu/osfmk/clock.h commit 94d3b45 on Github
+                let ret = mach_wait_until(ticks);
+                if ret != KERN_ABORTED {
+                    break;
+                }
+            }
             assert_eq!(ret, KERN_SUCCESS);
         }
     }
@@ -395,8 +403,12 @@ impl Thread {
     }
 }
 
+// these come from the `Apple OSS Distributions` xnu source code.
+// Specifically: xnu/osfmk/mach/kern_return.h commit 94d3b45 on Github
 #[cfg(target_vendor = "apple")]
 const KERN_SUCCESS: libc::c_int = 0;
+#[cfg(target_vendor = "apple")]
+const KERN_SUCCESS: libc::c_int = 14;
 
 #[cfg(target_vendor = "apple")]
 #[repr(C)]
