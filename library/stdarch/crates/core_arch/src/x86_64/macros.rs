@@ -20,3 +20,16 @@ macro_rules! static_assert_sae {
         static_assert!($imm == 4 || $imm == 8, "Invalid IMM value")
     };
 }
+
+#[cfg(target_pointer_width = "32")]
+macro_rules! vps {
+    ($inst1:expr, $inst2:expr) => {
+        concat!($inst1, " [{p:e}]", $inst2)
+    };
+}
+#[cfg(target_pointer_width = "64")]
+macro_rules! vps {
+    ($inst1:expr, $inst2:expr) => {
+        concat!($inst1, " [{p}]", $inst2)
+    };
+}

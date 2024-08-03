@@ -79,7 +79,7 @@ pub unsafe fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
     crate::arch::asm!(
-        "movnti [{p}], {a}",
+        vps!("movnti", ",{a}"),
         p = in(reg) mem_addr,
         a = in(reg) a,
         options(nostack, preserves_flags),
