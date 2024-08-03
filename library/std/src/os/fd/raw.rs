@@ -138,6 +138,7 @@ pub trait IntoRawFd {
     /// let raw_fd: RawFd = f.into_raw_fd();
     /// # Ok::<(), io::Error>(())
     /// ```
+    #[must_use = "losing the raw file descriptor may leak resources"]
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_fd(self) -> RawFd;
 }

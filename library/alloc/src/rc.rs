@@ -1372,6 +1372,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// let x = unsafe { Rc::from_raw_in(ptr, alloc) };
     /// assert_eq!(&*x, "hello");
     /// ```
+    #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn into_raw_with_allocator(this: Self) -> (*const T, A) {
         let this = mem::ManuallyDrop::new(this);
@@ -3107,6 +3108,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// [`from_raw_in`]: Weak::from_raw_in
     /// [`as_ptr`]: Weak::as_ptr
+    #[must_use = "losing the pointer will leak memory"]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn into_raw_with_allocator(self) -> (*const T, A) {
