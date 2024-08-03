@@ -26,16 +26,13 @@ pub(crate) struct FieldPat<'tcx> {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Pat<'tcx> {
+    #[allow(dead_code)]
     pub(crate) ty: Ty<'tcx>,
     pub(crate) kind: PatKind<'tcx>,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatKind<'tcx> {
-    Deref {
-        subpattern: Box<Pat<'tcx>>,
-    },
-
     Constant {
         value: mir::Const<'tcx>,
     },
@@ -59,7 +56,6 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             PatKind::Never => write!(f, "!"),
-            PatKind::Deref { ref subpattern } => write_ref_like(f, self.ty, subpattern),
             PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::Range(ref range) => write!(f, "{range}"),
             PatKind::Slice { ref prefix, has_dot_dot, ref suffix } => {
@@ -172,7 +168,7 @@ pub(crate) fn write_struct_like<'tcx>(
     Ok(())
 }
 
-fn write_ref_like<'tcx>(
+pub(crate) fn write_ref_like<'tcx>(
     f: &mut impl fmt::Write,
     ty: Ty<'tcx>,
     subpattern: &Pat<'tcx>,

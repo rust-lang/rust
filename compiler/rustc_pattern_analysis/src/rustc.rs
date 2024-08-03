@@ -865,7 +865,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 .unwrap();
                 PatKind::Print(s)
             }
-            Ref => PatKind::Deref { subpattern: hoist(&pat.fields[0]) },
+            Ref => {
+                let mut s = String::new();
+                print::write_ref_like(&mut s, pat.ty().inner(), &hoist(&pat.fields[0])).unwrap();
+                PatKind::Print(s)
+            }
             Slice(slice) => {
                 let (prefix_len, has_dot_dot) = match slice.kind {
                     SliceKind::FixedLen(len) => (len, false),
