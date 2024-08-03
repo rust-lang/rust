@@ -2,7 +2,7 @@
 name = "ide-diagnostics"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Diagnostics rendering and fixits."
+description = "Diagnostics rendering and fixits for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

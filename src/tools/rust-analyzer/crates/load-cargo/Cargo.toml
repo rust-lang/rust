@@ -2,7 +2,7 @@
 name = "load-cargo"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Loads a Cargo project into a static instance of analysis."
+description = "Loads a Cargo project into a static instance of rust-analyzer for analysis."
 
 rust-version.workspace = true
 edition.workspace = true

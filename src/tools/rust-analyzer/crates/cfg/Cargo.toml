@@ -2,7 +2,7 @@
 name = "cfg"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Conditional compiling options, `cfg` attribute parser and evaluator."
+description = "Conditional compiling options, `cfg` attribute parser and evaluator for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

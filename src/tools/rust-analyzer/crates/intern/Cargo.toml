@@ -2,7 +2,7 @@
 name = "intern"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Global `Arc`-based object interning infrastructure."
+description = "Global `Arc`-based object interning infrastructure for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

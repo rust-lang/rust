@@ -2,7 +2,7 @@
 name = "ide-ssr"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Structural search and replace of Rust code."
+description = "Structural search and replace of Rust code for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

@@ -2,7 +2,7 @@
 name = "flycheck"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Functionality needed to run `cargo` commands in a background thread."
+description = "Functionality needed for rust-analyzer to run `cargo` commands in a background thread."
 
 authors.workspace = true
 edition.workspace = true
