@@ -690,9 +690,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // zero-sized access
                 return Ok(&[]);
             };
-            if alloc_ref.has_provenance() {
-                throw_ub_custom!(fluent::const_eval_raw_eq_with_provenance);
-            }
             alloc_ref.get_bytes_strip_provenance()
         };
 

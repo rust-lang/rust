@@ -2436,10 +2436,12 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized or carry a
-    /// pointer value.
+    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized.
     /// Note that this is a stricter criterion than just the *values* being
     /// fully-initialized: if `T` has padding, it's UB to call this intrinsic.
+    ///
+    /// At compile-time, it is furthermore UB to call this if any of the bytes
+    /// in `*a` or `*b` have provenance.
     ///
     /// (The implementation is allowed to branch on the results of comparisons,
     /// which is UB if any of their inputs are `undef`.)

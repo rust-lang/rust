@@ -453,11 +453,6 @@ impl<'a> AstValidator<'a> {
                             item_span: span,
                             block: Some(self.current_extern_span().shrink_to_lo()),
                         });
-                    } else if !self.features.unsafe_extern_blocks {
-                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                            item_span: span,
-                            block: None,
-                        });
                     }
                 }
             }
@@ -1054,32 +1049,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         errors::VisibilityNotPermittedNote::IndividualForeignItems,
                     );
 
-                    if this.features.unsafe_extern_blocks {
-                        if &Safety::Default == safety {
-                            if item.span.at_least_rust_2024() {
-                                this.dcx()
-                                    .emit_err(errors::MissingUnsafeOnExtern { span: item.span });
-                            } else {
-                                this.lint_buffer.buffer_lint(
-                                    MISSING_UNSAFE_ON_EXTERN,
-                                    item.id,
-                                    item.span,
-                                    BuiltinLintDiag::MissingUnsafeOnExtern {
-                                        suggestion: item.span.shrink_to_lo(),
-                                    },
-                                );
-                            }
+                    if &Safety::Default == safety {
+                        if item.span.at_least_rust_2024() {
+                            this.dcx().emit_err(errors::MissingUnsafeOnExtern { span: item.span });
+                        } else {
+                            this.lint_buffer.buffer_lint(
+                                MISSING_UNSAFE_ON_EXTERN,
+                                item.id,
+                                item.span,
+                                BuiltinLintDiag::MissingUnsafeOnExtern {
+                                    suggestion: item.span.shrink_to_lo(),
+                                },
+                            );
                         }
-                    } else if let &Safety::Unsafe(span) = safety {
-                        let mut diag = this
-                            .dcx()
-                            .create_err(errors::UnsafeItem { span, kind: "extern block" });
-                        rustc_session::parse::add_feature_diagnostics(
-                            &mut diag,
-                            self.session,
-                            sym::unsafe_extern_blocks,
-                        );
-                        diag.emit();
                     }
 
                     if abi.is_none() {

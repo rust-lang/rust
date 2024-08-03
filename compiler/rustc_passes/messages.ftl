@@ -100,6 +100,10 @@ passes_continue_labeled_block =
     .label = labeled blocks cannot be `continue`'d
     .block_label = labeled block the `continue` points to
 
+passes_coroutine_on_non_closure =
+    attribute should be applied to closures
+    .label = not a closure
+
 passes_coverage_not_fn_or_closure =
     attribute should be applied to a function definition or closure
     .label = not a function or closure

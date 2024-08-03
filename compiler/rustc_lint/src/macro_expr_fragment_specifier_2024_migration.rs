@@ -1,5 +1,5 @@
-//! Migration code for the `expr_fragment_specifier_2024`
-//! rule.
+//! Migration code for the `expr_fragment_specifier_2024` rule.
+
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_session::lint::FutureIncompatibilityReason;

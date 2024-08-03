@@ -4934,7 +4934,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(unsafe_extern_blocks)]
     /// #![warn(missing_unsafe_on_extern)]
     /// #![allow(dead_code)]
     ///
