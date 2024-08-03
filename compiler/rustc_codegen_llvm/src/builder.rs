@@ -200,19 +200,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn cond_br_with_expect(
-        &mut self,
-        mut cond: &'ll Value,
-        then_llbb: &'ll BasicBlock,
-        else_llbb: &'ll BasicBlock,
-        expect: Option<bool>,
-    ) {
-        if let Some(expect) = expect {
-            cond = self.expect(cond, expect);
-        }
-        self.cond_br(cond, then_llbb, else_llbb)
-    }
-
     fn switch(
         &mut self,
         v: &'ll Value,
