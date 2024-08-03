@@ -38,6 +38,17 @@ fn f32() {
     const_assert!(f32::from_bits(0x44a72000), 1337.0);
     const_assert!(f32::from_ne_bytes(0x44a72000u32.to_ne_bytes()), 1337.0);
     const_assert!(f32::from_bits(0xc1640000), -14.25);
+
+    // Check that NaNs roundtrip their bits regardless of signalingness
+    // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
+    // ...actually, let's just check that these break. :D
+    const MASKED_NAN1: u32 = f32::NAN.to_bits() ^ 0x002A_AAAA;
+    const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
+
+    const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f32::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
+    const_assert!(f32::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
 }
 
 fn f64() {
@@ -55,6 +66,17 @@ fn f64() {
     const_assert!(f64::from_bits(0x4094e40000000000), 1337.0);
     const_assert!(f64::from_ne_bytes(0x4094e40000000000u64.to_ne_bytes()), 1337.0);
     const_assert!(f64::from_bits(0xc02c800000000000), -14.25);
+
+    // Check that NaNs roundtrip their bits regardless of signalingness
+    // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
+    // ...actually, let's just check that these break. :D
+    const MASKED_NAN1: u64 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
+    const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
+
+    const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f64::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
+    const_assert!(f64::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
 }
 
 fn main() {
