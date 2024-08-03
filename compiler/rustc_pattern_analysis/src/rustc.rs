@@ -904,7 +904,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 print::write_slice_like(&mut s, &prefix, has_dot_dot, &suffix).unwrap();
                 PatKind::Print(s)
             }
-            Never if self.tcx.features().never_patterns => PatKind::Never,
+            Never if self.tcx.features().never_patterns => PatKind::Print("!".to_string()),
             Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => {
                 PatKind::Print("_".to_string())
             }

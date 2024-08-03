@@ -32,15 +32,12 @@ pub(crate) struct Pat<'tcx> {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatKind {
-    Never,
-
     Print(String),
 }
 
 impl<'tcx> fmt::Display for Pat<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
-            PatKind::Never => write!(f, "!"),
             PatKind::Print(ref string) => write!(f, "{string}"),
         }
     }
