@@ -14,8 +14,8 @@ use rustc_codegen_ssa::common::{
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, HasCodegen, IntrinsicCallMethods,
-    LayoutTypeMethods, OverflowOp, StaticBuilderMethods,
+    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, HasCodegen, LayoutTypeMethods,
+    OverflowOp, StaticBuilderMethods,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::fx::FxHashSet;
@@ -577,19 +577,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn cond_br(&mut self, cond: RValue<'gcc>, then_block: Block<'gcc>, else_block: Block<'gcc>) {
         self.llbb().end_with_conditional(self.location, cond, then_block, else_block)
-    }
-
-    fn cond_br_with_expect(
-        &mut self,
-        mut cond: RValue<'gcc>,
-        then_block: Block<'gcc>,
-        else_block: Block<'gcc>,
-        expect: Option<bool>,
-    ) {
-        if let Some(expect) = expect {
-            cond = self.expect(cond, expect);
-        }
-        self.cond_br(cond, then_block, else_block)
     }
 
     fn switch(

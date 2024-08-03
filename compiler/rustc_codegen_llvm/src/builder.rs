@@ -208,7 +208,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         expect: Option<bool>,
     ) {
         if let Some(expect) = expect {
-            cond = self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expect)]);
+            cond = self.expect(cond, expect);
         }
         self.cond_br(cond, then_llbb, else_llbb)
     }
