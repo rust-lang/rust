@@ -18,7 +18,7 @@ use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_middle::expand::{CanRetry, TcxMacroExpander};
+use rustc_middle::expand::TcxMacroExpander;
 use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
@@ -149,7 +149,7 @@ impl TcxMacroExpander for MacroRulesMacroExpander {
         sp: Span,
         input: TokenStream,
         expand_id: LocalExpnId,
-    ) -> Result<(TokenStream, usize), CanRetry> {
+    ) -> Result<(TokenStream, usize), (Span, ErrorGuaranteed)> {
         // Track nothing for the best performance.
         let try_success_result =
             try_match_macro(&sess.psess, self.name, &input, &self.lhses, &mut NoopTracker);
@@ -171,10 +171,24 @@ impl TcxMacroExpander for MacroRulesMacroExpander {
                     expand_id,
                 ) {
                     Ok(tts) => Ok((tts, i)),
-                    Err(err) => Err(CanRetry::No(err.emit())),
+                    Err(err) => {
+                        let arm_span = self.rhses[i].span();
+                        Err((arm_span, err.emit()))
+                    }
                 }
             }
-            Err(e) => Err(e),
+            Err(CanRetry::No(guar)) => Err((sp, guar)),
+            Err(CanRetry::Yes) => {
+                // Retry and emit a better error.
+                Err(crate::mbe::diagnostics::failed_to_match_macro(
+                    &sess.psess,
+                    sp,
+                    self.span,
+                    self.name,
+                    input,
+                    &self.lhses,
+                ))
+            }
         }
     }
 
@@ -333,9 +347,18 @@ fn expand_macro<'cx>(
         }
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
-            diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
+            let (span, guar) =
+                diagnostics::failed_to_match_macro(cx.psess(), sp, def_span, name, arg, lhses);
+            cx.trace_macros_diag();
+            DummyResult::any(span, guar)
         }
     }
+}
+
+pub(super) enum CanRetry {
+    Yes,
+    /// We are not allowed to retry macro expansion as a fatal error has been emitted already.
+    No(ErrorGuaranteed),
 }
 
 /// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was successful,

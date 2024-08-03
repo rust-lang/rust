@@ -19,7 +19,6 @@ use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_feature::Features;
-use rustc_middle::expand::CanRetry;
 use rustc_middle::ty::TyCtxt;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
@@ -33,7 +32,6 @@ use rustc_span::hygiene::SyntaxContext;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
 use smallvec::SmallVec;
-use tracing::debug;
 
 use crate::base::*;
 use crate::config::StripUnconfigured;
@@ -401,7 +399,7 @@ pub struct MacroExpander<'a, 'b> {
 pub fn expand_legacy_bang<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (LocalExpnId, LocalExpnId),
-) -> Result<(&'tcx TokenStream, usize), CanRetry> {
+) -> Result<(&'tcx TokenStream, usize), (Span, ErrorGuaranteed)> {
     let (invoc_id, current_expansion) = key;
     let map = tcx.macro_map.borrow();
     let (arg, span, expander) = map.get(&invoc_id).as_ref().unwrap();
@@ -739,13 +737,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 is_local,
                             ))
                         }
-                        Err(CanRetry::No(guar)) => {
-                            debug!("Will not retry matching as an error was emitted already");
+                        Err((span, guar)) => {
+                            self.cx.trace_macros_diag();
                             DummyResult::any(span, guar)
-                        }
-                        Err(CanRetry::Yes) => {
-                            // Retry and emit a better error.
-                            DummyResult::any_valid(span)
                         }
                     };
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {

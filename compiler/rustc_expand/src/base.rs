@@ -15,7 +15,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
-use rustc_middle::expand::{CanRetry, TcxMacroExpander};
+use rustc_middle::expand::TcxMacroExpander;
 use rustc_parse::parser::Parser;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_session::config::CollapseMacroDebuginfo;
@@ -1084,7 +1084,7 @@ pub trait ResolverExpand {
         &self,
         invoc_id: LocalExpnId,
         current_expansion: LocalExpnId,
-    ) -> Result<(TokenStream, usize), CanRetry>;
+    ) -> Result<(TokenStream, usize), (Span, ErrorGuaranteed)>;
 }
 
 pub trait LintStoreExpand {

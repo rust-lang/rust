@@ -22,7 +22,6 @@ use rustc_expand::expand::{
 };
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_middle::expand::CanRetry;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
@@ -35,7 +34,7 @@ use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 
 use crate::errors::{
     self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
@@ -539,7 +538,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         &self,
         invoc_id: LocalExpnId,
         current_expansion: LocalExpnId,
-    ) -> Result<(TokenStream, usize), CanRetry> {
+    ) -> Result<(TokenStream, usize), (Span, ErrorGuaranteed)> {
         self.tcx()
             .expand_legacy_bang((invoc_id, current_expansion))
             .map(|(tts, i)| (tts.clone(), i))

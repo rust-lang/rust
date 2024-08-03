@@ -45,7 +45,6 @@ use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
-use crate::expand::CanRetry;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -111,7 +110,7 @@ rustc_queries! {
         desc { "triggering a delayed bug for testing incremental" }
     }
 
-    query expand_legacy_bang(key: (LocalExpnId, LocalExpnId)) -> Result<(&'tcx TokenStream, usize), CanRetry> {
+    query expand_legacy_bang(key: (LocalExpnId, LocalExpnId)) -> Result<(&'tcx TokenStream, usize), (Span, ErrorGuaranteed)> {
         eval_always
         no_hash
         desc { "expand legacy bang" }

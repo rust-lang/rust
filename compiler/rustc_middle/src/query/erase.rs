@@ -2,7 +2,7 @@ use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
 use rustc_ast::tokenstream::TokenStream;
-use rustc_middle::expand::CanRetry;
+use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::query::CyclePlaceholder;
 use crate::ty::adjustment::CoerceUnsizedInfo;
@@ -175,8 +175,8 @@ impl EraseType for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     type Result = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
 }
 
-impl EraseType for Result<(&'_ TokenStream, usize), CanRetry> {
-    type Result = [u8; size_of::<Result<(&'_ TokenStream, usize), CanRetry>>()];
+impl EraseType for Result<(&'_ TokenStream, usize), (Span, ErrorGuaranteed)> {
+    type Result = [u8; size_of::<Result<(&'_ TokenStream, usize), (Span, ErrorGuaranteed)>>()];
 }
 
 impl<T> EraseType for Option<&'_ T> {
