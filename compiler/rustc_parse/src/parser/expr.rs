@@ -41,14 +41,6 @@ use super::{
 use crate::{errors, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(Debug)]
-pub(super) enum LhsExpr {
-    // Already parsed just the outer attributes.
-    Unparsed { attrs: AttrWrapper },
-    // Already parsed the expression.
-    Parsed { expr: P<Expr>, starts_statement: bool },
-}
-
-#[derive(Debug)]
 enum DestructuredFloat {
     /// 1e2
     Single(Symbol, Span),
@@ -113,30 +105,31 @@ impl<'a> Parser<'a> {
         r: Restrictions,
         attrs: AttrWrapper,
     ) -> PResult<'a, P<Expr>> {
-        self.with_res(r, |this| this.parse_expr_assoc_with(0, LhsExpr::Unparsed { attrs }))
+        self.with_res(r, |this| this.parse_expr_assoc_with(0, attrs))
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
     pub(super) fn parse_expr_assoc_with(
         &mut self,
         min_prec: usize,
-        lhs: LhsExpr,
+        attrs: AttrWrapper,
     ) -> PResult<'a, P<Expr>> {
-        let mut starts_stmt = false;
-        let mut lhs = match lhs {
-            LhsExpr::Parsed { expr, starts_statement } => {
-                starts_stmt = starts_statement;
-                expr
-            }
-            LhsExpr::Unparsed { attrs } => {
-                if self.token.is_range_separator() {
-                    return self.parse_expr_prefix_range(attrs);
-                } else {
-                    self.parse_expr_prefix(attrs)?
-                }
-            }
+        let lhs = if self.token.is_range_separator() {
+            return self.parse_expr_prefix_range(attrs);
+        } else {
+            self.parse_expr_prefix(attrs)?
         };
+        self.parse_expr_assoc_rest_with(min_prec, false, lhs)
+    }
 
+    /// Parses the rest of an associative expression (i.e. the part after the lhs) with operators
+    /// of at least `min_prec` precedence.
+    pub(super) fn parse_expr_assoc_rest_with(
+        &mut self,
+        min_prec: usize,
+        starts_stmt: bool,
+        mut lhs: P<Expr>,
+    ) -> PResult<'a, P<Expr>> {
         if !self.should_continue_as_assoc_expr(&lhs) {
             return Ok(lhs);
         }
@@ -272,7 +265,7 @@ impl<'a> Parser<'a> {
             };
             let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
                 let attrs = this.parse_outer_attributes()?;
-                this.parse_expr_assoc_with(prec + prec_adjustment, LhsExpr::Unparsed { attrs })
+                this.parse_expr_assoc_with(prec + prec_adjustment, attrs)
             })?;
 
             let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
@@ -447,7 +440,7 @@ impl<'a> Parser<'a> {
             let maybe_lt = self.token.clone();
             let attrs = self.parse_outer_attributes()?;
             Some(
-                self.parse_expr_assoc_with(prec + 1, LhsExpr::Unparsed { attrs })
+                self.parse_expr_assoc_with(prec + 1, attrs)
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
             )
         } else {
@@ -504,12 +497,9 @@ impl<'a> Parser<'a> {
             let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
                 // RHS must be parsed with more associativity than the dots.
                 let attrs = this.parse_outer_attributes()?;
-                this.parse_expr_assoc_with(
-                    op.unwrap().precedence() + 1,
-                    LhsExpr::Unparsed { attrs },
-                )
-                .map(|x| (lo.to(x.span), Some(x)))
-                .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
+                this.parse_expr_assoc_with(op.unwrap().precedence() + 1, attrs)
+                    .map(|x| (lo.to(x.span), Some(x)))
+                    .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
             } else {
                 (lo, None)
             };
@@ -889,7 +879,7 @@ impl<'a> Parser<'a> {
         mut e: P<Expr>,
         lo: Span,
     ) -> PResult<'a, P<Expr>> {
-        let res = ensure_sufficient_stack(|| {
+        let mut res = ensure_sufficient_stack(|| {
             loop {
                 let has_question =
                     if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
@@ -936,17 +926,13 @@ impl<'a> Parser<'a> {
 
         // Stitch the list of outer attributes onto the return value. A little
         // bit ugly, but the best way given the current code structure.
-        if attrs.is_empty() {
-            res
-        } else {
-            res.map(|expr| {
-                expr.map(|mut expr| {
-                    attrs.extend(expr.attrs);
-                    expr.attrs = attrs;
-                    expr
-                })
-            })
+        if !attrs.is_empty()
+            && let Ok(expr) = &mut res
+        {
+            mem::swap(&mut expr.attrs, &mut attrs);
+            expr.attrs.extend(attrs)
         }
+        res
     }
 
     pub(super) fn parse_dot_suffix_expr(
@@ -2647,10 +2633,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::Eq)?;
         }
         let attrs = self.parse_outer_attributes()?;
-        let expr = self.parse_expr_assoc_with(
-            1 + prec_let_scrutinee_needs_par(),
-            LhsExpr::Unparsed { attrs },
-        )?;
+        let expr = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), attrs)?;
         let span = lo.to(expr.span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
     }
