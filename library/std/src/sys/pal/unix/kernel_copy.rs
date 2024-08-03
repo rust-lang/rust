@@ -60,6 +60,7 @@ use crate::net::TcpStream;
 use crate::os::unix::fs::FileTypeExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::os::unix::net::UnixStream;
+use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
@@ -402,6 +403,30 @@ impl CopyWrite for &UnixStream {
     fn properties(&self) -> CopyParams {
         // avoid the stat syscall since we can be fairly sure it's a socket
         CopyParams(FdMeta::Socket, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyRead for PipeReader {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyRead for &PipeReader {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for PipeWriter {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for &PipeWriter {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
     }
 }
 

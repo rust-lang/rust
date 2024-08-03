@@ -17,7 +17,6 @@ use thin_vec::{thin_vec, ThinVec};
 
 use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
-use super::expr::LhsExpr;
 use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
 use super::{
@@ -66,7 +65,12 @@ impl<'a> Parser<'a> {
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
-            self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
+            self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+                this.expect_keyword(kw::Let)?;
+                let local = this.parse_local(attrs)?;
+                let trailing = capture_semi && this.token.kind == token::Semi;
+                Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
+            })?
         } else if self.is_kw_followed_by_ident(kw::Mut) && self.may_recover() {
             self.recover_stmt_local_after_let(
                 lo,
@@ -112,13 +116,12 @@ impl<'a> Parser<'a> {
                 }
             }
         } else if let Some(item) = self.parse_item_common(
-            attrs.clone(),
+            attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
             FnParseMode { req_name: |_| true, req_body: true },
             force_collect,
         )? {
-            // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
             // Do not attempt to parse an expression if we're done here.
@@ -173,7 +176,7 @@ impl<'a> Parser<'a> {
             // Perform this outside of the `collect_tokens_trailing_token` closure,
             // since our outer attributes do not apply to this part of the expression
             let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc_with(0, LhsExpr::Parsed { expr, starts_statement: true })
+                this.parse_expr_assoc_rest_with(0, true, expr)
             })?;
             Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
         } else {
@@ -206,8 +209,7 @@ impl<'a> Parser<'a> {
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
             let e = self.parse_expr_dot_or_call_with(attrs, e, lo)?;
-            let e = self
-                .parse_expr_assoc_with(0, LhsExpr::Parsed { expr: e, starts_statement: false })?;
+            let e = self.parse_expr_assoc_rest_with(0, false, e)?;
             StmtKind::Expr(e)
         };
         Ok(self.mk_stmt(lo.to(hi), kind))
@@ -245,21 +247,6 @@ impl<'a> Parser<'a> {
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
-    }
-
-    fn parse_local_mk(
-        &mut self,
-        lo: Span,
-        attrs: AttrWrapper,
-        capture_semi: bool,
-        force_collect: ForceCollect,
-    ) -> PResult<'a, Stmt> {
-        self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
-            this.expect_keyword(kw::Let)?;
-            let local = this.parse_local(attrs)?;
-            let trailing = capture_semi && this.token.kind == token::Semi;
-            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
-        })
     }
 
     /// Parses a local variable declaration.
