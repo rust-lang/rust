@@ -192,6 +192,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(const_fn_floating_point_arithmetic))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -201,7 +202,6 @@
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
-#![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_for)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]

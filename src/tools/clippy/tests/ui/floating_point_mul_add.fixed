@@ -1,4 +1,3 @@
-#![feature(const_fn_floating_point_arithmetic)]
 #![warn(clippy::suboptimal_flops)]
 
 /// Allow suboptimal_ops in constant context
