@@ -463,11 +463,10 @@ static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 /// environment variable; see the details in [`get_backtrace_style`].
 #[unstable(feature = "panic_backtrace_config", issue = "93346")]
 pub fn set_backtrace_style(style: BacktraceStyle) {
-    if !cfg!(feature = "backtrace") {
-        // If the `backtrace` feature of this crate isn't enabled, skip setting.
-        return;
+    if cfg!(feature = "backtrace") {
+        // If the `backtrace` feature of this crate is enabled, set the backtrace style.
+        SHOULD_CAPTURE.store(style.as_u8(), Ordering::Release);
     }
-    SHOULD_CAPTURE.store(style.as_u8(), Ordering::Release);
 }
 
 /// Checks whether the standard library's panic hook will capture and print a
@@ -503,21 +502,13 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         return Some(style);
     }
 
-    let format = crate::env::var_os("RUST_BACKTRACE")
-        .map(|x| {
-            if &x == "0" {
-                BacktraceStyle::Off
-            } else if &x == "full" {
-                BacktraceStyle::Full
-            } else {
-                BacktraceStyle::Short
-            }
-        })
-        .unwrap_or(if crate::sys::FULL_BACKTRACE_DEFAULT {
-            BacktraceStyle::Full
-        } else {
-            BacktraceStyle::Off
-        });
+    let format = match crate::env::var_os("RUST_BACKTRACE") {
+        Some(x) if &x == "0" => BacktraceStyle::Off,
+        Some(x) if &x == "full" => BacktraceStyle::Full,
+        Some(_) => BacktraceStyle::Short,
+        None if crate::sys::FULL_BACKTRACE_DEFAULT => BacktraceStyle::Full,
+        None => BacktraceStyle::Off,
+    };
     set_backtrace_style(format);
     Some(format)
 }
